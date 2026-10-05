@@ -12,6 +12,10 @@
 //      the same range must ADD a record under docs/decisions/.
 // Plus ids.json must validate against ids.schema.json, which pins the shapes
 // (reverse-DNS ids, `.db` file names, `jurisdiction: "eu"`).
+//
+// And the interim Apple ids (decision 0011) are kept apart from the frozen
+// ones: an app that has only been on TestFlight cannot be transferred between
+// teams, so a frozen id registered on the interim team would stay there.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -42,7 +46,48 @@ export function diffPointers(a, b, pointer = "") {
 }
 
 /**
- * The working-tree checks: schema, and ids equal to the lock.
+ * The interim Apple ids must extend the frozen ones without equalling them,
+ * the notification service must sit under its app id (Apple requires it),
+ * and the interim team must not be the frozen team.
+ *
+ * @param {any} ids parsed ids.json, already schema-valid
+ * @returns {string[]}
+ */
+export function checkInterim(ids) {
+  const interim = ids.appleInterim;
+  if (!interim) return [];
+  const { store, services } = ids;
+  /** @type {string[]} */
+  const problems = [];
+  /**
+   * @param {string} key
+   * @param {string} frozen
+   */
+  const apart = (key, frozen) => {
+    const value = interim[key];
+    if (value === frozen) {
+      problems.push(`/appleInterim/${key}: is the frozen id ${frozen}; the interim needs its own`);
+    } else if (!value.startsWith(`${frozen}.`)) {
+      problems.push(`/appleInterim/${key}: must extend the frozen id, as ${frozen}.<suffix>`);
+    }
+  };
+  apart("iosBundleId", store.iosBundleId);
+  apart("appGroup", store.appGroup);
+  if (interim.iosNotificationServiceBundleId === store.iosNotificationServiceBundleId) {
+    apart("iosNotificationServiceBundleId", store.iosNotificationServiceBundleId);
+  } else if (!interim.iosNotificationServiceBundleId.startsWith(`${interim.iosBundleId}.`)) {
+    problems.push(
+      `/appleInterim/iosNotificationServiceBundleId: must sit under the interim app id, as ${interim.iosBundleId}.<suffix>`,
+    );
+  }
+  if (interim.teamId === services.appleTeamId) {
+    problems.push(`/appleInterim/teamId: is the frozen team; an interim is another team`);
+  }
+  return problems;
+}
+
+/**
+ * The working-tree checks: schema, the interim ids, and ids equal to the lock.
  *
  * @param {string} [root]
  * @returns {string[]}
@@ -50,6 +95,7 @@ export function diffPointers(a, b, pointer = "") {
 export function checkTree(root = ROOT) {
   const ids = readJson(IDS, root);
   const problems = validate(readJson(SCHEMA, root), ids).map((p) => `${IDS} ${p}`);
+  if (problems.length === 0) problems.push(...checkInterim(ids).map((p) => `${IDS} ${p}`));
   const idsText = readFileSync(join(root, IDS), "utf8");
   const lockText = readFileSync(join(root, LOCK), "utf8");
   if (idsText !== lockText) {

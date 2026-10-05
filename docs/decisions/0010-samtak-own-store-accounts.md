@@ -4,6 +4,7 @@
 - Date: 2026-10-05 (Play owner revised the same day)
 - Decided by: Guðröður
 - Closes: 0004 § Open
+- Amended by: 0011 (interim TestFlight builds on `B4724Z74TM` under their own ids)
 
 ## Decision
 

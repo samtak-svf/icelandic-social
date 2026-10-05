@@ -43,5 +43,11 @@
     "gcpSecretPrefix": "samtak-spjall-",
     "gcpSecretProject": "fedora-setup-secrets",
     "githubSlug": "samtak-svf/samtak-spjall"
+  },
+  "appleInterim": {
+    "teamId": "B4724Z74TM",
+    "iosBundleId": "is.samtak.spjall.beta",
+    "iosNotificationServiceBundleId": "is.samtak.spjall.beta.notifications",
+    "appGroup": "group.is.samtak.spjall.beta"
   }
 }

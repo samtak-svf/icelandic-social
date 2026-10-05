@@ -51,6 +51,65 @@ describe("ids-freeze, working tree", () => {
   });
 });
 
+describe("ids-freeze, interim Apple ids (decision 0011)", () => {
+  /** @param {(ids: any) => void} mutate */
+  function interimProblems(mutate) {
+    const root = copyRepo(["identifiers"]);
+    for (const file of [IDS, LOCK]) editJson(root, file, mutate);
+    return checkTree(root).join("\n");
+  }
+
+  it("refuses an interim id that is a frozen id", () => {
+    const problems = interimProblems((ids) => {
+      ids.appleInterim.iosBundleId = ids.store.iosBundleId;
+      ids.appleInterim.iosNotificationServiceBundleId = ids.store.iosNotificationServiceBundleId;
+    });
+    expect(problems).toContain("/appleInterim/iosBundleId");
+    expect(problems).toContain("/appleInterim/iosNotificationServiceBundleId");
+  });
+
+  it("refuses an interim App Group that is the frozen one", () => {
+    expect(
+      interimProblems((ids) => {
+        ids.appleInterim.appGroup = ids.store.appGroup;
+      }),
+    ).toContain("/appleInterim/appGroup");
+  });
+
+  it("refuses an interim id that does not extend the frozen one", () => {
+    expect(
+      interimProblems((ids) => {
+        ids.appleInterim.iosBundleId = "is.example.beta";
+        ids.appleInterim.iosNotificationServiceBundleId = "is.example.beta.notifications";
+      }),
+    ).toContain("/appleInterim/iosBundleId");
+  });
+
+  it("refuses a notification service id outside its app id", () => {
+    expect(
+      interimProblems((ids) => {
+        ids.appleInterim.iosNotificationServiceBundleId = `${ids.store.iosBundleId}.other`;
+      }),
+    ).toContain("/appleInterim/iosNotificationServiceBundleId");
+  });
+
+  it("refuses the interim team as the frozen team", () => {
+    expect(
+      interimProblems((ids) => {
+        ids.services.appleTeamId = ids.appleInterim.teamId;
+      }),
+    ).toContain("/appleInterim/teamId");
+  });
+
+  it("accepts no interim at all", () => {
+    expect(
+      interimProblems((ids) => {
+        ids.appleInterim = null;
+      }),
+    ).toBe("");
+  });
+});
+
 describe("ids-freeze, history", () => {
   /** @param {(root: string) => void} change */
   function rangeAfter(change) {

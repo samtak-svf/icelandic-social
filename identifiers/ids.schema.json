@@ -5,14 +5,16 @@
   "description": "Every identifier that cannot be renamed after first use. Neutral by rule: no value may contain a brand leak term (tooling/brand-leak-guard.mjs). A change needs the matching ids.lock.json edit and a decision record in the same pull request (tooling/ids-freeze.mjs).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["$schema", "store", "identity", "cloudflare", "hosts", "services"],
+  "required": ["$schema", "store", "identity", "cloudflare", "hosts", "services", "appleInterim"],
   "$defs": {
     "reverseDns": { "type": "string", "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$" },
     "slug": { "type": "string", "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$" },
     "className": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
     "host": { "type": "string", "pattern": "^[a-z0-9-]+(\\.[a-z0-9-]+)+$" },
     "fileName": { "type": "string", "pattern": "^[a-z][a-z0-9-]*\\.db$" },
-    "channelId": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }
+    "channelId": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "appGroup": { "type": "string", "pattern": "^group\\.[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$" },
+    "appleTeamId": { "type": "string", "pattern": "^[A-Z0-9]{10}$" }
   },
   "properties": {
     "$schema": { "const": "./ids.schema.json" },
@@ -33,11 +35,8 @@
         "androidApplicationId": { "$ref": "#/$defs/reverseDns" },
         "iosBundleId": { "$ref": "#/$defs/reverseDns" },
         "iosNotificationServiceBundleId": { "$ref": "#/$defs/reverseDns" },
-        "appGroup": { "type": "string", "pattern": "^group\\.[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$" },
-        "keychainAccessGroup": {
-          "type": "string",
-          "pattern": "^group\\.[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$"
-        },
+        "appGroup": { "$ref": "#/$defs/appGroup" },
+        "keychainAccessGroup": { "$ref": "#/$defs/appGroup" },
         "urlScheme": { "$ref": "#/$defs/reverseDns" },
         "androidNotificationChannels": {
           "type": "object",
@@ -119,12 +118,29 @@
         "firebaseProjectId": { "type": "string", "pattern": "^[a-z][a-z0-9-]{4,28}[a-z0-9]$" },
         "appleTeamId": {
           "description": "null until Samtak svf.'s own Apple team exists (decision 0010)",
-          "anyOf": [{ "type": "string", "pattern": "^[A-Z0-9]{10}$" }, { "type": "null" }]
+          "anyOf": [{ "$ref": "#/$defs/appleTeamId" }, { "type": "null" }]
         },
         "gcpSecretPrefix": { "type": "string", "pattern": "^[a-z][a-z0-9-]*-$" },
         "gcpSecretProject": { "$ref": "#/$defs/slug" },
         "githubSlug": { "type": "string", "pattern": "^[a-z0-9-]+/[a-z0-9-]+$" }
       }
+    },
+    "appleInterim": {
+      "description": "TestFlight builds on another organisation's Apple team until Samtak svf.'s own exists (decision 0011). Its ids extend the frozen ones and never equal them, so the frozen ids stay free for Samtak svf.'s team (tooling/ids-freeze.mjs). null when there is no interim.",
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["teamId", "iosBundleId", "iosNotificationServiceBundleId", "appGroup"],
+          "properties": {
+            "teamId": { "$ref": "#/$defs/appleTeamId" },
+            "iosBundleId": { "$ref": "#/$defs/reverseDns" },
+            "iosNotificationServiceBundleId": { "$ref": "#/$defs/reverseDns" },
+            "appGroup": { "$ref": "#/$defs/appGroup" }
+          }
+        },
+        { "type": "null" }
+      ]
     }
   }
 }

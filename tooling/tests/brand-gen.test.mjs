@@ -107,6 +107,32 @@ describe("brand-gen", () => {
     expect(output(root, "ios/Generated/Ids.xcconfig")).toContain("DEVELOPMENT_TEAM = ABCDE12345\n");
   });
 
+  it("gives the Interim configuration the interim ids and team, never the frozen ones", () => {
+    const ids = readJson("identifiers/ids.json");
+    const interim = output(ROOT, "ios/Generated/IdsInterim.xcconfig");
+    expect(interim).toContain(`SPJALL_BUNDLE_ID = ${ids.appleInterim.iosBundleId}\n`);
+    expect(interim).toContain(
+      `SPJALL_NSE_BUNDLE_ID = ${ids.appleInterim.iosNotificationServiceBundleId}\n`,
+    );
+    expect(interim).toContain(`SPJALL_APP_GROUP = ${ids.appleInterim.appGroup}\n`);
+    expect(interim).toContain(`DEVELOPMENT_TEAM = ${ids.appleInterim.teamId}\n`);
+    expect(interim).not.toContain(`= ${ids.store.iosBundleId}\n`);
+    const plist = output(ROOT, "ios/Generated/ExportOptions.Interim.plist");
+    expect(plist).toContain(`<string>${ids.appleInterim.teamId}</string>`);
+    expect(plist).toContain(`<key>${ids.appleInterim.iosBundleId}</key>`);
+    expect(plist).toContain(`<key>${ids.appleInterim.iosNotificationServiceBundleId}</key>`);
+  });
+
+  it("writes no Interim files when there is no interim team", () => {
+    const root = fixture();
+    editJson(root, "identifiers/ids.json", (i) => {
+      i.appleInterim = null;
+    });
+    const paths = generate(BRAND, root).files.map((f) => f.path);
+    expect(paths).not.toContain("ios/Generated/IdsInterim.xcconfig");
+    expect(paths).not.toContain("ios/Generated/ExportOptions.Interim.plist");
+  });
+
   it("resolves alias colours and keeps alpha", () => {
     const root = fixture();
     editJson(root, `brand/${BRAND}/tokens.json`, (t) => {

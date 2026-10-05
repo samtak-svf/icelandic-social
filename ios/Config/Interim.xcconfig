@@ -1,0 +1,6 @@
+// The Interim configuration: a signed TestFlight build on the interim Apple
+// team (decision 0011). The interim ids override the frozen ones. While
+// identifiers/ids.json has no interim, the optional include finds nothing,
+// DEVELOPMENT_TEAM stays empty and this configuration cannot sign.
+#include "App.xcconfig"
+#include? "../Generated/IdsInterim.xcconfig"

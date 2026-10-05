@@ -99,6 +99,25 @@ must be identical in the D-U-N-S request, the Apple form and the Play form.
 Account Holder can fix it, by accepting whatever is pending in the developer account
 (2026-07-14).
 
+### Interim: TestFlight on an existing team (decision 0011)
+
+An Apple ID can be Account Holder of one membership only, so the Apple ID that holds the
+existing team `B4724Z74TM` cannot enroll Samtak svf. Apple's web form refused a new Apple ID
+for `samtak@samtak.is` on 2026-10-05 ("Your account cannot be created at this time"); the
+next try is from an Apple device. Until the team exists:
+
+- TestFlight builds run on `B4724Z74TM` under the interim ids in `appleInterim`
+  (`is.samtak.spjall.beta`, `.beta.notifications`, `group.is.samtak.spjall.beta`). The frozen
+  ids are never registered there: a TestFlight-only app cannot be transferred between teams.
+- The team's Distribution certificate and App Store Connect API key are scoped to the team, so
+  they live only in the `testflight` environment, never in repo secrets:
+  `IOS_SIGNING_P12_BASE64`, `IOS_SIGNING_P12_PASSWORD`, `ASC_API_KEY_ID`, `ASC_API_ISSUER_ID`
+  and `ASC_API_KEY_P8`, set from the maintainer's vault.
+- The bundle ids and the App Store profiles are created through the App Store Connect API.
+  The profiles are named `<bundle id> appstore`, the names `ios/Generated/IdsInterim.xcconfig`
+  expects. The App Group and its assignment to both ids, and the app record, are web UI only.
+- `ios-testflight.yml` (manual) builds the `Interim` configuration and uploads it.
+
 ## After enrollment
 
 **Apple**, in this order:
