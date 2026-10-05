@@ -43,12 +43,18 @@ Consequences, all enforced by `tooling/brand-leak-guard.mjs`:
   fails when they differ by a byte. Never edit them by hand. The brand is `BRAND=<name>`, by
   default the only brand not starting with `_`. Generated files may name the active brand and
   no other one.
+- **Apps read the Rust core from local paths, never from cargo or the network.**
+  `android/core/crypto/libs/` and `ios/Packages/SpjallCore/` are gitignored and filled by
+  `cargo xtask core <android|ios>` (a local build) or `cargo xtask fetch <android|ios>` (the
+  published version pinned with SHA-256 in `core/artifact.lock.json`). No Gradle or Xcode file
+  calls cargo (`check:core`). A new core is published by tagging `core-vX.Y.Z`; the lock
+  moves only by PR, with the checksums `core.yml` prints.
 
 ## Commands
 
 ```bash
 pnpm install           # also installs the lefthook hooks
-pnpm check             # lint, types, format, ids, brand, brand-gen, brand-leak, þankastrik, PII, knip
+pnpm check             # lint, types, format, ids, brand, brand-gen, brand-leak, þankastrik, PII, seams, core lock, knip
 pnpm brand:gen         # regenerate the platform files from brand/$BRAND
 pnpm test              # guard tests (vitest); each guard is proven to fail when it should
 pnpm format            # oxfmt --write .
@@ -60,6 +66,12 @@ pnpm --dir backend check     # wrangler types, tsc, api/openapi.json drift
 pnpm --dir backend test      # vitest inside workerd (@cloudflare/vitest-pool-workers)
 pnpm --dir backend openapi   # regenerate api/openapi.json after a zod change ...
 node tooling/ws-kotlin.mjs   # ... then the Kotlin WS frames from it
+
+# The Rust core (core/ is a Cargo workspace; the toolchain is pinned in rust-toolchain.toml)
+cd core && cargo fmt --all && cargo clippy --workspace --all-targets -- -D warnings && cargo test
+cargo xtask core android     # needs the NDK named in core/artifact.lock.json and cargo-ndk
+cargo xtask core ios         # macOS only
+cargo xtask fetch android    # the pinned published artifact, checksum-verified
 ```
 
 **The contract (decision 0005).** zod in `backend/src/api/` is the source. `api/openapi.json`

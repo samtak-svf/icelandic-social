@@ -87,6 +87,16 @@ pre-push:
     jurisdiction:
       run: node tooling/jurisdiction-check.mjs
 
+    # The core lock is well formed and no Gradle or Xcode file calls cargo.
+    core:
+      run: node tooling/core-guard.mjs
+
+    # Rust formatting and lints, only when the core changed since main.
+    core-rust:
+      run: |
+        if git diff --quiet origin/main...HEAD -- core/ 2>/dev/null; then exit 0; fi
+        cd core && cargo fmt --all --check && cargo clippy --quiet --workspace --all-targets -- -D warnings
+
     # The contract: spec matches zod (needs backend deps), Kotlin matches spec.
     contract:
       run: |

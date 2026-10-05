@@ -1,0 +1,6 @@
+# The core is built with exactly this toolchain, locally and in CI (core.yml).
+# Android targets are added by `cargo xtask core android` when missing.
+[toolchain]
+channel = "1.98.1"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

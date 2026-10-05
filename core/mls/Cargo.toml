@@ -1,0 +1,18 @@
+[package]
+name = "spjall-mls"
+description = "OpenMLS pinned to the one ciphersuite of decision 0002"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+openmls.workspace = true
+openmls_basic_credential.workspace = true
+openmls_rust_crypto.workspace = true
+openmls_traits.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,11 @@
+# Package and module names the generated bindings use. The Kotlin package
+# follows the code namespace of decision 0004; neither names the brand.
+[bindings.kotlin]
+package_name = "samtak.spjall.core"
+cdylib_name = "spjall_core"
+
+[bindings.swift]
+module_name = "SpjallCore"
+ffi_module_name = "SpjallCoreFFI"
+ffi_module_filename = "SpjallCoreFFI"
+generate_module_map = true

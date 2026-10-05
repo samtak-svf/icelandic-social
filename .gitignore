@@ -25,5 +25,9 @@ xcuserdata/
 # Rust
 target/
 
+# The core as the apps read it, from `cargo xtask core` or `cargo xtask fetch`
+android/core/crypto/libs/
+ios/Packages/SpjallCore/
+
 # Private data never enters git (PII guard, docs/decisions/0008)
 private/
