@@ -1,0 +1,3 @@
+// Shared by every target. Both includes are written by `pnpm brand:gen`.
+#include "../Generated/Brand.xcconfig"
+#include "../Generated/Ids.xcconfig"

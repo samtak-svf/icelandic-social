@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Merged with the generated Info.plist: only keys INFOPLIST_KEY_ cannot set. -->
+<plist version="1.0">
+<dict>
+	<key>SpjallAPIHost</key>
+	<string>$(SPJALL_API_HOST)</string>
+</dict>
+</plist>

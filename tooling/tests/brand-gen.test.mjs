@@ -91,6 +91,22 @@ describe("brand-gen", () => {
     expect(ts).not.toContain("send:");
   });
 
+  it("hands Xcode the frozen ids, with an empty team while it is null", () => {
+    const ids = readJson("identifiers/ids.json");
+    const xcconfig = output(ROOT, "ios/Generated/Ids.xcconfig");
+    expect(xcconfig).toContain(`SPJALL_BUNDLE_ID = ${ids.store.iosBundleId}\n`);
+    expect(xcconfig).toContain(`SPJALL_APP_GROUP = ${ids.store.appGroup}\n`);
+    const root = fixture();
+    editJson(root, "identifiers/ids.json", (i) => {
+      i.services.appleTeamId = null;
+    });
+    expect(output(root, "ios/Generated/Ids.xcconfig")).toContain("DEVELOPMENT_TEAM = \n");
+    editJson(root, "identifiers/ids.json", (i) => {
+      i.services.appleTeamId = "ABCDE12345";
+    });
+    expect(output(root, "ios/Generated/Ids.xcconfig")).toContain("DEVELOPMENT_TEAM = ABCDE12345\n");
+  });
+
   it("resolves alias colours and keeps alpha", () => {
     const root = fixture();
     editJson(root, `brand/${BRAND}/tokens.json`, (t) => {

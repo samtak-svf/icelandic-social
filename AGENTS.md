@@ -72,7 +72,14 @@ cd core && cargo fmt --all && cargo clippy --workspace --all-targets -- -D warni
 cargo xtask core android     # needs the NDK named in core/artifact.lock.json and cargo-ndk
 cargo xtask core ios         # macOS only
 cargo xtask fetch android    # the pinned published artifact, checksum-verified
+
+# The apps (they read the core from the paths xtask fills, never build it)
+cd android && ./gradlew check assembleDebug   # ktlint, detekt, lint (warnings are errors), unit tests
+cd ios && xcodegen && xcodebuild test -scheme Spjall -skipPackagePluginValidation   # macOS only
 ```
+
+A debug Android build talks to a local `wrangler dev` with `spjall.debugApiBaseUrl=http://10.0.2.2:8787`
+in `android/local.properties` (gitignored) or `SPJALL_DEBUG_API_BASE_URL`.
 
 **The contract (decision 0005).** zod in `backend/src/api/` is the source. `api/openapi.json`
 and `api/kotlin/…/WsFrame.kt` are generated and committed; `contract.yml` fails when either is

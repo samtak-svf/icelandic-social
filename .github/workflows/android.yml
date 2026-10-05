@@ -1,0 +1,99 @@
+name: android
+
+# The Android skeleton (android/): ktlint, detekt, Android Lint with warnings
+# as errors, the unit tests, and a debug APK.
+#
+# The core comes from core/artifact.lock.json: the pinned published version
+# when there is one (cargo xtask fetch, checksum-verified), otherwise a local
+# build with the NDK the lock names. Gradle never calls cargo itself.
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths:
+      - "android/**"
+      - "brand/**"
+      - "identifiers/**"
+      - "api/**"
+      - "core/**"
+      - ".github/workflows/android.yml"
+  push:
+    branches: [main]
+    paths:
+      - "android/**"
+      - "brand/**"
+      - "identifiers/**"
+      - "api/**"
+      - "core/**"
+      - ".github/workflows/android.yml"
+
+concurrency:
+  group: android-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Published core pinned?
+        id: lock
+        run: echo "version=$(jq -r '.version // empty' core/artifact.lock.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Toolchain
+        working-directory: core
+        run: rustup toolchain install
+
+      - name: NDK from the lock, and cargo-ndk
+        if: steps.lock.outputs.version == ''
+        run: |
+          NDK=$(jq -r .androidNdk core/artifact.lock.json)
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK" > /dev/null
+          cargo install cargo-ndk --version 4.1.2 --locked
+
+      - uses: Swatinem/rust-cache@v2
+        if: steps.lock.outputs.version == ''
+        with:
+          workspaces: core
+
+      - name: Core (local build, nothing published yet)
+        if: steps.lock.outputs.version == ''
+        working-directory: core
+        run: cargo xtask core android
+
+      - name: Core (pinned ${{ steps.lock.outputs.version }})
+        if: steps.lock.outputs.version != ''
+        working-directory: core
+        run: cargo xtask fetch android
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Check and assemble
+        working-directory: android
+        run: ./gradlew --console=plain check assembleDebug
+
+      - name: Fail when no unit tests ran
+        working-directory: android
+        run: |
+          COUNT=$(find . -path '*/build/test-results/*' -name 'TEST-*.xml' | wc -l)
+          echo "unit test result files: $COUNT"
+          test "$COUNT" -gt 0
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: android-reports
+          path: android/**/build/reports/
+          retention-days: 7

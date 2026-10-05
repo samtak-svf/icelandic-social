@@ -1,0 +1,111 @@
+name: ios
+
+# The iOS skeleton (ios/): swift-format, then an unsigned simulator build and
+# the unit tests. macOS minutes count ten times and the org's hosted minutes
+# have run out before (2026-05-20, 2026-09-13), so the path filter is narrow
+# and there is a manual trigger.
+#
+# The core is the pinned published version when there is one, otherwise a
+# local build (cargo xtask core ios); Xcode never calls cargo itself.
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths:
+      - "ios/**"
+      - "brand/**"
+      - "identifiers/**"
+      - "api/**"
+      - "core/artifact.lock.json"
+      - ".github/workflows/ios.yml"
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - "brand/**"
+      - "identifiers/**"
+      - "api/**"
+      - "core/artifact.lock.json"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Format
+        working-directory: ios
+        run: xcrun swift-format lint --strict --recursive App NotificationService Tests Packages/SpjallAPI
+
+      - name: Published core pinned?
+        id: lock
+        run: echo "version=$(jq -r '.version // empty' core/artifact.lock.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Toolchain
+        working-directory: core
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+        if: steps.lock.outputs.version == ''
+        with:
+          workspaces: core
+
+      - name: Core (local build, nothing published yet)
+        if: steps.lock.outputs.version == ''
+        working-directory: core
+        run: cargo xtask core ios
+
+      - name: Core (pinned ${{ steps.lock.outputs.version }})
+        if: steps.lock.outputs.version != ''
+        working-directory: core
+        run: cargo xtask fetch ios
+
+      - name: Generate the Xcode project
+        working-directory: ios
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Pick an available iPhone simulator
+        run: |
+          SIM_UDID=$(xcrun simctl list devices available -j | jq -r '[.devices | to_entries[] | select(.key | startswith("com.apple.CoreSimulator.SimRuntime.iOS-")) | {runtime: .key, devices: [.value[] | select(.name | startswith("iPhone"))]} | select(.devices | length > 0)] | sort_by(.runtime) | (last // {}) | (.devices // []) | .[0] | .udid? // empty')
+          if [ -z "$SIM_UDID" ]; then
+            xcrun simctl list devices available
+            echo "::error::no available iPhone simulator"
+            exit 1
+          fi
+          echo "SIM_UDID=$SIM_UDID" >> "$GITHUB_ENV"
+
+      # -skipPackagePluginValidation: swift-openapi-generator's build plugin
+      # would otherwise wait for a trust prompt no CI runner can answer.
+      - name: Build and test (unsigned, simulator)
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Spjall.xcodeproj \
+            -scheme Spjall \
+            -destination "id=$SIM_UDID" \
+            -configuration Debug \
+            -derivedDataPath build \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee "$RUNNER_TEMP/xcodebuild-test.log" | xcpretty
+
+      - name: Fail when no tests ran
+        run: grep -E 'Executed [1-9][0-9]* tests?, with 0 failures' "$RUNNER_TEMP/xcodebuild-test.log"

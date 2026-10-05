@@ -1,0 +1,12 @@
+# On top of detekt's default rules (buildUponDefaultConfig). Each change from a
+# default says why.
+
+naming:
+  FunctionNaming:
+    # Composable functions are nouns in PascalCase by Compose convention.
+    ignoreAnnotated: ["Composable"]
+
+style:
+  MagicNumber:
+    # Compose layout reads best with dp and sp literals at the call site.
+    ignoreAnnotated: ["Composable", "Preview"]
