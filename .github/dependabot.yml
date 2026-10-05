@@ -1,0 +1,11 @@
+# Keeps the SHA-pinned actions current; the tag comment beside each SHA is
+# what Dependabot reads and rewrites (tooling/workflow-guard.mjs).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

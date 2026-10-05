@@ -35,8 +35,7 @@ jobs:
       app: ${{ steps.ids.outputs.app }}
       nse: ${{ steps.ids.outputs.nse }}
     steps:
-      - uses: actions/checkout@v5
-
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: Interim ids
         id: ids
         run: |
@@ -79,8 +78,7 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/checkout@v5
-
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: Published core pinned?
         id: lock
         run: echo "version=$(jq -r '.version // empty' core/artifact.lock.json)" >> "$GITHUB_OUTPUT"
@@ -89,7 +87,7 @@ jobs:
         working-directory: core
         run: rustup toolchain install
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         if: steps.lock.outputs.version == ''
         with:
           workspaces: core
@@ -111,13 +109,13 @@ jobs:
           xcodegen generate
 
       - name: Import the distribution certificate
-        uses: apple-actions/import-codesign-certs@v3
+        uses: apple-actions/import-codesign-certs@63fff01cd422d4b7b855d40ca1e9d34d2de9427d # v3
         with:
           p12-file-base64: ${{ secrets.IOS_SIGNING_P12_BASE64 }}
           p12-password: ${{ secrets.IOS_SIGNING_P12_PASSWORD }}
 
       - name: Profile for ${{ needs.preflight.outputs.app }}
-        uses: apple-actions/download-provisioning-profiles@v3
+        uses: apple-actions/download-provisioning-profiles@e11c25fa97f0f9b4e7f5da47484e25a0cb6f17a3 # v3
         with:
           bundle-id: ${{ needs.preflight.outputs.app }}
           profile-type: IOS_APP_STORE
@@ -126,7 +124,7 @@ jobs:
           api-private-key: ${{ secrets.ASC_API_KEY_P8 }}
 
       - name: Profile for ${{ needs.preflight.outputs.nse }}
-        uses: apple-actions/download-provisioning-profiles@v3
+        uses: apple-actions/download-provisioning-profiles@e11c25fa97f0f9b4e7f5da47484e25a0cb6f17a3 # v3
         with:
           bundle-id: ${{ needs.preflight.outputs.nse }}
           profile-type: IOS_APP_STORE
@@ -167,7 +165,7 @@ jobs:
 
       - name: Upload to TestFlight
         if: inputs.upload
-        uses: apple-actions/upload-testflight-build@v3
+        uses: apple-actions/upload-testflight-build@9fd28d4e690396e43caca69cef54cccccce77034 # v3.0.1
         with:
           app-path: ios/build/ipa/Spjall.ipa
           issuer-id: ${{ secrets.ASC_API_ISSUER_ID }}

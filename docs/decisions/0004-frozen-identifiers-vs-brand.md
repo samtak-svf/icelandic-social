@@ -45,7 +45,7 @@ also an ordinary Icelandic noun, which makes a rename likely enough to design fo
 
 ## Open
 
-`appleTeamId` is the team every existing app ships on, which is the party's
-(Sósíalistaflokkur Íslands). Samtak svf. is a separate organisation (cf. the Rósa Parks
-severance), and a bundle id is bound to the team that registers it. Guðröður confirms the
+`appleTeamId` is the team every existing app ships on, which belongs to another
+organisation. Samtak svf. is a separate organisation, and a bundle id is bound to the team
+that registers it. Guðröður confirms the
 team before any App ID is created; changing it after is a new decision record.

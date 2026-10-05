@@ -2,10 +2,11 @@
   "name": "samtak-spjall",
   "private": true,
   "description": "Repo-wide tooling: frozen ids, brand pipeline, guards and the contract emitters. The backend is its own package in backend/; there is no workspace.",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
     "prepare": "lefthook install",
-    "check": "pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run check:ids && pnpm run check:brand && pnpm run check:brand-gen && pnpm run check:brand-leak && pnpm run check:thankastrik && pnpm run check:pii && pnpm run check:seams && pnpm run check:jurisdiction && pnpm run check:core && pnpm run check:ws-kotlin && pnpm run knip",
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run check:ids && pnpm run check:brand && pnpm run check:brand-gen && pnpm run check:brand-leak && pnpm run check:thankastrik && pnpm run check:pii && pnpm run check:seams && pnpm run check:jurisdiction && pnpm run check:core && pnpm run check:ws-kotlin && pnpm run check:workflows && pnpm run knip",
     "lint": "oxlint",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "format": "oxfmt --write .",
@@ -21,6 +22,7 @@
     "check:jurisdiction": "node tooling/jurisdiction-check.mjs",
     "check:core": "node tooling/core-guard.mjs",
     "check:ws-kotlin": "node tooling/ws-kotlin.mjs --check",
+    "check:workflows": "node tooling/workflow-guard.mjs",
     "knip": "knip",
     "test": "vitest run"
   },

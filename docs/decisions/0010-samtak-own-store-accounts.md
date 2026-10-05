@@ -4,12 +4,11 @@
 - Date: 2026-10-05 (Play owner revised the same day)
 - Decided by: Guðröður
 - Closes: 0004 § Open
-- Amended by: 0011 (interim TestFlight builds on `B4724Z74TM` under their own ids)
 
 ## Decision
 
 - **Apple:** a new Apple Developer Program enrollment for Samtak svf. as an organisation. No
-  App ID, App Group or APNs key is registered on the party's team `B4724Z74TM`.
+  App ID, App Group or APNs key is registered on the existing team `B4724Z74TM`.
 - **Google Play:** a Play Console Organization account owned by a Google account created on
   `samtak@samtak.is`, which is also the developer contact address shown on Play.
   `samtak@samtak.is` is a Cloudflare Email Routing address on `samtak.is`; a Google account
@@ -30,8 +29,8 @@ The steps, the filing data and the pitfalls are in
 ## Why
 
 A bundle id belongs to the team that registers it, and moving an app between teams means new
-push keys, new provisioning, and on Apple a transfer that drops some settings. The Rósa Parks
-severance showed what it costs when a product lives on another organisation's accounts. An
+push keys, new provisioning, and on Apple a transfer that drops some settings. Moving an earlier
+app showed what it costs when a product lives on another organisation's accounts. An
 owner tied to the organisation's address, not to one person, survives a change of people;
 a Play account's owner can never be changed.
 

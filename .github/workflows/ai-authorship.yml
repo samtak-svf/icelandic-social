@@ -1,19 +1,9 @@
 # Server-side guard against AI authorship markers.
 #
-# The repo already has a lefthook `ai-authorship` hook and a commit-msg check,
-# but both are LOCAL. On 2026-08-09 a cloud-environment session pushed PR #187
-# with six `Co-Authored-By: Claude Opus 5` trailers and PR #188 with a commit
-# authored by `Claude <noreply@anthropic.com>` — neither hook ran, because they
-# live on a developer's machine and that session was not on one.
-#
-# ci.yml would not have caught it either: it filters on
-# `paths: app/**, gradle/**, …`, so a docs-only PR triggers no checks at all.
-# This workflow deliberately has NO path filter.
-#
-# It also covers what the local hooks miss. check-msg.sh only matches
-# `Co-Authored-By`, so it would have passed the Claude-authored commit even had
-# it run. This checks four things: the message, the author, the committer, and
-# the PR body.
+# The lefthook `ai-authorship` and commit-msg checks are local, so a push from
+# anywhere without the hooks gets past them. This workflow has no path filter,
+# so a docs-only PR is checked too, and it looks at four things: the message,
+# the author, the committer and the PR body.
 name: ai-authorship
 
 on:
@@ -29,9 +19,9 @@ jobs:
   guard:
     # GUARD_RUNNER_LABELS: hosted unless set, and only ever set to the ephemeral GCP lane,
     # never to a workstation label: a guard checks out and runs a PR's contents.
-    runs-on: ${{ fromJSON(vars.GUARD_RUNNER_LABELS || '["ubuntu-latest"]') }}
+    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.GUARD_RUNNER_LABELS || '["ubuntu-latest"]') }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           # The whole PR range has to be walkable, not just the tip.
           fetch-depth: 0

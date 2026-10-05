@@ -40,14 +40,13 @@ env:
 jobs:
   test:
     if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-    runs-on: ${{ fromJSON(vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
+    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 20
     defaults:
       run:
         working-directory: core
     steps:
-      - uses: actions/checkout@v5
-
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       # rustup reads core/rust-toolchain.toml and installs the pinned toolchain.
       # The GCP fallback runners (vars.RUNNER_LABELS) have no rustup, so it is
       # bootstrapped there without a default toolchain.
@@ -60,7 +59,7 @@ jobs:
           fi
           rustup toolchain install
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: core
 
@@ -78,8 +77,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v5
-
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: Tag matches the workspace version
         run: |
           VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' core/Cargo.toml | head -1)
@@ -94,7 +92,7 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK" > /dev/null
           cargo install cargo-ndk --version 4.1.2 --locked
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: core
 
@@ -102,7 +100,7 @@ jobs:
         working-directory: core
         run: cargo xtask core android
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: core-android
           path: core/target/artifacts/
@@ -113,9 +111,8 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v5
-
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: core
 
@@ -123,7 +120,7 @@ jobs:
         working-directory: core
         run: cargo xtask core ios
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: core-ios
           path: core/target/artifacts/
@@ -138,10 +135,10 @@ jobs:
       # The personal account in backend/wrangler.jsonc; not a secret.
       CLOUDFLARE_ACCOUNT_ID: af4d4a9c4527ce1e46d0c2dc1165e801
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         if: env.CLOUDFLARE_API_TOKEN != ''
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         if: env.CLOUDFLARE_API_TOKEN != ''
         with:
           pattern: core-*

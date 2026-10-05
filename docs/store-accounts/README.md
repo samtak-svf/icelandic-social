@@ -4,8 +4,7 @@ Decision: [0010](../decisions/0010-samtak-own-store-accounts.md). Every step her
 Guðröður's: each one pays money, signs for the organisation or creates something that cannot
 be undone. Agents prepare, they do not submit.
 
-The lessons below come from the party's 2026 enrollments (rosaparks
-`docs/apple-enrollment/` and `docs/play-enrollment/`).
+The lessons below come from earlier 2026 enrollments of other apps.
 
 ## Status
 

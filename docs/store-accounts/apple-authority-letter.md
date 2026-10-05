@@ -13,7 +13,7 @@ match the D-U-N-S record.
 
 **Samtak svf.**
 [registered address, ASCII, as on the D-U-N-S record]
-101 Reykjavik, Iceland
+112 Reykjavik, Iceland
 
 [date]
 

@@ -46,8 +46,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v5
-
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: Format
         working-directory: ios
         run: xcrun swift-format lint --strict --recursive App NotificationService Tests Packages/SpjallAPI
@@ -60,7 +59,7 @@ jobs:
         working-directory: core
         run: rustup toolchain install
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         if: steps.lock.outputs.version == ''
         with:
           workspaces: core

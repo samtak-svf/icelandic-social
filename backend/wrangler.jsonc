@@ -1,6 +1,6 @@
 // Worker spjall-api: the REST API and the MLS delivery service (plan §4).
 //
-// ACCOUNT: Samtak's PERSONAL Cloudflare account, never the party account
+// ACCOUNT: Samtak's own Cloudflare account, never another organisation's
 // (AGENTS.md § Infrastructure). Every name below is a frozen id from
 // identifiers/ids.json; `node tooling/jurisdiction-check.mjs` fails when the two
 // disagree or when a bucket loses its jurisdiction.

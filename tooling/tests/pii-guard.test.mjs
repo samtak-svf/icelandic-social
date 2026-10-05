@@ -4,18 +4,47 @@
 import { describe, expect, it } from "vitest";
 import { classifyKennitala, findInText } from "../pii-guard.mjs";
 
-// Structurally valid, belongs to nobody (samtak-vefur's crypto test value).
-const PERSON = ["010180", "3339"].join("");
-const COMPANY = ["410180", "3329"].join("");
+const WEIGHTS = [3, 2, 7, 6, 5, 4, 3, 2];
+
+/**
+ * A structurally valid kennitala for a date of birth in 2099 (century digit 0),
+ * so it belongs to nobody: no one is born yet on that date.
+ *
+ * @param {number} dayOffset 0 for a person, 40 for a company
+ */
+function future(dayOffset) {
+  for (let serial = 20; serial < 100; serial += 1) {
+    const head = `${String(1 + dayOffset).padStart(2, "0")}0199${serial}`;
+    const rest = [...head].reduce((sum, d, i) => sum + Number(d) * (WEIGHTS[i] ?? 0), 0) % 11;
+    if (rest !== 1) return `${head}${rest === 0 ? 0 : 11 - rest}0`;
+  }
+  throw new Error("no serial gives a check digit");
+}
+
+const PERSON = future(0);
+const COMPANY = future(40);
 
 describe("pii-guard", () => {
+  it("tests with a kennitala whose date of birth has not come yet", () => {
+    const born = new Date(
+      Date.UTC(
+        2000 + Number(PERSON.slice(4, 6)),
+        Number(PERSON.slice(2, 4)) - 1,
+        Number(PERSON.slice(0, 2)),
+      ),
+    );
+    expect(PERSON.at(-1)).toBe("0");
+    expect(born.getTime()).toBeGreaterThan(Date.now());
+  });
+
   it("classifies a person's and a company's kennitala", () => {
     expect(classifyKennitala(PERSON)).toEqual({ valid: true, kind: "person" });
     expect(classifyKennitala(COMPANY).kind).toBe("company");
   });
 
   it("rejects a bad check digit", () => {
-    expect(classifyKennitala(`${PERSON.slice(0, 8)}49`).valid).toBe(false);
+    const wrong = (Number(PERSON[8]) + 1) % 10;
+    expect(classifyKennitala(`${PERSON.slice(0, 8)}${wrong}${PERSON[9]}`).valid).toBe(false);
   });
 
   it("finds a person's kennitala with or without a hyphen, redacted", () => {

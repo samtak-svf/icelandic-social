@@ -1,6 +1,8 @@
 # 0002. Messages are end-to-end encrypted with MLS from v1
 
-- Status: accepted
+- Status: accepted; designed, not yet implemented. Phase 0 ships the pinned suite and a
+  self-test that one group encrypts and decrypts to itself (`core/mls`); the delivery-service
+  rules below are phase 1.
 - Date: 2026-10-05
 - Decided by: Guðröður
 

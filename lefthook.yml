@@ -87,6 +87,10 @@ pre-push:
     jurisdiction:
       run: node tooling/jurisdiction-check.mjs
 
+    # Actions pinned by SHA, fork PRs never on the org runners.
+    workflows:
+      run: node tooling/workflow-guard.mjs
+
     # The core lock is well formed and no Gradle or Xcode file calls cargo.
     core:
       run: node tooling/core-guard.mjs

@@ -1,12 +1,11 @@
 # AGENTS.md: samtak-spjall
 
-A native Android + iOS messenger for Iceland, built by Samtak svf. The repo is private
-(`samtak-svf/samtak-spjall`). The product ships under a **brand** ("Hjal" today) that is
+A native Android + iOS messenger for Iceland, built by Samtak svf.
+(`samtak-svf/samtak-spjall`, AGPL-3.0). The product ships under a **brand** ("Hjal" today) that is
 designed to be renamed cheaply; nothing outside `brand/` may depend on it.
 
-The approved plan is `~/.claude/plans/humble-doodling-journal.md`. Decisions that outlive
-the plan are in [`docs/decisions/`](docs/decisions/), and they win over the plan where the
-two differ.
+Decisions are in [`docs/decisions/`](docs/decisions/), and they win over any plan or
+issue where the two differ.
 
 ## The one structural rule: frozen ids vs brand
 
@@ -54,7 +53,7 @@ Consequences, all enforced by `tooling/brand-leak-guard.mjs`:
 
 ```bash
 pnpm install           # also installs the lefthook hooks
-pnpm check             # lint, types, format, ids, brand, brand-gen, brand-leak, þankastrik, PII, seams, core lock, knip
+pnpm check             # lint, types, format, ids, brand, brand-gen, brand-leak, þankastrik, PII, seams, core lock, workflows, knip
 pnpm brand:gen         # regenerate the platform files from brand/$BRAND
 pnpm test              # guard tests (vitest); each guard is proven to fail when it should
 pnpm format            # oxfmt --write .
@@ -121,7 +120,7 @@ comments, docs, commits, PRs, issues) is English.
 
 ## Infrastructure
 
-- **Cloudflare: Samtak's PERSONAL account**, never the party account. Every stateful
+- **Cloudflare: Samtak's own account**, never another organisation's. Every stateful
   resource is created in the **EU jurisdiction**: `wrangler d1 create … --jurisdiction eu`,
   `wrangler r2 bucket create … --jurisdiction eu`. A jurisdiction can only be set at
   creation. Durable Objects are pinned **per object id in code**:
@@ -137,9 +136,9 @@ comments, docs, commits, PRs, issues) is English.
   jurisdiction. The creation commands are at the top of `backend/wrangler.jsonc`.
 - **No Cloudflare Queues** (no jurisdiction). Nothing personal is stored outside D1, R2 and
   the Durable Objects.
-- **Secrets** live in the personal GCP vault `fedora-setup-secrets` (account
-  `gudrodur@gmail.com`) under the prefix `samtak-spjall-`, and nowhere in the repo.
-  gitleaks runs pre-commit and in CI.
+- **Secrets** live in the maintainer's GCP vault under the prefix `samtak-spjall-`, and
+  nowhere in the repo. Signing material for a whole team goes in a GitHub environment, never
+  in repo secrets. gitleaks runs pre-commit and in CI.
 - Creating Cloudflare, Firebase, Apple, Play or Kenni resources, and DNS, is Guðröður's
   step. Agents prepare the exact commands and values, they do not run them.
 
