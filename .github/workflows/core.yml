@@ -4,14 +4,11 @@ name: core
 #
 # - test: formatting, clippy and the tests, on every change to the core.
 # - publish: on a `core-vX.Y.Z` tag, builds the Android AAR (ubuntu, NDK from
-#   core/artifact.lock.json) and the iOS XCFramework (macOS), and uploads both
-#   zips with their SHA-256 files to R2 `spjall-artifacts` under
-#   core/<version>/, in the EU jurisdiction. A published version is never
-#   overwritten. Nothing here edits the lock: apps move to a new core through
-#   a PR that pins the printed checksums in core/artifact.lock.json.
-#
-# The upload is skipped with a notice until R2_ARTIFACTS_TOKEN is set; the
-# bucket is created by hand with --jurisdiction eu (backend/wrangler.jsonc).
+#   core/artifact.lock.json) and the iOS XCFramework (macOS), and attaches both
+#   zips with their SHA-256 files to a GitHub release of that tag (decision
+#   0013). A released version is never overwritten. Nothing here edits the
+#   lock: apps move to a new core through a PR that pins the printed checksums
+#   in core/artifact.lock.json.
 
 permissions:
   contents: read
@@ -130,44 +127,33 @@ jobs:
     needs: [android, ios]
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: write
     env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.R2_ARTIFACTS_TOKEN }}
-      # The personal account in backend/wrangler.jsonc; not a secret.
-      CLOUDFLARE_ACCOUNT_ID: af4d4a9c4527ce1e46d0c2dc1165e801
+      GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: env.CLOUDFLARE_API_TOKEN != ''
-
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        if: env.CLOUDFLARE_API_TOKEN != ''
         with:
           pattern: core-*
           path: artifacts
           merge-multiple: true
 
-      - name: Upload to R2 (EU jurisdiction), never overwriting
-        if: env.CLOUDFLARE_API_TOKEN != ''
+      - name: Release the tag, never overwriting
         run: |
           VERSION=${GITHUB_REF_NAME#core-v}
-          BUCKET=$(jq -r .cloudflare.r2.artifacts identifiers/ids.json)
-          WRANGLER="npx --yes wrangler@4.147.0"
-          if $WRANGLER r2 object get "$BUCKET/core/$VERSION/spjall-core-android.zip.sha256" \
-               --jurisdiction eu --remote --pipe > /dev/null 2>&1; then
-            echo "::error::core/$VERSION is already published; bump core/Cargo.toml and tag again"
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "::error::$GITHUB_REF_NAME is already released; bump core/Cargo.toml and tag again"
             exit 1
           fi
-          for FILE in artifacts/*; do
-            $WRANGLER r2 object put "$BUCKET/core/$VERSION/$(basename "$FILE")" \
-              --file "$FILE" --jurisdiction eu --remote
-          done
+          gh release create "$GITHUB_REF_NAME" artifacts/* \
+            --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "core $VERSION" \
+            --notes "The Rust core $VERSION for the apps, pinned by checksum in core/artifact.lock.json."
           {
             echo "### core $VERSION published"
-            echo "Pin it in \`core/artifact.lock.json\` by PR:"
+            echo "Pin it in \`core/artifact.lock.json\` by PR, with baseUrl"
+            echo "\`https://github.com/$GITHUB_REPOSITORY/releases/download/core-v{version}\`:"
             echo '```'
             cat artifacts/*.sha256
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Not configured yet
-        if: env.CLOUDFLARE_API_TOKEN == ''
-        run: echo "::notice::R2_ARTIFACTS_TOKEN is not set; the artifacts were built but not uploaded."

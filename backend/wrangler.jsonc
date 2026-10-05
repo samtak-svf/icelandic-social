@@ -12,7 +12,6 @@
 //
 //   wrangler d1 create spjall-db --jurisdiction eu
 //   wrangler r2 bucket create spjall-media --jurisdiction eu
-//   wrangler r2 bucket create spjall-artifacts --jurisdiction eu
 //
 // then paste the D1 id here. backend.yml has no deploy job until that is done.
 {

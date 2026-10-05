@@ -12,7 +12,7 @@ const unpublished = () => ({
 const published = () => ({
   version: "0.1.0",
   androidNdk: "30.0.16248370",
-  baseUrl: "https://artifacts.example.org",
+  baseUrl: "https://github.com/o/r/releases/download/core-v{version}",
   artifacts: {
     android: { file: "spjall-core-android.zip", sha256: SUM },
     ios: { file: "spjall-core-ios.zip", sha256: SUM },
@@ -43,10 +43,18 @@ describe("core-guard", () => {
     lock.baseUrl = "http://artifacts.example.org/";
     expect(lockProblems(lock)).toEqual([
       'version must be null or X.Y.Z, not "v0.1"',
-      "a published version needs baseUrl, an https:// URL without a trailing slash",
+      "a published version needs baseUrl, an https:// URL with {version} and no trailing slash",
       "artifacts.android.sha256 must be 64 lowercase hex characters",
       "artifacts.ios.file must be spjall-core-ios.zip",
       "artifacts.ios.sha256 must be 64 lowercase hex characters",
+    ]);
+  });
+
+  it("requires {version} in a published base URL", () => {
+    const lock = published();
+    lock.baseUrl = "https://artifacts.example.org/core";
+    expect(lockProblems(lock)).toEqual([
+      "a published version needs baseUrl, an https:// URL with {version} and no trailing slash",
     ]);
   });
 

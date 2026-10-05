@@ -4,7 +4,8 @@
 // 1. `core/artifact.lock.json` has the shape `cargo xtask fetch` relies on:
 //    before the first publish `version` is null and nothing is pinned; after
 //    it, both platforms are pinned by file name and a 64-hex SHA-256, and
-//    `baseUrl` is https. A lock is only ever moved by a PR, never by CI.
+//    `baseUrl` is https with `{version}` where the version goes (decision
+//    0013). A lock is only ever moved by a PR, never by CI.
 // 2. No Gradle or Xcode build file calls cargo. The apps read the core from
 //    `android/core/crypto/libs/` and `ios/Packages/SpjallCore/`, which
 //    `cargo xtask core <platform>` or `cargo xtask fetch <platform>` fill;
@@ -77,8 +78,10 @@ function published(lock, artifacts) {
   if (typeof lock.version !== "string" || !SEMVER.test(lock.version)) {
     problems.push(`version must be null or X.Y.Z, not ${JSON.stringify(lock.version)}`);
   }
-  if (!isHttps(lock.baseUrl)) {
-    problems.push("a published version needs baseUrl, an https:// URL without a trailing slash");
+  if (!isHttps(lock.baseUrl) || !lock.baseUrl.includes("{version}")) {
+    problems.push(
+      "a published version needs baseUrl, an https:// URL with {version} and no trailing slash",
+    );
   }
   const pinned = Object.keys(artifacts).sort().join(",");
   if (pinned !== PLATFORMS.join(",")) {

@@ -22,7 +22,8 @@ pub struct Lock {
     pub version: Option<String>,
     /// The NDK release the Android artifact is built with.
     pub android_ndk: String,
-    /// Where `core/<version>/<file>` is served, or `null` before it exists.
+    /// Where a version's files are served, with `{version}` standing for the
+    /// version (decision 0013), or `null` before the first publish.
     pub base_url: Option<String>,
     #[serde(default)]
     pub artifacts: BTreeMap<String, Artifact>,
@@ -43,9 +44,20 @@ impl Lock {
     }
 }
 
+/// The URL of `file` in `version`: the base with `{version}` filled in, then
+/// the file name. The placeholder is required, so a base that would serve
+/// every version from one place is refused rather than silently mixed.
+fn artifact_url(base: &str, version: &str, file: &str) -> Result<String> {
+    if !base.contains("{version}") {
+        bail!("the base URL must contain {{version}}: {base}");
+    }
+    let dir = base.replace("{version}", version);
+    Ok(format!("{}/{file}", dir.trim_end_matches('/')))
+}
+
 fn download(source: &str, version: &str, file: &str) -> Result<Vec<u8>> {
     if source.starts_with("https://") {
-        let url = format!("{}/core/{version}/{file}", source.trim_end_matches('/'));
+        let url = artifact_url(source, version, file)?;
         let mut response = ureq::get(&url)
             .call()
             .with_context(|| format!("GET {url}"))?;
@@ -178,7 +190,27 @@ mod tests {
 
     #[test]
     fn plain_http_is_refused() {
-        let error = download("http://example.invalid", "0.1.0", "f").unwrap_err();
+        let error = download("http://example.invalid/{version}", "0.1.0", "f").unwrap_err();
         assert!(error.to_string().contains("only https://"), "{error}");
+    }
+
+    #[test]
+    fn the_url_is_the_base_with_the_version_filled_in() {
+        let url = artifact_url(
+            "https://github.com/o/r/releases/download/core-v{version}",
+            "0.1.0",
+            "spjall-core-android.zip",
+        )
+        .unwrap();
+        assert_eq!(
+            url,
+            "https://github.com/o/r/releases/download/core-v0.1.0/spjall-core-android.zip"
+        );
+    }
+
+    #[test]
+    fn a_base_url_without_the_version_is_refused() {
+        let error = artifact_url("https://artifacts.example.org", "0.1.0", "f").unwrap_err();
+        assert!(error.to_string().contains("{version}"), "{error}");
     }
 }
