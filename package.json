@@ -1,0 +1,43 @@
+{
+  "name": "samtak-spjall",
+  "private": true,
+  "description": "Repo-wide tooling: frozen ids, brand pipeline and guards. The backend gets its own package; there is no workspace.",
+  "type": "module",
+  "scripts": {
+    "prepare": "lefthook install",
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run check:ids && pnpm run check:brand && pnpm run check:brand-leak && pnpm run check:thankastrik && pnpm run check:pii && pnpm run knip",
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "check:ids": "node tooling/ids-freeze.mjs",
+    "check:brand": "node tooling/brand-check.mjs",
+    "check:brand-leak": "node tooling/brand-leak-guard.mjs",
+    "check:thankastrik": "node tooling/thankastrik.mjs",
+    "check:pii": "node tooling/pii-guard.mjs",
+    "knip": "knip",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^26",
+    "ajv": "^8",
+    "knip": "^6",
+    "lefthook": "^2",
+    "oxfmt": "^0.70",
+    "oxlint": "^1",
+    "typescript": "^7",
+    "vitest": "^5"
+  },
+  "engines": {
+    "node": ">=24.2"
+  },
+  "packageManager": "pnpm@10.0.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "lefthook",
+      "sharp",
+      "workerd"
+    ]
+  }
+}

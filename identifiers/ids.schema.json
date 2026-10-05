@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/samtak-svf/samtak-spjall/identifiers/ids.schema.json",
+  "title": "Frozen identifiers",
+  "description": "Every identifier that cannot be renamed after first use. Neutral by rule: no value may contain a brand leak term (tooling/brand-leak-guard.mjs). A change needs the matching ids.lock.json edit and a decision record in the same pull request (tooling/ids-freeze.mjs).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "store", "identity", "cloudflare", "hosts", "services"],
+  "$defs": {
+    "reverseDns": { "type": "string", "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$" },
+    "slug": { "type": "string", "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$" },
+    "className": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+    "host": { "type": "string", "pattern": "^[a-z0-9-]+(\\.[a-z0-9-]+)+$" },
+    "fileName": { "type": "string", "pattern": "^[a-z][a-z0-9-]*\\.db$" },
+    "channelId": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }
+  },
+  "properties": {
+    "$schema": { "const": "./ids.schema.json" },
+    "store": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "androidApplicationId",
+        "iosBundleId",
+        "iosNotificationServiceBundleId",
+        "appGroup",
+        "keychainAccessGroup",
+        "urlScheme",
+        "androidNotificationChannels",
+        "databaseFiles"
+      ],
+      "properties": {
+        "androidApplicationId": { "$ref": "#/$defs/reverseDns" },
+        "iosBundleId": { "$ref": "#/$defs/reverseDns" },
+        "iosNotificationServiceBundleId": { "$ref": "#/$defs/reverseDns" },
+        "appGroup": { "type": "string", "pattern": "^group\\.[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$" },
+        "keychainAccessGroup": {
+          "type": "string",
+          "pattern": "^group\\.[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$"
+        },
+        "urlScheme": { "$ref": "#/$defs/reverseDns" },
+        "androidNotificationChannels": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["messages", "alerts"],
+          "properties": {
+            "messages": { "$ref": "#/$defs/channelId" },
+            "alerts": { "$ref": "#/$defs/channelId" }
+          }
+        },
+        "databaseFiles": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["app", "mls"],
+          "properties": {
+            "app": { "$ref": "#/$defs/fileName" },
+            "mls": { "$ref": "#/$defs/fileName" }
+          }
+        }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kenniClientId"],
+      "properties": {
+        "kenniClientId": { "type": "string", "pattern": "^@innskraning\\.is/[a-z][a-z0-9-]*$" }
+      }
+    },
+    "cloudflare": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["worker", "d1", "r2", "durableObjects", "jurisdiction"],
+      "properties": {
+        "worker": { "$ref": "#/$defs/slug" },
+        "d1": { "$ref": "#/$defs/slug" },
+        "r2": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["media", "artifacts"],
+          "properties": {
+            "media": { "$ref": "#/$defs/slug" },
+            "artifacts": { "$ref": "#/$defs/slug" }
+          }
+        },
+        "durableObjects": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["conversation", "inbox"],
+          "properties": {
+            "conversation": { "$ref": "#/$defs/className" },
+            "inbox": { "$ref": "#/$defs/className" }
+          }
+        },
+        "jurisdiction": { "const": "eu" }
+      }
+    },
+    "hosts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["api", "link", "linkPathPrefix"],
+      "properties": {
+        "api": { "$ref": "#/$defs/host" },
+        "link": { "$ref": "#/$defs/host" },
+        "linkPathPrefix": { "type": "string", "pattern": "^/[a-z]+/$" }
+      }
+    },
+    "services": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "firebaseProjectId",
+        "appleTeamId",
+        "gcpSecretPrefix",
+        "gcpSecretProject",
+        "githubSlug"
+      ],
+      "properties": {
+        "firebaseProjectId": { "type": "string", "pattern": "^[a-z][a-z0-9-]{4,28}[a-z0-9]$" },
+        "appleTeamId": { "type": "string", "pattern": "^[A-Z0-9]{10}$" },
+        "gcpSecretPrefix": { "type": "string", "pattern": "^[a-z][a-z0-9-]*-$" },
+        "gcpSecretProject": { "$ref": "#/$defs/slug" },
+        "githubSlug": { "type": "string", "pattern": "^[a-z0-9-]+/[a-z0-9-]+$" }
+      }
+    }
+  }
+}

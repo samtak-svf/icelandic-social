@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/samtak-svf/samtak-spjall/brand/brand.schema.json",
+  "title": "Brand manifest",
+  "description": "brand/<name>/brand.json: everything about a brand that is not copy, tokens or artwork. Copy lives in strings.is.json (key set fixed by strings.contract.json), tokens in tokens.json (DTCG). Frozen identifiers never live here; they are in identifiers/ids.json (docs/decisions/0004).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "name",
+    "displayName",
+    "claims",
+    "aliasHosts",
+    "externalSurfaces",
+    "leakTerms"
+  ],
+  "properties": {
+    "$schema": { "const": "../brand.schema.json" },
+    "name": {
+      "description": "Equals the directory name. Lowercase; a leading underscore marks a generated brand such as the rename drill's _fixture.",
+      "type": "string",
+      "pattern": "^_?[a-z][a-z0-9-]*$"
+    },
+    "displayName": {
+      "description": "The name as a store or OS shows it. Must equal strings.is.json app_name.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 30
+    },
+    "claims": {
+      "description": "Factual claims this brand's copy makes. A claim set to true requires its exact wording in the strings keyed to it (tooling/brand-check.mjs CLAIMS).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["residency"],
+      "properties": { "residency": { "type": "boolean" } }
+    },
+    "aliasHosts": {
+      "description": "Brand hosts that serve assetlinks.json and apple-app-site-association IN ADDITION to the neutral link host in identifiers/ids.json. Additive only: links inside sent messages always use the neutral host, so a rename never breaks them.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^([a-z0-9-]+\\.)+[a-z]{2,}$" }
+    },
+    "externalSurfaces": {
+      "description": "Places outside the repo that show the brand. The rename runbook walks this list; nothing here is generated.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "where", "value"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "where": { "type": "string", "minLength": 1 },
+          "value": { "type": "string", "minLength": 1 },
+          "owner": {
+            "type": "string",
+            "description": "Who can change it, when only one person can."
+          }
+        }
+      }
+    },
+    "leakTerms": {
+      "description": "How tooling/brand-leak-guard.mjs recognises this brand's name outside brand/<name>/. Matching is per word, case-insensitive, camelCase split: a word that starts with a stem is a leak unless it starts with an allowed prefix.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stems", "allowPrefixes", "allowPaths"],
+      "properties": {
+        "stems": {
+          "description": "Lowercase word starts covering every inflection of the name, including umlauted stems.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^\\p{Ll}{3,}$" }
+        },
+        "allowPrefixes": {
+          "description": "Lowercase word starts that share a stem but are other words (a person's name, an unrelated noun). Each needs a reason in allowReasons.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^\\p{Ll}{3,}$" }
+        },
+        "allowReasons": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        },
+        "allowPaths": {
+          "description": "Globs (node:path matchesGlob) for files that may name the brand: prose about the project, never code or build input.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "$schema": "../brand.schema.json",
+  "name": "hjal",
+  "displayName": "Hjal",
+  "claims": { "residency": true },
+  "aliasHosts": [],
+  "externalSurfaces": [
+    {
+      "id": "kenni-application-name",
+      "where": "Kenni portal, application @innskraning.is/samtak-spjall: Name (shown in the login flow)",
+      "value": "Hjal",
+      "owner": "Guðröður"
+    },
+    {
+      "id": "app-store-name",
+      "where": "App Store Connect: app name and subtitle",
+      "value": "Hjal"
+    },
+    { "id": "play-listing-name", "where": "Play Console: store listing title", "value": "Hjal" },
+    {
+      "id": "support-site",
+      "where": "Support and privacy pages linked from both store listings",
+      "value": "Hjal"
+    }
+  ],
+  "leakTerms": {
+    "stems": ["hjal", "hjöl"],
+    "allowPrefixes": ["hjalt", "hjölt"],
+    "allowReasons": {
+      "hjalt": "Hjalti/Hjalta (a person's name), hjalt (sword hilt), Hjaltland (Shetland).",
+      "hjölt": "hjöltu, plural of hjalt."
+    },
+    "allowPaths": ["AGENTS.md", "docs/**"]
+  }
+}

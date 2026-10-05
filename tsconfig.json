@@ -1,0 +1,20 @@
+{
+  // Type-checks the repo-wide tooling, which is plain .mjs with JSDoc types
+  // (`// @ts-check`) so every guard runs under bare `node` with no build step.
+  // The backend has its own tsconfig in its own package.
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2024"],
+    "types": ["node"],
+    "allowJs": true,
+    "checkJs": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["tooling/**/*.mjs", "vitest.config.mjs"]
+}

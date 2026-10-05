@@ -1,0 +1,91 @@
+# Local gates. Every one of them also runs in CI (.github/workflows/ci.yml),
+# because a local hook is absent on a machine that never ran `pnpm install`.
+# Never bypass with --no-verify (AGENTS.md § Git).
+
+pre-commit:
+  parallel: true
+  commands:
+    branch-protection:
+      run: |
+        BRANCH=$(git rev-parse --abbrev-ref HEAD)
+        if [ "$BRANCH" = "main" ]; then
+          echo "❌ Direct commits to main are not allowed. Create a feature branch."
+          exit 1
+        fi
+
+    ai-authorship:
+      # A real co-author line carries an email; prose describing the marker
+      # does not, and is not flagged.
+      glob: "*.{ts,tsx,js,mjs,jsx,kt,kts,swift,rs,md,toml,json,yml,yaml}"
+      run: |
+        for f in {staged_files}; do
+          case "$f" in
+            lefthook.yml|.github/workflows/*) continue ;;
+          esac
+          if grep -iE "Co-Authored-By:[[:space:]]+(Claude|GPT|Copilot|Anthropic|OpenAI|Gemini|AI)[^<]*<[^>]+@" "$f" 2>/dev/null; then
+            echo "❌ AI authorship marker in $f"
+            exit 1
+          fi
+        done
+
+    secret-detection:
+      run: gitleaks git --pre-commit --staged --redact --verbose --config .gitleaks.toml
+
+    # Kennitölur and phone numbers. gitleaks cannot see them (a kennitala is
+    # not a secret shape). Pre-commit, because once one is in a commit taking
+    # it out means rewriting history.
+    pii:
+      run: node tooling/pii-guard.mjs --staged
+
+    format:
+      glob: "*.{js,mjs,ts,json,jsonc,toml,yml,yaml,md}"
+      run: pnpm exec oxfmt --write {staged_files}
+      stage_fixed: true
+
+    lint:
+      glob: "*.{js,mjs,ts}"
+      run: pnpm exec oxlint {staged_files}
+
+pre-push:
+  parallel: true
+  commands:
+    block-main:
+      run: |
+        BRANCH=$(git rev-parse --abbrev-ref HEAD)
+        if [ "$BRANCH" = "main" ]; then
+          echo "❌ Direct pushes to main are not allowed. Use a PR."
+          exit 1
+        fi
+
+    # The frozen ids: equal to the lock, and a lock change since main carries
+    # a decision record (docs/decisions/0004).
+    ids-freeze:
+      run: |
+        git fetch -q origin main 2>/dev/null || true
+        node tooling/ids-freeze.mjs --base origin/main
+
+    brand:
+      run: node tooling/brand-check.mjs
+
+    brand-leak:
+      run: node tooling/brand-leak-guard.mjs
+
+    # House style drops the þankastrik in both lengths; the UNSPACED en dash
+    # is a millistrik and is left alone.
+    thankastrik:
+      run: node tooling/thankastrik.mjs
+
+    typecheck:
+      run: pnpm run typecheck
+
+    test:
+      run: pnpm test
+
+commit-msg:
+  commands:
+    ai-authorship:
+      run: |
+        if grep -iE "(^🤖|[[:space:]]🤖|Generated with.*(Claude|AI|Copilot)|Co-Authored-By:.*(Claude|AI|Copilot|Anthropic|OpenAI|GitHub Copilot|Gemini)|Author:.*(Claude|AI|Copilot))" {1} > /dev/null; then
+          echo "❌ AI authorship marker in commit message — commits list only human authors"
+          exit 1
+        fi

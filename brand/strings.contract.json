@@ -1,0 +1,165 @@
+{
+  "$comment": "The key set every brand's strings.is.json must provide, exactly. Code references these keys only, never a brand's text. A value is either a whole sentence (a string) or, when plural is true, an object with the Icelandic CLDR categories one and other. Placeholders are written {name} and must match the declared set in every brand. A placeholder never carries the brand name: the name inflects, so each brand writes its own whole sentences (docs/decisions/0004).",
+  "surfaces": ["android", "ios", "backend"],
+  "keys": {
+    "app_name": {
+      "surfaces": ["android", "ios", "backend"],
+      "description": "Launcher label, home-screen name, store-facing display name."
+    },
+    "tab_conversations": {
+      "surfaces": ["android", "ios"],
+      "description": "Bottom tab: the conversation list."
+    },
+    "tab_me": {
+      "surfaces": ["android", "ios"],
+      "description": "Bottom tab: own profile and settings."
+    },
+    "new_conversation": {
+      "surfaces": ["android", "ios"],
+      "description": "Action that starts a new conversation."
+    },
+    "contact_action": {
+      "surfaces": ["android", "ios"],
+      "description": "Button on an invite landing that opens a conversation with the inviter."
+    },
+    "invite": {
+      "surfaces": ["android", "ios"],
+      "description": "Share your own invite link or QR code (docs/decisions/0009)."
+    },
+    "composer_placeholder": {
+      "surfaces": ["android", "ios"],
+      "description": "Empty message composer."
+    },
+    "send": { "surfaces": ["android", "ios"], "description": "Send button." },
+    "verified_with_kennitala": {
+      "surfaces": ["android", "ios"],
+      "description": "Badge on a person verified through Kenni."
+    },
+    "unread_count": {
+      "surfaces": ["android", "ios"],
+      "description": "Unread messages in a conversation.",
+      "plural": true,
+      "placeholders": { "count": "int" }
+    },
+    "push_fallback_body": {
+      "surfaces": ["ios", "backend"],
+      "description": "APNs alert text shown when the notification service extension cannot decrypt in time. Never names the sender."
+    },
+    "notification_channel_messages_name": {
+      "surfaces": ["android"],
+      "description": "Android channel: messages."
+    },
+    "notification_channel_messages_description": {
+      "surfaces": ["android"],
+      "description": "Android channel description: messages."
+    },
+    "new_device_card": {
+      "surfaces": ["android", "ios"],
+      "description": "System card in a conversation when a member adds a device (from an MLS add commit).",
+      "placeholders": { "name": "string" }
+    },
+    "history_device_local_notice": {
+      "surfaces": ["android", "ios"],
+      "description": "Explains that a new device sees only messages sent after it joined (docs/decisions/0006)."
+    },
+    "invite_link_title": {
+      "surfaces": ["android", "ios"],
+      "description": "Heading of the screen with the user's own invite link and QR code."
+    },
+    "invite_link_hint": {
+      "surfaces": ["android", "ios"],
+      "description": "Explains what the invite link does."
+    },
+    "invite_link_rotate": {
+      "surfaces": ["android", "ios"],
+      "description": "Replace the invite link; the old one stops working."
+    },
+    "invite_required": {
+      "surfaces": ["android", "ios"],
+      "description": "Shown after Kenni sign-in without a valid invite during the closed test (docs/decisions/0009)."
+    },
+    "new_group": {
+      "surfaces": ["android", "ios"],
+      "description": "Action that starts a new group."
+    },
+    "group_member_count": {
+      "surfaces": ["android", "ios"],
+      "description": "Members in a group.",
+      "plural": true,
+      "placeholders": { "count": "int" }
+    },
+    "attach": {
+      "surfaces": ["android", "ios"],
+      "description": "Attach a photo or file to a message."
+    },
+    "reply": { "surfaces": ["android", "ios"], "description": "Quote-reply to a message." },
+    "edit": { "surfaces": ["android", "ios"], "description": "Edit an own message." },
+    "edited_marker": {
+      "surfaces": ["android", "ios"],
+      "description": "Marker on a message that was edited."
+    },
+    "delete_for_everyone": {
+      "surfaces": ["android", "ios"],
+      "description": "Delete an own message on every member's devices."
+    },
+    "message_deleted": {
+      "surfaces": ["android", "ios"],
+      "description": "Tombstone left where a deleted message was."
+    },
+    "react": { "surfaces": ["android", "ios"], "description": "Add a reaction to a message." },
+    "disappearing_messages": {
+      "surfaces": ["android", "ios"],
+      "description": "Per-conversation setting: messages delete themselves after a set time."
+    },
+    "disappearing_set_card": {
+      "surfaces": ["android", "ios"],
+      "description": "System card when a member sets the disappearing timer; duration is formatted by the client.",
+      "placeholders": { "name": "string", "duration": "string" }
+    },
+    "disappearing_off_card": {
+      "surfaces": ["android", "ios"],
+      "description": "System card when a member turns the disappearing timer off.",
+      "placeholders": { "name": "string" }
+    },
+    "read_marker": {
+      "surfaces": ["android", "ios"],
+      "description": "Marker on an own message the other party has read."
+    },
+    "read_receipts_setting": {
+      "surfaces": ["android", "ios"],
+      "description": "Toggle in Me: send read markers."
+    },
+    "read_receipts_hint": {
+      "surfaces": ["android", "ios"],
+      "description": "Explains that the read-marker toggle is reciprocal."
+    },
+    "typing_setting": {
+      "surfaces": ["android", "ios"],
+      "description": "Toggle in Me: send typing indicators."
+    },
+    "typing_indicator": {
+      "surfaces": ["android", "ios"],
+      "description": "Shown while another member is typing.",
+      "placeholders": { "name": "string" }
+    },
+    "block": { "surfaces": ["android", "ios"], "description": "Block a person." },
+    "block_confirm": {
+      "surfaces": ["android", "ios"],
+      "description": "Confirmation before blocking.",
+      "placeholders": { "name": "string" }
+    },
+    "delete_account": {
+      "surfaces": ["android", "ios"],
+      "description": "Delete own account (DELETE /me)."
+    },
+    "delete_account_confirm": {
+      "surfaces": ["android", "ios"],
+      "description": "Confirmation before deleting the account; says what the server deletes and what it cannot."
+    },
+    "residency_claim": {
+      "surfaces": ["android", "ios", "backend"],
+      "description": "The only permitted statement about where data lives (docs/decisions/0001).",
+      "claim": "residency"
+    }
+  }
+}

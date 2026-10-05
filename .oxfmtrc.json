@@ -1,0 +1,12 @@
+{
+  "$schema": "https://oxc.rs/schemas/oxfmt.json",
+  // identifiers/ids.lock.json is formatted like ids.json, which keeps the two
+  // byte-identical as tooling/ids-freeze.mjs requires. pnpm owns its own lock.
+  "ignorePatterns": ["pnpm-lock.yaml", "**/*.gen.ts"],
+  "lineWidth": 100,
+  "indentWidth": 2,
+  "useTabs": false,
+  "quoteStyle": "double",
+  "semicolons": true,
+  "trailingCommas": "all"
+}

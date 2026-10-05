@@ -1,0 +1,47 @@
+{
+  "$schema": "./ids.schema.json",
+  "store": {
+    "androidApplicationId": "is.samtak.spjall",
+    "iosBundleId": "is.samtak.spjall",
+    "iosNotificationServiceBundleId": "is.samtak.spjall.notifications",
+    "appGroup": "group.is.samtak.spjall",
+    "keychainAccessGroup": "group.is.samtak.spjall",
+    "urlScheme": "is.samtak.spjall",
+    "androidNotificationChannels": {
+      "messages": "messages",
+      "alerts": "alerts"
+    },
+    "databaseFiles": {
+      "app": "spjall.db",
+      "mls": "mls.db"
+    }
+  },
+  "identity": {
+    "kenniClientId": "@innskraning.is/samtak-spjall"
+  },
+  "cloudflare": {
+    "worker": "spjall-api",
+    "d1": "spjall-db",
+    "r2": {
+      "media": "spjall-media",
+      "artifacts": "spjall-artifacts"
+    },
+    "durableObjects": {
+      "conversation": "Conversation",
+      "inbox": "Inbox"
+    },
+    "jurisdiction": "eu"
+  },
+  "hosts": {
+    "api": "spjall.samtak.is",
+    "link": "spjall.samtak.is",
+    "linkPathPrefix": "/l/"
+  },
+  "services": {
+    "firebaseProjectId": "samtak-spjall",
+    "appleTeamId": "B4724Z74TM",
+    "gcpSecretPrefix": "samtak-spjall-",
+    "gcpSecretProject": "fedora-setup-secrets",
+    "githubSlug": "samtak-svf/samtak-spjall"
+  }
+}

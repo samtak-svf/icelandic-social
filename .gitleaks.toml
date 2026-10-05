@@ -1,0 +1,9 @@
+title = "samtak-spjall gitleaks config"
+
+[extend]
+useDefault = true
+
+# Synthetic values that trip a default rule but are not secrets go in an
+# [[allowlists]] block here, each as the exact matched value with a reason,
+# confirmed by running `gitleaks dir --config .gitleaks.toml -v .` rather than
+# guessed. Never widen a regex to make a finding go away. None so far.

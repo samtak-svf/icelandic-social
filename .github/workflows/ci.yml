@@ -1,0 +1,68 @@
+name: CI
+
+# Runs on EVERY pull request, with no path filter: a filtered-out PR produces
+# no `check` run, so `check` could not be a required status check without
+# blocking docs-only PRs forever (samtak-vefur ci.yml, dependabot #69).
+#
+# Path-filtered workflows (contract, backend, core, android, ios) arrive with
+# the code they build; this one owns the repo-wide invariants: frozen ids,
+# brand completeness and contrast, brand leaks, PII, þankastrik, lint, types
+# and the guards' own tests.
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # RUNNER_LABELS: hosted unless set (rosaparks lane convention).
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # ids-freeze --base needs the merge base with main.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Guards, lint, types, format
+        run: pnpm run check
+
+      - name: Frozen ids changed only with a decision record
+        if: github.event_name == 'pull_request'
+        run: node tooling/ids-freeze.mjs --base origin/${{ github.base_ref }}
+
+      - name: Guard tests
+        run: pnpm test
+
+  secrets:
+    runs-on: ${{ fromJSON(vars.GUARD_RUNNER_LABELS || '["ubuntu-latest"]') }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: gitleaks over the PR range
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          RANGE: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || 'HEAD~1..HEAD' }}
+        run: |
+          set -euo pipefail
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz gitleaks
+          ./gitleaks git --redact --verbose --config .gitleaks.toml --log-opts="$RANGE" .

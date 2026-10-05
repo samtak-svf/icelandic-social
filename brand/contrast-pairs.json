@@ -1,0 +1,71 @@
+{
+  "$comment": "Every foreground/background pair the apps actually render, by token name, with the WCAG threshold that pair must meet. Shared by all brands: the pairs are a property of the UI, the colours a property of the brand. `level` is a key of THRESHOLDS in tooling/lib/contrast.mjs. A pair that fails stops tooling/brand-check.mjs, so a brand failing WCAG AA does not generate.",
+  "pairs": [
+    { "fg": "fg", "bg": "surface", "level": "aaNormal", "use": "body text" },
+    { "fg": "fg", "bg": "bg", "level": "aaNormal", "use": "text on the cream band" },
+    { "fg": "prose-body", "bg": "surface", "level": "aaNormal", "use": "long-form text" },
+    {
+      "fg": "muted-fg",
+      "bg": "surface",
+      "level": "aaNormal",
+      "use": "timestamps, secondary lines"
+    },
+    {
+      "fg": "muted-fg",
+      "bg": "bg",
+      "level": "aaNormal",
+      "use": "secondary lines on the cream band"
+    },
+    { "fg": "muted-fg", "bg": "muted", "level": "aaNormal", "use": "pressed rows" },
+    { "fg": "primary", "bg": "surface", "level": "aaNormal", "use": "text buttons and links" },
+    { "fg": "primary-fg", "bg": "primary", "level": "aaNormal", "use": "filled buttons" },
+    { "fg": "secondary-fg", "bg": "secondary", "level": "aaNormal", "use": "gold chips" },
+    {
+      "fg": "bubble-own-fg",
+      "bg": "bubble-own-bg",
+      "level": "aaNormal",
+      "use": "own message text"
+    },
+    {
+      "fg": "bubble-other-fg",
+      "bg": "bubble-other-bg",
+      "level": "aaNormal",
+      "use": "other party's message text"
+    },
+    {
+      "fg": "danger-fg",
+      "bg": "danger",
+      "level": "aaNormal",
+      "use": "destructive actions (block, delete)"
+    },
+    { "fg": "success-text", "bg": "surface", "level": "aaNormal", "use": "success text" },
+    { "fg": "warning-text", "bg": "surface", "level": "aaNormal", "use": "warning text" },
+    { "fg": "info-text", "bg": "surface", "level": "aaNormal", "use": "info text" },
+    {
+      "fg": "success-text",
+      "bg": "bg",
+      "level": "aaNormal",
+      "use": "success text on the cream band"
+    },
+    {
+      "fg": "warning-text",
+      "bg": "bg",
+      "level": "aaNormal",
+      "use": "warning text on the cream band"
+    },
+    { "fg": "info-text", "bg": "bg", "level": "aaNormal", "use": "info text on the cream band" },
+    {
+      "fg": "border-strong over surface",
+      "bg": "surface",
+      "level": "nonText",
+      "use": "input and control outlines"
+    },
+    { "fg": "verified-mark", "bg": "surface", "level": "nonText", "use": "verification dot" },
+    {
+      "fg": "verified-mark",
+      "bg": "bg",
+      "level": "nonText",
+      "use": "verification dot on the cream band"
+    }
+  ]
+}

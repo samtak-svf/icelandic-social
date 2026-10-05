@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "import"],
+  // Policy, as in samtak-vefur: no warnings. Every rule is `error` or
+  // deliberately `off` here with a rationale; a `warn` accretes noise.
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error",
+    "style": "off"
+  },
+  "rules": {
+    "no-console": "off",
+    "typescript/no-explicit-any": "error",
+    // Off (considered): sequential awaits in loops are usually intentional
+    // (ordered writes, paced sends). Genuine fan-out is written with Promise.all.
+    "eslint/no-await-in-loop": "off",
+    // Keep units small. A violation means "split this", not "silence it".
+    "eslint/complexity": ["error", 15],
+    "eslint/max-lines": ["error", { "max": 400, "skipBlankLines": true, "skipComments": true }]
+  },
+  "overrides": [
+    {
+      "files": ["**/tests/**", "**/*.test.mjs", "**/*.test.ts"],
+      "rules": {
+        "eslint/max-lines": "off"
+      }
+    }
+  ],
+  "ignorePatterns": ["node_modules/", "dist/", ".wrangler/", "**/*.gen.ts"]
+}
