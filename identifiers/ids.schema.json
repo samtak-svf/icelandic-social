@@ -117,7 +117,10 @@
       ],
       "properties": {
         "firebaseProjectId": { "type": "string", "pattern": "^[a-z][a-z0-9-]{4,28}[a-z0-9]$" },
-        "appleTeamId": { "type": "string", "pattern": "^[A-Z0-9]{10}$" },
+        "appleTeamId": {
+          "description": "null until Samtak svf.'s own Apple team exists (decision 0010)",
+          "anyOf": [{ "type": "string", "pattern": "^[A-Z0-9]{10}$" }, { "type": "null" }]
+        },
         "gcpSecretPrefix": { "type": "string", "pattern": "^[a-z][a-z0-9-]*-$" },
         "gcpSecretProject": { "$ref": "#/$defs/slug" },
         "githubSlug": { "type": "string", "pattern": "^[a-z0-9-]+/[a-z0-9-]+$" }

@@ -39,7 +39,7 @@
   },
   "services": {
     "firebaseProjectId": "samtak-spjall",
-    "appleTeamId": "B4724Z74TM",
+    "appleTeamId": null,
     "gcpSecretPrefix": "samtak-spjall-",
     "gcpSecretProject": "fedora-setup-secrets",
     "githubSlug": "samtak-svf/samtak-spjall"

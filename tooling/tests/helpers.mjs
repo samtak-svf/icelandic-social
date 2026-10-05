@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ROOT } from "../lib/repo.mjs";
+import { GIT_ENV, ROOT } from "../lib/repo.mjs";
 
 /**
  * @param {string[]} paths repo-relative files or directories to copy
@@ -49,6 +49,8 @@ export function git(root, args) {
     {
       cwd: root,
       encoding: "utf8",
+      // Without it a fixture's `git init` re-initialises the real repository.
+      env: GIT_ENV,
     },
   );
 }

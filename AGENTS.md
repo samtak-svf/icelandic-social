@@ -124,3 +124,7 @@ and what it rules out. A superseded record is kept and marked, not deleted.
 
 **v1 scope is [0009](docs/decisions/0009-v1-scope.md).** A feature outside its table needs a
 new record before any code.
+
+**Store accounts are Samtak svf.'s own ([0010](docs/decisions/0010-samtak-own-store-accounts.md)).**
+Nothing is registered on another organisation's Apple team or Play account. The enrollment
+steps are in `docs/store-accounts/`, and every one of them is Guðröður's.

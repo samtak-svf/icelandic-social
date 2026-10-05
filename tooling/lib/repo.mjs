@@ -28,11 +28,25 @@ export function readJson(relPath, root = ROOT) {
 }
 
 /**
+ * The environment without GIT_* variables, so git finds its repository from
+ * `cwd`. A hook run from a worktree exports GIT_DIR, which would otherwise
+ * point every call, including ones aimed at a test fixture, at the real repo.
+ */
+export const GIT_ENV = Object.fromEntries(
+  Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")),
+);
+
+/**
  * @param {string[]} args
  * @param {string} [cwd]
  */
 export function git(args, cwd = ROOT) {
-  return execFileSync("git", args, { cwd, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  return execFileSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    env: GIT_ENV,
+    maxBuffer: 64 * 1024 * 1024,
+  });
 }
 
 /**

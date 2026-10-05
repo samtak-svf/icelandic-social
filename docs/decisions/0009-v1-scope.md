@@ -26,7 +26,8 @@ How each item is built:
   valid invite token, minted by an existing user or by an admin. A random token carries
   nothing personal and can be rotated or revoked. It resolves on the neutral link host (App
   Link / Universal Link) to the inviter's name and verified mark, then opens a 1:1. This keeps
-  the group closed without a list of kennitölur in config (0008).
+  the group closed without a list of kennitölur in config (0008). Admins are account ids on
+  a server-side list in D1; at first only Guðröður (0010).
 - **Edit, delete for everyone, reactions and the disappearing timer are envelope `kind`s**
   inside MLS application messages, so the server never sees them. Edit history stays on the
   device. A delete leaves a tombstone. Each client enforces the disappearing timer, and the

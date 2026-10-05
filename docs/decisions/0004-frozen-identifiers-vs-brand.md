@@ -3,6 +3,7 @@
 - Status: accepted
 - Date: 2026-10-05
 - Decided by: Guðröður (plan), recorded at phase 0
+- Amended by: [0010](0010-samtak-own-store-accounts.md) (Apple team is `null` until Samtak svf.'s own team exists; § Open is closed)
 
 ## Decision
 
@@ -15,7 +16,7 @@ contains no brand term, and is copied byte-for-byte into `identifiers/ids.lock.j
 | Identity   | Kenni client id `@innskraning.is/samtak-spjall`                                                                                                                                                                            |
 | Cloudflare | Worker `spjall-api`, D1 `spjall-db`, R2 `spjall-media` and `spjall-artifacts`, DO classes `Conversation` and `Inbox`, jurisdiction `eu`                                                                                    |
 | Hosts      | `spjall.samtak.is` for the API, and `spjall.samtak.is/l/` as the link host in App Links, Universal Links and links inside sent messages, so it must resolve forever. A brand host is only ever an extra alias              |
-| Services   | Firebase project `samtak-spjall`, Apple team `B4724Z74TM`, secret prefix `samtak-spjall-` in `fedora-setup-secrets`, GitHub `samtak-svf/samtak-spjall`                                                                     |
+| Services   | Firebase project `samtak-spjall`, Apple team (`null` until 0010 is carried out), secret prefix `samtak-spjall-` in `fedora-setup-secrets`, GitHub `samtak-svf/samtak-spjall`                                               |
 
 The brand (display name, all copy, tokens, icons, the Kenni application _Name_, store listing
 names) lives in `brand/<name>/` and nowhere else.
