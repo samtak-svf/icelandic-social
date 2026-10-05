@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/samtak-svf/samtak-spjall/identifiers/ids.schema.json",
+  "$id": "https://github.com/samtak-svf/icelandic-messenger/identifiers/ids.schema.json",
   "title": "Frozen identifiers",
   "description": "Every identifier that cannot be renamed after first use. Neutral by rule: no value may contain a brand leak term (tooling/brand-leak-guard.mjs). A change needs the matching ids.lock.json edit and a decision record in the same pull request (tooling/ids-freeze.mjs).",
   "type": "object",

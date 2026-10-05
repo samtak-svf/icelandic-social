@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/samtak-svf/samtak-spjall/brand/brand.schema.json",
+  "$id": "https://github.com/samtak-svf/icelandic-messenger/brand/brand.schema.json",
   "title": "Brand manifest",
   "description": "brand/<name>/brand.json: everything about a brand that is not copy, tokens or artwork. Copy lives in strings.is.json (key set fixed by strings.contract.json), tokens in tokens.json (DTCG). Frozen identifiers never live here; they are in identifiers/ids.json (docs/decisions/0004).",
   "type": "object",

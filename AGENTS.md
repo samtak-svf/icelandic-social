@@ -1,7 +1,7 @@
 # AGENTS.md: samtak-spjall
 
 A native Android + iOS messenger for Iceland, built by Samtak svf.
-(`samtak-svf/samtak-spjall`, AGPL-3.0). The product ships under a **brand** ("Hjal" today) that is
+(`samtak-svf/icelandic-messenger`, AGPL-3.0). The product ships under a **brand** ("Hjal" today) that is
 designed to be renamed cheaply; nothing outside `brand/` may depend on it.
 
 Decisions are in [`docs/decisions/`](docs/decisions/), and they win over any plan or

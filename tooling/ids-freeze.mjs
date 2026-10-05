@@ -16,6 +16,9 @@
 // And the interim Apple ids (decision 0011) are kept apart from the frozen
 // ones: an app that has only been on TestFlight cannot be transferred between
 // teams, so a frozen id registered on the interim team would stay there.
+//
+// And in CI the repository must be the one services.githubSlug names
+// (decision 0012), so a move to another repo is a recorded lock edit too.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -87,6 +90,26 @@ export function checkInterim(ids) {
 }
 
 /**
+ * In CI, the repository must be the one the lock names. A fork under another
+ * owner runs its own CI under its own name, so only the owner's repos are held
+ * to it; outside CI (`repository` unset) there is nothing to compare.
+ *
+ * @param {any} ids parsed ids.json
+ * @param {string | undefined} repository `owner/name`, from GITHUB_REPOSITORY
+ * @returns {string[]}
+ */
+export function checkRepository(ids, repository) {
+  if (!repository) return [];
+  const slug = ids.services.githubSlug;
+  const owner = (/** @type {string} */ s) => s.split("/")[0]?.toLowerCase();
+  if (owner(repository) !== owner(slug)) return [];
+  if (repository.toLowerCase() === slug.toLowerCase()) return [];
+  return [
+    `/services/githubSlug: is ${slug}, but this runs in ${repository}. A move to another repo is a lock edit with a record under ${DECISIONS}.`,
+  ];
+}
+
+/**
  * The working-tree checks: schema, the interim ids, and ids equal to the lock.
  *
  * @param {string} [root]
@@ -137,6 +160,9 @@ function baseArg(argv) {
 function main() {
   const base = baseArg(process.argv);
   const problems = checkTree();
+  problems.push(
+    ...checkRepository(readJson(IDS), process.env.GITHUB_REPOSITORY).map((p) => `${IDS} ${p}`),
+  );
   if (base) problems.push(...checkRange(base));
   if (problems.length > 0) {
     for (const p of problems) console.error(`::error file=${IDS}::${p}`);

@@ -42,7 +42,7 @@
     "appleTeamId": null,
     "gcpSecretPrefix": "samtak-spjall-",
     "gcpSecretProject": "fedora-setup-secrets",
-    "githubSlug": "samtak-svf/samtak-spjall"
+    "githubSlug": "samtak-svf/icelandic-messenger"
   },
   "appleInterim": {
     "teamId": "B4724Z74TM",

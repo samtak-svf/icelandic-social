@@ -2,7 +2,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { checkRange, checkTree, diffPointers } from "../ids-freeze.mjs";
+import { checkRange, checkRepository, checkTree, diffPointers } from "../ids-freeze.mjs";
 import { copyRepo, editJson, git, initRepo } from "./helpers.mjs";
 
 const IDS = "identifiers/ids.json";
@@ -144,6 +144,30 @@ describe("ids-freeze, history", () => {
 
   it("passes a range that does not touch the lock", () => {
     expect(rangeAfter((root) => writeFileSync(join(root, "README.md"), "x\n"))).toEqual([]);
+  });
+});
+
+describe("ids-freeze, the repository it runs in (decision 0012)", () => {
+  const ids = { services: { githubSlug: "samtak-svf/icelandic-messenger" } };
+
+  it("passes in the repository the lock names", () => {
+    expect(checkRepository(ids, "samtak-svf/icelandic-messenger")).toEqual([]);
+  });
+
+  it("fails in another repository of the same owner, such as the archived one", () => {
+    expect(checkRepository(ids, "samtak-svf/samtak-spjall").join()).toContain(
+      "/services/githubSlug",
+    );
+  });
+
+  it("leaves a fork under another owner alone, and a run outside CI", () => {
+    expect(checkRepository(ids, "someone/icelandic-messenger")).toEqual([]);
+    expect(checkRepository(ids, undefined)).toEqual([]);
+  });
+
+  it("passes on the repo as committed when run in its own repository", () => {
+    const committed = JSON.parse(readFileSync(IDS, "utf8"));
+    expect(checkRepository(committed, committed.services.githubSlug)).toEqual([]);
   });
 });
 
