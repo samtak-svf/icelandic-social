@@ -67,6 +67,10 @@ pre-push:
     brand:
       run: node tooling/brand-check.mjs
 
+    # The committed platform outputs match the active brand byte for byte.
+    brand-gen:
+      run: node tooling/brand-gen.mjs --check
+
     brand-leak:
       run: node tooling/brand-leak-guard.mjs
 

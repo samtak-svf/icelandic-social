@@ -3,6 +3,7 @@
   "name": "hjal",
   "displayName": "Hjal",
   "claims": { "residency": true },
+  "icon": { "foreground": "assets/icon-foreground.svg", "background": "primary" },
   "aliasHosts": [],
   "externalSurfaces": [
     {

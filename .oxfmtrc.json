@@ -2,9 +2,10 @@
   "$schema": "https://oxc.rs/schemas/oxfmt.json",
   // identifiers/ids.lock.json is formatted like ids.json, which keeps the two
   // byte-identical as tooling/ids-freeze.mjs requires. pnpm owns its own lock.
-  // api/openapi.json is written by backend/scripts/openapi.ts and drift-checked
-  // byte for byte, so the generator's layout is the one that counts.
-  "ignorePatterns": ["pnpm-lock.yaml", "**/*.gen.ts", "api/openapi.json"],
+  // api/openapi.json is written by backend/scripts/openapi.ts and ios/Generated/
+  // by tooling/brand-gen.mjs; both are drift-checked byte for byte, so the
+  // generator's layout is the one that counts.
+  "ignorePatterns": ["pnpm-lock.yaml", "**/*.gen.ts", "api/openapi.json", "ios/Generated/**"],
   "lineWidth": 100,
   "indentWidth": 2,
   "useTabs": false,

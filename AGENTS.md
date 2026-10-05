@@ -37,12 +37,19 @@ Consequences, all enforced by `tooling/brand-leak-guard.mjs`:
   that data is stored or processed in Iceland.
 - **Contrast is computed, not eyeballed.** Every pair in `brand/contrast-pairs.json` must
   reach its WCAG level for every brand; a brand that fails does not pass `check:brand`.
+- **Apps read generated files, never `brand/`.** `pnpm brand:gen` (`tooling/brand-gen.mjs`)
+  writes Android resources and `BrandTokens.kt` in `android/core/brand/`, `ios/Generated/`
+  and `backend/src/brand.gen.ts`, icons included; all are committed and `check:brand-gen`
+  fails when they differ by a byte. Never edit them by hand. The brand is `BRAND=<name>`, by
+  default the only brand not starting with `_`. Generated files may name the active brand and
+  no other one.
 
 ## Commands
 
 ```bash
 pnpm install           # also installs the lefthook hooks
-pnpm check             # lint, types, format, ids, brand, brand-leak, þankastrik, PII, knip
+pnpm check             # lint, types, format, ids, brand, brand-gen, brand-leak, þankastrik, PII, knip
+pnpm brand:gen         # regenerate the platform files from brand/$BRAND
 pnpm test              # guard tests (vitest); each guard is proven to fail when it should
 pnpm format            # oxfmt --write .
 node tooling/ids-freeze.mjs --base origin/main   # what CI runs on a PR

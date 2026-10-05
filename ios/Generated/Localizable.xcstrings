@@ -1,0 +1,498 @@
+{
+  "sourceLanguage": "is",
+  "strings": {
+    "app_name": {
+      "comment": "Launcher label, home-screen name, store-facing display name.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hjal"
+          }
+        }
+      }
+    },
+    "tab_conversations": {
+      "comment": "Bottom tab: the conversation list.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hjal"
+          }
+        }
+      }
+    },
+    "tab_me": {
+      "comment": "Bottom tab: own profile and settings.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ég"
+          }
+        }
+      }
+    },
+    "new_conversation": {
+      "comment": "Action that starts a new conversation.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nýtt hjal"
+          }
+        }
+      }
+    },
+    "contact_action": {
+      "comment": "Button on an invite landing that opens a conversation with the inviter.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hjala"
+          }
+        }
+      }
+    },
+    "invite": {
+      "comment": "Share your own invite link or QR code (docs/decisions/0009).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bjóða"
+          }
+        }
+      }
+    },
+    "composer_placeholder": {
+      "comment": "Empty message composer.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrifaðu skilaboð…"
+          }
+        }
+      }
+    },
+    "send": {
+      "comment": "Send button.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Senda"
+          }
+        }
+      }
+    },
+    "verified_with_kennitala": {
+      "comment": "Badge on a person verified through Kenni.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Staðfest með kennitölu"
+          }
+        }
+      }
+    },
+    "unread_count": {
+      "comment": "Unread messages in a conversation.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld ólesið"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld ólesin"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "push_fallback_body": {
+      "comment": "APNs alert text shown when the notification service extension cannot decrypt in time. Never names the sender.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ný skilaboð á Hjal"
+          }
+        }
+      }
+    },
+    "new_device_card": {
+      "comment": "System card in a conversation when a member adds a device (from an MLS add commit).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ bætti við nýju tæki."
+          }
+        }
+      }
+    },
+    "history_device_local_notice": {
+      "comment": "Explains that a new device sees only messages sent after it joined (docs/decisions/0006).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ný tæki sjá aðeins skilaboð sem berast eftir að þau tengjast. Eldri skilaboð eru áfram á tækjunum sem tóku við þeim."
+          }
+        }
+      }
+    },
+    "invite_link_title": {
+      "comment": "Heading of the screen with the user's own invite link and QR code.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hlekkurinn þinn"
+          }
+        }
+      }
+    },
+    "invite_link_hint": {
+      "comment": "Explains what the invite link does.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sýndu kóðann eða deildu hlekknum. Sá sem opnar hann getur hafið samtal við þig."
+          }
+        }
+      }
+    },
+    "invite_link_rotate": {
+      "comment": "Replace the invite link; the old one stops working.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Búa til nýjan hlekk"
+          }
+        }
+      }
+    },
+    "invite_required": {
+      "comment": "Shown after Kenni sign-in without a valid invite during the closed test (docs/decisions/0009).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hjal er í lokuðum prófunum. Þú þarft hlekk frá einhverjum sem er þegar á Hjal."
+          }
+        }
+      }
+    },
+    "new_group": {
+      "comment": "Action that starts a new group.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nýr hópur"
+          }
+        }
+      }
+    },
+    "group_member_count": {
+      "comment": "Members in a group.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld meðlimur"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld meðlimir"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "attach": {
+      "comment": "Attach a photo or file to a message.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hengja við"
+          }
+        }
+      }
+    },
+    "reply": {
+      "comment": "Quote-reply to a message.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Svara"
+          }
+        }
+      }
+    },
+    "edit": {
+      "comment": "Edit an own message.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Breyta"
+          }
+        }
+      }
+    },
+    "edited_marker": {
+      "comment": "Marker on a message that was edited.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "breytt"
+          }
+        }
+      }
+    },
+    "delete_for_everyone": {
+      "comment": "Delete an own message on every member's devices.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eyða fyrir öllum"
+          }
+        }
+      }
+    },
+    "message_deleted": {
+      "comment": "Tombstone left where a deleted message was.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þessum skilaboðum var eytt."
+          }
+        }
+      }
+    },
+    "react": {
+      "comment": "Add a reaction to a message.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bregðast við"
+          }
+        }
+      }
+    },
+    "disappearing_messages": {
+      "comment": "Per-conversation setting: messages delete themselves after a set time.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skilaboð sem hverfa"
+          }
+        }
+      }
+    },
+    "disappearing_set_card": {
+      "comment": "System card when a member sets the disappearing timer; duration is formatted by the client.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ stillti skilaboð á að hverfa eftir %2$@."
+          }
+        }
+      }
+    },
+    "disappearing_off_card": {
+      "comment": "System card when a member turns the disappearing timer off.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ slökkti á skilaboðum sem hverfa."
+          }
+        }
+      }
+    },
+    "read_marker": {
+      "comment": "Marker on an own message the other party has read.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lesið"
+          }
+        }
+      }
+    },
+    "read_receipts_setting": {
+      "comment": "Toggle in Me: send read markers.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Láta vita þegar ég les"
+          }
+        }
+      }
+    },
+    "read_receipts_hint": {
+      "comment": "Explains that the read-marker toggle is reciprocal.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ef þú slekkur á þessu sérð þú heldur ekki hvenær aðrir lesa."
+          }
+        }
+      }
+    },
+    "typing_setting": {
+      "comment": "Toggle in Me: send typing indicators.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sýna þegar ég skrifa"
+          }
+        }
+      }
+    },
+    "typing_indicator": {
+      "comment": "Shown while another member is typing.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ er að skrifa…"
+          }
+        }
+      }
+    },
+    "block": {
+      "comment": "Block a person.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loka á"
+          }
+        }
+      }
+    },
+    "block_confirm": {
+      "comment": "Confirmation before blocking.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loka á %1$@? Viðkomandi getur ekki sent þér skilaboð."
+          }
+        }
+      }
+    },
+    "delete_account": {
+      "comment": "Delete own account (DELETE /me).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eyða aðgangi"
+          }
+        }
+      }
+    },
+    "delete_account_confirm": {
+      "comment": "Confirmation before deleting the account; says what the server deletes and what it cannot.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öllu sem tengist aðganginum þínum verður eytt af þjóninum. Skilaboð sem eru þegar á tækjum annarra eyðast ekki."
+          }
+        }
+      }
+    },
+    "residency_claim": {
+      "comment": "The only permitted statement about where data lives (docs/decisions/0001).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gögnin eru geymd varanlega innan ESB; unnin á netkerfi Cloudflare."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

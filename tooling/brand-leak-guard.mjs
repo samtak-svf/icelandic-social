@@ -9,7 +9,10 @@
 //   1. no value in identifiers/ids.json contains any brand's stem, as a
 //      substring (ids are compounds: `<stem>api` must fail as surely as `<stem>`);
 //   2. no visible file outside brand/<name>/ and that brand's allowPaths
-//      contains a word starting with one of its stems.
+//      contains a word starting with one of its stems. The one exception is
+//      the files tooling/brand-gen.mjs writes, which carry the ACTIVE brand's
+//      name by design; every other brand's name is still a leak there, so a
+//      switch that leaves the old name behind fails here.
 //
 // Word matching is the only workable rule for a name that is also an ordinary
 // noun and inflects, so every case form, the verb made from it and its
@@ -20,6 +23,7 @@
 import { matchesGlob } from "node:path";
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { activeBrand, isOwned } from "./lib/brand-gen/paths.mjs";
 import { brandNames, jsonStrings, readJson, ROOT, visibleFiles } from "./lib/repo.mjs";
 
 /**
@@ -94,9 +98,11 @@ export function leaksInIds(ids, brands) {
 /**
  * @param {string} file
  * @param {Brand} brand
+ * @param {string} active the brand the generated files are built from
  */
-function exempt(file, brand) {
+function exempt(file, brand, active) {
   if (file.startsWith(`brand/${brand.name}/`)) return true;
+  if (brand.name === active && isOwned(file)) return true;
   return brand.leakTerms.allowPaths.some((glob) => matchesGlob(file, glob));
 }
 
@@ -104,9 +110,10 @@ function exempt(file, brand) {
  * @param {string[]} files repo-relative
  * @param {Brand[]} brands
  * @param {string} [root]
+ * @param {string} [active]
  * @returns {Leak[]}
  */
-export function leaksInFiles(files, brands, root = ROOT) {
+export function leaksInFiles(files, brands, root = ROOT, active = activeBrand(root)) {
   /** @type {Leak[]} */
   const leaks = [];
   for (const file of files) {
@@ -116,7 +123,7 @@ export function leaksInFiles(files, brands, root = ROOT) {
     const text = readFileSync(path, "utf8");
     if (text.includes("\0")) continue;
     for (const brand of brands) {
-      if (exempt(file, brand)) continue;
+      if (exempt(file, brand, active)) continue;
       for (const { line, word } of leaksInText(text, brand.leakTerms)) {
         leaks.push({ file, line, word, brand: brand.name });
       }

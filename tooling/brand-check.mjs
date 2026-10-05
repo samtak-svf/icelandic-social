@@ -9,14 +9,14 @@
 //   - each value has the declared placeholders, no more and no fewer, and a
 //     plural key carries the Icelandic CLDR categories `one` and `other`;
 //   - a claim the brand makes is worded exactly as decided (CLAIMS below);
-//   - every colour pair in brand/contrast-pairs.json meets its WCAG threshold.
+//   - every colour pair in brand/contrast-pairs.json meets its WCAG threshold;
+//   - the icon's foreground SVG exists and its background token is opaque.
 //
-// brand-gen will refuse to generate from a brand this check rejects; until it
-// exists this is a pre-push and CI gate on its own.
+// tooling/brand-gen.mjs refuses to generate from a brand this check rejects.
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { colorTokens, measure, THRESHOLDS } from "./lib/contrast.mjs";
+import { colorTokens, measure, resolveColor, THRESHOLDS } from "./lib/contrast.mjs";
 import { brandNames, readJson, ROOT } from "./lib/repo.mjs";
 import { validate } from "./lib/schema.mjs";
 
@@ -179,6 +179,28 @@ function checkManifest(manifest, dirName, strings) {
 }
 
 /**
+ * @param {{ foreground?: string, background?: string } | undefined} icon
+ * @param {string} dir
+ * @param {string} root
+ * @param {any} tokens parsed tokens.json
+ * @returns {string[]}
+ */
+function checkIcon(icon, dir, root, tokens) {
+  if (!icon?.foreground || !icon.background) return [];
+  /** @type {string[]} */
+  const problems = [];
+  if (!existsSync(join(root, dir, icon.foreground)))
+    problems.push(`icon.foreground ${icon.foreground}: missing`);
+  try {
+    if (resolveColor(icon.background, colorTokens(tokens)).a < 255)
+      problems.push(`icon.background "${icon.background}" is not opaque`);
+  } catch (error) {
+    problems.push(`icon.background: ${/** @type {Error} */ (error).message}`);
+  }
+  return problems;
+}
+
+/**
  * Checks one brand directory. Pure apart from reading files under `root`.
  *
  * @param {string} name
@@ -204,10 +226,9 @@ export function checkBrand(name, root = ROOT) {
       manifest.claims ?? {},
     ).map((p) => `strings.is.json ${p}`),
   );
-  const contrast = checkContrast(
-    readJson(`${dir}/tokens.json`, root),
-    readJson("brand/contrast-pairs.json", root),
-  );
+  const tokens = readJson(`${dir}/tokens.json`, root);
+  problems.push(...checkIcon(manifest.icon, dir, root, tokens));
+  const contrast = checkContrast(tokens, readJson("brand/contrast-pairs.json", root));
   problems.push(...contrast.problems.map((p) => `contrast ${p}`));
   return { problems, rows: contrast.rows };
 }

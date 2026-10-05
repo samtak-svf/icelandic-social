@@ -10,6 +10,7 @@
     "name",
     "displayName",
     "claims",
+    "icon",
     "aliasHosts",
     "externalSurfaces",
     "leakTerms"
@@ -33,6 +34,16 @@
       "additionalProperties": false,
       "required": ["residency"],
       "properties": { "residency": { "type": "boolean" } }
+    },
+    "icon": {
+      "description": "The launcher and home-screen icon. The foreground is an SVG on a 108x108 canvas (the Android adaptive-icon grid) whose content stays inside the central 66x66 safe zone; Android masks it to the device shape, iOS gets it flattened onto the background at 1024 px. The background is a colour token and must be opaque. tooling/brand-gen.mjs rasterises both.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "background"],
+      "properties": {
+        "foreground": { "type": "string", "pattern": "^assets/[a-z0-9-]+\\.svg$" },
+        "background": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
+      }
     },
     "aliasHosts": {
       "description": "Brand hosts that serve assetlinks.json and apple-app-site-association IN ADDITION to the neutral link host in identifiers/ids.json. Additive only: links inside sent messages always use the neutral host, so a rename never breaks them.",

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
+  <!-- Interim monogram: a speech bubble with the initial cut out. Replace with
+       the mark from the design board; keep the 108 grid and the 66 safe zone. -->
+  <path fill="#ffffff" fill-rule="evenodd" d="M37 30H71A10 10 0 0 1 81 40V62A10 10 0 0 1 71 72H50L37 82L39 72H37A10 10 0 0 1 27 62V40A10 10 0 0 1 37 30Z M41 39H47V48H61V39H67V63H61V54H47V63H41Z"/>
+</svg>

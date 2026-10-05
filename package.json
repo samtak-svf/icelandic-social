@@ -5,13 +5,15 @@
   "type": "module",
   "scripts": {
     "prepare": "lefthook install",
-    "check": "pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run check:ids && pnpm run check:brand && pnpm run check:brand-leak && pnpm run check:thankastrik && pnpm run check:pii && pnpm run check:seams && pnpm run check:jurisdiction && pnpm run check:ws-kotlin && pnpm run knip",
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run check:ids && pnpm run check:brand && pnpm run check:brand-gen && pnpm run check:brand-leak && pnpm run check:thankastrik && pnpm run check:pii && pnpm run check:seams && pnpm run check:jurisdiction && pnpm run check:ws-kotlin && pnpm run knip",
     "lint": "oxlint",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "check:ids": "node tooling/ids-freeze.mjs",
     "check:brand": "node tooling/brand-check.mjs",
+    "brand:gen": "node tooling/brand-gen.mjs",
+    "check:brand-gen": "node tooling/brand-gen.mjs --check",
     "check:brand-leak": "node tooling/brand-leak-guard.mjs",
     "check:thankastrik": "node tooling/thankastrik.mjs",
     "check:pii": "node tooling/pii-guard.mjs",
@@ -22,6 +24,7 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@types/node": "^26",
     "ajv": "^8",
     "knip": "^6",

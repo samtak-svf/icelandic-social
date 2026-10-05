@@ -239,14 +239,30 @@ function resolve(expression, tokens) {
   return color;
 }
 
+/** @param {number} v a channel in 0..1 */
+function byte(v) {
+  return Math.round(clamp01(v) * 255);
+}
+
 /** @param {Rgba} color */
 function toHex(color) {
   /** @param {number} v */
-  const channel = (v) =>
-    Math.round(clamp01(v) * 255)
-      .toString(16)
-      .padStart(2, "0");
+  const channel = (v) => byte(v).toString(16).padStart(2, "0");
   return `#${channel(color.r)}${channel(color.g)}${channel(color.b)}`;
+}
+
+/**
+ * One colour token as the apps get it: sRGB channels as bytes, rounded exactly
+ * as the contrast check rounds them, and alpha as a byte. brand-gen emits from
+ * this, so an app's colour can never differ from the colour checked here.
+ *
+ * @param {string} name a token name or `white`/`black`
+ * @param {TokenMap} tokens
+ * @returns {{ r: number, g: number, b: number, a: number }}
+ */
+export function resolveColor(name, tokens) {
+  const color = resolveToken(name, tokens, new Set());
+  return { r: byte(color.r), g: byte(color.g), b: byte(color.b), a: byte(color.a) };
 }
 
 /** @param {Rgba} color */
