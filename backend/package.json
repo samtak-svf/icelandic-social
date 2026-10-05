@@ -1,0 +1,37 @@
+{
+  "name": "spjall-backend",
+  "private": true,
+  "description": "The Worker spjall-api: REST + WebSocket delivery service. Its own package; the repo has no workspace (AGENTS.md § Commands).",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "types": "wrangler types",
+    "openapi": "node scripts/openapi.ts",
+    "typecheck": "wrangler types >/dev/null && tsc --noEmit",
+    "check": "pnpm run typecheck && node scripts/openapi.ts --check",
+    "test": "wrangler types >/dev/null && vitest run"
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "^1.6.3",
+    "hono": "^4.13.13",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@types/node": "^26.6.4",
+    "typescript": "^7.0.2",
+    "vitest": "~4.1",
+    "wrangler": "^4.147.0"
+  },
+  "engines": {
+    "node": ">=24.2"
+  },
+  "packageManager": "pnpm@10.0.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ]
+  }
+}

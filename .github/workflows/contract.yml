@@ -1,0 +1,74 @@
+name: contract
+
+# The API contract (decision 0005): api/openapi.json is what the zod schemas
+# in backend/src/api/ generate, the Kotlin WS frames are what that spec
+# emits, and nothing breaks against the base branch unless the PR carries
+# the label `api: breaking`.
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    # labeled/unlabeled so adding `api: breaking` re-runs the breaking check.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    paths:
+      - "backend/src/**"
+      - "backend/scripts/openapi.ts"
+      - "backend/package.json"
+      - "api/**"
+      - "tooling/ws-kotlin.mjs"
+      - ".github/workflows/contract.yml"
+
+concurrency:
+  group: contract-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  drift:
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: backend/package.json
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: backend/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+        working-directory: backend
+
+      - name: api/openapi.json matches the zod schemas
+        run: node backend/scripts/openapi.ts --check
+
+      - name: Kotlin WS frames match api/openapi.json
+        run: node tooling/ws-kotlin.mjs --check
+
+  breaking:
+    if: "!contains(github.event.pull_request.labels.*.name, 'api: breaking')"
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
+    timeout-minutes: 5
+    env:
+      OASDIFF_VERSION: 1.33.0
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: No breaking change against the base branch
+        env:
+          BASE: origin/${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          if ! git show "$BASE:api/openapi.json" > /tmp/base-openapi.json 2>/dev/null; then
+            echo "::notice::$BASE has no api/openapi.json yet; nothing to break."
+            exit 0
+          fi
+          curl -sSfL "https://github.com/oasdiff/oasdiff/releases/download/v${OASDIFF_VERSION}/oasdiff_${OASDIFF_VERSION}_linux_amd64.tar.gz" | tar -xz oasdiff
+          ./oasdiff breaking /tmp/base-openapi.json api/openapi.json --fail-on ERR

@@ -46,7 +46,19 @@ pnpm check             # lint, types, format, ids, brand, brand-leak, þankastri
 pnpm test              # guard tests (vitest); each guard is proven to fail when it should
 pnpm format            # oxfmt --write .
 node tooling/ids-freeze.mjs --base origin/main   # what CI runs on a PR
+
+# The Worker (backend/ is its own pnpm package)
+pnpm --dir backend install
+pnpm --dir backend check     # wrangler types, tsc, api/openapi.json drift
+pnpm --dir backend test      # vitest inside workerd (@cloudflare/vitest-pool-workers)
+pnpm --dir backend openapi   # regenerate api/openapi.json after a zod change ...
+node tooling/ws-kotlin.mjs   # ... then the Kotlin WS frames from it
 ```
+
+**The contract (decision 0005).** zod in `backend/src/api/` is the source. `api/openapi.json`
+and `api/kotlin/…/WsFrame.kt` are generated and committed; `contract.yml` fails when either is
+stale, and `oasdiff breaking` against the base fails unless the PR has the label
+`api: breaking`.
 
 Tooling is plain `.mjs` with `// @ts-check` and JSDoc, type-checked by `tsc --noEmit`
 (`checkJs`). Node ≥ 24.2 (`import.meta.main`). pnpm, no workspace; build scripts are allowed
@@ -87,8 +99,16 @@ comments, docs, commits, PRs, issues) is English.
   resource is created in the **EU jurisdiction**: `wrangler d1 create … --jurisdiction eu`,
   `wrangler r2 bucket create … --jurisdiction eu`. A jurisdiction can only be set at
   creation. Durable Objects are pinned **per object id in code**:
-  `env.CONVERSATION.jurisdiction("eu").idFromName(…)`; a bare `idFromName` on the namespace
-  is a residency bug (decision 0001).
+  `env.CONVERSATION.jurisdiction("eu").getByName(…)`; a bare `idFromName` or `getByName` on
+  the namespace is a residency bug (decision 0001).
+- **Only `backend/src/env/` reads a binding, var or secret, and only it makes DO stubs**
+  (`tooling/seam-guard.mjs`). `tooling/jurisdiction-check.mjs` checks that
+  `backend/wrangler.jsonc` names the frozen ids with R2 jurisdiction `eu`; with `--live` (CI,
+  read-only token) it asks the Cloudflare API whether D1 and R2 really are in the EU.
+- Local workerd does not implement DO jurisdictions: `jurisdiction()` throws there. Tests wrap
+  the namespace (`backend/test/env.test.ts`) instead of loosening the seam.
+- **Never deploy before D1 and R2 exist.** wrangler auto-provisions a missing one without a
+  jurisdiction. The creation commands are at the top of `backend/wrangler.jsonc`.
 - **No Cloudflare Queues** (no jurisdiction). Nothing personal is stored outside D1, R2 and
   the Durable Objects.
 - **Secrets** live in the personal GCP vault `fedora-setup-secrets` (account

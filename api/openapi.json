@@ -1,0 +1,185 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "spjall-api",
+    "version": "0.1.0"
+  },
+  "components": {
+    "schemas": {
+      "WsFrame": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/HelloFrame"
+          },
+          {
+            "$ref": "#/components/schemas/NotifyFrame"
+          },
+          {
+            "$ref": "#/components/schemas/PingFrame"
+          },
+          {
+            "$ref": "#/components/schemas/PongFrame"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "hello": "#/components/schemas/HelloFrame",
+            "notify": "#/components/schemas/NotifyFrame",
+            "ping": "#/components/schemas/PingFrame",
+            "pong": "#/components/schemas/PongFrame"
+          }
+        },
+        "description": "Every frame on the WebSocket, tagged by `type`"
+      },
+      "HelloFrame": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "hello"
+            ]
+          },
+          "protocol": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Protocol version the server speaks"
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "type",
+          "protocol",
+          "serverTime"
+        ],
+        "description": "Server to client, first frame on a new socket"
+      },
+      "NotifyFrame": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "notify"
+            ]
+          },
+          "conversationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The newest sequence number in the conversation"
+          }
+        },
+        "required": [
+          "type",
+          "conversationId",
+          "seq"
+        ],
+        "description": "Server to client: a conversation has messages up to `seq`; fetch them"
+      },
+      "PingFrame": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "ping"
+            ]
+          },
+          "nonce": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "description": "Either direction; answered with `pong`"
+      },
+      "PongFrame": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "pong"
+            ]
+          },
+          "nonce": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "description": "The answer to `ping`, echoing its nonce"
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          },
+          "minClientVersion": {
+            "type": "object",
+            "properties": {
+              "android": {
+                "type": "string",
+                "pattern": "^\\d+\\.\\d+\\.\\d+$",
+                "example": "1.4.0"
+              },
+              "ios": {
+                "type": "string",
+                "pattern": "^\\d+\\.\\d+\\.\\d+$",
+                "example": "1.4.0"
+              }
+            },
+            "required": [
+              "android",
+              "ios"
+            ],
+            "description": "The oldest build each platform may run. An older app asks the user to update."
+          }
+        },
+        "required": [
+          "status",
+          "minClientVersion"
+        ]
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "getHealth",
+        "tags": [
+          "meta"
+        ],
+        "summary": "Liveness and the minimum client version per platform",
+        "responses": {
+          "200": {
+            "description": "The Worker is up",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {}
+}

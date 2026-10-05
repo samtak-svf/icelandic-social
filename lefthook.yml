@@ -75,6 +75,20 @@ pre-push:
     thankastrik:
       run: node tooling/thankastrik.mjs
 
+    # Bindings and DO stubs only in backend/src/env/, every stub pinned to
+    # the EU; wrangler.jsonc names the frozen ids with jurisdiction eu.
+    seams:
+      run: node tooling/seam-guard.mjs
+
+    jurisdiction:
+      run: node tooling/jurisdiction-check.mjs
+
+    # The contract: spec matches zod (needs backend deps), Kotlin matches spec.
+    contract:
+      run: |
+        if [ -d backend/node_modules ]; then node backend/scripts/openapi.ts --check; fi
+        node tooling/ws-kotlin.mjs --check
+
     typecheck:
       run: pnpm run typecheck
 

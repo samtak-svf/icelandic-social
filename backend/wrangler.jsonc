@@ -1,0 +1,58 @@
+// Worker spjall-api: the REST API and the MLS delivery service (plan §4).
+//
+// ACCOUNT: Samtak's PERSONAL Cloudflare account, never the party account
+// (AGENTS.md § Infrastructure). Every name below is a frozen id from
+// identifiers/ids.json; `node tooling/jurisdiction-check.mjs` fails when the two
+// disagree or when a bucket loses its jurisdiction.
+//
+// NOT DEPLOYABLE YET, on purpose. D1 has no `database_id` until Guðröður creates
+// it, and wrangler auto-provisions a missing D1 or R2 on deploy WITHOUT a
+// jurisdiction, which can never be added afterwards (decision 0001). Create
+// them first, by hand:
+//
+//   wrangler d1 create spjall-db --jurisdiction eu
+//   wrangler r2 bucket create spjall-media --jurisdiction eu
+//   wrangler r2 bucket create spjall-artifacts --jurisdiction eu
+//
+// then paste the D1 id here. backend.yml has no deploy job until that is done.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "spjall-api",
+  "account_id": "af4d4a9c4527ce1e46d0c2dc1165e801",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-22",
+  "observability": {
+    "enabled": true,
+  },
+  // Read only through src/env/ (tooling/seam-guard.mjs).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "spjall-db",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "spjall-media",
+      "jurisdiction": "eu",
+    },
+  ],
+  // A DO namespace has no jurisdiction of its own: each object id is pinned
+  // with `.jurisdiction("eu")` in src/env/, the only place stubs are made.
+  "durable_objects": {
+    "bindings": [
+      { "name": "CONVERSATION", "class_name": "Conversation" },
+      { "name": "INBOX", "class_name": "Inbox" },
+    ],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Conversation", "Inbox"] }],
+  // The oldest client build that may talk to this Worker, per platform. Raised
+  // when a protocol change would break older builds; the apps read it from
+  // /health and ask the user to update.
+  "vars": {
+    "MIN_CLIENT_VERSION_ANDROID": "0.1.0",
+    "MIN_CLIENT_VERSION_IOS": "0.1.0",
+  },
+}
