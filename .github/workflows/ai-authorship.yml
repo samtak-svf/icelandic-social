@@ -21,7 +21,7 @@ jobs:
     # never to a workstation label: a guard checks out and runs a PR's contents.
     runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.GUARD_RUNNER_LABELS || '["ubuntu-latest"]') }}
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # The whole PR range has to be walkable, not just the tip.
           fetch-depth: 0
