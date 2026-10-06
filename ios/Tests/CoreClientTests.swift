@@ -2,9 +2,9 @@ import Foundation
 import SpjallCore
 import XCTest
 
-/// The core's client from Swift, as the app will call it (decision 0018):
-/// two devices, each with its own store and a Swift `Transport`, exchange
-/// one message.
+/// The core's client from Swift, as the app will call it (decisions 0018
+/// and 0019): two devices, each with its own store and a Swift `Transport`,
+/// sign in and exchange one message.
 final class CoreClientTests: XCTestCase {
     private let relay = Relay()
     private var dirs: [URL] = []
@@ -22,9 +22,13 @@ final class CoreClientTests: XCTestCase {
             key: Data(repeating: 7, count: 32),
             transport: relay.link(account: account, device: device)
         )
-        // The app registers this key with POST /v1/devices first.
-        XCTAssertEqual(try client.deviceKey().count, 32)
-        try client.registered(accountId: account, deviceId: device)
+        XCTAssertNil(try client.signedIn())
+        // The app opens this URL in ASWebAuthenticationSession and is handed the callback.
+        let callback = Relay.kenni(try client.beginSignIn())
+        let signedIn = SignedIn(accountId: account, deviceId: device)
+        XCTAssertEqual(try client.completeSignIn(callback: callback, inviteToken: nil, platform: .ios), signedIn)
+        XCTAssertEqual(try client.signedIn(), signedIn)
+        XCTAssertEqual(try client.deviceToken(), "token-\(device)")
         XCTAssertEqual(try client.stockKeyPackages(target: 2), 2)
         return client
     }

@@ -9,9 +9,11 @@ import samtak.spjall.core.Transport
 
 /**
  * The delivery service in memory, as far as two clients exchanging one
- * message need it: KeyPackages, conversations with a roster, messages by
- * seq, Welcomes, and a notify frame to every member's device. The real
- * rules live in the Worker and in the core's own relay.
+ * message need it: sign-in, KeyPackages, conversations with a roster,
+ * messages by seq, Welcomes, and a notify frame to every member's device.
+ * Signing in hands a link's device the token `token-<device>`, and every
+ * other route answers 401 without it. The real rules live in the Worker
+ * and in the core's own relay.
  */
 class Relay {
     private class Stored(
@@ -63,6 +65,17 @@ class Relay {
         val path = request.path.substringBefore('?')
         val after = request.path.substringAfter("after=", "0").toLong()
         val parts = path.removePrefix("/v1/").split('/')
+        val token = "token-$device"
+        when {
+            request.method == HttpMethod.GET && parts == listOf("sign-in") -> return ok(SIGN_IN)
+            request.method == HttpMethod.POST && parts == listOf("devices") -> {
+                if (body.optString("kenniCode").isEmpty() || body.optString("codeVerifier").isEmpty()) {
+                    return refuse(400, "bad_request")
+                }
+                return ok(JSONObject().put("accountId", account).put("deviceId", device).put("token", token))
+            }
+            request.bearer != token -> return refuse(401, "unauthorized")
+        }
         return when {
             request.method == HttpMethod.POST && parts == listOf("key-packages") -> {
                 val queue = packages.getOrPut(device) { ArrayDeque() }
@@ -147,4 +160,26 @@ class Relay {
     ) = HttpResponse(status.toUShort(), JSONObject().put("error", code).toString())
 
     private fun JSONArray.strings() = List(length(), ::getString)
+
+    companion object {
+        /** Where Kenni's callback goes, from the frozen URL scheme. */
+        const val REDIRECT = "is.samtak.spjall:/kenni"
+
+        private val SIGN_IN =
+            JSONObject()
+                .put("authorizationEndpoint", "https://kenni.test/oidc/auth")
+                .put("clientId", "spjall")
+                .put("redirectUri", REDIRECT)
+                .put("scope", "openid national_id audkenni_name")
+
+        /**
+         * What the browser and Kenni do with an authorize URL: the person
+         * signs in, and the app is handed the callback with a code and the
+         * same `state`.
+         */
+        fun kenni(authorize: String): String {
+            val state = authorize.substringAfter("state=").substringBefore('&')
+            return "$REDIRECT?code=code-$state&state=$state"
+        }
+    }
 }

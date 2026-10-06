@@ -9,13 +9,15 @@ import org.junit.runner.RunWith
 import samtak.spjall.core.Body
 import samtak.spjall.core.CoreClient
 import samtak.spjall.core.Event
+import samtak.spjall.core.Platform
+import samtak.spjall.core.SignedIn
 import java.io.File
 import java.util.UUID
 
 /**
- * The core's client from Kotlin, as the app will call it (decision 0018):
- * two devices, each with its own store and a Kotlin `Transport`, exchange
- * one message.
+ * The core's client from Kotlin, as the app will call it (decisions 0018
+ * and 0019): two devices, each with its own store and a Kotlin `Transport`,
+ * sign in and exchange one message.
  */
 @RunWith(AndroidJUnit4::class)
 class CoreClientTest {
@@ -28,9 +30,12 @@ class CoreClientTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val dir = File(context.cacheDir, UUID.randomUUID().toString()).apply { mkdirs() }
         val client = CoreClient.open(dir.path, ByteArray(32) { 7 }, relay.link(account, device))
-        // The app registers this key with POST /v1/devices first.
-        assertEquals(32, client.deviceKey().size)
-        client.registered(account, device)
+        assertEquals(null, client.signedIn())
+        // The app opens this URL in a Custom Tab and is handed the callback.
+        val callback = Relay.kenni(client.beginSignIn())
+        assertEquals(SignedIn(account, device), client.completeSignIn(callback, null, Platform.ANDROID))
+        assertEquals(SignedIn(account, device), client.signedIn())
+        assertEquals("token-$device", client.deviceToken())
         assertEquals(2u, client.stockKeyPackages(2u))
         return client
     }

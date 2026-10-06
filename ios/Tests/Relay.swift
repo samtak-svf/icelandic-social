@@ -2,10 +2,24 @@ import Foundation
 import SpjallCore
 
 /// The delivery service in memory, as far as two clients exchanging one
-/// message need it: KeyPackages, conversations with a roster, messages by
-/// seq, Welcomes, and a notify frame to every member's device. The real
-/// rules live in the Worker and in the core's own relay.
+/// message need it: sign-in, KeyPackages, conversations with a roster,
+/// messages by seq, Welcomes, and a notify frame to every member's device.
+/// Signing in hands a link's device the token `token-<device>`, and every
+/// other route answers 401 without it. The real rules live in the Worker
+/// and in the core's own relay.
 final class Relay: @unchecked Sendable {
+    /// Where Kenni's callback goes, from the frozen URL scheme.
+    static let redirect = "is.samtak.spjall:/kenni"
+
+    /// What the browser and Kenni do with an authorize URL: the person
+    /// signs in, and the app is handed the callback with a code and the
+    /// same `state`.
+    static func kenni(_ authorize: String) -> String {
+        let state =
+            URLComponents(string: authorize)?.queryItems?.first { $0.name == "state" }?.value ?? ""
+        return "\(redirect)?code=code-\(state)&state=\(state)"
+    }
+
     private struct Stored {
         let seq: Int
         let sender: String
@@ -63,6 +77,23 @@ final class Relay: @unchecked Sendable {
         let pieces = request.path.split(separator: "?", maxSplits: 1).map(String.init)
         let after = pieces.count > 1 ? Int(pieces[1].replacingOccurrences(of: "after=", with: "")) ?? 0 : 0
         let parts = pieces[0].dropFirst("/v1/".count).split(separator: "/").map(String.init)
+        let token = "token-\(device)"
+        switch (request.method, parts) {
+        case (.get, ["sign-in"]):
+            return ok([
+                "authorizationEndpoint": "https://kenni.test/oidc/auth",
+                "clientId": "spjall",
+                "redirectUri": Relay.redirect,
+                "scope": "openid national_id audkenni_name",
+            ])
+        case (.post, ["devices"]):
+            guard body["kenniCode"] as? String ?? "" != "", body["codeVerifier"] as? String ?? "" != "" else {
+                return refuse(400, "bad_request")
+            }
+            return ok(["accountId": account, "deviceId": device, "token": token])
+        default:
+            guard request.bearer == token else { return refuse(401, "unauthorized") }
+        }
         switch (request.method, parts.count, parts.first) {
         case (.post, 1, "key-packages"):
             packages[device, default: []] += body["keyPackages"] as? [String] ?? []
