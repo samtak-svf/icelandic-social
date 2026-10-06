@@ -259,7 +259,7 @@
         "properties": {
           "error": {
             "type": "string",
-            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, invite_required, kenni_unavailable, not_implemented",
+            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, invite_required, kenni_unavailable",
             "example": "unauthorized"
           }
         },
@@ -861,16 +861,6 @@
                 }
               }
             }
-          },
-          "501": {
-            "description": "In the contract, not yet built",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
           }
         }
       },
@@ -880,6 +870,7 @@
           "devices"
         ],
         "summary": "Delete this account, its devices, inbox and media (decision 0014)",
+        "description": "Every token is revoked, each conversation drops the account from its roster, the inbox is deleted and the sockets close with 4401, then the account's rows go, with its invites (decision 0019).",
         "security": [
           {
             "deviceToken": []
@@ -891,16 +882,6 @@
           },
           "401": {
             "description": "No device token, or one that is not valid",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "In the contract, not yet built",
             "content": {
               "application/json": {
                 "schema": {
@@ -944,16 +925,6 @@
                 }
               }
             }
-          },
-          "501": {
-            "description": "In the contract, not yet built",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
           }
         }
       },
@@ -974,16 +945,6 @@
           },
           "401": {
             "description": "No device token, or one that is not valid",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "In the contract, not yet built",
             "content": {
               "application/json": {
                 "schema": {
@@ -1055,6 +1016,7 @@
           "devices"
         ],
         "summary": "Revoke a device of this account and its token",
+        "description": "The token fails at once, the device's KeyPackages are deleted, and its socket closes with 4401. A device may revoke itself; that is signing out (decision 0019).",
         "security": [
           {
             "deviceToken": []
@@ -1096,8 +1058,8 @@
               }
             }
           },
-          "501": {
-            "description": "In the contract, not yet built",
+          "404": {
+            "description": "not_found: this account has no such active device",
             "content": {
               "application/json": {
                 "schema": {
@@ -1205,16 +1167,6 @@
                 }
               }
             }
-          },
-          "501": {
-            "description": "In the contract, not yet built",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
           }
         }
       },
@@ -1315,16 +1267,6 @@
                 }
               }
             }
-          },
-          "501": {
-            "description": "In the contract, not yet built",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
           }
         }
       }
@@ -1384,16 +1326,6 @@
           },
           "409": {
             "description": "conversation_exists: another account created it",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "In the contract, not yet built",
             "content": {
               "application/json": {
                 "schema": {
@@ -1481,16 +1413,6 @@
                 }
               }
             }
-          },
-          "501": {
-            "description": "In the contract, not yet built",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
           }
         }
       }
@@ -1540,16 +1462,6 @@
           },
           "401": {
             "description": "No device token, or one that is not valid",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "In the contract, not yet built",
             "content": {
               "application/json": {
                 "schema": {
@@ -1625,16 +1537,6 @@
                 }
               }
             }
-          },
-          "501": {
-            "description": "In the contract, not yet built",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
           }
         }
       }
@@ -1670,16 +1572,6 @@
           },
           "426": {
             "description": "upgrade_required: not a WebSocket upgrade",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "In the contract, not yet built",
             "content": {
               "application/json": {
                 "schema": {

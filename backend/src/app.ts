@@ -1,6 +1,13 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { createMiddleware } from "hono/factory";
-import { type Device, deviceForToken, me, registerDevice } from "./accounts.ts";
+import {
+  type Device,
+  deleteAccount,
+  deviceForToken,
+  me,
+  registerDevice,
+  revokeDevice,
+} from "./accounts.ts";
 import { createConversationRoute, getWelcomeRoute } from "./api/conversations.ts";
 import {
   deleteAccountRoute,
@@ -51,8 +58,6 @@ const deviceToken = createMiddleware<AppEnv>(async (c, next) => {
   c.set("device", device);
   return next();
 });
-
-const notImplemented = { error: "not_implemented" } as const;
 
 export function createApp() {
   const app = new OpenAPIHono<AppEnv>({
@@ -139,8 +144,23 @@ export function createApp() {
   });
 
   // Decision 0014: in the contract now, built in phase 1.
-  app.openapi(revokeDeviceRoute, (c) => c.json(notImplemented, 501));
-  app.openapi(deleteAccountRoute, (c) => c.json(notImplemented, 501));
+  app.openapi(revokeDeviceRoute, async (c) => {
+    const { accountId } = c.var.device;
+    const { deviceId } = c.req.valid("param");
+    if (!(await revokeDevice(c.env, accountId, deviceId))) {
+      return c.json({ error: "not_found" }, 404);
+    }
+    await inbox(c.env, accountId).closeDevice(deviceId);
+    log("device.revoked", { accountId, deviceId });
+    return c.body(null, 204);
+  });
+
+  app.openapi(deleteAccountRoute, async (c) => {
+    const { accountId } = c.var.device;
+    await deleteAccount(c.env, accountId);
+    log("account.deleted", { accountId });
+    return c.body(null, 204);
+  });
 
   // Conversations (decisions 0015, 0017). The Worker reads the framing; the
   // Conversation DO decides membership, order and the epoch.

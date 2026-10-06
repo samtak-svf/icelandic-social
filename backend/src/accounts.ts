@@ -1,5 +1,5 @@
 import { base64url } from "./bytes.ts";
-import { db, kennitalaKey } from "./env/index.ts";
+import { conversation, db, inbox, kennitalaKey } from "./env/index.ts";
 import type { Person } from "./identity.ts";
 
 // Accounts and devices in D1 (decision 0014).
@@ -159,4 +159,50 @@ export async function me(env: Env, accountId: string) {
       createdAt: number;
     }[],
   };
+}
+
+/**
+ * Revokes one active device of this account, so its token fails at once, and
+ * drops its KeyPackages so no one adds it to a group again (decision 0019).
+ * False when the account has no such active device.
+ */
+export async function revokeDevice(
+  env: Env,
+  accountId: string,
+  deviceId: string,
+): Promise<boolean> {
+  const [revoked] = await db(env).batch([
+    db(env)
+      .prepare(
+        "UPDATE devices SET revoked_at = ? WHERE device_id = ? AND account_id = ? AND revoked_at IS NULL",
+      )
+      .bind(Date.now(), deviceId, accountId),
+    db(env)
+      .prepare(
+        `DELETE FROM key_packages WHERE device_id IN
+         (SELECT device_id FROM devices WHERE device_id = ? AND account_id = ?)`,
+      )
+      .bind(deviceId, accountId),
+  ]);
+  return (revoked?.meta.changes ?? 0) > 0;
+}
+
+/**
+ * Deletes an account in decision 0014's order (0019 spells it out). The
+ * tokens die first, so nothing acts as the account while the rest goes. A
+ * failure part way leaves an account with no devices; signing in again lands
+ * on it, and a second delete finishes the job.
+ */
+export async function deleteAccount(env: Env, accountId: string): Promise<void> {
+  await db(env)
+    .prepare("UPDATE devices SET revoked_at = ? WHERE account_id = ? AND revoked_at IS NULL")
+    .bind(Date.now(), accountId)
+    .run();
+  const box = inbox(env, accountId);
+  const conversations = Object.keys(await box.latest());
+  await Promise.all(conversations.map((id) => conversation(env, id).removeAccount(accountId)));
+  await box.wipe();
+  // Media in R2 go here once there is an upload route; today there are none.
+  // Devices, KeyPackages and invites cascade; invited_by elsewhere goes null.
+  await db(env).prepare("DELETE FROM accounts WHERE account_id = ?").bind(accountId).run();
 }

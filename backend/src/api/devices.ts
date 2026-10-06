@@ -89,9 +89,16 @@ export const revokeDeviceRoute = createRoute({
   operationId: "revokeDevice",
   tags: ["devices"],
   summary: "Revoke a device of this account and its token",
+  description:
+    "The token fails at once, the device's KeyPackages are deleted, and its socket closes with 4401. A device may revoke itself; that is signing out (decision 0019).",
   security: DEVICE_TOKEN,
   request: { params: z.object({ deviceId: OpaqueId }) },
-  responses: { 204: { description: "The device is revoked" }, ...INVALID, ...AUTHED },
+  responses: {
+    204: { description: "The device is revoked" },
+    ...INVALID,
+    ...AUTHED,
+    404: errorResponse("not_found: this account has no such active device"),
+  },
 });
 
 export const deleteAccountRoute = createRoute({
@@ -100,6 +107,8 @@ export const deleteAccountRoute = createRoute({
   operationId: "deleteAccount",
   tags: ["devices"],
   summary: "Delete this account, its devices, inbox and media (decision 0014)",
+  description:
+    "Every token is revoked, each conversation drops the account from its roster, the inbox is deleted and the sockets close with 4401, then the account's rows go, with its invites (decision 0019).",
   security: DEVICE_TOKEN,
   responses: { 204: { description: "The account is deleted" }, ...AUTHED },
 });

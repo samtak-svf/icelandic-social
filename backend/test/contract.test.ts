@@ -114,8 +114,8 @@ describe("the delivery contract", () => {
 
   it("lets an active device's token through to the handler", async () => {
     const active = await device();
-    const response = await fetch("/v1/me", { method: "DELETE", headers: active.auth });
-    expect(response.status).toBe(501);
+    const response = await fetch("/v1/me", { headers: active.auth });
+    expect(response.status).toBe(200);
   });
 
   it("validates a send before it reaches the handler", async () => {
@@ -124,15 +124,6 @@ describe("the delivery contract", () => {
       json({ clientMsgId: "m_1", ciphertext: "not base64!" }, TOKEN),
     );
     expect(response.status).toBe(400);
-  });
-
-  it.each([
-    ["/v1/devices/d_1", { method: "DELETE", headers: TOKEN }],
-    ["/v1/me", { method: "DELETE", headers: TOKEN }],
-  ])("answers %s with 501 until phase 1", async (path, init) => {
-    const response = await fetch(path, init);
-    expect(response.status).toBe(501);
-    expect(await errorOf(response)).toBe("not_implemented");
   });
 
   it("asks for an upgrade on the socket route", async () => {

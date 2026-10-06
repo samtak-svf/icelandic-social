@@ -24,7 +24,7 @@ export const ApiError = z
   .object({
     error: z.string().openapi({
       description:
-        "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, invite_required, kenni_unavailable, not_implemented",
+        "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, invite_required, kenni_unavailable",
       example: "unauthorized",
     }),
   })
@@ -38,7 +38,6 @@ const error = (description: string) => ({
 /** The answers every route that needs a device token can give. */
 export const AUTHED = {
   401: error("No device token, or one that is not valid"),
-  501: error("In the contract, not yet built"),
 };
 
 export const INVALID = { 400: error("The request does not match the schema") };

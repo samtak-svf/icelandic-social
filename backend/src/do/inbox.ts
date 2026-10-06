@@ -15,6 +15,12 @@ const RETRY_MS = 30_000;
 /** Policy violation: a frame that does not parse, or one only the server sends. */
 const POLICY = 1008;
 
+/**
+ * The device was revoked, or its account deleted (decision 0019). In the
+ * application range, after HTTP's 401: the token is dead, so do not reconnect.
+ */
+const REVOKED = 4401;
+
 type Attachment = { accountId: string; deviceId: string };
 
 /**
@@ -28,6 +34,10 @@ export class Inbox extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     this.sql = ctx.storage.sql;
+    this.migrate();
+  }
+
+  private migrate(): void {
     this.sql.exec(`
       CREATE TABLE IF NOT EXISTS conversations (
         conversation_id TEXT PRIMARY KEY,
@@ -160,6 +170,24 @@ export class Inbox extends DurableObject<Env> {
   async relayTyping(conversationId: string, ciphertext: string): Promise<void> {
     for (const ws of this.ctx.getWebSockets())
       send(ws, { type: "typing", conversationId, ciphertext });
+  }
+
+  /** A revoked device: its socket closes, and nothing is owed to it any more (decision 0019). */
+  async closeDevice(deviceId: string): Promise<void> {
+    for (const ws of this.ctx.getWebSockets(deviceId)) ws.close(REVOKED, "revoked");
+    this.sql.exec("DELETE FROM cursors WHERE device_id = ?", deviceId);
+    this.sql.exec("DELETE FROM push_outbox WHERE device_id = ?", deviceId);
+  }
+
+  /**
+   * A deleted account (decision 0019): every socket closes and the storage is
+   * deleted. The tables are made again, empty, so a late `notify` still lands.
+   */
+  async wipe(): Promise<void> {
+    for (const ws of this.ctx.getWebSockets()) ws.close(REVOKED, "deleted");
+    await this.ctx.storage.deleteAlarm();
+    await this.ctx.storage.deleteAll();
+    this.migrate();
   }
 
   /** The latest seq of each conversation this account has been notified of. */
