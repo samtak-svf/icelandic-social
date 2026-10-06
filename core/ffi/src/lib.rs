@@ -1,6 +1,6 @@
-//! What the apps call. Phase 0 exposes just enough for each app to prove the
-//! binary loads and works on the device: the version, the envelope codec, the
-//! MLS self-test and the encrypted store.
+//! What the apps call: the version, the envelope codec, the MLS self-test,
+//! the encrypted store, and the client of decision 0018 (`client`), which
+//! the app drives over its own HTTP transport and WebSocket.
 //!
 //! The records here mirror `spjall-envelope` so that crate stays free of FFI
 //! concerns; `From` impls in both directions keep them in step, and the tests
@@ -10,6 +10,8 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use spjall_envelope as envelope;
+
+pub mod client;
 
 uniffi::setup_scaffolding!();
 
@@ -23,6 +25,22 @@ pub enum CoreError {
     Mls { detail: String },
     #[error("{detail}")]
     Store { detail: String },
+    /// No answer came from the server; everything sent is safe to retry.
+    #[error("{detail}")]
+    Unreachable { detail: String },
+    /// The server answered with an `ApiError` code.
+    #[error("{status} {code}")]
+    Refused { status: u16, code: String },
+    #[error("this device is not registered")]
+    NotRegistered,
+    #[error("no such conversation, or not one this device is in")]
+    UnknownConversation,
+    /// The app asked for something the client does not do.
+    #[error("{detail}")]
+    Invalid { detail: String },
+    /// The server answered outside the contract.
+    #[error("{detail}")]
+    Protocol { detail: String },
 }
 
 impl From<envelope::EnvelopeError> for CoreError {

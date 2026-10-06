@@ -14,6 +14,7 @@ name = "spjall_core"
 crate-type = ["cdylib", "staticlib", "lib"]
 
 [dependencies]
+spjall-client = { path = "../client" }
 spjall-envelope = { path = "../envelope" }
 spjall-mls = { path = "../mls" }
 spjall-store = { path = "../store" }
@@ -21,6 +22,10 @@ thiserror.workspace = true
 uniffi.workspace = true
 
 [dev-dependencies]
+# For client/tests/support/relay.rs, which tests/client.rs shares.
+base64.workspace = true
+openmls.workspace = true
+serde_json.workspace = true
 tempfile.workspace = true
 
 [lints.rust]

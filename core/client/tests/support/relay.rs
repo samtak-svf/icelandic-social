@@ -4,9 +4,8 @@
 //! roster commits move, the latest Welcome per account, KeyPackages consumed
 //! once but the last resort kept. It can lose a request or its answer.
 
-use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use std::rc::Rc;
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use base64::Engine as _;
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
@@ -51,10 +50,10 @@ struct State {
     page: usize,
 }
 
-pub struct Relay(RefCell<State>);
+pub struct Relay(Mutex<State>);
 
 pub struct Link {
-    relay: Rc<Relay>,
+    relay: Arc<Relay>,
     account: String,
     device: String,
 }
@@ -71,21 +70,22 @@ fn refuse(status: u16, code: &str) -> Response {
 }
 
 impl Relay {
-    pub fn new() -> Rc<Self> {
-        Rc::new(Self(RefCell::new(State {
+    fn state(&self) -> MutexGuard<'_, State> {
+        self.0.lock().unwrap()
+    }
+
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self(Mutex::new(State {
             page: 3,
             ..State::default()
         })))
     }
 
     pub fn register(&self, account: &str, device: &str) {
-        self.0
-            .borrow_mut()
-            .devices
-            .insert(device.into(), account.into());
+        self.state().devices.insert(device.into(), account.into());
     }
 
-    pub fn link(self: &Rc<Self>, account: &str, device: &str) -> Link {
+    pub fn link(self: &Arc<Self>, account: &str, device: &str) -> Link {
         Link {
             relay: self.clone(),
             account: account.into(),
@@ -95,42 +95,33 @@ impl Relay {
 
     /// The next `n` requests from this device never reach the server.
     pub fn fail_next(&self, device: &str, n: usize) {
-        self.0.borrow_mut().fail.insert(device.into(), n);
+        self.state().fail.insert(device.into(), n);
     }
 
     /// The server acts on the next `n` requests from this device, but their
     /// answers are lost.
     pub fn lose_next(&self, device: &str, n: usize) {
-        self.0.borrow_mut().lose.insert(device.into(), n);
+        self.state().lose.insert(device.into(), n);
     }
 
     pub fn sends(&self, device: &str) -> Vec<Value> {
-        self.0
-            .borrow()
-            .sends
-            .get(device)
-            .cloned()
-            .unwrap_or_default()
+        self.state().sends.get(device).cloned().unwrap_or_default()
     }
 
     pub fn stored(&self, conversation: &str) -> usize {
-        self.0.borrow().conversations[conversation].messages.len()
+        self.state().conversations[conversation].messages.len()
     }
 
     /// Retention ran: every message up to `seq` is gone.
     pub fn expire(&self, conversation: &str, seq: u64) {
-        let mut state = self.0.borrow_mut();
+        let mut state = self.state();
         let conversation = state.conversations.get_mut(conversation).unwrap();
         conversation.messages.retain(|m| m.seq > seq);
         conversation.expired_to = seq;
     }
 
     pub fn frames(&self, device: &str) -> Vec<String> {
-        self.0
-            .borrow_mut()
-            .frames
-            .remove(device)
-            .unwrap_or_default()
+        self.state().frames.remove(device).unwrap_or_default()
     }
 
     /// A frame a device sent on its socket.
@@ -139,7 +130,7 @@ impl Relay {
         if frame["type"] != "typing" {
             return;
         }
-        let mut state = self.0.borrow_mut();
+        let mut state = self.state();
         let conversation = frame["conversationId"].as_str().unwrap();
         let members = state.conversations[conversation].roster.clone();
         let to: Vec<String> = state
@@ -383,7 +374,7 @@ impl State {
 
 impl Transport for Link {
     fn request(&self, request: Request) -> Result<Response, Unreachable> {
-        let mut state = self.relay.0.borrow_mut();
+        let mut state = self.relay.state();
         if let Some(n) = state.fail.get_mut(&self.device).filter(|n| **n > 0) {
             *n -= 1;
             return Err(Unreachable("the request was lost".into()));
