@@ -74,14 +74,25 @@ The Worker also serves the link host:
 ### The core signs in
 
 - **The core owns sign-in, as it owns sync (0018).**
-  - `beginSignIn(config)` makes the PKCE verifier, the `state` and the `nonce`, keeps them in the
-    store, and returns the authorize URL.
-  - `completeSignIn(callbackUrl, inviteToken)` checks `state`, sends the code, the verifier, the
-    nonce and the device key to `POST /v1/devices`, and stores the account id, the device id and
-    the device token.
-  - The app's transport reads the token with `deviceToken()`.
+  - `beginSignIn()` fetches `GET /v1/sign-in` itself, makes the PKCE verifier, the `state` and
+    the `nonce`, keeps them in the store, and returns the authorize URL. A new one replaces any
+    sign-in still pending.
+  - `completeSignIn(callbackUrl, inviteToken, platform)` checks the callback is to the redirect
+    and carries the pending `state`, then sends the code, the verifier, the nonce and the device
+    key to `POST /v1/devices`, and stores the account id, the device id and the device token.
+    It replaces `registered()`.
+  - A callback with another `state` is refused and the sign-in stays pending, so a forged
+    callback cannot end it. No answer from the server keeps it too, so the same call can be
+    made again; any answer ends it, because Kenni's code is spent either way.
+  - The core puts the token on each request as `bearer`, and the app's transport turns it into
+    `Authorization`. The transport is called while the core holds its lock, so it cannot ask the
+    core for the token itself. `deviceToken()` gives it for the WebSocket upgrade.
   - A sign-in survives the process being killed while the browser is open, because the pending
     state is in the store.
+  - The account calls are the core's as well: `me`, the invite link (`rotateInvite`,
+    `inviteLink`, `revokeInvite`, `resolveInvite`), `revokeDevice` and `deleteAccount`. Revoking
+    this device, or deleting the account, empties the store, and so does revoking this device
+    when its token is already dead.
 
 ### The end of a device, and of an account
 

@@ -41,6 +41,10 @@ pub enum CoreError {
     /// The server answered outside the contract.
     #[error("{detail}")]
     Protocol { detail: String },
+    /// The sign-in did not finish: no sign-in was pending, the callback
+    /// was not Kenni's, or Kenni answered with an error.
+    #[error("sign-in: {detail}")]
+    SignIn { detail: String },
 }
 
 impl From<envelope::EnvelopeError> for CoreError {
@@ -353,7 +357,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().to_string_lossy().into_owned();
         let store = CoreStore::open(path.clone(), vec![1; 32]).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 2);
+        assert_eq!(store.schema_version().unwrap(), 3);
         drop(store);
         assert!(matches!(
             CoreStore::open(path.clone(), vec![2; 32]),

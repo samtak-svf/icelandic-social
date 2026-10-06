@@ -9,11 +9,13 @@
 //! merges it, and nothing is sealed past it. Each received message is
 //! decrypted and stored in one transaction, which also moves the cursor.
 
+mod account;
 pub mod api;
 
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+pub use account::{SignedIn, invite_token};
 use api::{Api, ApiError, Outgoing, Transport, conversation_id, group_id};
 use serde::Deserialize;
 use spjall_envelope::{Body, Envelope, EnvelopeError};
@@ -37,6 +39,10 @@ pub enum ClientError {
     /// No device key yet, or the server has not registered it.
     #[error("this device is not registered")]
     NotRegistered,
+    /// A sign-in could not go on: none is pending, the callback is not the
+    /// one it waits for, or Kenni answered with an error.
+    #[error("sign-in: {0}")]
+    SignIn(String),
     #[error("no such conversation, or not one this device is in")]
     UnknownConversation,
     /// The app asked for something this client does not do.
@@ -372,6 +378,15 @@ fn store_message(
     .map(drop)
 }
 
+/// The API as this device, which needs its token.
+fn authed<'a, T: Transport>(
+    transport: &'a T,
+    token: &'a Option<String>,
+) -> Result<Api<'a, T>, ClientError> {
+    let token = token.as_deref().ok_or(ClientError::NotRegistered)?;
+    Ok(Api::new(transport, Some(token)))
+}
+
 fn ack(conversation: &str, seq: u64) -> String {
     serde_json::json!({ "type": "ack", "conversationId": conversation, "seq": seq }).to_string()
 }
@@ -379,6 +394,8 @@ fn ack(conversation: &str, seq: u64) -> String {
 pub struct Client<T> {
     store: Store,
     transport: T,
+    /// The device token, from the store; `None` until sign-in.
+    token: Option<String>,
     /// What happened since the last call returned; kept when a call fails
     /// half way, so the next one still reports it.
     outcome: Outcome,
@@ -386,9 +403,17 @@ pub struct Client<T> {
 
 impl<T: Transport> Client<T> {
     pub fn open(dir: &Path, key: &Key, transport: T) -> Result<Self, ClientError> {
+        let mut store = Store::open(dir, key)?;
+        let token = store.write(|tx| {
+            Ok(tx
+                .query_row("SELECT device_token FROM account", [], |r| r.get(0))
+                .optional()?
+                .flatten())
+        })?;
         Ok(Self {
-            store: Store::open(dir, key)?,
+            store,
             transport,
+            token,
             outcome: Outcome::default(),
         })
     }
@@ -412,26 +437,11 @@ impl<T: Transport> Client<T> {
         })
     }
 
-    /// The server registered `device_key()` as this account and device.
-    pub fn registered(&mut self, account: &str, device: &str) -> Result<(), ClientError> {
-        Device::new(account, device)?;
-        self.store.try_write(|tx| {
-            let changed = tx.execute(
-                "UPDATE account SET account_id = ?1, device_id = ?2",
-                params![account, device],
-            )?;
-            if changed == 0 {
-                return Err(ClientError::NotRegistered);
-            }
-            Ok(())
-        })
-    }
-
     /// Tops this device's unclaimed KeyPackages up to `target`, at most 100
     /// at a time, with a fresh last-resort package whenever it uploads.
     /// Returns how many the server holds.
     pub fn stock_key_packages(&mut self, target: u32) -> Result<u32, ClientError> {
-        let api = Api(&self.transport);
+        let api = authed(&self.transport, &self.token)?;
         let available = api.upload_key_packages(&[], None)?;
         if available >= target {
             return Ok(available);
@@ -711,7 +721,7 @@ impl<T: Transport> Client<T> {
     fn drain(&mut self, group: &[u8]) -> Result<Drain, ClientError> {
         let conversation = conversation_id(group);
         if self.store.try_write(|tx| conversation_state(tx, group))? == State::New {
-            match Api(&self.transport).create_conversation(&conversation) {
+            match authed(&self.transport, &self.token)?.create_conversation(&conversation) {
                 Ok(()) => {}
                 Err(ApiError::Refused { status: 409, .. }) => {
                     return Err(ClientError::Protocol("a random group id was taken"));
@@ -733,7 +743,7 @@ impl<T: Transport> Client<T> {
                     Sealed::Dropped => continue,
                 },
             };
-            match Api(&self.transport).send_message(&conversation, &out) {
+            match authed(&self.transport, &self.token)?.send_message(&conversation, &out) {
                 Ok(seq) => self.store.try_write(|tx| {
                     tx.execute(
                         "UPDATE outbox SET seq = ?2 WHERE id = ?1",
@@ -777,7 +787,7 @@ impl<T: Transport> Client<T> {
         // made while the store is locked.
         let mut claimed = Vec::new();
         if row.kind == Kind::Add {
-            let api = Api(&self.transport);
+            let api = authed(&self.transport, &self.token)?;
             for account in intent_accounts() {
                 match api.claim_key_packages(&account) {
                     Ok(packages) => {
@@ -881,7 +891,7 @@ impl<T: Transport> Client<T> {
                 break;
             };
             let api::Page { messages, more } =
-                match Api(&self.transport).list_messages(&conversation, cursor) {
+                match authed(&self.transport, &self.token)?.list_messages(&conversation, cursor) {
                     Ok(page) => page,
                     Err(ApiError::Refused { status: 403, .. }) => {
                         self.removed(group)?;
@@ -925,7 +935,8 @@ impl<T: Transport> Client<T> {
     /// that added this account, and read what came after it.
     fn join(&mut self, group: &[u8]) -> Result<(), ClientError> {
         let conversation = conversation_id(group);
-        let (seq, welcome) = match Api(&self.transport).get_welcome(&conversation) {
+        let (seq, welcome) = match authed(&self.transport, &self.token)?.get_welcome(&conversation)
+        {
             Ok(found) => found,
             Err(ApiError::Refused {
                 status: 403 | 404, ..

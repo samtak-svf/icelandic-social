@@ -13,16 +13,26 @@ use crate::{Body, CoreError, Envelope};
 pub enum HttpMethod {
     Get,
     Post,
+    Delete,
 }
 
 /// A request to the API. `path` starts at `/v1/` and holds any query. The
-/// transport adds the base URL, `Authorization: Bearer <device token>`, and
-/// `content-type: application/json` when there is a body.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+/// transport adds the base URL, `Authorization: Bearer <bearer>` when there
+/// is a bearer, and `content-type: application/json` when there is a body.
+/// The bearer is the device token: the transport never logs it.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
 pub struct HttpRequest {
     pub method: HttpMethod,
     pub path: String,
     pub body: Option<String>,
+    pub bearer: Option<String>,
+}
+
+/// The method and path only: the body can hold a sign-in's verifier.
+impl std::fmt::Debug for HttpRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?} {}", self.method, self.path)
+    }
 }
 
 /// Any answer the server gave, whatever its status.
@@ -61,9 +71,11 @@ impl api::Transport for Foreign {
             method: match request.method {
                 api::Method::Get => HttpMethod::Get,
                 api::Method::Post => HttpMethod::Post,
+                api::Method::Delete => HttpMethod::Delete,
             },
             path: request.path,
             body: request.body,
+            bearer: request.bearer,
         };
         match self.0.request(request) {
             Ok(response) => Ok(api::Response {
@@ -100,8 +112,103 @@ impl From<ClientError> for CoreError {
             ClientError::Protocol(detail) => Self::Protocol {
                 detail: detail.into(),
             },
+            ClientError::SignIn(detail) => Self::SignIn { detail },
         }
     }
+}
+
+/// Which app is signing in; registerDevice records it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum Platform {
+    Android,
+    Ios,
+}
+
+impl From<Platform> for api::Platform {
+    fn from(platform: Platform) -> Self {
+        match platform {
+            Platform::Android => Self::Android,
+            Platform::Ios => Self::Ios,
+        }
+    }
+}
+
+impl From<api::Platform> for Platform {
+    fn from(platform: api::Platform) -> Self {
+        match platform {
+            api::Platform::Android => Self::Android,
+            api::Platform::Ios => Self::Ios,
+        }
+    }
+}
+
+/// The account and device this store is signed in as.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct SignedIn {
+    pub account_id: String,
+    pub device_id: String,
+}
+
+impl From<core::SignedIn> for SignedIn {
+    fn from(device: core::SignedIn) -> Self {
+        Self {
+            account_id: device.account,
+            device_id: device.device,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct AccountDevice {
+    pub device_id: String,
+    pub platform: Platform,
+    /// Milliseconds since the epoch.
+    pub created_at: u64,
+    /// This device.
+    pub current: bool,
+}
+
+/// This account: the registry's name when Kenni gave one, and its devices.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct Me {
+    pub account_id: String,
+    pub name: Option<String>,
+    pub verified: bool,
+    pub devices: Vec<AccountDevice>,
+}
+
+impl From<api::Me> for Me {
+    fn from(me: api::Me) -> Self {
+        Self {
+            account_id: me.account_id,
+            name: me.name,
+            verified: me.verified,
+            devices: me
+                .devices
+                .into_iter()
+                .map(|d| AccountDevice {
+                    device_id: d.device_id,
+                    platform: d.platform.into(),
+                    created_at: d.created_at,
+                    current: d.current,
+                })
+                .collect(),
+        }
+    }
+}
+
+/// Who made an invite, as the person it was sent to sees them.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct Inviter {
+    pub name: Option<String>,
+    pub verified: bool,
+}
+
+/// The invite token in a link from the link host or the app's scheme, or
+/// none for any other URL.
+#[uniffi::export]
+pub fn invite_token(link: String) -> Option<String> {
+    core::invite_token(&link)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -263,9 +370,79 @@ impl CoreClient {
         Ok(self.client()?.device_key()?)
     }
 
-    /// Records the ids registerDevice answered with.
-    pub fn registered(&self, account_id: String, device_id: String) -> Result<(), CoreError> {
-        Ok(self.client()?.registered(&account_id, &device_id)?)
+    /// Starts a sign-in and returns the Kenni URL to open in Custom Tabs
+    /// or `ASWebAuthenticationSession`. The sign-in waits in the store, so
+    /// it survives the process ending while the browser is open; a new one
+    /// replaces it.
+    pub fn begin_sign_in(&self) -> Result<String, CoreError> {
+        Ok(self.client()?.begin_sign_in()?)
+    }
+
+    /// Finishes the sign-in with the URL Kenni redirected to, and the
+    /// invite token when the person has no account yet. `Unreachable`
+    /// leaves the sign-in pending, so the same call can be made again; any
+    /// other error ends it.
+    pub fn complete_sign_in(
+        &self,
+        callback: String,
+        invite_token: Option<String>,
+        platform: Platform,
+    ) -> Result<SignedIn, CoreError> {
+        Ok(self
+            .client()?
+            .complete_sign_in(&callback, invite_token.as_deref(), platform.into())?
+            .into())
+    }
+
+    /// The account and device this store is signed in as, if it is.
+    pub fn signed_in(&self) -> Result<Option<SignedIn>, CoreError> {
+        Ok(self.client()?.signed_in()?.map(Into::into))
+    }
+
+    /// The device token, for the WebSocket upgrade's `Authorization`.
+    pub fn device_token(&self) -> Result<Option<String>, CoreError> {
+        Ok(self.client()?.device_token().map(str::to_owned))
+    }
+
+    pub fn me(&self) -> Result<Me, CoreError> {
+        Ok(self.client()?.me()?.into())
+    }
+
+    /// Who made an invite; none for the operator's. Needs no sign-in. A
+    /// link that does not work is `Refused` with 404.
+    pub fn resolve_invite(&self, token: String) -> Result<Option<Inviter>, CoreError> {
+        Ok(self
+            .client()?
+            .resolve_invite(&token)?
+            .map(|inviter| Inviter {
+                name: inviter.name,
+                verified: inviter.verified,
+            }))
+    }
+
+    /// This account's invite link as this device last made it.
+    pub fn invite_link(&self) -> Result<Option<String>, CoreError> {
+        Ok(self.client()?.invite_link()?)
+    }
+
+    /// A new invite link, which ends the one before.
+    pub fn rotate_invite(&self) -> Result<String, CoreError> {
+        Ok(self.client()?.rotate_invite()?)
+    }
+
+    pub fn revoke_invite(&self) -> Result<(), CoreError> {
+        Ok(self.client()?.revoke_invite()?)
+    }
+
+    /// Revokes a device of this account. Revoking this one signs out: the
+    /// store forgets everything.
+    pub fn revoke_device(&self, device_id: String) -> Result<(), CoreError> {
+        Ok(self.client()?.revoke_device(&device_id)?)
+    }
+
+    /// Deletes the account on the server, then everything in this store.
+    pub fn delete_account(&self) -> Result<(), CoreError> {
+        Ok(self.client()?.delete_account()?)
     }
 
     /// Uploads KeyPackages until the server holds `target`; returns how

@@ -102,6 +102,31 @@ const MIGRATIONS: &[(u32, &str)] = &[
          ) STRICT;
          CREATE INDEX outbox_by_group ON outbox (group_id, id);",
     ),
+    (
+        3,
+        // Decision 0019: the core signs in, so it keeps what a sign-in
+        // needs and what it yields.
+        "-- The device token registerDevice answered with, sent as Bearer;
+         -- and this account's invite link, which the server cannot show
+         -- again. Both only for a registered device.
+         ALTER TABLE account ADD COLUMN device_token TEXT
+             CHECK (device_token IS NULL OR account_id IS NOT NULL);
+         ALTER TABLE account ADD COLUMN invite_link TEXT
+             CHECK (invite_link IS NULL OR account_id IS NOT NULL);
+
+         -- The sign-in waiting for Kenni's callback: the PKCE verifier, the
+         -- state and the nonce it sent, and the redirect the code is for.
+         -- Kept here so a sign-in outlives the process while the browser is
+         -- open.
+         CREATE TABLE sign_in (
+             id           INTEGER PRIMARY KEY CHECK (id = 1),
+             verifier     TEXT NOT NULL,
+             state        TEXT NOT NULL,
+             nonce        TEXT NOT NULL,
+             redirect_uri TEXT NOT NULL,
+             created_at   INTEGER NOT NULL
+         ) STRICT;",
+    ),
 ];
 
 pub struct Store {
@@ -273,7 +298,7 @@ mod tests {
         store
             .write(|tx| {
                 tx.execute_batch(
-                    "INSERT INTO account VALUES (1, x'01', NULL, NULL);
+                    "INSERT INTO account (id, device_key) VALUES (1, x'01');
                      UPDATE account SET account_id = 'a_1', device_id = 'd_1';
                      INSERT INTO conversations (group_id, cursor, created_at) VALUES (x'01', 0, 0);
                      INSERT INTO messages VALUES (x'01', 1, 'a_1', 'd_1', x'00', 0);
@@ -283,10 +308,25 @@ mod tests {
             })
             .unwrap();
 
+        // A token and an invite link belong to a registered device.
+        assert!(refused(
+            &mut store,
+            "UPDATE account SET account_id = NULL, device_id = NULL, device_token = 't'"
+        ));
+        assert!(!refused(
+            &mut store,
+            "UPDATE account SET device_token = 't', invite_link = 'l'"
+        ));
+        // One pending sign-in.
+        assert!(refused(
+            &mut store,
+            "INSERT INTO sign_in VALUES (2, 'v', 's', 'n', 'r', 0)"
+        ));
+
         // One account per store.
         assert!(refused(
             &mut store,
-            "INSERT INTO account VALUES (2, 'a_2', 'd_2')"
+            "INSERT INTO account (id, device_key) VALUES (2, x'02')"
         ));
         // A conversation's state is one of three.
         assert!(refused(

@@ -3,6 +3,10 @@
 //! a send answered again by its `clientMsgId`, one commit per epoch, the
 //! roster commits move, the latest Welcome per account, KeyPackages consumed
 //! once but the last resort kept. It can lose a request or its answer.
+//!
+//! Sign-in (0019) is the Worker's half of it: a device registers with any
+//! Kenni code as the account and device its `Link` names, gets a token, and
+//! every other call but the two made before sign-in needs that token.
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -36,6 +40,13 @@ struct Conversation {
 struct State {
     /// device → account
     devices: BTreeMap<String, String>,
+    /// device → its token
+    tokens: BTreeMap<String, String>,
+    /// invite token → the account that made it
+    invites: BTreeMap<String, String>,
+    minted: usize,
+    /// Every request each device made, as the server got it.
+    requests: BTreeMap<String, Vec<Request>>,
     packages: BTreeMap<String, VecDeque<String>>,
     last_resort: BTreeMap<String, String>,
     conversations: BTreeMap<String, Conversation>,
@@ -81,8 +92,16 @@ impl Relay {
         })))
     }
 
-    pub fn register(&self, account: &str, device: &str) {
-        self.state().devices.insert(device.into(), account.into());
+    pub fn requests(&self, device: &str) -> Vec<Request> {
+        self.state()
+            .requests
+            .get(device)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    pub fn registered(&self, device: &str) -> bool {
+        self.state().devices.contains_key(device)
     }
 
     pub fn link(self: &Arc<Self>, account: &str, device: &str) -> Link {
@@ -149,6 +168,19 @@ impl Relay {
     }
 }
 
+/// The redirect `getSignInConfig` names.
+pub const REDIRECT: &str = "is.samtak.spjall:/kenni";
+
+/// What the browser and Kenni do with an authorize URL: the person signs
+/// in, and the app is handed the callback with a code and the same `state`.
+pub fn kenni(authorize: &str) -> String {
+    let state = authorize
+        .split(['?', '&'])
+        .find_map(|p| p.strip_prefix("state="))
+        .unwrap();
+    format!("{REDIRECT}?code=code-{state}&state={state}")
+}
+
 /// The group id, epoch and whether it is a commit, from the framing.
 fn framing(bytes: &[u8]) -> Option<(Vec<u8>, u64, bool)> {
     let message = MlsMessageIn::tls_deserialize_exact(bytes)
@@ -194,7 +226,101 @@ impl State {
             .unwrap_or(Value::Null);
         let (path, query) = request.path.split_once('?').unwrap_or((&request.path, ""));
         let parts: Vec<&str> = path.split('/').skip(2).collect();
+        let before_sign_in = matches!(
+            (request.method, parts.as_slice()),
+            (Method::Get, ["sign-in"])
+                | (Method::Post, ["devices"])
+                | (Method::Get, ["invites", _])
+        );
+        if !before_sign_in
+            && (request.bearer.is_none() || self.tokens.get(device) != request.bearer.as_ref())
+        {
+            return refuse(401, "unauthorized");
+        }
         match (request.method, parts.as_slice()) {
+            (Method::Get, ["sign-in"]) => answer(
+                200,
+                json!({
+                    "authorizationEndpoint": "https://kenni.test/oidc/auth",
+                    "clientId": "@innskraning.is/samtak-spjall",
+                    "redirectUri": REDIRECT,
+                    "scope": "openid national_id audkenni_name",
+                }),
+            ),
+            (Method::Post, ["devices"]) => {
+                if body["kenniCode"] == "refused" {
+                    return refuse(403, "sign_in_failed");
+                }
+                if let Some(invite) = body["inviteToken"].as_str()
+                    && !self.invites.contains_key(invite)
+                {
+                    return refuse(403, "invite_invalid");
+                }
+                let token = format!("token-{device}");
+                self.devices.insert(device.into(), account.into());
+                self.tokens.insert(device.into(), token.clone());
+                answer(
+                    200,
+                    json!({ "accountId": account, "deviceId": device, "token": token }),
+                )
+            }
+            (Method::Get, ["me"]) => {
+                let devices: Vec<Value> = self
+                    .devices
+                    .iter()
+                    .filter(|(_, a)| *a == account)
+                    .map(|(d, _)| {
+                        json!({ "deviceId": d, "platform": "android", "createdAt": 0, "current": d == device })
+                    })
+                    .collect();
+                answer(
+                    200,
+                    json!({ "accountId": account, "name": null, "verified": true, "devices": devices }),
+                )
+            }
+            (Method::Delete, ["me"]) => {
+                let gone: Vec<String> = self
+                    .devices
+                    .iter()
+                    .filter(|(_, a)| *a == account)
+                    .map(|(d, _)| d.clone())
+                    .collect();
+                for d in gone {
+                    self.devices.remove(&d);
+                    self.tokens.remove(&d);
+                }
+                self.invites.retain(|_, a| a != account);
+                answer(204, Value::Null)
+            }
+            (Method::Post, ["me", "invite"]) => {
+                self.invites.retain(|_, a| a != account);
+                self.minted += 1;
+                let token = format!("invite-{device}-{:08}", self.minted);
+                self.invites.insert(token.clone(), account.into());
+                answer(
+                    200,
+                    json!({ "token": token, "link": format!("https://spjall.samtak.is/l/{token}") }),
+                )
+            }
+            (Method::Delete, ["me", "invite"]) => {
+                self.invites.retain(|_, a| a != account);
+                answer(204, Value::Null)
+            }
+            (Method::Get, ["invites", token]) => match self.invites.get(*token) {
+                Some(_) => answer(
+                    200,
+                    json!({ "inviter": { "name": null, "verified": true } }),
+                ),
+                None => refuse(404, "not_found"),
+            },
+            (Method::Delete, ["devices", id]) => {
+                if self.devices.get(*id).map(String::as_str) != Some(account) {
+                    return refuse(404, "not_found");
+                }
+                self.devices.remove(*id);
+                self.tokens.remove(*id);
+                answer(204, Value::Null)
+            }
             (Method::Post, ["conversations"]) => {
                 let id = body["conversationId"].as_str().unwrap();
                 if let Some(existing) = self.conversations.get(id) {
@@ -379,6 +505,11 @@ impl Transport for Link {
             *n -= 1;
             return Err(Unreachable("the request was lost".into()));
         }
+        state
+            .requests
+            .entry(self.device.clone())
+            .or_default()
+            .push(request.clone());
         let response = state.handle(&self.account, &self.device, request);
         if let Some(n) = state.lose.get_mut(&self.device).filter(|n| **n > 0) {
             *n -= 1;

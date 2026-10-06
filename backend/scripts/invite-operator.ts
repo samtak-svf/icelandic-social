@@ -6,6 +6,9 @@
 //   pnpm --filter spjall-backend invite:operator --local    # wrangler dev's D1
 //   pnpm --filter spjall-backend invite:operator --remote   # production
 //
+// `--persist-to <dir>` is passed on with `--local`, for a `wrangler dev`
+// started with the same flag (interop.yml).
+//
 // Runs under plain `node`, like scripts/openapi.ts.
 
 import ids from "../../identifiers/ids.json" with { type: "json" };
@@ -29,10 +32,16 @@ if (import.meta.main) {
     process.exit(2);
   }
   const { spawnSync } = await import("node:child_process");
+  const at = process.argv.indexOf("--persist-to");
+  const persist = at > 0 ? ["--persist-to", process.argv[at + 1] ?? ""] : [];
+  if (persist.length > 0 && (where !== "--local" || !persist[1])) {
+    console.error("--persist-to takes a directory, and only with --local.");
+    process.exit(2);
+  }
   const { link, sql } = await operatorInvite();
   const run = spawnSync(
     "npx",
-    ["wrangler", "d1", "execute", ids.cloudflare.d1, where, "--command", sql],
+    ["wrangler", "d1", "execute", ids.cloudflare.d1, where, ...persist, "--command", sql],
     { stdio: ["ignore", "ignore", "inherit"] },
   );
   if (run.status !== 0) {

@@ -2,12 +2,14 @@
 //! files, talking only through requests and socket frames.
 
 #[path = "support/relay.rs"]
+#[allow(dead_code)]
 mod relay;
 
 use std::sync::Arc;
 
 use relay::{Link, Relay};
-use spjall_client::{Client, ClientError, Event, State, api::ApiError};
+use spjall_client::api::{ApiError, Platform};
+use spjall_client::{Client, ClientError, Event, State};
 use spjall_envelope::Body;
 use spjall_mls::group::GroupError;
 use tempfile::TempDir;
@@ -26,9 +28,10 @@ impl Phone {
     fn new(relay: &Arc<Relay>, account: &str, device: &str) -> Self {
         let dir = tempfile::tempdir().unwrap();
         let mut client = Client::open(dir.path(), &KEY, relay.link(account, device)).unwrap();
-        client.device_key().unwrap();
-        relay.register(account, device);
-        client.registered(account, device).unwrap();
+        let url = client.begin_sign_in().unwrap();
+        client
+            .complete_sign_in(&relay::kenni(&url), None, Platform::Android)
+            .unwrap();
         assert_eq!(client.stock_key_packages(3).unwrap(), 3);
         Self {
             relay: relay.clone(),

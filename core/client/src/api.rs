@@ -1,6 +1,6 @@
 //! The HTTP side of `api/openapi.json`, written once here (0018). The app's
-//! `Transport` makes one blocking request with its base URL and device
-//! token; the paths, bodies and error codes are this module's.
+//! `Transport` makes one blocking request with its base URL; the paths,
+//! bodies, device token and error codes are this module's.
 
 use base64::Engine as _;
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
@@ -10,17 +10,33 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 pub enum Method {
     Get,
     Post,
+    Delete,
 }
 
 /// A request to the API: `path` starts at `/v1/` and holds any query, and
-/// `body` is JSON. The transport adds the base URL, `Authorization`, and
-/// `content-type: application/json` when there is a body; the Worker answers
-/// 415 without it.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// `body` is JSON. The transport adds the base URL, `Authorization: Bearer`
+/// with `bearer` when there is one, and `content-type: application/json`
+/// when there is a body; the Worker answers 415 without it.
+///
+/// The core hands the transport the device token on each request rather
+/// than the transport asking for it, because the app's transport runs while
+/// the client is busy with the call that made the request (0019).
+#[derive(Clone, PartialEq, Eq)]
 pub struct Request {
     pub method: Method,
     pub path: String,
     pub body: Option<String>,
+    pub bearer: Option<String>,
+}
+
+/// Never prints the token or the body, which can hold a PKCE verifier.
+impl std::fmt::Debug for Request {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Request")
+            .field("method", &self.method)
+            .field("path", &self.path)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Any answer the server gave, whatever its status.
@@ -168,20 +184,123 @@ struct ErrorBody {
     error: String,
 }
 
-/// The operations the client uses, over the app's transport.
-pub struct Api<'a, T: ?Sized>(pub &'a T);
+/// `getSignInConfig`: where the app sends the person to sign in.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SignInConfig {
+    pub authorization_endpoint: String,
+    pub client_id: String,
+    pub redirect_uri: String,
+    pub scope: String,
+}
 
-impl<T: Transport + ?Sized> Api<'_, T> {
-    fn call<R: DeserializeOwned>(
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Platform {
+    Android,
+    Ios,
+}
+
+/// `registerDevice`'s body. Its verifier goes to `/v1/devices` and nowhere
+/// else.
+pub struct Registration<'a> {
+    pub code: &'a str,
+    pub verifier: &'a str,
+    pub redirect_uri: &'a str,
+    pub nonce: &'a str,
+    pub platform: Platform,
+    pub device_key: &'a [u8],
+    pub invite: Option<&'a str>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RegisterBody<'a> {
+    kenni_code: &'a str,
+    code_verifier: &'a str,
+    redirect_uri: &'a str,
+    nonce: &'a str,
+    platform: Platform,
+    device_key: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    invite_token: Option<&'a str>,
+}
+
+/// `registerDevice`'s answer: the token is shown once.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Registered {
+    pub account_id: String,
+    pub device_id: String,
+    pub token: String,
+}
+
+/// `getMe`: this account and its devices.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Me {
+    pub account_id: String,
+    /// The registry name, if Kenni gave one.
+    pub name: Option<String>,
+    pub verified: bool,
+    pub devices: Vec<AccountDevice>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountDevice {
+    pub device_id: String,
+    pub platform: Platform,
+    /// Milliseconds since the epoch.
+    pub created_at: u64,
+    /// The device that asked.
+    pub current: bool,
+}
+
+#[derive(Deserialize)]
+struct NewInvite {
+    link: String,
+}
+
+/// Who made an invite, as `resolveInvite` shows it before sign-in.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct Inviter {
+    pub name: Option<String>,
+    pub verified: bool,
+}
+
+#[derive(Deserialize)]
+struct Resolved {
+    inviter: Option<Inviter>,
+}
+
+/// The operations the client uses, over the app's transport, as the device
+/// `bearer` names, or as no device for the calls made before sign-in.
+pub struct Api<'a, T: ?Sized> {
+    transport: &'a T,
+    bearer: Option<&'a str>,
+}
+
+impl<'a, T: Transport + ?Sized> Api<'a, T> {
+    pub fn new(transport: &'a T, bearer: Option<&'a str>) -> Self {
+        Self { transport, bearer }
+    }
+
+    /// The answer on 200 or 204, or the `ApiError` code it was refused with.
+    fn send(
         &self,
         method: Method,
         path: String,
         body: Option<String>,
-        what: &'static str,
-    ) -> Result<R, ApiError> {
-        let response = self.0.request(Request { method, path, body })?;
-        if response.status == 200 {
-            return serde_json::from_str(&response.body).map_err(|_| ApiError::Malformed(what));
+    ) -> Result<Response, ApiError> {
+        let response = self.transport.request(Request {
+            method,
+            path,
+            body,
+            bearer: self.bearer.map(str::to_owned),
+        })?;
+        if response.status == 200 || response.status == 204 {
+            return Ok(response);
         }
         let code = serde_json::from_str::<ErrorBody>(&response.body)
             .map(|e| e.error)
@@ -190,6 +309,17 @@ impl<T: Transport + ?Sized> Api<'_, T> {
             status: response.status,
             code,
         })
+    }
+
+    fn call<R: DeserializeOwned>(
+        &self,
+        method: Method,
+        path: String,
+        body: Option<String>,
+        what: &'static str,
+    ) -> Result<R, ApiError> {
+        let response = self.send(method, path, body)?;
+        serde_json::from_str(&response.body).map_err(|_| ApiError::Malformed(what))
     }
 
     fn json(value: &impl Serialize) -> Option<String> {
@@ -300,5 +430,76 @@ impl<T: Transport + ?Sized> Api<'_, T> {
             .map(|p| Ok((p.device_id, from_base64(&p.key_package).ok_or(())?)))
             .collect::<Result<_, ()>>()
             .map_err(|_| ApiError::Malformed("claimKeyPackages"))
+    }
+}
+
+/// The calls about the person and the device (0019).
+impl<T: Transport + ?Sized> Api<'_, T> {
+    /// `getSignInConfig`.
+    pub fn sign_in_config(&self) -> Result<SignInConfig, ApiError> {
+        self.call(Method::Get, "/v1/sign-in".into(), None, "getSignInConfig")
+    }
+
+    /// `registerDevice`: the server redeems the code with Kenni itself.
+    pub fn register_device(&self, registration: &Registration) -> Result<Registered, ApiError> {
+        let body = RegisterBody {
+            kenni_code: registration.code,
+            code_verifier: registration.verifier,
+            redirect_uri: registration.redirect_uri,
+            nonce: registration.nonce,
+            platform: registration.platform,
+            device_key: base64(registration.device_key),
+            invite_token: registration.invite,
+        };
+        self.call(
+            Method::Post,
+            "/v1/devices".into(),
+            Self::json(&body),
+            "registerDevice",
+        )
+    }
+
+    /// `getMe`.
+    pub fn me(&self) -> Result<Me, ApiError> {
+        self.call(Method::Get, "/v1/me".into(), None, "getMe")
+    }
+
+    /// `rotateInvite`: the new link; the old one stops working.
+    pub fn rotate_invite(&self) -> Result<String, ApiError> {
+        let invite: NewInvite = self.call(
+            Method::Post,
+            "/v1/me/invite".into(),
+            Some("{}".into()),
+            "rotateInvite",
+        )?;
+        Ok(invite.link)
+    }
+
+    /// `revokeInvite`: the account is left with no working link.
+    pub fn revoke_invite(&self) -> Result<(), ApiError> {
+        self.send(Method::Delete, "/v1/me/invite".into(), None)
+            .map(drop)
+    }
+
+    /// `resolveInvite`: who made it, or `None` for the operator's.
+    pub fn resolve_invite(&self, token: &str) -> Result<Option<Inviter>, ApiError> {
+        let resolved: Resolved = self.call(
+            Method::Get,
+            format!("/v1/invites/{token}"),
+            None,
+            "resolveInvite",
+        )?;
+        Ok(resolved.inviter)
+    }
+
+    /// `revokeDevice`.
+    pub fn revoke_device(&self, device: &str) -> Result<(), ApiError> {
+        self.send(Method::Delete, format!("/v1/devices/{device}"), None)
+            .map(drop)
+    }
+
+    /// `deleteAccount`.
+    pub fn delete_account(&self) -> Result<(), ApiError> {
+        self.send(Method::Delete, "/v1/me".into(), None).map(drop)
     }
 }
