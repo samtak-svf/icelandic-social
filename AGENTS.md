@@ -79,6 +79,12 @@ cd ios && xcodegen && xcodebuild test -scheme Spjall -skipPackagePluginValidatio
 A debug Android build talks to a local `wrangler dev` with `spjall.debugApiBaseUrl=http://10.0.2.2:8787`
 in `android/local.properties` (gitignored) or `SPJALL_DEBUG_API_BASE_URL`.
 
+The core vendors OpenSSL (rusqlite's `bundled-sqlcipher-vendored-openssl`), so its build needs
+perl with `FindBin` and `IPC::Cmd`; on Fedora, `dnf install perl-FindBin perl-IPC-Cmd`. Each
+git worktree builds its own `core/target` of several GB, so a worktree under a small `/tmp`
+tmpfs runs out of space: point `CARGO_TARGET_DIR` at one shared directory outside `/tmp`
+(e.g. `~/.cache/spjall-target`) for every worktree.
+
 **The contract (decision 0005).** zod in `backend/src/api/` is the source. `api/openapi.json`
 and `api/kotlin/…/WsFrame.kt` are generated and committed; `contract.yml` fails when either is
 stale, and `oasdiff breaking` against the base fails unless the PR has the label
