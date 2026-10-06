@@ -1,7 +1,8 @@
-import { env, exports } from "cloudflare:workers";
+import { env } from "cloudflare:workers";
 import { evictDurableObject, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { conversation, inbox } from "../src/env/index.ts";
+import { connect } from "./socket.ts";
 import { device, euEnv } from "./support.ts";
 
 // The socket of decision 0015 against the real Inbox and Conversation DOs:
@@ -10,47 +11,6 @@ import { device, euEnv } from "./support.ts";
 
 const testEnv = euEnv(env);
 const TYPING = "dHlwaW5n";
-
-type Frame = Record<string, unknown>;
-
-async function connect(auth: Record<string, string>, extra: Record<string, string> = {}) {
-  const response = await exports.default.fetch("https://spjall.test/v1/ws", {
-    headers: { upgrade: "websocket", ...auth, ...extra },
-  });
-  expect(response.status).toBe(101);
-  const ws = response.webSocket!;
-  const queued: Frame[] = [];
-  const waiting: ((frame: Frame) => void)[] = [];
-  ws.addEventListener("message", (event) => {
-    const frame = JSON.parse(event.data as string) as Frame;
-    const waiter = waiting.shift();
-    if (waiter) waiter(frame);
-    else queued.push(frame);
-  });
-  const closed = new Promise<CloseEvent>((resolve) => ws.addEventListener("close", resolve));
-  ws.accept();
-  return {
-    ws,
-    closed,
-    send: (frame: Frame) => ws.send(JSON.stringify(frame)),
-    next: () =>
-      queued.length
-        ? Promise.resolve(queued.shift()!)
-        : new Promise<Frame>((resolve) => waiting.push(resolve)),
-    /** The next frame of a type, skipping the `notify` frames a send causes. */
-    async nextOf(type: string): Promise<Frame> {
-      for (;;) {
-        const frame = await this.next();
-        if (frame.type === type || frame.type !== "notify") return frame;
-      }
-    },
-    /** Everything sent before this answers before the pong: a way to show nothing else came. */
-    async settle(nonce: string) {
-      ws.send(JSON.stringify({ type: "ping", nonce }));
-      return this.nextOf("pong");
-    },
-  };
-}
 
 async function outbox(accountId: string) {
   return runInDurableObject(inbox(testEnv, accountId), (_, state) =>
@@ -165,6 +125,19 @@ describe("the socket", () => {
     await socket.next();
     socket.ws.send(raw);
     expect((await socket.closed).code).toBe(1008);
+  });
+
+  it("answers a close the client starts, and then owes that device a push", async () => {
+    const me = await device();
+    const socket = await connect(me.auth);
+    await socket.next();
+    socket.ws.close(1000, "bye");
+    expect((await socket.closed).code).toBe(1000);
+
+    await inbox(testEnv, me.accountId).notify(me.accountId, "conv_closed", 1);
+    expect(await outbox(me.accountId)).toEqual([
+      { device_id: me.deviceId, conversation_id: "conv_closed", seq: 1, pushed: 1 },
+    ]);
   });
 
   it("acts as the device the token names, whatever the client claims", async () => {

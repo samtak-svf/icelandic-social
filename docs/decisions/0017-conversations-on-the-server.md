@@ -1,7 +1,7 @@
 # 0017. The server keeps a roster per conversation, moved only by a winning commit
 
-- Status: accepted; designed, not yet implemented. The routes are in the contract and answer
-  `501` until the phase-1 PRs that build them.
+- Status: accepted; implemented in the backend. Push goes to a sender that only logs until FCM
+  and APNs are set up.
 - Date: 2026-10-06
 - Decided by: Guðröður, approving the plan for the delivery backend
 - Amends: [0015](0015-delivery-protocol.md) (how members, Welcomes and KeyPackages reach the server)

@@ -71,6 +71,15 @@ export class Inbox extends DurableObject<Env> {
     return new Response(null, { status: 101, webSocket: client });
   }
 
+  /**
+   * Completes a close the client started; the runtime does not answer it
+   * for us, and the client would wait for the handshake until it timed out.
+   */
+  override async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
+    // 1006 means the connection is already gone; 1005 (no code) cannot be sent.
+    if (code !== 1006) ws.close(code === 1005 ? 1000 : code, reason);
+  }
+
   override async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
     const { accountId, deviceId } = ws.deserializeAttachment() as Attachment;
     let frame: WsFrame;
