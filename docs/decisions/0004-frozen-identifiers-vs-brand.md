@@ -41,8 +41,9 @@ also an ordinary Icelandic noun, which makes a rename likely enough to design fo
   branch must add a `docs/decisions/*.md` in the same range.
 - `tooling/brand-leak-guard.mjs`: no brand term in any frozen id (substring) or any file
   outside `brand/<name>/` and the brand's `allowPaths` (per word, inflected, camelCase split).
-- The rename drill (later phase 0 PR) builds a generated `_fixture` brand and asserts no
-  leak term in the APK strings or the Worker bundle.
+- The rename drill (`tooling/rename-drill.mjs`, `rename-drill.yml`) switches the tree to a
+  generated `_fixture` brand, builds the APK and the Worker bundle from it, and asserts no
+  real brand's leak term in either, and the fixture's name in the APK.
 
 ## Open
 
