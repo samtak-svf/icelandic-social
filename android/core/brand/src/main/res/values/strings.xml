@@ -40,6 +40,12 @@
     <string name="invite_link_rotate">Búa til nýjan hlekk</string>
     <!-- Shown after Kenni sign-in without a valid invite during the closed test (docs/decisions/0009). -->
     <string name="invite_required">Hjal er í lokuðum prófunum. Þú þarft hlekk frá einhverjum sem er þegar á Hjal.</string>
+    <!-- Heading of the invite link page (/l/{token}) and of the app's invite screen when a person sent the link (docs/decisions/0019). -->
+    <string name="link_invited_by">%1$s býður þér á Hjal.</string>
+    <!-- Heading of the invite link page and of the app's invite screen when the operator sent the link, or the inviter has no name. -->
+    <string name="link_invited">Þér er boðið á Hjal.</string>
+    <!-- The invite link page and the app's invite screen for a link that was rotated, revoked or never existed. -->
+    <string name="link_expired">Þessi hlekkur er ekki lengur í gildi. Biddu um nýjan.</string>
     <!-- Action that starts a new group. -->
     <string name="new_group">Nýr hópur</string>
     <!-- Members in a group. -->
@@ -85,6 +91,30 @@
     <string name="delete_account">Eyða aðgangi</string>
     <!-- Confirmation before deleting the account; says what the server deletes and what it cannot. -->
     <string name="delete_account_confirm">Öllu sem tengist aðganginum þínum verður eytt af þjóninum. Skilaboð sem eru þegar á tækjum annarra eyðast ekki.</string>
+    <!-- Button that starts signing in with Kenni (docs/decisions/0019). -->
+    <string name="sign_in">Skrá inn</string>
+    <!-- Under the sign-in button: how the person signs in. -->
+    <string name="sign_in_hint">Þú skráir þig inn með rafrænum skilríkjum.</string>
+    <!-- The server could not be reached; the action can be tried again. -->
+    <string name="error_unreachable">Ekki náðist samband við þjóninn. Reyndu aftur.</string>
+    <!-- Something failed that the person cannot fix but may retry. -->
+    <string name="error_generic">Eitthvað fór úrskeiðis. Reyndu aftur.</string>
+    <!-- Button that repeats the action that failed. -->
+    <string name="try_again">Reyna aftur</string>
+    <!-- Dismisses a confirmation without doing anything. -->
+    <string name="cancel">Hætta við</string>
+    <!-- Shares the invite link through the system share sheet. -->
+    <string name="share">Deila</string>
+    <!-- Heading of the list of the account's devices on "Ég". -->
+    <string name="devices_title">Tækin þín</string>
+    <!-- Marks the device the person is holding in the device list. -->
+    <string name="device_this">Þetta tæki</string>
+    <!-- When a device was signed in, under its name in the device list. -->
+    <string name="device_added">Skráð %1$s</string>
+    <!-- Signs a device out of the account (DELETE /v1/devices/{id}). -->
+    <string name="device_revoke">Aftengja</string>
+    <!-- Confirmation before signing a device out; says what it stops. -->
+    <string name="device_revoke_confirm">Aftengja tækið? Það getur ekki lengur sent eða tekið við skilaboðum.</string>
     <!-- The only permitted statement about where data lives (docs/decisions/0001). -->
     <string name="residency_claim">Gögnin eru geymd varanlega innan ESB; unnin á netkerfi Cloudflare.</string>
 </resources>

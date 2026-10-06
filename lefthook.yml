@@ -44,7 +44,8 @@ pre-commit:
 
     lint:
       glob: "*.{js,mjs,ts}"
-      run: pnpm exec oxlint {staged_files}
+      # A commit whose only scripts are ignored (generated) ones lints nothing.
+      run: pnpm exec oxlint --no-error-on-unmatched-pattern {staged_files}
 
 pre-push:
   parallel: true

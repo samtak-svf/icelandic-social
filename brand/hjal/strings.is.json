@@ -50,5 +50,17 @@
   "block_confirm": "Loka á {name}? Viðkomandi getur ekki sent þér skilaboð.",
   "delete_account": "Eyða aðgangi",
   "delete_account_confirm": "Öllu sem tengist aðganginum þínum verður eytt af þjóninum. Skilaboð sem eru þegar á tækjum annarra eyðast ekki.",
+  "sign_in": "Skrá inn",
+  "sign_in_hint": "Þú skráir þig inn með rafrænum skilríkjum.",
+  "error_unreachable": "Ekki náðist samband við þjóninn. Reyndu aftur.",
+  "error_generic": "Eitthvað fór úrskeiðis. Reyndu aftur.",
+  "try_again": "Reyna aftur",
+  "cancel": "Hætta við",
+  "share": "Deila",
+  "devices_title": "Tækin þín",
+  "device_this": "Þetta tæki",
+  "device_added": "Skráð {date}",
+  "device_revoke": "Aftengja",
+  "device_revoke_confirm": "Aftengja tækið? Það getur ekki lengur sent eða tekið við skilaboðum.",
   "residency_claim": "Gögnin eru geymd varanlega innan ESB; unnin á netkerfi Cloudflare."
 }

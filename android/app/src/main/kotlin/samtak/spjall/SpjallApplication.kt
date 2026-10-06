@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import samtak.spjall.brand.R
 
 class SpjallApplication : Application() {
+    val graph by lazy { AppGraph(this) }
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()

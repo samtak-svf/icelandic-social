@@ -217,6 +217,42 @@
         }
       }
     },
+    "link_invited_by": {
+      "comment": "Heading of the invite link page (/l/{token}) and of the app's invite screen when a person sent the link (docs/decisions/0019).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ býður þér á Hjal."
+          }
+        }
+      }
+    },
+    "link_invited": {
+      "comment": "Heading of the invite link page and of the app's invite screen when the operator sent the link, or the inviter has no name.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þér er boðið á Hjal."
+          }
+        }
+      }
+    },
+    "link_expired": {
+      "comment": "The invite link page and the app's invite screen for a link that was rotated, revoked or never existed.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þessi hlekkur er ekki lengur í gildi. Biddu um nýjan."
+          }
+        }
+      }
+    },
     "new_group": {
       "comment": "Action that starts a new group.",
       "extractionState": "manual",
@@ -477,6 +513,150 @@
           "stringUnit": {
             "state": "translated",
             "value": "Öllu sem tengist aðganginum þínum verður eytt af þjóninum. Skilaboð sem eru þegar á tækjum annarra eyðast ekki."
+          }
+        }
+      }
+    },
+    "sign_in": {
+      "comment": "Button that starts signing in with Kenni (docs/decisions/0019).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrá inn"
+          }
+        }
+      }
+    },
+    "sign_in_hint": {
+      "comment": "Under the sign-in button: how the person signs in.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þú skráir þig inn með rafrænum skilríkjum."
+          }
+        }
+      }
+    },
+    "error_unreachable": {
+      "comment": "The server could not be reached; the action can be tried again.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekki náðist samband við þjóninn. Reyndu aftur."
+          }
+        }
+      }
+    },
+    "error_generic": {
+      "comment": "Something failed that the person cannot fix but may retry.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eitthvað fór úrskeiðis. Reyndu aftur."
+          }
+        }
+      }
+    },
+    "try_again": {
+      "comment": "Button that repeats the action that failed.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reyna aftur"
+          }
+        }
+      }
+    },
+    "cancel": {
+      "comment": "Dismisses a confirmation without doing anything.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hætta við"
+          }
+        }
+      }
+    },
+    "share": {
+      "comment": "Shares the invite link through the system share sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deila"
+          }
+        }
+      }
+    },
+    "devices_title": {
+      "comment": "Heading of the list of the account's devices on \"Ég\".",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tækin þín"
+          }
+        }
+      }
+    },
+    "device_this": {
+      "comment": "Marks the device the person is holding in the device list.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þetta tæki"
+          }
+        }
+      }
+    },
+    "device_added": {
+      "comment": "When a device was signed in, under its name in the device list.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skráð %1$@"
+          }
+        }
+      }
+    },
+    "device_revoke": {
+      "comment": "Signs a device out of the account (DELETE /v1/devices/{id}).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aftengja"
+          }
+        }
+      }
+    },
+    "device_revoke_confirm": {
+      "comment": "Confirmation before signing a device out; says what it stops.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aftengja tækið? Það getur ekki lengur sent eða tekið við skilaboðum."
           }
         }
       }

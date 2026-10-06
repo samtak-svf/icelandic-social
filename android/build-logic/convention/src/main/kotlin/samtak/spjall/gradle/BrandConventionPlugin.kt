@@ -10,8 +10,9 @@ import org.gradle.kotlin.dsl.configure
 /**
  * The application's frozen ids and its link to the brand (decision 0004).
  *
- * The application id, the notification channel ids and the API host are read
- * from `identifiers/ids.json`, so no Gradle file repeats them. The brand
+ * The application id, the notification channel ids, the API host and the
+ * link's scheme, host and path are read from `identifiers/ids.json`, so no
+ * Gradle file or manifest repeats them. The brand
  * itself arrives as the generated `:core:brand` module; a checkout without its
  * files fails here with the command that writes them. Whether they are
  * current is `pnpm check:brand-gen`'s job, which CI runs on every PR.
@@ -37,6 +38,11 @@ class BrandConventionPlugin : Plugin<Project> {
                             quoted(ids.string("store", "androidNotificationChannels", "messages")),
                         )
                         buildConfigField("String", "DATABASE_FILE", quoted(ids.string("store", "databaseFile")))
+                        buildConfigField("String", "URL_SCHEME", quoted(ids.string("store", "urlScheme")))
+                        // The manifest's intent filters use these as placeholders.
+                        manifestPlaceholders["urlScheme"] = ids.string("store", "urlScheme")
+                        manifestPlaceholders["linkHost"] = ids.string("hosts", "link")
+                        manifestPlaceholders["linkPathPrefix"] = ids.string("hosts", "linkPathPrefix")
                     }
                 }
             }

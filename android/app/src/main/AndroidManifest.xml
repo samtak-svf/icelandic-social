@@ -17,12 +17,36 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <!-- singleTask: Kenni's redirect comes back while the Custom Tab sits
+             above this activity, and must reach this instance (onNewIntent)
+             rather than start a second one. -->
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- The app's own scheme: Kenni's callback (is.samtak.spjall:/kenni)
+                 and invite links opened from another app
+                 (is.samtak.spjall://invite/<token>). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="${urlScheme}" />
+            </intent-filter>
+            <!-- The invite link itself (decision 0019). It opens here once the
+                 host serves assetlinks.json for the release signing key, and
+                 in the browser until then. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="${linkHost}" />
+                <data android:pathPrefix="${linkPathPrefix}" />
             </intent-filter>
         </activity>
     </application>

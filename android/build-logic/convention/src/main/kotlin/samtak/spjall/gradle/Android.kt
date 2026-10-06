@@ -31,6 +31,6 @@ internal fun Lint.spjallDefaults() {
 
 internal fun UnitTestOptions.spjallDefaults() {
     // A test class that is never found ends the task green, so name every
-    // result in the log (the same lesson as rosaparks#313).
+    // result in the log.
     all { test -> test.testLogging { events("passed", "skipped", "failed") } }
 }

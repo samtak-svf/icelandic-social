@@ -79,13 +79,13 @@
       "description": "Shown after Kenni sign-in without a valid invite during the closed test (docs/decisions/0009)."
     },
     "link_invited_by": {
-      "surfaces": ["backend"],
-      "description": "Heading of the invite link page (/l/{token}) when a person sent the link (docs/decisions/0019).",
+      "surfaces": ["android", "ios", "backend"],
+      "description": "Heading of the invite link page (/l/{token}) and of the app's invite screen when a person sent the link (docs/decisions/0019).",
       "placeholders": { "name": "string" }
     },
     "link_invited": {
-      "surfaces": ["backend"],
-      "description": "Heading of the invite link page when the operator sent the link, or the inviter has no name."
+      "surfaces": ["android", "ios", "backend"],
+      "description": "Heading of the invite link page and of the app's invite screen when the operator sent the link, or the inviter has no name."
     },
     "link_open_in_app": {
       "surfaces": ["backend"],
@@ -96,8 +96,8 @@
       "description": "Invite link page: the app is in a closed test, and how to get it."
     },
     "link_expired": {
-      "surfaces": ["backend"],
-      "description": "Invite link page for a link that was rotated, revoked or never existed."
+      "surfaces": ["android", "ios", "backend"],
+      "description": "The invite link page and the app's invite screen for a link that was rotated, revoked or never existed."
     },
     "new_group": {
       "surfaces": ["android", "ios"],
@@ -176,6 +176,55 @@
     "delete_account_confirm": {
       "surfaces": ["android", "ios"],
       "description": "Confirmation before deleting the account; says what the server deletes and what it cannot."
+    },
+    "sign_in": {
+      "surfaces": ["android", "ios"],
+      "description": "Button that starts signing in with Kenni (docs/decisions/0019)."
+    },
+    "sign_in_hint": {
+      "surfaces": ["android", "ios"],
+      "description": "Under the sign-in button: how the person signs in."
+    },
+    "error_unreachable": {
+      "surfaces": ["android", "ios"],
+      "description": "The server could not be reached; the action can be tried again."
+    },
+    "error_generic": {
+      "surfaces": ["android", "ios"],
+      "description": "Something failed that the person cannot fix but may retry."
+    },
+    "try_again": {
+      "surfaces": ["android", "ios"],
+      "description": "Button that repeats the action that failed."
+    },
+    "cancel": {
+      "surfaces": ["android", "ios"],
+      "description": "Dismisses a confirmation without doing anything."
+    },
+    "share": {
+      "surfaces": ["android", "ios"],
+      "description": "Shares the invite link through the system share sheet."
+    },
+    "devices_title": {
+      "surfaces": ["android", "ios"],
+      "description": "Heading of the list of the account's devices on \"Ég\"."
+    },
+    "device_this": {
+      "surfaces": ["android", "ios"],
+      "description": "Marks the device the person is holding in the device list."
+    },
+    "device_added": {
+      "surfaces": ["android", "ios"],
+      "description": "When a device was signed in, under its name in the device list.",
+      "placeholders": { "date": "string" }
+    },
+    "device_revoke": {
+      "surfaces": ["android", "ios"],
+      "description": "Signs a device out of the account (DELETE /v1/devices/{id})."
+    },
+    "device_revoke_confirm": {
+      "surfaces": ["android", "ios"],
+      "description": "Confirmation before signing a device out; says what it stops."
     },
     "residency_claim": {
       "surfaces": ["android", "ios", "backend"],
