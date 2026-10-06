@@ -7,10 +7,10 @@ import { WsFrame } from "./api/frames.ts";
 import { healthRoute } from "./api/health.ts";
 import { claimKeyPackagesRoute, uploadKeyPackagesRoute } from "./api/key-packages.ts";
 import { listMessagesRoute, sendMessageRoute } from "./api/messages.ts";
-import { socketRoute } from "./api/socket.ts";
+import { SOCKET_ACCOUNT, SOCKET_DEVICE, socketRoute } from "./api/socket.ts";
 import { toBase64 } from "./bytes.ts";
 import { checkSend } from "./conversations.ts";
-import { conversation, minClientVersions } from "./env/index.ts";
+import { conversation, inbox, minClientVersions } from "./env/index.ts";
 
 /** OpenAPI 3.1 document metadata; the routes and schemas come from src/api/. */
 export const DOCUMENT_INFO = {
@@ -127,11 +127,18 @@ export function createApp() {
 
   app.openapi(uploadKeyPackagesRoute, (c) => c.json(notImplemented, 501));
   app.openapi(claimKeyPackagesRoute, (c) => c.json(notImplemented, 501));
-  app.openapi(socketRoute, (c) =>
-    c.req.header("upgrade")?.toLowerCase() === "websocket"
-      ? c.json(notImplemented, 501)
-      : c.json({ error: "upgrade_required" }, 426),
-  );
+  // The socket lives in the account's Inbox; the Worker tells it which
+  // device this is, replacing any such header the client sent.
+  app.openapi(socketRoute, async (c) => {
+    if (c.req.header("upgrade")?.toLowerCase() !== "websocket") {
+      return c.json({ error: "upgrade_required" }, 426);
+    }
+    const { accountId, deviceId } = c.var.device;
+    const headers = new Headers(c.req.raw.headers);
+    headers.set(SOCKET_ACCOUNT, accountId);
+    headers.set(SOCKET_DEVICE, deviceId);
+    return inbox(c.env, accountId).fetch(new Request(c.req.raw, { headers }));
+  });
 
   // The frames are not a route body, so they are registered as a component
   // for the generators (decision 0005); /v1/ws points at it.

@@ -1,9 +1,26 @@
 import { DurableObject } from "cloudflare:workers";
+import { activeDevices } from "../accounts.ts";
+import { WsFrame } from "../api/frames.ts";
+import { SOCKET_ACCOUNT, SOCKET_DEVICE } from "../api/socket.ts";
+import { conversation } from "../env/index.ts";
+import { log } from "../log.ts";
+import { pushSender } from "../push.ts";
+
+/** The protocol version `hello` announces (decision 0015). */
+const PROTOCOL = 1;
+
+/** How soon a push that failed to send is tried again. */
+const RETRY_MS = 30_000;
+
+/** Policy violation: a frame that does not parse, or one only the server sends. */
+const POLICY = 1008;
+
+type Attachment = { accountId: string; deviceId: string };
 
 /**
- * One account's devices (decisions 0015, 0017): the latest `seq` of each of
- * its conversations, which the `Conversation` DOs report through `notify`.
- * The hibernating sockets, catch-up and the push outbox build on it.
+ * One account's devices (decisions 0015, 0017): a hibernating WebSocket per
+ * device, the latest `seq` of each conversation, each device's cursor, and a
+ * push outbox for devices that are behind with no socket open.
  */
 export class Inbox extends DurableObject<Env> {
   private readonly sql: SqlStorage;
@@ -16,17 +33,124 @@ export class Inbox extends DurableObject<Env> {
         conversation_id TEXT PRIMARY KEY,
         latest_seq INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS cursors (
+        device_id TEXT NOT NULL,
+        conversation_id TEXT NOT NULL,
+        seq INTEGER NOT NULL,
+        PRIMARY KEY (device_id, conversation_id)
+      );
+      CREATE TABLE IF NOT EXISTS push_outbox (
+        device_id TEXT NOT NULL,
+        conversation_id TEXT NOT NULL,
+        seq INTEGER NOT NULL,
+        pushed INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (device_id, conversation_id)
+      );
     `);
   }
 
-  /** Conversation `conversationId` has stored up to `seq`. Moves a maximum, so a retry repeats nothing. */
-  async notify(conversationId: string, seq: number): Promise<void> {
+  /** A WebSocket the Worker has authenticated: `hello`, then what this device has missed. */
+  override async fetch(request: Request): Promise<Response> {
+    const accountId = request.headers.get(SOCKET_ACCOUNT);
+    const deviceId = request.headers.get(SOCKET_DEVICE);
+    if (!accountId || !deviceId) return new Response(null, { status: 400 });
+    const [client, server] = Object.values(new WebSocketPair());
+    this.ctx.acceptWebSocket(server!, [deviceId]);
+    server!.serializeAttachment({ accountId, deviceId } satisfies Attachment);
+    send(server!, { type: "hello", protocol: PROTOCOL, serverTime: new Date().toISOString() });
+    for (const { conversation_id, latest_seq } of this.sql
+      .exec<{ conversation_id: string; latest_seq: number }>(
+        `SELECT c.conversation_id, c.latest_seq FROM conversations c
+         LEFT JOIN cursors k ON k.conversation_id = c.conversation_id AND k.device_id = ?
+         WHERE c.latest_seq > coalesce(k.seq, 0)`,
+        deviceId,
+      )
+      .toArray()) {
+      send(server!, { type: "notify", conversationId: conversation_id, seq: latest_seq });
+    }
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  override async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    const { accountId, deviceId } = ws.deserializeAttachment() as Attachment;
+    let frame: WsFrame;
+    try {
+      frame = WsFrame.parse(JSON.parse(typeof message === "string" ? message : ""));
+    } catch {
+      ws.close(POLICY, "invalid frame");
+      return;
+    }
+    switch (frame.type) {
+      case "ack":
+        this.ack(deviceId, frame.conversationId, frame.seq);
+        return;
+      case "ping":
+        send(ws, { type: "pong", ...(frame.nonce !== undefined && { nonce: frame.nonce }) });
+        return;
+      case "pong":
+        return;
+      case "typing":
+        await conversation(this.env, frame.conversationId).typing(accountId, frame.ciphertext);
+        return;
+      default:
+        ws.close(POLICY, "server frame");
+    }
+  }
+
+  /** This device has stored up to `seq`: its cursor moves, and its push is no longer owed. */
+  private ack(deviceId: string, conversationId: string, seq: number): void {
     this.sql.exec(
-      `INSERT INTO conversations (conversation_id, latest_seq) VALUES (?, ?)
-       ON CONFLICT (conversation_id) DO UPDATE SET latest_seq = max(latest_seq, excluded.latest_seq)`,
+      `INSERT INTO cursors (device_id, conversation_id, seq) VALUES (?, ?, ?)
+       ON CONFLICT DO UPDATE SET seq = max(seq, excluded.seq)`,
+      deviceId,
       conversationId,
       seq,
     );
+    this.sql.exec(
+      "DELETE FROM push_outbox WHERE device_id = ? AND conversation_id = ? AND seq <= ?",
+      deviceId,
+      conversationId,
+      seq,
+    );
+  }
+
+  /**
+   * Conversation `conversationId` has stored up to `seq` (decision 0017).
+   * Moves a maximum, so a retry repeats nothing. Open sockets get `notify`;
+   * a device that is behind with no socket owes one push until it acks.
+   */
+  async notify(accountId: string, conversationId: string, seq: number): Promise<void> {
+    this.sql.exec(
+      `INSERT INTO conversations (conversation_id, latest_seq) VALUES (?, ?)
+       ON CONFLICT DO UPDATE SET latest_seq = max(latest_seq, excluded.latest_seq)`,
+      conversationId,
+      seq,
+    );
+    const online = new Set<string>();
+    for (const ws of this.ctx.getWebSockets()) {
+      const { deviceId } = ws.deserializeAttachment() as Attachment;
+      online.add(deviceId);
+      if (this.cursor(deviceId, conversationId) < seq) {
+        send(ws, { type: "notify", conversationId, seq });
+      }
+    }
+    for (const deviceId of await activeDevices(this.env, accountId)) {
+      if (online.has(deviceId) || this.cursor(deviceId, conversationId) >= seq) continue;
+      this.sql.exec(
+        `INSERT INTO push_outbox (device_id, conversation_id, seq) VALUES (?, ?, ?)
+         ON CONFLICT DO UPDATE SET seq = max(seq, excluded.seq)`,
+        deviceId,
+        conversationId,
+        seq,
+      );
+    }
+    await this.push();
+  }
+
+  /** Relays a typing indicator to this account's open sockets; nothing is stored. */
+  async relayTyping(conversationId: string, ciphertext: string): Promise<void> {
+    for (const ws of this.ctx.getWebSockets())
+      send(ws, { type: "typing", conversationId, ciphertext });
   }
 
   /** The latest seq of each conversation this account has been notified of. */
@@ -38,4 +162,52 @@ export class Inbox extends DurableObject<Env> {
       .toArray();
     return Object.fromEntries(rows.map((r) => [r.conversation_id, r.latest_seq]));
   }
+
+  override async alarm(): Promise<void> {
+    await this.push();
+  }
+
+  private cursor(deviceId: string, conversationId: string): number {
+    const row = this.sql
+      .exec<{ seq: number }>(
+        "SELECT seq FROM cursors WHERE device_id = ? AND conversation_id = ?",
+        deviceId,
+        conversationId,
+      )
+      .toArray()[0];
+    return row?.seq ?? 0;
+  }
+
+  /** Sends each owed push once; one that fails is tried again by the alarm. */
+  private async push(): Promise<void> {
+    const sender = pushSender(this.env);
+    const due = this.sql
+      .exec<{ device_id: string; conversation_id: string; seq: number }>(
+        "SELECT device_id, conversation_id, seq FROM push_outbox WHERE pushed = 0",
+      )
+      .toArray();
+    let failed = false;
+    for (const row of due) {
+      try {
+        await sender.send({
+          deviceId: row.device_id,
+          conversationId: row.conversation_id,
+          seq: row.seq,
+        });
+        this.sql.exec(
+          "UPDATE push_outbox SET pushed = 1 WHERE device_id = ? AND conversation_id = ?",
+          row.device_id,
+          row.conversation_id,
+        );
+      } catch {
+        failed = true;
+        log("push.failed", { deviceId: row.device_id, conversationId: row.conversation_id });
+      }
+    }
+    if (failed) await this.ctx.storage.setAlarm(Date.now() + RETRY_MS);
+  }
+}
+
+function send(ws: WebSocket, frame: WsFrame): void {
+  ws.send(JSON.stringify(frame));
 }

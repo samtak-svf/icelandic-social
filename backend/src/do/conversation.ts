@@ -246,6 +246,23 @@ export class Conversation extends DurableObject<Env> {
       : { error: "not_found" };
   }
 
+  /**
+   * Relays a typing indicator to every other member's open sockets. It is
+   * never stored, and a member who misses it has missed nothing (decision 0015).
+   */
+  async typing(account: string, ciphertext: string): Promise<Result<null>> {
+    const meta = this.meta();
+    if (!meta) return { error: "not_found" };
+    if (!this.isMember(account)) return { error: "not_a_member" };
+    const { conversationId } = meta;
+    await Promise.allSettled(
+      this.members()
+        .filter((member) => member !== account)
+        .map((member) => inbox(this.env, member).relayTyping(conversationId, ciphertext)),
+    );
+    return { ok: null };
+  }
+
   /** Drops an account that no longer exists (decision 0014, `DELETE /v1/me`). */
   async removeAccount(account: string): Promise<void> {
     this.sql.exec("DELETE FROM roster WHERE account = ?", account);
@@ -263,7 +280,7 @@ export class Conversation extends DurableObject<Env> {
     let failed = 0;
     for (const { account, seq } of pending) {
       try {
-        await inbox(this.env, account).notify(meta.conversationId, seq);
+        await inbox(this.env, account).notify(account, meta.conversationId, seq);
         // A newer seq may have arrived meanwhile; it stays owed.
         this.sql.exec("DELETE FROM pending_notify WHERE account = ? AND seq = ?", account, seq);
       } catch {

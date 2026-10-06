@@ -21,3 +21,14 @@ export async function deviceForToken(env: Env, token: string): Promise<Device | 
     .bind(await tokenHash(token))
     .first<Device>();
 }
+
+/** The ids of an account's devices that are not revoked. */
+export async function activeDevices(env: Env, accountId: string): Promise<string[]> {
+  const { results } = await db(env)
+    .prepare(
+      "SELECT device_id AS deviceId FROM devices WHERE account_id = ? AND revoked_at IS NULL",
+    )
+    .bind(accountId)
+    .all<{ deviceId: string }>();
+  return results.map((r) => r.deviceId);
+}
