@@ -1,0 +1,90 @@
+name: interop
+
+# The core's sync engine against the real Worker (decision 0018): the Worker
+# runs under `wrangler dev` from backend/dev/worker.ts, the dev entry that
+# shims the EU jurisdiction local workerd cannot pin and registers devices
+# without Kenni, and core/client/tests/backend.rs drives five devices through
+# it over HTTP and the WebSocket. Nothing is deployed and no Cloudflare
+# account is touched: D1 and the Durable Objects are local files.
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths:
+      - "core/**"
+      - "backend/**"
+      - "api/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/interop.yml"
+  push:
+    branches: [main]
+    paths:
+      - "core/**"
+      - "backend/**"
+      - "api/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/interop.yml"
+
+concurrency:
+  group: interop-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  WRANGLER_SEND_METRICS: "false"
+
+jobs:
+  interop:
+    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # As in core.yml: the GCP fallback runners have no rustup.
+      - name: Toolchain
+        working-directory: core
+        run: |
+          if ! command -v rustup >/dev/null; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+            export PATH="$HOME/.cargo/bin:$PATH"
+          fi
+          rustup toolchain install
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: core
+
+      - name: Build the test while nothing else runs
+        working-directory: core
+        run: cargo test --locked -p spjall-client --test backend --no-run
+
+      - name: Start the Worker
+        working-directory: backend
+        run: |
+          npx wrangler d1 migrations apply spjall-db --local --persist-to "$RUNNER_TEMP/state"
+          nohup npx wrangler dev dev/worker.ts --ip 127.0.0.1 --port 8787 \
+            --persist-to "$RUNNER_TEMP/state" > "$RUNNER_TEMP/wrangler.log" 2>&1 &
+          for _ in $(seq 60); do
+            curl -sf http://127.0.0.1:8787/health >/dev/null && exit 0
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/wrangler.log"
+          exit 1
+
+      - name: Devices through the Worker
+        working-directory: core
+        env:
+          SPJALL_DEV_URL: http://127.0.0.1:8787
+        run: cargo test --locked -p spjall-client --test backend -- --ignored
+
+      - name: Worker log
+        if: failure()
+        run: cat "$RUNNER_TEMP/wrangler.log"

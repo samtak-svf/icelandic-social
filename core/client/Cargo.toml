@@ -20,6 +20,8 @@ thiserror.workspace = true
 [dev-dependencies]
 openmls.workspace = true
 tempfile.workspace = true
+tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
+ureq.workspace = true
 
 [lints]
 workspace = true

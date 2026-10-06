@@ -13,7 +13,9 @@ pub enum Method {
 }
 
 /// A request to the API: `path` starts at `/v1/` and holds any query, and
-/// `body` is JSON. The transport adds the base URL and `Authorization`.
+/// `body` is JSON. The transport adds the base URL, `Authorization`, and
+/// `content-type: application/json` when there is a body; the Worker answers
+/// 415 without it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Request {
     pub method: Method,
