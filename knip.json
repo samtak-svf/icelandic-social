@@ -1,5 +1,15 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["tooling/*.mjs", "tooling/tests/**/*.test.mjs"],
-  "project": ["tooling/**/*.mjs"]
+  "workspaces": {
+    ".": {
+      "entry": ["tooling/*.mjs", "tooling/tests/**/*.test.mjs"],
+      "project": ["tooling/**/*.mjs"]
+    },
+    "backend": {
+      "entry": ["scripts/*.ts"],
+      "project": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"],
+      "ignore": ["src/brand.gen.ts"],
+      "ignoreDependencies": ["cloudflare"]
+    }
+  }
 }

@@ -21,7 +21,9 @@ if (process.argv.includes("--check")) {
     // Missing counts as stale.
   }
   if (committed !== text) {
-    console.error("❌ api/openapi.json is stale. Run `pnpm --dir backend openapi` and commit it.");
+    console.error(
+      "❌ api/openapi.json is stale. Run `pnpm --filter spjall-backend openapi` and commit it.",
+    );
     process.exit(1);
   }
   console.log("✓ api/openapi.json matches src/api/");

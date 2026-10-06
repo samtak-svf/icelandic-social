@@ -59,11 +59,10 @@ pnpm test              # guard tests (vitest); each guard is proven to fail when
 pnpm format            # oxfmt --write .
 node tooling/ids-freeze.mjs --base origin/main   # what CI runs on a PR
 
-# The Worker (backend/ is its own pnpm package)
-pnpm --dir backend install
-pnpm --dir backend check     # wrangler types, tsc, api/openapi.json drift
-pnpm --dir backend test      # vitest inside workerd (@cloudflare/vitest-pool-workers)
-pnpm --dir backend openapi   # regenerate api/openapi.json after a zod change ...
+# The Worker (backend/ is a package of the root workspace; `pnpm install` at the root covers it)
+pnpm --filter spjall-backend check     # wrangler types, tsc, api/openapi.json drift
+pnpm --filter spjall-backend test      # vitest inside workerd (@cloudflare/vitest-pool-workers)
+pnpm --filter spjall-backend openapi   # regenerate api/openapi.json after a zod change ...
 node tooling/ws-kotlin.mjs   # ... then the Kotlin WS frames from it
 
 # The Rust core (core/ is a Cargo workspace; the toolchain is pinned in rust-toolchain.toml)
@@ -86,8 +85,8 @@ stale, and `oasdiff breaking` against the base fails unless the PR has the label
 `api: breaking`.
 
 Tooling is plain `.mjs` with `// @ts-check` and JSDoc, type-checked by `tsc --noEmit`
-(`checkJs`). Node ≥ 24.2 (`import.meta.main`). pnpm, no workspace; build scripts are allowed
-only for `pnpm.onlyBuiltDependencies`.
+(`checkJs`). Node ≥ 24.2 (`import.meta.main`). pnpm, one workspace (the root and `backend/`)
+with one lockfile; build scripts are allowed only for the root `pnpm.onlyBuiltDependencies`.
 
 ## Git
 

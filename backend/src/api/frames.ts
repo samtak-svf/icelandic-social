@@ -10,7 +10,7 @@ import { z } from "@hono/zod-openapi";
 
 const ConversationId = z.string().min(1);
 
-export const HelloFrame = z
+const HelloFrame = z
   .object({
     type: z.literal("hello"),
     protocol: z.int().min(1).openapi({ description: "Protocol version the server speaks" }),
@@ -18,7 +18,7 @@ export const HelloFrame = z
   })
   .openapi("HelloFrame", { description: "Server to client, first frame on a new socket" });
 
-export const NotifyFrame = z
+const NotifyFrame = z
   .object({
     type: z.literal("notify"),
     conversationId: ConversationId,
@@ -28,11 +28,11 @@ export const NotifyFrame = z
     description: "Server to client: a conversation has messages up to `seq`; fetch them",
   });
 
-export const PingFrame = z
+const PingFrame = z
   .object({ type: z.literal("ping"), nonce: z.string().optional() })
   .openapi("PingFrame", { description: "Either direction; answered with `pong`" });
 
-export const PongFrame = z
+const PongFrame = z
   .object({ type: z.literal("pong"), nonce: z.string().optional() })
   .openapi("PongFrame", { description: "The answer to `ping`, echoing its nonce" });
 

@@ -1,7 +1,7 @@
 {
   "name": "spjall-backend",
   "private": true,
-  "description": "The Worker spjall-api: REST + WebSocket delivery service. Its own package; the repo has no workspace (AGENTS.md § Commands).",
+  "description": "The Worker spjall-api: REST + WebSocket delivery service. A package of the root pnpm workspace (AGENTS.md § Commands).",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
@@ -25,17 +25,5 @@
   },
   "engines": {
     "node": ">=24.2"
-  },
-  "packageManager": "pnpm@10.0.0",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp",
-      "workerd"
-    ],
-    "overrides": {
-      "undici@<7.29.1": "^7.29.1",
-      "sharp@<0.35.4": "^0.35.4"
-    }
   }
 }
