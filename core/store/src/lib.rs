@@ -5,7 +5,7 @@
 //! Decrypt-and-store is one `BEGIN IMMEDIATE` transaction (`Store::write`).
 //! SQLite's write lock is the single-writer lock across processes, so the
 //! process that advances a ratchet is the one that stores the plaintext.
-//! Phase 1 adds the OpenMLS storage provider over `kv`.
+//! `spjall_mls::storage` keeps the OpenMLS state in `kv`.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;

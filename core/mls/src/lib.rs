@@ -1,7 +1,9 @@
 //! MLS for the core (0002). Phase 0 pins the ciphersuite and proves, on every
 //! target the apps ship, that two members can form a group and read each
-//! other's messages. The delivery-service rules and the SQLite-backed storage
-//! provider are phase 1.
+//! other's messages. `storage` keeps MLS state in the core's encrypted store;
+//! the delivery-service rules are phase 1.
+
+pub mod storage;
 
 use openmls::prelude::tls_codec::Deserialize as _;
 use openmls::prelude::*;
