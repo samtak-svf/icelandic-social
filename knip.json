@@ -6,7 +6,7 @@
       "project": ["tooling/**/*.mjs"]
     },
     "backend": {
-      "entry": ["scripts/*.ts"],
+      "entry": ["scripts/*.ts", "test/worker.ts", "test/setup.ts"],
       "project": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"],
       "ignore": ["src/brand.gen.ts"],
       "ignoreDependencies": ["cloudflare"]

@@ -1,5 +1,6 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { createMiddleware } from "hono/factory";
+import { type Device, deviceForToken } from "./accounts.ts";
 import { createConversationRoute, getWelcomeRoute } from "./api/conversations.ts";
 import { deleteAccountRoute, registerDeviceRoute, revokeDeviceRoute } from "./api/devices.ts";
 import { WsFrame } from "./api/frames.ts";
@@ -15,24 +16,29 @@ export const DOCUMENT_INFO = {
   info: { title: "spjall-api", version: "0.1.0" },
 } as const;
 
-const BEARER = /^Bearer [A-Za-z0-9_-]{16,256}$/;
+const BEARER = /^Bearer ([A-Za-z0-9_-]{16,256})$/;
+
+/** What every handler sees: the bindings, and the device a token resolved to. */
+type AppEnv = { Bindings: Env; Variables: { device: Device } };
 
 /**
  * Every /v1 route but device registration needs a device token (decision
- * 0014). Phase 0 checks its shape only; phase 1 looks its hash up in D1.
+ * 0014): its hash must name an active device in D1, which the handlers then
+ * act as.
  */
-const deviceToken = createMiddleware(async (c, next) => {
+const deviceToken = createMiddleware<AppEnv>(async (c, next) => {
   if (c.req.method === "POST" && c.req.path === "/v1/devices") return next();
-  if (!BEARER.test(c.req.header("authorization") ?? "")) {
-    return c.json({ error: "unauthorized" }, 401);
-  }
+  const token = BEARER.exec(c.req.header("authorization") ?? "")?.[1];
+  const device = token ? await deviceForToken(c.env, token) : null;
+  if (!device) return c.json({ error: "unauthorized" }, 401);
+  c.set("device", device);
   return next();
 });
 
 const notImplemented = { error: "not_implemented" } as const;
 
 export function createApp() {
-  const app = new OpenAPIHono<{ Bindings: Env }>({
+  const app = new OpenAPIHono<AppEnv>({
     defaultHook: (result, c) => {
       if (!result.success) return c.json({ error: "invalid_request" }, 400);
     },

@@ -15,6 +15,11 @@ export function minClientVersions(env: Env): Record<Platform, string> {
   };
 }
 
+/** D1: accounts, devices, tokens and KeyPackages (decisions 0014, 0017). */
+export function db(env: Env): D1Database {
+  return env.DB;
+}
+
 /** The `Conversation` DO for one conversation id: its MLS delivery service. */
 export function conversation(env: Env, conversationId: string) {
   return env.CONVERSATION.jurisdiction("eu").getByName(conversationId);

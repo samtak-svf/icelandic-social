@@ -1,15 +1,19 @@
 import { exports } from "cloudflare:workers";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { createApp, DOCUMENT_INFO } from "../src/app.ts";
 import { ApiError } from "../src/api/common.ts";
 import { WsFrame } from "../src/api/frames.ts";
+import { device, revoke } from "./support.ts";
 
 // The delivery contract of decisions 0014 and 0015: every route is in the
 // document with an operation id, every route but device registration needs a
-// device token, and the handlers answer 501 until phase 1 builds them.
+// device token that names an active device, and the handlers answer 501
+// until phase 1 builds them.
 
 const BASE = "https://spjall.test";
-const TOKEN = { authorization: "Bearer dt_0123456789abcdef0123456789abcdef" };
+/** Seeded in beforeAll; built, not written out, so it reads as no secret. */
+const TOKEN_VALUE = `dt_${"0".repeat(32)}`;
+const TOKEN = { authorization: `Bearer ${TOKEN_VALUE}` };
 const CIPHERTEXT = "AAEC";
 
 const fetch = (path: string, init?: RequestInit) => exports.default.fetch(`${BASE}${path}`, init);
@@ -21,6 +25,10 @@ const json = (body: unknown, headers: Record<string, string> = {}): RequestInit 
 const errorOf = async (response: Response) => ApiError.parse(await response.json()).error;
 
 describe("the delivery contract", () => {
+  beforeAll(async () => {
+    await device({ token: TOKEN_VALUE });
+  });
+
   it("documents every route with an operation id", () => {
     const document = createApp().getOpenAPI31Document(DOCUMENT_INFO);
     const operations = Object.entries(document.paths ?? {}).flatMap(([path, item]) =>
@@ -97,6 +105,28 @@ describe("the delivery contract", () => {
       ),
     );
     expect(response.status).toBe(400);
+  });
+
+  it("refuses a well-formed token that names no device", async () => {
+    const response = await fetch("/v1/me", {
+      method: "DELETE",
+      headers: { authorization: `Bearer dt_${"f".repeat(32)}` },
+    });
+    expect(response.status).toBe(401);
+    expect(await errorOf(response)).toBe("unauthorized");
+  });
+
+  it("refuses the token of a revoked device", async () => {
+    const revoked = await device();
+    await revoke(revoked.deviceId);
+    const response = await fetch("/v1/me", { method: "DELETE", headers: revoked.auth });
+    expect(response.status).toBe(401);
+  });
+
+  it("lets an active device's token through to the handler", async () => {
+    const active = await device();
+    const response = await fetch("/v1/me", { method: "DELETE", headers: active.auth });
+    expect(response.status).toBe(501);
   });
 
   it("validates a send before it reaches the handler", async () => {
