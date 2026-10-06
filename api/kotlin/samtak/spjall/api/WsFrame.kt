@@ -28,6 +28,24 @@ data class NotifyFrame(
     val seq: Long,
 ) : WsFrame
 
+/** Client to server: moves this device's delivery cursor */
+@Serializable
+@SerialName("ack")
+data class AckFrame(
+    val conversationId: String,
+    /** This device has stored everything up to here */
+    val seq: Long,
+) : WsFrame
+
+/** Either direction: an encrypted typing indicator, relayed and never stored */
+@Serializable
+@SerialName("typing")
+data class TypingFrame(
+    val conversationId: String,
+    /** An MLS message whose envelope kind is typing */
+    val ciphertext: String,
+) : WsFrame
+
 /** Either direction; answered with `pong` */
 @Serializable
 @SerialName("ping")

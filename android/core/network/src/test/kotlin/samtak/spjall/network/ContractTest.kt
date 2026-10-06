@@ -3,9 +3,11 @@ package samtak.spjall.network
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import samtak.spjall.api.AckFrame
 import samtak.spjall.api.HelloFrame
 import samtak.spjall.api.NotifyFrame
 import samtak.spjall.api.PingFrame
+import samtak.spjall.api.TypingFrame
 import samtak.spjall.api.WsFrame
 import samtak.spjall.api.rest.models.Health
 
@@ -28,6 +30,8 @@ class ContractTest {
             listOf(
                 HelloFrame(protocol = 1, serverTime = "2026-10-05T12:00:00Z"),
                 NotifyFrame(conversationId = "c1", seq = 42),
+                AckFrame(conversationId = "c1", seq = 42),
+                TypingFrame(conversationId = "c1", ciphertext = "AAEC"),
                 PingFrame(nonce = "n"),
             )
         for (frame in frames) {
@@ -36,5 +40,8 @@ class ContractTest {
         }
         val notify = json.decodeFromString(WsFrame.serializer(), """{"type":"notify","conversationId":"c2","seq":7}""")
         assertEquals(NotifyFrame(conversationId = "c2", seq = 7), notify)
+        val typingText = """{"type":"typing","conversationId":"c2","ciphertext":"AAEC"}"""
+        val typing = json.decodeFromString(WsFrame.serializer(), typingText)
+        assertEquals(TypingFrame(conversationId = "c2", ciphertext = "AAEC"), typing)
     }
 }

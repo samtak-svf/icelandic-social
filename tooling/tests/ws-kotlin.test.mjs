@@ -33,6 +33,16 @@ describe("ws-kotlin", () => {
     expect(emit(readJson("api/openapi.json"))).toBe(committed);
   });
 
+  it("emits every frame of the delivery protocol (decision 0015)", () => {
+    const kotlin = emit(readJson("api/openapi.json"));
+    for (const tag of ["hello", "notify", "ack", "typing", "ping", "pong"]) {
+      expect(kotlin).toContain(`@SerialName("${tag}")`);
+    }
+    expect(kotlin).toMatch(
+      /data class TypingFrame\(\s+val conversationId: String,[\s\S]*?val ciphertext: String,/,
+    );
+  });
+
   it("emits a sealed member per tag with its fields", () => {
     const kotlin = emit(
       spec({

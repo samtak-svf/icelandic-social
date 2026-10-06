@@ -5,6 +5,13 @@
     "version": "0.1.0"
   },
   "components": {
+    "securitySchemes": {
+      "deviceToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "The device token from registerDevice (decision 0014)"
+      }
+    },
     "schemas": {
       "WsFrame": {
         "oneOf": [
@@ -13,6 +20,12 @@
           },
           {
             "$ref": "#/components/schemas/NotifyFrame"
+          },
+          {
+            "$ref": "#/components/schemas/AckFrame"
+          },
+          {
+            "$ref": "#/components/schemas/TypingFrame"
           },
           {
             "$ref": "#/components/schemas/PingFrame"
@@ -26,6 +39,8 @@
           "mapping": {
             "hello": "#/components/schemas/HelloFrame",
             "notify": "#/components/schemas/NotifyFrame",
+            "ack": "#/components/schemas/AckFrame",
+            "typing": "#/components/schemas/TypingFrame",
             "ping": "#/components/schemas/PingFrame",
             "pong": "#/components/schemas/PongFrame"
           }
@@ -69,7 +84,8 @@
           },
           "conversationId": {
             "type": "string",
-            "minLength": 1
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
           },
           "seq": {
             "type": "integer",
@@ -83,6 +99,62 @@
           "seq"
         ],
         "description": "Server to client: a conversation has messages up to `seq`; fetch them"
+      },
+      "AckFrame": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "ack"
+            ]
+          },
+          "conversationId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "This device has stored everything up to here"
+          }
+        },
+        "required": [
+          "type",
+          "conversationId",
+          "seq"
+        ],
+        "description": "Client to server: moves this device's delivery cursor"
+      },
+      "TypingFrame": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "typing"
+            ]
+          },
+          "conversationId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "ciphertext": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 5464,
+            "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
+            "description": "An MLS message whose envelope kind is typing"
+          }
+        },
+        "required": [
+          "type",
+          "conversationId",
+          "ciphertext"
+        ],
+        "description": "Either direction: an encrypted typing indicator, relayed and never stored"
       },
       "PingFrame": {
         "type": "object",
@@ -154,6 +226,165 @@
           "status",
           "minClientVersion"
         ]
+      },
+      "RegisteredDevice": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "deviceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "token": {
+            "type": "string",
+            "description": "The device token, shown once; send it as Bearer"
+          }
+        },
+        "required": [
+          "accountId",
+          "deviceId",
+          "token"
+        ]
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "A stable code: unauthorized, invalid_request, epoch_conflict, upgrade_required, not_implemented",
+            "example": "unauthorized"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "RegisterDevice": {
+        "type": "object",
+        "properties": {
+          "kenniCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048,
+            "description": "The Kenni authorization code"
+          },
+          "codeVerifier": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._~-]{43,128}$",
+            "description": "The PKCE verifier for that code"
+          },
+          "redirectUri": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "android",
+              "ios"
+            ]
+          },
+          "deviceKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 44,
+            "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
+            "description": "The device's Ed25519 public key, also its MLS credential key"
+          },
+          "inviteToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "Required when the Kenni sign-in has no account yet (decision 0009)"
+          }
+        },
+        "required": [
+          "kenniCode",
+          "codeVerifier",
+          "redirectUri",
+          "platform",
+          "deviceKey"
+        ]
+      },
+      "Sent": {
+        "type": "object",
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "seq"
+        ]
+      },
+      "SendMessage": {
+        "type": "object",
+        "properties": {
+          "clientMsgId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b",
+            "description": "Sending it again answers the same seq"
+          },
+          "ciphertext": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 87384,
+            "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
+            "description": "Base64, at most 65536 bytes decoded"
+          }
+        },
+        "required": [
+          "clientMsgId",
+          "ciphertext"
+        ]
+      },
+      "MessagePage": {
+        "type": "object",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredMessage"
+            },
+            "description": "Oldest first"
+          },
+          "more": {
+            "type": "boolean",
+            "description": "More messages follow the last one"
+          }
+        },
+        "required": [
+          "messages",
+          "more"
+        ]
+      },
+      "StoredMessage": {
+        "type": "object",
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "ciphertext": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 87384,
+            "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
+            "description": "Base64, at most 65536 bytes decoded"
+          }
+        },
+        "required": [
+          "seq",
+          "ciphertext"
+        ]
       }
     },
     "parameters": {}
@@ -173,6 +404,395 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/devices": {
+      "post": {
+        "operationId": "registerDevice",
+        "tags": [
+          "devices"
+        ],
+        "summary": "Sign in with Kenni and register this device",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDevice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The device is registered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisteredDevice"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No account for this person and no valid invite token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "In the contract, not yet built",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/devices/{deviceId}": {
+      "delete": {
+        "operationId": "revokeDevice",
+        "tags": [
+          "devices"
+        ],
+        "summary": "Revoke a device of this account and its token",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "deviceId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The device is revoked"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "In the contract, not yet built",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me": {
+      "delete": {
+        "operationId": "deleteAccount",
+        "tags": [
+          "devices"
+        ],
+        "summary": "Delete this account, its devices, inbox and media (decision 0014)",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The account is deleted"
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "In the contract, not yet built",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/conversations/{conversationId}/messages": {
+      "post": {
+        "operationId": "sendMessage",
+        "tags": [
+          "messages"
+        ],
+        "summary": "Store a message in the conversation and notify its members",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "conversationId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessage"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stored at seq",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "epoch_conflict: this epoch already has a commit; re-propose on the new one",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "In the contract, not yet built",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listMessages",
+        "tags": [
+          "messages"
+        ],
+        "summary": "The stored messages after a seq",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "conversationId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "required": false,
+            "name": "after",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of messages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "In the contract, not yet built",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ws": {
+      "get": {
+        "operationId": "openSocket",
+        "tags": [
+          "socket"
+        ],
+        "summary": "Upgrade to the WebSocket that carries WsFrame",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "x-ws-frames": {
+          "$ref": "#/components/schemas/WsFrame"
+        },
+        "responses": {
+          "101": {
+            "description": "Switching to the WebSocket"
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "upgrade_required: not a WebSocket upgrade",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "In the contract, not yet built",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
