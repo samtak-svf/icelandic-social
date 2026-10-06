@@ -24,7 +24,7 @@ export const ApiError = z
   .object({
     error: z.string().openapi({
       description:
-        "A stable code: unauthorized, invalid_request, epoch_conflict, upgrade_required, not_implemented",
+        "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, not_implemented",
       example: "unauthorized",
     }),
   })
@@ -42,6 +42,18 @@ export const AUTHED = {
 };
 
 export const INVALID = { 400: error("The request does not match the schema") };
+
+/** The answers of a route inside one conversation (decision 0017). */
+export const MEMBER = {
+  403: error("not_a_member: this account is not in the conversation"),
+  404: error("not_found: no such conversation"),
+};
+
+/** A conversation id: its MLS group id as unpadded base64url (decision 0017). */
+export const ConversationId = OpaqueId.openapi({
+  description: "The MLS group id, unpadded base64url",
+  example: "q1w2e3r4t5y6u7i8o9p0aA",
+});
 
 export const errorResponse = error;
 

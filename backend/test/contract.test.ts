@@ -31,9 +31,13 @@ describe("the delivery contract", () => {
       "delete /v1/me deleteAccount",
       "get /health getHealth",
       "get /v1/conversations/{conversationId}/messages listMessages",
+      "get /v1/conversations/{conversationId}/welcome getWelcome",
       "get /v1/ws openSocket",
+      "post /v1/accounts/{accountId}/key-packages claimKeyPackages",
+      "post /v1/conversations createConversation",
       "post /v1/conversations/{conversationId}/messages sendMessage",
       "post /v1/devices registerDevice",
+      "post /v1/key-packages uploadKeyPackages",
     ]);
   });
 
@@ -49,6 +53,10 @@ describe("the delivery contract", () => {
     ["DELETE", "/v1/me"],
     ["GET", "/v1/conversations/c_1/messages?after=0"],
     ["POST", "/v1/conversations/c_1/messages"],
+    ["POST", "/v1/conversations"],
+    ["GET", "/v1/conversations/c_1/welcome"],
+    ["POST", "/v1/key-packages"],
+    ["POST", "/v1/accounts/a_1/key-packages"],
     ["GET", "/v1/ws"],
   ])("refuses %s %s without a device token", async (method, path) => {
     const response = await fetch(path, { method });
@@ -64,6 +72,33 @@ describe("the delivery contract", () => {
     expect(response.status).toBe(401);
   });
 
+  it("takes a roster change and a Welcome with a send", async () => {
+    const response = await fetch(
+      "/v1/conversations/c_1/messages",
+      json(
+        {
+          clientMsgId: "m_1",
+          ciphertext: CIPHERTEXT,
+          roster: { add: ["a_2"] },
+          welcome: { to: ["a_2"], message: CIPHERTEXT },
+        },
+        TOKEN,
+      ),
+    );
+    expect(response.status).toBe(501);
+  });
+
+  it("refuses a Welcome addressed to nobody", async () => {
+    const response = await fetch(
+      "/v1/conversations/c_1/messages",
+      json(
+        { clientMsgId: "m_1", ciphertext: CIPHERTEXT, welcome: { to: [], message: CIPHERTEXT } },
+        TOKEN,
+      ),
+    );
+    expect(response.status).toBe(400);
+  });
+
   it("validates a send before it reaches the handler", async () => {
     const response = await fetch(
       "/v1/conversations/c_1/messages",
@@ -75,6 +110,10 @@ describe("the delivery contract", () => {
   it.each([
     ["/v1/conversations/c_1/messages", json({ clientMsgId: "m_1", ciphertext: CIPHERTEXT }, TOKEN)],
     ["/v1/conversations/c_1/messages?after=0&limit=50", { headers: TOKEN }],
+    ["/v1/conversations", json({ conversationId: "c_1" }, TOKEN)],
+    ["/v1/conversations/c_1/welcome", { headers: TOKEN }],
+    ["/v1/key-packages", json({ keyPackages: [CIPHERTEXT] }, TOKEN)],
+    ["/v1/accounts/a_1/key-packages", { method: "POST", headers: TOKEN }],
     ["/v1/devices/d_1", { method: "DELETE", headers: TOKEN }],
     ["/v1/me", { method: "DELETE", headers: TOKEN }],
     [

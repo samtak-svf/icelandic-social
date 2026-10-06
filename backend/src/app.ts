@@ -1,8 +1,10 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { createMiddleware } from "hono/factory";
+import { createConversationRoute, getWelcomeRoute } from "./api/conversations.ts";
 import { deleteAccountRoute, registerDeviceRoute, revokeDeviceRoute } from "./api/devices.ts";
 import { WsFrame } from "./api/frames.ts";
 import { healthRoute } from "./api/health.ts";
+import { claimKeyPackagesRoute, uploadKeyPackagesRoute } from "./api/key-packages.ts";
 import { listMessagesRoute, sendMessageRoute } from "./api/messages.ts";
 import { socketRoute } from "./api/socket.ts";
 import { minClientVersions } from "./env/index.ts";
@@ -47,12 +49,16 @@ export function createApp() {
     c.json({ status: "ok" as const, minClientVersion: minClientVersions(c.env) }, 200),
   );
 
-  // Decisions 0014 and 0015: in the contract now, built in phase 1.
+  // Decisions 0014, 0015 and 0017: in the contract now, built in phase 1.
   app.openapi(registerDeviceRoute, (c) => c.json(notImplemented, 501));
   app.openapi(revokeDeviceRoute, (c) => c.json(notImplemented, 501));
   app.openapi(deleteAccountRoute, (c) => c.json(notImplemented, 501));
   app.openapi(sendMessageRoute, (c) => c.json(notImplemented, 501));
   app.openapi(listMessagesRoute, (c) => c.json(notImplemented, 501));
+  app.openapi(createConversationRoute, (c) => c.json(notImplemented, 501));
+  app.openapi(getWelcomeRoute, (c) => c.json(notImplemented, 501));
+  app.openapi(uploadKeyPackagesRoute, (c) => c.json(notImplemented, 501));
+  app.openapi(claimKeyPackagesRoute, (c) => c.json(notImplemented, 501));
   app.openapi(socketRoute, (c) =>
     c.req.header("upgrade")?.toLowerCase() === "websocket"
       ? c.json(notImplemented, 501)

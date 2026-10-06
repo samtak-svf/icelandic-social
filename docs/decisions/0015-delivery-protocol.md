@@ -4,6 +4,7 @@
   contract; the routes answer `501` until phase 1 builds them.
 - Date: 2026-10-06
 - Decided by: Guðröður, approving the plan that acted on the phase-0 review
+- Amended by: [0017](0017-conversations-on-the-server.md) (the roster, Welcomes and KeyPackages)
 
 ## Decision
 
