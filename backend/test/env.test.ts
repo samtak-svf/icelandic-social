@@ -11,14 +11,14 @@ describe("Durable Object stubs from src/env", () => {
     const { namespace, asked } = euOnly(env.CONVERSATION);
     const stub = conversation({ ...env, CONVERSATION: namespace }, "conv-1");
     expect(asked).toEqual(["eu"]);
-    expect(await stub.ping()).toBe("pong");
+    expect(await stub.list("acct-1", 0, 1)).toEqual({ error: "not_found" });
   });
 
   it("pins an inbox to the EU and reaches it", async () => {
     const { namespace, asked } = euOnly(env.INBOX);
     const stub = inbox({ ...env, INBOX: namespace }, "acct-1");
     expect(asked).toEqual(["eu"]);
-    expect(await stub.ping()).toBe("pong");
+    expect(await stub.latest()).toEqual({});
   });
 
   it("refuses a jurisdiction other than the EU", () => {

@@ -7,8 +7,8 @@ import { device, revoke } from "./support.ts";
 
 // The delivery contract of decisions 0014 and 0015: every route is in the
 // document with an operation id, every route but device registration needs a
-// device token that names an active device, and the handlers answer 501
-// until phase 1 builds them.
+// device token that names an active device, and the handlers not built yet
+// answer 501. test/messages.test.ts covers the conversation routes.
 
 const BASE = "https://spjall.test";
 /** Seeded in beforeAll; built, not written out, so it reads as no secret. */
@@ -80,22 +80,6 @@ describe("the delivery contract", () => {
     expect(response.status).toBe(401);
   });
 
-  it("takes a roster change and a Welcome with a send", async () => {
-    const response = await fetch(
-      "/v1/conversations/c_1/messages",
-      json(
-        {
-          clientMsgId: "m_1",
-          ciphertext: CIPHERTEXT,
-          roster: { add: ["a_2"] },
-          welcome: { to: ["a_2"], message: CIPHERTEXT },
-        },
-        TOKEN,
-      ),
-    );
-    expect(response.status).toBe(501);
-  });
-
   it("refuses a Welcome addressed to nobody", async () => {
     const response = await fetch(
       "/v1/conversations/c_1/messages",
@@ -138,10 +122,6 @@ describe("the delivery contract", () => {
   });
 
   it.each([
-    ["/v1/conversations/c_1/messages", json({ clientMsgId: "m_1", ciphertext: CIPHERTEXT }, TOKEN)],
-    ["/v1/conversations/c_1/messages?after=0&limit=50", { headers: TOKEN }],
-    ["/v1/conversations", json({ conversationId: "c_1" }, TOKEN)],
-    ["/v1/conversations/c_1/welcome", { headers: TOKEN }],
     ["/v1/key-packages", json({ keyPackages: [CIPHERTEXT] }, TOKEN)],
     ["/v1/accounts/a_1/key-packages", { method: "POST", headers: TOKEN }],
     ["/v1/devices/d_1", { method: "DELETE", headers: TOKEN }],

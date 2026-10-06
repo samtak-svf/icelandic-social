@@ -37,9 +37,9 @@ any ciphertext.
     `GET /v1/conversations/{conversationId}/welcome` (`{seq, welcome}`), join, and fetch the
     messages after that `seq`.
 - **One commit per epoch.** The DO reads `epoch` and the content type from the framing of a
-  PublicMessage or PrivateMessage. A second commit for an epoch already taken is
-  `409 epoch_conflict`. Application messages for older epochs are still stored, because a
-  member may send just before seeing a commit.
+  PublicMessage or PrivateMessage. A commit must be made on the current epoch, the one after
+  the last stored commit's; any other is `409 epoch_conflict`. Application messages for older
+  epochs are still stored, because a member may send just before seeing a commit.
 - **KeyPackages live in D1.**
   - `POST /v1/key-packages` uploads up to 100 for the calling device, plus an optional
     last-resort one, and answers `{available}`, so the client knows when to top up.
@@ -48,7 +48,9 @@ any ciphertext.
     device has nothing else, and is never consumed.
 - **Fan-out cannot be lost.** The message and a pending notification for every member are
   written in one SQLite transaction in the `Conversation` DO, and an alarm delivers them to
-  each member's `Inbox`. Delivery moves a maximum, so a retried alarm repeats nothing.
+  each member's `Inbox`. Delivery moves a maximum, so a retried alarm repeats nothing. An
+  account a commit removes is notified of that commit too; its fetch then answers
+  `not_a_member`, which is how its devices learn they are out.
 - **Push is an outbox.** The `Inbox` writes one row per device and conversation for a device
   with no open socket whose cursor is behind, until that device acks. A sender interface
   drains it; until FCM and APNs are set up, the only sender logs `push.skipped`.
