@@ -146,7 +146,7 @@
             "minLength": 1,
             "maxLength": 5464,
             "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
-            "description": "An MLS message whose envelope kind is typing"
+            "description": "An envelope of kind typing, sealed under a key exported from the current epoch (not an MLS message)"
           }
         },
         "required": [

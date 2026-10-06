@@ -42,7 +42,8 @@ const TypingFrame = z
     type: z.literal("typing"),
     conversationId: ConversationId,
     ciphertext: base64(4096).openapi({
-      description: "An MLS message whose envelope kind is typing",
+      description:
+        "An envelope of kind typing, sealed under a key exported from the current epoch (not an MLS message)",
     }),
   })
   .openapi("TypingFrame", {

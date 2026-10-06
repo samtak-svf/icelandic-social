@@ -42,7 +42,7 @@ data class AckFrame(
 @SerialName("typing")
 data class TypingFrame(
     val conversationId: String,
-    /** An MLS message whose envelope kind is typing */
+    /** An envelope of kind typing, sealed under a key exported from the current epoch (not an MLS message) */
     val ciphertext: String,
 ) : WsFrame
 
