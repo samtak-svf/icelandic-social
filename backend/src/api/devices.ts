@@ -103,3 +103,32 @@ export const deleteAccountRoute = createRoute({
   security: DEVICE_TOKEN,
   responses: { 204: { description: "The account is deleted" }, ...AUTHED },
 });
+
+const Me = z
+  .object({
+    accountId: OpaqueId,
+    name: z.string().nullable().openapi({ description: "The registry name, if Kenni gave one" }),
+    verified: z.boolean().openapi({ description: "Kenni vouched for the name (decision 0009)" }),
+    devices: z.array(
+      z.object({
+        deviceId: OpaqueId,
+        platform: z.enum(["android", "ios"]),
+        createdAt: z.int().openapi({ description: "Milliseconds since the epoch" }),
+        current: z.boolean().openapi({ description: "The device that asked" }),
+      }),
+    ),
+  })
+  .openapi("Me");
+
+export const getMeRoute = createRoute({
+  method: "get",
+  path: "/v1/me",
+  operationId: "getMe",
+  tags: ["devices"],
+  summary: "This account: its name, its mark and its active devices",
+  security: DEVICE_TOKEN,
+  responses: {
+    200: { description: "The account", content: { "application/json": { schema: Me } } },
+    ...AUTHED,
+  },
+});

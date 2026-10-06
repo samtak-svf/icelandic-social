@@ -72,3 +72,20 @@ export function kennitalaKey(env: Env): string {
   if (!key) throw new Error("KENNITALA_HMAC_KEY is not set");
   return key;
 }
+
+/** What the association files vouch for: the apps that may open /l/ links. */
+export function appLinks(env: Env): { androidFingerprints: string[]; appleAppIds: string[] } {
+  const list = (text: string) =>
+    text
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  // The interim team's beta build is frozen in ids.json; the store build
+  // joins it once APPLE_TEAM_ID is set.
+  const interim = `${ids.appleInterim.teamId}.${ids.appleInterim.iosBundleId}`;
+  const team = env.APPLE_TEAM_ID.trim();
+  return {
+    androidFingerprints: list(env.ANDROID_CERT_SHA256),
+    appleAppIds: team ? [`${team}.${ids.store.iosBundleId}`, interim] : [interim],
+  };
+}

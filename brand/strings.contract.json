@@ -78,6 +78,27 @@
       "surfaces": ["android", "ios"],
       "description": "Shown after Kenni sign-in without a valid invite during the closed test (docs/decisions/0009)."
     },
+    "link_invited_by": {
+      "surfaces": ["backend"],
+      "description": "Heading of the invite link page (/l/{token}) when a person sent the link (docs/decisions/0019).",
+      "placeholders": { "name": "string" }
+    },
+    "link_invited": {
+      "surfaces": ["backend"],
+      "description": "Heading of the invite link page when the operator sent the link, or the inviter has no name."
+    },
+    "link_open_in_app": {
+      "surfaces": ["backend"],
+      "description": "Button on the invite link page that opens the invite in the app."
+    },
+    "link_test_group": {
+      "surfaces": ["backend"],
+      "description": "Invite link page: the app is in a closed test, and how to get it."
+    },
+    "link_expired": {
+      "surfaces": ["backend"],
+      "description": "Invite link page for a link that was rotated, revoked or never existed."
+    },
     "new_group": {
       "surfaces": ["android", "ios"],
       "description": "Action that starts a new group."

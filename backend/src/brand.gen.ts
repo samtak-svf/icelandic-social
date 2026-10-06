@@ -6,6 +6,16 @@ export const brandStrings = {
   app_name: "Hjal",
   /** APNs alert text shown when the notification service extension cannot decrypt in time. Never names the sender. */
   push_fallback_body: "Ný skilaboð á Hjal",
+  /** Heading of the invite link page (/l/{token}) when a person sent the link (docs/decisions/0019). */
+  link_invited_by: "{name} býður þér á Hjal.",
+  /** Heading of the invite link page when the operator sent the link, or the inviter has no name. */
+  link_invited: "Þér er boðið á Hjal.",
+  /** Button on the invite link page that opens the invite in the app. */
+  link_open_in_app: "Opna í Hjal",
+  /** Invite link page: the app is in a closed test, and how to get it. */
+  link_test_group: "Hjal er í lokuðum prófunum. Ef appið er ekki komið í símann þinn, biddu þann sem bauð þér um aðgang að prófunum.",
+  /** Invite link page for a link that was rotated, revoked or never existed. */
+  link_expired: "Þessi hlekkur er ekki lengur í gildi. Biddu um nýjan.",
   /** The only permitted statement about where data lives (docs/decisions/0001). */
   residency_claim: "Gögnin eru geymd varanlega innan ESB; unnin á netkerfi Cloudflare.",
 } as const;

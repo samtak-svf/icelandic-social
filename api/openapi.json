@@ -346,6 +346,117 @@
           "deviceKey"
         ]
       },
+      "Me": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The registry name, if Kenni gave one"
+          },
+          "verified": {
+            "type": "boolean",
+            "description": "Kenni vouched for the name (decision 0009)"
+          },
+          "devices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "deviceId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                  "example": "c_9f3a1b"
+                },
+                "platform": {
+                  "type": "string",
+                  "enum": [
+                    "android",
+                    "ios"
+                  ]
+                },
+                "createdAt": {
+                  "type": "integer",
+                  "description": "Milliseconds since the epoch"
+                },
+                "current": {
+                  "type": "boolean",
+                  "description": "The device that asked"
+                }
+              },
+              "required": [
+                "deviceId",
+                "platform",
+                "createdAt",
+                "current"
+              ]
+            }
+          }
+        },
+        "required": [
+          "accountId",
+          "name",
+          "verified",
+          "devices"
+        ]
+      },
+      "NewInvite": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{16,128}$",
+            "example": "q1w2e3r4t5y6u7i8o9p0aAsSdDfFgGhHjJkKlLzZxXc"
+          },
+          "link": {
+            "type": "string",
+            "description": "The link to share; shown once, since the server keeps only its hash",
+            "example": "https://spjall.samtak.is/l/q1w2e3r4t5y6u7i8o9p0aAsSdDfFgGhHjJkKlLzZxXc"
+          }
+        },
+        "required": [
+          "token",
+          "link"
+        ]
+      },
+      "ResolvedInvite": {
+        "type": "object",
+        "properties": {
+          "inviter": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The registry name, if Kenni gave one"
+              },
+              "verified": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name",
+              "verified"
+            ],
+            "description": "Null for an invite the operator made"
+          }
+        },
+        "required": [
+          "inviter"
+        ]
+      },
       "Sent": {
         "type": "object",
         "properties": {
@@ -718,6 +829,225 @@
         }
       }
     },
+    "/v1/me": {
+      "get": {
+        "operationId": "getMe",
+        "tags": [
+          "devices"
+        ],
+        "summary": "This account: its name, its mark and its active devices",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "In the contract, not yet built",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteAccount",
+        "tags": [
+          "devices"
+        ],
+        "summary": "Delete this account, its devices, inbox and media (decision 0014)",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The account is deleted"
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "In the contract, not yet built",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/invite": {
+      "post": {
+        "operationId": "rotateInvite",
+        "tags": [
+          "invites"
+        ],
+        "summary": "Make this account's invite link, revoking the one before",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The new link; the old one no longer lets anyone in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewInvite"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "In the contract, not yet built",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "revokeInvite",
+        "tags": [
+          "invites"
+        ],
+        "summary": "Revoke this account's invite link and leave it without one",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The account has no live invite"
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "In the contract, not yet built",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/invites/{token}": {
+      "get": {
+        "operationId": "resolveInvite",
+        "tags": [
+          "invites"
+        ],
+        "summary": "Who sent an invite link; needs no device token, the token is the capability",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$",
+              "example": "q1w2e3r4t5y6u7i8o9p0aAsSdDfFgGhHjJkKlLzZxXc"
+            },
+            "required": true,
+            "name": "token",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The invite is live",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolvedInvite"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no live invite with this token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/devices/{deviceId}": {
       "delete": {
         "operationId": "revokeDevice",
@@ -755,45 +1085,6 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "No device token, or one that is not valid",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "In the contract, not yet built",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/me": {
-      "delete": {
-        "operationId": "deleteAccount",
-        "tags": [
-          "devices"
-        ],
-        "summary": "Delete this account, its devices, inbox and media (decision 0014)",
-        "security": [
-          {
-            "deviceToken": []
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "The account is deleted"
           },
           "401": {
             "description": "No device token, or one that is not valid",

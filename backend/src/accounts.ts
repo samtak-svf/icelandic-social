@@ -135,3 +135,28 @@ export async function registerDevice(
   }
   return { accountId, deviceId, token };
 }
+
+/** The account as its owner sees it: name, mark and active devices. */
+export async function me(env: Env, accountId: string) {
+  const [account, devices] = await db(env).batch<Record<string, unknown>>([
+    db(env)
+      .prepare("SELECT display_name AS name, verified FROM accounts WHERE account_id = ?")
+      .bind(accountId),
+    db(env)
+      .prepare(
+        `SELECT device_id AS deviceId, platform, created_at AS createdAt FROM devices
+          WHERE account_id = ? AND revoked_at IS NULL ORDER BY created_at, device_id`,
+      )
+      .bind(accountId),
+  ]);
+  const row = account?.results[0] as { name: string | null; verified: number } | undefined;
+  return {
+    name: row?.name ?? null,
+    verified: row?.verified === 1,
+    devices: (devices?.results ?? []) as {
+      deviceId: string;
+      platform: "android" | "ios";
+      createdAt: number;
+    }[],
+  };
+}

@@ -8,7 +8,6 @@
     "backend": {
       "entry": ["scripts/*.ts", "test/worker.ts", "test/setup.ts", "dev/worker.ts"],
       "project": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts", "dev/**/*.ts"],
-      "ignore": ["src/brand.gen.ts"],
       "ignoreDependencies": ["cloudflare"]
     }
   }

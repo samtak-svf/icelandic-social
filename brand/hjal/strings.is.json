@@ -21,6 +21,11 @@
   "invite_link_hint": "Sýndu kóðann eða deildu hlekknum. Sá sem opnar hann getur hafið samtal við þig.",
   "invite_link_rotate": "Búa til nýjan hlekk",
   "invite_required": "Hjal er í lokuðum prófunum. Þú þarft hlekk frá einhverjum sem er þegar á Hjal.",
+  "link_invited_by": "{name} býður þér á Hjal.",
+  "link_invited": "Þér er boðið á Hjal.",
+  "link_open_in_app": "Opna í Hjal",
+  "link_test_group": "Hjal er í lokuðum prófunum. Ef appið er ekki komið í símann þinn, biddu þann sem bauð þér um aðgang að prófunum.",
+  "link_expired": "Þessi hlekkur er ekki lengur í gildi. Biddu um nýjan.",
   "new_group": "Nýr hópur",
   "group_member_count": {
     "one": "{count} meðlimur",

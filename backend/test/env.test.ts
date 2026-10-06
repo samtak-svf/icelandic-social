@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
-import { conversation, inbox } from "../src/env/index.ts";
+import ids from "../../identifiers/ids.json" with { type: "json" };
+import { appLinks, conversation, inbox } from "../src/env/index.ts";
 import { euOnly } from "./support.ts";
 
 // tooling/seam-guard.mjs keeps stubs out of every module but src/env; this
@@ -31,5 +32,22 @@ describe("Durable Object stubs from src/env", () => {
     expect(() => (namespace as DurableObjectNamespace).getByName("conv-1")).toThrow(
       /without a jurisdiction/,
     );
+  });
+});
+
+describe("appLinks", () => {
+  it("vouches for the store builds once their vars are set", () => {
+    const links = appLinks({
+      ...env,
+      ANDROID_CERT_SHA256: " AA:01, BB:02 ,",
+      APPLE_TEAM_ID: "TEAM000001",
+    } as unknown as Env);
+    expect(links).toEqual({
+      androidFingerprints: ["AA:01", "BB:02"],
+      appleAppIds: [
+        `TEAM000001.${ids.store.iosBundleId}`,
+        `${ids.appleInterim.teamId}.${ids.appleInterim.iosBundleId}`,
+      ],
+    });
   });
 });

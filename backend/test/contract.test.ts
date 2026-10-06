@@ -37,9 +37,12 @@ describe("the delivery contract", () => {
     expect(operations.sort()).toEqual([
       "delete /v1/devices/{deviceId} revokeDevice",
       "delete /v1/me deleteAccount",
+      "delete /v1/me/invite revokeInvite",
       "get /health getHealth",
       "get /v1/conversations/{conversationId}/messages listMessages",
       "get /v1/conversations/{conversationId}/welcome getWelcome",
+      "get /v1/invites/{token} resolveInvite",
+      "get /v1/me getMe",
       "get /v1/sign-in getSignInConfig",
       "get /v1/ws openSocket",
       "post /v1/accounts/{accountId}/key-packages claimKeyPackages",
@@ -47,6 +50,7 @@ describe("the delivery contract", () => {
       "post /v1/conversations/{conversationId}/messages sendMessage",
       "post /v1/devices registerDevice",
       "post /v1/key-packages uploadKeyPackages",
+      "post /v1/me/invite rotateInvite",
     ]);
   });
 

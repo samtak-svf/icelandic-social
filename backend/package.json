@@ -9,7 +9,8 @@
     "openapi": "node scripts/openapi.ts",
     "typecheck": "wrangler types >/dev/null && tsc --noEmit",
     "check": "pnpm run typecheck && node scripts/openapi.ts --check",
-    "test": "wrangler types >/dev/null && vitest run"
+    "test": "wrangler types >/dev/null && vitest run",
+    "invite:operator": "node scripts/invite-operator.ts"
   },
   "dependencies": {
     "@hono/zod-openapi": "^1.6.3",

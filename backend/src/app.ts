@@ -1,15 +1,17 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { createMiddleware } from "hono/factory";
-import { type Device, deviceForToken, registerDevice } from "./accounts.ts";
+import { type Device, deviceForToken, me, registerDevice } from "./accounts.ts";
 import { createConversationRoute, getWelcomeRoute } from "./api/conversations.ts";
 import {
   deleteAccountRoute,
+  getMeRoute,
   registerDeviceRoute,
   revokeDeviceRoute,
   signInConfigRoute,
 } from "./api/devices.ts";
 import { WsFrame } from "./api/frames.ts";
 import { healthRoute } from "./api/health.ts";
+import { resolveInviteRoute, revokeInviteRoute, rotateInviteRoute } from "./api/invites.ts";
 import { claimKeyPackagesRoute, uploadKeyPackagesRoute } from "./api/key-packages.ts";
 import { listMessagesRoute, sendMessageRoute } from "./api/messages.ts";
 import { SOCKET_ACCOUNT, SOCKET_DEVICE, socketRoute } from "./api/socket.ts";
@@ -17,7 +19,9 @@ import { fromBase64, toBase64 } from "./bytes.ts";
 import { checkSend } from "./conversations.ts";
 import { conversation, inbox, kenni, minClientVersions } from "./env/index.ts";
 import { redeem, signInConfig } from "./identity.ts";
+import { inviteLink, resolveInvite, revokeInvite, rotateInvite } from "./invites.ts";
 import { claim, upload } from "./key-packages.ts";
+import { linkHost } from "./link.ts";
 import { log } from "./log.ts";
 
 /** OpenAPI 3.1 document metadata; the routes and schemas come from src/api/. */
@@ -32,14 +36,15 @@ const BEARER = /^Bearer ([A-Za-z0-9_-]{16,256})$/;
 type AppEnv = { Bindings: Env; Variables: { device: Device } };
 
 /** The /v1 routes a person reaches before they have a device (decision 0019). */
-const PUBLIC = new Set(["GET /v1/sign-in", "POST /v1/devices"]);
+const PUBLIC = [/^GET \/v1\/sign-in$/, /^POST \/v1\/devices$/, /^GET \/v1\/invites\/[^/]+$/];
 
 /**
  * Every other /v1 route needs a device token (decision 0014): its hash must
  * name an active device in D1, which the handlers then act as.
  */
 const deviceToken = createMiddleware<AppEnv>(async (c, next) => {
-  if (PUBLIC.has(`${c.req.method} ${c.req.path}`)) return next();
+  const route = `${c.req.method} ${c.req.path}`;
+  if (PUBLIC.some((pattern) => pattern.test(route))) return next();
   const token = BEARER.exec(c.req.header("authorization") ?? "")?.[1];
   const device = token ? await deviceForToken(c.env, token) : null;
   if (!device) return c.json({ error: "unauthorized" }, 401);
@@ -106,6 +111,31 @@ export function createApp() {
     }
     log("device.registered", { accountId: registered.accountId, deviceId: registered.deviceId });
     return c.json(registered, 200);
+  });
+
+  app.openapi(getMeRoute, async (c) => {
+    const { accountId, deviceId } = c.var.device;
+    const account = await me(c.env, accountId);
+    const devices = account.devices.map((d) => ({ ...d, current: d.deviceId === deviceId }));
+    return c.json({ accountId, name: account.name, verified: account.verified, devices }, 200);
+  });
+
+  // Invites (decision 0019).
+  app.openapi(rotateInviteRoute, async (c) => {
+    const token = await rotateInvite(c.env, c.var.device.accountId);
+    log("invite.rotated", { accountId: c.var.device.accountId });
+    return c.json({ token, link: inviteLink(token) }, 200);
+  });
+
+  app.openapi(revokeInviteRoute, async (c) => {
+    await revokeInvite(c.env, c.var.device.accountId);
+    log("invite.revoked", { accountId: c.var.device.accountId });
+    return c.body(null, 204);
+  });
+
+  app.openapi(resolveInviteRoute, async (c) => {
+    const invite = await resolveInvite(c.env, c.req.valid("param").token);
+    return invite ? c.json(invite, 200) : c.json({ error: "not_found" }, 404);
   });
 
   // Decision 0014: in the contract now, built in phase 1.
@@ -205,6 +235,9 @@ export function createApp() {
   // The frames are not a route body, so they are registered as a component
   // for the generators (decision 0005); /v1/ws points at it.
   app.openAPIRegistry.register("WsFrame", WsFrame);
+
+  // The link host shares the Worker but not the contract.
+  app.route("/", linkHost());
 
   return app;
 }
