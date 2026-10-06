@@ -1,8 +1,10 @@
-//! An in-memory delivery service with the rules of 0015 and 0017, spoken
-//! over the same HTTP requests the Worker answers: one seq per conversation,
-//! a send answered again by its `clientMsgId`, one commit per epoch, the
-//! roster commits move, the latest Welcome per account, KeyPackages consumed
-//! once but the last resort kept. It can lose a request or its answer.
+//! An in-memory delivery service with the rules of 0015, 0017 and 0020,
+//! spoken over the same HTTP requests the Worker answers: one seq per
+//! conversation, a send answered again by its `clientMsgId`, one commit per
+//! epoch from epoch 0, the roster each commit claims, history up to the
+//! commit that left an account out, the latest Welcome per account,
+//! KeyPackages consumed once but the last resort kept. It can lose a request
+//! or its answer.
 //!
 //! Sign-in (0019) is the Worker's half of it: a device registers with any
 //! Kenni code as the account and device its `Link` names, gets a token, and
@@ -17,6 +19,7 @@ use openmls::prelude::tls_codec::Deserialize as _;
 use openmls::prelude::{ContentType, MlsMessageIn};
 use serde_json::{Value, json};
 use spjall_client::api::{Method, Request, Response, Transport, Unreachable};
+use spjall_mls::group::claim_of;
 
 struct Stored {
     seq: u64,
@@ -34,6 +37,8 @@ struct Conversation {
     welcomes: Vec<(u64, String, Vec<String>)>,
     /// Messages before this seq have expired.
     expired_to: u64,
+    /// account → the seq of the commit whose claim left it out.
+    removed: BTreeMap<String, u64>,
 }
 
 #[derive(Default)]
@@ -338,6 +343,7 @@ impl State {
                         messages: Vec::new(),
                         last_epoch: None,
                         welcomes: Vec::new(),
+                        removed: BTreeMap::new(),
                         expired_to: 0,
                     },
                 );
@@ -354,14 +360,19 @@ impl State {
                 let Some(conversation) = self.conversations.get(*id) else {
                     return refuse(404, "not_found");
                 };
-                if !conversation.roster.contains(account) {
-                    return refuse(403, "not_a_member");
-                }
                 let after: u64 = query.strip_prefix("after=").unwrap().parse().unwrap();
+                let last = if conversation.roster.contains(account) {
+                    u64::MAX
+                } else {
+                    match conversation.removed.get(account) {
+                        Some(&removed) if after < removed => removed,
+                        _ => return refuse(403, "not_a_member"),
+                    }
+                };
                 let rows: Vec<&Stored> = conversation
                     .messages
                     .iter()
-                    .filter(|m| m.seq > after)
+                    .filter(|m| m.seq > after && m.seq <= last)
                     .collect();
                 let messages: Vec<Value> = rows
                     .iter()
@@ -450,27 +461,29 @@ impl State {
         if URL_SAFE_NO_PAD.encode(group) != id {
             return refuse(400, "group_mismatch");
         }
-        let roster = &body["roster"];
         let welcome = &body["welcome"];
-        if !commit && (!roster.is_null() || !welcome.is_null()) {
-            return refuse(400, "invalid_request");
-        }
         let before = conversation.roster.clone();
         let mut after = before.clone();
-        after.extend(strings(&roster["add"]));
-        for gone in strings(&roster["remove"]) {
-            after.remove(&gone);
-        }
-        if commit
-            && conversation
-                .last_epoch
-                .is_some_and(|last| epoch != last + 1)
-        {
-            return refuse(409, "epoch_conflict");
-        }
-        let welcome_to = strings(&welcome["to"]);
-        if welcome_to.iter().any(|a| !after.contains(a)) {
-            return refuse(400, "welcome_not_a_member");
+        let mut welcome_to = Vec::new();
+        if commit {
+            let Some(claim) = claim_of(&STANDARD.decode(ciphertext).unwrap()) else {
+                return refuse(400, "invalid_request");
+            };
+            if !claim.roster.iter().any(|a| a == account)
+                || claim.welcome.is_empty() != welcome.is_null()
+            {
+                return refuse(400, "invalid_request");
+            }
+            after = claim.roster.into_iter().collect();
+            if claim.welcome.iter().any(|a| !after.contains(a)) {
+                return refuse(400, "welcome_not_a_member");
+            }
+            welcome_to = claim.welcome;
+            if epoch != conversation.last_epoch.map_or(0, |last| last + 1) {
+                return refuse(409, "epoch_conflict");
+            }
+        } else if !welcome.is_null() {
+            return refuse(400, "invalid_request");
         }
         let seq = conversation
             .messages
@@ -485,6 +498,12 @@ impl State {
         });
         if commit {
             conversation.last_epoch = Some(epoch);
+            for gone in before.difference(&after) {
+                conversation.removed.insert(gone.clone(), seq);
+            }
+            for present in &after {
+                conversation.removed.remove(present);
+            }
             conversation.roster = after.clone();
             if let Some(message) = welcome["message"].as_str() {
                 conversation

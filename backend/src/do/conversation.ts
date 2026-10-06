@@ -15,7 +15,9 @@ export type SendInput = {
   ciphertext: Uint8Array;
   /** Set for a commit: the epoch it was made on (decision 0015). */
   commitEpoch?: number;
-  roster?: { add?: string[]; remove?: string[] };
+  /** Set for a commit: every account its claim names (decision 0020). */
+  roster?: string[];
+  /** The accounts are the claim's too. */
   welcome?: { to: string[]; message: Uint8Array };
 };
 
@@ -29,9 +31,10 @@ type Refusal =
 export type Result<T> = { ok: T } | { error: Refusal };
 
 /**
- * One conversation's delivery service (decisions 0015, 0017): a monotonic
- * `seq`, one commit per epoch, the roster of accounts that commits move, the
- * Welcomes that travel with them, and ciphertext kept for 30 days. A stored
+ * One conversation's delivery service (decisions 0015, 0017, 0020): a
+ * monotonic `seq`, one commit per epoch from epoch 0, the roster each commit
+ * claims, history for an account up to the commit that left it out, the
+ * Welcomes that travel with commits, and ciphertext kept for 30 days. A stored
  * message and the notifications it owes the members are one transaction;
  * the alarm delivers the notifications and deletes what has expired.
  */
@@ -70,6 +73,7 @@ export class Conversation extends DurableObject<Env> {
         PRIMARY KEY (account, seq)
       );
       CREATE TABLE IF NOT EXISTS pending_notify (account TEXT PRIMARY KEY, seq INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS removed (account TEXT PRIMARY KEY, seq INTEGER NOT NULL);
     `);
   }
 
@@ -114,7 +118,7 @@ export class Conversation extends DurableObject<Env> {
    * Stores one message and owes every member a notification, in one
    * transaction. Sending the same `clientMsgId` again answers the first
    * `seq`. A commit takes its epoch or is refused; only a commit that is
-   * stored moves the roster and leaves its Welcome (decision 0017).
+   * stored sets the roster to its claim and leaves its Welcome (0017, 0020).
    */
   async send(input: SendInput): Promise<Result<{ seq: number }>> {
     const result = this.ctx.storage.transactionSync(() => this.store(input));
@@ -137,9 +141,7 @@ export class Conversation extends DurableObject<Env> {
     if (replay) return { ok: { seq: replay.seq } };
 
     const before = this.members();
-    const after = new Set(before);
-    for (const account of input.roster?.add ?? []) after.add(account);
-    for (const account of input.roster?.remove ?? []) after.delete(account);
+    const after = new Set(input.roster ?? before);
     const refusal = this.refusal(input, after);
     if (refusal) return { error: refusal };
 
@@ -154,9 +156,11 @@ export class Conversation extends DurableObject<Env> {
       input.ciphertext,
       now,
     );
-    if (input.commitEpoch !== undefined) this.applyCommit(input, input.commitEpoch, seq, now);
-    // An account this commit removes is told of it too: its fetch answers
-    // not_a_member, which is how its devices learn they are out.
+    if (input.commitEpoch !== undefined) {
+      this.applyCommit(input, input.commitEpoch, before, after, seq, now);
+    }
+    // An account this commit leaves out is told of it too: its fetch reads
+    // up to this commit, which tells its devices whether MLS removed them.
     for (const account of new Set([...before, ...after])) {
       this.sql.exec(
         `INSERT INTO pending_notify (account, seq) VALUES (?, ?)
@@ -171,27 +175,45 @@ export class Conversation extends DurableObject<Env> {
   /**
    * Why this send cannot be stored, given the roster it would leave. A
    * commit must be made on the current epoch: the one after the last stored
-   * commit's, or any epoch before the first (decision 0015).
+   * commit's (decision 0015), and epoch 0, the group's own, for the first
+   * (decision 0020).
    */
   private refusal(input: SendInput, after: Set<string>): Refusal | null {
     if (input.commitEpoch !== undefined) {
       const last = this.sql
         .exec<{ epoch: number | null }>("SELECT max(epoch) AS epoch FROM commits")
         .one().epoch;
-      if (last !== null && input.commitEpoch !== last + 1) return "epoch_conflict";
+      if (input.commitEpoch !== (last === null ? 0 : last + 1)) return "epoch_conflict";
     }
     if (input.welcome?.to.some((account) => !after.has(account))) return "welcome_not_a_member";
     return null;
   }
 
-  /** The commit won its epoch: it moves the roster and leaves its Welcome. */
-  private applyCommit(input: SendInput, epoch: number, seq: number, now: number): void {
+  /**
+   * The commit won its epoch: the roster becomes its claim, an account it
+   * leaves out keeps the history up to it, and it leaves its Welcome.
+   */
+  private applyCommit(
+    input: SendInput,
+    epoch: number,
+    before: string[],
+    after: Set<string>,
+    seq: number,
+    now: number,
+  ): void {
     this.sql.exec("INSERT INTO commits (epoch, seq) VALUES (?, ?)", epoch, seq);
-    for (const account of input.roster?.add ?? []) {
-      this.sql.exec("INSERT OR IGNORE INTO roster (account) VALUES (?)", account);
-    }
-    for (const account of input.roster?.remove ?? []) {
+    for (const account of before.filter((a) => !after.has(a))) {
       this.sql.exec("DELETE FROM roster WHERE account = ?", account);
+      this.sql.exec(
+        `INSERT INTO removed (account, seq) VALUES (?, ?)
+         ON CONFLICT (account) DO UPDATE SET seq = excluded.seq`,
+        account,
+        seq,
+      );
+    }
+    for (const account of after) {
+      this.sql.exec("INSERT OR IGNORE INTO roster (account) VALUES (?)", account);
+      this.sql.exec("DELETE FROM removed WHERE account = ?", account);
     }
     if (!input.welcome) return;
     this.sql.exec(
@@ -205,18 +227,30 @@ export class Conversation extends DurableObject<Env> {
     }
   }
 
-  /** The stored messages after `after`, oldest first. */
+  /**
+   * The stored messages after `after`, oldest first. An account a commit
+   * left out reads up to that commit, so its devices learn from MLS whether
+   * they were removed or another member's claim was wrong (decision 0020).
+   */
   async list(
     account: string,
     after: number,
     limit: number,
   ): Promise<Result<{ messages: { seq: number; ciphertext: Uint8Array }[]; more: boolean }>> {
     if (!this.meta()) return { error: "not_found" };
-    if (!this.isMember(account)) return { error: "not_a_member" };
+    let last = Number.MAX_SAFE_INTEGER;
+    if (!this.isMember(account)) {
+      const removed = this.sql
+        .exec<{ seq: number }>("SELECT seq FROM removed WHERE account = ?", account)
+        .toArray()[0];
+      if (!removed || after >= removed.seq) return { error: "not_a_member" };
+      last = removed.seq;
+    }
     const rows = this.sql
       .exec<{ seq: number; ciphertext: ArrayBuffer }>(
-        "SELECT seq, ciphertext FROM messages WHERE seq > ? ORDER BY seq LIMIT ?",
+        "SELECT seq, ciphertext FROM messages WHERE seq > ? AND seq <= ? ORDER BY seq LIMIT ?",
         after,
+        last,
         limit + 1,
       )
       .toArray();
@@ -266,6 +300,7 @@ export class Conversation extends DurableObject<Env> {
   /** Drops an account that no longer exists (decision 0014, `DELETE /v1/me`). */
   async removeAccount(account: string): Promise<void> {
     this.sql.exec("DELETE FROM roster WHERE account = ?", account);
+    this.sql.exec("DELETE FROM removed WHERE account = ?", account);
     this.sql.exec("DELETE FROM pending_notify WHERE account = ?", account);
   }
 

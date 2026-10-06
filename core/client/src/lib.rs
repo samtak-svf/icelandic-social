@@ -8,6 +8,10 @@
 //! answers. A commit stays pending until the fetch that reaches its seq
 //! merges it, and nothing is sealed past it. Each received message is
 //! decrypted and stored in one transaction, which also moves the cursor.
+//!
+//! The server keeps the roster each commit claims (0020). A commit whose
+//! claim MLS does not back queues a correcting commit, and a refusal no
+//! commit explains leaves the conversation `Excluded` until one restores it.
 
 mod account;
 pub mod api;
@@ -59,6 +63,10 @@ pub enum State {
     /// Made here; the server does not have it yet.
     New,
     Active,
+    /// The server refuses this device, but no commit it has read removed
+    /// it: another member's claim left it out. It is tried again on the
+    /// next notify, which the commit that restores it sends (0020).
+    Excluded,
     /// A commit removed this account.
     Removed,
     /// This device missed what it needed to follow the group: messages
@@ -72,6 +80,7 @@ impl State {
         match self {
             Self::New => "new",
             Self::Active => "active",
+            Self::Excluded => "excluded",
             Self::Removed => "removed",
             Self::Stale => "stale",
         }
@@ -81,6 +90,7 @@ impl State {
         Ok(match text {
             "new" => Self::New,
             "active" => Self::Active,
+            "excluded" => Self::Excluded,
             "removed" => Self::Removed,
             "stale" => Self::Stale,
             _ => return Err(rusqlite::Error::InvalidQuery),
@@ -162,6 +172,8 @@ enum Kind {
     Message,
     Add,
     Remove,
+    /// A commit that changes no one and claims the roster MLS holds.
+    Correct,
 }
 
 impl Kind {
@@ -170,6 +182,7 @@ impl Kind {
             "message" => Self::Message,
             "add" => Self::Add,
             "remove" => Self::Remove,
+            "correct" => Self::Correct,
             _ => return Err(rusqlite::Error::InvalidQuery),
         })
     }
@@ -259,7 +272,7 @@ fn identity(tx: &Transaction, provider: &Provider) -> Result<Identity, ClientErr
 fn conversation_of(tx: &Transaction, group: &[u8]) -> Result<Option<(State, u64)>, ClientError> {
     Ok(tx
         .query_row(
-            "SELECT state, cursor FROM conversations WHERE group_id = ?1",
+            &format!("SELECT {STATE}, cursor FROM conversations WHERE group_id = ?1"),
             [group],
             |r| {
                 Ok((
@@ -271,6 +284,9 @@ fn conversation_of(tx: &Transaction, group: &[u8]) -> Result<Option<(State, u64)
         .optional()?)
 }
 
+/// A conversation's `State` as stored: `excluded` only ever qualifies `active`.
+const STATE: &str = "CASE excluded WHEN 1 THEN 'excluded' ELSE state END";
+
 fn conversation_state(tx: &Transaction, group: &[u8]) -> Result<State, ClientError> {
     conversation_of(tx, group)?
         .map(|c| c.0)
@@ -280,7 +296,7 @@ fn conversation_state(tx: &Transaction, group: &[u8]) -> Result<State, ClientErr
 /// A conversation this device can still send to.
 fn open_conversation(tx: &Transaction, group: &[u8]) -> Result<(), ClientError> {
     match conversation_state(tx, group)? {
-        State::New | State::Active => Ok(()),
+        State::New | State::Active | State::Excluded => Ok(()),
         State::Removed | State::Stale => Err(ClientError::UnknownConversation),
     }
 }
@@ -301,15 +317,11 @@ fn next_unsent(tx: &Transaction, group: &[u8]) -> Result<Option<Unsent>, ClientE
         Vec<u8>,
         Option<String>,
         Option<Vec<u8>>,
-        Option<String>,
-        Option<String>,
         Option<Vec<u8>>,
-        Option<String>,
     );
     let row: Option<Row> = tx
         .query_row(
-            "SELECT id, kind, intent, client_msg_id, ciphertext, roster_add, roster_remove,
-                    welcome, welcome_to
+            "SELECT id, kind, intent, client_msg_id, ciphertext, welcome
              FROM outbox WHERE group_id = ?1 AND seq IS NULL ORDER BY id LIMIT 1",
             [group],
             |r| {
@@ -320,15 +332,11 @@ fn next_unsent(tx: &Transaction, group: &[u8]) -> Result<Option<Unsent>, ClientE
                     r.get(3)?,
                     r.get(4)?,
                     r.get(5)?,
-                    r.get(6)?,
-                    r.get(7)?,
-                    r.get(8)?,
                 ))
             },
         )
         .optional()?;
-    let Some((id, kind, intent, client_msg_id, ciphertext, add, remove, welcome, welcome_to)) = row
-    else {
+    let Some((id, kind, intent, client_msg_id, ciphertext, welcome)) = row else {
         return Ok(None);
     };
     let sealed = client_msg_id
@@ -336,9 +344,7 @@ fn next_unsent(tx: &Transaction, group: &[u8]) -> Result<Option<Unsent>, ClientE
         .map(|(client_msg_id, ciphertext)| Outgoing {
             client_msg_id,
             ciphertext,
-            roster_add: split(add),
-            roster_remove: split(remove),
-            welcome: welcome.map(|w| (split(welcome_to), w)),
+            welcome,
         });
     Ok(Some(Unsent {
         id,
@@ -349,9 +355,56 @@ fn next_unsent(tx: &Transaction, group: &[u8]) -> Result<Option<Unsent>, ClientE
 }
 
 fn set_state(tx: &Transaction, group: &[u8], state: State) -> rusqlite::Result<()> {
+    let (stored, excluded) = match state {
+        State::Excluded => (State::Active, true),
+        other => (other, false),
+    };
     tx.execute(
-        "UPDATE conversations SET state = ?2 WHERE group_id = ?1",
-        params![group, state.as_str()],
+        "UPDATE conversations SET state = ?2, excluded = ?3 WHERE group_id = ?1",
+        params![group, stored.as_str(), excluded],
+    )
+    .map(drop)
+}
+
+/// Forgets a sealed row that the server refused, and the commit it holds,
+/// keeping its intent to seal again later.
+fn unseal(tx: &Transaction, group: &[u8], id: i64) -> Result<(), ClientError> {
+    let provider = Provider::new(tx);
+    let mut mls = Group::load(&provider, group)?;
+    if mls.has_pending_commit() {
+        mls.clear_pending_commit(&provider)?;
+    }
+    tx.execute(
+        "UPDATE outbox SET client_msg_id = NULL, ciphertext = NULL,
+             roster_add = NULL, roster_remove = NULL, welcome = NULL
+         WHERE id = ?1",
+        [id],
+    )?;
+    Ok(())
+}
+
+/// A correcting commit is queued once, and only until a commit with a
+/// backed claim, which sets the server's roster right on its own.
+fn queue_correction(tx: &Transaction, group: &[u8]) -> Result<(), ClientError> {
+    if !correction_queued(tx, group)? {
+        enqueue(tx, group, "correct", &[])?;
+    }
+    Ok(())
+}
+
+fn correction_queued(tx: &Transaction, group: &[u8]) -> rusqlite::Result<bool> {
+    tx.query_row(
+        "SELECT EXISTS (SELECT 1 FROM outbox
+                        WHERE group_id = ?1 AND kind = 'correct' AND ciphertext IS NULL)",
+        [group],
+        |r| r.get(0),
+    )
+}
+
+fn drop_correction(tx: &Transaction, group: &[u8]) -> rusqlite::Result<()> {
+    tx.execute(
+        "DELETE FROM outbox WHERE group_id = ?1 AND kind = 'correct' AND ciphertext IS NULL",
+        [group],
     )
     .map(drop)
 }
@@ -576,8 +629,9 @@ impl<T: Transport> Client<T> {
 
     pub fn conversations(&mut self) -> Result<Vec<Conversation>, ClientError> {
         self.store.try_write(|tx| {
-            let mut statement =
-                tx.prepare("SELECT group_id, state FROM conversations ORDER BY created_at")?;
+            let mut statement = tx.prepare(&format!(
+                "SELECT group_id, {STATE} FROM conversations ORDER BY created_at"
+            ))?;
             let rows = statement.query_map([], |r| {
                 Ok(Conversation {
                     id: conversation_id(&r.get::<_, Vec<u8>>(0)?),
@@ -664,7 +718,9 @@ impl<T: Transport> Client<T> {
                     group_id(&conversation).ok_or(ClientError::Protocol("conversation id"))?;
                 let known = self.store.try_write(|tx| conversation_of(tx, &group))?;
                 match known {
-                    Some((State::New | State::Active, cursor)) if seq > cursor => {
+                    Some((State::New | State::Active | State::Excluded, cursor))
+                        if seq > cursor =>
+                    {
                         self.sync_one(&group)?
                     }
                     Some(_) => {}
@@ -711,7 +767,10 @@ impl<T: Transport> Client<T> {
                 return Ok(());
             }
             let progressed = self.fetch(group)?;
-            if drained == Drain::Done || !progressed {
+            // A fetch can queue a correction, which a Done drain has not seen.
+            let queued = drained == Drain::Done
+                && self.store.try_write(|tx| correction_queued(tx, group))?;
+            if !progressed || (drained == Drain::Done && !queued) {
                 return Ok(());
             }
         }
@@ -720,7 +779,12 @@ impl<T: Transport> Client<T> {
     /// Seals and sends outbox rows in order until one waits for a fetch.
     fn drain(&mut self, group: &[u8]) -> Result<Drain, ClientError> {
         let conversation = conversation_id(group);
-        if self.store.try_write(|tx| conversation_state(tx, group))? == State::New {
+        let state = self.store.try_write(|tx| conversation_state(tx, group))?;
+        if state == State::Excluded {
+            // The server refused the last send; a fetch learns if that changed.
+            return Ok(Drain::Blocked);
+        }
+        if state == State::New {
             match authed(&self.transport, &self.token)?.create_conversation(&conversation) {
                 Ok(()) => {}
                 Err(ApiError::Refused { status: 409, .. }) => {
@@ -754,25 +818,17 @@ impl<T: Transport> Client<T> {
                 Err(ApiError::Refused { status: 409, .. }) => {
                     // Another commit took this epoch. Forget ours, keep its
                     // intent, and seal it again once the fetch has caught up.
-                    self.store.try_write(|tx| {
-                        let provider = Provider::new(tx);
-                        let mut group = Group::load(&provider, group)?;
-                        if group.has_pending_commit() {
-                            group.clear_pending_commit(&provider)?;
-                        }
-                        tx.execute(
-                            "UPDATE outbox SET client_msg_id = NULL, ciphertext = NULL,
-                                 roster_add = NULL, roster_remove = NULL,
-                                 welcome = NULL, welcome_to = NULL
-                             WHERE id = ?1",
-                            [row.id],
-                        )?;
-                        Ok::<_, ClientError>(())
-                    })?;
+                    self.store.try_write(|tx| unseal(tx, group, row.id))?;
                     return Ok(Drain::Blocked);
                 }
                 Err(ApiError::Refused { status: 403, .. }) => {
-                    self.removed(group)?;
+                    // Not a member, by a claim this device has not read a
+                    // commit for. Only a commit removes it (0020): keep the
+                    // row to send once a correction restores this account.
+                    self.store.try_write(|tx| {
+                        unseal(tx, group, row.id)?;
+                        Ok::<_, ClientError>(set_state(tx, group, State::Excluded)?)
+                    })?;
                     return Ok(Drain::Over);
                 }
                 Err(error) => return Err(error.into()),
@@ -822,16 +878,20 @@ impl<T: Transport> Client<T> {
                 return Ok(Sealed::Blocked);
             }
             let identity = identity(tx, &provider)?;
-            let out = match row.kind {
-                Kind::Message => Outgoing {
-                    client_msg_id: Envelope::decode(&row.intent)?.id,
-                    ciphertext: mls.encrypt(&provider, &identity, &row.intent)?,
-                    roster_add: Vec::new(),
-                    roster_remove: Vec::new(),
-                    welcome: None,
-                },
-                Kind::Add | Kind::Remove => {
-                    let commit = if row.kind == Kind::Add {
+            let (out, roster_add, roster_remove) = match row.kind {
+                Kind::Message => (
+                    Outgoing {
+                        client_msg_id: Envelope::decode(&row.intent)?.id,
+                        ciphertext: mls.encrypt(&provider, &identity, &row.intent)?,
+                        welcome: None,
+                    },
+                    None,
+                    None,
+                ),
+                Kind::Add | Kind::Remove | Kind::Correct => {
+                    let commit = if row.kind == Kind::Correct {
+                        Some(mls.correct(&provider, &identity)?)
+                    } else if row.kind == Kind::Add {
                         // Devices a commit since this was queued already added.
                         let members = mls.devices()?;
                         claimed.retain(|c| !members.contains(&c.device));
@@ -852,27 +912,34 @@ impl<T: Transport> Client<T> {
                         tx.execute("DELETE FROM outbox WHERE id = ?1", [row.id])?;
                         return Ok(Sealed::Dropped);
                     };
-                    Outgoing {
-                        client_msg_id: random_id(),
-                        ciphertext: commit.message,
-                        roster_add: commit.added,
-                        roster_remove: commit.removed,
-                        welcome: commit.welcome.map(|w| (commit.welcome_to, w)),
-                    }
+                    let changes = |accounts: &[String]| {
+                        (row.kind != Kind::Correct)
+                            .then(|| lines(accounts))
+                            .flatten()
+                    };
+                    let (add, remove) = (changes(&commit.added), changes(&commit.removed));
+                    (
+                        Outgoing {
+                            client_msg_id: random_id(),
+                            ciphertext: commit.message,
+                            welcome: commit.welcome,
+                        },
+                        add,
+                        remove,
+                    )
                 }
             };
             tx.execute(
                 "UPDATE outbox SET client_msg_id = ?2, ciphertext = ?3, roster_add = ?4,
-                     roster_remove = ?5, welcome = ?6, welcome_to = ?7
+                     roster_remove = ?5, welcome = ?6
                  WHERE id = ?1",
                 params![
                     row.id,
                     out.client_msg_id,
                     out.ciphertext,
-                    lines(&out.roster_add),
-                    lines(&out.roster_remove),
-                    out.welcome.as_ref().map(|w| &w.1),
-                    out.welcome.as_ref().and_then(|w| lines(&w.0)),
+                    roster_add,
+                    roster_remove,
+                    out.welcome,
                 ],
             )?;
             Ok::<_, ClientError>(Sealed::Ready(out))
@@ -885,7 +952,7 @@ impl<T: Transport> Client<T> {
         let conversation = conversation_id(group);
         let mut progressed = false;
         'pages: loop {
-            let Some((State::Active, cursor)) =
+            let Some((state @ (State::Active | State::Excluded), cursor)) =
                 self.store.try_write(|tx| conversation_of(tx, group))?
             else {
                 break;
@@ -893,12 +960,19 @@ impl<T: Transport> Client<T> {
             let api::Page { messages, more } =
                 match authed(&self.transport, &self.token)?.list_messages(&conversation, cursor) {
                     Ok(page) => page,
+                    // Past the commit that left this account out, by a claim
+                    // this device may not have seen backed (0020).
                     Err(ApiError::Refused { status: 403, .. }) => {
-                        self.removed(group)?;
-                        return Ok(true);
+                        self.store
+                            .try_write(|tx| set_state(tx, group, State::Excluded))?;
+                        break;
                     }
                     Err(error) => return Err(error.into()),
                 };
+            if state == State::Excluded {
+                self.store
+                    .try_write(|tx| set_state(tx, group, State::Active))?;
+            }
             for (seq, bytes) in messages {
                 let (next, events) = self.store.try_write(|tx| receive(tx, group, seq, &bytes))?;
                 self.outcome.events.extend(events);
@@ -920,15 +994,6 @@ impl<T: Transport> Client<T> {
             self.outcome.frames.push(ack(&conversation, cursor));
         }
         Ok(progressed)
-    }
-
-    fn removed(&mut self, group: &[u8]) -> Result<(), ClientError> {
-        self.store
-            .try_write(|tx| set_state(tx, group, State::Removed))?;
-        self.outcome.events.push(Event::Removed {
-            conversation: conversation_id(group),
-        });
-        Ok(())
     }
 
     /// A conversation this device is not in yet: join it from the Welcome
@@ -1033,11 +1098,16 @@ fn receive(
             }));
         } else {
             mls.merge_pending_commit(&provider)?;
-            events.push(Event::Membership {
-                conversation: conversation.clone(),
-                added: split(roster_add),
-                removed: split(roster_remove),
-            });
+            // An own claim is always backed.
+            drop_correction(tx, group)?;
+            let (added, removed) = (split(roster_add), split(roster_remove));
+            if !added.is_empty() || !removed.is_empty() {
+                events.push(Event::Membership {
+                    conversation: conversation.clone(),
+                    added,
+                    removed,
+                });
+            }
         }
         tx.execute("DELETE FROM outbox WHERE id = ?1", [id])?;
     } else {
@@ -1069,12 +1139,24 @@ fn receive(
                     conversation: conversation.clone(),
                 });
             }
-            Ok(Received::Commit { added, removed, .. }) => {
-                events.push(Event::Membership {
-                    conversation: conversation.clone(),
-                    added: accounts(added),
-                    removed: accounts(removed),
-                });
+            Ok(Received::Commit {
+                added,
+                removed,
+                backed,
+                ..
+            }) => {
+                if backed {
+                    drop_correction(tx, group)?;
+                } else {
+                    queue_correction(tx, group)?;
+                }
+                if !added.is_empty() || !removed.is_empty() {
+                    events.push(Event::Membership {
+                        conversation: conversation.clone(),
+                        added: accounts(added),
+                        removed: accounts(removed),
+                    });
+                }
             }
             Ok(Received::Proposal | Received::Own) => {}
             Err(GroupError::Storage(error)) => return Err(GroupError::Storage(error).into()),

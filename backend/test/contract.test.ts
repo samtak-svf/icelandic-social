@@ -85,13 +85,10 @@ describe("the delivery contract", () => {
     expect(response.status).toBe(401);
   });
 
-  it("refuses a Welcome addressed to nobody", async () => {
+  it("refuses a Welcome without its message", async () => {
     const response = await fetch(
       "/v1/conversations/c_1/messages",
-      json(
-        { clientMsgId: "m_1", ciphertext: CIPHERTEXT, welcome: { to: [], message: CIPHERTEXT } },
-        TOKEN,
-      ),
+      json({ clientMsgId: "m_1", ciphertext: CIPHERTEXT, welcome: {} }, TOKEN),
     );
     expect(response.status).toBe(400);
   });

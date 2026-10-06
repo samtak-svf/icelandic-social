@@ -101,9 +101,8 @@ pub(crate) fn from_base64(text: &str) -> Option<Vec<u8>> {
 pub struct Outgoing {
     pub client_msg_id: String,
     pub ciphertext: Vec<u8>,
-    pub roster_add: Vec<String>,
-    pub roster_remove: Vec<String>,
-    pub welcome: Option<(Vec<String>, Vec<u8>)>,
+    /// A commit's Welcome; who it is for is in the commit's claim (0020).
+    pub welcome: Option<Vec<u8>>,
 }
 
 #[derive(Serialize)]
@@ -112,22 +111,11 @@ struct SendBody<'a> {
     client_msg_id: &'a str,
     ciphertext: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    roster: Option<Roster<'a>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    welcome: Option<WelcomeFor<'a>>,
+    welcome: Option<WelcomeMessage>,
 }
 
 #[derive(Serialize)]
-struct Roster<'a> {
-    #[serde(skip_serializing_if = "<[String]>::is_empty")]
-    add: &'a [String],
-    #[serde(skip_serializing_if = "<[String]>::is_empty")]
-    remove: &'a [String],
-}
-
-#[derive(Serialize)]
-struct WelcomeFor<'a> {
-    to: &'a [String],
+struct WelcomeMessage {
     message: String,
 }
 
@@ -343,14 +331,7 @@ impl<'a, T: Transport + ?Sized> Api<'a, T> {
         let body = SendBody {
             client_msg_id: &out.client_msg_id,
             ciphertext: base64(&out.ciphertext),
-            roster: (!out.roster_add.is_empty() || !out.roster_remove.is_empty()).then_some(
-                Roster {
-                    add: &out.roster_add,
-                    remove: &out.roster_remove,
-                },
-            ),
-            welcome: out.welcome.as_ref().map(|(to, message)| WelcomeFor {
-                to,
+            welcome: out.welcome.as_ref().map(|message| WelcomeMessage {
                 message: base64(message),
             }),
         };

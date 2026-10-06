@@ -11,7 +11,7 @@ use relay::{Link, Relay};
 use spjall_client::api::{ApiError, Platform};
 use spjall_client::{Client, ClientError, Event, State};
 use spjall_envelope::Body;
-use spjall_mls::group::GroupError;
+use spjall_mls::group::{GroupError, forge};
 use tempfile::TempDir;
 
 const KEY: [u8; 32] = [7; 32];
@@ -252,7 +252,7 @@ fn the_loser_of_an_epoch_commits_its_intent_again() {
     let conflicts: Vec<_> = relay
         .sends("a1")
         .into_iter()
-        .filter(|s| !s["roster"].is_null())
+        .filter(|s| !s["welcome"].is_null())
         .collect();
     assert_eq!(conflicts.len(), 3, "the creation, the refused, the new");
     assert_ne!(conflicts[1]["clientMsgId"], conflicts[2]["clientMsgId"]);
@@ -339,6 +339,60 @@ fn a_removed_account_learns_it() {
             .send(&conversation, Body::Text { text: "?".into() }),
         Err(ClientError::UnknownConversation)
     ));
+}
+
+/// A commit can claim a roster MLS does not hold (0020): `a` adds `d` and
+/// tells the server `b` is gone. `b` reads up to that commit, and is refused
+/// after it without a commit removing it, so it is `Excluded`, not removed.
+/// `c` sees the claim is not backed and corrects it, and `b` reads again.
+#[test]
+fn a_claim_that_leaves_a_member_out_is_corrected() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let mut c1 = Phone::new(&relay, "c", "c1");
+    let mut d1 = Phone::new(&relay, "d", "d1");
+    let conversation = conversation(&mut a1, &mut b1);
+    a1.client
+        .add_accounts(&conversation, &strings(&["c"]))
+        .unwrap();
+    a1.sync();
+    b1.deliver();
+    assert_eq!(joined(&c1.deliver()), vec![conversation.clone()]);
+
+    a1.client
+        .add_accounts(&conversation, &strings(&["d"]))
+        .unwrap();
+    forge::next_claim(&["a", "c", "d"], &["d"]);
+    a1.sync();
+
+    assert_eq!(
+        membership(&b1.deliver()),
+        vec![(strings(&["d"]), Vec::new())]
+    );
+    let state = |phone: &mut Phone| phone.client.conversations().unwrap()[0].state;
+    assert_eq!(state(&mut b1), State::Excluded);
+    let refused = relay.sends("b1");
+    assert_eq!(refused.len(), 1, "b's own correction, refused");
+
+    c1.deliver();
+    assert_eq!(joined(&d1.deliver()), vec![conversation.clone()]);
+    a1.deliver();
+    assert!(b1.deliver().is_empty());
+    assert_eq!(state(&mut b1), State::Active);
+    assert_eq!(
+        relay.sends("b1").len(),
+        1,
+        "c's correction made b's needless"
+    );
+
+    a1.send(&conversation, "aftur öll");
+    a1.sync();
+    for phone in [&mut b1, &mut c1, &mut d1] {
+        assert_eq!(texts(&phone.deliver()), strings(&["aftur öll"]));
+    }
+    // The creation, two adds, the correction and the message.
+    assert_eq!(relay.stored(&conversation), 5);
 }
 
 #[test]

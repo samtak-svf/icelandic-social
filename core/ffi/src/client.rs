@@ -216,6 +216,9 @@ pub enum ConversationState {
     /// Made here; the server does not have it yet.
     New,
     Active,
+    /// The server refuses this device, but no commit removed it; tried
+    /// again on the next notify (0020).
+    Excluded,
     /// A commit removed this account.
     Removed,
     /// This device missed what it needed to follow the group.
@@ -227,6 +230,7 @@ impl From<core::State> for ConversationState {
         match state {
             core::State::New => Self::New,
             core::State::Active => Self::Active,
+            core::State::Excluded => Self::Excluded,
             core::State::Removed => Self::Removed,
             core::State::Stale => Self::Stale,
         }

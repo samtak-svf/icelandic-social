@@ -86,7 +86,7 @@ describe("the socket", () => {
       clientMsgId: "add",
       ciphertext: Uint8Array.of(1),
       commitEpoch: 0,
-      roster: { add: [b.accountId] },
+      roster: [a.accountId, b.accountId],
     });
 
     const [sa, sb, so] = [

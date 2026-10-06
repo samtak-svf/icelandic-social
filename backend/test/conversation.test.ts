@@ -5,8 +5,9 @@ import { RETENTION_MS, type SendInput } from "../src/do/conversation.ts";
 import { conversation, inbox } from "../src/env/index.ts";
 import { euEnv } from "./support.ts";
 
-// The Conversation DO on its own (decisions 0015, 0017): order, the epoch
-// rule, the roster, Welcomes, fan-out and retention. Each test has its own
+// The Conversation DO on its own (decisions 0015, 0017, 0020): order, the
+// epoch rule, the roster each commit claims, history up to a removal,
+// Welcomes, fan-out and retention. Each test has its own
 // conversation; the bytes are opaque here, since the Worker reads the framing.
 
 const testEnv = euEnv(env);
@@ -56,6 +57,14 @@ describe("a conversation", () => {
     expect(await stub.welcome("x")).toEqual({ error: "not_a_member" });
   });
 
+  it("takes its first commit at epoch 0 only", async () => {
+    const { stub } = await created();
+    expect(await stub.send(message("a", "c7", { commitEpoch: 7 }))).toEqual({
+      error: "epoch_conflict",
+    });
+    expect(await stub.send(message("a", "c0", { commitEpoch: 0 }))).toEqual({ ok: { seq: 1 } });
+  });
+
   it("stores one commit per epoch, and older application messages too", async () => {
     const { stub } = await created();
     expect(await stub.send(message("a", "c0", { commitEpoch: 0 }))).toEqual({ ok: { seq: 1 } });
@@ -70,20 +79,38 @@ describe("a conversation", () => {
     expect(await stub.send(message("a", "late"))).toEqual({ ok: { seq: 3 } });
   });
 
-  it("moves the roster only with the commit that wins its epoch", async () => {
+  it("sets the roster to the claim of the commit that wins its epoch", async () => {
     const { stub } = await created("a");
-    await stub.send(message("a", "add", { commitEpoch: 0, roster: { add: ["b", "c"] } }));
+    await stub.send(message("a", "add", { commitEpoch: 0, roster: ["a", "b", "c"] }));
     expect(await stub.send(message("b", "hi"))).toEqual({ ok: { seq: 2 } });
 
-    const lost = await stub.send(
-      message("b", "kick", { commitEpoch: 0, roster: { remove: ["a"] } }),
-    );
+    const lost = await stub.send(message("b", "kick", { commitEpoch: 0, roster: ["b", "c"] }));
     expect(lost).toEqual({ error: "epoch_conflict" });
     expect(await stub.send(message("a", "still"))).toEqual({ ok: { seq: 3 } });
 
-    await stub.send(message("a", "remove", { commitEpoch: 1, roster: { remove: ["c"] } }));
+    await stub.send(message("a", "remove", { commitEpoch: 1, roster: ["a", "b"] }));
     expect(await stub.send(message("c", "gone"))).toEqual({ error: "not_a_member" });
-    expect(await stub.list("c", 0, 10)).toEqual({ error: "not_a_member" });
+    expect(await stub.welcome("c")).toEqual({ error: "not_a_member" });
+  });
+
+  it("lets an account a commit left out read up to that commit", async () => {
+    const { stub } = await created("a");
+    await stub.send(message("a", "add", { commitEpoch: 0, roster: ["a", "b"] }));
+    await stub.send(message("b", "hi"));
+    await stub.send(message("a", "drop", { commitEpoch: 1, roster: ["a"] }));
+    await stub.send(message("a", "after"));
+
+    const page = await stub.list("b", 1, 10);
+    expect("ok" in page && page.ok.messages.map((m) => m.seq)).toEqual([2, 3]);
+    expect("ok" in page && page.ok.more).toBe(false);
+    const short = await stub.list("b", 1, 1);
+    expect("ok" in short && short.ok.more).toBe(true);
+    expect(await stub.list("b", 3, 10)).toEqual({ error: "not_a_member" });
+
+    // Back in, it reads everything again.
+    await stub.send(message("a", "back", { commitEpoch: 2, roster: ["a", "b"] }));
+    const all = await stub.list("b", 3, 10);
+    expect("ok" in all && all.ok.messages.map((m) => m.seq)).toEqual([4, 5]);
   });
 
   it("keeps a Welcome for the accounts it is to, at its commit's seq", async () => {
@@ -91,7 +118,7 @@ describe("a conversation", () => {
     await stub.send(message("a", "m1"));
     const welcome = { to: ["b"], message: bytes(9) };
     const sent = await stub.send(
-      message("a", "add", { commitEpoch: 0, roster: { add: ["b", "c"] }, welcome }),
+      message("a", "add", { commitEpoch: 0, roster: ["a", "b", "c"], welcome }),
     );
     expect(sent).toEqual({ ok: { seq: 2 } });
     expect(await stub.welcome("b")).toEqual({ ok: { seq: 2, welcome: bytes(9) } });
@@ -99,7 +126,7 @@ describe("a conversation", () => {
     expect(await stub.welcome("a")).toEqual({ error: "not_found" });
   });
 
-  it("refuses a Welcome for an account the commit does not add", async () => {
+  it("refuses a Welcome for an account the claim leaves out", async () => {
     const { stub } = await created("a");
     const welcome = { to: ["b"], message: bytes(9) };
     expect(await stub.send(message("a", "add", { commitEpoch: 0, welcome }))).toEqual({
@@ -122,8 +149,8 @@ describe("a conversation", () => {
 
   it("notifies every member's inbox, and a removed one of its removal only", async () => {
     const { id, stub } = await created("n_a");
-    await stub.send(message("n_a", "add", { commitEpoch: 0, roster: { add: ["n_b", "n_c"] } }));
-    await stub.send(message("n_a", "drop", { commitEpoch: 1, roster: { remove: ["n_c"] } }));
+    await stub.send(message("n_a", "add", { commitEpoch: 0, roster: ["n_a", "n_b", "n_c"] }));
+    await stub.send(message("n_a", "drop", { commitEpoch: 1, roster: ["n_a", "n_b"] }));
     await stub.send(message("n_b", "hi"));
     await runDurableObjectAlarm(stub);
     expect(await inbox(testEnv, "n_a").latest()).toEqual({ [id]: 3 });
@@ -137,7 +164,7 @@ describe("a conversation", () => {
   it("deletes messages and Welcomes 30 days after they were stored", async () => {
     const { stub } = await created("a");
     const welcome = { to: ["b"], message: bytes(9) };
-    await stub.send(message("a", "add", { commitEpoch: 0, roster: { add: ["b"] }, welcome }));
+    await stub.send(message("a", "add", { commitEpoch: 0, roster: ["a", "b"], welcome }));
     await stub.send(message("a", "new"));
     await runDurableObjectAlarm(stub);
     await runInDurableObject(stub, (_, state) => {

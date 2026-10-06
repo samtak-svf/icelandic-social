@@ -1,7 +1,8 @@
 // The unencrypted framing of an MLS message (RFC 9420 §6), which is all the
-// server reads (decisions 0002, 0017): which group, which epoch, and whether
-// it is a commit. Everything after those fields is ciphertext or signed
-// content it neither needs nor checks. api/fixtures/mls-framing.json holds
+// server reads (decisions 0002, 0017, 0020): which group, which epoch,
+// whether it is a commit, and the authenticated_data a commit's claim is in.
+// Everything after those fields is ciphertext or signed content it neither
+// needs nor checks. api/fixtures/mls-framing.json holds
 // real OpenMLS messages to test against.
 
 /** RFC 9420 §6, `WireFormat`. */
@@ -24,6 +25,8 @@ export type Framing =
       groupId: Uint8Array;
       epoch: number;
       contentType: ContentType;
+      /** Signed by the sender but not encrypted; a commit's claim (0020). */
+      authenticatedData: Uint8Array;
     }
   | { wireFormat: "welcome"; cipherSuite: number }
   | {
@@ -132,18 +135,24 @@ export function readFraming(bytes: Uint8Array): Framing {
       const groupId = reader.vector();
       const epoch = reader.u64();
       skipSender(reader);
-      reader.vector(); // authenticated_data
-      return { wireFormat, groupId, epoch, contentType: contentType(reader.u8()) };
+      const authenticatedData = reader.vector();
+      return {
+        wireFormat,
+        groupId,
+        epoch,
+        contentType: contentType(reader.u8()),
+        authenticatedData,
+      };
     }
     case "private": {
       const groupId = reader.vector();
       const epoch = reader.u64();
       const type = contentType(reader.u8());
-      reader.vector(); // authenticated_data
+      const authenticatedData = reader.vector();
       reader.vector(); // encrypted_sender_data
       reader.vector(); // ciphertext
       reader.end();
-      return { wireFormat, groupId, epoch, contentType: type };
+      return { wireFormat, groupId, epoch, contentType: type, authenticatedData };
     }
     case "welcome": {
       const cipherSuite = reader.u16();

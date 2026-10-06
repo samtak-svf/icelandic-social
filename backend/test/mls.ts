@@ -46,6 +46,28 @@ function keyPackageNaming(identity: string, signatureKey: Uint8Array): string {
   );
 }
 
+/**
+ * A PrivateMessage commit of the fixture with another claim in its
+ * authenticated_data (0020), naming this test's accounts in place of "a"
+ * and "b". Its AEAD no longer opens, which only a client checks.
+ */
+function claimed(name: string, roster: string[], welcome: string[] = []): string {
+  const entry = fixture.messages.find((m) => m.name === name);
+  if (entry?.wireFormat !== 2 || entry.contentType !== 3) {
+    throw new Error(`${name} is not a PrivateMessage commit`);
+  }
+  const bytes = hexBytes(entry.hex);
+  const aad = skip(bytes, 4) + 8 + 1; // past the header, group id, epoch and content type
+  const claim = new TextEncoder().encode(JSON.stringify({ roster, welcome }));
+  return toBase64(
+    Uint8Array.from([
+      ...bytes.subarray(0, aad),
+      ...vector(claim),
+      ...bytes.subarray(skip(bytes, aad)),
+    ]),
+  );
+}
+
 export const mls = {
   ...fixture,
   /** A message of the fixture by name, as the contract's base64. */
@@ -55,6 +77,7 @@ export const mls = {
     return toBase64(hexBytes(entry.hex));
   },
   keyPackageBase64: toBase64(hexBytes(fixture.keyPackage.hex)),
+  claimed,
   keyPackageNaming,
   welcomeBase64: toBase64(hexBytes(fixture.welcome.hex)),
 };

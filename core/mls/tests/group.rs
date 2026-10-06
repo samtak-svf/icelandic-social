@@ -100,6 +100,14 @@ impl Dev {
     }
 }
 
+fn claim(roster: &[&str], welcome: &[&str]) -> Claim {
+    let owned = |accounts: &[&str]| accounts.iter().map(|a| (*a).to_owned()).collect();
+    Claim {
+        roster: owned(roster),
+        welcome: owned(welcome),
+    }
+}
+
 /// `a/d1` creates a group and adds its own `d2` and account `b` in one
 /// commit, as creating a conversation does (0018). Everyone has joined.
 fn three() -> (Dev, Dev, Dev, Vec<u8>, Commit) {
@@ -124,8 +132,9 @@ fn creating_with_own_devices_and_another_account_derives_the_roster() {
     let (mut d1, mut d2, mut d3, id, commit) = three();
     assert_eq!(id.len(), 32);
     assert_eq!(commit.added, ["b"]);
-    assert_eq!(commit.welcome_to, ["a", "b"]);
     assert!(commit.removed.is_empty());
+    assert_eq!(commit.claim, claim(&["a", "b"], &["a", "b"]));
+    assert_eq!(claim_of(&commit.message), Some(commit.claim.clone()));
 
     let hello = d1.send(&id, b"hello");
     assert_eq!(d2.text(&id, &hello), (d1.device.clone(), b"hello".to_vec()));
@@ -150,12 +159,13 @@ fn removing_an_account_removes_all_its_devices() {
         commit
     });
     assert!(add.added.is_empty(), "b is already in the group");
-    assert_eq!(add.welcome_to, ["b"]);
+    assert_eq!(add.claim, claim(&["a", "b"], &["b"]));
     d4.join(add.welcome.as_ref().unwrap()).unwrap();
     for dev in [&mut d2, &mut d3] {
         assert!(matches!(
             dev.receive(&id, &add.message).unwrap(),
-            Received::Commit { ref added, .. } if added == &[Device::new("b", "d4").unwrap()]
+            Received::Commit { ref added, backed: true, .. }
+                if added == &[Device::new("b", "d4").unwrap()]
         ));
     }
 
@@ -166,11 +176,14 @@ fn removing_an_account_removes_all_its_devices() {
     });
     assert_eq!(remove.removed, ["b"]);
     assert!(remove.welcome.is_none());
+    assert_eq!(remove.claim, claim(&["a"], &[]));
 
     let Received::Commit {
         by,
         removed,
         removed_self,
+        claim: told,
+        backed,
         ..
     } = d1.receive(&id, &remove.message).unwrap()
     else {
@@ -179,6 +192,8 @@ fn removing_an_account_removes_all_its_devices() {
     assert_eq!(by, Device::new("a", "d2").unwrap());
     assert_eq!(removed.len(), 2);
     assert!(!removed_self);
+    assert_eq!(told, Some(remove.claim));
+    assert!(backed);
     for dev in [&mut d3, &mut d4] {
         assert!(matches!(
             dev.receive(&id, &remove.message).unwrap(),
@@ -382,4 +397,71 @@ fn typing_is_sealed_to_the_current_epoch() {
     });
     d2.receive(&id, &update.message).unwrap();
     assert_eq!(d2.group(&id, |g, p, _| g.open_typing(p, &sealed)), None);
+}
+
+/// A member can claim a roster its commit does not make (0020). The others
+/// see the claim is not backed, and a commit that changes no one tells the
+/// server the roster MLS holds.
+#[test]
+fn a_claim_the_commit_does_not_back_is_seen_and_corrected() {
+    let (mut d1, mut d2, mut d3, id, _) = three();
+    let mut d5 = Dev::new("c", "d5");
+    let claimed = [d5.claimed()];
+    // a adds c, and tells the server that b is gone.
+    forge::next_claim(&["a", "c"], &["c"]);
+    let lie = d1.group(&id, |g, p, identity| {
+        let commit = g.add(p, identity, &claimed).unwrap();
+        g.merge_pending_commit(p).unwrap();
+        commit
+    });
+    assert_eq!(claim_of(&lie.message), Some(claim(&["a", "c"], &["c"])));
+    for dev in [&mut d2, &mut d3] {
+        let Received::Commit {
+            claim: told,
+            backed,
+            ..
+        } = dev.receive(&id, &lie.message).unwrap()
+        else {
+            panic!("not a commit");
+        };
+        assert_eq!(told, Some(claim(&["a", "c"], &["c"])));
+        assert!(!backed);
+    }
+
+    let fix = d2.group(&id, |g, p, identity| {
+        let commit = g.correct(p, identity).unwrap();
+        g.merge_pending_commit(p).unwrap();
+        commit
+    });
+    assert_eq!(fix.claim, claim(&["a", "b", "c"], &[]));
+    assert!(fix.welcome.is_none() && fix.added.is_empty() && fix.removed.is_empty());
+    for dev in [&mut d1, &mut d3] {
+        assert!(matches!(
+            dev.receive(&id, &fix.message).unwrap(),
+            Received::Commit { backed: true, .. }
+        ));
+    }
+    assert_eq!(d3.epoch(&id), d2.epoch(&id));
+}
+
+#[test]
+fn a_claim_is_only_the_json_a_commit_carries() {
+    let told = claim(&["a", "b"], &["b"]);
+    assert_eq!(Claim::decode(&told.encode()), Some(told));
+    assert_eq!(
+        Claim::decode(br#"{"roster":["b","a","a"],"welcome":[]}"#),
+        Some(claim(&["a", "b"], &[]))
+    );
+    for bad in [
+        &b""[..],
+        b"{}",
+        br#"{"roster":["a"]}"#,
+        br#"{"roster":["a/b"],"welcome":[]}"#,
+        br#"{"roster":[1],"welcome":[]}"#,
+    ] {
+        assert_eq!(Claim::decode(bad), None, "{}", String::from_utf8_lossy(bad));
+    }
+    // An application message carries none.
+    let (mut d1, _, _, id, _) = three();
+    assert_eq!(claim_of(&d1.send(&id, b"hello")), None);
 }

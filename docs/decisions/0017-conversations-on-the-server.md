@@ -1,7 +1,8 @@
 # 0017. The server keeps a roster per conversation, moved only by a winning commit
 
 - Status: accepted; implemented in the backend. Push goes to a sender that only logs until FCM
-  and APNs are set up.
+  and APNs are set up. The roster's source, and what `not_a_member` means to a client, are
+  amended by [0020](0020-membership-bound-to-commits.md).
 - Date: 2026-10-06
 - Decided by: Guðröður, approving the plan for the delivery backend
 - Amends: [0015](0015-delivery-protocol.md) (how members, Welcomes and KeyPackages reach the server)

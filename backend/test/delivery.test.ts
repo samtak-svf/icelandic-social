@@ -71,8 +71,8 @@ describe("delivery", () => {
 
     // The commit that adds B carries B's Welcome.
     const add = await send("add b", a.auth, {
-      roster: { add: [b.accountId] },
-      welcome: { to: [b.accountId], message: mls.welcomeBase64 },
+      ciphertext: mls.claimed("add b", [a.accountId, b.accountId], [b.accountId]),
+      welcome: { message: mls.welcomeBase64 },
     });
     expect(add).toBe(1);
     expect(await socketA.next()).toEqual(notify(1));
@@ -109,7 +109,8 @@ describe("delivery", () => {
     // B goes offline; A's next message is owed to B's device as a push.
     socketB.ws.close(1000, "bye");
     await socketB.closed;
-    expect(await send("a updates", a.auth)).toBe(4);
+    const update = mls.claimed("a updates", [a.accountId, b.accountId]);
+    expect(await send("a updates", a.auth, { ciphertext: update })).toBe(4);
     expect(await socketA.next()).toEqual(notify(4));
     await expect
       .poll(() =>

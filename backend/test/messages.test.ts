@@ -49,9 +49,8 @@ describe("a conversation over HTTP", () => {
       MESSAGES,
       {
         clientMsgId: "add_b",
-        ciphertext: mls.base64("add b"),
-        roster: { add: [b.accountId] },
-        welcome: { to: [b.accountId], message: mls.welcomeBase64 },
+        ciphertext: mls.claimed("add b", [a.accountId, b.accountId], [b.accountId]),
+        welcome: { message: mls.welcomeBase64 },
       },
       a.auth,
     );
@@ -61,15 +60,15 @@ describe("a conversation over HTTP", () => {
     const welcome = await fetch(`/v1/conversations/${CONVERSATION}/welcome`, { headers: b.auth });
     expect(await welcome.json()).toEqual({ seq: 1, welcome: mls.welcomeBase64 });
 
-    for (const [name, sender, seq] of [
-      ["a to b", a, 2],
-      ["b to a", b, 3],
-      ["b proposes", b, 4],
-      ["a updates", a, 5],
+    for (const [name, sender, seq, ciphertext] of [
+      ["a to b", a, 2, mls.base64("a to b")],
+      ["b to a", b, 3, mls.base64("b to a")],
+      ["b proposes", b, 4, mls.base64("b proposes")],
+      ["a updates", a, 5, mls.claimed("a updates", [a.accountId, b.accountId])],
     ] as const) {
       const sent = await post(
         MESSAGES,
-        { clientMsgId: name.replaceAll(" ", "_"), ciphertext: mls.base64(name) },
+        { clientMsgId: name.replaceAll(" ", "_"), ciphertext },
         sender.auth,
       );
       expect(await sent.json(), name).toEqual({ seq });
@@ -78,11 +77,7 @@ describe("a conversation over HTTP", () => {
     // B committed on epoch 1 too, and lost.
     const lost = await post(
       MESSAGES,
-      {
-        clientMsgId: "b_updates",
-        ciphertext: mls.base64("b updates"),
-        roster: { remove: [a.accountId] },
-      },
+      { clientMsgId: "b_updates", ciphertext: mls.claimed("b updates", [b.accountId]) },
       b.auth,
     );
     expect(lost.status).toBe(409);
@@ -112,17 +107,31 @@ describe("a conversation over HTTP", () => {
     expect(await errorOf(response)).toBe("group_mismatch");
   });
 
-  it("refuses a roster change or a Welcome on a message that is not a commit", async () => {
-    for (const extra of [
-      { roster: { add: [b.accountId] } },
-      { welcome: { to: [b.accountId], message: mls.welcomeBase64 } },
-    ]) {
-      const response = await post(
-        MESSAGES,
-        { clientMsgId: "app", ciphertext: mls.base64("a to b"), ...extra },
-        a.auth,
-      );
-      expect(response.status).toBe(400);
+  it("refuses a Welcome on a message that is not a commit", async () => {
+    const response = await post(
+      MESSAGES,
+      {
+        clientMsgId: "app",
+        ciphertext: mls.base64("a to b"),
+        welcome: { message: mls.welcomeBase64 },
+      },
+      a.auth,
+    );
+    expect(response.status).toBe(400);
+    expect(await errorOf(response)).toBe("invalid_request");
+  });
+
+  it("refuses a commit whose claim leaves out its sender or does not match its Welcome", async () => {
+    const welcome = { message: mls.welcomeBase64 };
+    for (const [clientMsgId, ciphertext, extra] of [
+      // The fixture's own claim names accounts "a" and "b", not this sender.
+      ["unclaimed", mls.base64("a updates"), {}],
+      ["no_sender", mls.claimed("a updates", [b.accountId]), {}],
+      ["no_welcome", mls.claimed("add b", [a.accountId, b.accountId], [b.accountId]), {}],
+      ["no_one_for", mls.claimed("a updates", [a.accountId, b.accountId]), { welcome }],
+    ] as const) {
+      const response = await post(MESSAGES, { clientMsgId, ciphertext, ...extra }, a.auth);
+      expect(response.status, clientMsgId).toBe(400);
       expect(await errorOf(response)).toBe("invalid_request");
     }
   });
@@ -133,8 +142,8 @@ describe("a conversation over HTTP", () => {
       { clientMsgId: "kp", ciphertext: mls.keyPackageBase64 },
       {
         clientMsgId: "bad_welcome",
-        ciphertext: mls.base64("a updates"),
-        welcome: { to: [b.accountId], message: mls.base64("a to b") },
+        ciphertext: mls.claimed("add b", [a.accountId, b.accountId], [b.accountId]),
+        welcome: { message: mls.base64("a to b") },
       },
     ]) {
       const response = await post(MESSAGES, body, a.auth);

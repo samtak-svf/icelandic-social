@@ -20,6 +20,7 @@ thiserror.workspace = true
 
 [dev-dependencies]
 openmls.workspace = true
+spjall-mls = { path = "../mls", features = ["forge"] }
 tempfile.workspace = true
 tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
 ureq.workspace = true

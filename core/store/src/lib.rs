@@ -127,6 +127,48 @@ const MIGRATIONS: &[(u32, &str)] = &[
              created_at   INTEGER NOT NULL
          ) STRICT;",
     ),
+    (
+        4,
+        // Decision 0020: a commit carries its roster claim inside its own
+        // bytes, and a 403 no commit explains does not end a conversation.
+        "-- The server refuses this device but no commit removed it. Kept
+         -- beside `state`, which changing would rebuild `conversations` and
+         -- cascade into `messages`; `excluded` is only ever set on `active`.
+         ALTER TABLE conversations ADD COLUMN excluded INTEGER NOT NULL DEFAULT 0
+             CHECK (excluded IN (0, 1));
+
+         -- The outbox again, with `correct`: a commit that changes no one
+         -- and tells the server the roster MLS holds. The Welcome's
+         -- recipients are in the commit's claim, so `welcome_to` goes.
+         CREATE TABLE outbox_0020 (
+             id            INTEGER PRIMARY KEY,
+             group_id      BLOB NOT NULL
+                           REFERENCES conversations (group_id) ON DELETE CASCADE,
+             kind          TEXT NOT NULL
+                           CHECK (kind IN ('message', 'add', 'remove', 'correct')),
+             intent        BLOB NOT NULL,
+             client_msg_id TEXT UNIQUE,
+             ciphertext    BLOB,
+             roster_add    TEXT,
+             roster_remove TEXT,
+             welcome       BLOB,
+             seq           INTEGER,
+             created_at    INTEGER NOT NULL,
+             CHECK ((client_msg_id IS NULL) = (ciphertext IS NULL)),
+             CHECK (seq IS NULL OR ciphertext IS NOT NULL),
+             CHECK (welcome IS NULL OR kind = 'add'),
+             CHECK (kind IN ('add', 'remove') OR
+                    (roster_add IS NULL AND roster_remove IS NULL))
+         ) STRICT;
+         INSERT INTO outbox_0020 (id, group_id, kind, intent, client_msg_id, ciphertext,
+                                  roster_add, roster_remove, welcome, seq, created_at)
+             SELECT id, group_id, kind, intent, client_msg_id, ciphertext,
+                    roster_add, roster_remove, welcome, seq, created_at
+             FROM outbox;
+         DROP TABLE outbox;
+         ALTER TABLE outbox_0020 RENAME TO outbox;
+         CREATE INDEX outbox_by_group ON outbox (group_id, id);",
+    ),
 ];
 
 pub struct Store {
@@ -328,11 +370,13 @@ mod tests {
             &mut store,
             "INSERT INTO account (id, device_key) VALUES (2, x'02')"
         ));
-        // A conversation's state is one of three.
+        // A conversation's state is one of four, and `excluded` a flag.
         assert!(refused(
             &mut store,
-            "INSERT INTO conversations VALUES (x'02', 'gone', 0, 0)"
+            "INSERT INTO conversations (group_id, state, cursor, created_at)
+                 VALUES (x'02', 'gone', 0, 0)"
         ));
+        assert!(refused(&mut store, "UPDATE conversations SET excluded = 2"));
         // History and the outbox belong to a conversation the store knows.
         assert!(refused(
             &mut store,
@@ -345,16 +389,28 @@ mod tests {
             "UPDATE outbox SET client_msg_id = 'm1'"
         ));
         assert!(refused(&mut store, "UPDATE outbox SET seq = 1"));
-        // A message carries no roster or Welcome, and a Welcome names who
-        // it is for.
+        // A message and a correction change no roster, and only an add
+        // carries a Welcome.
         assert!(refused(
             &mut store,
             "UPDATE outbox SET client_msg_id = 'm1', ciphertext = x'01', roster_add = 'b'"
         ));
         assert!(refused(
             &mut store,
+            "INSERT INTO outbox (group_id, kind, intent, client_msg_id, ciphertext, roster_remove,
+                                 created_at)
+                 VALUES (x'01', 'correct', x'', 'c1', x'01', 'b', 0)"
+        ));
+        assert!(refused(
+            &mut store,
             "INSERT INTO outbox (group_id, kind, intent, client_msg_id, ciphertext, welcome, created_at)
-                 VALUES (x'01', 'add', CAST('b' AS BLOB), 'c1', x'01', x'01', 0)"
+                 VALUES (x'01', 'remove', CAST('b' AS BLOB), 'c1', x'01', x'01', 0)"
+        ));
+        assert!(!refused(
+            &mut store,
+            "INSERT INTO outbox (group_id, kind, intent, client_msg_id, ciphertext, welcome, created_at)
+                 VALUES (x'01', 'add', CAST('b' AS BLOB), 'c1', x'01', x'01', 0);
+             DELETE FROM outbox WHERE client_msg_id = 'c1';"
         ));
         // A clientMsgId is never reused.
         assert!(!refused(

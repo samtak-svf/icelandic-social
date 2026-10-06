@@ -1,8 +1,9 @@
 //! The MLS messages the backend's framing reader is tested against
 //! (`api/fixtures/mls-framing.json`, decision 0017). The server reads only
-//! the unencrypted framing of RFC 9420 §6: wire format, group id, epoch and
-//! content type. These are real OpenMLS messages, so the TypeScript reader
-//! and OpenMLS are held to the same bytes.
+//! the unencrypted framing of RFC 9420 §6: wire format, group id, epoch,
+//! content type, and the authenticated_data a commit's claim is in (0020).
+//! These are real OpenMLS messages, so the TypeScript reader and OpenMLS are
+//! held to the same bytes.
 //!
 //! `cargo test -p spjall-mls --test framing_fixture -- --ignored` writes the
 //! file from a new scripted conversation; the other test checks the committed
@@ -14,7 +15,7 @@ use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use serde_json::{Value, json};
 use spjall_mls::CIPHERSUITE;
-use spjall_mls::group::{Device, Identity, generate_device_key};
+use spjall_mls::group::{Claim, Device, Identity, claim_of, generate_device_key};
 use spjall_mls::storage::Provider;
 use spjall_store::Store;
 use std::path::PathBuf;
@@ -112,6 +113,14 @@ fn join(member: &Member, welcome: &MlsMessageOut, config: &MlsGroupCreateConfig)
         .unwrap()
 }
 
+/// The claim a commit of the fixture carries, as the core writes it.
+fn claim(roster: &[&str], welcome: &[&str]) -> Claim {
+    Claim::new(
+        roster.iter().map(|a| a.to_string()).collect(),
+        welcome.iter().map(|a| a.to_string()).collect(),
+    )
+}
+
 /// One entry: the bytes and what the framing says about them.
 fn protocol(
     name: &str,
@@ -119,6 +128,7 @@ fn protocol(
     group: &GroupId,
     epoch: u64,
     content: u8,
+    claim: Option<&Claim>,
 ) -> Value {
     let wire = match MlsMessageIn::tls_deserialize_exact(bytes(message))
         .unwrap()
@@ -135,6 +145,7 @@ fn protocol(
         "groupId": hex(group.as_slice()),
         "epoch": epoch,
         "contentType": content,
+        "authenticatedData": claim.map_or(String::new(), |c| hex(&c.encode())),
     })
 }
 
@@ -165,6 +176,8 @@ fn conversation() -> Value {
     let package = package_in
         .validate(a.provider.crypto(), ProtocolVersion::Mls10)
         .unwrap();
+    let add_claim = claim(&["a", "b"], &["b"]);
+    group_a.set_aad(add_claim.encode());
     let (add, welcome, _) = group_a
         .add_members(&a.provider, &a.signer, std::slice::from_ref(&package))
         .unwrap();
@@ -186,11 +199,16 @@ fn conversation() -> Value {
         .unwrap();
 
     // Both members commit on epoch 1 before seeing the other's commit: the
-    // server must store exactly one of them (decision 0015).
+    // server must store exactly one of them (decision 0015). B's claims a
+    // roster without A, which only the winning commit would have applied.
+    let update_a_claim = claim(&["a", "b"], &[]);
+    group_a.set_aad(update_a_claim.encode());
     let update_a = group_a
         .self_update(&a.provider, &a.signer, LeafNodeParameters::default())
         .unwrap()
         .into_commit();
+    let update_b_claim = claim(&["b"], &[]);
+    group_b.set_aad(update_b_claim.encode());
     let update_b = group_b
         .self_update(&b.provider, &b.signer, LeafNodeParameters::default())
         .unwrap()
@@ -204,6 +222,8 @@ fn conversation() -> Value {
         .build();
     let c = Member::new("c/d3");
     let mut group_c = MlsGroup::new(&c.provider, &c.signer, &public, c.credential.clone()).unwrap();
+    let public_claim = claim(&["c", "d"], &["d"]);
+    group_c.set_aad(public_claim.encode());
     let (public_add, _, _) = group_c
         .add_members(&c.provider, &c.signer, &[Member::new("d/d4").key_package()])
         .unwrap();
@@ -214,13 +234,20 @@ fn conversation() -> Value {
         "keyPackage": device_key_package(),
         "welcome": { "hex": hex(&bytes(&welcome)), "wireFormat": 3 },
         "messages": [
-            protocol("add b", &add, &id, 0, COMMIT),
-            protocol("a to b", &hello, &id, 1, APPLICATION),
-            protocol("b to a", &reply, &id, 1, APPLICATION),
-            protocol("b proposes", &proposal, &id, 1, PROPOSAL),
-            protocol("a updates", &update_a, &id, 1, COMMIT),
-            protocol("b updates", &update_b, &id, 1, COMMIT),
-            protocol("public add", &public_add, group_c.group_id(), 0, COMMIT),
+            protocol("add b", &add, &id, 0, COMMIT, Some(&add_claim)),
+            protocol("a to b", &hello, &id, 1, APPLICATION, None),
+            protocol("b to a", &reply, &id, 1, APPLICATION, None),
+            protocol("b proposes", &proposal, &id, 1, PROPOSAL, None),
+            protocol("a updates", &update_a, &id, 1, COMMIT, Some(&update_a_claim)),
+            protocol("b updates", &update_b, &id, 1, COMMIT, Some(&update_b_claim)),
+            protocol(
+                "public add",
+                &public_add,
+                group_c.group_id(),
+                0,
+                COMMIT,
+                Some(&public_claim),
+            ),
         ],
     })
 }
@@ -272,6 +299,9 @@ fn the_fixture_matches_openmls() {
     let messages = fixture["messages"].as_array().unwrap();
     assert_eq!(messages.len(), 7);
     for entry in messages {
+        let bytes = unhex(entry["hex"].as_str().unwrap());
+        let claim = claim_of(&bytes).map_or(String::new(), |c| hex(&c.encode()));
+        assert_eq!(entry["authenticatedData"], claim, "{}", entry["name"]);
         let protocol = message(entry).try_into_protocol_message().unwrap();
         let wire = match protocol.wire_format() {
             WireFormat::PublicMessage => 1,

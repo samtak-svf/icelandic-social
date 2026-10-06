@@ -174,8 +174,140 @@ pub struct Claimed {
     pub key_package: Vec<u8>,
 }
 
-/// An own commit, ready to seal into the outbox. `roster` and `welcome_to`
-/// are what the server needs with it (0017).
+/// What a commit tells the server, in its signed `authenticated_data`
+/// (0020): every account in the group once it is merged, and the accounts
+/// its Welcome is for. Both sorted, without repeats.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Claim {
+    pub roster: Vec<String>,
+    pub welcome: Vec<String>,
+}
+
+impl Claim {
+    /// Sorted and without repeats, as every member writes and compares it.
+    pub fn new(roster: Vec<String>, welcome: Vec<String>) -> Self {
+        let tidy = |mut accounts: Vec<String>| {
+            accounts.sort();
+            accounts.dedup();
+            accounts
+        };
+        Self {
+            roster: tidy(roster),
+            welcome: tidy(welcome),
+        }
+    }
+
+    pub fn encode(&self) -> Vec<u8> {
+        serde_json::json!({ "roster": self.roster, "welcome": self.welcome })
+            .to_string()
+            .into_bytes()
+    }
+
+    /// `None` for anything but the JSON `encode` writes.
+    pub fn decode(bytes: &[u8]) -> Option<Self> {
+        let value: serde_json::Value = serde_json::from_slice(bytes).ok()?;
+        let accounts = |key: &str| -> Option<Vec<String>> {
+            value
+                .get(key)?
+                .as_array()?
+                .iter()
+                .map(|a| a.as_str().filter(|a| is_id(a)).map(str::to_owned))
+                .collect()
+        };
+        Some(Self::new(accounts("roster")?, accounts("welcome")?))
+    }
+
+    /// What this device makes the next commit claim instead; for tests of 0020.
+    #[cfg(feature = "forge")]
+    fn forged(self) -> Self {
+        forge::NEXT
+            .with(|next| next.borrow_mut().take())
+            .unwrap_or(self)
+    }
+
+    #[cfg(not(feature = "forge"))]
+    fn forged(self) -> Self {
+        self
+    }
+}
+
+/// A member that lies, for tests of 0020: the next commit made on this
+/// thread claims the given roster, whatever it does.
+#[cfg(feature = "forge")]
+pub mod forge {
+    use std::cell::RefCell;
+
+    thread_local! {
+        pub(super) static NEXT: RefCell<Option<super::Claim>> = const { RefCell::new(None) };
+    }
+
+    pub fn next_claim(roster: &[&str], welcome: &[&str]) {
+        let owned = |accounts: &[&str]| accounts.iter().map(|a| (*a).to_owned()).collect();
+        NEXT.with(|next| {
+            *next.borrow_mut() = Some(super::Claim::new(owned(roster), owned(welcome)));
+        });
+    }
+}
+
+/// The claim a stored commit carries, read from its framing alone (RFC 9420
+/// §6), as the server reads it; `None` for anything but a commit with one.
+pub fn claim_of(bytes: &[u8]) -> Option<Claim> {
+    struct Reader<'a>(&'a [u8]);
+    impl<'a> Reader<'a> {
+        fn take(&mut self, n: usize) -> Option<&'a [u8]> {
+            let (head, rest) = self.0.split_at_checked(n)?;
+            self.0 = rest;
+            Some(head)
+        }
+        fn uint(&mut self, n: usize) -> Option<u64> {
+            Some(
+                self.take(n)?
+                    .iter()
+                    .fold(0, |v, b| (v << 8) | u64::from(*b)),
+            )
+        }
+        fn vector(&mut self) -> Option<&'a [u8]> {
+            let first = *self.0.first()?;
+            let length = match first >> 6 {
+                0 => self.uint(1)?,
+                1 => self.uint(2)? & 0x3fff,
+                2 => self.uint(4)? & 0x3fff_ffff,
+                _ => return None,
+            };
+            self.take(usize::try_from(length).ok()?)
+        }
+    }
+    const COMMIT: u64 = 3;
+    let mut reader = Reader(bytes);
+    if reader.uint(2)? != 1 {
+        return None;
+    }
+    let wire = reader.uint(2)?;
+    reader.vector()?; // group_id
+    reader.uint(8)?; // epoch
+    let aad = match wire {
+        // PublicMessage: the sender, then authenticated_data, then the content type.
+        1 => {
+            match reader.uint(1)? {
+                1 | 2 => drop(reader.uint(4)?),
+                3 | 4 => {}
+                _ => return None,
+            }
+            let aad = reader.vector()?;
+            (reader.uint(1)? == COMMIT).then_some(aad)?
+        }
+        // PrivateMessage: the content type, then authenticated_data.
+        2 => {
+            (reader.uint(1)? == COMMIT).then_some(())?;
+            reader.vector()?
+        }
+        _ => return None,
+    };
+    Claim::decode(aad)
+}
+
+/// An own commit, ready to seal into the outbox. Its claim is in its
+/// `authenticated_data` (0020).
 #[derive(Debug)]
 pub struct Commit {
     pub message: Vec<u8>,
@@ -184,8 +316,7 @@ pub struct Commit {
     pub added: Vec<String>,
     /// The accounts this commit removes the last device of.
     pub removed: Vec<String>,
-    /// The accounts whose devices this commit adds.
-    pub welcome_to: Vec<String>,
+    pub claim: Claim,
 }
 
 /// What a stored message turned out to be.
@@ -201,6 +332,11 @@ pub enum Received {
         removed: Vec<Device>,
         /// This device was removed: the group is over for it.
         removed_self: bool,
+        /// What the commit told the server, if it carried a claim.
+        claim: Option<Claim>,
+        /// The claim names the group as MLS now holds it, and the Welcome
+        /// the accounts this commit added devices of (0020).
+        backed: bool,
     },
     /// A standalone proposal. This core never sends one and commits none.
     Proposal,
@@ -340,22 +476,27 @@ impl Group {
             }
             packages.push(package);
         }
+        let present = accounts(before);
+        let welcome_to = accounts(claimed.iter().map(|c| c.device.clone()));
+        let claim = Claim::new(
+            present.iter().chain(&welcome_to).cloned().collect(),
+            welcome_to.clone(),
+        )
+        .forged();
+        self.0.set_aad(claim.encode());
         let (message, welcome, _) = self
             .0
             .add_members(provider, &identity.signer, &packages)
             .map_err(at("add"))?;
-        let present = accounts(before);
-        let welcome_to = accounts(claimed.iter().map(|c| c.device.clone()));
         Ok(Commit {
             message: message.tls_serialize_detached().map_err(at("commit"))?,
             welcome: Some(welcome.tls_serialize_detached().map_err(at("welcome"))?),
             added: welcome_to
-                .iter()
+                .into_iter()
                 .filter(|a| !present.contains(a))
-                .cloned()
                 .collect(),
             removed: Vec::new(),
-            welcome_to,
+            claim,
         })
     }
 
@@ -380,19 +521,51 @@ impl Group {
         if leaves.is_empty() {
             return Err(GroupError::Missing("account in the group"));
         }
+        let mut removed = remove.to_vec();
+        removed.sort();
+        removed.dedup();
+        let roster = accounts(self.devices()?)
+            .into_iter()
+            .filter(|a| !removed.contains(a))
+            .collect();
+        let claim = Claim::new(roster, Vec::new()).forged();
+        self.0.set_aad(claim.encode());
         let (message, _, _) = self
             .0
             .remove_members(provider, &identity.signer, &leaves)
             .map_err(at("remove"))?;
-        let mut removed = remove.to_vec();
-        removed.sort();
-        removed.dedup();
         Ok(Commit {
             message: message.tls_serialize_detached().map_err(at("commit"))?,
             welcome: None,
             added: Vec::new(),
             removed,
-            welcome_to: Vec::new(),
+            claim,
+        })
+    }
+
+    /// A commit that changes no one, to tell the server the roster MLS
+    /// holds after another member's claim was not backed (0020).
+    pub fn correct(
+        &mut self,
+        provider: &Provider,
+        identity: &Identity,
+    ) -> Result<Commit, GroupError> {
+        self.check_no_commit_in_flight()?;
+        let claim = Claim::new(accounts(self.devices()?), Vec::new()).forged();
+        self.0.set_aad(claim.encode());
+        let bundle = self
+            .0
+            .self_update(provider, &identity.signer, LeafNodeParameters::default())
+            .map_err(at("correct"))?;
+        Ok(Commit {
+            message: bundle
+                .into_commit()
+                .tls_serialize_detached()
+                .map_err(at("commit"))?,
+            welcome: None,
+            added: Vec::new(),
+            removed: Vec::new(),
+            claim,
         })
     }
 
@@ -448,6 +621,7 @@ impl Group {
             .process_message(provider, message)
             .map_err(at("process"))?;
         let credential = processed.credential().clone();
+        let claim = Claim::decode(processed.aad());
         let sender = || Device::from_credential(&credential);
         match processed.into_content() {
             ProcessedMessageContent::ApplicationMessage(application) => Ok(Received::Application {
@@ -476,11 +650,21 @@ impl Group {
                 self.0
                     .merge_staged_commit(provider, *staged)
                     .map_err(at("merge"))?;
+                let backed = claim.as_ref().is_some_and(|claim| {
+                    // A removed device holds no group to compare with.
+                    removed_self
+                        || self.devices().is_ok_and(|now| {
+                            claim.roster == accounts(now)
+                                && claim.welcome == accounts(added.iter().cloned())
+                        })
+                });
                 Ok(Received::Commit {
                     by: sender()?,
                     added,
                     removed,
                     removed_self,
+                    claim,
+                    backed,
                 })
             }
             ProcessedMessageContent::ProposalMessage(_)

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { base64url } from "../src/bytes.ts";
+import { readClaim } from "../src/conversations.ts";
 import { FramingError, readFraming } from "../src/mls/framing.ts";
 import { hexBytes, mls } from "./mls.ts";
 
-// The framing reader against real OpenMLS output (api/fixtures/mls-framing.json).
+// The framing reader against real OpenMLS output (api/fixtures/mls-framing.json),
+// and the claim a commit carries in its authenticated_data (decision 0020).
 
 const CONTENT = { 1: "application", 2: "proposal", 3: "commit" } as const;
 const WIRE = { 1: "public", 2: "private" } as const;
@@ -16,6 +18,41 @@ describe("the MLS framing reader", () => {
       groupId: hexBytes(entry.groupId),
       epoch: entry.epoch,
       contentType: CONTENT[entry.contentType as 1 | 2 | 3],
+      authenticatedData: hexBytes(entry.authenticatedData),
+    });
+  });
+
+  it("reads the claim of each commit the core made", () => {
+    const claims = mls.messages
+      .filter((m) => m.contentType === 3)
+      .map((m) => [m.name, readClaim(hexBytes(m.authenticatedData))]);
+    expect(claims).toEqual([
+      ["add b", { roster: ["a", "b"], welcome: ["b"] }],
+      ["a updates", { roster: ["a", "b"], welcome: [] }],
+      ["b updates", { roster: ["b"], welcome: [] }],
+      ["public add", { roster: ["c", "d"], welcome: ["d"] }],
+    ]);
+  });
+
+  it("finds no claim in anything but the JSON of two lists of account ids", () => {
+    const encode = (text: string) => new TextEncoder().encode(text);
+    for (const text of [
+      "",
+      "[]",
+      "null",
+      '{"roster":["a"]}',
+      '{"welcome":[]}',
+      '{"roster":"a","welcome":[]}',
+      '{"roster":["a b"],"welcome":[]}',
+      '{"roster":[1],"welcome":[]}',
+      `{"roster":["${"x".repeat(129)}"],"welcome":[]}`,
+    ]) {
+      expect(readClaim(encode(text)), text).toBeNull();
+    }
+    expect(readClaim(Uint8Array.of(0xff, 0xfe))).toBeNull();
+    expect(readClaim(encode('{"roster":["b","a","b"],"welcome":[]}'))).toEqual({
+      roster: ["b", "a"],
+      welcome: [],
     });
   });
 

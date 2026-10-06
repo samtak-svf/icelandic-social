@@ -18,32 +18,27 @@ import {
 export const Ciphertext = base64(64 * 1024);
 export const Seq = z.int().min(0);
 export const params = z.object({ conversationId: ConversationId });
-const AccountIds = z.array(OpaqueId).min(1).max(100);
 
-const RosterChange = z
+const WelcomeMessage = z
   .object({
-    add: AccountIds.optional(),
-    remove: AccountIds.optional(),
+    message: Ciphertext.openapi({
+      description: "The MLS Welcome, for the accounts the commit's claim names",
+    }),
   })
-  .openapi("RosterChange", {
-    description: "Applied only if this commit is the one stored for its epoch (decision 0017)",
-  });
-
-const WelcomeFor = z
-  .object({
-    to: AccountIds.openapi({ description: "Accounts the Welcome is for; members after roster" }),
-    message: Ciphertext.openapi({ description: "The MLS Welcome" }),
-  })
-  .openapi("WelcomeFor");
+  .openapi("WelcomeMessage");
 
 const SendMessage = z
   .object({
     clientMsgId: OpaqueId.openapi({ description: "Sending it again answers the same seq" }),
     ciphertext: Ciphertext,
-    roster: RosterChange.optional().openapi({ description: "Only with a commit" }),
-    welcome: WelcomeFor.optional().openapi({ description: "Only with a commit" }),
+    welcome: WelcomeMessage.optional().openapi({
+      description: "With a commit whose claim names whom it is for, and only then",
+    }),
   })
-  .openapi("SendMessage");
+  .openapi("SendMessage", {
+    description:
+      "A commit's authenticated_data holds its claim, the JSON {roster, welcome}: every account in the group after it, and the accounts its Welcome is for. The roster becomes the claim's when the commit is stored (decision 0020)",
+  });
 
 const Sent = z.object({ seq: Seq }).openapi("Sent");
 
@@ -70,7 +65,7 @@ export const sendMessageRoute = createRoute({
   responses: {
     200: { description: "Stored at seq", content: { "application/json": { schema: Sent } } },
     400: errorResponse(
-      "invalid_request, or group_mismatch: the framing names another group, or roster or welcome without a commit",
+      "invalid_request: a commit without a claim that names its sender, or a welcome its claim does not name anyone for, or a welcome without a commit; group_mismatch: the framing names another group",
     ),
     ...MEMBER,
     409: errorResponse(

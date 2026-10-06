@@ -485,71 +485,31 @@
             "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
             "description": "Base64, at most 65536 bytes decoded"
           },
-          "roster": {
-            "$ref": "#/components/schemas/RosterChange"
-          },
           "welcome": {
-            "$ref": "#/components/schemas/WelcomeFor"
+            "$ref": "#/components/schemas/WelcomeMessage"
           }
         },
         "required": [
           "clientMsgId",
           "ciphertext"
-        ]
+        ],
+        "description": "A commit's authenticated_data holds its claim, the JSON {roster, welcome}: every account in the group after it, and the accounts its Welcome is for. The roster becomes the claim's when the commit is stored (decision 0020)"
       },
-      "RosterChange": {
+      "WelcomeMessage": {
         "type": "object",
         "properties": {
-          "add": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{1,128}$",
-              "example": "c_9f3a1b"
-            },
-            "minItems": 1,
-            "maxItems": 100
-          },
-          "remove": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{1,128}$",
-              "example": "c_9f3a1b"
-            },
-            "minItems": 1,
-            "maxItems": 100
-          }
-        },
-        "description": "Only with a commit"
-      },
-      "WelcomeFor": {
-        "type": "object",
-        "properties": {
-          "to": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{1,128}$",
-              "example": "c_9f3a1b"
-            },
-            "minItems": 1,
-            "maxItems": 100,
-            "description": "Accounts the Welcome is for; members after roster"
-          },
           "message": {
             "type": "string",
             "minLength": 1,
             "maxLength": 87384,
             "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
-            "description": "The MLS Welcome"
+            "description": "The MLS Welcome, for the accounts the commit's claim names"
           }
         },
         "required": [
-          "to",
           "message"
         ],
-        "description": "Only with a commit"
+        "description": "With a commit whose claim names whom it is for, and only then"
       },
       "MessagePage": {
         "type": "object",
@@ -1159,7 +1119,7 @@
             }
           },
           "400": {
-            "description": "invalid_request, or group_mismatch: the framing names another group, or roster or welcome without a commit",
+            "description": "invalid_request: a commit without a claim that names its sender, or a welcome its claim does not name anyone for, or a welcome without a commit; group_mismatch: the framing names another group",
             "content": {
               "application/json": {
                 "schema": {
