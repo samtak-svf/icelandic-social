@@ -3,9 +3,11 @@ name: android
 # The Android skeleton (android/): ktlint, detekt, Android Lint with warnings
 # as errors, the unit tests, and a debug APK.
 #
-# The core comes from core/artifact.lock.json: the pinned published version
-# when there is one (cargo xtask fetch, checksum-verified), otherwise a local
-# build with the NDK the lock names. Gradle never calls cargo itself.
+# The core is the published release core/artifact.lock.json pins, fetched and
+# checksum-verified by cargo xtask fetch (decision 0013); this workflow never
+# builds it. A core change reaches the app as a new release and a lock PR, so
+# only the lock and the fetch code are in the path filter. Gradle never calls
+# cargo itself (tooling/core-guard.mjs).
 
 permissions:
   contents: read
@@ -17,7 +19,9 @@ on:
       - "brand/**"
       - "identifiers/**"
       - "api/**"
-      - "core/**"
+      - "core/artifact.lock.json"
+      - "core/xtask/**"
+      - "core/rust-toolchain.toml"
       - ".github/workflows/android.yml"
   push:
     branches: [main]
@@ -26,7 +30,9 @@ on:
       - "brand/**"
       - "identifiers/**"
       - "api/**"
-      - "core/**"
+      - "core/artifact.lock.json"
+      - "core/xtask/**"
+      - "core/rust-toolchain.toml"
       - ".github/workflows/android.yml"
 
 concurrency:
@@ -47,33 +53,11 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Published core pinned?
-        id: lock
-        run: echo "version=$(jq -r '.version // empty' core/artifact.lock.json)" >> "$GITHUB_OUTPUT"
-
       - name: Toolchain
         working-directory: core
         run: rustup toolchain install
 
-      - name: NDK from the lock, and cargo-ndk
-        if: steps.lock.outputs.version == ''
-        run: |
-          NDK=$(jq -r .androidNdk core/artifact.lock.json)
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK" > /dev/null
-          cargo install cargo-ndk --version 4.1.2 --locked
-
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-        if: steps.lock.outputs.version == ''
-        with:
-          workspaces: core
-
-      - name: Core (local build, nothing published yet)
-        if: steps.lock.outputs.version == ''
-        working-directory: core
-        run: cargo xtask core android
-
-      - name: Core (pinned ${{ steps.lock.outputs.version }})
-        if: steps.lock.outputs.version != ''
+      - name: Core (pinned, checksum-verified)
         working-directory: core
         run: cargo xtask fetch android
 

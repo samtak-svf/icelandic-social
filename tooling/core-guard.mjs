@@ -1,11 +1,10 @@
 // @ts-check
 // Core artifact guard (decision 0002, plan PR 5).
 //
-// 1. `core/artifact.lock.json` has the shape `cargo xtask fetch` relies on:
-//    before the first publish `version` is null and nothing is pinned; after
-//    it, both platforms are pinned by file name and a 64-hex SHA-256, and
-//    `baseUrl` is https with `{version}` where the version goes (decision
-//    0013). A lock is only ever moved by a PR, never by CI.
+// 1. `core/artifact.lock.json` pins a published core, the only one app CI
+//    uses (decision 0013): a version, both platforms by file name and a
+//    64-hex SHA-256, and `baseUrl` https with `{version}` where the version
+//    goes. A lock is only ever moved by a PR, never by CI.
 // 2. No Gradle or Xcode build file calls cargo. The apps read the core from
 //    `android/core/crypto/libs/` and `ios/Packages/SpjallCore/`, which
 //    `cargo xtask core <platform>` or `cargo xtask fetch <platform>` fill;
@@ -50,22 +49,7 @@ export function lockProblems(lock) {
   if (typeof artifacts !== "object" || Array.isArray(artifacts)) {
     return [...problems, "artifacts must be an object"];
   }
-  const state = lock.version === null ? unpublished(lock, artifacts) : published(lock, artifacts);
-  return [...problems, ...state];
-}
-
-/**
- * @param {any} lock
- * @param {Record<string, any>} artifacts
- */
-function unpublished(lock, artifacts) {
-  /** @type {string[]} */
-  const problems = [];
-  if (Object.keys(artifacts).length > 0) problems.push("artifacts are pinned but version is null");
-  if (lock.baseUrl !== null && !isHttps(lock.baseUrl)) {
-    problems.push("baseUrl must be null or an https:// URL without a trailing slash");
-  }
-  return problems;
+  return [...problems, ...published(lock, artifacts)];
 }
 
 /**
@@ -76,7 +60,7 @@ function published(lock, artifacts) {
   /** @type {string[]} */
   const problems = [];
   if (typeof lock.version !== "string" || !SEMVER.test(lock.version)) {
-    problems.push(`version must be null or X.Y.Z, not ${JSON.stringify(lock.version)}`);
+    problems.push(`version must be X.Y.Z, not ${JSON.stringify(lock.version)}`);
   }
   if (!isHttps(lock.baseUrl) || !lock.baseUrl.includes("{version}")) {
     problems.push(

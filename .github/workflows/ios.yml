@@ -5,8 +5,9 @@ name: ios
 # have run out before (2026-05-20, 2026-09-13), so the path filter is narrow
 # and there is a manual trigger.
 #
-# The core is the pinned published version when there is one, otherwise a
-# local build (cargo xtask core ios); Xcode never calls cargo itself.
+# The core is the published release core/artifact.lock.json pins, fetched and
+# checksum-verified by cargo xtask fetch (decision 0013); this workflow never
+# builds it. Xcode never calls cargo itself (tooling/core-guard.mjs).
 
 permissions:
   contents: read
@@ -19,6 +20,8 @@ on:
       - "identifiers/**"
       - "api/**"
       - "core/artifact.lock.json"
+      - "core/xtask/**"
+      - "core/rust-toolchain.toml"
       - ".github/workflows/ios.yml"
   push:
     branches: [main]
@@ -28,6 +31,8 @@ on:
       - "identifiers/**"
       - "api/**"
       - "core/artifact.lock.json"
+      - "core/xtask/**"
+      - "core/rust-toolchain.toml"
       - ".github/workflows/ios.yml"
   workflow_dispatch:
 
@@ -51,26 +56,11 @@ jobs:
         working-directory: ios
         run: xcrun swift-format lint --strict --recursive App NotificationService Tests Packages/SpjallAPI
 
-      - name: Published core pinned?
-        id: lock
-        run: echo "version=$(jq -r '.version // empty' core/artifact.lock.json)" >> "$GITHUB_OUTPUT"
-
       - name: Toolchain
         working-directory: core
         run: rustup toolchain install
 
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-        if: steps.lock.outputs.version == ''
-        with:
-          workspaces: core
-
-      - name: Core (local build, nothing published yet)
-        if: steps.lock.outputs.version == ''
-        working-directory: core
-        run: cargo xtask core ios
-
-      - name: Core (pinned ${{ steps.lock.outputs.version }})
-        if: steps.lock.outputs.version != ''
+      - name: Core (pinned, checksum-verified)
         working-directory: core
         run: cargo xtask fetch ios
 

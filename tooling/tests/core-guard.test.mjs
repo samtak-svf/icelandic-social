@@ -24,14 +24,16 @@ describe("core-guard", () => {
     expect(findProblems()).toEqual({ lock: [], calls: [] });
   });
 
-  it("accepts the unpublished and the published shape", () => {
-    expect(lockProblems(unpublished())).toEqual([]);
+  it("accepts a published lock", () => {
     expect(lockProblems(published())).toEqual([]);
   });
 
-  it("rejects pins without a version", () => {
-    const lock = { ...unpublished(), artifacts: published().artifacts };
-    expect(lockProblems(lock)).toEqual(["artifacts are pinned but version is null"]);
+  it("rejects an unpublished lock: the apps only fetch the core (decision 0013)", () => {
+    expect(lockProblems(unpublished())).toEqual([
+      "version must be X.Y.Z, not null",
+      "a published version needs baseUrl, an https:// URL with {version} and no trailing slash",
+      "a published version pins both android and ios; found none",
+    ]);
   });
 
   it("rejects a bad version, checksum, file name or base URL", () => {
@@ -42,7 +44,7 @@ describe("core-guard", () => {
     lock.artifacts.ios.file = "core.zip";
     lock.baseUrl = "http://artifacts.example.org/";
     expect(lockProblems(lock)).toEqual([
-      'version must be null or X.Y.Z, not "v0.1"',
+      'version must be X.Y.Z, not "v0.1"',
       "a published version needs baseUrl, an https:// URL with {version} and no trailing slash",
       "artifacts.android.sha256 must be 64 lowercase hex characters",
       "artifacts.ios.file must be spjall-core-ios.zip",
@@ -67,7 +69,7 @@ describe("core-guard", () => {
   });
 
   it("rejects unknown keys", () => {
-    expect(lockProblems({ ...unpublished(), latest: true })).toEqual([
+    expect(lockProblems({ ...published(), latest: true })).toEqual([
       "keys must be androidNdk, artifacts, baseUrl, version; found androidNdk,artifacts,baseUrl,latest,version",
     ]);
   });
