@@ -1,9 +1,9 @@
 name: ios
 
 # The iOS skeleton (ios/): swift-format, then an unsigned simulator build and
-# the unit tests. macOS minutes count ten times and the org's hosted minutes
-# have run out before (2026-05-20, 2026-09-13), so the path filter is narrow
-# and there is a manual trigger.
+# the unit tests. The repo is public, so hosted macOS runners cost nothing
+# (decision 0012); the path filter lists what the iOS build reads, and the
+# manual trigger reruns it on demand.
 #
 # The core is the published release core/artifact.lock.json pins, fetched and
 # checksum-verified by cargo xtask fetch (decision 0013); this workflow never

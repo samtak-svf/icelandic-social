@@ -2,7 +2,7 @@ name: ios-testflight
 
 # A signed TestFlight build on the interim Apple team (decision 0011), with the
 # interim ids from identifiers/ids.json (appleInterim), never the frozen ones.
-# Manual only: macOS minutes count ten times.
+# Manual only: each run signs a build and can upload it to TestFlight.
 #
 # The signing material is the interim team's, scoped to the team rather than
 # to an app (docs/store-accounts/): the Apple Distribution certificate as a
