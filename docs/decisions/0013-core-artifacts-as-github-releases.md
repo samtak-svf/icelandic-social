@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-05
-- Decided by: the agent, under Guðröður's request to stop building the core in every app run
+- Decided by: Guðröður, approving the plan that acted on the phase-0 review (2026-10-06)
 
 ## Decision
 

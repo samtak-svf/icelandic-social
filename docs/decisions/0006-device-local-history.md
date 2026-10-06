@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-05
+- Decided by: Guðröður (plan), recorded at phase 0
 
 ## Decision
 

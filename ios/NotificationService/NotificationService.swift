@@ -1,5 +1,5 @@
 // Phase 0 stub. In phase 1 this decrypts the MLS message named by the push,
-// whose payload carries no content (decision 0007), and shows it.
+// whose payload carries no content (decision 0002), and shows it.
 @preconcurrency import UserNotifications
 
 final class NotificationService: UNNotificationServiceExtension {

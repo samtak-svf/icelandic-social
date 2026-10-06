@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-05
-- Decided at phase 0, after the generator spike the plan (§3) required
+- Decided by: Guðröður (plan), recorded at phase 0 after the generator spike the plan (§3) required
 
 ## Decision
 
@@ -11,7 +11,7 @@
   breaking change against `main` (`oasdiff breaking`) needs the label `api: breaking`.
 - **REST clients are generated at build time, never committed**: Swift with Apple's
   `swift-openapi-generator` build plugin (package `SpjallAPI`), Kotlin with
-  `openapi-generator` (`kotlin`, library `jvm-ktor`, `kotlinx_serialization`) from a Gradle
+  `openapi-generator` (`kotlin`, library `jvm-okhttp4`, `kotlinx_serialization`) from a Gradle
   task in `android/core/network`.
 - **WebSocket frames are one tagged union** (`oneOf` + `discriminator` on `type`) in the
   same spec, but the Kotlin side is **not** produced by openapi-generator: a small emitter in

@@ -37,8 +37,21 @@ describe("seam-guard", () => {
   });
 
   it("ignores a binding named in a comment or a log line", () => {
-    const source = '// reads DB\nconsole.log("DB is not configured");';
+    const source = '// reads DB\nlog("db.missing", { code: "DB is not configured" });';
     expect(rules("backend/src/app.ts", source)).toEqual([]);
+  });
+
+  it("fails on console outside the log helper", () => {
+    expect(rules("backend/src/app.ts", "console.log(request);")).toEqual(["console:1"]);
+    expect(rules("backend/src/do/inbox.ts", "\nconsole . error(e);")).toEqual(["console:2"]);
+    expect(rules("backend/src/env/index.ts", "globalThis.console.warn(x);")).toEqual(["console:1"]);
+  });
+
+  it("allows console in the log helper and in comments or strings", () => {
+    expect(rules("backend/src/log.ts", "console.log(JSON.stringify(line));")).toEqual([]);
+    expect(rules("backend/src/app.ts", '// console.log here\nconst s = "console.log";')).toEqual(
+      [],
+    );
   });
 
   it("fails on a bare idFromName, even inside the seam", () => {

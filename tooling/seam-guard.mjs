@@ -9,6 +9,8 @@
 //    A namespace has no jurisdiction of its own; a bare `idFromName` creates
 //    the object wherever Cloudflare chooses, and it can never be moved.
 // 3. No `jurisdiction(…)` other than "eu", anywhere.
+// 4. No `console.*` outside `backend/src/log.ts`, the one helper that writes
+//    allow-listed fields only (decision 0008).
 //
 // Matching runs on source with comments and strings blanked, so a comment or
 // a log line naming a binding is not a violation (tooling/lib/source.mjs).
@@ -21,6 +23,8 @@ import { lineOf, parseJsonc, stripCommentsAndStrings } from "./lib/source.mjs";
 
 const SRC = "backend/src/";
 const SEAM = "backend/src/env/";
+const LOG_HELPER = "backend/src/log.ts";
+const CONSOLE = /\bconsole\s*\.\s*[A-Za-z_$]/g;
 const ID_METHODS = /\b(idFromName|idFromString|newUniqueId|getByName)\s*\(/g;
 const PINNED_EU = /\.\s*jurisdiction\s*\(\s*(["'`])eu\1\s*\)\s*\.\s*$/;
 const ANY_JURISDICTION = /\.\s*jurisdiction\s*\(([^)]*)\)/g;
@@ -94,6 +98,12 @@ export function findInSource(file, source, bindings) {
       add(match.index, "do-jurisdiction", `jurisdiction other than "eu": ${argument.trim()}`);
     }
   }
+
+  if (file !== LOG_HELPER) {
+    for (const match of code.matchAll(CONSOLE)) {
+      add(match.index, "console", `console outside ${LOG_HELPER}; log through it (decision 0008)`);
+    }
+  }
   return found;
 }
 
@@ -124,7 +134,8 @@ function main() {
   console.error(`
 ${violations.length} seam violation(s). Bindings, secrets and Durable Object
 stubs go through ${SEAM} only, and every stub is pinned with
-.jurisdiction("eu") (AGENTS.md § Infrastructure, docs/decisions/0001).`);
+.jurisdiction("eu") (AGENTS.md § Infrastructure, docs/decisions/0001). Logging
+goes through ${LOG_HELPER} only (docs/decisions/0008).`);
   process.exit(1);
 }
 

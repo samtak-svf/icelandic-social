@@ -147,6 +147,11 @@ comments, docs, commits, PRs, issues) is English.
 `docs/decisions/NNNN-slug.md`, numbered, never renumbered. A record states the decision, why,
 and what it rules out. A superseded record is kept and marked, not deleted.
 
+Each record opens with `# NNNN. Title` and a header list: `- Status:` (`accepted`, with
+"designed, not yet implemented", "deferred" or "amended by NNNN" when that applies),
+`- Date:` and `- Decided by:` (a person, never an agent), then any `Amended by`, `Supersedes` or
+`Closes` lines. The body starts at `## Decision`; `tooling/tests/decisions.test.mjs` holds this.
+
 **v1 scope is [0009](docs/decisions/0009-v1-scope.md).** A feature outside its table needs a
 new record before any code.
 

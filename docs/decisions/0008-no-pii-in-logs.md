@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-05
+- Decided by: Guðröður (plan), recorded at phase 0
 
 ## Decision
 
@@ -21,9 +22,10 @@ not kept. A log that carries no personal data also needs no retention policy of 
 
 ## Enforcement
 
-The pii-guard covers the repo. In the backend, logging goes through one helper in
-`src/log.ts` that accepts a typed record of allowed fields, and the seam guard refuses
-`console.*` elsewhere (backend PR).
+The pii-guard covers the repo. In the backend, logging goes through one helper,
+`backend/src/log.ts`. It takes an event name and a typed record of allowed fields, drops any
+other field and redacts a string that is not an opaque id. `tooling/seam-guard.mjs` refuses
+`console` anywhere else under `backend/src`.
 
 ## Rules out
 
