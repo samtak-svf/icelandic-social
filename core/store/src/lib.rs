@@ -5,7 +5,9 @@
 //! Decrypt-and-store is one `BEGIN IMMEDIATE` transaction (`Store::write`).
 //! SQLite's write lock is the single-writer lock across processes, so the
 //! process that advances a ratchet is the one that stores the plaintext.
-//! `spjall_mls::storage` keeps the OpenMLS state in `kv`.
+//! `spjall_mls::storage` keeps the OpenMLS state in `kv`; the client engine
+//! (decision 0018) keeps its account, conversations, history and outbox in
+//! the tables of migration 2.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -25,13 +27,82 @@ const BUSY_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Applied in order, once each, inside one transaction. Append only: an
 /// applied migration is never edited, because devices already ran it.
-const MIGRATIONS: &[(u32, &str)] = &[(
-    1,
-    "CREATE TABLE kv (
-         key   BLOB PRIMARY KEY,
-         value BLOB NOT NULL
-     ) STRICT, WITHOUT ROWID;",
-)];
+const MIGRATIONS: &[(u32, &str)] = &[
+    (
+        1,
+        "CREATE TABLE kv (
+             key   BLOB PRIMARY KEY,
+             value BLOB NOT NULL
+         ) STRICT, WITHOUT ROWID;",
+    ),
+    (
+        2,
+        // Decision 0018. Lists of account ids are one per line: an id never
+        // holds a newline.
+        "-- This device: its key from the moment it is made, and the account
+         -- and device ids once the server has registered it.
+         CREATE TABLE account (
+             id         INTEGER PRIMARY KEY CHECK (id = 1),
+             device_key BLOB NOT NULL,
+             account_id TEXT,
+             device_id  TEXT,
+             CHECK ((account_id IS NULL) = (device_id IS NULL))
+         ) STRICT;
+
+         -- Every group this device is or was in. `new` until the server
+         -- has it; `cursor` is the last seq processed, so a fetch asks for
+         -- what comes after it.
+         CREATE TABLE conversations (
+             group_id   BLOB PRIMARY KEY,
+             state      TEXT NOT NULL DEFAULT 'active'
+                        CHECK (state IN ('new', 'active', 'removed', 'stale')),
+             cursor     INTEGER NOT NULL CHECK (cursor >= 0),
+             created_at INTEGER NOT NULL
+         ) STRICT, WITHOUT ROWID;
+
+         -- Decrypted history (0006): each envelope is stored in the
+         -- transaction that decrypted it, or for an own message, the one
+         -- that saw its seq come back.
+         CREATE TABLE messages (
+             group_id       BLOB NOT NULL
+                            REFERENCES conversations (group_id) ON DELETE CASCADE,
+             seq            INTEGER NOT NULL,
+             sender_account TEXT NOT NULL,
+             sender_device  TEXT NOT NULL,
+             envelope       BLOB NOT NULL,
+             stored_at      INTEGER NOT NULL,
+             PRIMARY KEY (group_id, seq)
+         ) STRICT, WITHOUT ROWID;
+
+         -- What this device has to send. A row holds its intent (a
+         -- message's envelope, or the accounts to add or remove) until it
+         -- is sealed once into the bytes that are sent until they resolve.
+         -- A commit carries the roster and Welcome it was sealed with. `seq`
+         -- is what the server answered; the fetch that reaches it resolves
+         -- the row.
+         CREATE TABLE outbox (
+             id            INTEGER PRIMARY KEY,
+             group_id      BLOB NOT NULL
+                           REFERENCES conversations (group_id) ON DELETE CASCADE,
+             kind          TEXT NOT NULL CHECK (kind IN ('message', 'add', 'remove')),
+             intent        BLOB NOT NULL,
+             client_msg_id TEXT UNIQUE,
+             ciphertext    BLOB,
+             roster_add    TEXT,
+             roster_remove TEXT,
+             welcome       BLOB,
+             welcome_to    TEXT,
+             seq           INTEGER,
+             created_at    INTEGER NOT NULL,
+             CHECK ((client_msg_id IS NULL) = (ciphertext IS NULL)),
+             CHECK (seq IS NULL OR ciphertext IS NOT NULL),
+             CHECK ((welcome IS NULL) = (welcome_to IS NULL)),
+             CHECK (kind != 'message' OR
+                    (roster_add IS NULL AND roster_remove IS NULL AND welcome IS NULL))
+         ) STRICT;
+         CREATE INDEX outbox_by_group ON outbox (group_id, id);",
+    ),
+];
 
 pub struct Store {
     connection: Connection,
@@ -43,15 +114,8 @@ impl Store {
     /// latest schema. A wrong key fails here, not on a later query.
     pub fn open(dir: &Path, key: &Key) -> rusqlite::Result<Self> {
         let path = dir.join(FILE_NAME);
-        let mut connection = Connection::open(&path)?;
-        // The key must be the first statement on the connection. Hex digits
-        // only, so formatting it into the pragma cannot inject anything.
-        connection.execute_batch(&format!("PRAGMA key = \"x'{}'\";", hex(key)))?;
-        connection.query_row("SELECT COUNT(*) FROM sqlite_master", [], |_| Ok(()))?;
-        connection.busy_timeout(BUSY_TIMEOUT)?;
-        connection.pragma_update(None, "journal_mode", "WAL")?;
-        connection.pragma_update(None, "foreign_keys", true)?;
-        migrate(&mut connection)?;
+        let mut connection = connect(&path, key)?;
+        migrate(&mut connection, MIGRATIONS)?;
         Ok(Self { connection, path })
     }
 
@@ -75,6 +139,15 @@ impl Store {
         &mut self,
         f: impl FnOnce(&Transaction) -> rusqlite::Result<T>,
     ) -> rusqlite::Result<T> {
+        self.try_write(f)
+    }
+
+    /// `write` for a caller with its own error type, which rolls back the
+    /// same way.
+    pub fn try_write<T, E: From<rusqlite::Error>>(
+        &mut self,
+        f: impl FnOnce(&Transaction) -> Result<T, E>,
+    ) -> Result<T, E> {
         let tx = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -88,7 +161,19 @@ fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
-fn migrate(connection: &mut Connection) -> rusqlite::Result<()> {
+fn connect(path: &Path, key: &Key) -> rusqlite::Result<Connection> {
+    let connection = Connection::open(path)?;
+    // The key must be the first statement on the connection. Hex digits
+    // only, so formatting it into the pragma cannot inject anything.
+    connection.execute_batch(&format!("PRAGMA key = \"x'{}'\";", hex(key)))?;
+    connection.query_row("SELECT COUNT(*) FROM sqlite_master", [], |_| Ok(()))?;
+    connection.busy_timeout(BUSY_TIMEOUT)?;
+    connection.pragma_update(None, "journal_mode", "WAL")?;
+    connection.pragma_update(None, "foreign_keys", true)?;
+    Ok(connection)
+}
+
+fn migrate(connection: &mut Connection, migrations: &[(u32, &str)]) -> rusqlite::Result<()> {
     let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
     tx.execute_batch(
         "CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -101,7 +186,7 @@ fn migrate(connection: &mut Connection) -> rusqlite::Result<()> {
         [],
         |row| row.get(0),
     )?;
-    for (version, sql) in MIGRATIONS.iter().filter(|(version, _)| *version > current) {
+    for (version, sql) in migrations.iter().filter(|(version, _)| *version > current) {
         tx.execute_batch(sql)?;
         tx.execute(
             "INSERT INTO schema_migrations (version, applied_at) VALUES (?1, unixepoch())",
@@ -152,6 +237,109 @@ mod tests {
             })
             .unwrap();
         assert_eq!(rows, MIGRATIONS.len() as u32);
+    }
+
+    /// A device that ran only migration 1 keeps its MLS state when it
+    /// upgrades.
+    #[test]
+    fn an_upgrade_keeps_what_was_stored() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(FILE_NAME);
+        let mut old = connect(&path, &KEY).unwrap();
+        migrate(&mut old, &MIGRATIONS[..1]).unwrap();
+        old.execute("INSERT INTO kv VALUES (x'01', x'02')", [])
+            .unwrap();
+        drop(old);
+
+        let store = Store::open(dir.path(), &KEY).unwrap();
+        assert_eq!(store.schema_version().unwrap(), MIGRATIONS.len() as u32);
+        let value: Vec<u8> = store
+            .connection
+            .query_row("SELECT value FROM kv WHERE key = x'01'", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(value, [2]);
+    }
+
+    fn refused(store: &mut Store, sql: &str) -> bool {
+        store.write(|tx| tx.execute_batch(sql)).is_err()
+    }
+
+    #[test]
+    fn the_client_tables_hold_their_invariants() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = Store::open(dir.path(), &KEY).unwrap();
+        store
+            .write(|tx| {
+                tx.execute_batch(
+                    "INSERT INTO account VALUES (1, x'01', NULL, NULL);
+                     UPDATE account SET account_id = 'a_1', device_id = 'd_1';
+                     INSERT INTO conversations (group_id, cursor, created_at) VALUES (x'01', 0, 0);
+                     INSERT INTO messages VALUES (x'01', 1, 'a_1', 'd_1', x'00', 0);
+                     INSERT INTO outbox (group_id, kind, intent, created_at)
+                         VALUES (x'01', 'message', x'00', 0);",
+                )
+            })
+            .unwrap();
+
+        // One account per store.
+        assert!(refused(
+            &mut store,
+            "INSERT INTO account VALUES (2, 'a_2', 'd_2')"
+        ));
+        // A conversation's state is one of three.
+        assert!(refused(
+            &mut store,
+            "INSERT INTO conversations VALUES (x'02', 'gone', 0, 0)"
+        ));
+        // History and the outbox belong to a conversation the store knows.
+        assert!(refused(
+            &mut store,
+            "INSERT INTO messages VALUES (x'09', 1, 'a_1', 'd_1', x'00', 0)"
+        ));
+        // A clientMsgId and its ciphertext are sealed together, and only
+        // sealed bytes are given a seq.
+        assert!(refused(
+            &mut store,
+            "UPDATE outbox SET client_msg_id = 'm1'"
+        ));
+        assert!(refused(&mut store, "UPDATE outbox SET seq = 1"));
+        // A message carries no roster or Welcome, and a Welcome names who
+        // it is for.
+        assert!(refused(
+            &mut store,
+            "UPDATE outbox SET client_msg_id = 'm1', ciphertext = x'01', roster_add = 'b'"
+        ));
+        assert!(refused(
+            &mut store,
+            "INSERT INTO outbox (group_id, kind, intent, client_msg_id, ciphertext, welcome, created_at)
+                 VALUES (x'01', 'add', CAST('b' AS BLOB), 'c1', x'01', x'01', 0)"
+        ));
+        // A clientMsgId is never reused.
+        assert!(!refused(
+            &mut store,
+            "UPDATE outbox SET client_msg_id = 'm1', ciphertext = x'01', seq = 1"
+        ));
+        assert!(refused(
+            &mut store,
+            "INSERT INTO outbox (group_id, kind, intent, client_msg_id, ciphertext, created_at)
+                 VALUES (x'01', 'message', x'00', 'm1', x'01', 0)"
+        ));
+
+        // Forgetting a conversation forgets its history and its outbox.
+        store
+            .write(|tx| tx.execute("DELETE FROM conversations", []))
+            .unwrap();
+        let left: u32 = store
+            .connection
+            .query_row(
+                "SELECT (SELECT COUNT(*) FROM messages) + (SELECT COUNT(*) FROM outbox)",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(left, 0);
     }
 
     #[test]
