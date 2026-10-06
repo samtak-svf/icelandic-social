@@ -1,5 +1,13 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import { AUTHED, base64, DEVICE_TOKEN, errorResponse, INVALID, OpaqueId } from "./common.ts";
+import {
+  AUTHED,
+  base64,
+  DEVICE_TOKEN,
+  errorResponse,
+  INVALID,
+  OpaqueId,
+  RATE_LIMITED,
+} from "./common.ts";
 
 // KeyPackages, kept in D1 and consumed once (decisions 0002, 0017).
 
@@ -67,5 +75,6 @@ export const claimKeyPackagesRoute = createRoute({
     ...INVALID,
     404: errorResponse("not_found: no such account, or it has no devices"),
     ...AUTHED,
+    ...RATE_LIMITED,
   },
 });

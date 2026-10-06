@@ -47,6 +47,16 @@
     ],
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Conversation", "Inbox"] }],
+  // Workers rate limits, read only through src/env/. Each is counted per
+  // Cloudflare location, so it is a brake on abuse, not an exact quota.
+  // PUBLIC_LIMIT is per address on the routes a person reaches before
+  // signing in; CLAIM_LIMIT is per account on key-package claims, which
+  // spend another account's packages. A namespace_id is unique within the
+  // Cloudflare account.
+  "ratelimits": [
+    { "name": "PUBLIC_LIMIT", "namespace_id": "1001", "simple": { "limit": 30, "period": 60 } },
+    { "name": "CLAIM_LIMIT", "namespace_id": "1002", "simple": { "limit": 120, "period": 60 } },
+  ],
   // The oldest client build that may talk to this Worker, per platform. Raised
   // when a protocol change would break older builds; the apps read it from
   // /health and ask the user to update.

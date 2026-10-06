@@ -1,5 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import { AUTHED, DEVICE_TOKEN, errorResponse, INVALID } from "./common.ts";
+import { AUTHED, DEVICE_TOKEN, errorResponse, INVALID, RATE_LIMITED } from "./common.ts";
 
 // Invites (decisions 0009, 0019): one personal link per account, and what a
 // link says about who sent it, before sign-in.
@@ -75,5 +75,6 @@ export const resolveInviteRoute = createRoute({
     },
     ...INVALID,
     404: errorResponse("not_found: no live invite with this token"),
+    ...RATE_LIMITED,
   },
 });

@@ -1,6 +1,7 @@
 import { env, exports } from "cloudflare:workers";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../src/api/common.ts";
+import { fromBase64, toBase64 } from "../src/bytes.ts";
 import { authorize, invite, newKennitala, registerWith, signIn } from "./kenni.ts";
 import { device } from "./support.ts";
 
@@ -81,6 +82,30 @@ describe("POST /v1/devices", () => {
     expect(second.accountId).toBe(first.accountId);
     expect(second.deviceId).not.toBe(first.deviceId);
     expect(second.token).not.toBe(first.token);
+  });
+
+  it("refuses a device key another device registered, the same person's or not", async () => {
+    const kennitala = newKennitala();
+    const deviceKey = toBase64(crypto.getRandomValues(new Uint8Array(32)));
+    await registered(
+      await signIn({ kennitala, inviteToken: await invite(), register: { deviceKey } }),
+    );
+    for (const again of [
+      await signIn({ kennitala, register: { deviceKey } }),
+      await signIn({ inviteToken: await invite(), register: { deviceKey } }),
+    ]) {
+      expect(again.status).toBe(409);
+      expect(await errorOf(again)).toBe("device_key_taken");
+    }
+    const devices = await env.DB.prepare("SELECT count(*) AS n FROM devices WHERE device_key = ?")
+      .bind(fromBase64(deviceKey))
+      .first<{ n: number }>();
+    expect(devices?.n).toBe(1);
+  });
+
+  it("holds one device per key in D1 itself", async () => {
+    const first = await device();
+    await expect(device({ deviceKey: first.deviceKey })).rejects.toThrow(/UNIQUE/);
   });
 
   it("issues a token that works as Bearer", async () => {

@@ -22,6 +22,19 @@ export function db(env: Env): D1Database {
   return env.DB;
 }
 
+/**
+ * Whether a request may go on: per address on the routes a person reaches
+ * before signing in, per account on key-package claims (wrangler.jsonc).
+ */
+export async function withinLimit(
+  env: Env,
+  limit: "public" | "claims",
+  key: string,
+): Promise<boolean> {
+  const binding = limit === "public" ? env.PUBLIC_LIMIT : env.CLAIM_LIMIT;
+  return (await binding.limit({ key })).success;
+}
+
 /** The `Conversation` DO for one conversation id: its MLS delivery service. */
 export function conversation(env: Env, conversationId: string) {
   return env.CONVERSATION.jurisdiction("eu").getByName(conversationId);

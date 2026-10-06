@@ -259,7 +259,7 @@
         "properties": {
           "error": {
             "type": "string",
-            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, invite_required, kenni_unavailable",
+            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, invite_required, device_key_taken, kenni_unavailable, rate_limited",
             "example": "unauthorized"
           }
         },
@@ -755,6 +755,16 @@
               }
             }
           },
+          "429": {
+            "description": "rate_limited: too many requests in the last minute; try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "503": {
             "description": "kenni_unavailable: Kenni could not be reached",
             "content": {
@@ -808,6 +818,26 @@
           },
           "403": {
             "description": "sign_in_failed: Kenni refused the code or its ID token did not verify; invite_required: no account for this person and no live invite",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "device_key_taken: another device registered this device key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: too many requests in the last minute; try again later",
             "content": {
               "application/json": {
                 "schema": {
@@ -998,6 +1028,16 @@
           },
           "404": {
             "description": "not_found: no live invite with this token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: too many requests in the last minute; try again later",
             "content": {
               "application/json": {
                 "schema": {
@@ -1530,6 +1570,16 @@
           },
           "404": {
             "description": "not_found: no such account, or it has no devices",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: too many requests in the last minute; try again later",
             "content": {
               "application/json": {
                 "schema": {

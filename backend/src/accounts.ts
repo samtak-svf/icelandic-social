@@ -67,13 +67,23 @@ export type NewDevice = {
 /**
  * Gives the person a new device: on their account if the kennitala HMAC has
  * one, else on a new account, which needs a live invite (decision 0019).
- * Returns null when there is no account and no live invite.
+ * Refuses a device key some device already has; migration 0003's index
+ * holds that under a race too.
  */
 export async function registerDevice(
   env: Env,
   person: Person,
   device: NewDevice,
-): Promise<{ accountId: string; deviceId: string; token: string } | null> {
+): Promise<
+  | { ok: { accountId: string; deviceId: string; token: string } }
+  | { error: "invite_required" | "device_key_taken" }
+> {
+  const taken = await db(env)
+    .prepare("SELECT 1 FROM devices WHERE device_key = ?")
+    .bind(device.deviceKey)
+    .first();
+  if (taken) return { error: "device_key_taken" };
+
   const hmac = await kennitalaHmac(env, person.nationalId);
   const deviceId = randomToken("d_");
   const token = randomToken("dt_");
@@ -96,9 +106,9 @@ export async function registerDevice(
   const known = await existing();
   if (known) {
     await insertDevice(known.accountId).run();
-    return { accountId: known.accountId, deviceId, token };
+    return { ok: { accountId: known.accountId, deviceId, token } };
   }
-  if (!device.inviteToken) return null;
+  if (!device.inviteToken) return { error: "invite_required" };
 
   // One transaction: the account is written only if the invite is live, a
   // single-use invite is spent by it, and the device's foreign key fails the
@@ -128,12 +138,12 @@ export async function registerDevice(
     const raced = await existing();
     if (raced) {
       await insertDevice(raced.accountId).run();
-      return { accountId: raced.accountId, deviceId, token };
+      return { ok: { accountId: raced.accountId, deviceId, token } };
     }
-    if (String(error).includes("FOREIGN KEY")) return null;
+    if (String(error).includes("FOREIGN KEY")) return { error: "invite_required" };
     throw error;
   }
-  return { accountId, deviceId, token };
+  return { ok: { accountId, deviceId, token } };
 }
 
 /** The account as its owner sees it: name, mark and active devices. */

@@ -24,7 +24,7 @@ export const ApiError = z
   .object({
     error: z.string().openapi({
       description:
-        "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, invite_required, kenni_unavailable",
+        "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, invite_required, device_key_taken, kenni_unavailable, rate_limited",
       example: "unauthorized",
     }),
   })
@@ -41,6 +41,11 @@ export const AUTHED = {
 };
 
 export const INVALID = { 400: error("The request does not match the schema") };
+
+/** The answer of a route with a rate limit: per address, or per account once signed in. */
+export const RATE_LIMITED = {
+  429: error("rate_limited: too many requests in the last minute; try again later"),
+};
 
 /** The answers of a route inside one conversation (decision 0017). */
 export const MEMBER = {

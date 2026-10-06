@@ -24,7 +24,7 @@ import { listMessagesRoute, sendMessageRoute } from "./api/messages.ts";
 import { SOCKET_ACCOUNT, SOCKET_DEVICE, socketRoute } from "./api/socket.ts";
 import { fromBase64, toBase64 } from "./bytes.ts";
 import { checkSend } from "./conversations.ts";
-import { conversation, inbox, kenni, minClientVersions } from "./env/index.ts";
+import { conversation, inbox, kenni, minClientVersions, withinLimit } from "./env/index.ts";
 import { redeem, signInConfig } from "./identity.ts";
 import { inviteLink, resolveInvite, revokeInvite, rotateInvite } from "./invites.ts";
 import { claim, upload } from "./key-packages.ts";
@@ -45,13 +45,28 @@ type AppEnv = { Bindings: Env; Variables: { device: Device } };
 /** The /v1 routes a person reaches before they have a device (decision 0019). */
 const PUBLIC = [/^GET \/v1\/sign-in$/, /^POST \/v1\/devices$/, /^GET \/v1\/invites\/[^/]+$/];
 
+const isPublic = (c: { req: { method: string; path: string } }) =>
+  PUBLIC.some((pattern) => pattern.test(`${c.req.method} ${c.req.path}`));
+
+/**
+ * The public routes are limited per address. Cloudflare sets
+ * cf-connecting-ip on every request it serves; only workerd on its own, in
+ * tests and `wrangler dev`, leaves it out, and those are not limited.
+ */
+const publicLimit = createMiddleware<AppEnv>(async (c, next) => {
+  const address = c.req.header("cf-connecting-ip");
+  if (!isPublic(c) || !address) return next();
+  if (await withinLimit(c.env, "public", address)) return next();
+  log("request.rate_limited", { code: "public" });
+  return c.json({ error: "rate_limited" }, 429);
+});
+
 /**
  * Every other /v1 route needs a device token (decision 0014): its hash must
  * name an active device in D1, which the handlers then act as.
  */
 const deviceToken = createMiddleware<AppEnv>(async (c, next) => {
-  const route = `${c.req.method} ${c.req.path}`;
-  if (PUBLIC.some((pattern) => pattern.test(route))) return next();
+  if (isPublic(c)) return next();
   const token = BEARER.exec(c.req.header("authorization") ?? "")?.[1];
   const device = token ? await deviceForToken(c.env, token) : null;
   if (!device) return c.json({ error: "unauthorized" }, 401);
@@ -71,6 +86,7 @@ export function createApp() {
     scheme: "bearer",
     description: "The device token from registerDevice (decision 0014)",
   });
+  app.use("/v1/*", publicLimit);
   app.use("/v1/*", deviceToken);
 
   app.openapi(healthRoute, (c) =>
@@ -110,12 +126,15 @@ export function createApp() {
       deviceKey: fromBase64(body.deviceKey),
       inviteToken: body.inviteToken,
     });
-    if (!registered) {
-      log("sign_in.failed", { code: "invite_required" });
-      return c.json({ error: "invite_required" }, 403);
+    if ("error" in registered) {
+      log("sign_in.failed", { code: registered.error });
+      return registered.error === "invite_required"
+        ? c.json({ error: registered.error }, 403)
+        : c.json({ error: registered.error }, 409);
     }
-    log("device.registered", { accountId: registered.accountId, deviceId: registered.deviceId });
-    return c.json(registered, 200);
+    const { accountId, deviceId } = registered.ok;
+    log("device.registered", { accountId, deviceId });
+    return c.json(registered.ok, 200);
   });
 
   app.openapi(getMeRoute, async (c) => {
@@ -231,6 +250,10 @@ export function createApp() {
   });
 
   app.openapi(claimKeyPackagesRoute, async (c) => {
+    if (!(await withinLimit(c.env, "claims", c.var.device.accountId))) {
+      log("request.rate_limited", { code: "claims" });
+      return c.json({ error: "rate_limited" }, 429);
+    }
     const claimed = await claim(c.env, c.req.valid("param").accountId, c.var.device.deviceId);
     if (!claimed) return c.json({ error: "not_found" }, 404);
     const keyPackages = claimed.map((p) => ({
