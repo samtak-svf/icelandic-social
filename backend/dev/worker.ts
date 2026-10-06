@@ -1,15 +1,18 @@
 import { tokenHash } from "../src/accounts.ts";
+import { fakeKenni, fakeKenniFetcher, KENNI_PATH } from "./kenni.ts";
 import worker, { Conversation as RealConversation, Inbox as RealInbox } from "../src/index.ts";
 
 // The Worker that `wrangler dev dev/worker.ts` runs for the interop test
 // (core/client/tests/backend.rs). Never deployed: `wrangler deploy` reads
 // `main` from wrangler.jsonc, which stays src/index.ts.
 //
-// It differs from the real Worker in two ways only:
+// It differs from the real Worker in these ways only:
 // - local workerd throws on `jurisdiction()`, so each namespace answers
 //   `.jurisdiction("eu")` with itself (test/worker.ts refuses anything else);
-// - `POST /dev/devices` registers a device without Kenni, which does not
-//   exist yet, and returns its token.
+// - it serves the fake Kenni (dev/kenni.ts) under /dev/kenni and reaches it in
+//   process; run it with `--var KENNI_ISSUER:<this origin>/dev/kenni`;
+// - `POST /dev/devices` registers a device without Kenni and returns its
+//   token, until the interop test signs in through the fake.
 
 function local(namespace: DurableObjectNamespace): DurableObjectNamespace {
   return new Proxy(namespace, {
@@ -77,6 +80,8 @@ export default {
   fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method === "POST" && url.pathname === "/dev/devices") return register(request, env);
-    return worker.fetch(request, devEnv(env), ctx);
+    if (url.pathname.startsWith(KENNI_PATH)) return fakeKenni(request, env.KENNI_ISSUER);
+    const withFake = { ...devEnv(env), KENNI_FAKE: fakeKenniFetcher(env.KENNI_ISSUER) };
+    return worker.fetch(request, withFake, ctx);
   },
 } satisfies ExportedHandler<Env>;

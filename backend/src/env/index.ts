@@ -5,6 +5,8 @@
 // has no jurisdiction of its own, so a bare `idFromName` would create the
 // object wherever Cloudflare chose and could never be moved (decision 0001).
 
+import ids from "../../../identifiers/ids.json" with { type: "json" };
+
 /** The platforms a client build can report; each has its own minimum version. */
 export type Platform = "android" | "ios";
 
@@ -28,4 +30,45 @@ export function conversation(env: Env, conversationId: string) {
 /** The `Inbox` DO for one account id: its devices' WebSockets and push. */
 export function inbox(env: Env, accountId: string) {
   return env.INBOX.jurisdiction("eu").getByName(accountId);
+}
+
+/** Worker secrets, which `wrangler types` cannot see (wrangler.jsonc names them). */
+type Secrets = { KENNITALA_HMAC_KEY?: string; KENNI_CLIENT_SECRET?: string };
+
+/**
+ * Bound only by dev/worker.ts and test/worker.ts: the fake Kenni, reached in
+ * process. A deployed Worker has no such binding and fetches the issuer.
+ */
+type Fake = { KENNI_FAKE?: Fetcher };
+
+/** Kenni, the identity provider (decision 0019). */
+export type Kenni = {
+  issuer: string;
+  clientId: string;
+  /** Only for a confidential client; a native one has none. */
+  clientSecret: string | undefined;
+  /** The one redirect the Worker redeems a code for: the app's own scheme. */
+  redirectUri: string;
+  /** How the Worker reaches the issuer: the network, or the fake in process. */
+  fetch: typeof fetch;
+};
+
+export function kenni(env: Env): Kenni {
+  return {
+    issuer: env.KENNI_ISSUER,
+    clientId: ids.identity.kenniClientId,
+    clientSecret: (env as Env & Secrets).KENNI_CLIENT_SECRET || undefined,
+    redirectUri: `${ids.store.urlScheme}:/kenni`,
+    fetch: (env as Env & Fake).KENNI_FAKE?.fetch.bind((env as Env & Fake).KENNI_FAKE) ?? fetch,
+  };
+}
+
+/**
+ * The key of the kennitala HMAC. A Worker without it cannot tell a returning
+ * person from a new one, so it refuses to register anyone rather than guess.
+ */
+export function kennitalaKey(env: Env): string {
+  const key = (env as Env & Secrets).KENNITALA_HMAC_KEY;
+  if (!key) throw new Error("KENNITALA_HMAC_KEY is not set");
+  return key;
 }

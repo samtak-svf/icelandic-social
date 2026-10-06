@@ -53,5 +53,11 @@
   "vars": {
     "MIN_CLIENT_VERSION_ANDROID": "0.1.0",
     "MIN_CLIENT_VERSION_IOS": "0.1.0",
+    // Kenni's issuer for this Samtak team (decision 0019). The Worker reads its
+    // discovery document; the apps get the authorize endpoint from /v1/sign-in.
+    "KENNI_ISSUER": "https://idp.kenni.is/innskraning.is",
   },
+  // Secrets, set with `wrangler secret put`, never in this file:
+  //   KENNITALA_HMAC_KEY   the key of the kennitala HMAC (decisions 0014, 0019)
+  //   KENNI_CLIENT_SECRET  only if Kenni ever issues a confidential client
 }

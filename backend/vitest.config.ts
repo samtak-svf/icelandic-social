@@ -12,7 +12,13 @@ export default defineConfig({
       main: "./test/worker.ts",
       wrangler: { configPath: "./wrangler.jsonc" },
       miniflare: {
-        bindings: { TEST_MIGRATIONS: await readD1Migrations("./migrations") },
+        bindings: {
+          TEST_MIGRATIONS: await readD1Migrations("./migrations"),
+          // The fake Kenni that test/worker.ts serves, and a key for the
+          // kennitala HMAC that guards nothing real.
+          KENNI_ISSUER: "https://spjall.test/dev/kenni",
+          KENNITALA_HMAC_KEY: "test-only-kennitala-key",
+        },
       },
     })),
   ],

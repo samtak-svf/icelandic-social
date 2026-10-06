@@ -40,6 +40,7 @@ describe("the delivery contract", () => {
       "get /health getHealth",
       "get /v1/conversations/{conversationId}/messages listMessages",
       "get /v1/conversations/{conversationId}/welcome getWelcome",
+      "get /v1/sign-in getSignInConfig",
       "get /v1/ws openSocket",
       "post /v1/accounts/{accountId}/key-packages claimKeyPackages",
       "post /v1/conversations createConversation",
@@ -124,16 +125,6 @@ describe("the delivery contract", () => {
   it.each([
     ["/v1/devices/d_1", { method: "DELETE", headers: TOKEN }],
     ["/v1/me", { method: "DELETE", headers: TOKEN }],
-    [
-      "/v1/devices",
-      json({
-        kenniCode: "code",
-        codeVerifier: "v".repeat(43),
-        redirectUri: "is.samtak.spjall:/kenni",
-        platform: "android",
-        deviceKey: CIPHERTEXT,
-      }),
-    ],
   ])("answers %s with 501 until phase 1", async (path, init) => {
     const response = await fetch(path, init);
     expect(response.status).toBe(501);

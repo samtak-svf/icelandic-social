@@ -227,6 +227,46 @@
           "minClientVersion"
         ]
       },
+      "SignInConfig": {
+        "type": "object",
+        "properties": {
+          "authorizationEndpoint": {
+            "type": "string",
+            "example": "https://idp.kenni.is/innskraning.is/oidc/auth"
+          },
+          "clientId": {
+            "type": "string",
+            "example": "@innskraning.is/samtak-spjall"
+          },
+          "redirectUri": {
+            "type": "string",
+            "example": "is.samtak.spjall:/kenni"
+          },
+          "scope": {
+            "type": "string",
+            "example": "openid national_id audkenni_name"
+          }
+        },
+        "required": [
+          "authorizationEndpoint",
+          "clientId",
+          "redirectUri",
+          "scope"
+        ]
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, invite_required, kenni_unavailable, not_implemented",
+            "example": "unauthorized"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
       "RegisteredDevice": {
         "type": "object",
         "properties": {
@@ -251,19 +291,6 @@
           "token"
         ]
       },
-      "ApiError": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "string",
-            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, not_implemented",
-            "example": "unauthorized"
-          }
-        },
-        "required": [
-          "error"
-        ]
-      },
       "RegisterDevice": {
         "type": "object",
         "properties": {
@@ -281,7 +308,13 @@
           "redirectUri": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 512
+            "maxLength": 512,
+            "description": "The redirect the code was issued for: SignInConfig.redirectUri"
+          },
+          "nonce": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{22,128}$",
+            "description": "The nonce the app put in the authorization request"
           },
           "platform": {
             "type": "string",
@@ -308,6 +341,7 @@
           "kenniCode",
           "codeVerifier",
           "redirectUri",
+          "nonce",
           "platform",
           "deviceKey"
         ]
@@ -592,6 +626,37 @@
         }
       }
     },
+    "/v1/sign-in": {
+      "get": {
+        "operationId": "getSignInConfig",
+        "tags": [
+          "devices"
+        ],
+        "summary": "Where the app sends a person to sign in with Kenni (decision 0019)",
+        "responses": {
+          "200": {
+            "description": "The authorization request's parts; the app adds PKCE, state and nonce",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignInConfig"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "kenni_unavailable: Kenni could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/devices": {
       "post": {
         "operationId": "registerDevice",
@@ -631,7 +696,7 @@
             }
           },
           "403": {
-            "description": "No account for this person and no valid invite token",
+            "description": "sign_in_failed: Kenni refused the code or its ID token did not verify; invite_required: no account for this person and no live invite",
             "content": {
               "application/json": {
                 "schema": {
@@ -640,8 +705,8 @@
               }
             }
           },
-          "501": {
-            "description": "In the contract, not yet built",
+          "503": {
+            "description": "kenni_unavailable: Kenni could not be reached",
             "content": {
               "application/json": {
                 "schema": {

@@ -1,17 +1,24 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { createMiddleware } from "hono/factory";
-import { type Device, deviceForToken } from "./accounts.ts";
+import { type Device, deviceForToken, registerDevice } from "./accounts.ts";
 import { createConversationRoute, getWelcomeRoute } from "./api/conversations.ts";
-import { deleteAccountRoute, registerDeviceRoute, revokeDeviceRoute } from "./api/devices.ts";
+import {
+  deleteAccountRoute,
+  registerDeviceRoute,
+  revokeDeviceRoute,
+  signInConfigRoute,
+} from "./api/devices.ts";
 import { WsFrame } from "./api/frames.ts";
 import { healthRoute } from "./api/health.ts";
 import { claimKeyPackagesRoute, uploadKeyPackagesRoute } from "./api/key-packages.ts";
 import { listMessagesRoute, sendMessageRoute } from "./api/messages.ts";
 import { SOCKET_ACCOUNT, SOCKET_DEVICE, socketRoute } from "./api/socket.ts";
-import { toBase64 } from "./bytes.ts";
+import { fromBase64, toBase64 } from "./bytes.ts";
 import { checkSend } from "./conversations.ts";
-import { conversation, inbox, minClientVersions } from "./env/index.ts";
+import { conversation, inbox, kenni, minClientVersions } from "./env/index.ts";
+import { redeem, signInConfig } from "./identity.ts";
 import { claim, upload } from "./key-packages.ts";
+import { log } from "./log.ts";
 
 /** OpenAPI 3.1 document metadata; the routes and schemas come from src/api/. */
 export const DOCUMENT_INFO = {
@@ -24,13 +31,15 @@ const BEARER = /^Bearer ([A-Za-z0-9_-]{16,256})$/;
 /** What every handler sees: the bindings, and the device a token resolved to. */
 type AppEnv = { Bindings: Env; Variables: { device: Device } };
 
+/** The /v1 routes a person reaches before they have a device (decision 0019). */
+const PUBLIC = new Set(["GET /v1/sign-in", "POST /v1/devices"]);
+
 /**
- * Every /v1 route but device registration needs a device token (decision
- * 0014): its hash must name an active device in D1, which the handlers then
- * act as.
+ * Every other /v1 route needs a device token (decision 0014): its hash must
+ * name an active device in D1, which the handlers then act as.
  */
 const deviceToken = createMiddleware<AppEnv>(async (c, next) => {
-  if (c.req.method === "POST" && c.req.path === "/v1/devices") return next();
+  if (PUBLIC.has(`${c.req.method} ${c.req.path}`)) return next();
   const token = BEARER.exec(c.req.header("authorization") ?? "")?.[1];
   const device = token ? await deviceForToken(c.env, token) : null;
   if (!device) return c.json({ error: "unauthorized" }, 401);
@@ -58,9 +67,48 @@ export function createApp() {
     c.json({ status: "ok" as const, minClientVersion: minClientVersions(c.env) }, 200),
   );
 
-  // Decisions 0014 and 0017: in the contract now, built in phase 1. Routes are
-  // registered in the order api/openapi.json lists them.
-  app.openapi(registerDeviceRoute, (c) => c.json(notImplemented, 501));
+  // Sign-in (decision 0019). Routes are registered in the order
+  // api/openapi.json lists them.
+  app.openapi(signInConfigRoute, async (c) => {
+    try {
+      return c.json(await signInConfig(kenni(c.env)), 200);
+    } catch {
+      log("sign_in.failed", { code: "discovery_failed" });
+      return c.json({ error: "kenni_unavailable" }, 503);
+    }
+  });
+
+  app.openapi(registerDeviceRoute, async (c) => {
+    const body = c.req.valid("json");
+    const provider = kenni(c.env);
+    // Only the app's own redirect: a code issued for any other is not this app's.
+    if (body.redirectUri !== provider.redirectUri) return c.json({ error: "sign_in_failed" }, 403);
+    const person = await redeem(provider, {
+      code: body.kenniCode,
+      verifier: body.codeVerifier,
+      redirectUri: body.redirectUri,
+      nonce: body.nonce,
+    });
+    if ("error" in person) {
+      log("sign_in.failed", { code: person.error });
+      return person.error === "discovery_failed"
+        ? c.json({ error: "kenni_unavailable" }, 503)
+        : c.json({ error: "sign_in_failed" }, 403);
+    }
+    const registered = await registerDevice(c.env, person.ok, {
+      platform: body.platform,
+      deviceKey: fromBase64(body.deviceKey),
+      inviteToken: body.inviteToken,
+    });
+    if (!registered) {
+      log("sign_in.failed", { code: "invite_required" });
+      return c.json({ error: "invite_required" }, 403);
+    }
+    log("device.registered", { accountId: registered.accountId, deviceId: registered.deviceId });
+    return c.json(registered, 200);
+  });
+
+  // Decision 0014: in the contract now, built in phase 1.
   app.openapi(revokeDeviceRoute, (c) => c.json(notImplemented, 501));
   app.openapi(deleteAccountRoute, (c) => c.json(notImplemented, 501));
 
