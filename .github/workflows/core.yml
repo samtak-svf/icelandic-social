@@ -6,7 +6,9 @@ name: core
 # - android, ios: build the Android AAR (ubuntu, NDK from
 #   core/artifact.lock.json) and the iOS XCFramework (macOS), on a core PR and
 #   on a `core-vX.Y.Z` tag. On the PR so a cross-compile break shows there,
-#   not after a tag that can never be published again.
+#   not after a tag that can never be published again. The PR's zips are
+#   kept under a name derived from the tree (tooling/core-reuse.mjs), and
+#   the tag reuses them rather than building the same tree twice.
 # - publish: on the tag only, attaches both zips with their SHA-256 files to
 #   a GitHub release of that tag (decision 0013). A released version is never overwritten. Nothing here edits the
 #   lock: apps move to a new core through a PR that pins the printed checksums
@@ -75,6 +77,9 @@ jobs:
     if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/core-v')
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Tag matches the workspace version
@@ -86,45 +91,124 @@ jobs:
             exit 1
           fi
 
+      # Reuse (decision 0013, #36): the PR uploaded this zip under a name that
+      # covers everything deciding its bytes, so the tag publishes the zip the
+      # PR built and tested instead of building the same tree again. A miss
+      # (a run expired, or a tag on a tree no PR built) builds as before.
+      - name: Artifact name
+        id: name
+        run: echo "name=$(node tooling/core-reuse.mjs name android)" >> "$GITHUB_OUTPUT"
+
+      - name: Find the PR's zip
+        id: reuse
+        if: startsWith(github.ref, 'refs/tags/core-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NAME: ${{ steps.name.outputs.name }}
+          REPO_ID: ${{ github.repository_id }}
+        run: |
+          RUN=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$NAME&per_page=100" \
+            | node tooling/core-reuse.mjs pick "$NAME" "$REPO_ID")
+          echo "run=$RUN" >> "$GITHUB_OUTPUT"
+          if [ -n "$RUN" ]; then echo "Reusing $NAME from run $RUN"; else echo "No usable $NAME; building"; fi
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        if: steps.reuse.outputs.run != ''
+        with:
+          name: ${{ steps.name.outputs.name }}
+          run-id: ${{ steps.reuse.outputs.run }}
+          github-token: ${{ github.token }}
+          path: core/target/artifacts
+
+      - name: Verify the reused zip
+        if: steps.reuse.outputs.run != ''
+        working-directory: core/target/artifacts
+        run: sha256sum -c spjall-core-android.zip.sha256
+
       - name: NDK from the lock, and cargo-ndk
+        if: steps.reuse.outputs.run == ''
         run: |
           NDK=$(jq -r .androidNdk core/artifact.lock.json)
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK" > /dev/null
           cargo install cargo-ndk --version 4.1.2 --locked
 
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        if: steps.reuse.outputs.run == ''
         with:
           workspaces: core
 
       - name: Build
+        if: steps.reuse.outputs.run == ''
         working-directory: core
         run: cargo xtask core android
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: core-android
+          # The PR's upload carries the reuse name; the tag's carries the name
+          # publish collects.
+          name: ${{ startsWith(github.ref, 'refs/tags/') && 'core-android' || steps.name.outputs.name }}
           path: core/target/artifacts/
           if-no-files-found: error
+          retention-days: 90
 
   ios:
     if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/core-v')
     runs-on: macos-26
     timeout-minutes: 45
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Reuse the PR's zip on the tag, as in the android job.
+      - name: Artifact name
+        id: name
+        run: echo "name=$(node tooling/core-reuse.mjs name ios)" >> "$GITHUB_OUTPUT"
+
+      - name: Find the PR's zip
+        id: reuse
+        if: startsWith(github.ref, 'refs/tags/core-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NAME: ${{ steps.name.outputs.name }}
+          REPO_ID: ${{ github.repository_id }}
+        run: |
+          RUN=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$NAME&per_page=100" \
+            | node tooling/core-reuse.mjs pick "$NAME" "$REPO_ID")
+          echo "run=$RUN" >> "$GITHUB_OUTPUT"
+          if [ -n "$RUN" ]; then echo "Reusing $NAME from run $RUN"; else echo "No usable $NAME; building"; fi
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        if: steps.reuse.outputs.run != ''
+        with:
+          name: ${{ steps.name.outputs.name }}
+          run-id: ${{ steps.reuse.outputs.run }}
+          github-token: ${{ github.token }}
+          path: core/target/artifacts
+
+      - name: Verify the reused zip
+        if: steps.reuse.outputs.run != ''
+        working-directory: core/target/artifacts
+        run: shasum -a 256 -c spjall-core-ios.zip.sha256
+
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        if: steps.reuse.outputs.run == ''
         with:
           workspaces: core
 
       - name: Build
+        if: steps.reuse.outputs.run == ''
         working-directory: core
         run: cargo xtask core ios
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: core-ios
+          # The PR's upload carries the reuse name; the tag's carries the name
+          # publish collects.
+          name: ${{ startsWith(github.ref, 'refs/tags/') && 'core-ios' || steps.name.outputs.name }}
           path: core/target/artifacts/
           if-no-files-found: error
+          retention-days: 90
 
   publish:
     needs: [android, ios]

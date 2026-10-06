@@ -33,3 +33,22 @@ the host anyway: it rests on the pinned checksum.
 
 - Re-uploading assets to an existing core release. A fix is a new version.
 - A lock that names the version only in `version` and serves every version from one path.
+
+## Amendment (2026-10-06): the tag publishes the zip its PR built
+
+Issue #36. A core PR already builds both zips, and the tag on the merged commit used to build
+them again from the same tree, about 13 minutes per platform.
+
+- **The PR keeps its zips under a name derived from what decides their bytes.**
+  `tooling/core-reuse.mjs` hashes the committed trees of `core/` (which holds the toolchain and
+  the NDK pin) and `identifiers/`, the blob of `core.yml`, the platform and, for iOS, the Xcode
+  version. The PR uploads each zip under `core-<platform>-<hash>` for 90 days.
+- **The tag reuses that zip when one exists.** It looks the name up in this repository's
+  Actions artifacts, takes only a run whose code came from this repository (a fork's PR run
+  built the fork's code and is never picked), downloads it, checks it against its `.sha256`,
+  and skips the build. On a miss it builds as before.
+- **Nothing else changes.** The tag must still match the workspace version, a release is still
+  never overwritten, and the lock still pins each zip's checksum by PR.
+
+What the release then carries is the zip that the PR's checks ran beside, rather than a second
+build of the same tree that nothing tested.
