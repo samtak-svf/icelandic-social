@@ -40,14 +40,10 @@ struct StatusView: View {
 enum Diagnostics {
     static func coreLine() -> String {
         do {
-            // Never in a backup: the MLS state is device-local (decision 0006).
-            var dir = URL.applicationSupportDirectory.appending(path: "core", directoryHint: .isDirectory)
-            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            var values = URLResourceValues()
-            values.isExcludedFromBackup = true
-            try dir.setResourceValues(values)
             let epoch = try mlsSelfTest()
-            let schema = try storeSelfTest(dir: dir.path(percentEncoded: false))
+            let dir = try StoreLocation.directory()
+            let key = try StoreKey(accessGroup: StoreLocation.appGroup).load()
+            let schema = try CoreStore.open(dir: dir.path(percentEncoded: false), key: key).schemaVersion()
             return "core \(coreVersion()) · envelope v\(envelopeVersion()) · mls epoch \(epoch) · store v\(schema)"
         } catch {
             return "core ✗ \(type(of: error))"

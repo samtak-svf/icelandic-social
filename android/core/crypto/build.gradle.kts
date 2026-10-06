@@ -42,4 +42,5 @@ dependencies {
     // UniFFI's Kotlin bindings call the core through JNA; the AAR carries
     // JNA's own native dispatch library for each ABI.
     implementation(variantOf(libs.jna) { artifactType("aar") })
+    testImplementation(libs.junit)
 }

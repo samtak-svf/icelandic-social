@@ -22,8 +22,11 @@
 - **Encrypted with SQLCipher** (`rusqlite` with `bundled-sqlcipher-vendored-openssl`, so
   both platforms get the same SQLCipher and OpenSSL). The key is 32 random bytes made on the
   device when the store is first created:
-  - **iOS:** a Keychain item with `kSecAttrAccessibleAfterFirstUnlock` in the shared access
-    group (`keychainAccessGroup`), so the extension can read it while the phone is locked.
+  - **iOS:** a Keychain item with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, so
+    the extension can read it while the phone is locked and it never moves to another device.
+    Its access group is the App Group both targets already carry (`keychainAccessGroup`
+    equals `appGroup`; interim builds use `appleInterim.appGroup`), which iOS accepts as a
+    Keychain access group without a separate entitlement.
   - **Android:** wrapped by an AES key in the Android Keystore, and the wrapped bytes kept in
     `noBackupFilesDir`.
   - A wrong or lost key fails to open the store. Without key backup (0006) that means

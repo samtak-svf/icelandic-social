@@ -54,7 +54,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Format
         working-directory: ios
-        run: xcrun swift-format lint --strict --recursive App NotificationService Tests Packages/SpjallAPI
+        run: xcrun swift-format lint --strict --recursive App NotificationService Shared Tests Packages/SpjallAPI
 
       - name: Toolchain
         working-directory: core
@@ -82,7 +82,10 @@ jobs:
 
       # -skipPackagePluginValidation: swift-openapi-generator's build plugin
       # would otherwise wait for a trust prompt no CI runner can answer.
-      - name: Build and test (unsigned, simulator)
+      # Signed ad hoc ("Sign to Run Locally", no team): an unsigned app has no
+      # application identifier, and the simulator's Keychain refuses it
+      # (errSecMissingEntitlement), which the store key test needs.
+      - name: Build and test (simulator, signed ad hoc)
         working-directory: ios
         run: |
           set -o pipefail
@@ -93,7 +96,9 @@ jobs:
             -configuration Debug \
             -derivedDataPath build \
             -skipPackagePluginValidation \
-            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGNING_REQUIRED=NO \
             | tee "$RUNNER_TEMP/xcodebuild-test.log" | xcpretty
 
       - name: Fail when no tests ran

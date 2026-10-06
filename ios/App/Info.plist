@@ -3,6 +3,8 @@
 <!-- Merged with the generated Info.plist: only keys INFOPLIST_KEY_ cannot set. -->
 <plist version="1.0">
 <dict>
+	<key>SpjallAppGroup</key>
+	<string>$(SPJALL_APP_GROUP)</string>
 	<key>SpjallAPIHost</key>
 	<string>$(SPJALL_API_HOST)</string>
 </dict>

@@ -55,6 +55,7 @@ targets:
     platform: iOS
     sources:
       - path: App
+      - path: Shared
       - path: Generated/BrandTokens.swift
       - path: Generated/Localizable.xcstrings
       - path: Generated/Assets.xcassets
@@ -85,6 +86,10 @@ targets:
     platform: iOS
     sources:
       - path: NotificationService
+      - path: Shared
+    # It opens the same store as the app (decision 0016).
+    dependencies:
+      - package: SpjallCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(SPJALL_NSE_BUNDLE_ID)

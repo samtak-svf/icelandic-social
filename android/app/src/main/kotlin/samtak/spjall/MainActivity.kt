@@ -14,7 +14,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        // noBackupFilesDir: the MLS store is device-local and never backed up (decision 0006).
+        // noBackupFilesDir: the store and its wrapped key are device-local and never backed up
+        // (decisions 0006, 0016).
         val storeDir = File(noBackupFilesDir, "core")
         val health = HealthClient(BuildConfig.API_BASE_URL)
         setContent {
