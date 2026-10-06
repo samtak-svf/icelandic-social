@@ -7,5 +7,20 @@
 	<string>$(SPJALL_APP_GROUP)</string>
 	<key>SpjallAPIHost</key>
 	<string>$(SPJALL_API_HOST)</string>
+	<key>SpjallURLScheme</key>
+	<string>$(SPJALL_URL_SCHEME)</string>
+	<!-- Invite links in the app's own form (is.samtak.spjall://invite/{token}).
+	     Kenni's redirect needs no entry: ASWebAuthenticationSession catches it. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(SPJALL_URL_SCHEME)</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
