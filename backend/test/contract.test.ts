@@ -122,8 +122,6 @@ describe("the delivery contract", () => {
   });
 
   it.each([
-    ["/v1/key-packages", json({ keyPackages: [CIPHERTEXT] }, TOKEN)],
-    ["/v1/accounts/a_1/key-packages", { method: "POST", headers: TOKEN }],
     ["/v1/devices/d_1", { method: "DELETE", headers: TOKEN }],
     ["/v1/me", { method: "DELETE", headers: TOKEN }],
     [

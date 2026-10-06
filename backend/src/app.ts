@@ -11,6 +11,7 @@ import { SOCKET_ACCOUNT, SOCKET_DEVICE, socketRoute } from "./api/socket.ts";
 import { toBase64 } from "./bytes.ts";
 import { checkSend } from "./conversations.ts";
 import { conversation, inbox, minClientVersions } from "./env/index.ts";
+import { claim, upload } from "./key-packages.ts";
 
 /** OpenAPI 3.1 document metadata; the routes and schemas come from src/api/. */
 export const DOCUMENT_INFO = {
@@ -125,8 +126,21 @@ export function createApp() {
     return c.json({ seq: result.ok.seq, welcome: toBase64(result.ok.welcome) }, 200);
   });
 
-  app.openapi(uploadKeyPackagesRoute, (c) => c.json(notImplemented, 501));
-  app.openapi(claimKeyPackagesRoute, (c) => c.json(notImplemented, 501));
+  // KeyPackages in D1 (decision 0017).
+  app.openapi(uploadKeyPackagesRoute, async (c) => {
+    const stock = await upload(c.env, c.var.device.deviceId, c.req.valid("json"));
+    return stock ? c.json(stock, 200) : c.json({ error: "invalid_request" }, 400);
+  });
+
+  app.openapi(claimKeyPackagesRoute, async (c) => {
+    const claimed = await claim(c.env, c.req.valid("param").accountId);
+    if (!claimed) return c.json({ error: "not_found" }, 404);
+    const keyPackages = claimed.map((p) => ({
+      deviceId: p.deviceId,
+      keyPackage: toBase64(p.keyPackage),
+    }));
+    return c.json({ keyPackages }, 200);
+  });
   // The socket lives in the account's Inbox; the Worker tells it which
   // device this is, replacing any such header the client sent.
   app.openapi(socketRoute, async (c) => {
