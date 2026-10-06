@@ -14,9 +14,11 @@ uses it without ever losing, repeating or forking anything.
 
 ### Who does what
 
-- **The core drives sync; the apps move bytes.** The core defines a blocking `Transport`, one
-  method per REST operation in `api/openapi.json`, with errors that carry the `ApiError`
-  codes. The apps implement it over OkHttp and URLSession. The apps own the WebSocket, because
+- **The core drives sync; the apps move bytes.** The core defines a blocking `Transport` with
+  one method: make this HTTP request (a method, a path under `/v1/`, a JSON body) and return
+  the status and body, or say that no answer came. The app adds its base URL and device token.
+  The paths, bodies and `ApiError` codes of `api/openapi.json` are then written once, in Rust,
+  and an app's transport is a dozen lines over OkHttp or URLSession. The apps own the WebSocket, because
   its life follows the app's, and hand each frame to the core, which answers with the frames
   to send back (`ack`). Every call may block on the network, so the apps call the core off the
   main thread.

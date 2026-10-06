@@ -1,0 +1,25 @@
+[package]
+name = "spjall-client"
+description = "The client engine of decision 0018: identity, conversations, the outbox and sync"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+base64.workspace = true
+getrandom.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+spjall-envelope = { path = "../envelope" }
+spjall-mls = { path = "../mls" }
+spjall-store = { path = "../store" }
+thiserror.workspace = true
+
+[dev-dependencies]
+openmls.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

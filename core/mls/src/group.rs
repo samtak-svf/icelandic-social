@@ -227,6 +227,15 @@ fn mls_message(bytes: &[u8], what: &'static str) -> Result<MlsMessageIn, GroupEr
     MlsMessageIn::tls_deserialize_exact(bytes).map_err(|_| GroupError::Malformed(what))
 }
 
+/// Whether stored bytes are a commit, read from their framing alone: what
+/// the client needs to know of a message it could not process.
+pub fn is_commit(bytes: &[u8]) -> bool {
+    mls_message(bytes, "message")
+        .ok()
+        .and_then(|message| message.try_into_protocol_message().ok())
+        .is_some_and(|message| message.content_type() == ContentType::Commit)
+}
+
 pub struct Group(MlsGroup);
 
 impl Group {
