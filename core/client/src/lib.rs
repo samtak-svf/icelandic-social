@@ -12,6 +12,10 @@
 //! The server keeps the roster each commit claims (0020). A commit whose
 //! claim MLS does not back queues a correcting commit, and a refusal no
 //! commit explains leaves the conversation `Excluded` until one restores it.
+//!
+//! Every commit carries the GroupInfo of its epoch (0021). A device no
+//! Welcome names, or one gone `Stale`, joins from the latest by an external
+//! commit, sent before anything else in that conversation.
 
 mod account;
 pub mod api;
@@ -70,8 +74,10 @@ pub enum State {
     /// A commit removed this account.
     Removed,
     /// This device missed what it needed to follow the group: messages
-    /// expired before it fetched them, or a commit it could not process.
-    /// Rejoining is not built yet (0018).
+    /// expired before it fetched them, or a commit it could not process. It
+    /// joins again by an external commit on the next `sync` or notify, and
+    /// keeps its history (0021). A conversation this device is joining for
+    /// the first time is `Stale` until the server has its commit.
     Stale,
 }
 
@@ -124,8 +130,15 @@ pub enum Event {
         added: Vec<String>,
         removed: Vec<String>,
     },
+    /// This device joined, or joined again after it was `Stale`.
     Joined {
         conversation: String,
+    },
+    /// New devices of accounts already in the conversation, from a Welcome
+    /// or an external commit: the "new device" of 0006.
+    Devices {
+        conversation: String,
+        joined: Vec<Device>,
     },
     Removed {
         conversation: String,
@@ -174,6 +187,8 @@ enum Kind {
     Remove,
     /// A commit that changes no one and claims the roster MLS holds.
     Correct,
+    /// An external commit, sealed when it is made (0021).
+    Join,
 }
 
 impl Kind {
@@ -183,6 +198,7 @@ impl Kind {
             "add" => Self::Add,
             "remove" => Self::Remove,
             "correct" => Self::Correct,
+            "join" => Self::Join,
             _ => return Err(rusqlite::Error::InvalidQuery),
         })
     }
@@ -211,6 +227,10 @@ enum Drain {
     Blocked,
     Over,
 }
+
+/// How many times a join is made again in one call after another commit
+/// took its epoch.
+const JOIN_ATTEMPTS: usize = 3;
 
 fn now() -> i64 {
     SystemTime::now()
@@ -318,11 +338,13 @@ fn next_unsent(tx: &Transaction, group: &[u8]) -> Result<Option<Unsent>, ClientE
         Option<String>,
         Option<Vec<u8>>,
         Option<Vec<u8>>,
+        Option<Vec<u8>>,
     );
     let row: Option<Row> = tx
         .query_row(
-            "SELECT id, kind, intent, client_msg_id, ciphertext, welcome
-             FROM outbox WHERE group_id = ?1 AND seq IS NULL ORDER BY id LIMIT 1",
+            "SELECT id, kind, intent, client_msg_id, ciphertext, welcome, group_info
+             FROM outbox WHERE group_id = ?1 AND seq IS NULL AND kind != 'join'
+             ORDER BY id LIMIT 1",
             [group],
             |r| {
                 Ok((
@@ -332,11 +354,12 @@ fn next_unsent(tx: &Transaction, group: &[u8]) -> Result<Option<Unsent>, ClientE
                     r.get(3)?,
                     r.get(4)?,
                     r.get(5)?,
+                    r.get(6)?,
                 ))
             },
         )
         .optional()?;
-    let Some((id, kind, intent, client_msg_id, ciphertext, welcome)) = row else {
+    let Some((id, kind, intent, client_msg_id, ciphertext, welcome, group_info)) = row else {
         return Ok(None);
     };
     let sealed = client_msg_id
@@ -345,6 +368,7 @@ fn next_unsent(tx: &Transaction, group: &[u8]) -> Result<Option<Unsent>, ClientE
             client_msg_id,
             ciphertext,
             welcome,
+            group_info,
         });
     Ok(Some(Unsent {
         id,
@@ -376,7 +400,7 @@ fn unseal(tx: &Transaction, group: &[u8], id: i64) -> Result<(), ClientError> {
     }
     tx.execute(
         "UPDATE outbox SET client_msg_id = NULL, ciphertext = NULL,
-             roster_add = NULL, roster_remove = NULL, welcome = NULL
+             roster_add = NULL, roster_remove = NULL, welcome = NULL, group_info = NULL
          WHERE id = ?1",
         [id],
     )?;
@@ -407,6 +431,90 @@ fn drop_correction(tx: &Transaction, group: &[u8]) -> rusqlite::Result<()> {
         [group],
     )
     .map(drop)
+}
+
+/// A join this device sealed and the server has not answered.
+fn pending_join(tx: &Transaction, group: &[u8]) -> Result<Option<(i64, Outgoing)>, ClientError> {
+    Ok(tx
+        .query_row(
+            "SELECT id, client_msg_id, ciphertext, group_info FROM outbox
+             WHERE group_id = ?1 AND kind = 'join'",
+            [group],
+            |r| {
+                Ok((
+                    r.get(0)?,
+                    Outgoing {
+                        client_msg_id: r.get(1)?,
+                        ciphertext: r.get(2)?,
+                        welcome: None,
+                        group_info: r.get(3)?,
+                    },
+                ))
+            },
+        )
+        .optional()?)
+}
+
+/// Builds the group from a GroupInfo by an external commit and seals that
+/// commit. A group this device held before is forgotten first; its history
+/// is kept.
+fn seal_join(
+    tx: &Transaction,
+    group: &[u8],
+    group_info: &[u8],
+) -> Result<(i64, Outgoing), ClientError> {
+    let provider = Provider::new(tx);
+    let identity = identity(tx, &provider)?;
+    match Group::load(&provider, group) {
+        Ok(old) => old.delete(&provider)?,
+        Err(GroupError::Missing(_)) => {}
+        Err(error) => return Err(error.into()),
+    }
+    let (mls, commit) = Group::join_external(&provider, &identity, group_info)?;
+    if mls.id() != group {
+        return Err(ClientError::Protocol("a GroupInfo for another group"));
+    }
+    tx.execute(
+        "INSERT INTO conversations (group_id, state, cursor, created_at)
+         VALUES (?1, 'stale', 0, ?2) ON CONFLICT (group_id) DO NOTHING",
+        params![group, now()],
+    )?;
+    let out = Outgoing {
+        client_msg_id: random_id(),
+        ciphertext: commit.message,
+        welcome: None,
+        group_info: Some(commit.group_info),
+    };
+    tx.execute(
+        "INSERT INTO outbox (group_id, kind, intent, client_msg_id, ciphertext, group_info,
+                             created_at)
+         VALUES (?1, 'join', x'', ?2, ?3, ?4, ?5)",
+        params![
+            group,
+            out.client_msg_id,
+            out.ciphertext,
+            out.group_info,
+            now()
+        ],
+    )?;
+    Ok((tx.last_insert_rowid(), out))
+}
+
+/// The server refused a join: forget it and the group it built. A
+/// conversation this device never read is forgotten with it.
+fn drop_join(tx: &Transaction, group: &[u8], id: i64) -> Result<(), ClientError> {
+    tx.execute("DELETE FROM outbox WHERE id = ?1", [id])?;
+    let provider = Provider::new(tx);
+    match Group::load(&provider, group) {
+        Ok(mls) => mls.delete(&provider)?,
+        Err(GroupError::Missing(_)) => {}
+        Err(error) => return Err(error.into()),
+    }
+    tx.execute(
+        "DELETE FROM conversations WHERE group_id = ?1 AND cursor = 0",
+        [group],
+    )?;
+    Ok(())
 }
 
 fn store_message(
@@ -689,7 +797,7 @@ impl<T: Transport> Client<T> {
     pub fn sync(&mut self) -> Result<Outcome, ClientError> {
         let groups: Vec<Vec<u8>> = self.store.try_write(|tx| {
             let mut statement = tx.prepare(
-                "SELECT group_id FROM conversations WHERE state IN ('new', 'active')
+                "SELECT group_id FROM conversations WHERE state IN ('new', 'active', 'stale')
                  ORDER BY created_at",
             )?;
             let rows = statement.query_map([], |r| r.get(0))?;
@@ -723,6 +831,7 @@ impl<T: Transport> Client<T> {
                     {
                         self.sync_one(&group)?
                     }
+                    Some((State::Stale, _)) => self.sync_one(&group)?,
                     Some(_) => {}
                     None => self.join(&group)?,
                 }
@@ -760,7 +869,25 @@ impl<T: Transport> Client<T> {
         Ok(std::mem::take(&mut self.outcome))
     }
 
+    /// Joins again first if this device is `Stale`, and once more if the
+    /// exchange leaves it so.
     fn sync_one(&mut self, group: &[u8]) -> Result<(), ClientError> {
+        let stale = |client: &mut Self| -> Result<bool, ClientError> {
+            Ok(client.store.try_write(|tx| conversation_state(tx, group))? == State::Stale)
+        };
+        for _ in 0..2 {
+            if stale(self)? && !self.join_external(group)? {
+                return Ok(());
+            }
+            self.exchange(group)?;
+            if !stale(self)? {
+                break;
+            }
+        }
+        Ok(())
+    }
+
+    fn exchange(&mut self, group: &[u8]) -> Result<(), ClientError> {
         loop {
             let drained = self.drain(group)?;
             if drained == Drain::Over {
@@ -884,10 +1011,13 @@ impl<T: Transport> Client<T> {
                         client_msg_id: Envelope::decode(&row.intent)?.id,
                         ciphertext: mls.encrypt(&provider, &identity, &row.intent)?,
                         welcome: None,
+                        group_info: None,
                     },
                     None,
                     None,
                 ),
+                // Never in the outbox unsealed.
+                Kind::Join => return Err(ClientError::Protocol("an unsealed join")),
                 Kind::Add | Kind::Remove | Kind::Correct => {
                     let commit = if row.kind == Kind::Correct {
                         Some(mls.correct(&provider, &identity)?)
@@ -923,6 +1053,7 @@ impl<T: Transport> Client<T> {
                             client_msg_id: random_id(),
                             ciphertext: commit.message,
                             welcome: commit.welcome,
+                            group_info: Some(commit.group_info),
                         },
                         add,
                         remove,
@@ -931,7 +1062,7 @@ impl<T: Transport> Client<T> {
             };
             tx.execute(
                 "UPDATE outbox SET client_msg_id = ?2, ciphertext = ?3, roster_add = ?4,
-                     roster_remove = ?5, welcome = ?6
+                     roster_remove = ?5, welcome = ?6, group_info = ?7
                  WHERE id = ?1",
                 params![
                     row.id,
@@ -940,6 +1071,7 @@ impl<T: Transport> Client<T> {
                     roster_add,
                     roster_remove,
                     out.welcome,
+                    out.group_info,
                 ],
             )?;
             Ok::<_, ClientError>(Sealed::Ready(out))
@@ -997,45 +1129,112 @@ impl<T: Transport> Client<T> {
     }
 
     /// A conversation this device is not in yet: join it from the Welcome
-    /// that added this account, and read what came after it.
+    /// that added this account, or else from the GroupInfo (0021), and read
+    /// what came after it.
     fn join(&mut self, group: &[u8]) -> Result<(), ClientError> {
         let conversation = conversation_id(group);
-        let (seq, welcome) = match authed(&self.transport, &self.token)?.get_welcome(&conversation)
-        {
-            Ok(found) => found,
-            Err(ApiError::Refused {
-                status: 403 | 404, ..
-            }) => return Ok(()),
+        match authed(&self.transport, &self.token)?.get_welcome(&conversation) {
+            Ok((seq, welcome)) => {
+                let welcomed = self.store.try_write(|tx| {
+                    if conversation_of(tx, group)?.is_some() {
+                        return Ok(Welcomed::Already);
+                    }
+                    let provider = Provider::new(tx);
+                    let mls = match Group::join(&provider, &welcome) {
+                        Ok(mls) => mls,
+                        Err(GroupError::Storage(error)) => {
+                            return Err(GroupError::Storage(error).into());
+                        }
+                        // A Welcome for this account's other devices only.
+                        Err(_) => return Ok(Welcomed::NotThisDevice),
+                    };
+                    if mls.id() != group {
+                        return Err(ClientError::Protocol("a Welcome for another group"));
+                    }
+                    tx.execute(
+                        "INSERT INTO conversations (group_id, state, cursor, created_at)
+                         VALUES (?1, 'active', ?2, ?3)",
+                        params![group, seq as i64, now()],
+                    )?;
+                    Ok::<_, ClientError>(Welcomed::Joined)
+                })?;
+                match welcomed {
+                    Welcomed::Already => return Ok(()),
+                    Welcomed::Joined => {
+                        self.outcome.events.push(Event::Joined { conversation });
+                        return self.sync_one(group);
+                    }
+                    Welcomed::NotThisDevice => {}
+                }
+            }
+            // Not a conversation of this account.
+            Err(ApiError::Refused { status: 403, .. }) => return Ok(()),
+            // No Welcome names this account: it was in the conversation
+            // before this device was.
+            Err(ApiError::Refused { status: 404, .. }) => {}
             Err(error) => return Err(error.into()),
-        };
-        let joined = self.store.try_write(|tx| {
-            if conversation_of(tx, group)?.is_some() {
-                return Ok(false);
-            }
-            let provider = Provider::new(tx);
-            let mls = match Group::join(&provider, &welcome) {
-                Ok(mls) => mls,
-                Err(GroupError::Storage(error)) => return Err(GroupError::Storage(error).into()),
-                // A Welcome for this account's other devices only, which this
-                // core does not handle yet (0018).
-                Err(_) => return Ok(false),
-            };
-            if mls.id() != group {
-                return Err(ClientError::Protocol("a Welcome for another group"));
-            }
-            tx.execute(
-                "INSERT INTO conversations (group_id, state, cursor, created_at)
-                 VALUES (?1, 'active', ?2, ?3)",
-                params![group, seq as i64, now()],
-            )?;
-            Ok::<_, ClientError>(true)
-        })?;
-        if joined {
-            self.outcome.events.push(Event::Joined { conversation });
-            self.fetch(group)?;
+        }
+        if self.join_external(group)? {
+            self.sync_one(group)?;
         }
         Ok(())
     }
+
+    /// Joins by an external commit (0021), before anything else is sent in
+    /// this conversation. A join the server has not answered is sent again
+    /// as the same bytes; one another commit beat is made again from the
+    /// newer GroupInfo. True once the server has it; the cursor is then its
+    /// seq, as nothing before it can be read.
+    fn join_external(&mut self, group: &[u8]) -> Result<bool, ClientError> {
+        let conversation = conversation_id(group);
+        for _ in 0..JOIN_ATTEMPTS {
+            let (id, out) = match self.store.try_write(|tx| pending_join(tx, group))? {
+                Some(pending) => pending,
+                None => {
+                    let api = authed(&self.transport, &self.token)?;
+                    let group_info = match api.get_group_info(&conversation) {
+                        Ok((_, group_info)) => group_info,
+                        Err(ApiError::Refused {
+                            status: 403 | 404, ..
+                        }) => return Ok(false),
+                        Err(error) => return Err(error.into()),
+                    };
+                    self.store
+                        .try_write(|tx| seal_join(tx, group, &group_info))?
+                }
+            };
+            match authed(&self.transport, &self.token)?.send_message(&conversation, &out) {
+                Ok(seq) => {
+                    self.store.try_write(|tx| {
+                        tx.execute("DELETE FROM outbox WHERE id = ?1", [id])?;
+                        tx.execute(
+                            "UPDATE conversations SET cursor = ?2 WHERE group_id = ?1",
+                            params![group, seq as i64],
+                        )?;
+                        set_state(tx, group, State::Active)
+                    })?;
+                    self.outcome.events.push(Event::Joined { conversation });
+                    return Ok(true);
+                }
+                Err(ApiError::Refused { status: 409, .. }) => {
+                    self.store.try_write(|tx| drop_join(tx, group, id))?;
+                }
+                Err(ApiError::Refused { status: 403, .. }) => {
+                    self.store.try_write(|tx| drop_join(tx, group, id))?;
+                    return Ok(false);
+                }
+                Err(error) => return Err(error.into()),
+            }
+        }
+        Ok(false)
+    }
+}
+
+enum Welcomed {
+    Joined,
+    /// Another process sharing the store joined first.
+    Already,
+    NotThisDevice,
 }
 
 enum Next {
@@ -1143,6 +1342,7 @@ fn receive(
                 added,
                 removed,
                 backed,
+                joined,
                 ..
             }) => {
                 if backed {
@@ -1155,6 +1355,12 @@ fn receive(
                         conversation: conversation.clone(),
                         added: accounts(added),
                         removed: accounts(removed),
+                    });
+                }
+                if !joined.is_empty() {
+                    events.push(Event::Devices {
+                        conversation: conversation.clone(),
+                        joined,
                     });
                 }
             }

@@ -1,7 +1,8 @@
 import fixture from "../../api/fixtures/mls-framing.json";
 
 // Real OpenMLS messages from core/mls/tests/framing_fixture.rs: one scripted
-// conversation between accounts "a" and "b", plus a PublicMessage commit,
+// conversation between accounts "a" and "b", with the GroupInfo each commit
+// carries and a new device's external commit, plus a PublicMessage commit,
 // and a KeyPackage made by a device as `a_1/d_1`.
 
 export const hexBytes = (hex: string) =>
@@ -68,6 +69,66 @@ function claimed(name: string, roster: string[], welcome: string[] = []): string
   );
 }
 
+const u64 = (value: number) => {
+  const bytes = new Uint8Array(8);
+  new DataView(bytes.buffer).setBigUint64(0, BigInt(value));
+  return bytes;
+};
+
+function named(name: string) {
+  const found = fixture.messages.find((m) => m.name === name);
+  if (!found) throw new Error(`no fixture message ${name}`);
+  return found;
+}
+
+/**
+ * The GroupInfo a commit of the fixture carries (0021), as base64, its
+ * epoch moved to `epoch` if given. The server reads only its group and epoch.
+ */
+function groupInfo(name: string, epoch?: number): string {
+  const hex = named(name).groupInfo;
+  if (!hex) throw new Error(`${name} carries no GroupInfo`);
+  const bytes = hexBytes(hex);
+  if (epoch === undefined) return toBase64(bytes);
+  const at = skip(bytes, 8); // past the header, version, suite and group id
+  return toBase64(
+    Uint8Array.from([...bytes.subarray(0, at), ...u64(epoch), ...bytes.subarray(at + 8)]),
+  );
+}
+
+/**
+ * The fixture's external commit with this test's claim, epoch and joining
+ * leaf in place of its own. Its signature no longer verifies, which only a
+ * client checks; the server reads the framing and whose leaf it brings.
+ */
+function joining(
+  roster: string[],
+  { epoch, identity, signatureKey }: { epoch: number; identity: string; signatureKey: Uint8Array },
+): string {
+  const bytes = hexBytes(named("a5 joins").hex);
+  const epochAt = skip(bytes, 4);
+  const aad = epochAt + 8 + 1; // past the epoch and the sender, a new member's commit
+  const proposals = skip(bytes, aad) + 1; // past the claim and the content type
+  const encryptionKey = skip(bytes, proposals) + 1; // past the proposals and the path's presence
+  const signatureKeyAt = skip(bytes, encryptionKey);
+  const credentialAt = skip(bytes, signatureKeyAt);
+  const rest = skip(bytes, credentialAt + 2);
+  const claim = new TextEncoder().encode(JSON.stringify({ roster, welcome: [] }));
+  return toBase64(
+    Uint8Array.from([
+      ...bytes.subarray(0, epochAt),
+      ...u64(epoch),
+      ...bytes.subarray(epochAt + 8, aad),
+      ...vector(claim),
+      ...bytes.subarray(skip(bytes, aad), signatureKeyAt),
+      ...vector(signatureKey),
+      ...bytes.subarray(credentialAt, credentialAt + 2),
+      ...vector(new TextEncoder().encode(identity)),
+      ...bytes.subarray(rest),
+    ]),
+  );
+}
+
 export const mls = {
   ...fixture,
   /** A message of the fixture by name, as the contract's base64. */
@@ -78,6 +139,8 @@ export const mls = {
   },
   keyPackageBase64: toBase64(hexBytes(fixture.keyPackage.hex)),
   claimed,
+  groupInfo,
+  joining,
   keyPackageNaming,
   welcomeBase64: toBase64(hexBytes(fixture.welcome.hex)),
 };

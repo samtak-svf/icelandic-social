@@ -317,6 +317,9 @@ pub struct Commit {
     /// The accounts this commit removes the last device of.
     pub removed: Vec<String>,
     pub claim: Claim,
+    /// The GroupInfo of the epoch this commit starts, with the ratchet tree
+    /// and the external public key: what a device joins from (0021).
+    pub group_info: Vec<u8>,
 }
 
 /// What a stored message turned out to be.
@@ -337,6 +340,10 @@ pub enum Received {
         /// The claim names the group as MLS now holds it, and the Welcome
         /// the accounts this commit added devices of (0020).
         backed: bool,
+        /// The new devices of accounts already in the group, from a Welcome
+        /// or the external commit one joined by: the "new device" of 0006
+        /// (0021). A new account's devices are in `added` only.
+        joined: Vec<Device>,
     },
     /// A standalone proposal. This core never sends one and commits none.
     Proposal,
@@ -361,6 +368,15 @@ fn accounts(devices: impl IntoIterator<Item = Device>) -> Vec<String> {
 
 fn mls_message(bytes: &[u8], what: &'static str) -> Result<MlsMessageIn, GroupError> {
     MlsMessageIn::tls_deserialize_exact(bytes).map_err(|_| GroupError::Malformed(what))
+}
+
+fn group_info_bytes(
+    group_info: Option<openmls::messages::group_info::GroupInfo>,
+) -> Result<Vec<u8>, GroupError> {
+    let group_info = group_info.ok_or(GroupError::Missing("GroupInfo"))?;
+    MlsMessageOut::from(group_info)
+        .tls_serialize_detached()
+        .map_err(at("GroupInfo"))
 }
 
 /// Whether stored bytes are a commit, read from their framing alone: what
@@ -414,6 +430,66 @@ impl Group {
             Device::from_credential(&member.credential)?;
         }
         staged.into_group(provider).map(Self).map_err(at("join"))
+    }
+
+    /// Joins from a GroupInfo by an external commit (RFC 9420 §12.4.3.2,
+    /// 0021). A leaf this device already holds, by its signature key, is
+    /// removed in the same commit. The group is kept on the epoch the commit
+    /// starts, before the server has it: if the server refuses the commit,
+    /// the caller deletes it. The claim is every account in the tree, this
+    /// one included, and no Welcome.
+    pub fn join_external(
+        provider: &Provider,
+        identity: &Identity,
+        group_info: &[u8],
+    ) -> Result<(Self, Commit), GroupError> {
+        let MlsMessageBodyIn::GroupInfo(group_info) =
+            mls_message(group_info, "GroupInfo")?.extract()
+        else {
+            return Err(GroupError::Malformed("GroupInfo"));
+        };
+        if group_info.ciphersuite() != CIPHERSUITE {
+            return Err(GroupError::Malformed("ciphersuite"));
+        }
+        let tree = group_info
+            .extensions()
+            .ratchet_tree()
+            .ok_or(GroupError::Malformed("GroupInfo without a ratchet tree"))?;
+        let mut roster = vec![identity.device.account.clone()];
+        for leaf in tree.ratchet_tree().leaves() {
+            roster.push(Device::from_credential(leaf.credential())?.account);
+        }
+        let claim = Claim::new(roster, Vec::new()).forged();
+        let (group, bundle) = MlsGroup::external_commit_builder()
+            .with_config(create_config().join_config().clone())
+            .with_aad(claim.encode())
+            .build_group(provider, group_info, identity.credential())
+            .map_err(at("external join"))?
+            .load_psks(provider.storage())
+            .map_err(at("external join"))?
+            .build(provider.rand(), provider.crypto(), &identity.signer, |_| {
+                true
+            })
+            .map_err(at("external join"))?
+            .finalize(provider)
+            .map_err(at("external join"))?;
+        let group = Self(group);
+        let (message, _, group_info) = bundle.into_contents();
+        let commit = Commit {
+            message: message.tls_serialize_detached().map_err(at("commit"))?,
+            welcome: None,
+            added: Vec::new(),
+            removed: Vec::new(),
+            claim,
+            group_info: group_info_bytes(group_info)?,
+        };
+        Ok((group, commit))
+    }
+
+    /// Forgets this group: a stale device rejoins as a new leaf (0021).
+    pub fn delete(mut self, provider: &Provider) -> Result<(), GroupError> {
+        self.0.delete(provider.storage())?;
+        Ok(())
     }
 
     pub fn id(&self) -> &[u8] {
@@ -484,7 +560,7 @@ impl Group {
         )
         .forged();
         self.0.set_aad(claim.encode());
-        let (message, welcome, _) = self
+        let (message, welcome, group_info) = self
             .0
             .add_members(provider, &identity.signer, &packages)
             .map_err(at("add"))?;
@@ -497,6 +573,7 @@ impl Group {
                 .collect(),
             removed: Vec::new(),
             claim,
+            group_info: group_info_bytes(group_info)?,
         })
     }
 
@@ -530,7 +607,7 @@ impl Group {
             .collect();
         let claim = Claim::new(roster, Vec::new()).forged();
         self.0.set_aad(claim.encode());
-        let (message, _, _) = self
+        let (message, _, group_info) = self
             .0
             .remove_members(provider, &identity.signer, &leaves)
             .map_err(at("remove"))?;
@@ -540,6 +617,7 @@ impl Group {
             added: Vec::new(),
             removed,
             claim,
+            group_info: group_info_bytes(group_info)?,
         })
     }
 
@@ -553,19 +631,18 @@ impl Group {
         self.check_no_commit_in_flight()?;
         let claim = Claim::new(accounts(self.devices()?), Vec::new()).forged();
         self.0.set_aad(claim.encode());
-        let bundle = self
+        let (message, _, group_info) = self
             .0
             .self_update(provider, &identity.signer, LeafNodeParameters::default())
-            .map_err(at("correct"))?;
+            .map_err(at("correct"))?
+            .into_contents();
         Ok(Commit {
-            message: bundle
-                .into_commit()
-                .tls_serialize_detached()
-                .map_err(at("commit"))?,
+            message: message.tls_serialize_detached().map_err(at("commit"))?,
             welcome: None,
             added: Vec::new(),
             removed: Vec::new(),
             claim,
+            group_info: group_info_bytes(group_info)?,
         })
     }
 
@@ -629,6 +706,7 @@ impl Group {
                 plaintext: application.into_bytes(),
             }),
             ProcessedMessageContent::StagedCommitMessage(staged) => {
+                let before = self.devices()?;
                 let added = staged
                     .add_proposals()
                     .map(|p| {
@@ -650,13 +728,26 @@ impl Group {
                 self.0
                     .merge_staged_commit(provider, *staged)
                     .map_err(at("merge"))?;
+                let after = if removed_self {
+                    Vec::new()
+                } else {
+                    self.devices()?
+                };
+                let joined = after
+                    .iter()
+                    .filter(|d| !before.contains(d))
+                    .filter(|d| before.iter().any(|b| b.account == d.account))
+                    .cloned()
+                    .collect();
+                // A device that rejoined lost its old leaf for a new one: it
+                // was not removed.
+                let removed: Vec<Device> =
+                    removed.into_iter().filter(|d| !after.contains(d)).collect();
                 let backed = claim.as_ref().is_some_and(|claim| {
                     // A removed device holds no group to compare with.
                     removed_self
-                        || self.devices().is_ok_and(|now| {
-                            claim.roster == accounts(now)
-                                && claim.welcome == accounts(added.iter().cloned())
-                        })
+                        || (claim.roster == accounts(after.iter().cloned())
+                            && claim.welcome == accounts(added.iter().cloned()))
                 });
                 Ok(Received::Commit {
                     by: sender()?,
@@ -665,6 +756,7 @@ impl Group {
                     removed_self,
                     claim,
                     backed,
+                    joined,
                 })
             }
             ProcessedMessageContent::ProposalMessage(_)

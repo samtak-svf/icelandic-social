@@ -11,6 +11,13 @@ const CreateConversation = z
 
 const Conversation = z.object({ conversationId: ConversationId }).openapi("Conversation");
 
+const GroupInfo = z
+  .object({
+    seq: Seq.openapi({ description: "The commit it is of; fetch messages after the join's own" }),
+    groupInfo: Ciphertext.openapi({ description: "The MLS GroupInfo, with the ratchet tree" }),
+  })
+  .openapi("GroupInfo");
+
 const Welcome = z
   .object({
     seq: Seq.openapi({
@@ -53,6 +60,25 @@ export const getWelcomeRoute = createRoute({
     200: {
       description: "The latest Welcome for this account",
       content: { "application/json": { schema: Welcome } },
+    },
+    ...INVALID,
+    ...MEMBER,
+    ...AUTHED,
+  },
+});
+
+export const getGroupInfoRoute = createRoute({
+  method: "get",
+  path: "/v1/conversations/{conversationId}/group-info",
+  operationId: "getGroupInfo",
+  tags: ["conversations"],
+  summary: "The latest commit's GroupInfo, for a device of a member account to join from",
+  security: DEVICE_TOKEN,
+  request: { params },
+  responses: {
+    200: {
+      description: "The GroupInfo of the current epoch (decision 0021)",
+      content: { "application/json": { schema: GroupInfo } },
     },
     ...INVALID,
     ...MEMBER,

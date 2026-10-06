@@ -34,6 +34,10 @@ const SendMessage = z
     welcome: WelcomeMessage.optional().openapi({
       description: "With a commit whose claim names whom it is for, and only then",
     }),
+    groupInfo: Ciphertext.optional().openapi({
+      description:
+        "With every commit, and only then: the MLS GroupInfo, with the ratchet tree, of the epoch the commit starts (decision 0021)",
+    }),
   })
   .openapi("SendMessage", {
     description:
@@ -65,7 +69,7 @@ export const sendMessageRoute = createRoute({
   responses: {
     200: { description: "Stored at seq", content: { "application/json": { schema: Sent } } },
     400: errorResponse(
-      "invalid_request: a commit without a claim that names its sender, or a welcome its claim does not name anyone for, or a welcome without a commit; group_mismatch: the framing names another group",
+      "invalid_request: a commit without a claim that names its sender, a welcome its claim does not name anyone for, a welcome or groupInfo without a commit, a commit without the GroupInfo of its group's next epoch, or an external commit that is not the sending device's own leaf or that changes the roster; group_mismatch: the framing names another group",
     ),
     ...MEMBER,
     409: errorResponse(

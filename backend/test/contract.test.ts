@@ -39,6 +39,7 @@ describe("the delivery contract", () => {
       "delete /v1/me deleteAccount",
       "delete /v1/me/invite revokeInvite",
       "get /health getHealth",
+      "get /v1/conversations/{conversationId}/group-info getGroupInfo",
       "get /v1/conversations/{conversationId}/messages listMessages",
       "get /v1/conversations/{conversationId}/welcome getWelcome",
       "get /v1/invites/{token} resolveInvite",

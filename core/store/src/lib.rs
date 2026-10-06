@@ -169,6 +169,45 @@ const MIGRATIONS: &[(u32, &str)] = &[
          ALTER TABLE outbox_0020 RENAME TO outbox;
          CREATE INDEX outbox_by_group ON outbox (group_id, id);",
     ),
+    (
+        5,
+        // Decision 0021: every commit carries the GroupInfo of its epoch,
+        // and a device joins a group by an external commit.
+        "-- The outbox again, with `join`: an external commit, sealed in the
+         -- transaction that built the group from a GroupInfo and sent until
+         -- the server answers; and each commit's GroupInfo.
+         CREATE TABLE outbox_0021 (
+             id            INTEGER PRIMARY KEY,
+             group_id      BLOB NOT NULL
+                           REFERENCES conversations (group_id) ON DELETE CASCADE,
+             kind          TEXT NOT NULL
+                           CHECK (kind IN ('message', 'add', 'remove', 'correct', 'join')),
+             intent        BLOB NOT NULL,
+             client_msg_id TEXT UNIQUE,
+             ciphertext    BLOB,
+             roster_add    TEXT,
+             roster_remove TEXT,
+             welcome       BLOB,
+             group_info    BLOB,
+             seq           INTEGER,
+             created_at    INTEGER NOT NULL,
+             CHECK ((client_msg_id IS NULL) = (ciphertext IS NULL)),
+             CHECK (seq IS NULL OR ciphertext IS NOT NULL),
+             CHECK (welcome IS NULL OR kind = 'add'),
+             CHECK (kind IN ('add', 'remove') OR
+                    (roster_add IS NULL AND roster_remove IS NULL)),
+             CHECK (group_info IS NULL OR (kind != 'message' AND ciphertext IS NOT NULL)),
+             CHECK (kind != 'join' OR ciphertext IS NOT NULL)
+         ) STRICT;
+         INSERT INTO outbox_0021 (id, group_id, kind, intent, client_msg_id, ciphertext,
+                                  roster_add, roster_remove, welcome, seq, created_at)
+             SELECT id, group_id, kind, intent, client_msg_id, ciphertext,
+                    roster_add, roster_remove, welcome, seq, created_at
+             FROM outbox;
+         DROP TABLE outbox;
+         ALTER TABLE outbox_0021 RENAME TO outbox;
+         CREATE INDEX outbox_by_group ON outbox (group_id, id);",
+    ),
 ];
 
 pub struct Store {
@@ -411,6 +450,29 @@ mod tests {
             "INSERT INTO outbox (group_id, kind, intent, client_msg_id, ciphertext, welcome, created_at)
                  VALUES (x'01', 'add', CAST('b' AS BLOB), 'c1', x'01', x'01', 0);
              DELETE FROM outbox WHERE client_msg_id = 'c1';"
+        ));
+        // A join is sealed when it is made, and only a sealed commit
+        // carries a GroupInfo.
+        assert!(refused(
+            &mut store,
+            "INSERT INTO outbox (group_id, kind, intent, created_at)
+                 VALUES (x'01', 'join', x'', 0)"
+        ));
+        assert!(refused(
+            &mut store,
+            "INSERT INTO outbox (group_id, kind, intent, group_info, created_at)
+                 VALUES (x'01', 'correct', x'', x'01', 0)"
+        ));
+        assert!(refused(
+            &mut store,
+            "UPDATE outbox SET client_msg_id = 'm1', ciphertext = x'01', group_info = x'01'"
+        ));
+        assert!(!refused(
+            &mut store,
+            "INSERT INTO outbox (group_id, kind, intent, client_msg_id, ciphertext, group_info,
+                                 created_at)
+                 VALUES (x'01', 'join', x'', 'j1', x'01', x'01', 0);
+             DELETE FROM outbox WHERE client_msg_id = 'j1';"
         ));
         // A clientMsgId is never reused.
         assert!(!refused(

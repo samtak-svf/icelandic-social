@@ -221,7 +221,8 @@ pub enum ConversationState {
     Excluded,
     /// A commit removed this account.
     Removed,
-    /// This device missed what it needed to follow the group.
+    /// This device missed what it needed to follow the group; it joins
+    /// again on the next sync or notify (0021).
     Stale,
 }
 
@@ -271,6 +272,13 @@ impl From<core::Message> for Message {
     }
 }
 
+/// A device in a conversation's group.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct GroupDevice {
+    pub account: String,
+    pub device: String,
+}
+
 /// What changed, for the app to show.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum Event {
@@ -284,6 +292,12 @@ pub enum Event {
     },
     Joined {
         conversation: String,
+    },
+    /// Devices new to the group; one of an account already in it is the
+    /// "new device" card of 0006.
+    Devices {
+        conversation: String,
+        joined: Vec<GroupDevice>,
     },
     Removed {
         conversation: String,
@@ -314,6 +328,19 @@ impl From<core::Event> for Event {
                 removed,
             },
             E::Joined { conversation } => Self::Joined { conversation },
+            E::Devices {
+                conversation,
+                joined,
+            } => Self::Devices {
+                conversation,
+                joined: joined
+                    .into_iter()
+                    .map(|d| GroupDevice {
+                        account: d.account,
+                        device: d.device,
+                    })
+                    .collect(),
+            },
             E::Removed { conversation } => Self::Removed { conversation },
             E::Stale { conversation } => Self::Stale { conversation },
             E::Typing {

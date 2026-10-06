@@ -1,8 +1,9 @@
 # 0002. Messages are end-to-end encrypted with MLS from v1
 
 - Status: accepted; implemented in the core (`core/mls`, `core/client`) and the Worker, except
-  the stored GroupInfo and ratchet tree for an external join, real push (FCM and APNs; the
-  sender only logs today) and the notification extension. Welcomes and KeyPackages reach a
+  real push (FCM and APNs; the sender only logs today) and the notification extension. The
+  stored GroupInfo and the external join are as [0021](0021-group-info-and-external-join.md)
+  says. Welcomes and KeyPackages reach a
   device as [0017](0017-conversations-on-the-server.md) says, not through the `Inbox` DO.
 - Date: 2026-10-05
 - Decided by: Guðröður

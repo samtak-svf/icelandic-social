@@ -21,6 +21,7 @@ const errorOf = async (response: Response) => ApiError.parse(await response.json
 /** The fixture conversation's id: its group id as unpadded base64url. */
 const CONVERSATION = base64url(hexBytes(mls.messages[0]!.groupId));
 const MESSAGES = `/v1/conversations/${CONVERSATION}/messages`;
+const GROUP_INFO = `/v1/conversations/${CONVERSATION}/group-info`;
 
 describe("a conversation over HTTP", () => {
   let a: Awaited<ReturnType<typeof device>>;
@@ -51,6 +52,7 @@ describe("a conversation over HTTP", () => {
         clientMsgId: "add_b",
         ciphertext: mls.claimed("add b", [a.accountId, b.accountId], [b.accountId]),
         welcome: { message: mls.welcomeBase64 },
+        groupInfo: mls.groupInfo("add b"),
       },
       a.auth,
     );
@@ -60,15 +62,21 @@ describe("a conversation over HTTP", () => {
     const welcome = await fetch(`/v1/conversations/${CONVERSATION}/welcome`, { headers: b.auth });
     expect(await welcome.json()).toEqual({ seq: 1, welcome: mls.welcomeBase64 });
 
-    for (const [name, sender, seq, ciphertext] of [
-      ["a to b", a, 2, mls.base64("a to b")],
-      ["b to a", b, 3, mls.base64("b to a")],
-      ["b proposes", b, 4, mls.base64("b proposes")],
-      ["a updates", a, 5, mls.claimed("a updates", [a.accountId, b.accountId])],
+    for (const [name, sender, seq, ciphertext, extra] of [
+      ["a to b", a, 2, mls.base64("a to b"), {}],
+      ["b to a", b, 3, mls.base64("b to a"), {}],
+      ["b proposes", b, 4, mls.base64("b proposes"), {}],
+      [
+        "a updates",
+        a,
+        5,
+        mls.claimed("a updates", [a.accountId, b.accountId]),
+        { groupInfo: mls.groupInfo("a updates") },
+      ],
     ] as const) {
       const sent = await post(
         MESSAGES,
-        { clientMsgId: name.replaceAll(" ", "_"), ciphertext },
+        { clientMsgId: name.replaceAll(" ", "_"), ciphertext, ...extra },
         sender.auth,
       );
       expect(await sent.json(), name).toEqual({ seq });
@@ -77,7 +85,11 @@ describe("a conversation over HTTP", () => {
     // B committed on epoch 1 too, and lost.
     const lost = await post(
       MESSAGES,
-      { clientMsgId: "b_updates", ciphertext: mls.claimed("b updates", [b.accountId]) },
+      {
+        clientMsgId: "b_updates",
+        ciphertext: mls.claimed("b updates", [b.accountId]),
+        groupInfo: mls.groupInfo("b updates"),
+      },
       b.auth,
     );
     expect(lost.status).toBe(409);
@@ -95,6 +107,89 @@ describe("a conversation over HTTP", () => {
     const outside = await fetch(`${MESSAGES}?after=0`, { headers: outsider.auth });
     expect(outside.status).toBe(403);
     expect(await errorOf(outside)).toBe("not_a_member");
+
+    // The winning commit's GroupInfo is the one a new device joins from.
+    const info = await fetch(GROUP_INFO, { headers: b.auth });
+    expect(await info.json()).toEqual({ seq: 5, groupInfo: mls.groupInfo("a updates") });
+    const outsiderInfo = await fetch(GROUP_INFO, { headers: outsider.auth });
+    expect(outsiderInfo.status).toBe(403);
+  });
+
+  it("lets a new device of a member account join by an external commit (0021)", async () => {
+    // The conversation is on epoch 2 now: "add b" took 0, "a updates" 1.
+    const a2 = await device({ accountId: a.accountId });
+    const roster = [a.accountId, b.accountId];
+    const own = { identity: `${a.accountId}/${a2.deviceId}`, signatureKey: a2.deviceKey };
+    const join = (clientMsgId: string, ciphertext: string, epoch = 2) => ({
+      clientMsgId,
+      ciphertext,
+      groupInfo: mls.groupInfo("a5 joins", epoch + 1),
+    });
+
+    for (const [clientMsgId, leaf] of [
+      ["other_device", { ...own, identity: `${a.accountId}/${a.deviceId}` }],
+      ["other_key", { ...own, signatureKey: a.deviceKey }],
+    ] as const) {
+      const response = await post(
+        MESSAGES,
+        join(clientMsgId, mls.joining(roster, { epoch: 2, ...leaf })),
+        a2.auth,
+      );
+      expect(response.status, clientMsgId).toBe(400);
+      expect(await errorOf(response)).toBe("invalid_request");
+    }
+
+    // A join that changes the roster is refused; one on an old epoch hears so.
+    const dropsB = await post(
+      MESSAGES,
+      join("drops_b", mls.joining([a.accountId], { epoch: 2, ...own })),
+      a2.auth,
+    );
+    expect(dropsB.status).toBe(400);
+    const stale = await post(
+      MESSAGES,
+      join("stale", mls.joining([...roster, outsider.accountId], { epoch: 1, ...own }), 1),
+      a2.auth,
+    );
+    expect(stale.status).toBe(409);
+    expect(await errorOf(stale)).toBe("epoch_conflict");
+
+    const joined = await post(
+      MESSAGES,
+      join("joins", mls.joining(roster, { epoch: 2, ...own })),
+      a2.auth,
+    );
+    expect(await joined.json()).toEqual({ seq: 6 });
+    const info = await fetch(GROUP_INFO, { headers: a2.auth });
+    expect(await info.json()).toEqual({ seq: 6, groupInfo: mls.groupInfo("a5 joins", 3) });
+
+    // A device of an account outside the roster cannot join.
+    const leaf = {
+      identity: `${outsider.accountId}/${outsider.deviceId}`,
+      signatureKey: outsider.deviceKey,
+    };
+    const outside = await post(
+      MESSAGES,
+      join("outside", mls.joining([...roster, outsider.accountId], { epoch: 3, ...leaf }), 3),
+      outsider.auth,
+    );
+    expect(outside.status).toBe(403);
+    expect(await errorOf(outside)).toBe("not_a_member");
+  });
+
+  it("refuses a commit without the GroupInfo of its group's next epoch, and one elsewhere", async () => {
+    const ciphertext = mls.claimed("a updates", [a.accountId, b.accountId]);
+    for (const [clientMsgId, body] of [
+      ["no_info", { ciphertext }],
+      ["same_epoch", { ciphertext, groupInfo: mls.groupInfo("add b") }],
+      ["other_group", { ciphertext, groupInfo: mls.groupInfo("public add", 2) }],
+      ["not_info", { ciphertext, groupInfo: mls.welcomeBase64 }],
+      ["app_info", { ciphertext: mls.base64("a to b"), groupInfo: mls.groupInfo("a updates") }],
+    ] as const) {
+      const response = await post(MESSAGES, { clientMsgId, ...body }, a.auth);
+      expect(response.status, clientMsgId).toBe(400);
+      expect(await errorOf(response)).toBe("invalid_request");
+    }
   });
 
   it("refuses a message of another group", async () => {
@@ -130,7 +225,9 @@ describe("a conversation over HTTP", () => {
       ["no_welcome", mls.claimed("add b", [a.accountId, b.accountId], [b.accountId]), {}],
       ["no_one_for", mls.claimed("a updates", [a.accountId, b.accountId]), { welcome }],
     ] as const) {
-      const response = await post(MESSAGES, { clientMsgId, ciphertext, ...extra }, a.auth);
+      const groupInfo = mls.groupInfo(clientMsgId === "no_welcome" ? "add b" : "a updates");
+      const body = { clientMsgId, ciphertext, groupInfo, ...extra };
+      const response = await post(MESSAGES, body, a.auth);
       expect(response.status, clientMsgId).toBe(400);
       expect(await errorOf(response)).toBe("invalid_request");
     }
@@ -144,6 +241,7 @@ describe("a conversation over HTTP", () => {
         clientMsgId: "bad_welcome",
         ciphertext: mls.claimed("add b", [a.accountId, b.accountId], [b.accountId]),
         welcome: { message: mls.base64("a to b") },
+        groupInfo: mls.groupInfo("add b"),
       },
     ]) {
       const response = await post(MESSAGES, body, a.auth);
@@ -157,5 +255,7 @@ describe("a conversation over HTTP", () => {
     expect(response.status).toBe(404);
     const welcome = await fetch("/v1/conversations/nobody/welcome", { headers: a.auth });
     expect(welcome.status).toBe(404);
+    const info = await fetch("/v1/conversations/nobody/group-info", { headers: a.auth });
+    expect(info.status).toBe(404);
   });
 });

@@ -131,6 +131,19 @@ fn membership(events: &[Event]) -> Vec<(Vec<String>, Vec<String>)> {
         .collect()
 }
 
+/// `(account, device)` of each device a commit brought into the group.
+fn devices(events: &[Event]) -> Vec<(String, String)> {
+    events
+        .iter()
+        .filter_map(|e| match e {
+            Event::Devices { joined, .. } => Some(joined),
+            _ => None,
+        })
+        .flatten()
+        .map(|d| (d.account.clone(), d.device.clone()))
+        .collect()
+}
+
 fn strings(items: &[&str]) -> Vec<String> {
     items.iter().map(|s| (*s).to_owned()).collect()
 }
@@ -396,25 +409,166 @@ fn a_claim_that_leaves_a_member_out_is_corrected() {
 }
 
 #[test]
-fn a_gap_left_by_expiry_makes_the_conversation_stale() {
+fn a_gap_left_by_expiry_is_mended_by_joining_again() {
     let relay = Relay::new();
     let mut a1 = Phone::new(&relay, "a", "a1");
     let mut b1 = Phone::new(&relay, "b", "b1");
     let conversation = conversation(&mut a1, &mut b1);
+    b1.send(&conversation, "áður");
+    b1.sync();
+    a1.deliver();
 
     for text in ["eitt", "tvö", "þrjú"] {
         a1.send(&conversation, text);
     }
     a1.sync();
-    relay.expire(&conversation, 3);
+    relay.expire(&conversation, 4);
     assert_eq!(
         b1.deliver(),
-        vec![Event::Stale {
-            conversation: conversation.clone()
-        }]
+        vec![
+            Event::Stale {
+                conversation: conversation.clone()
+            },
+            Event::Joined {
+                conversation: conversation.clone()
+            },
+        ]
     );
-    assert_eq!(b1.client.conversations().unwrap()[0].state, State::Stale);
-    assert!(b1.history(&conversation).is_empty());
+    assert_eq!(b1.client.conversations().unwrap()[0].state, State::Active);
+    // Its history stays; what expired is not in it.
+    assert_eq!(
+        b1.history(&conversation),
+        vec![("b".into(), "áður".into(), true)]
+    );
+
+    // The others see the same device in its new leaf, not a new one.
+    let events = a1.deliver();
+    assert!(devices(&events).is_empty());
+    assert!(membership(&events).is_empty());
+    a1.send(&conversation, "aftur");
+    a1.sync();
+    assert_eq!(texts(&b1.deliver()), strings(&["aftur"]));
+    b1.send(&conversation, "takk");
+    b1.sync();
+    assert_eq!(texts(&a1.deliver()), strings(&["takk"]));
+}
+
+#[test]
+fn a_device_registered_later_joins_by_external_commit() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut a1, &mut b1);
+
+    // The creator's account had no Welcome; the other account's Welcome
+    // names devices it had then.
+    let mut a2 = Phone::new(&relay, "a", "a2");
+    let mut b2 = Phone::new(&relay, "b", "b2");
+    a1.send(&conversation, "fyrir");
+    a1.sync();
+    for phone in [&mut a2, &mut b2] {
+        let events = phone.deliver();
+        assert_eq!(joined(&events), vec![conversation.clone()]);
+        // Sent on the epoch it joined from.
+        assert!(texts(&events).is_empty());
+        assert_eq!(
+            phone.client.conversations().unwrap()[0].state,
+            State::Active
+        );
+    }
+
+    let new = vec![("a".to_owned(), "a2".to_owned()), ("b".into(), "b2".into())];
+    assert_eq!(devices(&a1.deliver()), new);
+    assert_eq!(devices(&b1.deliver()), new);
+    b1.send(&conversation, "velkomin");
+    b1.sync();
+    for phone in [&mut a1, &mut a2, &mut b2] {
+        assert_eq!(texts(&phone.deliver()), strings(&["velkomin"]));
+    }
+    a2.send(&conversation, "takk");
+    a2.sync();
+    assert_eq!(texts(&b1.deliver()), strings(&["takk"]));
+}
+
+#[test]
+fn a_join_whose_answer_was_lost_is_sent_again_as_the_same_bytes() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut a1, &mut b1);
+    let mut b2 = Phone::new(&relay, "b", "b2");
+    a1.send(&conversation, "fyrir");
+    a1.sync();
+    let stored = relay.stored(&conversation);
+
+    relay.lose_sends("b2", 1);
+    for frame in relay.frames("b2") {
+        assert!(matches!(
+            b2.client.on_frame(&frame),
+            Err(ClientError::Transport(ApiError::Unreachable(_)))
+        ));
+    }
+    b2.reopen();
+    assert_eq!(joined(&b2.sync()), vec![conversation.clone()]);
+    let sends = relay.sends("b2");
+    assert_eq!(sends.len(), 2);
+    assert_eq!(sends[0], sends[1]);
+    assert_eq!(relay.stored(&conversation), stored + 1);
+
+    assert_eq!(devices(&a1.deliver()), vec![("b".into(), "b2".into())]);
+    a1.send(&conversation, "eftir");
+    a1.sync();
+    assert_eq!(texts(&b2.deliver()), strings(&["eftir"]));
+}
+
+#[test]
+fn a_join_that_lost_its_epoch_is_made_again() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let mut c1 = Phone::new(&relay, "c", "c1");
+    let conversation = conversation(&mut a1, &mut b1);
+    let mut b2 = Phone::new(&relay, "b", "b2");
+    a1.send(&conversation, "fyrir");
+    a1.sync();
+
+    relay.fail_sends("b2", 1);
+    for frame in relay.frames("b2") {
+        assert!(b2.client.on_frame(&frame).is_err());
+    }
+    // Another commit takes the epoch the sealed join was made on.
+    a1.client
+        .add_accounts(&conversation, &strings(&["c"]))
+        .unwrap();
+    a1.sync();
+    assert_eq!(joined(&c1.deliver()), vec![conversation.clone()]);
+
+    // The sealed join is sent again, refused, and made from the newer
+    // GroupInfo.
+    assert_eq!(joined(&b2.deliver()), vec![conversation.clone()]);
+    let sends = relay.sends("b2");
+    assert_eq!(sends.len(), 2);
+    assert_ne!(sends[0]["ciphertext"], sends[1]["ciphertext"]);
+
+    assert_eq!(devices(&c1.deliver()), vec![("b".into(), "b2".into())]);
+    c1.send(&conversation, "hæ");
+    c1.sync();
+    assert_eq!(texts(&b2.deliver()), strings(&["hæ"]));
+}
+
+#[test]
+fn a_device_of_an_account_outside_the_conversation_does_not_join() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let mut c1 = Phone::new(&relay, "c", "c1");
+    let conversation = conversation(&mut a1, &mut b1);
+
+    let notify = format!(r#"{{"type":"notify","conversationId":"{conversation}","seq":1}}"#);
+    assert!(c1.client.on_frame(&notify).unwrap().events.is_empty());
+    assert!(c1.client.conversations().unwrap().is_empty());
+    assert!(c1.sync().is_empty());
+    assert!(relay.sends("c1").is_empty());
 }
 
 #[test]

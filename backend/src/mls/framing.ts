@@ -1,6 +1,7 @@
 // The unencrypted framing of an MLS message (RFC 9420 §6), which is all the
-// server reads (decisions 0002, 0017, 0020): which group, which epoch,
-// whether it is a commit, and the authenticated_data a commit's claim is in.
+// server reads (decisions 0002, 0017, 0020, 0021): which group, which epoch,
+// whether it is a commit, the authenticated_data a commit's claim is in, the
+// leaf an external commit brings, and the group and epoch of a GroupInfo.
 // Everything after those fields is ciphertext or signed content it neither
 // needs nor checks. api/fixtures/mls-framing.json holds
 // real OpenMLS messages to test against.
@@ -19,6 +20,14 @@ const CONTENT_TYPES = { 1: "application", 2: "proposal", 3: "commit" } as const;
 
 type ContentType = (typeof CONTENT_TYPES)[keyof typeof CONTENT_TYPES];
 
+/** Who a leaf names: a BasicCredential identity and its signature key. */
+export type Leaf = {
+  /** `{accountId}/{deviceId}` (0018). */
+  identity: Uint8Array;
+  /** The device key the device was registered with. */
+  signatureKey: Uint8Array;
+};
+
 export type Framing =
   | {
       wireFormat: "public" | "private";
@@ -27,17 +36,12 @@ export type Framing =
       contentType: ContentType;
       /** Signed by the sender but not encrypted; a commit's claim (0020). */
       authenticatedData: Uint8Array;
+      /** An external commit's own leaf, the device joining (0021). */
+      joiner?: Leaf;
     }
   | { wireFormat: "welcome"; cipherSuite: number }
-  | {
-      wireFormat: "key_package";
-      cipherSuite: number;
-      /** The leaf's BasicCredential identity, `{accountId}/{deviceId}` (0018). */
-      identity: Uint8Array;
-      /** The leaf's signature key, the device key it was registered with. */
-      signatureKey: Uint8Array;
-    }
-  | { wireFormat: "group_info" };
+  | ({ wireFormat: "key_package"; cipherSuite: number } & Leaf)
+  | { wireFormat: "group_info"; groupId: Uint8Array; epoch: number };
 
 /** Bytes that are not a well-formed MLS 1.0 message. */
 export class FramingError extends Error {}
@@ -111,19 +115,43 @@ function contentType(value: number): ContentType {
   return type;
 }
 
-/** RFC 9420 §6, `Sender`: skipped, but its size depends on its type. */
-function skipSender(reader: Reader): void {
+/** RFC 9420 §6, `SenderType.new_member_commit`: an external commit. */
+const NEW_MEMBER_COMMIT = 4;
+
+/** RFC 9420 §6, `Sender`: only its type is kept; its size depends on it. */
+function readSender(reader: Reader): number {
   const type = reader.u8();
   if (type === 1 || type === 2) reader.u32();
-  else if (type !== 3 && type !== 4) throw new FramingError(`sender type ${type}`);
+  else if (type !== 3 && type !== NEW_MEMBER_COMMIT) throw new FramingError(`sender type ${type}`);
+  return type;
+}
+
+/** RFC 9420 §7.2, a `LeafNode` as far as its credential's identity. */
+function readLeaf(reader: Reader): Leaf {
+  reader.vector(); // encryption_key
+  const signatureKey = reader.vector();
+  const credential = reader.u16();
+  if (credential !== BASIC_CREDENTIAL) throw new FramingError(`credential type ${credential}`);
+  return { identity: reader.vector(), signatureKey };
+}
+
+/**
+ * RFC 9420 §12.4: an external commit's proposals, then the path its joiner
+ * must bring (§12.4.3.2), whose leaf is the joiner's own.
+ */
+function readJoiner(reader: Reader): Leaf {
+  reader.vector(); // proposals
+  if (reader.u8() !== 1) throw new FramingError("external commit without a path");
+  return readLeaf(reader);
 }
 
 /**
  * Reads the framing of one MLSMessage. A PrivateMessage and a Welcome are
  * read to their last byte; a PublicMessage, a KeyPackage and a GroupInfo up
  * to the fields the server uses, since the rest is signed content whose
- * checking is the clients' (decision 0002). A KeyPackage is read into its
- * leaf as far as the credential, which must be a BasicCredential.
+ * checking is the clients' (decision 0002). A KeyPackage, and an external
+ * commit's path, are read into their leaf as far as the credential, which
+ * must be a BasicCredential.
  */
 export function readFraming(bytes: Uint8Array): Framing {
   const reader = new Reader(bytes);
@@ -134,15 +162,15 @@ export function readFraming(bytes: Uint8Array): Framing {
     case "public": {
       const groupId = reader.vector();
       const epoch = reader.u64();
-      skipSender(reader);
+      const sender = readSender(reader);
       const authenticatedData = reader.vector();
-      return {
-        wireFormat,
-        groupId,
-        epoch,
-        contentType: contentType(reader.u8()),
-        authenticatedData,
-      };
+      const type = contentType(reader.u8());
+      if (sender !== NEW_MEMBER_COMMIT) {
+        return { wireFormat, groupId, epoch, contentType: type, authenticatedData };
+      }
+      if (type !== "commit") throw new FramingError(`a new member's ${type}`);
+      const joiner = readJoiner(reader);
+      return { wireFormat, groupId, epoch, contentType: type, authenticatedData, joiner };
     }
     case "private": {
       const groupId = reader.vector();
@@ -165,14 +193,15 @@ export function readFraming(bytes: Uint8Array): Framing {
       if (reader.u16() !== MLS10) throw new FramingError("KeyPackage not MLS 1.0");
       const cipherSuite = reader.u16();
       reader.vector(); // init_key
-      reader.vector(); // leaf_node.encryption_key
-      const signatureKey = reader.vector();
-      const credential = reader.u16();
-      if (credential !== BASIC_CREDENTIAL) throw new FramingError(`credential type ${credential}`);
-      return { wireFormat, cipherSuite, identity: reader.vector(), signatureKey };
+      return { wireFormat, cipherSuite, ...readLeaf(reader) };
     }
-    case "group_info":
-      return { wireFormat };
+    case "group_info": {
+      // RFC 9420 §12.4.3.1: the GroupInfo opens with its GroupContext.
+      if (reader.u16() !== MLS10) throw new FramingError("GroupContext not MLS 1.0");
+      reader.u16(); // cipher_suite
+      const groupId = reader.vector();
+      return { wireFormat, groupId, epoch: reader.u64() };
+    }
     default:
       throw new FramingError(`wire format ${wire}`);
   }

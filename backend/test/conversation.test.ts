@@ -7,7 +7,7 @@ import { euEnv } from "./support.ts";
 
 // The Conversation DO on its own (decisions 0015, 0017, 0020): order, the
 // epoch rule, the roster each commit claims, history up to a removal,
-// Welcomes, fan-out and retention. Each test has its own
+// Welcomes, the GroupInfo and external commits (0021), fan-out and retention. Each test has its own
 // conversation; the bytes are opaque here, since the Worker reads the framing.
 
 const testEnv = euEnv(env);
@@ -136,6 +136,43 @@ describe("a conversation", () => {
     expect(await stub.send(message("a", "add2", { commitEpoch: 0 }))).toEqual({ ok: { seq: 1 } });
   });
 
+  it("keeps the latest commit's GroupInfo for its members (0021)", async () => {
+    const { stub } = await created("a");
+    expect(await stub.groupInfo("a")).toEqual({ error: "not_found" });
+    await stub.send(
+      message("a", "c0", { commitEpoch: 0, roster: ["a", "b"], groupInfo: bytes(1) }),
+    );
+    await stub.send(message("a", "m1"));
+    expect(await stub.groupInfo("b")).toEqual({ ok: { seq: 1, groupInfo: bytes(1) } });
+    await stub.send(
+      message("b", "c1", { commitEpoch: 1, roster: ["a", "b"], groupInfo: bytes(2) }),
+    );
+    expect(await stub.groupInfo("a")).toEqual({ ok: { seq: 3, groupInfo: bytes(2) } });
+    // A commit that lost its epoch leaves the GroupInfo as it was.
+    await stub.send(
+      message("a", "c1b", { commitEpoch: 1, roster: ["a", "b"], groupInfo: bytes(3) }),
+    );
+    expect(await stub.groupInfo("a")).toEqual({ ok: { seq: 3, groupInfo: bytes(2) } });
+    expect(await stub.groupInfo("x")).toEqual({ error: "not_a_member" });
+  });
+
+  it("takes an external commit that keeps the roster, after the epoch rule", async () => {
+    const { stub } = await created("a");
+    await stub.send(message("a", "c0", { commitEpoch: 0, roster: ["a", "b"] }));
+    const external = (clientMsgId: string, commitEpoch: number, roster: string[]) =>
+      message("b", clientMsgId, { commitEpoch, roster, external: true, groupInfo: bytes(5) });
+
+    // On an old epoch it hears so first, even with a roster it may not set.
+    expect(await stub.send(external("old", 0, ["b"]))).toEqual({ error: "epoch_conflict" });
+    for (const roster of [["b"], ["a", "b", "c"], ["a", "c"]]) {
+      expect(await stub.send(external(`r_${roster.join("")}`, 1, roster)), roster.join()).toEqual({
+        error: "external_changes_roster",
+      });
+    }
+    expect(await stub.send(external("join", 1, ["b", "a"]))).toEqual({ ok: { seq: 2 } });
+    expect(await stub.groupInfo("a")).toEqual({ ok: { seq: 2, groupInfo: bytes(5) } });
+  });
+
   it("pages messages after a seq", async () => {
     const { stub } = await created();
     for (const n of [1, 2, 3, 4, 5]) await stub.send(message("a", `m${n}`));
@@ -161,10 +198,13 @@ describe("a conversation", () => {
     });
   });
 
-  it("deletes messages and Welcomes 30 days after they were stored", async () => {
+  it("deletes messages and Welcomes 30 days after they were stored, not the GroupInfo", async () => {
     const { stub } = await created("a");
     const welcome = { to: ["b"], message: bytes(9) };
-    await stub.send(message("a", "add", { commitEpoch: 0, roster: ["a", "b"], welcome }));
+    const groupInfo = bytes(4);
+    await stub.send(
+      message("a", "add", { commitEpoch: 0, roster: ["a", "b"], welcome, groupInfo }),
+    );
     await stub.send(message("a", "new"));
     await runDurableObjectAlarm(stub);
     await runInDurableObject(stub, (_, state) => {
@@ -176,6 +216,8 @@ describe("a conversation", () => {
     const page = await stub.list("a", 0, 10);
     expect("ok" in page && page.ok.messages.map((m) => m.seq)).toEqual([2]);
     expect(await stub.welcome("b")).toEqual({ error: "not_found" });
+    // The GroupInfo stays: without it the conversation could not be joined.
+    expect(await stub.groupInfo("b")).toEqual({ ok: { seq: 1, groupInfo } });
     // The next alarm waits for the newest message to expire.
     await runInDurableObject(stub, async (_, state) => {
       expect(await state.storage.getAlarm()).toBeGreaterThan(Date.now() + RETENTION_MS - 60_000);

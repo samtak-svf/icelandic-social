@@ -1,7 +1,7 @@
 import type { Device } from "./accounts.ts";
 import { fromBase64 } from "./bytes.ts";
 import { db } from "./env/index.ts";
-import { FramingError, readFraming } from "./mls/framing.ts";
+import { FramingError, type Leaf, readFraming } from "./mls/framing.ts";
 
 // KeyPackages in D1 (decisions 0002, 0017): a device uploads them, and a
 // member who adds its account to a group claims one per active device. A
@@ -14,24 +14,44 @@ const CIPHER_SUITE = 0x0001;
 /** The most unclaimed packages a device may hold, besides its last resort. */
 const MAX_HELD = 100;
 
-/** What a device's KeyPackage must carry in its leaf. */
+/** What a device's leaf must carry: its name and its device key. */
 type Owner = { identity: Uint8Array; deviceKey: Uint8Array };
 
 const equal = (a: Uint8Array, b: Uint8Array) =>
   a.length === b.length && a.every((byte, i) => byte === b[i]);
 
+async function owner(env: Env, { accountId, deviceId }: Device): Promise<Owner | null> {
+  const row = await db(env)
+    .prepare("SELECT device_key AS deviceKey FROM devices WHERE device_id = ?")
+    .bind(deviceId)
+    .first<{ deviceKey: ArrayBuffer | number[] }>();
+  if (!row) return null;
+  return {
+    identity: new TextEncoder().encode(`${accountId}/${deviceId}`),
+    deviceKey: new Uint8Array(row.deviceKey),
+  };
+}
+
+const owns = (leaf: Leaf, { identity, deviceKey }: Owner) =>
+  equal(leaf.identity, identity) && equal(leaf.signatureKey, deviceKey);
+
+/** Whether a leaf, an external commit's (0021), names this device and its key. */
+export async function ownsLeaf(env: Env, device: Device, leaf: Leaf): Promise<boolean> {
+  const own = await owner(env, device);
+  return own !== null && owns(leaf, own);
+}
+
 /**
  * The bytes of a KeyPackage in the pinned suite whose leaf names its owner
  * and carries the owner's device key, or null for anything else.
  */
-function keyPackage(text: string, owner: Owner): Uint8Array | null {
+function keyPackage(text: string, own: Owner): Uint8Array | null {
   const bytes = fromBase64(text);
   try {
     const framing = readFraming(bytes);
     return framing.wireFormat === "key_package" &&
       framing.cipherSuite === CIPHER_SUITE &&
-      equal(framing.identity, owner.identity) &&
-      equal(framing.signatureKey, owner.deviceKey)
+      owns(framing, own)
       ? bytes
       : null;
   } catch (error) {
@@ -55,20 +75,14 @@ async function available(env: Env, deviceId: string): Promise<number> {
  */
 export async function upload(
   env: Env,
-  { accountId, deviceId }: Device,
+  device: Device,
   body: { keyPackages: string[]; lastResort?: string },
 ): Promise<{ available: number } | null> {
-  const row = await db(env)
-    .prepare("SELECT device_key AS deviceKey FROM devices WHERE device_id = ?")
-    .bind(deviceId)
-    .first<{ deviceKey: ArrayBuffer | number[] }>();
-  if (!row) return null;
-  const owner = {
-    identity: new TextEncoder().encode(`${accountId}/${deviceId}`),
-    deviceKey: new Uint8Array(row.deviceKey),
-  };
-  const packages = body.keyPackages.map((text) => keyPackage(text, owner));
-  const lastResort = body.lastResort === undefined ? undefined : keyPackage(body.lastResort, owner);
+  const { deviceId } = device;
+  const own = await owner(env, device);
+  if (!own) return null;
+  const packages = body.keyPackages.map((text) => keyPackage(text, own));
+  const lastResort = body.lastResort === undefined ? undefined : keyPackage(body.lastResort, own);
   if (packages.includes(null) || lastResort === null) return null;
   if ((await available(env, deviceId)) + packages.length > MAX_HELD) return null;
 

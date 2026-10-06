@@ -103,6 +103,8 @@ pub struct Outgoing {
     pub ciphertext: Vec<u8>,
     /// A commit's Welcome; who it is for is in the commit's claim (0020).
     pub welcome: Option<Vec<u8>>,
+    /// A commit's GroupInfo for the epoch it starts (0021).
+    pub group_info: Option<Vec<u8>>,
 }
 
 #[derive(Serialize)]
@@ -112,6 +114,8 @@ struct SendBody<'a> {
     ciphertext: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     welcome: Option<WelcomeMessage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    group_info: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -147,6 +151,13 @@ struct Stored {
 struct Welcome {
     seq: u64,
     welcome: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LatestGroupInfo {
+    seq: u64,
+    group_info: String,
 }
 
 #[derive(Deserialize)]
@@ -334,6 +345,7 @@ impl<'a, T: Transport + ?Sized> Api<'a, T> {
             welcome: out.welcome.as_ref().map(|message| WelcomeMessage {
                 message: base64(message),
             }),
+            group_info: out.group_info.as_deref().map(base64),
         };
         let sent: Sent = self.call(
             Method::Post,
@@ -374,6 +386,18 @@ impl<'a, T: Transport + ?Sized> Api<'a, T> {
         )?;
         let bytes = from_base64(&welcome.welcome).ok_or(ApiError::Malformed("getWelcome"))?;
         Ok((welcome.seq, bytes))
+    }
+
+    /// `getGroupInfo`: the GroupInfo of the latest commit, and its seq (0021).
+    pub fn get_group_info(&self, conversation: &str) -> Result<(u64, Vec<u8>), ApiError> {
+        let latest: LatestGroupInfo = self.call(
+            Method::Get,
+            format!("/v1/conversations/{conversation}/group-info"),
+            None,
+            "getGroupInfo",
+        )?;
+        let bytes = from_base64(&latest.group_info).ok_or(ApiError::Malformed("getGroupInfo"))?;
+        Ok((latest.seq, bytes))
     }
 
     /// `uploadKeyPackages`: how many unclaimed packages this device now holds.

@@ -73,6 +73,7 @@ describe("delivery", () => {
     const add = await send("add b", a.auth, {
       ciphertext: mls.claimed("add b", [a.accountId, b.accountId], [b.accountId]),
       welcome: { message: mls.welcomeBase64 },
+      groupInfo: mls.groupInfo("add b"),
     });
     expect(add).toBe(1);
     expect(await socketA.next()).toEqual(notify(1));
@@ -110,7 +111,8 @@ describe("delivery", () => {
     socketB.ws.close(1000, "bye");
     await socketB.closed;
     const update = mls.claimed("a updates", [a.accountId, b.accountId]);
-    expect(await send("a updates", a.auth, { ciphertext: update })).toBe(4);
+    const updated = { ciphertext: update, groupInfo: mls.groupInfo("a updates") };
+    expect(await send("a updates", a.auth, updated)).toBe(4);
     expect(await socketA.next()).toEqual(notify(4));
     await expect
       .poll(() =>

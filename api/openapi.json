@@ -487,6 +487,13 @@
           },
           "welcome": {
             "$ref": "#/components/schemas/WelcomeMessage"
+          },
+          "groupInfo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 87384,
+            "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
+            "description": "With every commit, and only then: the MLS GroupInfo, with the ratchet tree, of the epoch the commit starts (decision 0021)"
           }
         },
         "required": [
@@ -598,6 +605,27 @@
         "required": [
           "seq",
           "welcome"
+        ]
+      },
+      "GroupInfo": {
+        "type": "object",
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The commit it is of; fetch messages after the join's own"
+          },
+          "groupInfo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 87384,
+            "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
+            "description": "The MLS GroupInfo, with the ratchet tree"
+          }
+        },
+        "required": [
+          "seq",
+          "groupInfo"
         ]
       },
       "KeyPackageStock": {
@@ -1119,7 +1147,7 @@
             }
           },
           "400": {
-            "description": "invalid_request: a commit without a claim that names its sender, or a welcome its claim does not name anyone for, or a welcome without a commit; group_mismatch: the framing names another group",
+            "description": "invalid_request: a commit without a claim that names its sender, a welcome its claim does not name anyone for, a welcome or groupInfo without a commit, a commit without the GroupInfo of its group's next epoch, or an external commit that is not the sending device's own leaf or that changes the roster; group_mismatch: the framing names another group",
             "content": {
               "application/json": {
                 "schema": {
@@ -1370,6 +1398,86 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Welcome"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_a_member: this account is not in the conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/conversations/{conversationId}/group-info": {
+      "get": {
+        "operationId": "getGroupInfo",
+        "tags": [
+          "conversations"
+        ],
+        "summary": "The latest commit's GroupInfo, for a device of a member account to join from",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "q1w2e3r4t5y6u7i8o9p0aA",
+              "description": "The MLS group id, unpadded base64url"
+            },
+            "required": true,
+            "description": "The MLS group id, unpadded base64url",
+            "name": "conversationId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The GroupInfo of the current epoch (decision 0021)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupInfo"
                 }
               }
             }

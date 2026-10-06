@@ -147,6 +147,27 @@ fn creating_with_own_devices_and_another_account_derives_the_roster() {
     assert_eq!(devices.len(), 3);
 }
 
+/// A new account's devices are its membership, not new devices of 0006.
+#[test]
+fn a_new_account_s_devices_are_added_not_joined() {
+    let (mut d1, mut d2, _d3, id, _) = three();
+    let mut d5 = Dev::new("c", "d5");
+    let claimed = [d5.claimed()];
+    let add = d1.group(&id, |g, p, identity| {
+        let commit = g.add(p, identity, &claimed).unwrap();
+        g.merge_pending_commit(p).unwrap();
+        commit
+    });
+    d5.join(add.welcome.as_ref().unwrap()).unwrap();
+    match d2.receive(&id, &add.message).unwrap() {
+        Received::Commit { added, joined, .. } => {
+            assert_eq!(added, [d5.device.clone()]);
+            assert!(joined.is_empty(), "{joined:?}");
+        }
+        other => panic!("not a commit: {other:?}"),
+    }
+}
+
 #[test]
 fn removing_an_account_removes_all_its_devices() {
     let (mut d1, mut d2, mut d3, id, _) = three();
@@ -164,8 +185,8 @@ fn removing_an_account_removes_all_its_devices() {
     for dev in [&mut d2, &mut d3] {
         assert!(matches!(
             dev.receive(&id, &add.message).unwrap(),
-            Received::Commit { ref added, backed: true, .. }
-                if added == &[Device::new("b", "d4").unwrap()]
+            Received::Commit { ref added, ref joined, backed: true, .. }
+                if added == &[Device::new("b", "d4").unwrap()] && joined == added
         ));
     }
 
@@ -464,4 +485,116 @@ fn a_claim_is_only_the_json_a_commit_carries() {
     // An application message carries none.
     let (mut d1, _, _, id, _) = three();
     assert_eq!(claim_of(&d1.send(&id, b"hello")), None);
+}
+
+/// The GroupInfo a commit carries, as the server stores it (0021).
+fn group_info_epoch(bytes: &[u8]) -> u64 {
+    use openmls::prelude::tls_codec::Deserialize as _;
+    let MlsMessageBodyIn::GroupInfo(group_info) = MlsMessageIn::tls_deserialize_exact(bytes)
+        .unwrap()
+        .extract()
+    else {
+        panic!("not a GroupInfo");
+    };
+    group_info.epoch().as_u64()
+}
+
+#[test]
+fn every_commit_carries_the_group_info_of_its_epoch() {
+    let (mut d1, _d2, _d3, id, commit) = three();
+    assert_eq!(group_info_epoch(&commit.group_info), 1);
+    let correction = d1.group(&id, |g, p, identity| {
+        let commit = g.correct(p, identity).unwrap();
+        g.merge_pending_commit(p).unwrap();
+        commit
+    });
+    assert_eq!(group_info_epoch(&correction.group_info), 2);
+}
+
+/// `a/d4` comes after the group was made, so no Welcome names it: it joins
+/// from the last commit's GroupInfo, and every member sees a new device of
+/// an account already in the group.
+#[test]
+fn a_new_device_of_a_member_account_joins_by_external_commit() {
+    let (mut d1, mut d2, mut d3, id, commit) = three();
+    let mut d4 = Dev::new("a", "d4");
+    let (joined_id, join) = d4.with(|p, identity| {
+        let (group, commit) = Group::join_external(p, identity, &commit.group_info).unwrap();
+        (group.id().to_vec(), commit)
+    });
+    assert_eq!(joined_id, id);
+    assert!(join.welcome.is_none());
+    assert_eq!(join.claim, claim(&["a", "b"], &[]));
+    assert_eq!(claim_of(&join.message), Some(join.claim.clone()));
+    assert_eq!(group_info_epoch(&join.group_info), 2);
+
+    for member in [&mut d1, &mut d2, &mut d3] {
+        match member.receive(&id, &join.message).unwrap() {
+            Received::Commit {
+                by,
+                added,
+                removed,
+                joined,
+                backed,
+                ..
+            } => {
+                assert_eq!(by, d4.device);
+                assert!(added.is_empty() && removed.is_empty());
+                assert_eq!(joined, [d4.device.clone()]);
+                assert!(backed);
+            }
+            other => panic!("not a commit: {other:?}"),
+        }
+    }
+    let hello = d4.send(&id, b"ny");
+    assert_eq!(d3.text(&id, &hello), (d4.device.clone(), b"ny".to_vec()));
+    let back = d1.send(&id, b"velkomin");
+    assert_eq!(
+        d4.text(&id, &back),
+        (d1.device.clone(), b"velkomin".to_vec())
+    );
+}
+
+/// `b/d3` lost its group (its store fell behind the server). It joins
+/// again with the same key, and its old leaf goes in the same commit: no
+/// one sees it removed, and it reads what comes next.
+#[test]
+fn a_device_that_lost_its_group_rejoins_in_place_of_its_old_leaf() {
+    let (mut d1, mut d2, mut d3, id, commit) = three();
+    d3.with(|p, _| Group::load(p, &id).unwrap().delete(p).unwrap());
+    let rejoin = d3.with(|p, identity| {
+        Group::join_external(p, identity, &commit.group_info)
+            .unwrap()
+            .1
+    });
+    assert_eq!(d3.group(&id, |g, _, _| g.devices().unwrap().len()), 3);
+
+    match d1.receive(&id, &rejoin.message).unwrap() {
+        Received::Commit {
+            removed,
+            joined,
+            backed,
+            ..
+        } => {
+            assert!(removed.is_empty() && joined.is_empty());
+            assert!(backed);
+        }
+        other => panic!("not a commit: {other:?}"),
+    }
+    d2.receive(&id, &rejoin.message).unwrap();
+    let hello = d1.send(&id, b"aftur");
+    assert_eq!(d3.text(&id, &hello), (d1.device.clone(), b"aftur".to_vec()));
+}
+
+#[test]
+fn a_group_info_without_its_tree_or_from_a_message_is_refused() {
+    let (mut d1, _d2, _d3, id, commit) = three();
+    let mut d4 = Dev::new("a", "d4");
+    let hello = d1.send(&id, b"hello");
+    for bytes in [&hello, &commit.message] {
+        assert!(matches!(
+            d4.rolled_back(|p, identity| Group::join_external(p, identity, bytes).err()),
+            Some(GroupError::Malformed(_))
+        ));
+    }
 }

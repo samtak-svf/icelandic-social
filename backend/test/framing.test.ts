@@ -19,7 +19,40 @@ describe("the MLS framing reader", () => {
       epoch: entry.epoch,
       contentType: CONTENT[entry.contentType as 1 | 2 | 3],
       authenticatedData: hexBytes(entry.authenticatedData),
+      ...(entry.joiner && {
+        joiner: {
+          identity: hexBytes(entry.joiner.identity),
+          signatureKey: hexBytes(entry.joiner.signaturePublic),
+        },
+      }),
     });
+  });
+
+  it("reads the group and the next epoch from the GroupInfo each commit carries", () => {
+    const commits = mls.messages.filter((m) => m.contentType === 3);
+    expect(commits.map((m) => m.name)).toEqual([
+      "add b",
+      "a updates",
+      "b updates",
+      "public add",
+      "a5 joins",
+    ]);
+    for (const commit of commits) {
+      expect(readFraming(hexBytes(commit.groupInfo!)), commit.name).toEqual({
+        wireFormat: "group_info",
+        groupId: hexBytes(commit.groupId),
+        epoch: commit.epoch + 1,
+      });
+    }
+  });
+
+  it("finds the joiner only in an external commit, the new device's own leaf", () => {
+    const joiners = mls.messages.filter((m) => "joiner" in m).map((m) => m.name);
+    expect(joiners).toEqual(["a5 joins"]);
+    const framing = readFraming(hexBytes(mls.messages.find((m) => m.name === "a5 joins")!.hex));
+    expect(framing.wireFormat === "public" && framing.joiner?.identity).toEqual(
+      new TextEncoder().encode("a/d5"),
+    );
   });
 
   it("reads the claim of each commit the core made", () => {
@@ -31,6 +64,7 @@ describe("the MLS framing reader", () => {
       ["a updates", { roster: ["a", "b"], welcome: [] }],
       ["b updates", { roster: ["b"], welcome: [] }],
       ["public add", { roster: ["c", "d"], welcome: ["d"] }],
+      ["a5 joins", { roster: ["a", "b"], welcome: [] }],
     ]);
   });
 
@@ -93,7 +127,12 @@ describe("the MLS framing reader", () => {
   });
 
   it("fails only with FramingError on any truncation of any message", () => {
-    const all = [...mls.messages.map((m) => m.hex), mls.welcome.hex, mls.keyPackage.hex];
+    const all = [
+      ...mls.messages.map((m) => m.hex),
+      ...mls.messages.flatMap((m) => (m.groupInfo ? [m.groupInfo] : [])),
+      mls.welcome.hex,
+      mls.keyPackage.hex,
+    ];
     for (const bytes of all.map(hexBytes)) {
       for (let n = 0; n < bytes.length; n++) {
         try {

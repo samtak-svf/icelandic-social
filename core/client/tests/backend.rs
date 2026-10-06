@@ -348,4 +348,26 @@ fn devices_talk_through_the_worker() {
         strings(&["halló", "eitt", "tvö", "þrjú"])
     );
     assert_eq!(d1.texts(&conversation), strings(&["án b"]));
+
+    // A device d signs in later joins from the latest GroupInfo by an
+    // external commit, and the others see a new device of d (0021).
+    let mut d2 = Phone::new(&kennitala(run, 3), None);
+    assert_eq!(d2.account, d);
+    a1.send(&conversation, "fyrir d2");
+    a1.sync();
+    d2.deliver_until(has(joined.clone()));
+    let new_device_of_d = |events: &[Event]| {
+        events.iter().any(|e| {
+            matches!(e, Event::Devices { joined, .. }
+                if joined.len() == 1 && joined[0].account == d)
+        })
+    };
+    a1.deliver_until(new_device_of_d);
+    c1.deliver_until(new_device_of_d);
+    d2.send(&conversation, "frá d2");
+    d2.sync();
+    for phone in [&mut a1, &mut c1, &mut d1] {
+        phone.deliver_until(|events| texts(events).contains(&"frá d2".to_owned()));
+    }
+    assert_eq!(d2.texts(&conversation), strings(&["frá d2"]));
 }

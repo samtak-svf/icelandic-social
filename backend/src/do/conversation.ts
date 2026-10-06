@@ -17,6 +17,10 @@ export type SendInput = {
   commitEpoch?: number;
   /** Set for a commit: every account its claim names (decision 0020). */
   roster?: string[];
+  /** Set for a commit: the GroupInfo of the epoch it starts (decision 0021). */
+  groupInfo?: Uint8Array;
+  /** An external commit, by a device joining on its own (decision 0021). */
+  external?: boolean;
   /** The accounts are the claim's too. */
   welcome?: { to: string[]; message: Uint8Array };
 };
@@ -26,15 +30,17 @@ type Refusal =
   | "not_a_member"
   | "conversation_exists"
   | "epoch_conflict"
-  | "welcome_not_a_member";
+  | "welcome_not_a_member"
+  | "external_changes_roster";
 
 export type Result<T> = { ok: T } | { error: Refusal };
 
 /**
- * One conversation's delivery service (decisions 0015, 0017, 0020): a
+ * One conversation's delivery service (decisions 0015, 0017, 0020, 0021): a
  * monotonic `seq`, one commit per epoch from epoch 0, the roster each commit
  * claims, history for an account up to the commit that left it out, the
- * Welcomes that travel with commits, and ciphertext kept for 30 days. A stored
+ * Welcomes that travel with commits, the latest commit's GroupInfo, and
+ * ciphertext kept for 30 days. A stored
  * message and the notifications it owes the members are one transaction;
  * the alarm delivers the notifications and deletes what has expired.
  */
@@ -74,6 +80,11 @@ export class Conversation extends DurableObject<Env> {
       );
       CREATE TABLE IF NOT EXISTS pending_notify (account TEXT PRIMARY KEY, seq INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS removed (account TEXT PRIMARY KEY, seq INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS group_info (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        seq INTEGER NOT NULL,
+        message BLOB NOT NULL
+      );
     `);
   }
 
@@ -142,7 +153,7 @@ export class Conversation extends DurableObject<Env> {
 
     const before = this.members();
     const after = new Set(input.roster ?? before);
-    const refusal = this.refusal(input, after);
+    const refusal = this.refusal(input, before, after);
     if (refusal) return { error: refusal };
 
     const seq = meta.lastSeq + 1;
@@ -176,14 +187,19 @@ export class Conversation extends DurableObject<Env> {
    * Why this send cannot be stored, given the roster it would leave. A
    * commit must be made on the current epoch: the one after the last stored
    * commit's (decision 0015), and epoch 0, the group's own, for the first
-   * (decision 0020).
+   * (decision 0020). An external commit adds a device of a member account,
+   * so it keeps the roster (0021). The epoch is checked first: a join that
+   * lost its epoch must hear so, to make its commit again on the new one.
    */
-  private refusal(input: SendInput, after: Set<string>): Refusal | null {
+  private refusal(input: SendInput, before: string[], after: Set<string>): Refusal | null {
     if (input.commitEpoch !== undefined) {
       const last = this.sql
         .exec<{ epoch: number | null }>("SELECT max(epoch) AS epoch FROM commits")
         .one().epoch;
       if (input.commitEpoch !== (last === null ? 0 : last + 1)) return "epoch_conflict";
+    }
+    if (input.external && (after.size !== before.length || before.some((a) => !after.has(a)))) {
+      return "external_changes_roster";
     }
     if (input.welcome?.to.some((account) => !after.has(account))) return "welcome_not_a_member";
     return null;
@@ -202,6 +218,13 @@ export class Conversation extends DurableObject<Env> {
     now: number,
   ): void {
     this.sql.exec("INSERT INTO commits (epoch, seq) VALUES (?, ?)", epoch, seq);
+    if (input.groupInfo) {
+      this.sql.exec(
+        "INSERT OR REPLACE INTO group_info (id, seq, message) VALUES (1, ?, ?)",
+        seq,
+        input.groupInfo,
+      );
+    }
     for (const account of before.filter((a) => !after.has(a))) {
       this.sql.exec("DELETE FROM roster WHERE account = ?", account);
       this.sql.exec(
@@ -277,6 +300,23 @@ export class Conversation extends DurableObject<Env> {
       .toArray()[0];
     return row
       ? { ok: { seq: row.seq, welcome: new Uint8Array(row.message) } }
+      : { error: "not_found" };
+  }
+
+  /**
+   * The GroupInfo of the latest commit, and its seq, for a device of a
+   * member account to join from (decision 0021). It holds only public keys
+   * and credentials, and is never expired: without it a conversation quiet
+   * for 30 days could not be joined.
+   */
+  async groupInfo(account: string): Promise<Result<{ seq: number; groupInfo: Uint8Array }>> {
+    if (!this.meta()) return { error: "not_found" };
+    if (!this.isMember(account)) return { error: "not_a_member" };
+    const row = this.sql
+      .exec<{ seq: number; message: ArrayBuffer }>("SELECT seq, message FROM group_info")
+      .toArray()[0];
+    return row
+      ? { ok: { seq: row.seq, groupInfo: new Uint8Array(row.message) } }
       : { error: "not_found" };
   }
 

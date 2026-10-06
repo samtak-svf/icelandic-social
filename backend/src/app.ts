@@ -8,7 +8,11 @@ import {
   registerDevice,
   revokeDevice,
 } from "./accounts.ts";
-import { createConversationRoute, getWelcomeRoute } from "./api/conversations.ts";
+import {
+  createConversationRoute,
+  getGroupInfoRoute,
+  getWelcomeRoute,
+} from "./api/conversations.ts";
 import {
   deleteAccountRoute,
   getMeRoute,
@@ -27,7 +31,7 @@ import { checkSend } from "./conversations.ts";
 import { conversation, inbox, kenni, minClientVersions, withinLimit } from "./env/index.ts";
 import { redeem, signInConfig } from "./identity.ts";
 import { inviteLink, resolveInvite, revokeInvite, rotateInvite } from "./invites.ts";
-import { claim, upload } from "./key-packages.ts";
+import { claim, ownsLeaf, upload } from "./key-packages.ts";
 import { linkHost } from "./link.ts";
 import { log } from "./log.ts";
 
@@ -187,6 +191,10 @@ export function createApp() {
     const { conversationId } = c.req.valid("param");
     const checked = checkSend(c.var.device.accountId, conversationId, c.req.valid("json"));
     if ("error" in checked) return c.json({ error: checked.error }, 400);
+    // An external commit's leaf is the device joining: this one (0021).
+    if (checked.joiner && !(await ownsLeaf(c.env, c.var.device, checked.joiner))) {
+      return c.json({ error: "invalid_request" }, 400);
+    }
     const result = await conversation(c.env, conversationId).send(checked.ok);
     if ("ok" in result) return c.json(result.ok, 200);
     switch (result.error) {
@@ -241,6 +249,17 @@ export function createApp() {
         : c.json({ error: "not_found" }, 404);
     }
     return c.json({ seq: result.ok.seq, welcome: toBase64(result.ok.welcome) }, 200);
+  });
+
+  app.openapi(getGroupInfoRoute, async (c) => {
+    const { conversationId } = c.req.valid("param");
+    const result = await conversation(c.env, conversationId).groupInfo(c.var.device.accountId);
+    if ("error" in result) {
+      return result.error === "not_a_member"
+        ? c.json({ error: result.error }, 403)
+        : c.json({ error: "not_found" }, 404);
+    }
+    return c.json({ seq: result.ok.seq, groupInfo: toBase64(result.ok.groupInfo) }, 200);
   });
 
   // KeyPackages in D1 (decision 0017).

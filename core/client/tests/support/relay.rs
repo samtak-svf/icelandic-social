@@ -1,8 +1,9 @@
-//! An in-memory delivery service with the rules of 0015, 0017 and 0020,
+//! An in-memory delivery service with the rules of 0015, 0017, 0020 and 0021,
 //! spoken over the same HTTP requests the Worker answers: one seq per
 //! conversation, a send answered again by its `clientMsgId`, one commit per
 //! epoch from epoch 0, the roster each commit claims, history up to the
-//! commit that left an account out, the latest Welcome per account,
+//! commit that left an account out, the latest Welcome per account, the
+//! GroupInfo of the latest commit, an external commit that keeps the roster,
 //! KeyPackages consumed once but the last resort kept. It can lose a request
 //! or its answer.
 //!
@@ -16,7 +17,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use base64::Engine as _;
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use openmls::prelude::tls_codec::Deserialize as _;
-use openmls::prelude::{ContentType, MlsMessageIn};
+use openmls::prelude::{ContentType, MlsMessageBodyIn, MlsMessageIn, ProtocolMessage, Sender};
 use serde_json::{Value, json};
 use spjall_client::api::{Method, Request, Response, Transport, Unreachable};
 use spjall_mls::group::claim_of;
@@ -39,6 +40,8 @@ struct Conversation {
     expired_to: u64,
     /// account → the seq of the commit whose claim left it out.
     removed: BTreeMap<String, u64>,
+    /// The latest commit's seq and GroupInfo.
+    group_info: Option<(u64, String)>,
 }
 
 #[derive(Default)]
@@ -61,6 +64,9 @@ struct State {
     fail: BTreeMap<String, usize>,
     /// Requests whose answer will be lost after the server acted, per device.
     lose: BTreeMap<String, usize>,
+    /// The same, for `sendMessage` alone.
+    fail_sends: BTreeMap<String, usize>,
+    lose_sends: BTreeMap<String, usize>,
     /// Every `sendMessage` body the server received, per device.
     sends: BTreeMap<String, Vec<Value>>,
     page: usize,
@@ -128,6 +134,18 @@ impl Relay {
         self.state().lose.insert(device.into(), n);
     }
 
+    /// The next `n` sends from this device never reach the server; its
+    /// other requests do.
+    pub fn fail_sends(&self, device: &str, n: usize) {
+        self.state().fail_sends.insert(device.into(), n);
+    }
+
+    /// The server stores the next `n` sends from this device, but their
+    /// answers are lost.
+    pub fn lose_sends(&self, device: &str, n: usize) {
+        self.state().lose_sends.insert(device.into(), n);
+    }
+
     pub fn sends(&self, device: &str) -> Vec<Value> {
         self.state().sends.get(device).cloned().unwrap_or_default()
     }
@@ -186,17 +204,37 @@ pub fn kenni(authorize: &str) -> String {
     format!("{REDIRECT}?code=code-{state}&state={state}")
 }
 
-/// The group id, epoch and whether it is a commit, from the framing.
-fn framing(bytes: &[u8]) -> Option<(Vec<u8>, u64, bool)> {
+struct Framing {
+    group: Vec<u8>,
+    epoch: u64,
+    commit: bool,
+    /// An external commit (0021).
+    external: bool,
+}
+
+fn framing(bytes: &[u8]) -> Option<Framing> {
     let message = MlsMessageIn::tls_deserialize_exact(bytes)
         .ok()?
         .try_into_protocol_message()
         .ok()?;
-    Some((
-        message.group_id().as_slice().to_vec(),
-        message.epoch().as_u64(),
-        message.content_type() == ContentType::Commit,
-    ))
+    let external = matches!(&message, ProtocolMessage::PublicMessage(public)
+        if matches!(public.sender(), Sender::NewMemberCommit));
+    Some(Framing {
+        group: message.group_id().as_slice().to_vec(),
+        epoch: message.epoch().as_u64(),
+        commit: message.content_type() == ContentType::Commit,
+        external,
+    })
+}
+
+/// A GroupInfo's group id and epoch.
+fn group_info_of(bytes: &[u8]) -> Option<(Vec<u8>, u64)> {
+    match MlsMessageIn::tls_deserialize_exact(bytes).ok()?.extract() {
+        MlsMessageBodyIn::GroupInfo(info) => {
+            Some((info.group_id().as_slice().to_vec(), info.epoch().as_u64()))
+        }
+        _ => None,
+    }
 }
 
 fn strings(value: &Value) -> Vec<String> {
@@ -345,6 +383,7 @@ impl State {
                         welcomes: Vec::new(),
                         removed: BTreeMap::new(),
                         expired_to: 0,
+                        group_info: None,
                     },
                 );
                 answer(200, json!({ "conversationId": id }))
@@ -403,6 +442,20 @@ impl State {
                     None => refuse(404, "not_found"),
                 }
             }
+            (Method::Get, ["conversations", id, "group-info"]) => {
+                let Some(conversation) = self.conversations.get(*id) else {
+                    return refuse(404, "not_found");
+                };
+                if !conversation.roster.contains(account) {
+                    return refuse(403, "not_a_member");
+                }
+                match &conversation.group_info {
+                    Some((seq, group_info)) => {
+                        answer(200, json!({ "seq": seq, "groupInfo": group_info }))
+                    }
+                    None => refuse(404, "not_found"),
+                }
+            }
             (Method::Post, ["key-packages"]) => {
                 let queue = self.packages.entry(device.into()).or_default();
                 queue.extend(strings(&body["keyPackages"]));
@@ -455,11 +508,26 @@ impl State {
             return answer(200, json!({ "seq": m.seq }));
         }
         let ciphertext = body["ciphertext"].as_str().unwrap();
-        let Some((group, epoch, commit)) = framing(&STANDARD.decode(ciphertext).unwrap()) else {
+        let Some(Framing {
+            group,
+            epoch,
+            commit,
+            external,
+        }) = framing(&STANDARD.decode(ciphertext).unwrap())
+        else {
             return refuse(400, "invalid_request");
         };
-        if URL_SAFE_NO_PAD.encode(group) != id {
+        if URL_SAFE_NO_PAD.encode(&group) != id {
             return refuse(400, "group_mismatch");
+        }
+        let group_info = body["groupInfo"].as_str();
+        if commit != group_info.is_some() {
+            return refuse(400, "invalid_request");
+        }
+        if let Some(group_info) = group_info
+            && group_info_of(&STANDARD.decode(group_info).unwrap()) != Some((group, epoch + 1))
+        {
+            return refuse(400, "invalid_request");
         }
         let welcome = &body["welcome"];
         let before = conversation.roster.clone();
@@ -481,6 +549,11 @@ impl State {
             welcome_to = claim.welcome;
             if epoch != conversation.last_epoch.map_or(0, |last| last + 1) {
                 return refuse(409, "epoch_conflict");
+            }
+            // Joining adds a device, never an account; checked against the
+            // roster of the epoch it was made on.
+            if external && after != before {
+                return refuse(400, "invalid_request");
             }
         } else if !welcome.is_null() {
             return refuse(400, "invalid_request");
@@ -505,6 +578,7 @@ impl State {
                 conversation.removed.remove(present);
             }
             conversation.roster = after.clone();
+            conversation.group_info = group_info.map(|g| (seq, g.into()));
             if let Some(message) = welcome["message"].as_str() {
                 conversation
                     .welcomes
@@ -520,7 +594,16 @@ impl State {
 impl Transport for Link {
     fn request(&self, request: Request) -> Result<Response, Unreachable> {
         let mut state = self.relay.state();
+        let send = request.method == Method::Post && request.path.ends_with("/messages");
         if let Some(n) = state.fail.get_mut(&self.device).filter(|n| **n > 0) {
+            *n -= 1;
+            return Err(Unreachable("the request was lost".into()));
+        }
+        if let Some(n) = state
+            .fail_sends
+            .get_mut(&self.device)
+            .filter(|n| send && **n > 0)
+        {
             *n -= 1;
             return Err(Unreachable("the request was lost".into()));
         }
@@ -531,6 +614,14 @@ impl Transport for Link {
             .push(request.clone());
         let response = state.handle(&self.account, &self.device, request);
         if let Some(n) = state.lose.get_mut(&self.device).filter(|n| **n > 0) {
+            *n -= 1;
+            return Err(Unreachable("the answer was lost".into()));
+        }
+        if let Some(n) = state
+            .lose_sends
+            .get_mut(&self.device)
+            .filter(|n| send && **n > 0)
+        {
             *n -= 1;
             return Err(Unreachable("the answer was lost".into()));
         }

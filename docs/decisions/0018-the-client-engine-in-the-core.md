@@ -1,6 +1,9 @@
 # 0018. The core runs the client: one sync engine over a transport the apps provide
 
-- Status: accepted; registration amended by [0019](0019-sign-in-and-invites.md)
+- Status: accepted; registration amended by [0019](0019-sign-in-and-invites.md), what
+  `not_a_member` means by [0020](0020-membership-bound-to-commits.md), and joining and the
+  stale state by [0021](0021-group-info-and-external-join.md): a new device of a member
+  account joins, and a stale one rejoins, by external commit
 - Date: 2026-10-06
 - Decided by: Guðröður, approving the plan for the MLS client
 - Builds on: [0002](0002-mls-end-to-end-encryption.md), [0006](0006-device-local-history.md),
