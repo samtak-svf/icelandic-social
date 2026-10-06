@@ -12,6 +12,7 @@ plugins {
 
 android {
     namespace = "samtak.spjall.crypto"
+    defaultConfig.testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 }
 
 val coreDir = layout.projectDirectory.dir("libs")
@@ -43,4 +44,7 @@ dependencies {
     // JNA's own native dispatch library for each ABI.
     implementation(variantOf(libs.jna) { artifactType("aar") })
     testImplementation(libs.junit)
+    // CoreClientTest loads the core's .so, so it runs on a device or emulator.
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
 }
