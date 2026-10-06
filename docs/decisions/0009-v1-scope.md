@@ -28,6 +28,7 @@ How each item is built:
   Link / Universal Link) to the inviter's name and verified mark, then opens a 1:1. This keeps
   the group closed without a list of kennitölur in config (0008). Admins are account ids on
   a server-side list in D1; at first only Guðröður (0010).
+  [0019](0019-sign-in-and-invites.md) builds it.
 - **Edit, delete for everyone, reactions and the disappearing timer are envelope `kind`s**
   inside MLS application messages, so the server never sees them. Edit history stays on the
   device. A delete leaves a tombstone. Each client enforces the disappearing timer, and the

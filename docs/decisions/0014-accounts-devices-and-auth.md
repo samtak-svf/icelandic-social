@@ -1,7 +1,8 @@
 # 0014. An account has devices; each device holds its own revocable token
 
-- Status: accepted; designed, not yet implemented. The routes are in the contract and answer
-  `501` until phase 1 builds them.
+- Status: accepted. How a person signs in, how invites work and how a device or an account
+  ends are in [0019](0019-sign-in-and-invites.md). The routes answer `501` until the PRs of that
+  batch build them.
 - Date: 2026-10-06
 - Decided by: Guðröður, approving the plan that acted on the phase-0 review
 

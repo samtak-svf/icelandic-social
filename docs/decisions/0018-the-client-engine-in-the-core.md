@@ -1,6 +1,6 @@
 # 0018. The core runs the client: one sync engine over a transport the apps provide
 
-- Status: accepted
+- Status: accepted; registration amended by [0019](0019-sign-in-and-invites.md)
 - Date: 2026-10-06
 - Decided by: Guðröður, approving the plan for the MLS client
 - Builds on: [0002](0002-mls-end-to-end-encryption.md), [0006](0006-device-local-history.md),
