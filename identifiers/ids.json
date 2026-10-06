@@ -11,10 +11,7 @@
       "messages": "messages",
       "alerts": "alerts"
     },
-    "databaseFiles": {
-      "app": "spjall.db",
-      "mls": "mls.db"
-    }
+    "databaseFile": "spjall.db"
   },
   "identity": {
     "kenniClientId": "@innskraning.is/samtak-spjall"

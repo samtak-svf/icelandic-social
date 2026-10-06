@@ -23,6 +23,12 @@ const ANDROID_ABIS: &[(&str, &str)] = &[
     ("x86", "i686-linux-android"),
 ];
 
+/// The apps' iOS deployment target (ios/project.yml, PACKAGE_SWIFT). rustc
+/// and the C builds of SQLCipher and OpenSSL must all target it: left unset,
+/// rustc links for its old default while cc compiles for the SDK's version,
+/// and the link fails on symbols only the newer one has.
+const IOS_DEPLOYMENT_TARGET: &str = "17.0";
+
 const IOS_DEVICE: &str = "aarch64-apple-ios";
 const IOS_SIMULATOR: &[&str] = &["aarch64-apple-ios-sim", "x86_64-apple-ios"];
 
@@ -191,15 +197,19 @@ fn ios(core: &Path, staging: &Path, out: &Path) -> Result<()> {
     targets.extend(IOS_SIMULATOR);
     add_targets(core, &targets)?;
     for target in &targets {
-        exec(command("cargo", core).args([
-            "build",
-            "--release",
-            "--locked",
-            "--package",
-            "spjall-ffi",
-            "--target",
-            target,
-        ]))?;
+        exec(
+            command("cargo", core)
+                .env("IPHONEOS_DEPLOYMENT_TARGET", IOS_DEPLOYMENT_TARGET)
+                .args([
+                    "build",
+                    "--release",
+                    "--locked",
+                    "--package",
+                    "spjall-ffi",
+                    "--target",
+                    target,
+                ]),
+        )?;
     }
 
     let archive = format!("lib{LIB}.a");
@@ -272,3 +282,20 @@ let package = Package(
     ]
 )
 "#;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// One iOS version everywhere: the Rust and C builds, the Swift package
+    /// and the Xcode project.
+    #[test]
+    fn the_ios_deployment_target_agrees() {
+        let major = IOS_DEPLOYMENT_TARGET.split('.').next().unwrap();
+        assert!(PACKAGE_SWIFT.contains(&format!(".iOS(.v{major})")));
+        let project =
+            fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../ios/project.yml"))
+                .unwrap();
+        assert!(project.contains(&format!("iOS: \"{IOS_DEPLOYMENT_TARGET}\"")));
+    }
+}

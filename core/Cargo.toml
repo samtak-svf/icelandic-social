@@ -3,7 +3,7 @@ resolver = "3"
 members = ["envelope", "mls", "store", "ffi", "uniffi-bindgen", "xtask"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.98"
 license = "AGPL-3.0-only"
@@ -16,7 +16,7 @@ openmls_basic_credential = "0.6.0"
 openmls_rust_crypto = "0.6.0"
 openmls_traits = "0.6.0"
 proptest = "1"
-rusqlite = { version = "0.40.2", features = ["bundled"] }
+rusqlite = { version = "0.40.2", features = ["bundled-sqlcipher-vendored-openssl"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.11"

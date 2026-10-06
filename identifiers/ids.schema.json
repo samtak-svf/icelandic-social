@@ -29,7 +29,7 @@
         "keychainAccessGroup",
         "urlScheme",
         "androidNotificationChannels",
-        "databaseFiles"
+        "databaseFile"
       ],
       "properties": {
         "androidApplicationId": { "$ref": "#/$defs/reverseDns" },
@@ -47,15 +47,7 @@
             "alerts": { "$ref": "#/$defs/channelId" }
           }
         },
-        "databaseFiles": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["app", "mls"],
-          "properties": {
-            "app": { "$ref": "#/$defs/fileName" },
-            "mls": { "$ref": "#/$defs/fileName" }
-          }
-        }
+        "databaseFile": { "$ref": "#/$defs/fileName" }
       }
     },
     "identity": {

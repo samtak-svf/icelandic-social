@@ -4,19 +4,20 @@
 - Date: 2026-10-05
 - Decided by: Guðröður (plan), recorded at phase 0
 - Amended by: [0010](0010-samtak-own-store-accounts.md) (Apple team is `null` until Samtak svf.'s own team exists; § Open is closed)
+- Amended by: [0016](0016-one-encrypted-store-owned-by-the-core.md) (one database file, `spjall.db`)
 
 ## Decision
 
 Every identifier that cannot change after first use is listed in `identifiers/ids.json`,
 contains no brand term, and is copied byte-for-byte into `identifiers/ids.lock.json`:
 
-| Group      | Values                                                                                                                                                                                                                     |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Store / OS | `is.samtak.spjall` (Android application id, iOS bundle id, URL scheme), `is.samtak.spjall.notifications`, `group.is.samtak.spjall`, notification channels `messages` and `alerts`, database files `spjall.db` and `mls.db` |
-| Identity   | Kenni client id `@innskraning.is/samtak-spjall`                                                                                                                                                                            |
-| Cloudflare | Worker `spjall-api`, D1 `spjall-db`, R2 `spjall-media` and `spjall-artifacts`, DO classes `Conversation` and `Inbox`, jurisdiction `eu`                                                                                    |
-| Hosts      | `spjall.samtak.is` for the API, and `spjall.samtak.is/l/` as the link host in App Links, Universal Links and links inside sent messages, so it must resolve forever. A brand host is only ever an extra alias              |
-| Services   | Firebase project `samtak-spjall`, Apple team (`null` until 0010 is carried out), secret prefix `samtak-spjall-` in `fedora-setup-secrets`, GitHub `samtak-svf/samtak-spjall` (moved by 0012)                               |
+| Group      | Values                                                                                                                                                                                                        |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Store / OS | `is.samtak.spjall` (Android application id, iOS bundle id, URL scheme), `is.samtak.spjall.notifications`, `group.is.samtak.spjall`, notification channels `messages` and `alerts`, database file `spjall.db`  |
+| Identity   | Kenni client id `@innskraning.is/samtak-spjall`                                                                                                                                                               |
+| Cloudflare | Worker `spjall-api`, D1 `spjall-db`, R2 `spjall-media` and `spjall-artifacts`, DO classes `Conversation` and `Inbox`, jurisdiction `eu`                                                                       |
+| Hosts      | `spjall.samtak.is` for the API, and `spjall.samtak.is/l/` as the link host in App Links, Universal Links and links inside sent messages, so it must resolve forever. A brand host is only ever an extra alias |
+| Services   | Firebase project `samtak-spjall`, Apple team (`null` until 0010 is carried out), secret prefix `samtak-spjall-` in `fedora-setup-secrets`, GitHub `samtak-svf/samtak-spjall` (moved by 0012)                  |
 
 The brand (display name, all copy, tokens, icons, the Kenni application _Name_, store listing
 names) lives in `brand/<name>/` and nowhere else.

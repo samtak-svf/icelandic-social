@@ -36,7 +36,7 @@ class BrandConventionPlugin : Plugin<Project> {
                             "CHANNEL_MESSAGES",
                             quoted(ids.string("store", "androidNotificationChannels", "messages")),
                         )
-                        buildConfigField("String", "DATABASE_MLS", quoted(ids.string("store", "databaseFiles", "mls")))
+                        buildConfigField("String", "DATABASE_FILE", quoted(ids.string("store", "databaseFile")))
                     }
                 }
             }

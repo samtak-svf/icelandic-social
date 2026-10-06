@@ -3,11 +3,12 @@
 - Status: accepted
 - Date: 2026-10-05
 - Decided by: Guðröður (plan), recorded at phase 0
+- Amended by: [0016](0016-one-encrypted-store-owned-by-the-core.md) (one SQLCipher store owned by the core replaces Room / GRDB and the file lock)
 
 ## Decision
 
-- Decrypted messages are stored **only on the device** that decrypted them, in the app's
-  SQLite store (Room / GRDB) in the shared app container. The server keeps ciphertext only
+- Decrypted messages are stored **only on the device** that decrypted them, in the core's
+  encrypted store in the shared app container (decision 0016). The server keeps ciphertext only
   until its retention TTL (decision 0002).
 - A **new device** joins each conversation through MLS (Welcome, or an external join from the
   stored GroupInfo) and sees **messages from that point on**. Every member sees a "new

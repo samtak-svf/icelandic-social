@@ -1,12 +1,13 @@
 //! What the apps call. Phase 0 exposes just enough for each app to prove the
 //! binary loads and works on the device: the version, the envelope codec, the
-//! MLS self-test and the store.
+//! MLS self-test and the encrypted store.
 //!
 //! The records here mirror `spjall-envelope` so that crate stays free of FFI
 //! concerns; `From` impls in both directions keep them in step, and the tests
 //! round-trip every kind through them.
 
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 
 use spjall_envelope as envelope;
 
@@ -208,15 +209,48 @@ pub fn mls_self_test() -> Result<u64, CoreError> {
     })
 }
 
-/// Opens (creating if needed) the store in `dir`; returns its schema version.
+impl From<spjall_store::rusqlite::Error> for CoreError {
+    fn from(error: spjall_store::rusqlite::Error) -> Self {
+        Self::Store {
+            detail: error.to_string(),
+        }
+    }
+}
+
+/// The core's encrypted store (decision 0016). Each process opens its own;
+/// writes from the app and its extension serialize on the file's lock.
+#[derive(uniffi::Object)]
+pub struct CoreStore {
+    store: Mutex<spjall_store::Store>,
+}
+
 #[uniffi::export]
-pub fn store_self_test(dir: String) -> Result<u32, CoreError> {
-    let store = |error: spjall_store::rusqlite::Error| CoreError::Store {
-        detail: error.to_string(),
-    };
-    spjall_store::Store::open(Path::new(&dir))
-        .and_then(|s| s.schema_version())
-        .map_err(store)
+impl CoreStore {
+    /// Opens (creating if needed) `spjall.db` in `dir` with the platform's
+    /// 32-byte key. A wrong key fails here.
+    #[uniffi::constructor]
+    pub fn open(dir: String, key: Vec<u8>) -> Result<Arc<Self>, CoreError> {
+        let key: spjall_store::Key = key.try_into().map_err(|key: Vec<u8>| CoreError::Store {
+            detail: format!("the store key must be 32 bytes, not {}", key.len()),
+        })?;
+        let store = spjall_store::Store::open(Path::new(&dir), &key)?;
+        Ok(Arc::new(Self {
+            store: Mutex::new(store),
+        }))
+    }
+
+    /// The highest migration applied.
+    pub fn schema_version(&self) -> Result<u32, CoreError> {
+        Ok(self.store()?.schema_version()?)
+    }
+}
+
+impl CoreStore {
+    fn store(&self) -> Result<std::sync::MutexGuard<'_, spjall_store::Store>, CoreError> {
+        self.store.lock().map_err(|_| CoreError::Store {
+            detail: "the store lock is poisoned".into(),
+        })
+    }
 }
 
 #[cfg(test)]
@@ -292,13 +326,25 @@ mod tests {
     }
 
     #[test]
-    fn self_tests_pass() {
+    fn mls_self_test_passes() {
         assert_eq!(mls_self_test().unwrap(), 1);
+    }
+
+    #[test]
+    fn the_store_opens_with_its_key_only() {
         let dir = tempfile::tempdir().unwrap();
-        assert_eq!(
-            store_self_test(dir.path().to_string_lossy().into_owned()).unwrap(),
-            1
-        );
+        let path = dir.path().to_string_lossy().into_owned();
+        let store = CoreStore::open(path.clone(), vec![1; 32]).unwrap();
+        assert_eq!(store.schema_version().unwrap(), 1);
+        drop(store);
+        assert!(matches!(
+            CoreStore::open(path.clone(), vec![2; 32]),
+            Err(CoreError::Store { .. })
+        ));
+        assert!(matches!(
+            CoreStore::open(path, vec![1; 31]),
+            Err(CoreError::Store { detail }) if detail.contains("32 bytes")
+        ));
     }
 
     #[test]
