@@ -19,7 +19,7 @@ describe("the MLS framing reader", () => {
     });
   });
 
-  it("reads a Welcome and a KeyPackage with their suite", () => {
+  it("reads a Welcome with its suite, and a KeyPackage with its suite and who it names", () => {
     expect(readFraming(hexBytes(mls.welcome.hex))).toEqual({
       wireFormat: "welcome",
       cipherSuite: mls.ciphersuite,
@@ -27,7 +27,23 @@ describe("the MLS framing reader", () => {
     expect(readFraming(hexBytes(mls.keyPackage.hex))).toEqual({
       wireFormat: "key_package",
       cipherSuite: mls.ciphersuite,
+      identity: new TextEncoder().encode(`${mls.keyPackage.accountId}/${mls.keyPackage.deviceId}`),
+      signatureKey: hexBytes(mls.keyPackage.devicePublic),
     });
+  });
+
+  it("refuses a KeyPackage whose credential is not a BasicCredential", () => {
+    const bytes = hexBytes(mls.keyPackage.hex);
+    const identity = new TextEncoder().encode(
+      `${mls.keyPackage.accountId}/${mls.keyPackage.deviceId}`,
+    );
+    const at = bytes.findIndex(
+      (_, i) =>
+        bytes[i + 2] === identity.length && identity.every((b, j) => bytes[i + 3 + j] === b),
+    );
+    expect(bytes.subarray(at, at + 2)).toEqual(Uint8Array.from([0, 1]));
+    bytes[at + 1] = 2; // x509
+    expect(() => readFraming(bytes)).toThrow(FramingError);
   });
 
   it("refuses every truncation of a PrivateMessage and a Welcome", () => {

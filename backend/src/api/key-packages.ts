@@ -3,7 +3,7 @@ import { AUTHED, base64, DEVICE_TOKEN, errorResponse, INVALID, OpaqueId } from "
 
 // KeyPackages, kept in D1 and consumed once (decisions 0002, 0017).
 
-/** An MLS KeyPackage message. */
+/** An MLS KeyPackage message whose leaf credential is `{accountId}/{deviceId}`. */
 const KeyPackage = base64(16 * 1024);
 
 const UploadKeyPackages = z
@@ -24,7 +24,7 @@ const KeyPackageStock = z
 const ClaimedKeyPackages = z
   .object({
     keyPackages: z.array(z.object({ deviceId: OpaqueId, keyPackage: KeyPackage })).openapi({
-      description: "One per active device of the account",
+      description: "One per active device of the account, except the caller's",
     }),
   })
   .openapi("ClaimedKeyPackages");
@@ -44,7 +44,9 @@ export const uploadKeyPackagesRoute = createRoute({
       description: "Stored",
       content: { "application/json": { schema: KeyPackageStock } },
     },
-    400: errorResponse("invalid_request: not a KeyPackage, or more than 100 held"),
+    400: errorResponse(
+      "invalid_request: not a KeyPackage naming this device and its key, or more than 100 held",
+    ),
     ...AUTHED,
   },
 });

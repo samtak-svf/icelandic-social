@@ -50,7 +50,7 @@ describe("delivery", () => {
     // B's device stocks a KeyPackage and a last resort.
     const stocked = await post(
       "/v1/key-packages",
-      { keyPackages: [mls.keyPackageBase64], lastResort: mls.keyPackageBase64 },
+      { keyPackages: [b.keyPackage], lastResort: b.keyPackage },
       b.auth,
     );
     expect(await stocked.json()).toEqual({ available: 1 });
@@ -66,7 +66,7 @@ describe("delivery", () => {
     );
     const claimed = await post(`/v1/accounts/${b.accountId}/key-packages`, {}, a.auth);
     expect(await claimed.json()).toEqual({
-      keyPackages: [{ deviceId: b.deviceId, keyPackage: mls.keyPackageBase64 }],
+      keyPackages: [{ deviceId: b.deviceId, keyPackage: b.keyPackage }],
     });
 
     // The commit that adds B carries B's Welcome.

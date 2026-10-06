@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { tokenHash } from "../src/accounts.ts";
+import { mls } from "./mls.ts";
 
 // Shared by the tests: the EU check for Durable Object stubs, and seeded
 // accounts and devices.
@@ -43,12 +44,16 @@ export function euEnv(real: Env): Env {
 
 let seeded = 0;
 
-/** A new account with one active device, and the headers that act as it. */
+/**
+ * A new account with one active device, the headers that act as it, and a
+ * KeyPackage naming it. Seeded ids never take the fixture's `a_1/d_1`.
+ */
 export async function device({
-  accountId = `a_${++seeded}`,
+  accountId = `acct_${++seeded}`,
+  deviceId = `dev_${++seeded}`,
+  deviceKey = crypto.getRandomValues(new Uint8Array(32)),
   token = `dt_${crypto.randomUUID().replaceAll("-", "")}`,
 } = {}) {
-  const deviceId = `d_${++seeded}`;
   const now = Date.now();
   await env.DB.batch([
     env.DB.prepare("INSERT OR IGNORE INTO accounts (account_id, created_at) VALUES (?, ?)").bind(
@@ -58,9 +63,16 @@ export async function device({
     env.DB.prepare(
       `INSERT INTO devices (device_id, account_id, platform, device_key, token_hash, created_at)
        VALUES (?, ?, 'android', ?, ?, ?)`,
-    ).bind(deviceId, accountId, new Uint8Array(32), await tokenHash(token), now),
+    ).bind(deviceId, accountId, deviceKey, await tokenHash(token), now),
   ]);
-  return { accountId, deviceId, token, auth: { authorization: `Bearer ${token}` } };
+  return {
+    accountId,
+    deviceId,
+    deviceKey,
+    token,
+    auth: { authorization: `Bearer ${token}` },
+    keyPackage: mls.keyPackageNaming(`${accountId}/${deviceId}`, deviceKey),
+  };
 }
 
 /** Revokes a seeded device's token. */

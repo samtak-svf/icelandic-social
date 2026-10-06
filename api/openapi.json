@@ -560,7 +560,7 @@
                 "keyPackage"
               ]
             },
-            "description": "One per active device of the account"
+            "description": "One per active device of the account, except the caller's"
           }
         },
         "required": [
@@ -1173,7 +1173,7 @@
             }
           },
           "400": {
-            "description": "invalid_request: not a KeyPackage, or more than 100 held",
+            "description": "invalid_request: not a KeyPackage naming this device and its key, or more than 100 held",
             "content": {
               "application/json": {
                 "schema": {

@@ -128,12 +128,12 @@ export function createApp() {
 
   // KeyPackages in D1 (decision 0017).
   app.openapi(uploadKeyPackagesRoute, async (c) => {
-    const stock = await upload(c.env, c.var.device.deviceId, c.req.valid("json"));
+    const stock = await upload(c.env, c.var.device, c.req.valid("json"));
     return stock ? c.json(stock, 200) : c.json({ error: "invalid_request" }, 400);
   });
 
   app.openapi(claimKeyPackagesRoute, async (c) => {
-    const claimed = await claim(c.env, c.req.valid("param").accountId);
+    const claimed = await claim(c.env, c.req.valid("param").accountId, c.var.device.deviceId);
     if (!claimed) return c.json({ error: "not_found" }, 404);
     const keyPackages = claimed.map((p) => ({
       deviceId: p.deviceId,

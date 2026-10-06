@@ -25,13 +25,24 @@ export type Framing =
       epoch: number;
       contentType: ContentType;
     }
-  | { wireFormat: "welcome" | "key_package"; cipherSuite: number }
+  | { wireFormat: "welcome"; cipherSuite: number }
+  | {
+      wireFormat: "key_package";
+      cipherSuite: number;
+      /** The leaf's BasicCredential identity, `{accountId}/{deviceId}` (0018). */
+      identity: Uint8Array;
+      /** The leaf's signature key, the device key it was registered with. */
+      signatureKey: Uint8Array;
+    }
   | { wireFormat: "group_info" };
 
 /** Bytes that are not a well-formed MLS 1.0 message. */
 export class FramingError extends Error {}
 
 const MLS10 = 1;
+
+/** RFC 9420 §5.3, `CredentialType`: the only kind a client makes (0018). */
+const BASIC_CREDENTIAL = 1;
 
 class Reader {
   private at = 0;
@@ -108,7 +119,8 @@ function skipSender(reader: Reader): void {
  * Reads the framing of one MLSMessage. A PrivateMessage and a Welcome are
  * read to their last byte; a PublicMessage, a KeyPackage and a GroupInfo up
  * to the fields the server uses, since the rest is signed content whose
- * checking is the clients' (decision 0002).
+ * checking is the clients' (decision 0002). A KeyPackage is read into its
+ * leaf as far as the credential, which must be a BasicCredential.
  */
 export function readFraming(bytes: Uint8Array): Framing {
   const reader = new Reader(bytes);
@@ -142,7 +154,13 @@ export function readFraming(bytes: Uint8Array): Framing {
     }
     case "key_package": {
       if (reader.u16() !== MLS10) throw new FramingError("KeyPackage not MLS 1.0");
-      return { wireFormat, cipherSuite: reader.u16() };
+      const cipherSuite = reader.u16();
+      reader.vector(); // init_key
+      reader.vector(); // leaf_node.encryption_key
+      const signatureKey = reader.vector();
+      const credential = reader.u16();
+      if (credential !== BASIC_CREDENTIAL) throw new FramingError(`credential type ${credential}`);
+      return { wireFormat, cipherSuite, identity: reader.vector(), signatureKey };
     }
     case "group_info":
       return { wireFormat };
