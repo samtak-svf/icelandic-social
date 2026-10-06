@@ -1,5 +1,6 @@
 package samtak.spjall.crypto
 
+import android.util.Base64
 import org.json.JSONArray
 import org.json.JSONObject
 import samtak.spjall.core.HttpMethod
@@ -12,8 +13,10 @@ import samtak.spjall.core.Transport
  * message need it: sign-in, KeyPackages, conversations with a roster,
  * messages by seq, Welcomes, and a notify frame to every member's device.
  * Signing in hands a link's device the token `token-<device>`, and every
- * other route answers 401 without it. The real rules live in the Worker
- * and in the core's own relay.
+ * other route answers 401 without it. A commit's claim (decision 0020) is
+ * found as the JSON text it is in the message's clear authenticated_data,
+ * and moves the roster and names the Welcome's recipients. The real rules
+ * live in the Worker and in the core's own relay.
  */
 class Relay {
     private class Stored(
@@ -133,12 +136,12 @@ class Relay {
         val seq = (conversation.messages.lastOrNull()?.seq ?: 0) + 1
         conversation.messages += Stored(seq, account, clientMsgId, body.getString("ciphertext"))
         val before = conversation.roster.toSet()
-        body.optJSONObject("roster")?.let { roster ->
-            roster.optJSONArray("add")?.strings()?.let(conversation.roster::addAll)
-            roster.optJSONArray("remove")?.strings()?.let(conversation.roster::removeAll)
-        }
-        body.optJSONObject("welcome")?.let {
-            conversation.welcomes += Welcome(seq, it.getString("message"), it.getJSONArray("to").strings())
+        claim(body.getString("ciphertext"))?.let { claim ->
+            conversation.roster.clear()
+            conversation.roster += claim.getJSONArray("roster").strings()
+            body.optJSONObject("welcome")?.let {
+                conversation.welcomes += Welcome(seq, it.getString("message"), claim.getJSONArray("welcome").strings())
+            }
         }
         val frame =
             JSONObject()
@@ -150,6 +153,13 @@ class Relay {
             frames.getOrPut(it) { mutableListOf() } += frame
         }
         return ok(JSONObject().put("seq", seq))
+    }
+
+    /** A commit's claim, or null for a message that carries none. */
+    private fun claim(ciphertext: String): JSONObject? {
+        val text = String(Base64.decode(ciphertext, Base64.DEFAULT), Charsets.ISO_8859_1)
+        val start = text.indexOf("{\"roster\":").takeIf { it >= 0 } ?: return null
+        return JSONObject(text.substring(start, text.indexOf('}', start) + 1))
     }
 
     private fun ok(body: JSONObject) = HttpResponse(200u, body.toString())

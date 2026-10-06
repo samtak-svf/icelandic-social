@@ -5,8 +5,10 @@ import SpjallCore
 /// message need it: sign-in, KeyPackages, conversations with a roster,
 /// messages by seq, Welcomes, and a notify frame to every member's device.
 /// Signing in hands a link's device the token `token-<device>`, and every
-/// other route answers 401 without it. The real rules live in the Worker
-/// and in the core's own relay.
+/// other route answers 401 without it. A commit's claim (decision 0020) is
+/// found as the JSON text it is in the message's clear authenticated_data,
+/// and moves the roster and names the Welcome's recipients. The real rules
+/// live in the Worker and in the core's own relay.
 final class Relay: @unchecked Sendable {
     /// Where Kenni's callback goes, from the frozen URL scheme.
     static let redirect = "is.samtak.spjall:/kenni"
@@ -145,13 +147,13 @@ final class Relay: @unchecked Sendable {
         conversation.messages.append(
             Stored(seq: seq, sender: account, clientMsgId: clientMsgId, ciphertext: ciphertext))
         let before = conversation.roster
-        if let roster = body["roster"] as? [String: Any] {
-            conversation.roster.formUnion(roster["add"] as? [String] ?? [])
-            conversation.roster.subtract(roster["remove"] as? [String] ?? [])
-        }
-        if let welcome = body["welcome"] as? [String: Any] {
-            let message = welcome["message"] as? String ?? ""
-            conversation.welcomes.append(Welcome(seq: seq, message: message, to: welcome["to"] as? [String] ?? []))
+        if let claim = claim(ciphertext) {
+            conversation.roster = Set(claim["roster"] as? [String] ?? [])
+            if let welcome = body["welcome"] as? [String: Any] {
+                let message = welcome["message"] as? String ?? ""
+                conversation.welcomes.append(
+                    Welcome(seq: seq, message: message, to: claim["welcome"] as? [String] ?? []))
+            }
         }
         conversations[id] = conversation
         let frame = json(["type": "notify", "conversationId": id, "seq": seq])
@@ -159,6 +161,15 @@ final class Relay: @unchecked Sendable {
             waiting[device, default: []].append(frame)
         }
         return ok(["seq": seq])
+    }
+
+    /// A commit's claim, or nil for a message that carries none.
+    private func claim(_ ciphertext: String) -> [String: Any]? {
+        guard let bytes = Data(base64Encoded: ciphertext),
+            let start = bytes.firstRange(of: Data(#"{"roster":"#.utf8)),
+            let end = bytes[start.lowerBound...].firstIndex(of: UInt8(ascii: "}"))
+        else { return nil }
+        return (try? JSONSerialization.jsonObject(with: bytes[start.lowerBound...end])) as? [String: Any]
     }
 
     private func json(_ value: [String: Any]) -> String {
