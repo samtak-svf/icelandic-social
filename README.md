@@ -2,10 +2,12 @@
 
 A native Android and iOS messenger for Iceland, built by Samtak svf.
 
-**Status: phase 0, not usable.** The apps build and start, and they show that the shared
-core loads and that the backend answers. They cannot send messages yet. End-to-end
-encryption with MLS is the design ([decision 0002](docs/decisions/0002-mls-end-to-end-encryption.md)),
-but only a self-test exists. Do not rely on this code to protect anything.
+**Status: in development, not usable.** The backend and the shared Rust core implement sign-in
+with Kenni, personal invites, devices, and end-to-end encrypted conversations with MLS
+([decision 0002](docs/decisions/0002-mls-end-to-end-encryption.md)), tested against each other.
+The apps build and start, but have no screens for any of it yet, and nothing is deployed. The
+code has not been reviewed by anyone outside the project. Do not rely on it to protect
+anything.
 
 ## Layout
 

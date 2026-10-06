@@ -1,8 +1,10 @@
 # 0014. An account has devices; each device holds its own revocable token
 
-- Status: accepted. How a person signs in, how invites work and how a device or an account
-  ends are in [0019](0019-sign-in-and-invites.md). The routes answer `501` until the PRs of that
-  batch build them.
+- Status: accepted; implemented. How a person signs in, how invites work and how a device or
+  an account ends are in [0019](0019-sign-in-and-invites.md), which also defers the admin
+  list. Welcomes travel with their commit through the `Conversation` DO
+  ([0017](0017-conversations-on-the-server.md)); the `Inbox` holds the device list, the
+  sockets and the delivery cursors.
 - Date: 2026-10-06
 - Decided by: Guðröður, approving the plan that acted on the phase-0 review
 

@@ -1,7 +1,7 @@
 # 0015. What persists goes over REST; the WebSocket carries only what is live
 
-- Status: accepted; designed, not yet implemented. The routes and frames are in the
-  contract; the routes answer `501` until phase 1 builds them.
+- Status: accepted; implemented in the Worker and the core. Push goes to a sender that only
+  logs until FCM and APNs are set up.
 - Date: 2026-10-06
 - Decided by: Guðröður, approving the plan that acted on the phase-0 review
 - Amended by: [0017](0017-conversations-on-the-server.md) (the roster, Welcomes and KeyPackages)

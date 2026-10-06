@@ -1,8 +1,9 @@
 # 0002. Messages are end-to-end encrypted with MLS from v1
 
-- Status: accepted; designed, not yet implemented. Phase 0 ships the pinned suite and a
-  self-test that one group encrypts and decrypts to itself (`core/mls`); the delivery-service
-  rules below are phase 1.
+- Status: accepted; implemented in the core (`core/mls`, `core/client`) and the Worker, except
+  the stored GroupInfo and ratchet tree for an external join, real push (FCM and APNs; the
+  sender only logs today) and the notification extension. Welcomes and KeyPackages reach a
+  device as [0017](0017-conversations-on-the-server.md) says, not through the `Inbox` DO.
 - Date: 2026-10-05
 - Decided by: Guðröður
 
