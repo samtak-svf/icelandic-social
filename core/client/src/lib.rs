@@ -22,6 +22,7 @@ pub mod api;
 mod block;
 mod media;
 mod members;
+mod notice;
 mod read;
 mod timeline;
 
@@ -33,6 +34,7 @@ pub use account::{SignedIn, invite_token};
 use api::{Api, ApiError, Outgoing, Profile, Transport, conversation_id, group_id};
 pub use media::{MAX_SIZE, MediaError};
 pub use members::Person;
+pub use notice::{Notice, NoticeKind, Notices};
 pub use read::Settings;
 use serde::Deserialize;
 use spjall_envelope::{Body, Envelope, EnvelopeError};
@@ -371,6 +373,17 @@ fn enqueue(tx: &Transaction, group: &[u8], kind: &str, intent: &[u8]) -> Result<
 }
 
 /// The first row of this conversation the server has not answered.
+/// Whether a message wakes the other members' devices (0025): a new text,
+/// reply or file does; a receipt, reaction, edit, delete or timer does not.
+fn urgent(intent: &[u8]) -> bool {
+    Envelope::decode(intent).is_ok_and(|e| {
+        matches!(
+            e.body,
+            Body::Text { .. } | Body::Reply { .. } | Body::Media { .. }
+        )
+    })
+}
+
 fn next_unsent(tx: &Transaction, group: &[u8]) -> Result<Option<Unsent>, ClientError> {
     type Row = (
         i64,
@@ -403,6 +416,7 @@ fn next_unsent(tx: &Transaction, group: &[u8]) -> Result<Option<Unsent>, ClientE
     let Some((id, kind, intent, client_msg_id, ciphertext, welcome, group_info)) = row else {
         return Ok(None);
     };
+    let urgent = kind == "message" && urgent(&intent);
     let sealed = client_msg_id
         .zip(ciphertext)
         .map(|(client_msg_id, ciphertext)| Outgoing {
@@ -410,6 +424,7 @@ fn next_unsent(tx: &Transaction, group: &[u8]) -> Result<Option<Unsent>, ClientE
             ciphertext,
             welcome,
             group_info,
+            urgent,
         });
     Ok(Some(Unsent {
         id,
@@ -489,6 +504,7 @@ fn pending_join(tx: &Transaction, group: &[u8]) -> Result<Option<(i64, Outgoing)
                         ciphertext: r.get(2)?,
                         welcome: None,
                         group_info: r.get(3)?,
+                        urgent: false,
                     },
                 ))
             },
@@ -526,6 +542,7 @@ fn seal_join(
         ciphertext: commit.message,
         welcome: None,
         group_info: Some(commit.group_info),
+        urgent: false,
     };
     tx.execute(
         "INSERT INTO outbox (group_id, kind, intent, client_msg_id, ciphertext, group_info,
@@ -855,22 +872,10 @@ impl<T: Transport> Client<T> {
             let (_, me) = this_device(tx)?;
             let mut conversations = Vec::with_capacity(rows.len());
             for (group, state, timer) in rows {
-                let others: Vec<String> = members::members(tx, &group)?
-                    .into_iter()
-                    .filter(|a| *a != me.account)
-                    .collect();
-                let mut members = members::people_of(tx, &others)?;
-                members.sort_by(|a, b| {
-                    (a.name.is_none(), &a.name, &a.account).cmp(&(
-                        b.name.is_none(),
-                        &b.name,
-                        &b.account,
-                    ))
-                });
                 conversations.push(Conversation {
                     id: conversation_id(&group),
                     state,
-                    members,
+                    members: notice::others(tx, &group, &me.account)?,
                     last: timeline::items(tx, &group, &me.account, None, 1)?.pop(),
                     unread: read::unread(tx, &group, &me.account)?,
                     timer,
@@ -1035,6 +1040,8 @@ impl<T: Transport> Client<T> {
         // Blocks set on another device of this account; the next sync
         // tries again.
         let _ = self.refresh_blocks();
+        // The push token: the next sync sends it again.
+        let _ = self.send_push_token();
         self.purge()?;
         self.sweep_media()?;
         Ok(std::mem::take(&mut self.outcome))
@@ -1338,6 +1345,7 @@ impl<T: Transport> Client<T> {
                         ciphertext: mls.encrypt(&provider, &identity, &row.intent)?,
                         welcome: None,
                         group_info: None,
+                        urgent: urgent(&row.intent),
                     },
                     None,
                     None,
@@ -1380,6 +1388,7 @@ impl<T: Transport> Client<T> {
                             ciphertext: commit.message,
                             welcome: commit.welcome,
                             group_info: Some(commit.group_info),
+                            urgent: false,
                         },
                         add,
                         remove,

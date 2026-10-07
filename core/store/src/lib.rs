@@ -312,6 +312,24 @@ const MIGRATIONS: &[(u32, &str)] = &[
              blocked_at INTEGER NOT NULL
          ) STRICT, WITHOUT ROWID;",
     ),
+    (
+        8,
+        // Decision 0025.
+        "-- This device's push token, and whether the server has it.
+         CREATE TABLE push (
+             id      INTEGER PRIMARY KEY CHECK (id = 1),
+             token   TEXT NOT NULL,
+             sandbox INTEGER NOT NULL CHECK (sandbox IN (0, 1)),
+             sent    INTEGER NOT NULL CHECK (sent IN (0, 1))
+         ) STRICT;
+
+         -- The highest seq `notices()` looked at, and the newest seq on a
+         -- notice still shown. What is here already is never shown.
+         ALTER TABLE conversations ADD COLUMN noticed INTEGER NOT NULL DEFAULT 0;
+         ALTER TABLE conversations ADD COLUMN shown INTEGER;
+         UPDATE conversations SET noticed = COALESCE(
+             (SELECT MAX(seq) FROM timeline t WHERE t.group_id = conversations.group_id), 0);",
+    ),
 ];
 
 pub struct Store {

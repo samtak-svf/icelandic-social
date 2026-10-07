@@ -13,7 +13,8 @@ use relay::{Link, Relay};
 use spjall_client::api::{self, Transport as _};
 use spjall_core::client::{
     Content, ConversationState, CoreClient, Event, HttpMethod, HttpRequest, HttpResponse,
-    ItemStatus, Platform, Settings, SignedIn, Transport, TransportError, invite_token,
+    ItemStatus, Notice, NoticeKind, Platform, Settings, SignedIn, Transport, TransportError,
+    invite_token,
 };
 use spjall_core::{Body, CoreError};
 
@@ -193,10 +194,33 @@ fn two_clients_talk_through_the_exported_api() {
         }
     );
     assert_eq!(listed[0].last.as_ref(), Some(item));
+
+    // What a push shows, once, and takes away when read (0025).
+    let notices = b1.client.notices().unwrap();
+    assert_eq!(
+        notices.shown,
+        vec![Notice {
+            conversation: conversation.clone(),
+            members: listed[0].members.clone(),
+            seq: message.seq,
+            sender: listed[0].members[0].clone(),
+            kind: NoticeKind::Text,
+            text: Some("hæ".into()),
+            ts: message.envelope.ts,
+        }]
+    );
+    assert!(b1.client.notices().unwrap().shown.is_empty());
     b1.client
         .mark_read(conversation.clone(), message.seq)
         .unwrap();
     assert_eq!(b1.client.conversations().unwrap()[0].unread, 0);
+    assert_eq!(
+        b1.client.notices().unwrap().cleared,
+        vec![conversation.clone()]
+    );
+    b1.client.set_push_token("apns-b1".into(), true).unwrap();
+    b1.client.sync().unwrap();
+    assert_eq!(relay.push_token("b1"), Some(("apns-b1".into(), true)));
 
     let off = Settings {
         read_markers: false,

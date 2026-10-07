@@ -10,6 +10,7 @@
 
 use std::net::TcpStream;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 
 use spjall_client::api::{ApiError, Method, Platform, Request, Response, Transport, Unreachable};
@@ -57,6 +58,8 @@ fn answered(mut answer: ureq::http::Response<ureq::Body>) -> Result<Response, Un
 struct Http {
     agent: ureq::Agent,
     base: String,
+    /// The status of each `setPushToken` the core made.
+    pushes: Arc<Mutex<Vec<u16>>>,
 }
 
 impl Transport for Http {
@@ -93,10 +96,17 @@ impl Transport for Http {
                 if let Some(auth) = &auth {
                     call = call.header("authorization", auth);
                 }
-                call.send_empty()
+                match request.body {
+                    Some(body) => call.header("content-type", "application/json").send(body),
+                    None => call.send_empty(),
+                }
             }
         };
-        answered(answer.map_err(|e| Unreachable(e.to_string()))?)
+        let answer = answered(answer.map_err(|e| Unreachable(e.to_string()))?)?;
+        if request.method == Method::Put && request.path.ends_with("/push") {
+            self.pushes.lock().unwrap().push(answer.status);
+        }
+        Ok(answer)
     }
 
     fn upload(&self, request: Request, file: &Path) -> Result<Response, Unreachable> {
@@ -165,6 +175,7 @@ fn kennitala(run: u64, n: u64) -> String {
 
 struct Phone {
     account: String,
+    pushes: Arc<Mutex<Vec<u16>>>,
     _dir: TempDir,
     client: Client<Http>,
     socket: WebSocket<MaybeTlsStream<TcpStream>>,
@@ -175,9 +186,11 @@ impl Phone {
     /// in for the browser, and opens its socket.
     fn new(kennitala: &str, invite: Option<&str>) -> Self {
         let dir = tempfile::tempdir().unwrap();
+        let pushes = Arc::new(Mutex::new(Vec::new()));
         let transport = Http {
             agent: agent(),
             base: base(),
+            pushes: pushes.clone(),
         };
         let mut client = Client::open(dir.path(), &KEY, transport).unwrap();
         let url = client.begin_sign_in().unwrap();
@@ -209,6 +222,7 @@ impl Phone {
         }
         Self {
             account: device.account,
+            pushes,
             _dir: dir,
             client,
             socket,
@@ -318,6 +332,14 @@ fn devices_talk_through_the_worker() {
     let mut a2 = Phone::new(&kennitala(run, 0), None);
     assert_eq!(a2.account, a1.account);
     assert_eq!(a1.client.me().unwrap().devices.len(), 2);
+
+    // The push token reaches the Worker on the next sync, once (0025).
+    a2.client
+        .set_push_token(&format!("interop-{run}"), false)
+        .unwrap();
+    a2.sync();
+    a2.sync();
+    assert_eq!(*a2.pushes.lock().unwrap(), vec![204]);
 
     // a's own link lets the others in.
     let link = a1.client.rotate_invite().unwrap();

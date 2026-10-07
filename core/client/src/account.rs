@@ -412,8 +412,8 @@ impl<T: Transport> Client<T> {
 
     /// Empties the store: the device key, the groups, history and the
     /// timeline, the outbox, the names fetched, the toggles, the blocks and
-    /// the media files. The next
-    /// sign-in starts as a new device.
+    /// the media files. The next sign-in starts as a new device, and the
+    /// push token, which belongs to the install, is sent for it.
     fn forget(&mut self) -> Result<(), ClientError> {
         self.store.write(|tx| {
             tx.execute_batch(
@@ -425,7 +425,8 @@ impl<T: Transport> Client<T> {
                  DELETE FROM blocks;
                  DELETE FROM sign_in;
                  DELETE FROM account;
-                 DELETE FROM kv;",
+                 DELETE FROM kv;
+                 UPDATE push SET sent = 0;",
             )
         })?;
         self.token = None;

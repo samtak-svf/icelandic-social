@@ -54,6 +54,8 @@ struct State {
     devices: BTreeMap<String, String>,
     /// device → its token
     tokens: BTreeMap<String, String>,
+    /// device → its push token and whether it is a sandbox one (0025)
+    push: BTreeMap<String, (String, bool)>,
     /// invite token → the account that made it
     invites: BTreeMap<String, String>,
     minted: usize,
@@ -118,6 +120,11 @@ impl Relay {
             .get(device)
             .cloned()
             .unwrap_or_default()
+    }
+
+    /// The push token this device set, as the server holds it.
+    pub fn push_token(&self, device: &str) -> Option<(String, bool)> {
+        self.state().push.get(device).cloned()
     }
 
     pub fn registered(&self, device: &str) -> bool {
@@ -439,6 +446,17 @@ impl State {
                 }
                 self.devices.remove(*id);
                 self.tokens.remove(*id);
+                self.push.remove(*id);
+                answer(204, Value::Null)
+            }
+            (Method::Put, ["devices", id, "push"]) => {
+                if *id != device {
+                    return refuse(403, "not_this_device");
+                }
+                let token = body["token"].as_str().unwrap().to_owned();
+                let sandbox = body["sandbox"].as_bool().unwrap_or(false);
+                self.push.retain(|_, (t, _)| *t != token);
+                self.push.insert(device.to_owned(), (token, sandbox));
                 answer(204, Value::Null)
             }
             (Method::Post, ["conversations"]) => {

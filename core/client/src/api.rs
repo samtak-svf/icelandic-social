@@ -117,6 +117,9 @@ pub struct Outgoing {
     pub welcome: Option<Vec<u8>>,
     /// A commit's GroupInfo for the epoch it starts (0021).
     pub group_info: Option<Vec<u8>>,
+    /// The other members' devices are pushed for it (0025): text, replies
+    /// and media are; receipts, reactions, edits, deletes and commits are not.
+    pub urgent: bool,
 }
 
 #[derive(Serialize)]
@@ -128,6 +131,7 @@ struct SendBody<'a> {
     welcome: Option<WelcomeMessage>,
     #[serde(skip_serializing_if = "Option::is_none")]
     group_info: Option<String>,
+    urgent: bool,
 }
 
 #[derive(Serialize)]
@@ -393,6 +397,7 @@ impl<'a, T: Transport + ?Sized> Api<'a, T> {
                 message: base64(message),
             }),
             group_info: out.group_info.as_deref().map(base64),
+            urgent: out.urgent,
         };
         let sent: Sent = self.call(
             Method::Post,
@@ -553,6 +558,17 @@ impl<T: Transport + ?Sized> Api<'_, T> {
             None,
             "getAccount",
         )
+    }
+
+    /// `setPushToken` (0025): only this device's own.
+    pub fn set_push_token(&self, device: &str, token: &str, sandbox: bool) -> Result<(), ApiError> {
+        let body = serde_json::json!({ "token": token, "sandbox": sandbox });
+        self.send(
+            Method::Put,
+            format!("/v1/devices/{device}/push"),
+            Self::json(&body),
+        )
+        .map(drop)
     }
 
     /// `revokeDevice`.

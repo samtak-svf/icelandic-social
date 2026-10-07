@@ -308,6 +308,61 @@ fn people(people: Vec<core::Person>) -> Vec<Person> {
     people.into_iter().map(Into::into).collect()
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum NoticeKind {
+    Text,
+    Photo,
+    File,
+}
+
+/// A new message to show after a push (0025).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct Notice {
+    pub conversation: String,
+    /// Everyone there but this account, named ones first: the title.
+    pub members: Vec<Person>,
+    pub seq: u64,
+    pub sender: Person,
+    pub kind: NoticeKind,
+    /// The text, or a file's caption.
+    pub text: Option<String>,
+    /// The sender's clock, in milliseconds.
+    pub ts: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct Notices {
+    /// Oldest first.
+    pub shown: Vec<Notice>,
+    /// Conversations whose notifications to take away, before showing.
+    pub cleared: Vec<String>,
+}
+
+impl From<core::Notices> for Notices {
+    fn from(notices: core::Notices) -> Self {
+        Self {
+            shown: notices
+                .shown
+                .into_iter()
+                .map(|n| Notice {
+                    conversation: n.conversation,
+                    members: people(n.members),
+                    seq: n.seq,
+                    sender: n.sender.into(),
+                    kind: match n.kind {
+                        core::NoticeKind::Text => NoticeKind::Text,
+                        core::NoticeKind::Photo => NoticeKind::Photo,
+                        core::NoticeKind::File => NoticeKind::File,
+                    },
+                    text: n.text,
+                    ts: n.ts,
+                })
+                .collect(),
+            cleared: notices.cleared,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct Conversation {
     pub id: String,
@@ -903,6 +958,18 @@ impl CoreClient {
 
     pub fn unblock(&self, account: String) -> Result<(), CoreError> {
         Ok(self.client()?.unblock(&account)?)
+    }
+
+    /// Keeps this device's push token; the next `sync` sends it. `sandbox`
+    /// is an APNs development token.
+    pub fn set_push_token(&self, token: String, sandbox: bool) -> Result<(), CoreError> {
+        Ok(self.client()?.set_push_token(&token, sandbox)?)
+    }
+
+    /// After a push and a `sync`: the new messages to show, once each, and
+    /// the conversations whose notifications to take away.
+    pub fn notices(&self) -> Result<Notices, CoreError> {
+        Ok(self.client()?.notices()?.into())
     }
 
     /// The accounts this one blocked, newest first.
