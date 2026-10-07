@@ -5,9 +5,12 @@ import SwiftUI
 /// toggles, who they blocked, and deleting the account.
 struct MeView: View {
     let model: MeModel
+    let push: PushModel
 
     @State private var revoking: String?
     @State private var deleting = false
+
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ScrollView {
@@ -18,6 +21,9 @@ struct MeView: View {
                 }
                 if let problem = model.problem {
                     ProblemCard(problem: problem) { Task { await model.retry() } }
+                }
+                if push.off {
+                    NotificationsOff()
                 }
                 if let me = model.me {
                     if let name = me.name {
@@ -52,6 +58,11 @@ struct MeView: View {
         }
         .background(BrandTokens.Colors.surface)
         .task { await model.load() }
+        .task { await push.check() }
+        // Back from the settings the row sends to.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await push.check() } }
+        }
         .confirmationDialog(
             "device_revoke_confirm",
             isPresented: Binding(get: { revoking != nil }, set: { if !$0 { revoking = nil } }),
@@ -90,6 +101,23 @@ struct MeView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(model.busy)
         }
+    }
+}
+
+/// Notifications are off: nothing new shows until the app is opened.
+private struct NotificationsOff: View {
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("notifications_off").foregroundStyle(BrandTokens.Colors.fg)
+            Button("notifications_settings") {
+                if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 12))
     }
 }
 

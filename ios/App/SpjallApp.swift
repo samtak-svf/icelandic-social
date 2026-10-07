@@ -4,37 +4,24 @@ import SwiftUI
 
 @main
 struct SpjallApp: App {
-    @State private var signIn = SignInModel(account: CoreAccount(open: SpjallApp.openCore))
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
+    @State private var signIn = SignInModel(account: SpjallApp.account)
 
     var body: some Scene {
         WindowGroup {
-            RootView(signIn: signIn)
+            RootView(signIn: signIn, push: delegate.push)
         }
     }
 
-    /// The API host this build names.
-    nonisolated static let apiBase: URL? = (Bundle.main.object(forInfoDictionaryKey: "SpjallAPIHost") as? String)
-        .flatMap { URL(string: "https://\($0)") }
-
-    /// The core on this device's store, talking to the API host this build names.
-    nonisolated static func openCore() throws -> CoreClient {
-        guard let base = apiBase else { throw NoAPIHost() }
-        let dir = try StoreLocation.directory()
-        let key = try StoreKey(accessGroup: StoreLocation.appGroup).load()
-        return try CoreClient.open(
-            dir: dir.path(percentEncoded: false),
-            key: key,
-            transport: URLSessionTransport(baseURL: base)
-        )
-    }
+    /// The core, which the screens and the push delegate share; opened on first use.
+    nonisolated static let account = CoreAccount(open: CoreStore.open)
 }
-
-private struct NoAPIHost: Error {}
 
 /// Sign-in until the device is signed in, then "Ég". Invite links arrive
 /// through `onOpenURL`; Kenni's redirect comes back to the browser session.
 struct RootView: View {
     let signIn: SignInModel
+    let push: PushModel
 
     @Environment(\.webAuthenticationSession) private var webAuthenticationSession
 
@@ -51,10 +38,15 @@ struct RootView: View {
                 )
             case .signedIn:
                 // Signed in means the core opened, so the build names its API host.
-                if let base = SpjallApp.apiBase {
-                    HomeView(signIn: signIn, wire: URLSessionWire(baseURL: base), onSignedOut: signIn.signedOut)
-                        // A fresh socket, list and "Ég" for each sign-in.
-                        .id(signIn.signIns)
+                if let base = CoreStore.apiBase {
+                    HomeView(
+                        signIn: signIn,
+                        push: push,
+                        wire: URLSessionWire(baseURL: base),
+                        onSignedOut: signIn.signedOut
+                    )
+                    // A fresh socket, list and "Ég" for each sign-in.
+                    .id(signIn.signIns)
                 }
             }
         }

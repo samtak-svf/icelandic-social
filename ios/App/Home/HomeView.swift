@@ -2,7 +2,8 @@ import SpjallCore
 import SwiftUI
 
 /// The two tabs of 1a, Samtöl and Ég, and the screens they lead to. The
-/// socket is open while the scene is active (decision 0022).
+/// socket is open while the scene is active (decision 0022). While it is,
+/// what arrives is on screen, so push announces none of it (decision 0025).
 struct HomeView: View {
     enum Tab { case conversations, me }
 
@@ -12,6 +13,7 @@ struct HomeView: View {
     }
 
     let signIn: SignInModel
+    let push: PushModel
     let onSignedOut: () -> Void
 
     @State private var socket: Socket
@@ -22,8 +24,9 @@ struct HomeView: View {
 
     @Environment(\.scenePhase) private var scenePhase
 
-    init(signIn: SignInModel, wire: Wire, onSignedOut: @escaping () -> Void) {
+    init(signIn: SignInModel, push: PushModel, wire: Wire, onSignedOut: @escaping () -> Void) {
         self.signIn = signIn
+        self.push = push
         self.onSignedOut = onSignedOut
         let socket = Socket(account: signIn.account, wire: wire)
         _socket = State(initialValue: socket)
@@ -48,20 +51,27 @@ struct HomeView: View {
                         }
                     case .conversation(let id):
                         ConversationRoute(id: id, account: signIn.account, live: socket)
+                            .task(id: id) { await push.dismiss(id) }
                     }
                 }
             }
             .tabItem { Label("tab_conversations", systemImage: "bubble.left.and.bubble.right") }
             .tag(Tab.conversations)
 
-            MeView(model: me)
+            MeView(model: me, push: push)
                 .tabItem { Label("tab_me", systemImage: "person.crop.circle") }
                 .tag(Tab.me)
         }
         .tint(BrandTokens.Colors.primary)
         .task {
+            push.live = socket
             socket.start()
             openInvite()
+            openTapped()
+            await push.start()
+        }
+        .task {
+            for await _ in socket.events() { await push.quiet() }
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
@@ -69,6 +79,10 @@ struct HomeView: View {
             case .background: socket.stop()
             default: break
             }
+            Task { await push.quiet() }
+        }
+        .onChange(of: push.opened) { _, conversation in
+            if conversation != nil { openTapped() }
         }
         .onChange(of: signIn.signedInInvite) { _, token in
             if token != nil { openInvite() }
@@ -78,7 +92,17 @@ struct HomeView: View {
             socket.stop()
             onSignedOut()
         }
-        .onDisappear { socket.stop() }
+        .onDisappear {
+            socket.stop()
+            push.live = nil
+        }
+    }
+
+    /// A tapped notification: into its conversation.
+    private func openTapped() {
+        guard let id = push.takeOpened() else { return }
+        tab = .conversations
+        path = [.conversation(id)]
     }
 
     /// An invite link opened while signed in: into the 1:1 with whoever made it.

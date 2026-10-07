@@ -69,14 +69,21 @@ targets:
         GENERATE_INFOPLIST_FILE: "YES"
         INFOPLIST_FILE: App/Info.plist
         CODE_SIGN_ENTITLEMENTS: App/Spjall.entitlements
+        # APNs' sandbox for development builds (decision 0025).
+        SPJALL_APS_ENVIRONMENT: production
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         # MLS is encryption the export rules count (decision 0002).
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: "YES"
       configs:
+        Debug:
+          SPJALL_APS_ENVIRONMENT: development
         Interim:
           PROVISIONING_PROFILE_SPECIFIER: $(SPJALL_APP_PROFILE)
+          # No push on the interim team until 0011 allows an APNs key there
+          # (decision 0025); its profile has no push entitlement to sign with.
+          CODE_SIGN_ENTITLEMENTS: App/Interim.entitlements
     scheme:
       testTargets:
         - SpjallTests
@@ -87,6 +94,8 @@ targets:
     sources:
       - path: NotificationService
       - path: Shared
+      # The labels a notice needs ("Mynd", "Skrá").
+      - path: Generated/Localizable.xcstrings
     # It opens the same store as the app (decision 0016).
     dependencies:
       - package: SpjallCore

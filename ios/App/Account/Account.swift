@@ -55,6 +55,10 @@ protocol Account: Sendable {
     func blocked() throws -> [Person]
     func settings() throws -> Settings
     func setSettings(_ settings: Settings) throws
+    /// Keeps this device's push token; the next sync sends it if the server lacks it (decision 0025).
+    func setPushToken(_ token: String, sandbox: Bool) throws
+    /// What to announce since the last call, and the conversations read since; each notice is given once.
+    func notices() throws -> Notices
 }
 
 /// The core's client, opened on first use so a launch never waits for the
@@ -156,6 +160,10 @@ final class CoreAccount: Account, @unchecked Sendable {
     func settings() throws -> Settings { try core().settings() }
 
     func setSettings(_ settings: Settings) throws { try core().setSettings(settings: settings) }
+
+    func setPushToken(_ token: String, sandbox: Bool) throws { try core().setPushToken(token: token, sandbox: sandbox) }
+
+    func notices() throws -> Notices { try core().notices() }
 }
 
 /// Runs a blocking core call off the main actor.

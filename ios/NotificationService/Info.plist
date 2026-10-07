@@ -4,6 +4,8 @@
 <dict>
 	<key>SpjallAppGroup</key>
 	<string>$(SPJALL_APP_GROUP)</string>
+	<key>SpjallAPIHost</key>
+	<string>$(SPJALL_API_HOST)</string>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionPointIdentifier</key>

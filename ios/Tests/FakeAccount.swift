@@ -26,6 +26,12 @@ final class FakeAccount: Account, @unchecked Sendable {
     var invites: [String: String] = [:]
     /// What `sync` and `onFrame` return.
     var outcome = Outcome(events: [], frames: [])
+    /// What the next `notices` returns; it is then empty, as the core gives each notice once.
+    var nextNotices: Notices {
+        get { lock.withLock { _notices } }
+        set { lock.withLock { _notices = newValue } }
+    }
+    private var _notices = Notices(shown: [], cleared: [])
     var token: String? = "device-token"
     /// Each conversation's items, oldest first; `send` adds a pending one.
     var timelines: [String: [Item]] {
@@ -257,6 +263,18 @@ final class FakeAccount: Account, @unchecked Sendable {
     func setSettings(_ settings: Settings) throws {
         try call("setSettings \(settings.readMarkers) \(settings.typing)")
         current = settings
+    }
+
+    func setPushToken(_ token: String, sandbox: Bool) throws {
+        try call("setPushToken \(token) \(sandbox)")
+    }
+
+    func notices() throws -> Notices {
+        try call("notices")
+        return lock.withLock {
+            defer { _notices = Notices(shown: [], cleared: []) }
+            return _notices
+        }
     }
 
     static let now: UInt64 = 1_700_000_000_000
