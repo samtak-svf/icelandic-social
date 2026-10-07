@@ -83,7 +83,7 @@ private struct ConversationRow: View {
                     }
                 }
                 if let last = conversation.last {
-                    Text(verbatim: lastLine(last))
+                    Text(verbatim: lastLine(last, group: conversation.members.count > 1))
                         .font(.subheadline)
                         .foregroundStyle(BrandTokens.Colors.mutedFg)
                         .lineLimit(1)

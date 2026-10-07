@@ -6,9 +6,9 @@ func shownName(_ person: Person) -> String {
     person.name ?? localized("person_unnamed")
 }
 
-/// A group has no name in v1: it is titled by its members (decision 0022).
+/// A group has no name in v1: it is titled by its members (decision 0022), or says no one else is there.
 func title(_ conversation: Conversation) -> String {
-    names(conversation.members)
+    conversation.members.isEmpty ? localized("conversation_alone_title") : names(conversation.members)
 }
 
 func names(_ people: [Person]) -> String {
@@ -23,8 +23,8 @@ func initials(_ name: String?) -> String {
     return [first, last].compactMap { $0 }.map { String($0).uppercased() }.joined()
 }
 
-/// An item as one line of the list.
-func lastLine(_ item: Item) -> String {
+/// An item as one line of the list; `group` words a member card for a group rather than a 1:1.
+func lastLine(_ item: Item, group: Bool = true) -> String {
     switch item.content {
     case .text(let text, _):
         text
@@ -36,7 +36,7 @@ func lastLine(_ item: Item) -> String {
         if !added.isEmpty {
             localized("member_added_card", names(added))
         } else if !removed.isEmpty {
-            localized("member_removed_card", names(removed))
+            localized(group ? "member_removed_card" : "member_removed_card_direct", names(removed))
         } else {
             localized("new_device_card", names(devices))
         }

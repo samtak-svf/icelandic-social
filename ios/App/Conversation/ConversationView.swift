@@ -12,20 +12,24 @@ struct ConversationView: View {
     @State private var deleting: Item?
     @State private var reacting: Item?
     @State private var preview: URL?
+    /// The bottom of the timeline is in view.
+    @State private var atBottom = true
     @Environment(\.scenePhase) private var scenePhase
 
     private var group: Bool { (model.conversation?.members.count ?? 0) > 1 }
 
+    /// No one else is here once a block ends a 1:1: nothing to send to.
     private var writable: Bool {
-        switch model.conversation?.state {
-        case .active, .new: true
-        case .excluded, .removed, .stale, nil: false
+        guard let conversation = model.conversation, !conversation.members.isEmpty else { return false }
+        switch conversation.state {
+        case .active, .new: return true
+        case .excluded, .removed, .stale: return false
         }
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            if let state = model.conversation?.state { Banner(state: state) }
+            if let conversation = model.conversation { Banner(conversation: conversation) }
             if let problem = model.problem {
                 ProblemCard(problem: problem) { Task { await model.retry() } }.padding(16)
             }
@@ -76,29 +80,45 @@ struct ConversationView: View {
         }
     }
 
-    /// Newest at the bottom, where the scroll view starts and stays as items arrive.
+    /// Newest at the bottom, where the scroll view starts. A new item comes
+    /// into view when it is own, or when the bottom was in view; someone
+    /// reading further up stays where they are.
     private var timeline: some View {
-        ScrollView {
-            LazyVStack(spacing: 2) {
-                if model.older && !model.items.isEmpty {
-                    ProgressView().padding(8).onAppear { Task { await model.loadOlder() } }
-                }
-                ForEach(rows(model.items)) { row in
-                    switch row {
-                    case .day(let date): DayLine(date: date)
-                    case .card(let item): CardLine(item: item)
-                    case .bubble(let item, let first, let readBy):
-                        Bubble(
-                            item: item, first: first, readBy: readBy, group: group, model: model,
-                            onDelete: { deleting = item }, onReact: { reacting = item })
+        let shown = rows(model.items)
+        return ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 2) {
+                    if model.older && !model.items.isEmpty {
+                        ProgressView().padding(8).onAppear { Task { await model.loadOlder() } }
                     }
+                    ForEach(shown) { row in
+                        switch row {
+                        case .day(let date): DayLine(date: date)
+                        case .card(let item): CardLine(item: item, group: group)
+                        case .bubble(let item, let first, let readBy):
+                            Bubble(
+                                item: item, first: first, readBy: readBy, group: group, model: model,
+                                onDelete: { deleting = item }, onReact: { reacting = item })
+                        }
+                    }
+                    Color.clear.frame(height: 1).id(Self.bottom)
+                        .onAppear { atBottom = true }
+                        .onDisappear { atBottom = false }
                 }
+                .padding(.vertical, 8)
             }
-            .padding(.vertical, 8)
+            .defaultScrollAnchor(.bottom)
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: shown.last?.id) { _, newest in
+                guard newest != nil else { return }
+                var own = false
+                if case .bubble(let item, _, _)? = shown.last { own = item.own }
+                if own || atBottom { withAnimation { proxy.scrollTo(Self.bottom, anchor: .bottom) } }
+            }
         }
-        .defaultScrollAnchor(.bottom)
-        .scrollDismissesKeyboard(.interactively)
     }
+
+    private static let bottom = "bottom"
 }
 
 /// The reactions a long press offers.
@@ -120,7 +140,7 @@ private struct TitleView: View {
 }
 
 private struct Banner: View {
-    let state: ConversationState
+    let conversation: Conversation
 
     var body: some View {
         if let text {
@@ -135,11 +155,11 @@ private struct Banner: View {
     }
 
     private var text: LocalizedStringKey? {
-        switch state {
+        switch conversation.state {
         case .removed: "conversation_removed_banner"
         case .excluded: "conversation_excluded_banner"
         case .stale: "conversation_stale_banner"
-        case .new, .active: nil
+        case .new, .active: conversation.members.isEmpty ? "conversation_alone_banner" : nil
         }
     }
 }
@@ -167,9 +187,10 @@ private struct DayLine: View {
 
 private struct CardLine: View {
     let item: Item
+    let group: Bool
 
     var body: some View {
-        Text(verbatim: lastLine(item))
+        Text(verbatim: lastLine(item, group: group))
             .font(.footnote)
             .foregroundStyle(BrandTokens.Colors.mutedFg)
             .multilineTextAlignment(.center)

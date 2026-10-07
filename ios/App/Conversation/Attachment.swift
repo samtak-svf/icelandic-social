@@ -7,6 +7,7 @@ import SwiftUI
 struct Attachment: View {
     let item: Item
     let mime: String
+    let size: UInt64
     let caption: String?
     let foreground: Color
     let model: ConversationModel
@@ -39,7 +40,11 @@ struct Attachment: View {
                         } else {
                             Image(systemName: "doc").accessibilityHidden(true)
                         }
-                        Text("file")
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("file")
+                            Text(verbatim: ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file))
+                                .font(.footnote)
+                        }
                     }
                     .frame(minHeight: 44)
                 }
