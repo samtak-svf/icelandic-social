@@ -4,12 +4,15 @@
 
 use base64::Engine as _;
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
+use std::path::Path;
+
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Method {
     Get,
     Post,
+    Put,
     Delete,
 }
 
@@ -56,6 +59,15 @@ pub struct Unreachable(pub String);
 /// thread, and never inside a store transaction.
 pub trait Transport {
     fn request(&self, request: Request) -> Result<Response, Unreachable>;
+
+    /// A `PUT` of the file at `file` as `application/octet-stream`, with
+    /// its `Content-Length`, streamed from disk. `request.body` is none.
+    fn upload(&self, request: Request, file: &Path) -> Result<Response, Unreachable>;
+
+    /// A `GET` whose body, on 200, is streamed into a new file at `to` and
+    /// left out of the response; any other answer's body is returned as
+    /// text, as `request` returns it.
+    fn download(&self, request: Request, to: &Path) -> Result<Response, Unreachable>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -279,6 +291,22 @@ pub struct Profile {
     pub verified: bool,
 }
 
+/// An account this account blocked, as `listBlocks` shows it.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Blocked {
+    pub account_id: String,
+    pub name: Option<String>,
+    pub verified: bool,
+    /// Milliseconds since the epoch.
+    pub blocked_at: u64,
+}
+
+#[derive(Deserialize)]
+struct Blocks {
+    blocked: Vec<Blocked>,
+}
+
 #[derive(Deserialize)]
 struct Resolved {
     inviter: Option<Inviter>,
@@ -303,12 +331,20 @@ impl<'a, T: Transport + ?Sized> Api<'a, T> {
         path: String,
         body: Option<String>,
     ) -> Result<Response, ApiError> {
-        let response = self.transport.request(Request {
+        let response = self.transport.request(self.request(method, path, body))?;
+        Self::checked(response)
+    }
+
+    fn request(&self, method: Method, path: String, body: Option<String>) -> Request {
+        Request {
             method,
             path,
             body,
             bearer: self.bearer.map(str::to_owned),
-        })?;
+        }
+    }
+
+    fn checked(response: Response) -> Result<Response, ApiError> {
         if response.status == 200 || response.status == 204 {
             return Ok(response);
         }
@@ -528,5 +564,43 @@ impl<T: Transport + ?Sized> Api<'_, T> {
     /// `deleteAccount`.
     pub fn delete_account(&self) -> Result<(), ApiError> {
         self.send(Method::Delete, "/v1/me".into(), None).map(drop)
+    }
+
+    /// `putMedia`: the sealed file at `file`, under a new id.
+    pub fn put_media(&self, conversation: &str, id: &str, file: &Path) -> Result<(), ApiError> {
+        let request = self.request(
+            Method::Put,
+            format!("/v1/conversations/{conversation}/media/{id}"),
+            None,
+        );
+        Self::checked(self.transport.upload(request, file)?).map(drop)
+    }
+
+    /// `getMedia`: the sealed file, written to `to`.
+    pub fn get_media(&self, conversation: &str, id: &str, to: &Path) -> Result<(), ApiError> {
+        let request = self.request(
+            Method::Get,
+            format!("/v1/conversations/{conversation}/media/{id}"),
+            None,
+        );
+        Self::checked(self.transport.download(request, to)?).map(drop)
+    }
+
+    /// `blockAccount`: 204 also when already blocked.
+    pub fn block(&self, account: &str) -> Result<(), ApiError> {
+        self.send(Method::Put, format!("/v1/blocks/{account}"), None)
+            .map(drop)
+    }
+
+    /// `unblockAccount`: 204 also when not blocked.
+    pub fn unblock(&self, account: &str) -> Result<(), ApiError> {
+        self.send(Method::Delete, format!("/v1/blocks/{account}"), None)
+            .map(drop)
+    }
+
+    /// `listBlocks`: newest first.
+    pub fn blocks(&self) -> Result<Vec<Blocked>, ApiError> {
+        let blocks: Blocks = self.call(Method::Get, "/v1/blocks".into(), None, "listBlocks")?;
+        Ok(blocks.blocked)
     }
 }

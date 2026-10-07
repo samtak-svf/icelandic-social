@@ -292,6 +292,26 @@ const MIGRATIONS: &[(u32, &str)] = &[
          ALTER TABLE outbox ADD COLUMN failed INTEGER NOT NULL DEFAULT 0
              CHECK (failed IN (0, 1));",
     ),
+    (
+        7,
+        "-- When a stored message disappears, by the conversation's timer
+         -- when it was stored (0022), and whether it came from an account
+         -- this one blocked and is never shown (0024).
+         ALTER TABLE messages ADD COLUMN expires_at INTEGER;
+         ALTER TABLE messages ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0
+             CHECK (hidden IN (0, 1));
+         CREATE INDEX messages_by_expiry ON messages (expires_at)
+             WHERE expires_at IS NOT NULL;
+         CREATE INDEX timeline_by_expiry ON timeline (expires_at)
+             WHERE expires_at IS NOT NULL;
+
+         -- The accounts this one blocked, as the server last listed them,
+         -- or as this device set them since.
+         CREATE TABLE blocks (
+             account    TEXT PRIMARY KEY,
+             blocked_at INTEGER NOT NULL
+         ) STRICT, WITHOUT ROWID;",
+    ),
 ];
 
 pub struct Store {
@@ -466,7 +486,9 @@ mod tests {
                     "INSERT INTO account (id, device_key) VALUES (1, x'01');
                      UPDATE account SET account_id = 'a_1', device_id = 'd_1';
                      INSERT INTO conversations (group_id, cursor, created_at) VALUES (x'01', 0, 0);
-                     INSERT INTO messages VALUES (x'01', 1, 'a_1', 'd_1', x'00', 0);
+                     INSERT INTO messages (group_id, seq, sender_account, sender_device,
+                                           envelope, stored_at)
+                         VALUES (x'01', 1, 'a_1', 'd_1', x'00', 0);
                      INSERT INTO outbox (group_id, kind, intent, created_at)
                          VALUES (x'01', 'message', x'00', 0);",
                 )
@@ -482,6 +504,9 @@ mod tests {
             &mut store,
             "UPDATE account SET device_token = 't', invite_link = 'l'"
         ));
+        // Hidden is a flag (0024).
+        assert!(refused(&mut store, "UPDATE messages SET hidden = 2"));
+        assert!(!refused(&mut store, "UPDATE messages SET hidden = 1"));
         // One pending sign-in.
         assert!(refused(
             &mut store,

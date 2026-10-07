@@ -6,6 +6,7 @@
 #[allow(dead_code)]
 mod relay;
 
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use relay::{Link, Relay};
@@ -24,30 +25,55 @@ struct App {
     offline: Mutex<bool>,
 }
 
-impl Transport for App {
-    fn request(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
+impl App {
+    fn api(request: HttpRequest) -> api::Request {
+        api::Request {
+            method: match request.method {
+                HttpMethod::Get => api::Method::Get,
+                HttpMethod::Post => api::Method::Post,
+                HttpMethod::Delete => api::Method::Delete,
+                HttpMethod::Put => api::Method::Put,
+            },
+            path: request.path,
+            body: request.body,
+            bearer: request.bearer,
+        }
+    }
+
+    fn through(
+        &self,
+        request: HttpRequest,
+        send: impl FnOnce(api::Request) -> Result<api::Response, api::Unreachable>,
+    ) -> Result<HttpResponse, TransportError> {
         self.seen.lock().unwrap().push(request.clone());
         if *self.offline.lock().unwrap() {
             return Err(TransportError::Unreachable {
                 detail: "offline".into(),
             });
         }
-        let response = self
-            .link
-            .request(api::Request {
-                method: match request.method {
-                    HttpMethod::Get => api::Method::Get,
-                    HttpMethod::Post => api::Method::Post,
-                    HttpMethod::Delete => api::Method::Delete,
-                },
-                path: request.path,
-                body: request.body,
-                bearer: request.bearer,
-            })
-            .map_err(|e| TransportError::Unreachable { detail: e.0 })?;
+        let response =
+            send(Self::api(request)).map_err(|e| TransportError::Unreachable { detail: e.0 })?;
         Ok(HttpResponse {
             status: response.status,
             body: response.body,
+        })
+    }
+}
+
+impl Transport for App {
+    fn request(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
+        self.through(request, |request| self.link.request(request))
+    }
+
+    fn upload(&self, request: HttpRequest, path: String) -> Result<HttpResponse, TransportError> {
+        self.through(request, |request| {
+            self.link.upload(request, Path::new(&path))
+        })
+    }
+
+    fn download(&self, request: HttpRequest, to: String) -> Result<HttpResponse, TransportError> {
+        self.through(request, |request| {
+            self.link.download(request, Path::new(&to))
         })
     }
 }
@@ -279,4 +305,82 @@ fn errors_cross_as_records() {
         CoreClient::open(String::new(), vec![7; 31], a1.app.clone()),
         Err(CoreError::Store { detail }) if detail.contains("32 bytes")
     ));
+}
+
+#[test]
+fn files_and_blocks_cross_by_path_and_record() {
+    let relay = Relay::new();
+    let a1 = phone(&relay, "a", "a1");
+    let b1 = phone(&relay, "b", "b1");
+    let conversation = a1.client.create_conversation(vec!["b".into()]).unwrap();
+    a1.client.sync().unwrap();
+    deliver(&relay, &b1, "b", "b1");
+
+    let files = tempfile::tempdir().unwrap();
+    let path = files.path().join("skjal.pdf");
+    std::fs::write(&path, b"%PDF-1.7 ekki raunverulegt").unwrap();
+    a1.client
+        .send_media(
+            conversation.clone(),
+            path.to_string_lossy().into_owned(),
+            "application/pdf".into(),
+            None,
+        )
+        .unwrap();
+    assert!(
+        a1.app
+            .seen
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|r| r.method == HttpMethod::Put && r.path.contains("/media/"))
+    );
+    a1.client.sync().unwrap();
+    deliver(&relay, &b1, "b", "b1");
+    let item = b1
+        .client
+        .timeline(conversation.clone(), None, 10)
+        .unwrap()
+        .pop()
+        .unwrap();
+    assert!(matches!(&item.content, Content::Media { mime, .. } if mime == "application/pdf"));
+    let opened = b1
+        .client
+        .media(conversation.clone(), item.seq.unwrap())
+        .unwrap();
+    assert!(opened.ends_with(".pdf"));
+    assert_eq!(
+        std::fs::read(&opened).unwrap(),
+        b"%PDF-1.7 ekki raunverulegt"
+    );
+
+    let big = files.path().join("big.bin");
+    std::fs::File::create(&big)
+        .unwrap()
+        .set_len(spjall_client::MAX_SIZE + 1)
+        .unwrap();
+    assert!(matches!(
+        a1.client.send_media(
+            conversation.clone(),
+            big.to_string_lossy().into_owned(),
+            "application/zip".into(),
+            None
+        ),
+        Err(CoreError::TooLarge)
+    ));
+    relay.tamper_media();
+    std::fs::remove_file(&opened).unwrap();
+    assert!(matches!(
+        b1.client.media(conversation.clone(), item.seq.unwrap()),
+        Err(CoreError::Tampered)
+    ));
+
+    let outcome = a1.client.block("b".into()).unwrap();
+    assert!(outcome.events.iter().any(
+        |e| matches!(e, Event::Membership { removed, .. } if removed == &vec!["b".to_owned()])
+    ));
+    assert_eq!(a1.client.blocked().unwrap()[0].account, "b");
+    a1.client.unblock("b".into()).unwrap();
+    assert!(a1.client.blocked().unwrap().is_empty());
+    assert!(a1.client.expire().unwrap().events.is_empty());
 }

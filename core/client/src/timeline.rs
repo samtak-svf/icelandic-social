@@ -327,6 +327,43 @@ pub(crate) fn fold(
     Ok(Some(changed))
 }
 
+/// The conversations and seqs removed by the purge, and the media objects
+/// the removed rows held.
+pub(crate) type Purged = (Vec<(Vec<u8>, Vec<u64>)>, Vec<String>);
+
+/// Deletes every row whose disappearing time is up at `now`, from the
+/// timeline (its reactions with it) and the history (0022).
+pub(crate) fn purge(tx: &Transaction, now: i64) -> rusqlite::Result<Purged> {
+    let mut statement = tx.prepare(
+        "SELECT group_id, seq, detail FROM timeline
+         WHERE expires_at <= ?1 ORDER BY group_id, seq",
+    )?;
+    let rows = statement.query_map([now], |r| {
+        Ok((
+            r.get::<_, Vec<u8>>(0)?,
+            r.get::<_, i64>(1)? as u64,
+            r.get::<_, Option<String>>(2)?,
+        ))
+    })?;
+    let mut removed: Vec<(Vec<u8>, Vec<u64>)> = Vec::new();
+    let mut objects = Vec::new();
+    for row in rows {
+        let (group, seq, detail) = row?;
+        if let Some(Ok(Body::Media { object, .. })) =
+            detail.as_deref().map(serde_json::from_str::<Body>)
+        {
+            objects.push(object);
+        }
+        match removed.last_mut() {
+            Some((last, seqs)) if *last == group => seqs.push(seq),
+            _ => removed.push((group, vec![seq])),
+        }
+    }
+    tx.execute("DELETE FROM timeline WHERE expires_at <= ?1", [now])?;
+    tx.execute("DELETE FROM messages WHERE expires_at <= ?1", [now])?;
+    Ok((removed, objects))
+}
+
 /// A card for a commit that changed who is here; none for one that did not.
 pub(crate) fn fold_members(
     tx: &Transaction,

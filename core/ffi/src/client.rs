@@ -5,7 +5,7 @@
 use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use spjall_client::{self as core, ClientError, api};
+use spjall_client::{self as core, ClientError, MediaError, api};
 
 use crate::{Body, CoreError, Envelope};
 
@@ -14,6 +14,7 @@ pub enum HttpMethod {
     Get,
     Post,
     Delete,
+    Put,
 }
 
 /// A request to the API. `path` starts at `/v1/` and holds any query. The
@@ -57,33 +58,72 @@ impl From<uniffi::UnexpectedUniFFICallbackError> for TransportError {
     }
 }
 
-/// What the app provides: one blocking HTTP request.
+/// What the app provides: one blocking HTTP request, and the two that carry
+/// a file (0023). Files go by path; their bytes never cross this boundary.
 #[uniffi::export(with_foreign)]
 pub trait Transport: Send + Sync {
     fn request(&self, request: HttpRequest) -> Result<HttpResponse, TransportError>;
+
+    /// A `PUT` whose body is the file at `path`, streamed, as
+    /// `application/octet-stream`.
+    fn upload(&self, request: HttpRequest, path: String) -> Result<HttpResponse, TransportError>;
+
+    /// A `GET` whose 200 body is streamed into the file at `to`; any other
+    /// status comes back with its body as text, and `to` is left alone.
+    fn download(&self, request: HttpRequest, to: String) -> Result<HttpResponse, TransportError>;
+}
+
+fn http_request(request: api::Request) -> HttpRequest {
+    HttpRequest {
+        method: match request.method {
+            api::Method::Get => HttpMethod::Get,
+            api::Method::Post => HttpMethod::Post,
+            api::Method::Delete => HttpMethod::Delete,
+            api::Method::Put => HttpMethod::Put,
+        },
+        path: request.path,
+        body: request.body,
+        bearer: request.bearer,
+    }
+}
+
+fn api_response(
+    response: Result<HttpResponse, TransportError>,
+) -> Result<api::Response, api::Unreachable> {
+    match response {
+        Ok(response) => Ok(api::Response {
+            status: response.status,
+            body: response.body,
+        }),
+        Err(TransportError::Unreachable { detail }) => Err(api::Unreachable(detail)),
+    }
+}
+
+fn path_string(path: &Path) -> String {
+    path.to_string_lossy().into_owned()
 }
 
 struct Foreign(Arc<dyn Transport>);
 
 impl api::Transport for Foreign {
     fn request(&self, request: api::Request) -> Result<api::Response, api::Unreachable> {
-        let request = HttpRequest {
-            method: match request.method {
-                api::Method::Get => HttpMethod::Get,
-                api::Method::Post => HttpMethod::Post,
-                api::Method::Delete => HttpMethod::Delete,
-            },
-            path: request.path,
-            body: request.body,
-            bearer: request.bearer,
-        };
-        match self.0.request(request) {
-            Ok(response) => Ok(api::Response {
-                status: response.status,
-                body: response.body,
-            }),
-            Err(TransportError::Unreachable { detail }) => Err(api::Unreachable(detail)),
-        }
+        api_response(self.0.request(http_request(request)))
+    }
+
+    fn upload(
+        &self,
+        request: api::Request,
+        file: &Path,
+    ) -> Result<api::Response, api::Unreachable> {
+        api_response(self.0.upload(http_request(request), path_string(file)))
+    }
+
+    fn download(
+        &self,
+        request: api::Request,
+        to: &Path,
+    ) -> Result<api::Response, api::Unreachable> {
+        api_response(self.0.download(http_request(request), path_string(to)))
     }
 }
 
@@ -113,6 +153,11 @@ impl From<ClientError> for CoreError {
                 detail: detail.into(),
             },
             ClientError::SignIn(detail) => Self::SignIn { detail },
+            ClientError::Media(MediaError::TooLarge) => Self::TooLarge,
+            ClientError::Media(MediaError::Tampered) => Self::Tampered,
+            ClientError::Media(MediaError::File(error)) => Self::File {
+                detail: error.to_string(),
+            },
         }
     }
 }
@@ -519,6 +564,11 @@ pub enum Event {
     Profiles {
         accounts: Vec<String>,
     },
+    /// Disappearing items were deleted, with their files, by seq.
+    Expired {
+        conversation: String,
+        removed: Vec<u64>,
+    },
 }
 
 impl From<core::Event> for Event {
@@ -568,6 +618,13 @@ impl From<core::Event> for Event {
                 changed,
             },
             E::Profiles { accounts } => Self::Profiles { accounts },
+            E::Expired {
+                conversation,
+                removed,
+            } => Self::Expired {
+                conversation,
+                removed,
+            },
         }
     }
 }
@@ -803,6 +860,49 @@ impl CoreClient {
     /// its id.
     pub fn open_invite(&self, token: String) -> Result<String, CoreError> {
         Ok(self.client()?.open_invite(&token)?)
+    }
+
+    /// Seals the file at `path` with a new key, uploads it and sends it as
+    /// one message (0023). The app keeps nothing: the core copies the file
+    /// into its own folder first. Returns the envelope id.
+    pub fn send_media(
+        &self,
+        conversation: String,
+        path: String,
+        mime: String,
+        caption: Option<String>,
+    ) -> Result<String, CoreError> {
+        Ok(self
+            .client()?
+            .send_media(&conversation, Path::new(&path), &mime, caption)?)
+    }
+
+    /// The path of the media item at `seq`, downloaded, checked and opened
+    /// the first time it is asked for. The file is the core's: it goes when
+    /// the item disappears or the account is forgotten.
+    pub fn media(&self, conversation: String, seq: u64) -> Result<String, CoreError> {
+        Ok(path_string(&self.client()?.media(&conversation, seq)?))
+    }
+
+    /// Deletes what has disappeared; call it when the next `expires_at` of
+    /// an item on screen passes. Gives `Expired` events.
+    pub fn expire(&self) -> Result<Outcome, CoreError> {
+        Ok(self.client()?.expire()?.into())
+    }
+
+    /// Blocks an account (0024): the server refuses it new contact, and the
+    /// 1:1s with it end. Its messages in shared groups are hidden.
+    pub fn block(&self, account: String) -> Result<Outcome, CoreError> {
+        Ok(self.client()?.block(&account)?.into())
+    }
+
+    pub fn unblock(&self, account: String) -> Result<(), CoreError> {
+        Ok(self.client()?.unblock(&account)?)
+    }
+
+    /// The accounts this one blocked, newest first.
+    pub fn blocked(&self) -> Result<Vec<Person>, CoreError> {
+        Ok(people(self.client()?.blocked()?))
     }
 
     /// Up to `limit` messages before `before` (a seq), newest last.

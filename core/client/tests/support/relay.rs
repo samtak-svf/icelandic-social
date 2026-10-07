@@ -10,8 +10,12 @@
 //! Sign-in (0019) is the Worker's half of it: a device registers with any
 //! Kenni code as the account and device its `Link` names, gets a token, and
 //! every other call but the two made before sign-in needs that token.
+//!
+//! Media (0023) is kept per conversation for its roster, and blocks (0024)
+//! refuse the blocked account the blocker's KeyPackages.
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use base64::Engine as _;
@@ -70,6 +74,11 @@ struct State {
     /// Every `sendMessage` body the server received, per device.
     sends: BTreeMap<String, Vec<Value>>,
     page: usize,
+    /// (conversation, media id) → the blob.
+    media: BTreeMap<(String, String), Vec<u8>>,
+    /// (blocker, blocked) → when, in a counter for order.
+    blocks: BTreeMap<(String, String), u64>,
+    blocked_at: u64,
 }
 
 pub struct Relay(Mutex<State>);
@@ -160,6 +169,24 @@ impl Relay {
         let conversation = state.conversations.get_mut(conversation).unwrap();
         conversation.messages.retain(|m| m.seq > seq);
         conversation.expired_to = seq;
+    }
+
+    /// The blobs this conversation holds.
+    pub fn media(&self, conversation: &str) -> Vec<Vec<u8>> {
+        self.state()
+            .media
+            .iter()
+            .filter(|((c, _), _)| c == conversation)
+            .map(|(_, blob)| blob.clone())
+            .collect()
+    }
+
+    /// Changes one byte of every blob the server holds.
+    pub fn tamper_media(&self) {
+        for blob in self.state().media.values_mut() {
+            let middle = blob.len() / 2;
+            blob[middle] ^= 1;
+        }
     }
 
     pub fn frames(&self, device: &str) -> Vec<String> {
@@ -371,6 +398,41 @@ impl State {
                     refuse(404, "not_found")
                 }
             }
+            (Method::Put, ["blocks", id]) => {
+                if *id == account {
+                    return refuse(400, "invalid_request");
+                }
+                if !self.devices.values().any(|a| a == id) {
+                    return refuse(404, "not_found");
+                }
+                self.blocked_at += 1;
+                let at = self.blocked_at;
+                self.blocks
+                    .entry((account.to_owned(), (*id).to_owned()))
+                    .or_insert(at);
+                answer(204, Value::Null)
+            }
+            (Method::Delete, ["blocks", id]) => {
+                self.blocks.remove(&(account.to_owned(), (*id).to_owned()));
+                answer(204, Value::Null)
+            }
+            (Method::Get, ["blocks"]) => {
+                let mut blocked: Vec<(&u64, &String)> = self
+                    .blocks
+                    .iter()
+                    .filter(|((by, _), _)| by == account)
+                    .map(|((_, id), at)| (at, id))
+                    .collect();
+                blocked.sort();
+                let blocked: Vec<Value> = blocked
+                    .into_iter()
+                    .rev()
+                    .map(|(at, id)| {
+                        json!({ "accountId": id, "name": format!("Name of {id}"), "verified": true, "blockedAt": at })
+                    })
+                    .collect();
+                answer(200, json!({ "blocked": blocked }))
+            }
             (Method::Delete, ["devices", id]) => {
                 if self.devices.get(*id).map(String::as_str) != Some(account) {
                     return refuse(404, "not_found");
@@ -481,6 +543,12 @@ impl State {
                 answer(200, json!({ "available": available }))
             }
             (Method::Post, ["accounts", owner, "key-packages"]) => {
+                if self
+                    .blocks
+                    .contains_key(&((*owner).to_owned(), account.to_owned()))
+                {
+                    return refuse(403, "blocked");
+                }
                 let devices: Vec<String> = self
                     .devices
                     .iter()
@@ -504,6 +572,68 @@ impl State {
                 answer(200, json!({ "keyPackages": claimed }))
             }
             _ => refuse(404, "not_found"),
+        }
+    }
+
+    /// The conversation and media id a media request names, once its
+    /// token and roster are checked.
+    fn media_of(
+        &self,
+        account: &str,
+        device: &str,
+        request: &Request,
+    ) -> Result<(String, String), Response> {
+        if request.bearer.is_none() || self.tokens.get(device) != request.bearer.as_ref() {
+            return Err(refuse(401, "unauthorized"));
+        }
+        let parts: Vec<&str> = request.path.split('/').skip(2).collect();
+        let ["conversations", id, "media", object] = parts.as_slice() else {
+            return Err(refuse(404, "not_found"));
+        };
+        let Some(conversation) = self.conversations.get(*id) else {
+            return Err(refuse(404, "not_found"));
+        };
+        if !conversation.roster.contains(account) {
+            return Err(refuse(403, "not_a_member"));
+        }
+        Ok(((*id).to_owned(), (*object).to_owned()))
+    }
+
+    fn put_media(
+        &mut self,
+        account: &str,
+        device: &str,
+        request: &Request,
+        blob: Vec<u8>,
+    ) -> Response {
+        let key = match self.media_of(account, device, request) {
+            Ok(key) => key,
+            Err(refused) => return refused,
+        };
+        // 25 MiB, and a tag per 64 KiB segment.
+        if blob.len() > 25 * 1024 * 1024 + 16 * 400 {
+            return refuse(413, "too_large");
+        }
+        if self.media.contains_key(&key) {
+            return refuse(409, "conflict");
+        }
+        self.media.insert(key, blob);
+        answer(204, Value::Null)
+    }
+
+    fn get_media(
+        &self,
+        account: &str,
+        device: &str,
+        request: &Request,
+    ) -> (Response, Option<Vec<u8>>) {
+        let key = match self.media_of(account, device, request) {
+            Ok(key) => key,
+            Err(refused) => return (refused, None),
+        };
+        match self.media.get(&key) {
+            Some(blob) => (answer(200, Value::Null), Some(blob.clone())),
+            None => (refuse(404, "not_found"), None),
         }
     }
 
@@ -606,8 +736,14 @@ impl State {
     }
 }
 
-impl Transport for Link {
-    fn request(&self, request: Request) -> Result<Response, Unreachable> {
+impl Link {
+    /// Loses the request or its answer as the counters say, logs it, and
+    /// lets the server `act` on it.
+    fn through(
+        &self,
+        request: Request,
+        act: impl FnOnce(&mut State, &str, &str, Request) -> Response,
+    ) -> Result<Response, Unreachable> {
         let mut state = self.relay.state();
         let send = request.method == Method::Post && request.path.ends_with("/messages");
         if let Some(n) = state.fail.get_mut(&self.device).filter(|n| **n > 0) {
@@ -627,7 +763,7 @@ impl Transport for Link {
             .entry(self.device.clone())
             .or_default()
             .push(request.clone());
-        let response = state.handle(&self.account, &self.device, request);
+        let response = act(&mut state, &self.account, &self.device, request);
         if let Some(n) = state.lose.get_mut(&self.device).filter(|n| **n > 0) {
             *n -= 1;
             return Err(Unreachable("the answer was lost".into()));
@@ -641,5 +777,36 @@ impl Transport for Link {
             return Err(Unreachable("the answer was lost".into()));
         }
         Ok(response)
+    }
+}
+
+impl Transport for Link {
+    fn request(&self, request: Request) -> Result<Response, Unreachable> {
+        self.through(request, |state, account, device, request| {
+            state.handle(account, device, request)
+        })
+    }
+
+    fn upload(&self, request: Request, file: &Path) -> Result<Response, Unreachable> {
+        assert_eq!(request.method, Method::Put);
+        let blob = std::fs::read(file).unwrap();
+        self.through(request, |state, account, device, request| {
+            state.put_media(account, device, &request, blob)
+        })
+    }
+
+    fn download(&self, request: Request, to: &Path) -> Result<Response, Unreachable> {
+        assert_eq!(request.method, Method::Get);
+        self.through(request, |state, account, device, request| {
+            let (response, blob) = state.get_media(account, device, &request);
+            if let Some(blob) = blob {
+                std::fs::write(to, blob).unwrap();
+                return Response {
+                    status: 200,
+                    body: String::new(),
+                };
+            }
+            response
+        })
     }
 }

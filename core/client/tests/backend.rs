@@ -9,10 +9,11 @@
 //! ```
 
 use std::net::TcpStream;
+use std::path::Path;
 use std::time::{Duration, Instant, SystemTime};
 
-use spjall_client::api::{Method, Platform, Request, Response, Transport, Unreachable};
-use spjall_client::{Client, Content, Event, invite_token};
+use spjall_client::api::{ApiError, Method, Platform, Request, Response, Transport, Unreachable};
+use spjall_client::{Client, ClientError, Content, Event, invite_token};
 use spjall_envelope::Body;
 use tempfile::TempDir;
 use tungstenite::client::IntoClientRequest as _;
@@ -33,6 +34,23 @@ fn agent() -> ureq::Agent {
         .timeout_global(Some(Duration::from_secs(15)))
         .build()
         .into()
+}
+
+/// The status, and the body as text. workerd marks even an empty 204 as
+/// gzip, which ureq cannot read, so a 204 is not read.
+fn answered(mut answer: ureq::http::Response<ureq::Body>) -> Result<Response, Unreachable> {
+    let status = answer.status().as_u16();
+    if status == 204 {
+        return Ok(Response {
+            status,
+            body: String::new(),
+        });
+    }
+    let body = answer
+        .body_mut()
+        .read_to_string()
+        .map_err(|e| Unreachable(e.to_string()))?;
+    Ok(Response { status, body })
 }
 
 /// What an app's transport does: the base URL, the core's token, JSON.
@@ -70,14 +88,51 @@ impl Transport for Http {
                 }
                 call.send(request.body.unwrap_or_default())
             }
+            Method::Put => {
+                let mut call = self.agent.put(&url);
+                if let Some(auth) = &auth {
+                    call = call.header("authorization", auth);
+                }
+                call.send_empty()
+            }
         };
-        let mut answer = answer.map_err(|e| Unreachable(e.to_string()))?;
+        answered(answer.map_err(|e| Unreachable(e.to_string()))?)
+    }
+
+    fn upload(&self, request: Request, file: &Path) -> Result<Response, Unreachable> {
+        let url = format!("{}{}", self.base, request.path);
+        let blob = std::fs::read(file).map_err(|e| Unreachable(e.to_string()))?;
+        let mut call = self
+            .agent
+            .put(&url)
+            .header("content-type", "application/octet-stream");
+        if let Some(token) = request.bearer {
+            call = call.header("authorization", format!("Bearer {token}"));
+        }
+        answered(
+            call.send(&blob[..])
+                .map_err(|e| Unreachable(e.to_string()))?,
+        )
+    }
+
+    fn download(&self, request: Request, to: &Path) -> Result<Response, Unreachable> {
+        let url = format!("{}{}", self.base, request.path);
+        let mut call = self.agent.get(&url);
+        if let Some(token) = request.bearer {
+            call = call.header("authorization", format!("Bearer {token}"));
+        }
+        let mut answer = call.call().map_err(|e| Unreachable(e.to_string()))?;
         let status = answer.status().as_u16();
-        let body = answer
-            .body_mut()
-            .read_to_string()
+        if status != 200 {
+            return answered(answer);
+        }
+        let mut file = std::fs::File::create(to).map_err(|e| Unreachable(e.to_string()))?;
+        std::io::copy(&mut answer.body_mut().as_reader(), &mut file)
             .map_err(|e| Unreachable(e.to_string()))?;
-        Ok(Response { status, body })
+        Ok(Response {
+            status,
+            body: String::new(),
+        })
     }
 }
 
@@ -415,4 +470,51 @@ fn devices_talk_through_the_worker() {
             .iter()
             .any(|p| p.account == a1.account)
     );
+
+    // A photo crosses sealed: R2 holds the blob, and a opens it (0023).
+    let files = tempfile::tempdir().unwrap();
+    let photo: Vec<u8> = (0..70_000u32).map(|i| (i % 251) as u8).collect();
+    let path = files.path().join("mynd.png");
+    std::fs::write(&path, &photo).unwrap();
+    c1.client
+        .send_media(&one, &path, "image/png", Some("sólarlag".into()))
+        .unwrap();
+    c1.sync();
+    a1.deliver_until(|events| {
+        events.iter().any(
+            |e| matches!(e, Event::Message(m) if matches!(m.envelope.body, Body::Media { .. })),
+        )
+    });
+    let item = a1.client.timeline(&one, None, 10).unwrap().pop().unwrap();
+    assert!(matches!(&item.content, Content::Media { size, .. } if *size == photo.len() as u64));
+    let opened = a1.client.media(&one, item.seq.unwrap()).unwrap();
+    assert_eq!(std::fs::read(opened).unwrap(), photo);
+
+    // a blocks c: the 1:1 ends, c cannot claim a's KeyPackages to start
+    // another, and lifting the block lets it (0024).
+    let outcome = a1.client.block(&c).unwrap();
+    assert!(outcome.events.iter().any(|e| {
+        matches!(e, Event::Membership { conversation, removed, .. }
+            if *conversation == one && removed == std::slice::from_ref(&c))
+    }));
+    c1.deliver_until(has(Event::Removed {
+        conversation: one.clone(),
+    }));
+    let blocked = a1.client.blocked().unwrap();
+    assert_eq!(blocked.len(), 1);
+    assert_eq!(blocked[0].account, c);
+    c1.client
+        .create_conversation(std::slice::from_ref(&a1.account))
+        .unwrap();
+    assert!(matches!(
+        c1.client.sync(),
+        Err(ClientError::Transport(ApiError::Refused {
+            status: 403,
+            ..
+        }))
+    ));
+    a1.client.unblock(&c).unwrap();
+    assert!(a1.client.blocked().unwrap().is_empty());
+    c1.sync();
+    a1.deliver_until(|events| events.iter().any(|e| matches!(e, Event::Joined { .. })));
 }

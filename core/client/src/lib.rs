@@ -19,16 +19,19 @@
 
 mod account;
 pub mod api;
+mod block;
+mod media;
 mod members;
 mod read;
 mod timeline;
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 pub use account::{SignedIn, invite_token};
 use api::{Api, ApiError, Outgoing, Transport, conversation_id, group_id};
+pub use media::{MAX_SIZE, MediaError};
 pub use members::Person;
 pub use read::Settings;
 use serde::Deserialize;
@@ -69,6 +72,8 @@ pub enum ClientError {
     /// The server answered outside the contract.
     #[error("the server broke the contract: {0}")]
     Protocol(&'static str),
+    #[error(transparent)]
+    Media(#[from] MediaError),
 }
 
 /// Where a conversation stands for this device.
@@ -176,6 +181,12 @@ pub enum Event {
     /// The core fetched these accounts' names and marks.
     Profiles {
         accounts: Vec<String>,
+    },
+    /// Items whose disappearing timer ran out, by seq; they and their
+    /// files are gone from this device.
+    Expired {
+        conversation: String,
+        removed: Vec<u64>,
     },
 }
 
@@ -554,17 +565,27 @@ fn store_message(
     seq: u64,
     sender: &Device,
     envelope: &[u8],
+    hidden: bool,
 ) -> rusqlite::Result<()> {
+    let timer: Option<i64> = tx.query_row(
+        "SELECT timer FROM conversations WHERE group_id = ?1",
+        [group],
+        |r| r.get(0),
+    )?;
+    let stored_at = now();
     tx.execute(
-        "INSERT INTO messages (group_id, seq, sender_account, sender_device, envelope, stored_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        "INSERT INTO messages (group_id, seq, sender_account, sender_device, envelope, stored_at,
+                               expires_at, hidden)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         params![
             group,
             seq as i64,
             sender.account,
             sender.device,
             envelope,
-            now()
+            stored_at,
+            timer.map(|t| stored_at + t * 1000),
+            hidden
         ],
     )
     .map(drop)
@@ -593,11 +614,18 @@ pub struct Client<T> {
     outcome: Outcome,
     /// When each conversation's last `active` typing frame was made.
     typed: HashMap<Vec<u8>, Instant>,
+    /// The store's folder for decrypted and sent files.
+    media: PathBuf,
 }
 
 impl<T: Transport> Client<T> {
     pub fn open(dir: &Path, key: &Key, transport: T) -> Result<Self, ClientError> {
         let mut store = Store::open(dir, key)?;
+        let media = store
+            .path()
+            .parent()
+            .expect("the store is a file in a folder")
+            .join("media");
         let token = store.write(|tx| {
             Ok(tx
                 .query_row("SELECT device_token FROM account", [], |r| r.get(0))
@@ -610,6 +638,7 @@ impl<T: Transport> Client<T> {
             token,
             outcome: Outcome::default(),
             typed: HashMap::new(),
+            media,
         })
     }
 
@@ -802,6 +831,7 @@ impl<T: Transport> Client<T> {
 
     /// Every conversation, the one with the newest activity first.
     pub fn conversations(&mut self) -> Result<Vec<Conversation>, ClientError> {
+        self.purge()?;
         self.store.try_write(|tx| {
             let mut statement = tx.prepare(&format!(
                 "SELECT group_id, {STATE}, timer FROM conversations c
@@ -859,6 +889,7 @@ impl<T: Transport> Client<T> {
         limit: u32,
     ) -> Result<Vec<Item>, ClientError> {
         let group = group_id(conversation).ok_or(ClientError::UnknownConversation)?;
+        self.purge()?;
         self.store.try_write(|tx| {
             conversation_state(tx, &group)?;
             let (_, me) = this_device(tx)?;
@@ -956,7 +987,7 @@ impl<T: Transport> Client<T> {
             let (_, me) = this_device(tx)?;
             let mut statement = tx.prepare(
                 "SELECT seq, sender_account, sender_device, envelope FROM messages
-                 WHERE group_id = ?1 AND seq < ?2 ORDER BY seq DESC LIMIT ?3",
+                 WHERE group_id = ?1 AND seq < ?2 AND hidden = 0 ORDER BY seq DESC LIMIT ?3",
             )?;
             let rows = statement.query_map(
                 params![group, before.map_or(i64::MAX, |b| b as i64), limit],
@@ -1001,7 +1032,36 @@ impl<T: Transport> Client<T> {
             self.sync_one(&group)?;
         }
         self.refresh_profiles()?;
+        // Blocks set on another device of this account; the next sync
+        // tries again.
+        let _ = self.refresh_blocks();
+        self.purge()?;
+        self.sweep_media()?;
         Ok(std::mem::take(&mut self.outcome))
+    }
+
+    /// Deletes what has disappeared and its files: the `Expired` events,
+    /// which `sync` and `on_frame` also return. The app calls it when an
+    /// item on screen reaches its `expires_at`.
+    pub fn expire(&mut self) -> Result<Outcome, ClientError> {
+        self.purge()?;
+        Ok(std::mem::take(&mut self.outcome))
+    }
+
+    /// Every call that reads the timeline purges first; the events wait
+    /// for the next call that returns an outcome.
+    fn purge(&mut self) -> Result<(), ClientError> {
+        let (removed, objects) = self
+            .store
+            .try_write(|tx| Ok::<_, ClientError>(timeline::purge(tx, now())?))?;
+        self.remove_media(&objects);
+        self.outcome
+            .events
+            .extend(removed.into_iter().map(|(group, removed)| Event::Expired {
+                conversation: conversation_id(&group),
+                removed,
+            }));
+        Ok(())
     }
 
     /// Fetches the names and marks of accounts met since, or not fetched
@@ -1097,6 +1157,7 @@ impl<T: Transport> Client<T> {
             }
             Incoming::Hello {} | Incoming::Other => {}
         }
+        self.purge()?;
         Ok(std::mem::take(&mut self.outcome))
     }
 
@@ -1549,7 +1610,7 @@ fn receive(
         .optional()?;
     if let Some((id, kind, intent, roster_add, roster_remove)) = own {
         if Kind::parse(&kind)? == Kind::Message {
-            store_message(tx, group, seq, &me, &intent)?;
+            store_message(tx, group, seq, &me, &intent, false)?;
             let envelope = Envelope::decode(&intent)?;
             let changed = fold(tx, group, seq, &me, &envelope, &me.account)?;
             events.push(Event::Message(Message {
@@ -1593,8 +1654,13 @@ fn receive(
                     body: Body::Typing { .. },
                     ..
                 }) => {}
+                // A blocked account's message is kept hidden: no item, no
+                // count, no event (0024).
+                Ok(_) if sender != me && block::is_blocked(tx, &sender.account)? => {
+                    store_message(tx, group, seq, &sender, &plaintext, true)?;
+                }
                 Ok(envelope) => {
-                    store_message(tx, group, seq, &sender, &plaintext)?;
+                    store_message(tx, group, seq, &sender, &plaintext, false)?;
                     let changed = fold(tx, group, seq, &sender, &envelope, &me.account)?;
                     events.push(Event::Message(Message {
                         conversation: conversation.clone(),

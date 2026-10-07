@@ -411,7 +411,8 @@ impl<T: Transport> Client<T> {
     }
 
     /// Empties the store: the device key, the groups, history and the
-    /// timeline, the outbox, the names fetched and the toggles. The next
+    /// timeline, the outbox, the names fetched, the toggles, the blocks and
+    /// the media files. The next
     /// sign-in starts as a new device.
     fn forget(&mut self) -> Result<(), ClientError> {
         self.store.write(|tx| {
@@ -421,13 +422,19 @@ impl<T: Transport> Client<T> {
                  DELETE FROM conversations;
                  DELETE FROM profiles;
                  DELETE FROM settings;
+                 DELETE FROM blocks;
                  DELETE FROM sign_in;
                  DELETE FROM account;
                  DELETE FROM kv;",
             )
         })?;
         self.token = None;
-        Ok(())
+        match std::fs::remove_dir_all(&self.media) {
+            Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
+                Err(crate::MediaError::from(error).into())
+            }
+            _ => Ok(()),
+        }
     }
 }
 

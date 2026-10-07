@@ -45,6 +45,15 @@ pub enum CoreError {
     /// was not Kenni's, or Kenni answered with an error.
     #[error("sign-in: {detail}")]
     SignIn { detail: String },
+    /// The file is over the 25 MB a message carries (0023).
+    #[error("the file is over 25 MB")]
+    TooLarge,
+    /// A downloaded file is not the one that was sent (0023).
+    #[error("the file was changed on the way")]
+    Tampered,
+    /// A file could not be read or written on this device.
+    #[error("{detail}")]
+    File { detail: String },
 }
 
 impl From<envelope::EnvelopeError> for CoreError {
@@ -357,7 +366,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().to_string_lossy().into_owned();
         let store = CoreStore::open(path.clone(), vec![1; 32]).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 6);
+        assert_eq!(store.schema_version().unwrap(), 7);
         drop(store);
         assert!(matches!(
             CoreStore::open(path.clone(), vec![2; 32]),

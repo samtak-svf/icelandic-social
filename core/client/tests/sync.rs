@@ -9,7 +9,9 @@ use std::sync::Arc;
 
 use relay::{Link, Relay};
 use spjall_client::api::{ApiError, Platform};
-use spjall_client::{Client, ClientError, Content, Event, Item, Settings, State, Status};
+use spjall_client::{
+    Client, ClientError, Content, Event, Item, MediaError, Settings, State, Status,
+};
 use spjall_envelope::Body;
 use spjall_mls::group::{GroupError, forge};
 use tempfile::TempDir;
@@ -940,4 +942,317 @@ fn the_disappearing_timer_is_a_card_and_stamps_what_follows() {
         assert!(card.expires_at.is_none());
         assert!(message.expires_at.is_some());
     }
+}
+
+/// The files in a phone's media folder, sorted.
+fn media_files(phone: &Phone) -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir(phone.dir.path().join("media")) else {
+        return Vec::new();
+    };
+    let mut names: Vec<String> = entries
+        .flatten()
+        .filter(|e| e.path().is_file())
+        .map(|e| e.file_name().into_string().unwrap())
+        .collect();
+    names.sort();
+    names
+}
+
+fn media_gets(relay: &Relay, device: &str) -> usize {
+    relay
+        .requests(device)
+        .iter()
+        .filter(|r| r.path.contains("/media/") && r.method == spjall_client::api::Method::Get)
+        .count()
+}
+
+/// A photo of some size that crosses a segment edge, written to a file.
+fn photo(dir: &TempDir) -> (std::path::PathBuf, Vec<u8>) {
+    let bytes: Vec<u8> = (0..70_000u32).map(|i| (i % 251) as u8).collect();
+    let path = dir.path().join("mynd.png");
+    std::fs::write(&path, &bytes).unwrap();
+    (path, bytes)
+}
+
+#[test]
+fn a_photo_is_sealed_before_it_leaves_and_opens_on_the_other_side() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut a1, &mut b1);
+    let files = tempfile::tempdir().unwrap();
+    let (path, bytes) = photo(&files);
+
+    a1.client
+        .send_media(&conversation, &path, "image/png", Some("sólarlag".into()))
+        .unwrap();
+    // The server holds a blob that is not the photo and does not contain it.
+    let blobs = relay.media(&conversation);
+    assert_eq!(blobs.len(), 1);
+    assert_eq!(blobs[0].len(), bytes.len() + 2 * 16);
+    assert!(!blobs[0].windows(64).any(|w| w == &bytes[..64]));
+    a1.sync();
+    b1.deliver();
+
+    for phone in [&mut a1, &mut b1] {
+        let item = items(phone, &conversation).pop().unwrap();
+        assert_eq!(
+            item.content,
+            Content::Media {
+                mime: "image/png".into(),
+                size: bytes.len() as u64,
+                caption: Some("sólarlag".into()),
+            }
+        );
+        let file = phone
+            .client
+            .media(&conversation, item.seq.unwrap())
+            .unwrap();
+        assert_eq!(std::fs::read(&file).unwrap(), bytes);
+        assert_eq!(file.extension().unwrap(), "png");
+        // Kept: asked for again, it is not fetched again.
+        assert_eq!(
+            phone
+                .client
+                .media(&conversation, item.seq.unwrap())
+                .unwrap(),
+            file
+        );
+    }
+    // The sender kept its own copy and fetched nothing; the other side once.
+    assert_eq!(media_gets(&relay, "a1"), 0);
+    assert_eq!(media_gets(&relay, "b1"), 1);
+    // Nothing is left over from sealing or opening.
+    assert_eq!(media_files(&a1).len(), 1);
+    assert_eq!(media_files(&b1).len(), 1);
+}
+
+#[test]
+fn a_tampered_blob_is_refused_and_leaves_no_file() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut a1, &mut b1);
+    let files = tempfile::tempdir().unwrap();
+    let (path, _) = photo(&files);
+    a1.client
+        .send_media(&conversation, &path, "image/png", None)
+        .unwrap();
+    a1.sync();
+    b1.deliver();
+
+    relay.tamper_media();
+    let seq = items(&mut b1, &conversation).pop().unwrap().seq.unwrap();
+    assert!(matches!(
+        b1.client.media(&conversation, seq),
+        Err(ClientError::Media(MediaError::Tampered))
+    ));
+    assert!(media_files(&b1).is_empty());
+    // An item that is not media has no file.
+    b1.send(&conversation, "texti");
+    b1.sync();
+    let text = items(&mut b1, &conversation).pop().unwrap().seq.unwrap();
+    assert!(matches!(
+        b1.client.media(&conversation, text),
+        Err(ClientError::Invalid(_))
+    ));
+}
+
+#[test]
+fn a_file_over_25_mb_is_refused_before_anything_is_sent() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut a1, &mut b1);
+    let files = tempfile::tempdir().unwrap();
+    let path = files.path().join("stórt.bin");
+    std::fs::File::create(&path)
+        .unwrap()
+        .set_len(spjall_client::MAX_SIZE + 1)
+        .unwrap();
+    assert!(matches!(
+        a1.client
+            .send_media(&conversation, &path, "application/zip", None),
+        Err(ClientError::Media(MediaError::TooLarge))
+    ));
+    assert!(relay.media(&conversation).is_empty());
+    assert!(media_files(&a1).is_empty());
+}
+
+#[test]
+fn what_disappears_is_deleted_with_its_file() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut a1, &mut b1);
+    a1.send(&conversation, "stays");
+    a1.client
+        .send(&conversation, Body::Disappearing { seconds: Some(1) })
+        .unwrap();
+    a1.sync();
+    b1.deliver();
+    let files = tempfile::tempdir().unwrap();
+    let (path, _) = photo(&files);
+    a1.client
+        .send_media(&conversation, &path, "image/png", None)
+        .unwrap();
+    a1.send(&conversation, "goes");
+    a1.sync();
+    b1.deliver();
+    let seqs: Vec<u64> = items(&mut b1, &conversation)
+        .iter()
+        .rev()
+        .take(2)
+        .map(|i| i.seq.unwrap())
+        .rev()
+        .collect();
+    b1.client.media(&conversation, seqs[0]).unwrap();
+    assert_eq!(media_files(&b1).len(), 1);
+
+    std::thread::sleep(std::time::Duration::from_millis(1100));
+    for phone in [&mut a1, &mut b1] {
+        let outcome = phone.client.expire().unwrap();
+        assert_eq!(
+            outcome.events,
+            vec![Event::Expired {
+                conversation: conversation.clone(),
+                removed: seqs.clone(),
+            }]
+        );
+        assert!(media_files(phone).is_empty());
+        // The text sent before the timer and the timer card stay.
+        let left = items(phone, &conversation);
+        assert!(
+            left.iter()
+                .all(|i| i.seq.is_none_or(|s| !seqs.contains(&s)))
+        );
+        assert_eq!(
+            shown(&left).into_iter().flatten().collect::<Vec<_>>(),
+            strings(&["stays"])
+        );
+        assert_eq!(phone.client.expire().unwrap().events, Vec::new());
+        assert_eq!(
+            phone
+                .client
+                .history(&conversation, None, 100)
+                .unwrap()
+                .iter()
+                .filter(|m| matches!(m.envelope.body, Body::Text { .. } | Body::Media { .. }))
+                .count(),
+            1
+        );
+    }
+}
+
+#[test]
+fn a_block_ends_the_one_to_one_and_hides_the_group_but_the_group_goes_on() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let mut c1 = Phone::new(&relay, "c", "c1");
+    let one = conversation(&mut a1, &mut b1);
+    let group = a1
+        .client
+        .create_conversation(&strings(&["b", "c"]))
+        .unwrap();
+    a1.sync();
+    b1.deliver();
+    c1.deliver();
+
+    assert!(matches!(a1.client.block("a"), Err(ClientError::Invalid(_))));
+    let outcome = a1.client.block("b").unwrap();
+    assert_eq!(
+        membership(&outcome.events),
+        vec![(Vec::new(), strings(&["b"]))]
+    );
+    // Blocking again changes nothing and sends nothing.
+    assert!(a1.client.block("b").unwrap().events.is_empty());
+    let blocked = a1.client.blocked().unwrap();
+    assert_eq!(blocked.len(), 1);
+    assert_eq!(
+        (blocked[0].account.as_str(), blocked[0].name.as_deref()),
+        ("b", Some("Name of b"))
+    );
+    assert!(classic(b1.deliver()).contains(&Event::Removed {
+        conversation: one.clone()
+    }));
+
+    // In the group `b` still writes; `a` reads past it without showing it.
+    b1.send(&group, "frá b");
+    b1.sync();
+    let events = a1.deliver();
+    assert!(texts(&events).is_empty(), "{events:?}");
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::Timeline { conversation, .. } if *conversation == group))
+    );
+    assert_eq!(texts(&c1.deliver()), strings(&["frá b"]));
+    let listed = a1.client.conversations().unwrap();
+    let listed = listed.iter().find(|c| c.id == group).unwrap();
+    assert_eq!(listed.unread, 0);
+    assert!(a1.history(&group).is_empty());
+    // A reaction from `b` does not reach the fold either.
+    let from_c = {
+        c1.send(&group, "frá c");
+        c1.sync();
+        assert_eq!(texts(&a1.deliver()), strings(&["frá c"]));
+        items(&mut a1, &group).pop().unwrap()
+    };
+    b1.deliver();
+    b1.client
+        .send(
+            &group,
+            Body::Reaction {
+                target: from_c.envelope_id.clone().unwrap(),
+                emoji: "👍".into(),
+                remove: false,
+            },
+        )
+        .unwrap();
+    b1.sync();
+    a1.deliver();
+    assert!(items(&mut a1, &group).pop().unwrap().reactions.is_empty());
+
+    // Lifted: what `b` writes now shows; what it wrote before stays hidden.
+    a1.client.unblock("b").unwrap();
+    assert!(a1.client.blocked().unwrap().is_empty());
+    b1.send(&group, "aftur");
+    b1.sync();
+    assert_eq!(texts(&a1.deliver()), strings(&["aftur"]));
+    assert_eq!(
+        shown(&items(&mut a1, &group))
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>(),
+        strings(&["frá c", "aftur"])
+    );
+    // The 1:1 stays ended.
+    let one = a1.client.conversations().unwrap();
+    assert!(
+        one.iter()
+            .all(|c| c.members.len() != 1 || c.members[0].account != "b" || c.id == group)
+    );
+}
+
+#[test]
+fn a_blocked_account_cannot_reach_the_blocker_again() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    conversation(&mut a1, &mut b1);
+    a1.client.block("b").unwrap();
+    b1.deliver();
+    b1.client.create_conversation(&strings(&["a"])).unwrap();
+    assert!(matches!(
+        b1.client.sync(),
+        Err(ClientError::Transport(ApiError::Refused {
+            status: 403,
+            ..
+        }))
+    ));
+    // A block set on another device of the same account is taken up by sync.
+    let mut a2 = Phone::new(&relay, "a", "a2");
+    a2.sync();
+    assert_eq!(a2.client.blocked().unwrap()[0].account, "b");
 }
