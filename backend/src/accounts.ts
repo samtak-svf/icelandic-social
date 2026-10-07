@@ -213,6 +213,7 @@ export async function deleteAccount(env: Env, accountId: string): Promise<void> 
   await Promise.all(conversations.map((id) => conversation(env, id).removeAccount(accountId)));
   await box.wipe();
   // Media in R2 go here once there is an upload route; today there are none.
-  // Devices, KeyPackages and invites cascade; invited_by elsewhere goes null.
+  // Devices, KeyPackages, invites, roster copies and blocks cascade;
+  // invited_by elsewhere goes null.
   await db(env).prepare("DELETE FROM accounts WHERE account_id = ?").bind(accountId).run();
 }

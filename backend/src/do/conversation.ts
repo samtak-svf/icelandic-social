@@ -1,6 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { inbox } from "../env/index.ts";
 import { log } from "../log.ts";
+import { copyRoster } from "../profiles.ts";
 
 /** Stored ciphertext and Welcomes are deleted this long after they were stored (decision 0015). */
 export const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -80,6 +81,11 @@ export class Conversation extends DurableObject<Env> {
       );
       CREATE TABLE IF NOT EXISTS pending_notify (account TEXT PRIMARY KEY, seq INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS removed (account TEXT PRIMARY KEY, seq INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS roster_copy (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        seq INTEGER NOT NULL,
+        copied INTEGER NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS group_info (
         id INTEGER PRIMARY KEY CHECK (id = 1),
         seq INTEGER NOT NULL,
@@ -121,7 +127,9 @@ export class Conversation extends DurableObject<Env> {
         account,
       );
       this.sql.exec("INSERT INTO roster (account) VALUES (?)", account);
+      this.sql.exec("INSERT INTO roster_copy (id, seq, copied) VALUES (1, 0, -1)");
     });
+    await this.copyRoster().catch(() => this.ctx.storage.setAlarm(Date.now() + RETRY_MS));
     return { ok: null };
   }
 
@@ -133,7 +141,11 @@ export class Conversation extends DurableObject<Env> {
    */
   async send(input: SendInput): Promise<Result<{ seq: number }>> {
     const result = this.ctx.storage.transactionSync(() => this.store(input));
-    if ("ok" in result) await this.ctx.storage.setAlarm(Date.now());
+    if (!("ok" in result)) return result;
+    // Copied before the answer, so the sender can read the names of the
+    // accounts it just added; the alarm tries again if this fails.
+    if (input.roster) await this.copyRoster().catch(() => {});
+    await this.ctx.storage.setAlarm(Date.now());
     return result;
   }
 
@@ -218,6 +230,7 @@ export class Conversation extends DurableObject<Env> {
     now: number,
   ): void {
     this.sql.exec("INSERT INTO commits (epoch, seq) VALUES (?, ?)", epoch, seq);
+    this.sql.exec("UPDATE roster_copy SET seq = ?", seq);
     if (input.groupInfo) {
       this.sql.exec(
         "INSERT OR REPLACE INTO group_info (id, seq, message) VALUES (1, ?, ?)",
@@ -344,6 +357,28 @@ export class Conversation extends DurableObject<Env> {
     this.sql.exec("DELETE FROM pending_notify WHERE account = ?", account);
   }
 
+  /**
+   * Copies the roster to D1 if the copy there is behind (decision 0022).
+   * Reads the roster and its seq in one synchronous step, so a copy is
+   * always one roster as some commit left it; D1 keeps the newest.
+   */
+  private async copyRoster(): Promise<void> {
+    const meta = this.meta();
+    const row = this.sql
+      .exec<{ seq: number; copied: number }>("SELECT seq, copied FROM roster_copy")
+      .toArray()[0];
+    if (!meta || !row || row.copied >= row.seq) return;
+    await copyRoster(this.env, meta.conversationId, row.seq, this.members());
+    this.sql.exec("UPDATE roster_copy SET copied = max(copied, ?)", row.seq);
+  }
+
+  private rosterCopied(): boolean {
+    const row = this.sql
+      .exec<{ seq: number; copied: number }>("SELECT seq, copied FROM roster_copy")
+      .toArray()[0];
+    return !row || row.copied >= row.seq;
+  }
+
   /** Delivers the owed notifications, deletes what has expired, and sets the next alarm. */
   override async alarm(): Promise<void> {
     const meta = this.meta();
@@ -372,7 +407,16 @@ export class Conversation extends DurableObject<Env> {
     );
     this.sql.exec("DELETE FROM welcomes WHERE stored_at < ?", expired);
 
-    const owed = this.sql.exec("SELECT 1 FROM pending_notify LIMIT 1").toArray().length > 0;
+    try {
+      await this.copyRoster();
+    } catch {
+      failed++;
+      log("conversation.roster_copy_failed", { conversationId: meta.conversationId });
+    }
+
+    const owed =
+      this.sql.exec("SELECT 1 FROM pending_notify LIMIT 1").toArray().length > 0 ||
+      !this.rosterCopied();
     const oldest = this.sql
       .exec<{ at: number | null }>(
         `SELECT min(stored_at) AS at FROM (SELECT stored_at FROM messages

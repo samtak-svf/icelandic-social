@@ -43,7 +43,9 @@ export async function revokeInvite(env: Env, accountId: string): Promise<void> {
 }
 
 /** Who a live invite is from: null inviter for the operator's. */
-export type Invite = { inviter: { name: string | null; verified: boolean } | null };
+export type Invite = {
+  inviter: { accountId: string; name: string | null; verified: boolean } | null;
+};
 
 /** The live invite a token names, or null. */
 export async function resolveInvite(env: Env, token: string): Promise<Invite | null> {
@@ -57,6 +59,9 @@ export async function resolveInvite(env: Env, token: string): Promise<Invite | n
     .first<{ inviter: string | null; name: string | null; verified: number | null }>();
   if (!row) return null;
   return {
-    inviter: row.inviter === null ? null : { name: row.name, verified: row.verified === 1 },
+    inviter:
+      row.inviter === null
+        ? null
+        : { accountId: row.inviter, name: row.name, verified: row.verified === 1 },
   };
 }

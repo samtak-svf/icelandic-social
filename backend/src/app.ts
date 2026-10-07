@@ -8,6 +8,7 @@ import {
   registerDevice,
   revokeDevice,
 } from "./accounts.ts";
+import { blockRoute, getAccountRoute, listBlocksRoute, unblockRoute } from "./api/accounts.ts";
 import {
   createConversationRoute,
   getGroupInfoRoute,
@@ -26,6 +27,7 @@ import { resolveInviteRoute, revokeInviteRoute, rotateInviteRoute } from "./api/
 import { claimKeyPackagesRoute, uploadKeyPackagesRoute } from "./api/key-packages.ts";
 import { listMessagesRoute, sendMessageRoute } from "./api/messages.ts";
 import { SOCKET_ACCOUNT, SOCKET_DEVICE, socketRoute } from "./api/socket.ts";
+import { block, blockedByAny, blockList, unblock } from "./blocks.ts";
 import { fromBase64, toBase64 } from "./bytes.ts";
 import { checkSend } from "./conversations.ts";
 import { conversation, inbox, kenni, minClientVersions, withinLimit } from "./env/index.ts";
@@ -34,6 +36,7 @@ import { inviteLink, resolveInvite, revokeInvite, rotateInvite } from "./invites
 import { claim, ownsLeaf, upload } from "./key-packages.ts";
 import { linkHost } from "./link.ts";
 import { log } from "./log.ts";
+import { profile } from "./profiles.ts";
 
 /** OpenAPI 3.1 document metadata; the routes and schemas come from src/api/. */
 export const DOCUMENT_INFO = {
@@ -195,6 +198,11 @@ export function createApp() {
     if (checked.joiner && !(await ownsLeaf(c.env, c.var.device, checked.joiner))) {
       return c.json({ error: "invalid_request" }, 400);
     }
+    // A commit cannot bring in an account that has blocked its sender (0024).
+    const added = checked.ok.welcome?.to ?? [];
+    if (await blockedByAny(c.env, c.var.device.accountId, added)) {
+      return c.json({ error: "blocked" }, 403);
+    }
     const result = await conversation(c.env, conversationId).send(checked.ok);
     if ("ok" in result) return c.json(result.ok, 200);
     switch (result.error) {
@@ -273,7 +281,11 @@ export function createApp() {
       log("request.rate_limited", { code: "claims" });
       return c.json({ error: "rate_limited" }, 429);
     }
-    const claimed = await claim(c.env, c.req.valid("param").accountId, c.var.device.deviceId);
+    const { accountId } = c.req.valid("param");
+    if (await blockedByAny(c.env, c.var.device.accountId, [accountId])) {
+      return c.json({ error: "blocked" }, 403);
+    }
+    const claimed = await claim(c.env, accountId, c.var.device.deviceId);
     if (!claimed) return c.json({ error: "not_found" }, 404);
     const keyPackages = claimed.map((p) => ({
       deviceId: p.deviceId,
@@ -281,6 +293,33 @@ export function createApp() {
     }));
     return c.json({ keyPackages }, 200);
   });
+
+  // Other accounts (decisions 0022, 0024).
+  app.openapi(getAccountRoute, async (c) => {
+    const found = await profile(c.env, c.var.device.accountId, c.req.valid("param").accountId);
+    return found ? c.json(found, 200) : c.json({ error: "not_found" }, 404);
+  });
+
+  app.openapi(listBlocksRoute, async (c) =>
+    c.json({ blocked: await blockList(c.env, c.var.device.accountId) }, 200),
+  );
+
+  app.openapi(blockRoute, async (c) => {
+    const { accountId } = c.var.device;
+    const target = c.req.valid("param").accountId;
+    if (target === accountId) return c.json({ error: "invalid_request" }, 400);
+    if (!(await block(c.env, accountId, target))) return c.json({ error: "not_found" }, 404);
+    log("account.blocked", { accountId });
+    return c.body(null, 204);
+  });
+
+  app.openapi(unblockRoute, async (c) => {
+    const { accountId } = c.var.device;
+    await unblock(c.env, accountId, c.req.valid("param").accountId);
+    log("account.unblocked", { accountId });
+    return c.body(null, 204);
+  });
+
   // The socket lives in the account's Inbox; the Worker tells it which
   // device this is, replacing any such header the client sent.
   app.openapi(socketRoute, async (c) => {

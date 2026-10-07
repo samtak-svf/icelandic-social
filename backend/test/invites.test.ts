@@ -108,7 +108,7 @@ describe("GET /v1/invites/{token}", () => {
     const response = await fetch(`/v1/invites/${token}`);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      inviter: { name: "Alísa Prófsdóttir", verified: true },
+      inviter: { accountId: alice.accountId, name: "Alísa Prófsdóttir", verified: true },
     });
   });
 

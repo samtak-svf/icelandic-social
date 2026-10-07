@@ -35,10 +35,13 @@ describe("the delivery contract", () => {
       Object.entries(item ?? {}).map(([method, op]) => `${method} ${path} ${op.operationId}`),
     );
     expect(operations.sort()).toEqual([
+      "delete /v1/blocks/{accountId} unblockAccount",
       "delete /v1/devices/{deviceId} revokeDevice",
       "delete /v1/me deleteAccount",
       "delete /v1/me/invite revokeInvite",
       "get /health getHealth",
+      "get /v1/accounts/{accountId} getAccount",
+      "get /v1/blocks listBlocks",
       "get /v1/conversations/{conversationId}/group-info getGroupInfo",
       "get /v1/conversations/{conversationId}/messages listMessages",
       "get /v1/conversations/{conversationId}/welcome getWelcome",
@@ -52,6 +55,7 @@ describe("the delivery contract", () => {
       "post /v1/devices registerDevice",
       "post /v1/key-packages uploadKeyPackages",
       "post /v1/me/invite rotateInvite",
+      "put /v1/blocks/{accountId} blockAccount",
     ]);
   });
 

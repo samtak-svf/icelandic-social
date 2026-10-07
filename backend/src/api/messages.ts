@@ -71,7 +71,10 @@ export const sendMessageRoute = createRoute({
     400: errorResponse(
       "invalid_request: a commit without a claim that names its sender, a welcome its claim does not name anyone for, a welcome or groupInfo without a commit, a commit without the GroupInfo of its group's next epoch, or an external commit that is not the sending device's own leaf or that changes the roster; group_mismatch: the framing names another group",
     ),
-    ...MEMBER,
+    403: errorResponse(
+      "not_a_member: this account is not in the conversation; blocked: the commit adds an account that has blocked this one (decision 0024)",
+    ),
+    404: MEMBER[404],
     409: errorResponse(
       "epoch_conflict: this epoch already has a commit; re-propose on the new one",
     ),

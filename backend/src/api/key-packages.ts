@@ -73,6 +73,7 @@ export const claimKeyPackagesRoute = createRoute({
       content: { "application/json": { schema: ClaimedKeyPackages } },
     },
     ...INVALID,
+    403: errorResponse("blocked: the account has blocked this one (decision 0024)"),
     404: errorResponse("not_found: no such account, or it has no devices"),
     ...AUTHED,
     ...RATE_LIMITED,
