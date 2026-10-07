@@ -171,6 +171,10 @@
       "surfaces": ["android", "ios"],
       "description": "Attach a photo or file to a message."
     },
+    "person_unnamed": {
+      "surfaces": ["android", "ios"],
+      "description": "Stands in for an account whose name the server has not given, in titles and rows (docs/decisions/0022)."
+    },
     "photo": {
       "surfaces": ["android", "ios"],
       "description": "Label of a photo message, in the conversation list and for screen readers."
@@ -336,6 +340,10 @@
     "cancel": {
       "surfaces": ["android", "ios"],
       "description": "Dismisses a confirmation without doing anything."
+    },
+    "back": {
+      "surfaces": ["android", "ios"],
+      "description": "Screen-reader label of the back arrow at the top of a screen."
     },
     "share": {
       "surfaces": ["android", "ios"],

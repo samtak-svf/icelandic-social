@@ -45,6 +45,7 @@
     "other": "{count} meðlimir"
   },
   "attach": "Hengja við",
+  "person_unnamed": "Nafnlaus",
   "photo": "Mynd",
   "file": "Skrá",
   "media_too_large": "Skráin er of stór. Hámarkið er 25 MB.",
@@ -93,6 +94,7 @@
   "error_generic": "Eitthvað fór úrskeiðis. Reyndu aftur.",
   "try_again": "Reyna aftur",
   "cancel": "Hætta við",
+  "back": "Til baka",
   "share": "Deila",
   "devices_title": "Tækin þín",
   "device_this": "Þetta tæki",

@@ -60,6 +60,19 @@ class SignInViewModelTest {
             advanceUntilIdle()
             assertEquals(Session.SignedIn, model.state.value.session)
             assertEquals("completeSignIn cb1 t1", account.calls.single { it.startsWith("complete") })
+            // The link that let the person in also opens its 1:1.
+            assertEquals("t1", model.invites.first())
+        }
+
+    @Test
+    fun anInviteOpenedWhileSignedInGoesToTheList() =
+        runTest(dispatcher) {
+            account.signedIn = true
+            val model = model()
+            model.openInvite("t2")
+            assertEquals("t2", model.invites.first())
+            assertEquals(Invite.None, model.state.value.invite)
+            assertEquals(listOf("signedIn", "stockKeyPackages"), account.calls)
         }
 
     @Test
@@ -143,6 +156,8 @@ class SignInViewModelTest {
             val model = model()
             assertEquals(Session.SignedIn, model.state.value.session)
             assertEquals("completeSignIn cb1 t1", account.calls.single { it.startsWith("complete") })
+            // The link that let the person in also opens its 1:1.
+            assertEquals("t1", model.invites.first())
         }
 
     @Test

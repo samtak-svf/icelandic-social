@@ -457,6 +457,18 @@
         }
       }
     },
+    "person_unnamed": {
+      "comment": "Stands in for an account whose name the server has not given, in titles and rows (docs/decisions/0022).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nafnlaus"
+          }
+        }
+      }
+    },
     "photo": {
       "comment": "Label of a photo message, in the conversation list and for screen readers.",
       "extractionState": "manual",
@@ -957,6 +969,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hætta við"
+          }
+        }
+      }
+    },
+    "back": {
+      "comment": "Screen-reader label of the back arrow at the top of a screen.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Til baka"
           }
         }
       }

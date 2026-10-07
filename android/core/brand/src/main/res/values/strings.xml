@@ -81,6 +81,8 @@
     </plurals>
     <!-- Attach a photo or file to a message. -->
     <string name="attach">Hengja við</string>
+    <!-- Stands in for an account whose name the server has not given, in titles and rows (docs/decisions/0022). -->
+    <string name="person_unnamed">Nafnlaus</string>
     <!-- Label of a photo message, in the conversation list and for screen readers. -->
     <string name="photo">Mynd</string>
     <!-- Label of a file message, in the conversation list and for screen readers. -->
@@ -168,6 +170,8 @@
     <string name="try_again">Reyna aftur</string>
     <!-- Dismisses a confirmation without doing anything. -->
     <string name="cancel">Hætta við</string>
+    <!-- Screen-reader label of the back arrow at the top of a screen. -->
+    <string name="back">Til baka</string>
     <!-- Shares the invite link through the system share sheet. -->
     <string name="share">Deila</string>
     <!-- Heading of the list of the account's devices on "Ég". -->

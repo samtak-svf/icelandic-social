@@ -1,12 +1,15 @@
 package samtak.spjall
 
 import android.content.Context
+import kotlinx.coroutines.MainScope
 import okhttp3.OkHttpClient
 import samtak.spjall.account.Account
 import samtak.spjall.account.CoreAccount
 import samtak.spjall.account.OkHttpTransport
 import samtak.spjall.core.CoreClient
 import samtak.spjall.crypto.StoreKey
+import samtak.spjall.socket.OkHttpWire
+import samtak.spjall.socket.Socket
 import java.io.File
 
 /** The objects the whole app shares, made once per process. */
@@ -17,14 +20,19 @@ class AppGraph(
     // (decisions 0006, 0016).
     private val storeDir = File(context.noBackupFilesDir, "core")
 
+    private val http = OkHttpClient()
+
     val account: Account =
         CoreAccount {
             storeDir.mkdirs()
             val key = StoreKey.forDevice(storeDir).load()
             try {
-                CoreClient.open(storeDir.path, key, OkHttpTransport(BuildConfig.API_BASE_URL, OkHttpClient()))
+                CoreClient.open(storeDir.path, key, OkHttpTransport(BuildConfig.API_BASE_URL, http))
             } finally {
                 key.fill(0)
             }
         }
+
+    /** Open while the app is in the foreground (SpjallApplication). */
+    val socket = Socket(account, OkHttpWire(BuildConfig.API_BASE_URL, http), MainScope())
 }
