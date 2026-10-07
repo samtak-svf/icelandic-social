@@ -4,7 +4,7 @@ import XCTest
 
 /// The core's client from Swift, as the app will call it (decisions 0018
 /// and 0019): two devices, each with its own store and a Swift `Transport`,
-/// sign in and exchange one message.
+/// sign in and exchange a message and a sealed file (0023).
 final class CoreClientTests: XCTestCase {
     private let relay = Relay()
     private var dirs: [URL] = []
@@ -34,16 +34,25 @@ final class CoreClientTests: XCTestCase {
     }
 
     private func deliver(_ client: CoreClient, device: String) throws -> [Event] {
-        try relay.frames(device: device).flatMap { try client.onFrame(frame: $0).events }
+        try relay.frames(device: device).flatMap { try client.onFrame(frame: $0).events }.filter {
+            switch $0 {
+            case .timeline, .profiles: false
+            default: true
+            }
+        }
+    }
+
+    private func conversation(_ a: CoreClient, _ b: CoreClient) throws -> String {
+        let conversation = try a.createConversation(with: ["b"])
+        _ = try a.sync()
+        XCTAssertEqual(try deliver(b, device: "b1"), [.joined(conversation: conversation)])
+        return conversation
     }
 
     func testTwoDevicesExchangeAMessage() throws {
         let a = try phone(account: "a", device: "a1")
         let b = try phone(account: "b", device: "b1")
-
-        let conversation = try a.createConversation(with: ["b"])
-        _ = try a.sync()
-        XCTAssertEqual(try deliver(b, device: "b1"), [.joined(conversation: conversation)])
+        let conversation = try conversation(a, b)
 
         let id = try a.send(conversation: conversation, body: .text(text: "halló"))
         _ = try a.sync()
@@ -57,5 +66,31 @@ final class CoreClientTests: XCTestCase {
         XCTAssertEqual(message.senderDevice, "a1")
         let history = try b.history(conversation: conversation, before: nil, limit: 10)
         XCTAssertTrue(history.contains { $0.envelope.id == id })
+    }
+
+    func testAFileCrossesSealedAndOpensOnTheOtherSide() throws {
+        let a = try phone(account: "a", device: "a1")
+        let b = try phone(account: "b", device: "b1")
+        let conversation = try conversation(a, b)
+        let photo = Data((0..<70_000).map { UInt8($0 % 251) })
+        let file = FileManager.default.temporaryDirectory.appending(path: "\(UUID().uuidString).png")
+        try photo.write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+
+        _ = try a.sendMedia(
+            conversation: conversation, path: file.path(percentEncoded: false), mime: "image/png", caption: "sólarlag")
+        _ = try a.sync()
+        _ = try deliver(b, device: "b1")
+        let items = try b.timeline(conversation: conversation, before: nil, limit: 10)
+        let item = try XCTUnwrap(
+            items.first {
+                if case .media = $0.content { true } else { false }
+            })
+        guard case .media(let mime, let size, let caption) = item.content else { return XCTFail("\(item)") }
+        XCTAssertEqual(mime, "image/png")
+        XCTAssertEqual(size, UInt64(photo.count))
+        XCTAssertEqual(caption, "sólarlag")
+        let opened = try b.media(conversation: conversation, seq: try XCTUnwrap(item.seq))
+        XCTAssertEqual(try Data(contentsOf: URL(filePath: opened)), photo)
     }
 }

@@ -7,6 +7,7 @@ import samtak.spjall.core.HttpMethod
 import samtak.spjall.core.HttpRequest
 import samtak.spjall.core.HttpResponse
 import samtak.spjall.core.Transport
+import java.io.File
 
 /**
  * The delivery service in memory, as far as two clients exchanging one
@@ -15,8 +16,9 @@ import samtak.spjall.core.Transport
  * Signing in hands a link's device the token `token-<device>`, and every
  * other route answers 401 without it. A commit's claim (decision 0020) is
  * found as the JSON text it is in the message's clear authenticated_data,
- * and moves the roster and names the Welcome's recipients. The real rules
- * live in the Worker and in the core's own relay.
+ * and moves the roster and names the Welcome's recipients. Media blobs
+ * (decision 0023) are kept by path for the roster. The real rules live in
+ * the Worker and in the core's own relay.
  */
 class Relay {
     private class Stored(
@@ -44,6 +46,7 @@ class Relay {
     private val packages = mutableMapOf<String, ArrayDeque<String>>()
     private val conversations = mutableMapOf<String, Conversation>()
     private val frames = mutableMapOf<String, MutableList<String>>()
+    private val media = mutableMapOf<String, ByteArray>()
 
     fun link(
         account: String,
@@ -53,7 +56,44 @@ class Relay {
         return object : Transport {
             override fun request(request: HttpRequest): HttpResponse =
                 synchronized(this@Relay) { handle(account, device, request) }
+
+            override fun upload(
+                request: HttpRequest,
+                path: String,
+            ): HttpResponse {
+                val blob = File(path).readBytes()
+                return synchronized(this@Relay) {
+                    refusal(account, device, request)
+                        ?: if (media.putIfAbsent(request.path, blob) != null) refuse(409, "conflict") else NO_CONTENT
+                }
+            }
+
+            override fun download(
+                request: HttpRequest,
+                to: String,
+            ): HttpResponse =
+                synchronized(this@Relay) {
+                    refusal(account, device, request)
+                        ?: media[request.path]?.let {
+                            File(to).writeBytes(it)
+                            HttpResponse(200u, "")
+                        }
+                        ?: refuse(404, "not_found")
+                }
         }
+    }
+
+    /** What a media request is refused with, or null when its device may make it. */
+    private fun refusal(
+        account: String,
+        device: String,
+        request: HttpRequest,
+    ): HttpResponse? {
+        if (request.bearer != "token-$device") return refuse(401, "unauthorized")
+        val parts = request.path.removePrefix("/v1/").split('/')
+        if (parts.size != 4 || parts[0] != "conversations" || parts[2] != "media") return refuse(404, "not_found")
+        val conversation = conversations[parts[1]] ?: return refuse(404, "not_found")
+        return if (account in conversation.roster) null else refuse(403, "not_a_member")
     }
 
     /** The frames waiting on a device's socket, oldest first. */
@@ -172,6 +212,8 @@ class Relay {
     private fun JSONArray.strings() = List(length(), ::getString)
 
     companion object {
+        private val NO_CONTENT = HttpResponse(204u, "")
+
         /** Where Kenni's callback goes, from the frozen URL scheme. */
         const val REDIRECT = "is.samtak.spjall:/kenni"
 

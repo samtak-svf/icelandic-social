@@ -53,6 +53,39 @@ final class URLSessionTransportTests: XCTestCase {
         XCTAssertEqual(response.body, #"{"error":"not_a_member"}"#)
     }
 
+    func testAFileGoesUpAsItsBytes() throws {
+        Stub.answer = .status(204, "")
+        let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try Data([0, 1, 2]).write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let response = try transport().upload(
+            request: HttpRequest(method: .put, path: "/v1/conversations/c1/media/m1", body: nil, bearer: "t"),
+            path: file.path(percentEncoded: false)
+        )
+        XCTAssertEqual(response.status, 204)
+        let sent = try XCTUnwrap(Stub.sent)
+        XCTAssertEqual(sent.request.httpMethod, "PUT")
+        XCTAssertEqual(sent.request.value(forHTTPHeaderField: "Content-Type"), "application/octet-stream")
+        XCTAssertEqual(sent.request.value(forHTTPHeaderField: "Authorization"), "Bearer t")
+    }
+
+    func testAFileComesDownIntoItsPathAndAnErrorLeavesNone() throws {
+        let to = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: to) }
+        let request = HttpRequest(method: .get, path: "/v1/conversations/c1/media/m1", body: nil, bearer: "t")
+
+        Stub.answer = .status(200, "blob")
+        XCTAssertEqual(try transport().download(request: request, to: to.path(percentEncoded: false)).status, 200)
+        XCTAssertEqual(try Data(contentsOf: to), Data("blob".utf8))
+
+        try FileManager.default.removeItem(at: to)
+        Stub.answer = .status(404, #"{"error":"not_found"}"#)
+        let missing = try transport().download(request: request, to: to.path(percentEncoded: false))
+        XCTAssertEqual(missing.status, 404)
+        XCTAssertEqual(missing.body, #"{"error":"not_found"}"#)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: to.path(percentEncoded: false)))
+    }
+
     func testNoAnswerIsUnreachableAndNamesNoURL() {
         Stub.answer = .failure(URLError(.timedOut))
         XCTAssertThrowsError(

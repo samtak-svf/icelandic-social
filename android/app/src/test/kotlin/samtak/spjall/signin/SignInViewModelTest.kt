@@ -48,7 +48,7 @@ class SignInViewModelTest {
     @Test
     fun anInviteNamesTheInviterAndItsTokenGoesWithTheSignIn() =
         runTest(dispatcher) {
-            account.inviters = mapOf("t1" to Inviter("Anna", true))
+            account.inviters = mapOf("t1" to Inviter("a1", "Anna", true))
             val model = model()
             model.openInvite("t1")
             advanceUntilIdle()
@@ -136,7 +136,7 @@ class SignInViewModelTest {
     @Test
     fun theInviteAndCallbackSurviveTheProcessEnding() =
         runTest(dispatcher) {
-            account.inviters = mapOf("t1" to Inviter("Anna", true))
+            account.inviters = mapOf("t1" to Inviter("a1", "Anna", true))
             account.failNext = null
             saved["invite"] = "t1"
             saved["callback"] = "cb1"

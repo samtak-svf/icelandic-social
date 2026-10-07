@@ -35,7 +35,7 @@ final class SignInModelTests: XCTestCase {
     }
 
     func testAnInviteNamesTheInviterAndItsTokenGoesWithTheSignIn() async {
-        account.inviters = ["t1": Inviter(name: "Anna", verified: true)]
+        account.inviters = ["t1": Inviter(accountId: "a1", name: "Anna", verified: true)]
         let model = await model()
         await model.openInvite(token: "t1")
         XCTAssertEqual(model.invite, .from(name: "Anna"))
@@ -118,7 +118,7 @@ final class SignInModelTests: XCTestCase {
     }
 
     func testTheInviteSurvivesTheAppEnding() async {
-        account.inviters = ["t1": Inviter(name: "Anna", verified: true)]
+        account.inviters = ["t1": Inviter(accountId: "a1", name: "Anna", verified: true)]
         let before = await model()
         await before.openInvite(token: "t1")
 

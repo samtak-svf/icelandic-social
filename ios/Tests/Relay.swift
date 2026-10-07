@@ -7,8 +7,9 @@ import SpjallCore
 /// Signing in hands a link's device the token `token-<device>`, and every
 /// other route answers 401 without it. A commit's claim (decision 0020) is
 /// found as the JSON text it is in the message's clear authenticated_data,
-/// and moves the roster and names the Welcome's recipients. The real rules
-/// live in the Worker and in the core's own relay.
+/// and moves the roster and names the Welcome's recipients. Media blobs
+/// (decision 0023) are kept by path for the roster. The real rules live in
+/// the Worker and in the core's own relay.
 final class Relay: @unchecked Sendable {
     /// Where Kenni's callback goes, from the frozen URL scheme.
     static let redirect = "is.samtak.spjall:/kenni"
@@ -46,6 +47,7 @@ final class Relay: @unchecked Sendable {
     private var packages: [String: [String]] = [:]
     private var conversations: [String: Conversation] = [:]
     private var waiting: [String: [String]] = [:]
+    private var media: [String: Data] = [:]
 
     final class Link: Transport, @unchecked Sendable {
         let relay: Relay
@@ -60,6 +62,17 @@ final class Relay: @unchecked Sendable {
 
         func request(request: HttpRequest) throws -> HttpResponse {
             relay.lock.withLock { relay.handle(account: account, device: device, request: request) }
+        }
+
+        func upload(request: HttpRequest, path: String) throws -> HttpResponse {
+            guard let blob = try? Data(contentsOf: URL(filePath: path)) else {
+                throw TransportError.Unreachable(detail: "no file")
+            }
+            return relay.lock.withLock { relay.put(account: account, device: device, request: request, blob: blob) }
+        }
+
+        func download(request: HttpRequest, to: String) throws -> HttpResponse {
+            try relay.lock.withLock { try relay.get(account: account, device: device, request: request, to: to) }
         }
     }
 
@@ -134,6 +147,34 @@ final class Relay: @unchecked Sendable {
         default:
             return refuse(404, "not_found")
         }
+    }
+
+    /// What a media request is refused with, or nil when its device may make it.
+    private func refusal(account: String, device: String, request: HttpRequest) -> HttpResponse? {
+        guard request.bearer == "token-\(device)" else { return refuse(401, "unauthorized") }
+        let parts = request.path.dropFirst("/v1/".count).split(separator: "/").map(String.init)
+        guard parts.count == 4, parts[0] == "conversations", parts[2] == "media",
+            let conversation = conversations[parts[1]]
+        else { return refuse(404, "not_found") }
+        return conversation.roster.contains(account) ? nil : refuse(403, "not_a_member")
+    }
+
+    private func put(account: String, device: String, request: HttpRequest, blob: Data) -> HttpResponse {
+        if let refused = refusal(account: account, device: device, request: request) { return refused }
+        guard media[request.path] == nil else { return refuse(409, "conflict") }
+        media[request.path] = blob
+        return HttpResponse(status: 204, body: "")
+    }
+
+    private func get(account: String, device: String, request: HttpRequest, to: String) throws -> HttpResponse {
+        if let refused = refusal(account: account, device: device, request: request) { return refused }
+        guard let blob = media[request.path] else { return refuse(404, "not_found") }
+        do {
+            try blob.write(to: URL(filePath: to))
+        } catch {
+            throw TransportError.Unreachable(detail: "cannot write")
+        }
+        return HttpResponse(status: 200, body: "")
     }
 
     private func send(account: String, id: String, body: [String: Any]) -> HttpResponse {

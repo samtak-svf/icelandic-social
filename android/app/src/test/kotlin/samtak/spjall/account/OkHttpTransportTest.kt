@@ -12,6 +12,7 @@ import org.junit.Test
 import samtak.spjall.core.HttpMethod
 import samtak.spjall.core.HttpRequest
 import samtak.spjall.core.TransportException
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 class OkHttpTransportTest {
@@ -56,6 +57,43 @@ class OkHttpTransportTest {
         val response = transport().request(HttpRequest(HttpMethod.DELETE, "/v1/devices/d2", null, token))
         assertEquals(403.toUShort(), response.status)
         assertEquals("""{"error":"not_a_member"}""", response.body)
+    }
+
+    @Test
+    fun aPutWithoutAFileSendsAnEmptyBody() {
+        server.enqueue(MockResponse(code = 204))
+        val response = transport().request(HttpRequest(HttpMethod.PUT, "/v1/blocks/b1", null, token))
+        assertEquals(204.toUShort(), response.status)
+        assertEquals("PUT", server.takeRequest().method)
+    }
+
+    @Test
+    fun aFileGoesUpAsItsBytes() {
+        server.enqueue(MockResponse(code = 204))
+        val file = File.createTempFile("blob", null).apply { writeBytes(byteArrayOf(0, 1, 2)) }
+        val request = HttpRequest(HttpMethod.PUT, "/v1/conversations/c1/media/m1", null, token)
+        assertEquals(204.toUShort(), transport().upload(request, file.path).status)
+        val sent = server.takeRequest()
+        assertEquals("PUT", sent.method)
+        assertEquals("application/octet-stream", sent.headers["Content-Type"])
+        assertEquals("Bearer $token", sent.headers["Authorization"])
+        assertEquals(listOf<Byte>(0, 1, 2), sent.body?.toByteArray()?.toList())
+    }
+
+    @Test
+    fun aFileComesDownIntoItsPathAndAnErrorLeavesNone() {
+        server.enqueue(MockResponse(code = 200, body = "blob"))
+        server.enqueue(MockResponse(code = 404, body = """{"error":"not_found"}"""))
+        val to = File.createTempFile("down", null).apply { delete() }
+        val request = HttpRequest(HttpMethod.GET, "/v1/conversations/c1/media/m1", null, token)
+        assertEquals(200.toUShort(), transport().download(request, to.path).status)
+        assertEquals("blob", to.readText())
+
+        to.delete()
+        val missing = transport().download(request, to.path)
+        assertEquals(404.toUShort(), missing.status)
+        assertEquals("""{"error":"not_found"}""", missing.body)
+        assertEquals(false, to.exists())
     }
 
     @Test
