@@ -18,6 +18,20 @@ protocol Account: Sendable {
     func rotateInvite() throws -> String
     func revokeDevice(deviceId: String) throws
     func deleteAccount() throws
+    /// The token the socket authenticates with; nil when signed out.
+    func deviceToken() throws -> String?
+    /// Sends what is queued and reads what is new (decision 0022).
+    func sync() throws -> Outcome
+    /// A frame the socket received.
+    func onFrame(_ frame: String) throws -> Outcome
+    /// The list, newest first, as the core orders it.
+    func conversations() throws -> [Conversation]
+    /// The people met through a shared conversation.
+    func people() throws -> [Person]
+    /// A new conversation with these accounts; its id.
+    func createConversation(with accounts: [String]) throws -> String
+    /// The 1:1 with whoever made this invite, made if there is none; its id.
+    func openInvite(token: String) throws -> String
 }
 
 /// The core's client, opened on first use so a launch never waits for the
@@ -64,6 +78,22 @@ final class CoreAccount: Account, @unchecked Sendable {
     func revokeDevice(deviceId: String) throws { try core().revokeDevice(deviceId: deviceId) }
 
     func deleteAccount() throws { try core().deleteAccount() }
+
+    func deviceToken() throws -> String? { try core().deviceToken() }
+
+    func sync() throws -> Outcome { try core().sync() }
+
+    func onFrame(_ frame: String) throws -> Outcome { try core().onFrame(frame: frame) }
+
+    func conversations() throws -> [Conversation] { try core().conversations() }
+
+    func people() throws -> [Person] { try core().people() }
+
+    func createConversation(with accounts: [String]) throws -> String {
+        try core().createConversation(with: accounts)
+    }
+
+    func openInvite(token: String) throws -> String { try core().openInvite(token: token) }
 }
 
 /// Runs a blocking core call off the main actor.

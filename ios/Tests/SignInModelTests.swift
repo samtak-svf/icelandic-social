@@ -151,4 +151,15 @@ final class SignInModelTests: XCTestCase {
         await model.signIn(browser: kenni("cb:2"))
         XCTAssertEqual(model.signIns, 2)
     }
+
+    func testAnInviteOpenedWhileSignedInWaitsForTheList() async {
+        let account = FakeAccount(signedIn: true)
+        let model = SignInModel(account: account, defaults: defaults)
+        await model.check()
+        await model.openInvite(token: "t1")
+        XCTAssertEqual(model.invite, .none)
+        XCTAssertFalse(account.calls.contains("resolveInvite t1"))
+        XCTAssertEqual(model.takeInvite(), "t1")
+        XCTAssertNil(model.signedInInvite)
+    }
 }

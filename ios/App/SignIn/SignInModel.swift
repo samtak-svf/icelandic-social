@@ -67,9 +67,15 @@ final class SignInModel {
         }
     }
 
-    /// An invite link was opened. Signed in, it has nothing to do yet.
+    /// An invite link opened while signed in, for the list to open; nil once taken.
+    private(set) var signedInInvite: String?
+
+    /// An invite link was opened. Signed in, it waits in `signedInInvite` for the list.
     func openInvite(token: String) async {
-        guard session != .signedIn else { return }
+        guard session != .signedIn else {
+            signedInInvite = token
+            return
+        }
         inviteToken = token
         invite = .loading
         let account = account
@@ -113,9 +119,16 @@ final class SignInModel {
         }
     }
 
+    /// The list has the invite link opened while signed in.
+    func takeInvite() -> String? {
+        defer { signedInInvite = nil }
+        return signedInInvite
+    }
+
     /// The account or this device is gone; start over.
     func signedOut() {
         inviteToken = nil
+        signedInInvite = nil
         pendingCallback = nil
         invite = .none
         problem = nil

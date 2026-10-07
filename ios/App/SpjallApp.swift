@@ -12,11 +12,13 @@ struct SpjallApp: App {
         }
     }
 
+    /// The API host this build names.
+    nonisolated static let apiBase: URL? = (Bundle.main.object(forInfoDictionaryKey: "SpjallAPIHost") as? String)
+        .flatMap { URL(string: "https://\($0)") }
+
     /// The core on this device's store, talking to the API host this build names.
     nonisolated static func openCore() throws -> CoreClient {
-        guard let host = Bundle.main.object(forInfoDictionaryKey: "SpjallAPIHost") as? String,
-            let base = URL(string: "https://\(host)")
-        else { throw NoAPIHost() }
+        guard let base = apiBase else { throw NoAPIHost() }
         let dir = try StoreLocation.directory()
         let key = try StoreKey(accessGroup: StoreLocation.appGroup).load()
         return try CoreClient.open(
@@ -48,9 +50,12 @@ struct RootView: View {
                     onRetry: { Task { await signIn.retry(browser: browser) } }
                 )
             case .signedIn:
-                SignedInView(account: signIn.account, onSignedOut: signIn.signedOut)
-                    // A fresh "Ég" for each sign-in.
-                    .id(signIn.signIns)
+                // Signed in means the core opened, so the build names its API host.
+                if let base = SpjallApp.apiBase {
+                    HomeView(signIn: signIn, wire: URLSessionWire(baseURL: base), onSignedOut: signIn.signedOut)
+                        // A fresh socket, list and "Ég" for each sign-in.
+                        .id(signIn.signIns)
+                }
             }
         }
         .task { await signIn.check() }
@@ -76,22 +81,4 @@ struct RootView: View {
 
     /// The scheme Kenni redirects to (identifiers/ids.json `urlScheme`).
     private static let scheme = Bundle.main.object(forInfoDictionaryKey: "SpjallURLScheme") as? String ?? ""
-}
-
-/// "Ég", until this device is revoked or the account deleted.
-private struct SignedInView: View {
-    @State private var me: MeModel
-    let onSignedOut: () -> Void
-
-    init(account: Account, onSignedOut: @escaping () -> Void) {
-        _me = State(initialValue: MeModel(account: account))
-        self.onSignedOut = onSignedOut
-    }
-
-    var body: some View {
-        MeView(model: me)
-            .onChange(of: me.signedOut) { _, signedOut in
-                if signedOut { onSignedOut() }
-            }
-    }
 }
