@@ -98,7 +98,12 @@ class ConversationViewModel(
     private val reads = Channel<Unit>(Channel.CONFLATED)
     private var failed: (() -> Unit)? = null
     private var marked: ULong? = null
-    private var typingSent = false
+
+    // Typing frames go one at a time and in order. A key never cancels one:
+    // the core counts a frame toward its throttle when it makes it, so a
+    // frame lost on the way leaves nothing sent for 3 s.
+    private val frames = Channel<Boolean>(Channel.UNLIMITED)
+    private var typingStarted = false
     private var typingIdle: Job? = null
     private var typingShown: Job? = null
     private var expiry: Job? = null
@@ -106,6 +111,7 @@ class ConversationViewModel(
 
     init {
         viewModelScope.launch { for (unit in reads) read() }
+        viewModelScope.launch { for (active in frames) typingFrame(active) }
         viewModelScope.launch {
             live.events.collect { event ->
                 when {
@@ -347,9 +353,10 @@ class ConversationViewModel(
 
     private fun startTyping() {
         typingIdle?.cancel()
+        typingStarted = true
+        frames.trySend(true)
         typingIdle =
             viewModelScope.launch {
-                typingFrame(true)
                 delay(TYPING_IDLE_MS)
                 stopTyping()
             }
@@ -357,17 +364,14 @@ class ConversationViewModel(
 
     private fun stopTyping() {
         typingIdle?.cancel()
-        if (!typingSent) return
-        typingSent = false
-        viewModelScope.launch { typingFrame(false) }
+        if (!typingStarted) return
+        typingStarted = false
+        frames.trySend(false)
     }
 
     private suspend fun typingFrame(active: Boolean) {
         try {
-            withContext(io) { account.typing(id, active) }?.let {
-                live.send(it)
-                if (active) typingSent = true
-            }
+            withContext(io) { account.typing(id, active) }?.let { live.send(it) }
         } catch (_: CoreException) {
             // A typing frame that fails to go is not worth a word.
         }

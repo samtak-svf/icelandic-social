@@ -33,9 +33,10 @@ import java.time.format.FormatStyle
 @Composable
 fun Person.shownName(): String = name ?: stringResource(R.string.person_unnamed)
 
-/** A group has no name in v1: it is titled by its members (decision 0022). */
+/** A group has no name in v1: it is titled by its members (decision 0022), or says no one else is there. */
 @Composable
-fun Conversation.title(): String = names(members)
+fun Conversation.title(): String =
+    if (members.isEmpty()) stringResource(R.string.conversation_alone_title) else names(members)
 
 @Composable
 fun names(people: List<Person>): String = people.map { it.shownName() }.joinToString(", ")
@@ -81,9 +82,12 @@ fun VerifiedMark(modifier: Modifier = Modifier) {
     )
 }
 
-/** An item as one line of the list. */
+/** An item as one line of the list; [group] words a member card for a group rather than a 1:1. */
 @Composable
-fun lastLine(item: Item): String =
+fun lastLine(
+    item: Item,
+    group: Boolean = true,
+): String =
     when (val content = item.content) {
         is Content.Text -> content.text
         is Content.Media ->
@@ -93,7 +97,11 @@ fun lastLine(item: Item): String =
         is Content.Members ->
             when {
                 content.added.isNotEmpty() -> stringResource(R.string.member_added_card, names(content.added))
-                content.removed.isNotEmpty() -> stringResource(R.string.member_removed_card, names(content.removed))
+                content.removed.isNotEmpty() ->
+                    stringResource(
+                        if (group) R.string.member_removed_card else R.string.member_removed_card_direct,
+                        names(content.removed),
+                    )
                 else -> stringResource(R.string.new_device_card, names(content.devices))
             }
         is Content.Timer ->

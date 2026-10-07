@@ -108,4 +108,14 @@ class ConversationsViewModelTest {
             assertNull(model.state.value.problem)
             assertEquals(0, live.syncs)
         }
+
+    @Test
+    fun theLinkThatLetThePersonInIsNoDeadLinkWhenUsedUp() =
+        runTest(dispatcher) {
+            val model = model()
+            model.openInvite("operator", signedUp = true)
+            advanceUntilIdle()
+            assertFalse(model.state.value.inviteExpired)
+            assertNull(model.state.value.problem)
+        }
 }

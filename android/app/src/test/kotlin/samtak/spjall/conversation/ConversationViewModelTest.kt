@@ -206,6 +206,20 @@ class ConversationViewModelTest {
         }
 
     @Test
+    fun aKeyWhileTheFrameIsMadeDoesNotLoseIt() =
+        runTest(dispatcher) {
+            val model = model()
+            // The next key comes while the core makes the first frame, as on a fast keyboard.
+            account.onTyping = {
+                account.onTyping = null
+                model.draft("Ha")
+            }
+            model.draft("H")
+            runCurrent()
+            assertEquals(listOf("""{"type":"typing","active":true}"""), live.sent)
+        }
+
+    @Test
     fun sendingAndPausingStopTyping() =
         runTest(dispatcher) {
             val model = model()

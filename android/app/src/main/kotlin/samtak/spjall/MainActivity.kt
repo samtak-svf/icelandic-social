@@ -2,8 +2,11 @@ package samtak.spjall
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -29,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.lifecycleScope
@@ -77,7 +81,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // The app has only a light theme: dark icons on its bars, whatever the system's mode.
+        val bars = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+        enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
         // A recreated activity has handled its intent already.
         if (savedInstanceState == null) handle(intent)
         lifecycleScope.launch {
@@ -133,7 +139,7 @@ class MainActivity : ComponentActivity() {
         val list: ConversationsViewModel =
             viewModel(key = "list-$signIns") { ConversationsViewModel(graph.account, graph.socket) }
         LaunchedEffect(Unit) { graph.socket.start() }
-        LaunchedEffect(list) { signIn.invites.collect(list::openInvite) }
+        LaunchedEffect(list) { signIn.invites.collect { list.openInvite(it.token, it.signedUp) } }
         LaunchedEffect(list) { list.opened.collect { nav.navigate(conversation(it)) } }
         val route =
             nav
@@ -294,6 +300,8 @@ class MainActivity : ComponentActivity() {
     private fun Me(signIns: Int) {
         val me: MeViewModel = viewModel(key = "me-$signIns") { MeViewModel(graph.account) }
         val state by me.state.collectAsStateWithLifecycle()
+        // A block from a conversation menu changes the list here.
+        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { me.load() }
         LaunchedEffect(state.signedOut) {
             if (state.signedOut) {
                 graph.socket.stop()
@@ -327,7 +335,7 @@ class MainActivity : ComponentActivity() {
         try {
             startActivity(graph.files.opener(opened.path, opened.mime))
         } catch (_: ActivityNotFoundException) {
-            // No app on the device opens this kind of file.
+            Toast.makeText(this, R.string.file_no_app, Toast.LENGTH_LONG).show()
         }
     }
 

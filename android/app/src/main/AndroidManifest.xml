@@ -19,11 +19,14 @@
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <!-- singleTask: Kenni's redirect comes back while the Custom Tab sits
              above this activity, and must reach this instance (onNewIntent)
-             rather than start a second one. -->
+             rather than start a second one. adjustResize: the keyboard gives
+             its height to the screen as insets, rather than panning the
+             conversation's header and timeline out of view. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTask">
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

@@ -189,11 +189,19 @@ class FakeAccount(
         call("markRead $conversation $seq")
     }
 
+    /** Runs inside [typing], while the core makes the frame. */
+    var onTyping: (() -> Unit)? = null
+    private var typingMade = false
+
     override fun typing(
         conversation: String,
         active: Boolean,
     ): String? {
         call("typing $conversation $active")
+        onTyping?.invoke()
+        // Like the core: a start counts toward the throttle once it is made.
+        if (active && typingMade) return null
+        typingMade = active
         return if (typingOn) """{"type":"typing","active":$active}""" else null
     }
 

@@ -134,7 +134,7 @@ private fun ConversationRow(
             }
             last?.let {
                 Text(
-                    text = lastLine(it),
+                    text = lastLine(it, group = conversation.members.size > 1),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

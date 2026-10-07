@@ -19,6 +19,10 @@
     <string name="connection_connecting">Tengist…</string>
     <!-- Banner in a conversation this account was removed from; the conversation is read-only (docs/decisions/0022). -->
     <string name="conversation_removed_banner">Þú ert ekki lengur í þessu samtali.</string>
+    <!-- Banner in a conversation no other account is in any more, as a 1:1 after a block; nothing can be sent there (docs/decisions/0024). -->
+    <string name="conversation_alone_banner">Enginn annar er lengur í þessu samtali.</string>
+    <!-- Title of a conversation no other account is in any more; a conversation is otherwise titled by its members (docs/decisions/0022). -->
+    <string name="conversation_alone_title">Enginn annar</string>
     <!-- Banner in a conversation the server refuses this device for; read-only until the next try (docs/decisions/0020, 0022). -->
     <string name="conversation_excluded_banner">Þetta tæki fær ekki aðgang að samtalinu eins og er. Reynt verður aftur.</string>
     <!-- Banner while this device rejoins a conversation it fell behind in (docs/decisions/0021, 0022). -->
@@ -56,6 +60,8 @@
     <string name="member_added_card">%1$s bættist í hópinn.</string>
     <!-- System card when an account leaves a group, is removed, or deletes its account (docs/decisions/0022). -->
     <string name="member_removed_card">%1$s er ekki lengur í hópnum.</string>
+    <!-- System card in a 1:1 when the other account leaves it, as on a block; member_removed_card says the same of a group (docs/decisions/0022). -->
+    <string name="member_removed_card_direct">%1$s er ekki lengur í samtalinu.</string>
     <!-- Explains that a new device sees only messages sent after it joined (docs/decisions/0006). -->
     <string name="history_device_local_notice">Ný tæki sjá aðeins skilaboð sem berast eftir að þau tengjast. Eldri skilaboð eru áfram á tækjunum sem tóku við þeim.</string>
     <!-- Heading of the screen with the user's own invite link and QR code. -->
@@ -91,6 +97,8 @@
     <string name="media_too_large">Skráin er of stór. Hámarkið er 25 MB.</string>
     <!-- A photo or file could not be fetched or did not match its checksum; the bubble offers try_again. -->
     <string name="media_download_failed">Ekki tókst að sækja skrána. Reyndu aftur.</string>
+    <!-- A received file was opened, but no app on the device opens its type. -->
+    <string name="file_no_app">Ekkert forrit í tækinu getur opnað þessa skrá.</string>
     <!-- Quote-reply to a message. -->
     <string name="reply">Svara</string>
     <!-- Edit an own message. -->

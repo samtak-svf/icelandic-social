@@ -61,7 +61,7 @@ class SignInViewModelTest {
             assertEquals(Session.SignedIn, model.state.value.session)
             assertEquals("completeSignIn cb1 t1", account.calls.single { it.startsWith("complete") })
             // The link that let the person in also opens its 1:1.
-            assertEquals("t1", model.invites.first())
+            assertEquals(SignInViewModel.Link("t1", signedUp = true), model.invites.first())
         }
 
     @Test
@@ -70,7 +70,7 @@ class SignInViewModelTest {
             account.signedIn = true
             val model = model()
             model.openInvite("t2")
-            assertEquals("t2", model.invites.first())
+            assertEquals(SignInViewModel.Link("t2", signedUp = false), model.invites.first())
             assertEquals(Invite.None, model.state.value.invite)
             assertEquals(listOf("signedIn", "stockKeyPackages"), account.calls)
         }
@@ -157,7 +157,7 @@ class SignInViewModelTest {
             assertEquals(Session.SignedIn, model.state.value.session)
             assertEquals("completeSignIn cb1 t1", account.calls.single { it.startsWith("complete") })
             // The link that let the person in also opens its 1:1.
-            assertEquals("t1", model.invites.first())
+            assertEquals(SignInViewModel.Link("t1", signedUp = true), model.invites.first())
         }
 
     @Test

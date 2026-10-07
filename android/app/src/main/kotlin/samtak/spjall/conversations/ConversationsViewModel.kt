@@ -65,8 +65,15 @@ class ConversationsViewModel(
         reads.trySend(Unit)
     }
 
-    /** An invite link, opened while signed in: into the 1:1 with whoever made it. */
-    fun openInvite(token: String) {
+    /**
+     * An invite link, opened while signed in: into the 1:1 with whoever made it.
+     * The link that just let the person in may be used up, as the operator's
+     * is: then it is no dead link to tell of.
+     */
+    fun openInvite(
+        token: String,
+        signedUp: Boolean = false,
+    ) {
         _state.update { it.copy(inviteExpired = false) }
         viewModelScope.launch {
             try {
@@ -76,7 +83,7 @@ class ConversationsViewModel(
                 _opened.send(id)
             } catch (e: CoreException) {
                 when {
-                    e.isNotFound() -> _state.update { it.copy(inviteExpired = true) }
+                    e.isNotFound() -> _state.update { it.copy(inviteExpired = !signedUp) }
                     // The operator's link, or this account's own: no 1:1 to open.
                     e is CoreException.Invalid -> Unit
                     else -> _state.update { it.copy(problem = e.problem()) }

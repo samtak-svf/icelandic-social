@@ -1,5 +1,6 @@
 package samtak.spjall.conversation
 
+import android.text.format.Formatter
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -103,7 +105,16 @@ private fun FileRow(
         } else {
             Icon(Icons.Filled.Info, contentDescription = null, tint = foreground)
         }
-        Text(text = lastLine(item), style = MaterialTheme.typography.bodyLarge, color = foreground)
+        Column {
+            Text(text = lastLine(item), style = MaterialTheme.typography.bodyLarge, color = foreground)
+            (item.content as? Content.Media)?.let {
+                Text(
+                    text = Formatter.formatShortFileSize(LocalContext.current, it.size.toLong()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = foreground,
+                )
+            }
+        }
     }
 }
 

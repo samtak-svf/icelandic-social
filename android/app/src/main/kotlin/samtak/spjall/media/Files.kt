@@ -37,7 +37,10 @@ class Files(
         }
     }
 
-    /** A chooser that opens the file at [path] in another app, read-only. */
+    /**
+     * Opens the file at [path] in another app, read-only. With no app for its
+     * type, starting it throws [android.content.ActivityNotFoundException].
+     */
     fun opener(
         path: String,
         mime: String,
@@ -47,11 +50,9 @@ class Files(
         val copy = File(shared, File(path).nameWithoutExtension + extension)
         File(path).copyTo(copy, overwrite = true)
         val uri = FileProvider.getUriForFile(context, "${context.packageName}$AUTHORITY", copy)
-        val view =
-            Intent(Intent.ACTION_VIEW)
-                .setDataAndType(uri, mime)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        return Intent.createChooser(view, null)
+        return Intent(Intent.ACTION_VIEW)
+            .setDataAndType(uri, mime)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
 
     fun clear() {

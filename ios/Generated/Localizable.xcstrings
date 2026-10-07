@@ -109,6 +109,30 @@
         }
       }
     },
+    "conversation_alone_banner": {
+      "comment": "Banner in a conversation no other account is in any more, as a 1:1 after a block; nothing can be sent there (docs/decisions/0024).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enginn annar er lengur í þessu samtali."
+          }
+        }
+      }
+    },
+    "conversation_alone_title": {
+      "comment": "Title of a conversation no other account is in any more; a conversation is otherwise titled by its members (docs/decisions/0022).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enginn annar"
+          }
+        }
+      }
+    },
     "conversation_excluded_banner": {
       "comment": "Banner in a conversation the server refuses this device for; read-only until the next try (docs/decisions/0020, 0022).",
       "extractionState": "manual",
@@ -313,6 +337,18 @@
         }
       }
     },
+    "member_removed_card_direct": {
+      "comment": "System card in a 1:1 when the other account leaves it, as on a block; member_removed_card says the same of a group (docs/decisions/0022).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ er ekki lengur í samtalinu."
+          }
+        }
+      }
+    },
     "history_device_local_notice": {
       "comment": "Explains that a new device sees only messages sent after it joined (docs/decisions/0006).",
       "extractionState": "manual",
@@ -513,6 +549,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ekki tókst að sækja skrána. Reyndu aftur."
+          }
+        }
+      }
+    },
+    "file_no_app": {
+      "comment": "A received file was opened, but no app on the device opens its type.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekkert forrit í tækinu getur opnað þessa skrá."
           }
         }
       }

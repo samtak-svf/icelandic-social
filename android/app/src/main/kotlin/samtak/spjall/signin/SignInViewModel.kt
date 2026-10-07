@@ -67,10 +67,16 @@ class SignInViewModel(
     /** Kenni URLs for the activity to open in a Custom Tab. */
     val browser: Flow<String> = _browser.receiveAsFlow()
 
-    private val _invites = Channel<String>(Channel.BUFFERED)
+    /** An invite token to open as a 1:1; [signedUp] when it is the link that just let the person in. */
+    data class Link(
+        val token: String,
+        val signedUp: Boolean,
+    )
 
-    /** Invite tokens to open as a 1:1, once signed in (decision 0022). */
-    val invites: Flow<String> = _invites.receiveAsFlow()
+    private val _invites = Channel<Link>(Channel.BUFFERED)
+
+    /** Invite links to open as a 1:1, once signed in (decision 0022). */
+    val invites: Flow<Link> = _invites.receiveAsFlow()
 
     init {
         viewModelScope.launch {
@@ -90,7 +96,7 @@ class SignInViewModel(
     /** An invite link was opened: it signs the person in, or, signed in, opens the 1:1 with its maker. */
     fun openInvite(token: String) {
         if (_state.value.session == Session.SignedIn) {
-            _invites.trySend(token)
+            _invites.trySend(Link(token, signedUp = false))
             return
         }
         saved[INVITE] = token
@@ -159,7 +165,7 @@ class SignInViewModel(
                 saved.remove<String>(CALLBACK)
                 signedIn()
                 // The link that let the person in also opens its 1:1.
-                invite?.let(_invites::trySend)
+                invite?.let { _invites.trySend(Link(it, signedUp = true)) }
             } catch (e: CoreException) {
                 // Unreachable keeps the sign-in pending in the core, so the same
                 // callback can finish it; any other failure ended it.
