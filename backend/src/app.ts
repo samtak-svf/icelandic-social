@@ -25,6 +25,7 @@ import { WsFrame } from "./api/frames.ts";
 import { healthRoute } from "./api/health.ts";
 import { resolveInviteRoute, revokeInviteRoute, rotateInviteRoute } from "./api/invites.ts";
 import { claimKeyPackagesRoute, uploadKeyPackagesRoute } from "./api/key-packages.ts";
+import { getMediaRoute, putMediaRoute } from "./api/media.ts";
 import { listMessagesRoute, sendMessageRoute } from "./api/messages.ts";
 import { SOCKET_ACCOUNT, SOCKET_DEVICE, socketRoute } from "./api/socket.ts";
 import { block, blockedByAny, blockList, unblock } from "./blocks.ts";
@@ -36,6 +37,7 @@ import { inviteLink, resolveInvite, revokeInvite, rotateInvite } from "./invites
 import { claim, ownsLeaf, upload } from "./key-packages.ts";
 import { linkHost } from "./link.ts";
 import { log } from "./log.ts";
+import { getMedia, MAX_CIPHERTEXT, putMedia } from "./media.ts";
 import { profile } from "./profiles.ts";
 
 /** OpenAPI 3.1 document metadata; the routes and schemas come from src/api/. */
@@ -268,6 +270,56 @@ export function createApp() {
         : c.json({ error: "not_found" }, 404);
     }
     return c.json({ seq: result.ok.seq, groupInfo: toBase64(result.ok.groupInfo) }, 200);
+  });
+
+  // Media (decision 0023): the roster check is the Conversation DO's, as for messages.
+  app.openapi(putMediaRoute, async (c) => {
+    const { conversationId, mediaId } = c.req.valid("param");
+    const body = c.req.raw.body;
+    // A refusal cancels the body, so the client stops sending it.
+    const refuse = async <T>(answer: T) => (await body?.cancel(), answer);
+    const length = Number(c.req.header("content-length") ?? Number.NaN);
+    if (!Number.isSafeInteger(length) || length < 1 || !body) {
+      return refuse(c.json({ error: "invalid_request" }, 400));
+    }
+    if (length > MAX_CIPHERTEXT) return refuse(c.json({ error: "too_large" }, 413));
+    const { accountId } = c.var.device;
+    const member = await conversation(c.env, conversationId).member(accountId);
+    if ("error" in member) {
+      return member.error === "not_found"
+        ? refuse(c.json({ error: member.error }, 404))
+        : refuse(c.json({ error: "not_a_member" }, 403));
+    }
+    try {
+      const stored = await putMedia(c.env, {
+        mediaId,
+        conversationId,
+        accountId,
+        size: length,
+        body,
+      });
+      if (stored === "conflict") return refuse(c.json({ error: "conflict" }, 409));
+    } catch {
+      // The body ended short of, or ran past, its Content-Length.
+      return c.json({ error: "invalid_request" }, 400);
+    }
+    return c.body(null, 204);
+  });
+
+  app.openapi(getMediaRoute, async (c) => {
+    const { conversationId, mediaId } = c.req.valid("param");
+    const member = await conversation(c.env, conversationId).member(c.var.device.accountId);
+    if ("error" in member) {
+      return member.error === "not_found"
+        ? c.json({ error: member.error }, 404)
+        : c.json({ error: "not_a_member" }, 403);
+    }
+    const object = await getMedia(c.env, conversationId, mediaId);
+    if (!object) return c.json({ error: "not_found" }, 404);
+    return c.body(object.body, 200, {
+      "content-type": "application/octet-stream",
+      "content-length": String(object.size),
+    });
   });
 
   // KeyPackages in D1 (decision 0017).

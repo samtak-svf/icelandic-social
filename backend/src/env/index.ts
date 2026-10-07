@@ -35,6 +35,11 @@ export async function withinLimit(
   return (await binding.limit({ key })).success;
 }
 
+/** R2: the ciphertext of photos and files (decision 0023), in the EU bucket. */
+export function mediaBucket(env: Env): R2Bucket {
+  return env.MEDIA;
+}
+
 /** The `Conversation` DO for one conversation id: its MLS delivery service. */
 export function conversation(env: Env, conversationId: string) {
   return env.CONVERSATION.jurisdiction("eu").getByName(conversationId);

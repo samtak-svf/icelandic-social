@@ -47,6 +47,10 @@
     ],
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Conversation", "Inbox"] }],
+  // Once a day the Worker deletes media past its 30 days (decision 0023). An
+  // R2 lifecycle rule on spjall-media is the backstop, made with the bucket:
+  //   wrangler r2 bucket lifecycle add spjall-media expire-media --expire-days 31 --jurisdiction eu
+  "triggers": { "crons": ["17 3 * * *"] },
   // Workers rate limits, read only through src/env/. Each is counted per
   // Cloudflare location, so it is a brake on abuse, not an exact quota.
   // PUBLIC_LIMIT is per address on the routes a person reaches before

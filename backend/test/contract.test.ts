@@ -43,6 +43,7 @@ describe("the delivery contract", () => {
       "get /v1/accounts/{accountId} getAccount",
       "get /v1/blocks listBlocks",
       "get /v1/conversations/{conversationId}/group-info getGroupInfo",
+      "get /v1/conversations/{conversationId}/media/{mediaId} getMedia",
       "get /v1/conversations/{conversationId}/messages listMessages",
       "get /v1/conversations/{conversationId}/welcome getWelcome",
       "get /v1/invites/{token} resolveInvite",
@@ -56,6 +57,7 @@ describe("the delivery contract", () => {
       "post /v1/key-packages uploadKeyPackages",
       "post /v1/me/invite rotateInvite",
       "put /v1/blocks/{accountId} blockAccount",
+      "put /v1/conversations/{conversationId}/media/{mediaId} putMedia",
     ]);
   });
 

@@ -350,6 +350,12 @@ export class Conversation extends DurableObject<Env> {
     return { ok: null };
   }
 
+  /** Whether the account is in the roster now: who may store or fetch media (decision 0023). */
+  async member(account: string): Promise<Result<null>> {
+    if (!this.meta()) return { error: "not_found" };
+    return this.isMember(account) ? { ok: null } : { error: "not_a_member" };
+  }
+
   /** Drops an account that no longer exists (decision 0014, `DELETE /v1/me`). */
   async removeAccount(account: string): Promise<void> {
     this.sql.exec("DELETE FROM roster WHERE account = ?", account);

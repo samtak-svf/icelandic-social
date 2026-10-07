@@ -1,6 +1,7 @@
 import { base64url } from "./bytes.ts";
 import { conversation, db, inbox, kennitalaKey } from "./env/index.ts";
 import type { Person } from "./identity.ts";
+import { deleteAccountMedia } from "./media.ts";
 
 // Accounts and devices in D1 (decision 0014).
 
@@ -212,7 +213,7 @@ export async function deleteAccount(env: Env, accountId: string): Promise<void> 
   const conversations = Object.keys(await box.latest());
   await Promise.all(conversations.map((id) => conversation(env, id).removeAccount(accountId)));
   await box.wipe();
-  // Media in R2 go here once there is an upload route; today there are none.
+  await deleteAccountMedia(env, accountId);
   // Devices, KeyPackages, invites, roster copies and blocks cascade;
   // invited_by elsewhere goes null.
   await db(env).prepare("DELETE FROM accounts WHERE account_id = ?").bind(accountId).run();
