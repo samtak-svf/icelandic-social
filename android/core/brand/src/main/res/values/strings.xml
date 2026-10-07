@@ -9,6 +9,20 @@
     <string name="tab_me">Ég</string>
     <!-- Action that starts a new conversation. -->
     <string name="new_conversation">Nýtt hjal</string>
+    <!-- The conversation list when there is none yet; points at the invite link (docs/decisions/0022). -->
+    <string name="conversations_empty">Engin samtöl enn. Deildu hlekknum þínum til að hefja samtal.</string>
+    <!-- The new-conversation picker when the person has met nobody yet; points at the invite link (docs/decisions/0022). -->
+    <string name="people_empty">Hér birtist fólk sem þú hefur spjallað við. Deildu hlekknum þínum til að hefja fyrsta samtalið.</string>
+    <!-- Line on the conversation list while the app has no connection to the server (docs/decisions/0022). -->
+    <string name="connection_offline">Ekkert samband. Skilaboð berast þegar sambandið kemst aftur á.</string>
+    <!-- Line on the conversation list while the app reconnects. -->
+    <string name="connection_connecting">Tengist…</string>
+    <!-- Banner in a conversation this account was removed from; the conversation is read-only (docs/decisions/0022). -->
+    <string name="conversation_removed_banner">Þú ert ekki lengur í þessu samtali.</string>
+    <!-- Banner in a conversation the server refuses this device for; read-only until the next try (docs/decisions/0020, 0022). -->
+    <string name="conversation_excluded_banner">Þetta tæki fær ekki aðgang að samtalinu eins og er. Reynt verður aftur.</string>
+    <!-- Banner while this device rejoins a conversation it fell behind in (docs/decisions/0021, 0022). -->
+    <string name="conversation_stale_banner">Samtalið er að tengjast aftur. Það gæti vantað skilaboð sem bárust á meðan.</string>
     <!-- Button on an invite landing that opens a conversation with the inviter. -->
     <string name="contact_action">Hjala</string>
     <!-- Share your own invite link or QR code (docs/decisions/0009). -->
@@ -17,6 +31,14 @@
     <string name="composer_placeholder">Skrifaðu skilaboð…</string>
     <!-- Send button. -->
     <string name="send">Senda</string>
+    <!-- Status of an own message that is still being sent. -->
+    <string name="message_sending">Í sendingu</string>
+    <!-- Status of an own message that could not be sent; the bubble offers try_again. -->
+    <string name="message_failed">Ekki sent.</string>
+    <!-- Day separator for today's messages. -->
+    <string name="day_today">Í dag</string>
+    <!-- Day separator for yesterday's messages. -->
+    <string name="day_yesterday">Í gær</string>
     <!-- Badge on a person verified through Kenni. -->
     <string name="verified_with_kennitala">Staðfest með kennitölu</string>
     <!-- Unread messages in a conversation. -->
@@ -30,6 +52,10 @@
     <string name="notification_channel_messages_description">Ný skilaboð í samtölunum þínum.</string>
     <!-- System card in a conversation when a member adds a device (from an MLS add commit). -->
     <string name="new_device_card">%1$s bætti við nýju tæki.</string>
+    <!-- System card when an account joins a group (docs/decisions/0022). -->
+    <string name="member_added_card">%1$s bættist í hópinn.</string>
+    <!-- System card when an account leaves a group, is removed, or deletes its account (docs/decisions/0022). -->
+    <string name="member_removed_card">%1$s er ekki lengur í hópnum.</string>
     <!-- Explains that a new device sees only messages sent after it joined (docs/decisions/0006). -->
     <string name="history_device_local_notice">Ný tæki sjá aðeins skilaboð sem berast eftir að þau tengjast. Eldri skilaboð eru áfram á tækjunum sem tóku við þeim.</string>
     <!-- Heading of the screen with the user's own invite link and QR code. -->
@@ -55,6 +81,14 @@
     </plurals>
     <!-- Attach a photo or file to a message. -->
     <string name="attach">Hengja við</string>
+    <!-- Label of a photo message, in the conversation list and for screen readers. -->
+    <string name="photo">Mynd</string>
+    <!-- Label of a file message, in the conversation list and for screen readers. -->
+    <string name="file">Skrá</string>
+    <!-- A chosen photo or file is over the limit (docs/decisions/0023). -->
+    <string name="media_too_large">Skráin er of stór. Hámarkið er 25 MB.</string>
+    <!-- A photo or file could not be fetched or did not match its checksum; the bubble offers try_again. -->
+    <string name="media_download_failed">Ekki tókst að sækja skrána. Reyndu aftur.</string>
     <!-- Quote-reply to a message. -->
     <string name="reply">Svara</string>
     <!-- Edit an own message. -->
@@ -63,6 +97,8 @@
     <string name="edited_marker">breytt</string>
     <!-- Delete an own message on every member's devices. -->
     <string name="delete_for_everyone">Eyða fyrir öllum</string>
+    <!-- Confirmation before deleting an own message for everyone. -->
+    <string name="delete_confirm">Eyða skilaboðunum fyrir öllum? Þau hverfa af tækjum allra í samtalinu.</string>
     <!-- Tombstone left where a deleted message was. -->
     <string name="message_deleted">Þessum skilaboðum var eytt.</string>
     <!-- Add a reaction to a message. -->
@@ -73,8 +109,27 @@
     <string name="disappearing_set_card">%1$s stillti skilaboð á að hverfa eftir %2$s.</string>
     <!-- System card when a member turns the disappearing timer off. -->
     <string name="disappearing_off_card">%1$s slökkti á skilaboðum sem hverfa.</string>
+    <!-- Timer option: messages do not disappear. -->
+    <string name="disappearing_off">Slökkt</string>
+    <!-- Timer option label; duration is one of the duration keys below (docs/decisions/0022). -->
+    <string name="disappearing_option">Eftir %1$s</string>
+    <!-- A duration in hours, in the form that follows "eftir" in disappearing_set_card and disappearing_option. -->
+    <plurals name="duration_hours">
+        <item quantity="one">%1$d klukkustund</item>
+        <item quantity="other">%1$d klukkustundir</item>
+    </plurals>
+    <!-- A duration in days, in the form that follows "eftir" in disappearing_set_card and disappearing_option. -->
+    <plurals name="duration_days">
+        <item quantity="one">%1$d dag</item>
+        <item quantity="other">%1$d daga</item>
+    </plurals>
     <!-- Marker on an own message the other party has read. -->
     <string name="read_marker">Lesið</string>
+    <!-- Under an own message in a group: how many members have read it (docs/decisions/0022). -->
+    <plurals name="read_by_count">
+        <item quantity="one">%1$d hefur lesið</item>
+        <item quantity="other">%1$d hafa lesið</item>
+    </plurals>
     <!-- Toggle in Me: send read markers. -->
     <string name="read_receipts_setting">Láta vita þegar ég les</string>
     <!-- Explains that the read-marker toggle is reciprocal. -->
@@ -83,10 +138,20 @@
     <string name="typing_setting">Sýna þegar ég skrifa</string>
     <!-- Shown while another member is typing. -->
     <string name="typing_indicator">%1$s er að skrifa…</string>
+    <!-- Shown while a member of a group is typing; a group's typing frame does not prove who sent it, so it names no one (docs/decisions/0022). -->
+    <string name="typing_indicator_group">Einhver er að skrifa…</string>
     <!-- Block a person. -->
     <string name="block">Loka á</string>
     <!-- Confirmation before blocking. -->
     <string name="block_confirm">Loka á %1$s? Viðkomandi getur ekki sent þér skilaboð.</string>
+    <!-- Unblock a person, from the blocked list (docs/decisions/0024). -->
+    <string name="unblock">Opna fyrir</string>
+    <!-- Confirmation before unblocking. -->
+    <string name="unblock_confirm">Opna fyrir %1$s? Viðkomandi getur aftur sent þér skilaboð.</string>
+    <!-- Heading of the list of blocked people on "Ég" (docs/decisions/0024). -->
+    <string name="blocked_title">Lokað á</string>
+    <!-- The blocked list when it is empty. -->
+    <string name="blocked_empty">Þú hefur ekki lokað á neinn.</string>
     <!-- Delete own account (DELETE /me). -->
     <string name="delete_account">Eyða aðgangi</string>
     <!-- Confirmation before deleting the account; says what the server deletes and what it cannot. -->

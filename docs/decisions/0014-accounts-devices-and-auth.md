@@ -33,7 +33,8 @@ token>`.** There is no account-level session and no refresh token. A token lives
 - **`DELETE /v1/me` deletes the account**, in this order:
   1. every device token, so nothing can act for the account while the rest is deleted;
   2. the `Inbox` DO's storage (`deleteAll`);
-  3. the media objects in R2 that the account uploaded;
+  3. the media objects in R2 that the account uploaded, found by their D1 rows
+     ([0023](0023-media-as-encrypted-blobs.md));
   4. the account's D1 rows, including the kennitala HMAC and its invites.
 
   What the server cannot delete: messages already delivered to other people's devices, and

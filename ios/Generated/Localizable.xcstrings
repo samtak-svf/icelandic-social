@@ -49,6 +49,90 @@
         }
       }
     },
+    "conversations_empty": {
+      "comment": "The conversation list when there is none yet; points at the invite link (docs/decisions/0022).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engin samtöl enn. Deildu hlekknum þínum til að hefja samtal."
+          }
+        }
+      }
+    },
+    "people_empty": {
+      "comment": "The new-conversation picker when the person has met nobody yet; points at the invite link (docs/decisions/0022).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hér birtist fólk sem þú hefur spjallað við. Deildu hlekknum þínum til að hefja fyrsta samtalið."
+          }
+        }
+      }
+    },
+    "connection_offline": {
+      "comment": "Line on the conversation list while the app has no connection to the server (docs/decisions/0022).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekkert samband. Skilaboð berast þegar sambandið kemst aftur á."
+          }
+        }
+      }
+    },
+    "connection_connecting": {
+      "comment": "Line on the conversation list while the app reconnects.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tengist…"
+          }
+        }
+      }
+    },
+    "conversation_removed_banner": {
+      "comment": "Banner in a conversation this account was removed from; the conversation is read-only (docs/decisions/0022).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þú ert ekki lengur í þessu samtali."
+          }
+        }
+      }
+    },
+    "conversation_excluded_banner": {
+      "comment": "Banner in a conversation the server refuses this device for; read-only until the next try (docs/decisions/0020, 0022).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þetta tæki fær ekki aðgang að samtalinu eins og er. Reynt verður aftur."
+          }
+        }
+      }
+    },
+    "conversation_stale_banner": {
+      "comment": "Banner while this device rejoins a conversation it fell behind in (docs/decisions/0021, 0022).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Samtalið er að tengjast aftur. Það gæti vantað skilaboð sem bárust á meðan."
+          }
+        }
+      }
+    },
     "contact_action": {
       "comment": "Button on an invite landing that opens a conversation with the inviter.",
       "extractionState": "manual",
@@ -93,6 +177,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "Senda"
+          }
+        }
+      }
+    },
+    "message_sending": {
+      "comment": "Status of an own message that is still being sent.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Í sendingu"
+          }
+        }
+      }
+    },
+    "message_failed": {
+      "comment": "Status of an own message that could not be sent; the bubble offers try_again.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekki sent."
+          }
+        }
+      }
+    },
+    "day_today": {
+      "comment": "Day separator for today's messages.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Í dag"
+          }
+        }
+      }
+    },
+    "day_yesterday": {
+      "comment": "Day separator for yesterday's messages.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Í gær"
           }
         }
       }
@@ -153,6 +285,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@ bætti við nýju tæki."
+          }
+        }
+      }
+    },
+    "member_added_card": {
+      "comment": "System card when an account joins a group (docs/decisions/0022).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ bættist í hópinn."
+          }
+        }
+      }
+    },
+    "member_removed_card": {
+      "comment": "System card when an account leaves a group, is removed, or deletes its account (docs/decisions/0022).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ er ekki lengur í hópnum."
           }
         }
       }
@@ -301,6 +457,54 @@
         }
       }
     },
+    "photo": {
+      "comment": "Label of a photo message, in the conversation list and for screen readers.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mynd"
+          }
+        }
+      }
+    },
+    "file": {
+      "comment": "Label of a file message, in the conversation list and for screen readers.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrá"
+          }
+        }
+      }
+    },
+    "media_too_large": {
+      "comment": "A chosen photo or file is over the limit (docs/decisions/0023).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skráin er of stór. Hámarkið er 25 MB."
+          }
+        }
+      }
+    },
+    "media_download_failed": {
+      "comment": "A photo or file could not be fetched or did not match its checksum; the bubble offers try_again.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekki tókst að sækja skrána. Reyndu aftur."
+          }
+        }
+      }
+    },
     "reply": {
       "comment": "Quote-reply to a message.",
       "extractionState": "manual",
@@ -345,6 +549,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Eyða fyrir öllum"
+          }
+        }
+      }
+    },
+    "delete_confirm": {
+      "comment": "Confirmation before deleting an own message for everyone.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eyða skilaboðunum fyrir öllum? Þau hverfa af tækjum allra í samtalinu."
           }
         }
       }
@@ -409,6 +625,78 @@
         }
       }
     },
+    "disappearing_off": {
+      "comment": "Timer option: messages do not disappear.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slökkt"
+          }
+        }
+      }
+    },
+    "disappearing_option": {
+      "comment": "Timer option label; duration is one of the duration keys below (docs/decisions/0022).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eftir %1$@"
+          }
+        }
+      }
+    },
+    "duration_hours": {
+      "comment": "A duration in hours, in the form that follows \"eftir\" in disappearing_set_card and disappearing_option.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld klukkustund"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld klukkustundir"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "duration_days": {
+      "comment": "A duration in days, in the form that follows \"eftir\" in disappearing_set_card and disappearing_option.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld dag"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld daga"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "read_marker": {
       "comment": "Marker on an own message the other party has read.",
       "extractionState": "manual",
@@ -417,6 +705,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lesið"
+          }
+        }
+      }
+    },
+    "read_by_count": {
+      "comment": "Under an own message in a group: how many members have read it (docs/decisions/0022).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld hefur lesið"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld hafa lesið"
+                }
+              }
+            }
           }
         }
       }
@@ -469,6 +781,18 @@
         }
       }
     },
+    "typing_indicator_group": {
+      "comment": "Shown while a member of a group is typing; a group's typing frame does not prove who sent it, so it names no one (docs/decisions/0022).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einhver er að skrifa…"
+          }
+        }
+      }
+    },
     "block": {
       "comment": "Block a person.",
       "extractionState": "manual",
@@ -489,6 +813,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "Loka á %1$@? Viðkomandi getur ekki sent þér skilaboð."
+          }
+        }
+      }
+    },
+    "unblock": {
+      "comment": "Unblock a person, from the blocked list (docs/decisions/0024).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opna fyrir"
+          }
+        }
+      }
+    },
+    "unblock_confirm": {
+      "comment": "Confirmation before unblocking.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opna fyrir %1$@? Viðkomandi getur aftur sent þér skilaboð."
+          }
+        }
+      }
+    },
+    "blocked_title": {
+      "comment": "Heading of the list of blocked people on \"Ég\" (docs/decisions/0024).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokað á"
+          }
+        }
+      }
+    },
+    "blocked_empty": {
+      "comment": "The blocked list when it is empty.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þú hefur ekki lokað á neinn."
           }
         }
       }

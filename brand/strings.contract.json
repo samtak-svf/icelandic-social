@@ -18,6 +18,34 @@
       "surfaces": ["android", "ios"],
       "description": "Action that starts a new conversation."
     },
+    "conversations_empty": {
+      "surfaces": ["android", "ios"],
+      "description": "The conversation list when there is none yet; points at the invite link (docs/decisions/0022)."
+    },
+    "people_empty": {
+      "surfaces": ["android", "ios"],
+      "description": "The new-conversation picker when the person has met nobody yet; points at the invite link (docs/decisions/0022)."
+    },
+    "connection_offline": {
+      "surfaces": ["android", "ios"],
+      "description": "Line on the conversation list while the app has no connection to the server (docs/decisions/0022)."
+    },
+    "connection_connecting": {
+      "surfaces": ["android", "ios"],
+      "description": "Line on the conversation list while the app reconnects."
+    },
+    "conversation_removed_banner": {
+      "surfaces": ["android", "ios"],
+      "description": "Banner in a conversation this account was removed from; the conversation is read-only (docs/decisions/0022)."
+    },
+    "conversation_excluded_banner": {
+      "surfaces": ["android", "ios"],
+      "description": "Banner in a conversation the server refuses this device for; read-only until the next try (docs/decisions/0020, 0022)."
+    },
+    "conversation_stale_banner": {
+      "surfaces": ["android", "ios"],
+      "description": "Banner while this device rejoins a conversation it fell behind in (docs/decisions/0021, 0022)."
+    },
     "contact_action": {
       "surfaces": ["android", "ios"],
       "description": "Button on an invite landing that opens a conversation with the inviter."
@@ -31,6 +59,22 @@
       "description": "Empty message composer."
     },
     "send": { "surfaces": ["android", "ios"], "description": "Send button." },
+    "message_sending": {
+      "surfaces": ["android", "ios"],
+      "description": "Status of an own message that is still being sent."
+    },
+    "message_failed": {
+      "surfaces": ["android", "ios"],
+      "description": "Status of an own message that could not be sent; the bubble offers try_again."
+    },
+    "day_today": {
+      "surfaces": ["android", "ios"],
+      "description": "Day separator for today's messages."
+    },
+    "day_yesterday": {
+      "surfaces": ["android", "ios"],
+      "description": "Day separator for yesterday's messages."
+    },
     "verified_with_kennitala": {
       "surfaces": ["android", "ios"],
       "description": "Badge on a person verified through Kenni."
@@ -57,6 +101,20 @@
       "surfaces": ["android", "ios"],
       "description": "System card in a conversation when a member adds a device (from an MLS add commit).",
       "placeholders": { "name": "string" }
+    },
+    "member_added_card": {
+      "surfaces": ["android", "ios"],
+      "description": "System card when an account joins a group (docs/decisions/0022).",
+      "placeholders": {
+        "name": "string"
+      }
+    },
+    "member_removed_card": {
+      "surfaces": ["android", "ios"],
+      "description": "System card when an account leaves a group, is removed, or deletes its account (docs/decisions/0022).",
+      "placeholders": {
+        "name": "string"
+      }
     },
     "history_device_local_notice": {
       "surfaces": ["android", "ios"],
@@ -113,6 +171,22 @@
       "surfaces": ["android", "ios"],
       "description": "Attach a photo or file to a message."
     },
+    "photo": {
+      "surfaces": ["android", "ios"],
+      "description": "Label of a photo message, in the conversation list and for screen readers."
+    },
+    "file": {
+      "surfaces": ["android", "ios"],
+      "description": "Label of a file message, in the conversation list and for screen readers."
+    },
+    "media_too_large": {
+      "surfaces": ["android", "ios"],
+      "description": "A chosen photo or file is over the limit (docs/decisions/0023)."
+    },
+    "media_download_failed": {
+      "surfaces": ["android", "ios"],
+      "description": "A photo or file could not be fetched or did not match its checksum; the bubble offers try_again."
+    },
     "reply": { "surfaces": ["android", "ios"], "description": "Quote-reply to a message." },
     "edit": { "surfaces": ["android", "ios"], "description": "Edit an own message." },
     "edited_marker": {
@@ -122,6 +196,10 @@
     "delete_for_everyone": {
       "surfaces": ["android", "ios"],
       "description": "Delete an own message on every member's devices."
+    },
+    "delete_confirm": {
+      "surfaces": ["android", "ios"],
+      "description": "Confirmation before deleting an own message for everyone."
     },
     "message_deleted": {
       "surfaces": ["android", "ios"],
@@ -142,9 +220,44 @@
       "description": "System card when a member turns the disappearing timer off.",
       "placeholders": { "name": "string" }
     },
+    "disappearing_off": {
+      "surfaces": ["android", "ios"],
+      "description": "Timer option: messages do not disappear."
+    },
+    "disappearing_option": {
+      "surfaces": ["android", "ios"],
+      "description": "Timer option label; duration is one of the duration keys below (docs/decisions/0022).",
+      "placeholders": {
+        "duration": "string"
+      }
+    },
+    "duration_hours": {
+      "surfaces": ["android", "ios"],
+      "description": "A duration in hours, in the form that follows \"eftir\" in disappearing_set_card and disappearing_option.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "duration_days": {
+      "surfaces": ["android", "ios"],
+      "description": "A duration in days, in the form that follows \"eftir\" in disappearing_set_card and disappearing_option.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
     "read_marker": {
       "surfaces": ["android", "ios"],
       "description": "Marker on an own message the other party has read."
+    },
+    "read_by_count": {
+      "surfaces": ["android", "ios"],
+      "description": "Under an own message in a group: how many members have read it (docs/decisions/0022).",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
     },
     "read_receipts_setting": {
       "surfaces": ["android", "ios"],
@@ -163,11 +276,34 @@
       "description": "Shown while another member is typing.",
       "placeholders": { "name": "string" }
     },
+    "typing_indicator_group": {
+      "surfaces": ["android", "ios"],
+      "description": "Shown while a member of a group is typing; a group's typing frame does not prove who sent it, so it names no one (docs/decisions/0022)."
+    },
     "block": { "surfaces": ["android", "ios"], "description": "Block a person." },
     "block_confirm": {
       "surfaces": ["android", "ios"],
       "description": "Confirmation before blocking.",
       "placeholders": { "name": "string" }
+    },
+    "unblock": {
+      "surfaces": ["android", "ios"],
+      "description": "Unblock a person, from the blocked list (docs/decisions/0024)."
+    },
+    "unblock_confirm": {
+      "surfaces": ["android", "ios"],
+      "description": "Confirmation before unblocking.",
+      "placeholders": {
+        "name": "string"
+      }
+    },
+    "blocked_title": {
+      "surfaces": ["android", "ios"],
+      "description": "Heading of the list of blocked people on \"Ég\" (docs/decisions/0024)."
+    },
+    "blocked_empty": {
+      "surfaces": ["android", "ios"],
+      "description": "The blocked list when it is empty."
     },
     "delete_account": {
       "surfaces": ["android", "ios"],

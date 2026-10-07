@@ -17,6 +17,12 @@
       "use": "secondary lines on the cream band"
     },
     { "fg": "muted-fg", "bg": "muted", "level": "aaNormal", "use": "pressed rows" },
+    {
+      "fg": "fg",
+      "bg": "muted",
+      "level": "aaNormal",
+      "use": "reaction chips under a bubble (own reactions use the gold chip pair)"
+    },
     { "fg": "primary", "bg": "surface", "level": "aaNormal", "use": "text buttons and links" },
     { "fg": "primary-fg", "bg": "primary", "level": "aaNormal", "use": "filled buttons" },
     { "fg": "secondary-fg", "bg": "secondary", "level": "aaNormal", "use": "gold chips" },
