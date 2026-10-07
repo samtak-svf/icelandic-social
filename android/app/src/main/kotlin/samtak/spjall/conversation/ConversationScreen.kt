@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -77,7 +78,7 @@ fun ConversationScreen(
     var deleting by remember { mutableStateOf<Item?>(null) }
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.safeDrawingPadding().imePadding()) {
-            TopBar(state, actions::back)
+            TopBar(state, actions)
             conversation?.let { Banner(it.state) }
             state.problem?.let { Box(Modifier.padding(16.dp)) { ProblemCard(it, actions::retry) } }
             Timeline(
@@ -117,14 +118,14 @@ fun ConversationScreen(
 @Composable
 private fun TopBar(
     state: ConversationViewModel.State,
-    onBack: () -> Unit,
+    actions: ConversationActions,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(end = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        IconButton(onClick = onBack) {
+        IconButton(onClick = actions::back) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
         }
         state.conversation?.let {
@@ -136,6 +137,8 @@ private fun TopBar(
                 modifier = Modifier.weight(1f, fill = false).semantics { heading() },
             )
             if (it.members.size == 1 && it.members.single().verified) VerifiedMark()
+            Spacer(modifier = Modifier.weight(1f))
+            ConversationMenu(it, actions)
         }
     }
 }
@@ -189,7 +192,7 @@ private fun Timeline(
             when (row) {
                 is Row.Day -> DayLine(row.date)
                 is Row.Card -> CardLine(row.item)
-                is Row.Bubble -> Bubble(row, group, actions, onDelete)
+                is Row.Bubble -> Bubble(row, group, row.item.seq?.let { state.media[it] }, actions, onDelete)
             }
         }
     }
@@ -258,6 +261,7 @@ private fun Composer(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            if (state.mode == ConversationViewModel.Mode.New) AttachButton(actions)
             OutlinedTextField(
                 value = state.draft,
                 onValueChange = actions::draft,

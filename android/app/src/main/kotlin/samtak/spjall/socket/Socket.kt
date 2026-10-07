@@ -68,6 +68,9 @@ interface Live {
     /** Runs a core call that returns an [Outcome], in turn with the socket's own, and delivers it. */
     fun perform(call: (Account) -> Outcome)
 
+    /** As [perform], but waits for the call, and throws what it threw. */
+    suspend fun performAndWait(call: (Account) -> Outcome)
+
     /** Sends a frame the core made, such as `typing`; dropped while the socket is closed. */
     fun send(frame: String)
 }
@@ -112,6 +115,10 @@ class Socket(
 
     override fun perform(call: (Account) -> Outcome) {
         scope.launch { deliver { call(account) } }
+    }
+
+    override suspend fun performAndWait(call: (Account) -> Outcome) {
+        calls.withLock { emit(withContext(io) { call(account) }) }
     }
 
     override fun send(frame: String) {
@@ -169,9 +176,13 @@ class Socket(
                 } catch (_: CoreException) {
                     return
                 }
-            outcome.frames.forEach { frame -> link?.send(frame) }
-            outcome.events.forEach { _events.emit(it) }
+            emit(outcome)
         }
+    }
+
+    private suspend fun emit(outcome: Outcome) {
+        outcome.frames.forEach { frame -> link?.send(frame) }
+        outcome.events.forEach { _events.emit(it) }
     }
 
     /** Doubling from 1 s to 30 s, each wait drawn from its upper half so that devices spread out. */

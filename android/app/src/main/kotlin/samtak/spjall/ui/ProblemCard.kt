@@ -32,13 +32,14 @@ fun ProblemCard(
                         when (problem) {
                             Problem.Unreachable -> R.string.error_unreachable
                             Problem.InviteRequired -> R.string.invite_required
+                            Problem.TooLarge -> R.string.media_too_large
                             Problem.Generic -> R.string.error_generic
                         },
                     ),
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            // Without an invite, trying again cannot work; a link can.
-            if (problem != Problem.InviteRequired) {
+            // Without an invite, trying again cannot work; a link can. Nor can a smaller file be.
+            if (problem != Problem.InviteRequired && problem != Problem.TooLarge) {
                 TextButton(onClick = onRetry) { Text(stringResource(R.string.try_again)) }
             }
         }

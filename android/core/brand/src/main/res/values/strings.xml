@@ -172,6 +172,8 @@
     <string name="cancel">Hætta við</string>
     <!-- Screen-reader label of the back arrow at the top of a screen. -->
     <string name="back">Til baka</string>
+    <!-- Screen-reader label of the conversation's menu button (the disappearing timer, block). -->
+    <string name="more_options">Fleiri valkostir</string>
     <!-- Shares the invite link through the system share sheet. -->
     <string name="share">Deila</string>
     <!-- Heading of the list of the account's devices on "Ég". -->

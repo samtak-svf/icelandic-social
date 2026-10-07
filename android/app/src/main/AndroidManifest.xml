@@ -49,5 +49,16 @@
                 <data android:pathPrefix="${linkPathPrefix}" />
             </intent-filter>
         </activity>
+        <!-- Serves only the copies made to open a photo or file in another
+             app (media/Files.kt), read-only and per grant. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/shared_files" />
+        </provider>
     </application>
 </manifest>

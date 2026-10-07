@@ -32,6 +32,24 @@ interface ConversationActions {
 
     fun loadOlder()
 
+    /** Opens the photo picker; what is picked is sent. */
+    fun attachPhoto()
+
+    /** Opens the file picker; what is picked is sent. */
+    fun attachFile()
+
+    /** Downloads the photo or file of [item]. */
+    fun fetch(item: Item)
+
+    /** Opens the photo or file of [item] in another app. */
+    fun open(item: Item)
+
+    /** Sets the disappearing timer, or turns it off with null. */
+    fun timer(seconds: UInt?)
+
+    /** Blocks the other person of a 1:1. */
+    fun block()
+
     fun retry()
 
     /** The screen left or went to the background. */

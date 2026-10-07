@@ -79,6 +79,30 @@ class ConversationScreenTest {
 
             override fun loadOlder() = Unit
 
+            override fun attachPhoto() {
+                calls += "attachPhoto"
+            }
+
+            override fun attachFile() {
+                calls += "attachFile"
+            }
+
+            override fun fetch(item: Item) {
+                calls += "fetch ${item.seq}"
+            }
+
+            override fun open(item: Item) {
+                calls += "open ${item.seq}"
+            }
+
+            override fun timer(seconds: UInt?) {
+                calls += "timer $seconds"
+            }
+
+            override fun block() {
+                calls += "block"
+            }
+
             override fun retry() {
                 calls += "retry"
             }
@@ -121,15 +145,18 @@ class ConversationScreenTest {
         members: List<Person> = listOf(anna),
         typing: Boolean = false,
         draft: String = "",
+        media: Map<ULong, ConversationViewModel.Media> = emptyMap(),
+        timer: UInt? = null,
     ) = compose.setContent {
         SpjallTheme {
             ConversationScreen(
                 ConversationViewModel.State(
-                    conversation = Conversation("c1", state, members, null, 0u, null),
+                    conversation = Conversation("c1", state, members, null, 0u, timer),
                     items = items.toList(),
                     loaded = true,
                     typing = typing,
                     draft = draft,
+                    media = media,
                 ),
                 actions,
             )
@@ -245,5 +272,72 @@ class ConversationScreenTest {
         compose.onNodeWithText(text(R.string.composer_placeholder)).assertDoesNotExist()
         compose.onNodeWithContentDescription(text(R.string.back)).performClick()
         assertEquals(listOf("back"), calls)
+    }
+
+    @Test
+    fun theTimerIsPickedFromTheMenu() {
+        show(item(1u, Content.Text("Sæl", null)), timer = 3_600u)
+        compose.onNodeWithContentDescription(text(R.string.more_options)).performClick()
+        compose.onNodeWithText(text(R.string.disappearing_messages)).performClick()
+        val hour = context.resources.getQuantityString(R.plurals.duration_hours, 1, 1)
+        // Picking the timer already set changes nothing.
+        compose.onNodeWithText(context.getString(R.string.disappearing_option, hour)).performClick()
+        assertEquals(emptyList<String>(), calls)
+        compose.onNodeWithContentDescription(text(R.string.more_options)).performClick()
+        compose.onNodeWithText(text(R.string.disappearing_messages)).performClick()
+        compose.onNodeWithText(text(R.string.disappearing_off)).performClick()
+        assertEquals(listOf("timer null"), calls)
+    }
+
+    @Test
+    fun blockAsksFirstAndIsOnlyOfferedInAOneToOne() {
+        show(item(1u, Content.Text("Sæl", null)))
+        compose.onNodeWithContentDescription(text(R.string.more_options)).performClick()
+        compose.onNodeWithText(text(R.string.block)).performClick()
+        compose.onNodeWithText(context.getString(R.string.block_confirm, "Anna Jónsdóttir")).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.block)).performClick()
+        assertEquals(listOf("block"), calls)
+    }
+
+    @Test
+    fun aGroupMenuHasNoBlock() {
+        show(item(1u, Content.Text("Sæl", null)), members = listOf(anna, Person("a3", "Björn", false)))
+        compose.onNodeWithContentDescription(text(R.string.more_options)).performClick()
+        compose.onNodeWithText(text(R.string.disappearing_messages)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.block)).assertDoesNotExist()
+    }
+
+    @Test
+    fun attachOffersPhotoOrFile() {
+        show(item(1u, Content.Text("Sæl", null)))
+        compose.onNodeWithContentDescription(text(R.string.attach)).performClick()
+        compose.onNodeWithText(text(R.string.photo)).performClick()
+        compose.onNodeWithContentDescription(text(R.string.attach)).performClick()
+        compose.onNodeWithText(text(R.string.file)).performClick()
+        assertEquals(listOf("attachPhoto", "attachFile"), calls)
+    }
+
+    @Test
+    fun aPhotoIsFetchedAndAFileOpensOnATap() {
+        show(
+            item(1u, Content.Media("image/jpeg", 10uL, "Fjallið")),
+            item(2u, Content.Media("application/pdf", 10uL, null)),
+        )
+        compose.waitForIdle()
+        assertEquals("a photo downloads when it shows; a file waits", listOf("fetch 1"), calls)
+        compose.onNodeWithText("Fjallið").assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.file)).performClick()
+        assertEquals(listOf("fetch 1", "open 2"), calls)
+    }
+
+    @Test
+    fun aFailedDownloadCanBeTriedAgain() {
+        show(
+            item(2u, Content.Media("application/pdf", 10uL, null)),
+            media = mapOf(2uL to ConversationViewModel.Media.Failed),
+        )
+        compose.onNodeWithText(text(R.string.media_download_failed)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.try_again)).performClick()
+        assertEquals(listOf("fetch 2"), calls)
     }
 }

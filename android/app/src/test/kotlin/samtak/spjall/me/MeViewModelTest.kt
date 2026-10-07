@@ -18,6 +18,8 @@ import org.junit.Test
 import samtak.spjall.account.FakeAccount
 import samtak.spjall.account.Problem
 import samtak.spjall.account.unreachable
+import samtak.spjall.core.Person
+import samtak.spjall.core.Settings
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MeViewModelTest {
@@ -123,5 +125,38 @@ class MeViewModelTest {
                 model.state.value.me
                     ?.accountId,
             )
+        }
+
+    @Test
+    fun theTogglesAreShownAndChanged() =
+        runTest(dispatcher) {
+            val model = model()
+            assertEquals(Settings(readMarkers = true, typing = true), model.state.value.settings)
+            model.readMarkers(false)
+            advanceUntilIdle()
+            model.typing(false)
+            advanceUntilIdle()
+            assertEquals(Settings(readMarkers = false, typing = false), model.state.value.settings)
+            assertEquals(Settings(readMarkers = false, typing = false), account.current)
+        }
+
+    @Test
+    fun theBlockedAreListedAndCanBeUnblocked() =
+        runTest(dispatcher) {
+            account.blockedPeople = mutableListOf(Person("a3", "Bjarni", false), Person("a2", "Anna", true))
+            val model = model()
+            assertEquals(
+                listOf("a3", "a2"),
+                model.state.value.blocked
+                    .map { it.account },
+            )
+            model.unblock("a3")
+            advanceUntilIdle()
+            assertEquals(
+                listOf("a2"),
+                model.state.value.blocked
+                    .map { it.account },
+            )
+            assertTrue("unblock a3" in account.calls)
         }
 }

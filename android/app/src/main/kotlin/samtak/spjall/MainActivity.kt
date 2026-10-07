@@ -4,8 +4,11 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -228,6 +231,17 @@ class MainActivity : ComponentActivity() {
         val model: ConversationViewModel =
             viewModel(key = "conversation-$id") { ConversationViewModel(id, graph.account, graph.socket) }
         val state by model.state.collectAsStateWithLifecycle()
+        val photo =
+            rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+                uri?.let { model.attach(graph.files.picked(it)) }
+            }
+        val file =
+            rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+                uri?.let { model.attach(graph.files.picked(it)) }
+            }
+        LaunchedEffect(model) {
+            model.opened.collect { open(it) }
+        }
         ConversationScreen(
             state,
             object : ConversationActions {
@@ -256,6 +270,19 @@ class MainActivity : ComponentActivity() {
 
                 override fun loadOlder() = model.loadOlder()
 
+                override fun attachPhoto() =
+                    photo.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+
+                override fun attachFile() = file.launch(arrayOf("*/*"))
+
+                override fun fetch(item: Item) = model.fetch(item)
+
+                override fun open(item: Item) = model.open(item)
+
+                override fun timer(seconds: UInt?) = model.timer(seconds)
+
+                override fun block() = model.block()
+
                 override fun retry() = model.retry()
 
                 override fun paused() = model.paused()
@@ -280,6 +307,12 @@ class MainActivity : ComponentActivity() {
 
                 override fun share(link: String) = this@MainActivity.share(link)
 
+                override fun readMarkers(on: Boolean) = me.readMarkers(on)
+
+                override fun typing(on: Boolean) = me.typing(on)
+
+                override fun unblock(account: String) = me.unblock(account)
+
                 override fun revoke(deviceId: String) = me.revoke(deviceId)
 
                 override fun deleteAccount() = me.deleteAccount()
@@ -287,6 +320,15 @@ class MainActivity : ComponentActivity() {
                 override fun retry() = me.retry()
             },
         )
+    }
+
+    /** Hands a fetched file to another app. */
+    private fun open(opened: ConversationViewModel.Opened) {
+        try {
+            startActivity(graph.files.opener(opened.path, opened.mime))
+        } catch (_: ActivityNotFoundException) {
+            // No app on the device opens this kind of file.
+        }
     }
 
     private companion object {

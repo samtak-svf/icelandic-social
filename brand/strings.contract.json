@@ -345,6 +345,10 @@
       "surfaces": ["android", "ios"],
       "description": "Screen-reader label of the back arrow at the top of a screen."
     },
+    "more_options": {
+      "surfaces": ["android", "ios"],
+      "description": "Screen-reader label of the conversation's menu button (the disappearing timer, block)."
+    },
     "share": {
       "surfaces": ["android", "ios"],
       "description": "Shares the invite link through the system share sheet."

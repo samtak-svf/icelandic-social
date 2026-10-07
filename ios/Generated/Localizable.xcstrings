@@ -985,6 +985,18 @@
         }
       }
     },
+    "more_options": {
+      "comment": "Screen-reader label of the conversation's menu button (the disappearing timer, block).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fleiri valkostir"
+          }
+        }
+      }
+    },
     "share": {
       "comment": "Shares the invite link through the system share sheet.",
       "extractionState": "manual",

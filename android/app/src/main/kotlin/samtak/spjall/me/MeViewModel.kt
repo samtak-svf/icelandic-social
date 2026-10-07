@@ -15,10 +15,13 @@ import samtak.spjall.account.Problem
 import samtak.spjall.account.problem
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.Me
+import samtak.spjall.core.Person
+import samtak.spjall.core.Settings
 
 /**
- * "Ég" (decisions 0009, 0019): who the person is, their invite link, their
- * devices, and deleting the account.
+ * "Ég" (decisions 0009, 0019, 0022, 0024): who the person is, their invite
+ * link, the read-marker and typing toggles, who they blocked, their devices,
+ * and deleting the account.
  *
  * The link is made only when the person asks for one. Making one ends the
  * link before it, so doing it on its own would silently kill a link another
@@ -31,6 +34,8 @@ class MeViewModel(
     data class State(
         val me: Me? = null,
         val link: String? = null,
+        val settings: Settings? = null,
+        val blocked: List<Person> = emptyList(),
         val busy: Boolean = false,
         val problem: Problem? = null,
         /** This device was revoked or the account deleted: back to sign-in. */
@@ -50,7 +55,9 @@ class MeViewModel(
         perform(::load) {
             val me = account.me()
             val link = account.inviteLink()
-            _state.update { it.copy(me = me, link = link) }
+            val settings = account.settings()
+            val blocked = account.blocked()
+            _state.update { it.copy(me = me, link = link, settings = settings, blocked = blocked) }
         }
     }
 
@@ -59,6 +66,24 @@ class MeViewModel(
         perform(::newLink) {
             val link = account.rotateInvite()
             _state.update { it.copy(link = link) }
+        }
+    }
+
+    /** Off stops both sending and seeing read markers (0022). */
+    fun readMarkers(on: Boolean) {
+        change { it.copy(readMarkers = on) }
+    }
+
+    /** Off stops both sending and seeing typing (0022). */
+    fun typing(on: Boolean) {
+        change { it.copy(typing = on) }
+    }
+
+    fun unblock(account: String) {
+        perform({ unblock(account) }) {
+            this.account.unblock(account)
+            val blocked = this.account.blocked()
+            _state.update { it.copy(blocked = blocked) }
         }
     }
 
@@ -88,6 +113,14 @@ class MeViewModel(
     /** Tries the action that failed again. */
     fun retry() {
         failed?.invoke()
+    }
+
+    private fun change(edit: (Settings) -> Settings) {
+        val settings = _state.value.settings?.let(edit) ?: return
+        perform({ change(edit) }) {
+            account.setSettings(settings)
+            _state.update { it.copy(settings = settings) }
+        }
     }
 
     /** Runs [action] off the main thread, one at a time; on failure, [again] is what [retry] repeats. */

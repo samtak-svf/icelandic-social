@@ -34,6 +34,8 @@ class FakeLive(
         call(account).events.forEach { events.tryEmit(it) }
     }
 
+    override suspend fun performAndWait(call: (Account) -> Outcome) = perform(call)
+
     override fun send(frame: String) {
         sent += frame
     }

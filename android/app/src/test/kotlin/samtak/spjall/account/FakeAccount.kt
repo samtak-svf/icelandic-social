@@ -12,6 +12,7 @@ import samtak.spjall.core.Me
 import samtak.spjall.core.Outcome
 import samtak.spjall.core.Person
 import samtak.spjall.core.Platform
+import samtak.spjall.core.Settings
 
 /**
  * The core as the view models see it, in memory. [failNext] makes the next
@@ -199,6 +200,55 @@ class FakeAccount(
     override fun expire(): Outcome {
         call("expire")
         return outcomes.removeFirstOrNull() ?: Outcome(emptyList(), emptyList())
+    }
+
+    /** Media paths by conversation and seq; a missing one fails the download. */
+    val files = mutableMapOf<Pair<String, ULong>, String>()
+    var blockedPeople = mutableListOf<Person>()
+    var current = Settings(readMarkers = true, typing = true)
+
+    override fun sendMedia(
+        conversation: String,
+        path: String,
+        mime: String,
+        caption: String?,
+    ): String {
+        call("sendMedia $conversation $mime ${java.io.File(path).readText()}")
+        return "e-media${calls.size}"
+    }
+
+    override fun media(
+        conversation: String,
+        seq: ULong,
+    ): String {
+        call("media $conversation $seq")
+        return files[conversation to seq] ?: throw CoreException.Invalid("checksum")
+    }
+
+    override fun block(account: String): Outcome {
+        call("block $account")
+        blockedPeople.add(0, people.firstOrNull { it.account == account } ?: Person(account, null, false))
+        return Outcome(emptyList(), emptyList())
+    }
+
+    override fun unblock(account: String) {
+        call("unblock $account")
+        blockedPeople.removeAll { it.account == account }
+    }
+
+    override fun blocked(): List<Person> {
+        call("blocked")
+        return blockedPeople.toList()
+    }
+
+    override fun settings(): Settings {
+        call("settings")
+        return current
+    }
+
+    override fun setSettings(settings: Settings) {
+        call("setSettings ${settings.readMarkers} ${settings.typing}")
+        current = settings
     }
 
     companion object {

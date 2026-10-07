@@ -10,6 +10,9 @@ enum class Problem {
     /** Kenni signed the person in, but there is no account and no live invite. */
     InviteRequired,
 
+    /** A photo or file over the 25 MB limit (0023): trying again cannot help. */
+    TooLarge,
+
     /** Anything else. */
     Generic,
 }

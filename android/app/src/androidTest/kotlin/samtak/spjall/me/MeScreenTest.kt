@@ -1,5 +1,8 @@
 package samtak.spjall.me
 
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -14,7 +17,9 @@ import org.junit.runner.RunWith
 import samtak.spjall.brand.R
 import samtak.spjall.core.AccountDevice
 import samtak.spjall.core.Me
+import samtak.spjall.core.Person
 import samtak.spjall.core.Platform
+import samtak.spjall.core.Settings
 import samtak.spjall.ui.SpjallTheme
 
 /** Nothing that cannot be undone happens on one tap. */
@@ -33,6 +38,18 @@ class MeScreenTest {
                 calls += "share $link"
             }
 
+            override fun readMarkers(on: Boolean) {
+                calls += "readMarkers $on"
+            }
+
+            override fun typing(on: Boolean) {
+                calls += "typing $on"
+            }
+
+            override fun unblock(account: String) {
+                calls += "unblock $account"
+            }
+
             override fun revoke(deviceId: String) {
                 calls += "revoke $deviceId"
             }
@@ -48,7 +65,10 @@ class MeScreenTest {
 
     private fun text(id: Int) = InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
 
-    private fun show(link: String? = null) {
+    private fun show(
+        link: String? = null,
+        blocked: List<Person> = emptyList(),
+    ) {
         val me =
             Me(
                 "a1",
@@ -59,7 +79,19 @@ class MeScreenTest {
                     AccountDevice("d2", Platform.IOS, 1_700_000_100_000u, current = false),
                 ),
             )
-        compose.setContent { SpjallTheme { MeScreen(MeViewModel.State(me = me, link = link), actions) } }
+        compose.setContent {
+            SpjallTheme {
+                MeScreen(
+                    MeViewModel.State(
+                        me = me,
+                        link = link,
+                        settings = Settings(readMarkers = true, typing = false),
+                        blocked = blocked,
+                    ),
+                    actions,
+                )
+            }
+        }
     }
 
     @Test
@@ -104,5 +136,38 @@ class MeScreenTest {
         compose.onNodeWithText("https://link.test/l/abc").assertExists()
         compose.onNodeWithText(text(R.string.share)).performScrollTo().performClick()
         assertEquals(listOf("share https://link.test/l/abc"), calls)
+    }
+
+    @Test
+    fun theTogglesShowTheSettingsAndChangeThem() {
+        show()
+        compose
+            .onNodeWithText(text(R.string.read_receipts_setting))
+            .performScrollTo()
+            .assertIsOn()
+            .performClick()
+        compose
+            .onNodeWithText(text(R.string.typing_setting))
+            .performScrollTo()
+            .assertIsOff()
+            .performClick()
+        assertEquals(listOf("readMarkers false", "typing true"), calls)
+    }
+
+    @Test
+    fun unblockingAsksFirst() {
+        show(blocked = listOf(Person("a3", "Björn", false)))
+        compose.onNodeWithText("Björn").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.unblock)).performScrollTo().performClick()
+        val confirm = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.onNodeWithText(confirm.getString(R.string.unblock_confirm, "Björn")).assertIsDisplayed()
+        compose.onAllNodesWithText(text(R.string.unblock))[1].performClick()
+        assertEquals(listOf("unblock a3"), calls)
+    }
+
+    @Test
+    fun noOneBlockedSaysSo() {
+        show()
+        compose.onNodeWithText(text(R.string.blocked_empty)).performScrollTo().assertIsDisplayed()
     }
 }

@@ -9,6 +9,7 @@ import samtak.spjall.core.Me
 import samtak.spjall.core.Outcome
 import samtak.spjall.core.Person
 import samtak.spjall.core.Platform
+import samtak.spjall.core.Settings
 
 /**
  * What the screens and the socket ask of the core (decisions 0018, 0019, 0022).
@@ -100,6 +101,32 @@ interface Account {
 
     /** Deletes what has disappeared. */
     fun expire(): Outcome
+
+    /** Seals and uploads the file at [path], then sends it (0023); the core keeps its own copy. */
+    fun sendMedia(
+        conversation: String,
+        path: String,
+        mime: String,
+        caption: String?,
+    ): String
+
+    /** The path of the media item at [seq], downloaded and checked the first time. */
+    fun media(
+        conversation: String,
+        seq: ULong,
+    ): String
+
+    /** Blocks [account] (0024): it can no longer reach this one, and the 1:1 with it ends. */
+    fun block(account: String): Outcome
+
+    fun unblock(account: String)
+
+    /** The accounts this one blocked, newest first. */
+    fun blocked(): List<Person>
+
+    fun settings(): Settings
+
+    fun setSettings(settings: Settings)
 }
 
 /** [Account] over the core's client, opened on the first call. */
@@ -174,6 +201,28 @@ class CoreAccount(
     ) = client.typing(conversation, active)
 
     override fun expire() = client.expire()
+
+    override fun sendMedia(
+        conversation: String,
+        path: String,
+        mime: String,
+        caption: String?,
+    ) = client.sendMedia(conversation, path, mime, caption)
+
+    override fun media(
+        conversation: String,
+        seq: ULong,
+    ) = client.media(conversation, seq)
+
+    override fun block(account: String) = client.block(account)
+
+    override fun unblock(account: String) = client.unblock(account)
+
+    override fun blocked() = client.blocked()
+
+    override fun settings() = client.settings()
+
+    override fun setSettings(settings: Settings) = client.setSettings(settings)
 
     private companion object {
         // Each account that starts a conversation with this one claims one.

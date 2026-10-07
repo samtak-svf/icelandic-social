@@ -14,6 +14,8 @@ class SpjallApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
+        // Copies left by a run that ended before it deleted them.
+        graph.files.clear()
         // The socket is open in the foreground only (decision 0022); push is a later batch.
         ProcessLifecycleOwner.get().lifecycle.addObserver(
             object : DefaultLifecycleObserver {

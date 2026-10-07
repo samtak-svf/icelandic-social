@@ -8,6 +8,7 @@ import samtak.spjall.account.CoreAccount
 import samtak.spjall.account.OkHttpTransport
 import samtak.spjall.core.CoreClient
 import samtak.spjall.crypto.StoreKey
+import samtak.spjall.media.Files
 import samtak.spjall.socket.OkHttpWire
 import samtak.spjall.socket.Socket
 import java.io.File
@@ -32,6 +33,8 @@ class AppGraph(
                 key.fill(0)
             }
         }
+
+    val files = Files(context)
 
     /** Open while the app is in the foreground (SpjallApplication). */
     val socket = Socket(account, OkHttpWire(BuildConfig.API_BASE_URL, http), MainScope())

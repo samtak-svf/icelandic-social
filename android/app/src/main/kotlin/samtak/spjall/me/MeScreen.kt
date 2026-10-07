@@ -37,7 +37,10 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
-/** "Ég": the person, their invite link and QR code, their devices, and deleting the account. */
+/**
+ * "Ég": the person, their invite link and QR code, the read-marker and typing
+ * toggles, who they blocked, their devices, and deleting the account.
+ */
 @Composable
 fun MeScreen(
     state: MeViewModel.State,
@@ -64,6 +67,9 @@ fun MeScreen(
                 }
                 HorizontalDivider()
                 InviteSection(state.link, state.busy, actions)
+                HorizontalDivider()
+                state.settings?.let { PrivacySection(it, !state.busy, actions) }
+                BlockedSection(state.blocked, !state.busy, actions::unblock)
                 HorizontalDivider()
                 Text(text = stringResource(R.string.devices_title), style = MaterialTheme.typography.titleMedium)
                 me.devices.forEach { device ->
@@ -160,7 +166,7 @@ private fun DeviceRow(
 }
 
 @Composable
-private fun Confirm(
+internal fun Confirm(
     text: String,
     confirm: String,
     onConfirm: () -> Unit,

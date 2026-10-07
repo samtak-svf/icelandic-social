@@ -65,10 +65,12 @@ private class Offer(
 internal fun Bubble(
     row: Row.Bubble,
     group: Boolean,
+    media: ConversationViewModel.Media?,
     actions: ConversationActions,
     onDelete: (Item) -> Unit,
 ) {
     val item = row.item
+    val attached = item.content is Content.Media
     val offer = Offer(item)
     var menu by remember { mutableStateOf(false) }
     val background = Color(if (item.own) Colors.BUBBLE_OWN_BG else Colors.BUBBLE_OTHER_BG)
@@ -100,15 +102,16 @@ internal fun Bubble(
                         .widthIn(max = BUBBLE_WIDTH.dp)
                         .semantics(mergeDescendants = true) { customActions = custom }
                         .combinedClickable(
-                            enabled = offer.any,
+                            enabled = offer.any || attached,
                             onClickLabel = null,
-                            onClick = {},
+                            // A photo or file opens on a tap.
+                            onClick = { if (attached) actions.open(item) },
                             onLongClickLabel = stringResource(R.string.react),
                             onLongClick = { menu = true },
                         ),
             ) {
                 Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                    Body(item, foreground)
+                    Body(item, media, foreground, actions)
                     Meta(item, foreground)
                 }
             }
@@ -148,7 +151,9 @@ private fun accessibilityActions(
 @Composable
 private fun Body(
     item: Item,
+    media: ConversationViewModel.Media?,
     foreground: Color,
+    actions: ConversationActions,
 ) {
     when (val content = item.content) {
         is Content.Text -> {
@@ -179,8 +184,8 @@ private fun Body(
                 fontStyle = FontStyle.Italic,
                 color = foreground,
             )
-        // Photos and files open in the next change; the row says what it is.
-        is Content.Media, is Content.Members, is Content.Timer ->
+        is Content.Media -> Attachment(item, content, media, foreground, actions)
+        is Content.Members, is Content.Timer ->
             Text(text = lastLine(item), style = MaterialTheme.typography.bodyLarge, color = foreground)
     }
 }

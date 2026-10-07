@@ -8,6 +8,7 @@ ktlint = "14.2.0"
 detekt = "2.0.0-alpha.6"
 openapiGenerator = "7.25.0"
 coreKtx = "1.18.0"
+exifinterface = "1.4.2"
 lifecycle = "2.10.0"
 navigation = "2.9.8"
 activityCompose = "1.13.0"
@@ -24,6 +25,7 @@ androidxTestExtJunit = "1.3.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-exifinterface = { group = "androidx.exifinterface", name = "exifinterface", version.ref = "exifinterface" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
 androidx-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycle" }

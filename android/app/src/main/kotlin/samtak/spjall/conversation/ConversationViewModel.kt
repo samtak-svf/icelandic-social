@@ -7,8 +7,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -23,6 +26,7 @@ import samtak.spjall.core.CoreException
 import samtak.spjall.core.Event
 import samtak.spjall.core.Item
 import samtak.spjall.socket.Live
+import java.io.IOException
 
 /**
  * One conversation (decision 0022): its timeline as the core folds it, the
@@ -51,6 +55,23 @@ class ConversationViewModel(
         ) : Mode
     }
 
+    /** A photo or file of the timeline, by seq. */
+    sealed interface Media {
+        data object Loading : Media
+
+        data class Ready(
+            val path: String,
+        ) : Media
+
+        data object Failed : Media
+    }
+
+    /** A file to open in another app. */
+    data class Opened(
+        val path: String,
+        val mime: String,
+    )
+
     data class State(
         val conversation: Conversation? = null,
         /** Oldest first, the unsent ones last. */
@@ -61,11 +82,17 @@ class ConversationViewModel(
         val typing: Boolean = false,
         val draft: String = "",
         val mode: Mode = Mode.New,
+        val media: Map<ULong, Media> = emptyMap(),
         val problem: Problem? = null,
     )
 
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
+
+    private val _opened = MutableSharedFlow<Opened>(extraBufferCapacity = 1)
+
+    /** Files fetched for opening; the activity hands each to another app. */
+    val opened: SharedFlow<Opened> = _opened.asSharedFlow()
 
     // A burst of events reads the timeline once.
     private val reads = Channel<Unit>(Channel.CONFLATED)
@@ -161,6 +188,72 @@ class ConversationViewModel(
         queue(Body.Reaction(target, emoji, remove = item.reactions.any { it.emoji == emoji && it.own }))
     }
 
+    /** Sends a photo or file; one over the limit is refused before it is read. */
+    fun attach(picked: Picked) {
+        if ((picked.size ?: 0L) > MEDIA_LIMIT) {
+            _state.update { it.copy(problem = Problem.TooLarge) }
+            return
+        }
+        perform({ attach(picked) }) {
+            val file = picked.read()
+            try {
+                if (file.length() > MEDIA_LIMIT) {
+                    _state.update { it.copy(problem = Problem.TooLarge) }
+                } else {
+                    account.sendMedia(id, file.path, picked.mime, null)
+                    live.sync()
+                    load()
+                }
+            } finally {
+                // The core copied it into its own folder.
+                file.delete()
+            }
+        }
+    }
+
+    /** Downloads the photo or file of [item], once; a failed one can be asked for again. */
+    fun fetch(item: Item) {
+        val seq = item.seq ?: return
+        if (_state.value.media[seq].let { it is Media.Loading || it is Media.Ready }) return
+        viewModelScope.launch { download(seq) }
+    }
+
+    /** Fetches the file of [item] and hands it on to be opened. */
+    fun open(item: Item) {
+        val seq = item.seq ?: return
+        val mime = (item.content as? Content.Media)?.mime ?: return
+        viewModelScope.launch {
+            val ready = _state.value.media[seq] as? Media.Ready ?: download(seq)
+            if (ready is Media.Ready) _opened.emit(Opened(ready.path, mime))
+        }
+    }
+
+    /** Sets the disappearing timer, or turns it off with null (0022). */
+    fun timer(seconds: UInt?) {
+        queue(Body.Disappearing(seconds))
+    }
+
+    /** Blocks the other person of a 1:1 (0024); the conversation ends. */
+    fun block() {
+        val other =
+            _state.value.conversation
+                ?.members
+                ?.singleOrNull()
+                ?.account ?: return
+        viewModelScope.launch {
+            try {
+                live.performAndWait { it.block(other) }
+                failed = null
+                _state.update { it.copy(problem = null) }
+                load()
+            } catch (e: CoreException) {
+                // Said, not swallowed: the person must not believe a block that did not happen.
+                failed = ::block
+                _state.update { it.copy(problem = e.problem()) }
+            }
+        }
+    }
+
     /** Sends the failed items again. */
     fun resend() {
         live.perform { it.retry(id) }
@@ -215,6 +308,18 @@ class ConversationViewModel(
         withContext(io) { account.markRead(id, newest) }
         marked = newest
         live.sync()
+    }
+
+    private suspend fun download(seq: ULong): Media {
+        _state.update { it.copy(media = it.media + (seq to Media.Loading)) }
+        val media =
+            try {
+                Media.Ready(withContext(io) { account.media(id, seq) })
+            } catch (_: CoreException) {
+                Media.Failed
+            }
+        _state.update { it.copy(media = it.media + (seq to media)) }
+        return media
     }
 
     private fun scheduleExpiry(items: List<Item>) {
@@ -280,6 +385,10 @@ class ConversationViewModel(
             } catch (e: CoreException) {
                 failed = again
                 _state.update { it.copy(problem = e.problem()) }
+            } catch (_: IOException) {
+                // The picked file could not be read.
+                failed = again
+                _state.update { it.copy(problem = Problem.Generic) }
             }
         }
     }
