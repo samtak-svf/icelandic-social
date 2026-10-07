@@ -88,6 +88,7 @@ pub enum Body {
         key: String,
         sha256: String,
         caption: Option<String>,
+        name: Option<String>,
     },
     Reply {
         to: String,
@@ -132,6 +133,7 @@ impl From<envelope::Body> for Body {
                 key,
                 sha256,
                 caption,
+                name,
             } => Self::Media {
                 object,
                 mime,
@@ -139,6 +141,7 @@ impl From<envelope::Body> for Body {
                 key,
                 sha256,
                 caption,
+                name,
             },
             B::Reply { to, text } => Self::Reply { to, text },
             B::Edit { target, text } => Self::Edit { target, text },
@@ -172,6 +175,7 @@ impl From<Body> for envelope::Body {
                 key,
                 sha256,
                 caption,
+                name,
             } => Self::Media {
                 object,
                 mime,
@@ -179,6 +183,7 @@ impl From<Body> for envelope::Body {
                 key,
                 sha256,
                 caption,
+                name,
             },
             B::Reply { to, text } => Self::Reply { to, text },
             B::Edit { target, text } => Self::Edit { target, text },
@@ -298,6 +303,7 @@ mod tests {
                 key: "k".into(),
                 sha256: "00".into(),
                 caption: Some("c".into()),
+                name: Some("skýrsla.pdf".into()),
             },
             Body::Reply {
                 to: "m0".into(),

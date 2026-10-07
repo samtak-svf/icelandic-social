@@ -372,6 +372,8 @@ pub enum Content {
         mime: String,
         size: u64,
         caption: Option<String>,
+        /// The sender's name for the file, safe to name a copy with.
+        name: Option<String>,
     },
     /// Deleted for everyone.
     Deleted,
@@ -402,10 +404,12 @@ impl From<core::Content> for Content {
                 mime,
                 size,
                 caption,
+                name,
             } => Self::Media {
                 mime,
                 size,
                 caption,
+                name,
             },
             C::Deleted => Self::Deleted,
             C::Members {
@@ -871,10 +875,11 @@ impl CoreClient {
         path: String,
         mime: String,
         caption: Option<String>,
+        name: Option<String>,
     ) -> Result<String, CoreError> {
         Ok(self
             .client()?
-            .send_media(&conversation, Path::new(&path), &mime, caption)?)
+            .send_media(&conversation, Path::new(&path), &mime, caption, name)?)
     }
 
     /// The path of the media item at `seq`, downloaded, checked and opened

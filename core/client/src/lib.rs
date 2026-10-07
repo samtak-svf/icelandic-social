@@ -30,7 +30,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 pub use account::{SignedIn, invite_token};
-use api::{Api, ApiError, Outgoing, Transport, conversation_id, group_id};
+use api::{Api, ApiError, Outgoing, Profile, Transport, conversation_id, group_id};
 pub use media::{MAX_SIZE, MediaError};
 pub use members::Person;
 pub use read::Settings;
@@ -1067,9 +1067,9 @@ impl<T: Transport> Client<T> {
     /// Fetches the names and marks of accounts met since, or not fetched
     /// for a day. One the server does not answer waits for the next call.
     fn refresh_profiles(&mut self) -> Result<(), ClientError> {
-        let wanted = self.store.try_write(|tx| {
+        let (me, wanted) = self.store.try_write(|tx| {
             let (_, me) = this_device(tx)?;
-            Ok::<_, ClientError>(members::unfetched(tx, &me.account)?)
+            Ok::<_, ClientError>((me.account, members::unfetched(tx)?))
         })?;
         if wanted.is_empty() {
             return Ok(());
@@ -1077,7 +1077,17 @@ impl<T: Transport> Client<T> {
         let api = authed(&self.transport, &self.token)?;
         let mut fetched = Vec::new();
         for account in wanted {
-            match api.profile(&account) {
+            // The server names other accounts only to co-members; this one's
+            // own name comes from `/v1/me`.
+            let profile = if account == me {
+                api.me().map(|me| Profile {
+                    name: me.name,
+                    verified: me.verified,
+                })
+            } else {
+                api.profile(&account)
+            };
+            match profile {
                 Ok(profile) => fetched.push((account, Some(profile))),
                 Err(ApiError::Refused { status: 404, .. }) => fetched.push((account, None)),
                 Err(_) => {}

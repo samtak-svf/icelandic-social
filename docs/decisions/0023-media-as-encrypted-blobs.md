@@ -18,8 +18,10 @@ bucket `spjall-media` is in `wrangler.jsonc`, but nothing writes to it.
   a nonce made from the segment number and a last-segment flag, so a file is encrypted and
   checked as a stream and a truncated or reordered blob fails.
 - **The key travels only inside MLS.** `Body::Media` carries the object id, the type, the
-  size, the key and the SHA-256 of the ciphertext, plus an optional caption. The server
-  sees an opaque blob of a known size.
+  size, the key and the SHA-256 of the ciphertext, plus an optional caption and an optional
+  file name. The server sees an opaque blob of a known size. The name is what the sender's
+  device called the file; the receiving core cuts it to its last path component without
+  control characters before any screen sees it, so an app can name a copy with it.
 - **An object belongs to one conversation.**
   - `PUT /v1/conversations/{conversationId}/media/{mediaId}` takes the ciphertext from a
     device whose account is in that conversation's roster; `mediaId` is 128 random bits
@@ -34,7 +36,7 @@ bucket `spjall-media` is in `wrangler.jsonc`, but nothing writes to it.
   backstop; creating it is the owner's step, with the bucket.
 - **`DELETE /me` deletes the account's objects**, as 0014 already says, from the D1 rows.
 - **The apps pass file paths, never bytes, across the FFI.**
-  `send_media(conversation, path, mime, caption)` reads, encrypts and uploads in a stream
+  `send_media(conversation, path, mime, caption, name)` reads, encrypts and uploads in a stream
   through a new bytes body on `Transport`. `media(conversation, seq)` downloads, checks the
   SHA-256, decrypts into the store's own media folder and returns the path, which the app
   shows with its own image loader or file preview. The disappearing purge (0022) deletes

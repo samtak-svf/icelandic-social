@@ -145,7 +145,7 @@ fn two_clients_talk_through_the_exported_api() {
                 conversation: conversation.clone()
             },
             Event::Profiles {
-                accounts: vec!["a".into()]
+                accounts: vec!["a".into(), "b".into()]
             },
         ]
     );
@@ -325,6 +325,7 @@ fn files_and_blocks_cross_by_path_and_record() {
             path.to_string_lossy().into_owned(),
             "application/pdf".into(),
             None,
+            Some("skjal.pdf".into()),
         )
         .unwrap();
     assert!(
@@ -343,7 +344,9 @@ fn files_and_blocks_cross_by_path_and_record() {
         .unwrap()
         .pop()
         .unwrap();
-    assert!(matches!(&item.content, Content::Media { mime, .. } if mime == "application/pdf"));
+    assert!(matches!(&item.content,
+        Content::Media { mime, name, .. }
+            if mime == "application/pdf" && name.as_deref() == Some("skjal.pdf")));
     let opened = b1
         .client
         .media(conversation.clone(), item.seq.unwrap())
@@ -364,6 +367,7 @@ fn files_and_blocks_cross_by_path_and_record() {
             conversation.clone(),
             big.to_string_lossy().into_owned(),
             "application/zip".into(),
+            None,
             None
         ),
         Err(CoreError::TooLarge)

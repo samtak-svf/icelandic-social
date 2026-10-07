@@ -241,6 +241,7 @@ impl<T: Transport> Client<T> {
         path: &Path,
         mime: &str,
         caption: Option<String>,
+        name: Option<String>,
     ) -> Result<String, ClientError> {
         let group = group_id(conversation).ok_or(ClientError::UnknownConversation)?;
         self.store.try_write(|tx| open_conversation(tx, &group))?;
@@ -261,6 +262,7 @@ impl<T: Transport> Client<T> {
                 key: base64(&key),
                 sha256,
                 caption,
+                name,
             })
         })();
         remove(&sealed);

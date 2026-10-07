@@ -477,7 +477,7 @@ fn devices_talk_through_the_worker() {
     let path = files.path().join("mynd.png");
     std::fs::write(&path, &photo).unwrap();
     c1.client
-        .send_media(&one, &path, "image/png", Some("sólarlag".into()))
+        .send_media(&one, &path, "image/png", Some("sólarlag".into()), None)
         .unwrap();
     c1.sync();
     a1.deliver_until(|events| {

@@ -345,7 +345,7 @@ impl State {
                     .collect();
                 answer(
                     200,
-                    json!({ "accountId": account, "name": null, "verified": true, "devices": devices }),
+                    json!({ "accountId": account, "name": format!("Name of {account}"), "verified": true, "devices": devices }),
                 )
             }
             (Method::Delete, ["me"]) => {

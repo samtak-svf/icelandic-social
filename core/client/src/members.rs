@@ -95,14 +95,15 @@ pub(crate) fn people(tx: &Transaction, me: &str) -> rusqlite::Result<Vec<Person>
     people_of(tx, &accounts)
 }
 
-/// Accounts met whose profile is missing or old.
-pub(crate) fn unfetched(tx: &Transaction, me: &str) -> rusqlite::Result<Vec<String>> {
+/// Accounts met whose profile is missing or old, this account's own among
+/// them: its name shows in reply quotes, cards and previews too.
+pub(crate) fn unfetched(tx: &Transaction) -> rusqlite::Result<Vec<String>> {
     let mut statement = tx.prepare(
         "SELECT DISTINCT m.account FROM members m LEFT JOIN profiles p USING (account)
-         WHERE m.account != ?1 AND (p.fetched_at IS NULL OR p.fetched_at < ?2)
+         WHERE p.fetched_at IS NULL OR p.fetched_at < ?1
          ORDER BY m.account",
     )?;
-    let rows = statement.query_map(params![me, now() - PROFILE_TTL_MS], |r| r.get(0))?;
+    let rows = statement.query_map([now() - PROFILE_TTL_MS], |r| r.get(0))?;
     rows.collect()
 }
 

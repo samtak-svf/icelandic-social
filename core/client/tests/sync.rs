@@ -687,9 +687,13 @@ fn the_timeline_shows_each_message_as_it_now_is() {
     a1.sync();
     b1.deliver();
 
-    // The creator sees the commit that added b as a card; b joined by it.
-    assert!(matches!(&items(&mut a1, &conversation)[0].content,
-        Content::Members { added, .. } if added.iter().any(|p| p.account == "b")));
+    // The commit that made the conversation is no card: it starts with the
+    // people it was made for (#68).
+    assert!(
+        !items(&mut a1, &conversation)
+            .iter()
+            .any(|i| matches!(i.content, Content::Members { .. }))
+    );
     for phone in [&mut a1, &mut b1] {
         let mut items = items(phone, &conversation);
         items.retain(|i| i.envelope_id.is_some());
@@ -822,10 +826,23 @@ fn people_are_named_by_the_server_once_they_share_a_conversation() {
 
     let conversation = a1.client.create_conversation(&strings(&["b"])).unwrap();
     let events = a1.sync();
+    // This account's own name too: its quotes and cards show it (#68).
     assert!(events.contains(&Event::Profiles {
-        accounts: strings(&["b"])
+        accounts: strings(&["a", "b"])
     }));
     b1.deliver();
+    a1.send(&conversation, "hæ");
+    a1.sync();
+    let own = items(&mut a1, &conversation).pop().unwrap();
+    assert!(own.own);
+    assert_eq!(own.sender.name.as_deref(), Some("Name of a"));
+    assert!(
+        !relay
+            .requests("a1")
+            .iter()
+            .any(|r| r.path == "/v1/accounts/a"),
+        "the server names no one to themselves; /v1/me does"
+    );
     let people = a1.client.people().unwrap();
     assert_eq!(people.len(), 1);
     assert_eq!(people[0].name.as_deref(), Some("Name of b"));
@@ -984,7 +1001,14 @@ fn a_photo_is_sealed_before_it_leaves_and_opens_on_the_other_side() {
     let (path, bytes) = photo(&files);
 
     a1.client
-        .send_media(&conversation, &path, "image/png", Some("sólarlag".into()))
+        .send_media(
+            &conversation,
+            &path,
+            "image/png",
+            Some("sólarlag".into()),
+            // A name is a name: a path in it is cut away on both sides (#68).
+            Some("../../sólarlag.png".into()),
+        )
         .unwrap();
     // The server holds a blob that is not the photo and does not contain it.
     let blobs = relay.media(&conversation);
@@ -1002,6 +1026,7 @@ fn a_photo_is_sealed_before_it_leaves_and_opens_on_the_other_side() {
                 mime: "image/png".into(),
                 size: bytes.len() as u64,
                 caption: Some("sólarlag".into()),
+                name: Some("sólarlag.png".into()),
             }
         );
         let file = phone
@@ -1036,7 +1061,7 @@ fn a_tampered_blob_is_refused_and_leaves_no_file() {
     let files = tempfile::tempdir().unwrap();
     let (path, _) = photo(&files);
     a1.client
-        .send_media(&conversation, &path, "image/png", None)
+        .send_media(&conversation, &path, "image/png", None, None)
         .unwrap();
     a1.sync();
     b1.deliver();
@@ -1072,7 +1097,7 @@ fn a_file_over_25_mb_is_refused_before_anything_is_sent() {
         .unwrap();
     assert!(matches!(
         a1.client
-            .send_media(&conversation, &path, "application/zip", None),
+            .send_media(&conversation, &path, "application/zip", None, None),
         Err(ClientError::Media(MediaError::TooLarge))
     ));
     assert!(relay.media(&conversation).is_empty());
@@ -1094,7 +1119,7 @@ fn what_disappears_is_deleted_with_its_file() {
     let files = tempfile::tempdir().unwrap();
     let (path, _) = photo(&files);
     a1.client
-        .send_media(&conversation, &path, "image/png", None)
+        .send_media(&conversation, &path, "image/png", None, None)
         .unwrap();
     a1.send(&conversation, "goes");
     a1.sync();

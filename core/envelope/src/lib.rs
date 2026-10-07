@@ -56,6 +56,10 @@ pub enum Body {
         sha256: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         caption: Option<String>,
+        /// The file's name on the sender's device, for a file row and a
+        /// viewer; never a path to trust.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        name: Option<String>,
     },
     Reply {
         to: String,
@@ -188,6 +192,7 @@ mod tests {
                 key: String::new(),
                 sha256: String::new(),
                 caption: None,
+                name: None,
             },
             Body::Reply {
                 to: String::new(),
@@ -295,16 +300,26 @@ mod tests {
         let s = || any::<String>();
         prop_oneof![
             s().prop_map(|text| Body::Text { text }),
-            (s(), s(), any::<u64>(), s(), s(), proptest::option::of(s())).prop_map(
-                |(object, mime, size, key, sha256, caption)| Body::Media {
-                    object,
-                    mime,
-                    size,
-                    key,
-                    sha256,
-                    caption
-                }
-            ),
+            (
+                s(),
+                s(),
+                any::<u64>(),
+                s(),
+                s(),
+                proptest::option::of(s()),
+                proptest::option::of(s())
+            )
+                .prop_map(|(object, mime, size, key, sha256, caption, name)| {
+                    Body::Media {
+                        object,
+                        mime,
+                        size,
+                        key,
+                        sha256,
+                        caption,
+                        name,
+                    }
+                }),
             (s(), s()).prop_map(|(to, text)| Body::Reply { to, text }),
             (s(), s()).prop_map(|(target, text)| Body::Edit { target, text }),
             s().prop_map(|target| Body::Delete { target }),

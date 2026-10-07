@@ -47,6 +47,9 @@ pub enum Content {
         mime: String,
         size: u64,
         caption: Option<String>,
+        /// The sender's name for the file, cut to something safe to name a
+        /// copy with; `None` when it had none or nothing safe was left.
+        name: Option<String>,
     },
     /// Deleted for everyone.
     Deleted,
@@ -102,6 +105,16 @@ struct MembersCard {
 #[derive(Serialize, Deserialize)]
 struct TimerCard {
     seconds: Option<u32>,
+}
+
+/// A file name a peer sent, as a name and never a path: the last component,
+/// without control characters, at most 120 characters. `None` when nothing
+/// usable is left.
+pub(crate) fn file_name(sent: &str) -> Option<String> {
+    let last = sent.rsplit(['/', '\\']).next().unwrap_or_default();
+    let name: String = last.chars().filter(|c| !c.is_control()).take(120).collect();
+    let name = name.trim();
+    (!name.is_empty() && name != "." && name != "..").then(|| name.to_owned())
 }
 
 fn json(value: &impl Serialize) -> String {
@@ -370,10 +383,20 @@ pub(crate) fn fold_members(
     group: &[u8],
     seq: u64,
     by: &Device,
-    added: Vec<String>,
+    mut added: Vec<String>,
     removed: Vec<String>,
     devices: Vec<String>,
 ) -> rusqlite::Result<Option<u64>> {
+    // The commit that first fills a new conversation is not news: a 1:1 or a
+    // group starts with the people it was made for (#68).
+    let first: bool = tx.query_row(
+        "SELECT NOT EXISTS (SELECT 1 FROM timeline WHERE group_id = ?1)",
+        [group],
+        |r| r.get(0),
+    )?;
+    if first {
+        added.clear();
+    }
     if added.is_empty() && removed.is_empty() && devices.is_empty() {
         return Ok(None);
     }
@@ -482,10 +505,13 @@ pub(crate) fn items(
         } else {
             match kind.as_str() {
                 "media" => match detail.as_deref().map(serde_json::from_str::<Body>) {
-                    Some(Ok(Body::Media { mime, size, .. })) => Content::Media {
+                    Some(Ok(Body::Media {
+                        mime, size, name, ..
+                    })) => Content::Media {
                         mime,
                         size,
                         caption: text,
+                        name: name.as_deref().and_then(file_name),
                     },
                     _ => return Err(ClientError::Protocol("a stored media row")),
                 },
@@ -635,11 +661,13 @@ fn pending(
                 mime,
                 size,
                 caption,
+                name,
                 ..
             } => Content::Media {
                 mime,
                 size,
                 caption,
+                name: name.as_deref().and_then(file_name),
             },
             // Edits, deletes, reactions and receipts show once they are back.
             _ => continue,
@@ -688,6 +716,18 @@ mod tests {
     use super::*;
 
     const GROUP: &[u8] = b"group";
+
+    #[test]
+    fn a_sent_file_name_is_a_name_and_never_a_path() {
+        assert_eq!(file_name("skýrsla.pdf").as_deref(), Some("skýrsla.pdf"));
+        assert_eq!(file_name("../../etc/passwd").as_deref(), Some("passwd"));
+        assert_eq!(file_name("C:\\x\\y.txt").as_deref(), Some("y.txt"));
+        assert_eq!(file_name(" a\u{0}b\n.png ").as_deref(), Some("ab.png"));
+        assert_eq!(file_name(&"x".repeat(300)).map(|n| n.len()), Some(120));
+        for nothing in ["", "/", "..", "a/.", " "] {
+            assert_eq!(file_name(nothing), None, "{nothing:?}");
+        }
+    }
 
     struct Fold {
         store: Store,
