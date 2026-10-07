@@ -9,6 +9,8 @@ struct Attachment: View {
     let mime: String
     let size: UInt64
     let caption: String?
+    /// The sender's name for the file, shown in place of "file" when there is one.
+    let name: String?
     let foreground: Color
     let model: ConversationModel
 
@@ -41,7 +43,7 @@ struct Attachment: View {
                             Image(systemName: "doc").accessibilityHidden(true)
                         }
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("file")
+                            if let name { Text(verbatim: name) } else { Text("file") }
                             Text(verbatim: ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file))
                                 .font(.footnote)
                         }

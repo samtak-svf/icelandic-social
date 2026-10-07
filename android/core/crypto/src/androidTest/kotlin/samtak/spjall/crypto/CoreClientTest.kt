@@ -86,11 +86,12 @@ class CoreClientTest {
         val photo = ByteArray(70_000) { (it % 251).toByte() }
         val path = File(context.cacheDir, "${UUID.randomUUID()}.png").apply { writeBytes(photo) }
 
-        a.sendMedia(conversation, path.path, "image/png", "sólarlag")
+        a.sendMedia(conversation, path.path, "image/png", "sólarlag", "../sólarlag.png")
         a.sync()
         deliver(b, "b1")
         val item = b.timeline(conversation, null, 10u).single { it.content is Content.Media }
-        assertEquals(Content.Media("image/png", photo.size.toULong(), "sólarlag"), item.content)
+        // The core cuts the name to a bare one before the other side sees it.
+        assertEquals(Content.Media("image/png", photo.size.toULong(), "sólarlag", "sólarlag.png"), item.content)
         val opened = File(b.media(conversation, item.seq!!))
         assertTrue(opened.readBytes().contentEquals(photo))
     }

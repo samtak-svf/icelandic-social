@@ -123,8 +123,10 @@ private struct BodyText: View {
             Text(verbatim: text).foregroundStyle(foreground)
         case .deleted:
             Text("message_deleted").italic().foregroundStyle(foreground)
-        case .media(let mime, let size, let caption):
-            Attachment(item: item, mime: mime, size: size, caption: caption, foreground: foreground, model: model)
+        case .media(let mime, let size, let caption, let name):
+            Attachment(
+                item: item, mime: mime, size: size, caption: caption, name: name, foreground: foreground,
+                model: model)
         case .members, .timer:
             Text(verbatim: lastLine(item)).foregroundStyle(foreground)
         }

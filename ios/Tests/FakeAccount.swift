@@ -219,9 +219,10 @@ final class FakeAccount: Account, @unchecked Sendable {
     }
     private var _settings = Settings(readMarkers: true, typing: true)
 
-    func sendMedia(_ conversation: String, path: String, mime: String, caption: String?) throws -> String {
+    func sendMedia(_ conversation: String, path: String, mime: String, caption: String?, name: String?) throws -> String
+    {
         let text = (try? String(contentsOfFile: path, encoding: .utf8)) ?? "?"
-        try call("sendMedia \(conversation) \(mime) \(text)")
+        try call("sendMedia \(conversation) \(mime) \(name ?? "nil") \(text)")
         return "e-media\(calls.count)"
     }
 

@@ -70,6 +70,7 @@ class ConversationViewModel(
     data class Opened(
         val path: String,
         val mime: String,
+        val name: String?,
     )
 
     data class State(
@@ -206,7 +207,7 @@ class ConversationViewModel(
                 if (file.length() > MEDIA_LIMIT) {
                     _state.update { it.copy(problem = Problem.TooLarge) }
                 } else {
-                    account.sendMedia(id, file.path, picked.mime, null)
+                    account.sendMedia(id, file.path, picked.mime, null, picked.name)
                     live.sync()
                     load()
                 }
@@ -227,10 +228,10 @@ class ConversationViewModel(
     /** Fetches the file of [item] and hands it on to be opened. */
     fun open(item: Item) {
         val seq = item.seq ?: return
-        val mime = (item.content as? Content.Media)?.mime ?: return
+        val content = item.content as? Content.Media ?: return
         viewModelScope.launch {
             val ready = _state.value.media[seq] as? Media.Ready ?: download(seq)
-            if (ready is Media.Ready) _opened.emit(Opened(ready.path, mime))
+            if (ready is Media.Ready) _opened.emit(Opened(ready.path, content.mime, content.name))
         }
     }
 

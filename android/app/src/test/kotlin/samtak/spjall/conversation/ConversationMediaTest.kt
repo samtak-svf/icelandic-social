@@ -50,7 +50,7 @@ class ConversationMediaTest {
         }.also { runCurrent() }
     }
 
-    private val pdf = item(3u, content = Content.Media("application/pdf", 10uL, null))
+    private val pdf = item(3u, content = Content.Media("application/pdf", 10uL, null, "skýrsla.pdf"))
 
     @Test
     fun aFileOverTheLimitIsRefusedBeforeItIsRead() =
@@ -63,13 +63,13 @@ class ConversationMediaTest {
         }
 
     @Test
-    fun aPickedFileIsSentAndItsCopyDeleted() =
+    fun aPickedFileIsSentUnderItsNameAndItsCopyDeleted() =
         runTest(dispatcher) {
             val model = model()
             val copy = folder.newFile().apply { writeText("hello") }
-            model.attach(Picked("image/jpeg", 5) { copy })
+            model.attach(Picked("image/jpeg", 5, "fjall.jpg") { copy })
             advanceUntilIdle()
-            assertTrue("sendMedia c1 image/jpeg hello" in account.calls)
+            assertTrue("sendMedia c1 image/jpeg fjall.jpg hello" in account.calls)
             assertFalse("the core keeps its own copy", copy.exists())
             assertNull(model.state.value.problem)
             assertEquals("the media message goes out", 1, live.syncs)
@@ -92,7 +92,7 @@ class ConversationMediaTest {
         }
 
     @Test
-    fun openingAFileFetchesItAndHandsItOn() =
+    fun openingAFileFetchesItAndHandsItOnWithItsName() =
         runTest(dispatcher) {
             val model = model()
             account.files["c1" to 3uL] = "/store/media/3"
@@ -100,7 +100,10 @@ class ConversationMediaTest {
             runCurrent()
             model.open(pdf)
             advanceUntilIdle()
-            assertEquals(ConversationViewModel.Opened("/store/media/3", "application/pdf"), opened.await())
+            assertEquals(
+                ConversationViewModel.Opened("/store/media/3", "application/pdf", "skýrsla.pdf"),
+                opened.await(),
+            )
         }
 
     @Test

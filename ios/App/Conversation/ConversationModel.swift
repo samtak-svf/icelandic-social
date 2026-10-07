@@ -22,10 +22,11 @@ final class ConversationModel {
         case failed
     }
 
-    /// A file fetched for opening, and its type.
+    /// A file fetched for opening, its type, and the sender's name for it.
     struct Opened: Equatable {
         let path: String
         let mime: String
+        let name: String?
     }
 
     nonisolated static let page: UInt32 = 50
@@ -186,7 +187,9 @@ final class ConversationModel {
                 problem = .tooLarge
                 return
             }
-            _ = try await offMain { try account.sendMedia(id, path: file.path, mime: picked.mime, caption: nil) }
+            _ = try await offMain {
+                try account.sendMedia(id, path: file.path, mime: picked.mime, caption: nil, name: picked.name)
+            }
             failed = nil
             live.sync()
             await load()
@@ -207,10 +210,10 @@ final class ConversationModel {
 
     /// Fetches the file of `item` into `opened`.
     func open(_ item: Item) async {
-        guard let seq = item.seq, case .media(let mime, _, _) = item.content else { return }
+        guard let seq = item.seq, case .media(let mime, _, _, let name) = item.content else { return }
         var ready = media[seq]
         if case .ready = ready {} else { ready = await download(seq) }
-        if case .ready(let path) = ready { opened = Opened(path: path, mime: mime) }
+        if case .ready(let path) = ready { opened = Opened(path: path, mime: mime, name: name) }
     }
 
     func didOpen() {
@@ -360,12 +363,20 @@ final class ConversationModel {
     }
 }
 
-/// A photo or file the person chose, not read yet. `size` is what the picker
-/// says, when it says; `read` copies it to a file the model deletes.
+/// A photo or file the person chose, not read yet. `size` and `name` are what
+/// the picker says, when it says; `read` copies it to a file the model deletes.
 struct Picked: Sendable {
     let mime: String
     let size: Int64?
+    let name: String?
     let read: @Sendable () async throws -> URL
+
+    init(mime: String, size: Int64?, name: String? = nil, read: @escaping @Sendable () async throws -> URL) {
+        self.mime = mime
+        self.size = size
+        self.name = name
+        self.read = read
+    }
 }
 
 extension Event {

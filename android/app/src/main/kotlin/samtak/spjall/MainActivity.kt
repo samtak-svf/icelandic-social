@@ -333,7 +333,7 @@ class MainActivity : ComponentActivity() {
     /** Hands a fetched file to another app. */
     private fun open(opened: ConversationViewModel.Opened) {
         try {
-            startActivity(graph.files.opener(opened.path, opened.mime))
+            startActivity(graph.files.opener(opened.path, opened.mime, opened.name))
         } catch (_: ActivityNotFoundException) {
             Toast.makeText(this, R.string.file_no_app, Toast.LENGTH_LONG).show()
         }

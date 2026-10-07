@@ -45,7 +45,7 @@ protocol Account: Sendable {
     /// Deletes what is due to disappear.
     func expire() throws -> Outcome
     /// Seals and uploads the file at `path`, then sends it (decision 0023); the core keeps its own copy.
-    func sendMedia(_ conversation: String, path: String, mime: String, caption: String?) throws -> String
+    func sendMedia(_ conversation: String, path: String, mime: String, caption: String?, name: String?) throws -> String
     /// The path of the photo or file at `seq`, downloaded and checked the first time.
     func media(_ conversation: String, seq: UInt64) throws -> String
     /// Blocks `account` (decision 0024): it can no longer reach this one, and the 1:1 with it ends.
@@ -138,8 +138,9 @@ final class CoreAccount: Account, @unchecked Sendable {
 
     func expire() throws -> Outcome { try core().expire() }
 
-    func sendMedia(_ conversation: String, path: String, mime: String, caption: String?) throws -> String {
-        try core().sendMedia(conversation: conversation, path: path, mime: mime, caption: caption)
+    func sendMedia(_ conversation: String, path: String, mime: String, caption: String?, name: String?) throws -> String
+    {
+        try core().sendMedia(conversation: conversation, path: path, mime: mime, caption: caption, name: name)
     }
 
     func media(_ conversation: String, seq: UInt64) throws -> String {

@@ -24,11 +24,13 @@ class Files(
 
     fun picked(uri: Uri): Picked {
         val resolver = context.contentResolver
-        val size =
-            resolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use {
-                if (it.moveToFirst() && !it.isNull(0)) it.getLong(0) else null
-            }
-        return Picked(resolver.getType(uri) ?: OCTET_STREAM, size) {
+        val columns = arrayOf(OpenableColumns.SIZE, OpenableColumns.DISPLAY_NAME)
+        val (size, name) =
+            resolver.query(uri, columns, null, null, null)?.use {
+                if (!it.moveToFirst()) return@use null
+                (if (it.isNull(0)) null else it.getLong(0)) to (if (it.isNull(1)) null else it.getString(1))
+            } ?: (null to null)
+        return Picked(resolver.getType(uri) ?: OCTET_STREAM, size, name) {
             outgoing.mkdirs()
             val file = File.createTempFile("picked", null, outgoing)
             val input = resolver.openInputStream(uri) ?: throw IOException("no stream for the picked file")
@@ -38,16 +40,20 @@ class Files(
     }
 
     /**
-     * Opens the file at [path] in another app, read-only. With no app for its
-     * type, starting it throws [android.content.ActivityNotFoundException].
+     * Opens the file at [path] in another app, read-only, as a copy under the
+     * sender's [name] when there is one. With no app for its type, starting
+     * it throws [android.content.ActivityNotFoundException].
      */
     fun opener(
         path: String,
         mime: String,
+        name: String?,
     ): Intent {
         shared.mkdirs()
         val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)?.let { ".$it" } ?: ""
-        val copy = File(shared, File(path).nameWithoutExtension + extension)
+        // The core cut the name to a bare one (0023); File(...).name keeps it so.
+        val named = name?.let { File(it).name }?.takeIf { it.isNotBlank() && it != "." && it != ".." }
+        val copy = File(shared, named ?: (File(path).nameWithoutExtension + extension))
         File(path).copyTo(copy, overwrite = true)
         val uri = FileProvider.getUriForFile(context, "${context.packageName}$AUTHORITY", copy)
         return Intent(Intent.ACTION_VIEW)

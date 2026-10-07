@@ -10,7 +10,7 @@ final class ConversationMediaTests: XCTestCase {
     private let account = FakeAccount(signedIn: true)
     private lazy var live = FakeLive(account: account)
     private let sleeps = FakeSleep()
-    private let pdf = item(3, content: .media(mime: "application/pdf", size: 10, caption: nil))
+    private let pdf = item(3, content: .media(mime: "application/pdf", size: 10, caption: nil, name: "skýrsla.pdf"))
 
     private func model(members: [Person] = [person("a2", "Anna")]) async -> ConversationModel {
         account.list = [conversation("c1", members: members)]
@@ -33,11 +33,11 @@ final class ConversationMediaTests: XCTestCase {
         XCTAssertFalse(account.calls.contains { $0.hasPrefix("sendMedia") })
     }
 
-    func testAPickedFileIsSentAndItsCopyDeleted() async throws {
+    func testAPickedFileIsSentUnderItsNameAndItsCopyDeleted() async throws {
         let model = await model()
         let file = try copy("hello")
-        await model.attach(Picked(mime: "image/jpeg", size: 5) { file })
-        XCTAssertTrue(account.calls.contains("sendMedia c1 image/jpeg hello"))
+        await model.attach(Picked(mime: "image/jpeg", size: 5, name: "fjall.jpg") { file })
+        XCTAssertTrue(account.calls.contains("sendMedia c1 image/jpeg fjall.jpg hello"))
         XCTAssertFalse(FileManager.default.fileExists(atPath: file.path), "the core keeps its own copy")
         XCTAssertNil(model.problem)
         XCTAssertEqual(account.calls.filter { $0 == "sync" }.count, 1, "the media message goes out")
@@ -53,7 +53,7 @@ final class ConversationMediaTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: first.path))
         await model.retry()
         XCTAssertNil(model.problem)
-        XCTAssertTrue(account.calls.contains("sendMedia c1 application/pdf two"))
+        XCTAssertTrue(account.calls.contains("sendMedia c1 application/pdf nil two"))
     }
 
     func testAFailedDownloadCanBeAskedForAgainAndAReadyOneIsKept() async {
@@ -71,7 +71,7 @@ final class ConversationMediaTests: XCTestCase {
         let model = await model()
         account.files["c1 3"] = "/store/media/3"
         await model.open(pdf)
-        XCTAssertEqual(model.opened, .init(path: "/store/media/3", mime: "application/pdf"))
+        XCTAssertEqual(model.opened, .init(path: "/store/media/3", mime: "application/pdf", name: "skýrsla.pdf"))
         model.didOpen()
         XCTAssertNil(model.opened)
     }

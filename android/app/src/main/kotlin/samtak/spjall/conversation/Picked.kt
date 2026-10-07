@@ -3,12 +3,13 @@ package samtak.spjall.conversation
 import java.io.File
 
 /**
- * A photo or file the person chose, not read yet. [size] is what the picker
- * says, when it says; [read] copies it to a file the caller deletes.
+ * A photo or file the person chose, not read yet. [size] and [name] are what
+ * the picker says, when it says; [read] copies it to a file the caller deletes.
  */
 class Picked(
     val mime: String,
     val size: Long?,
+    val name: String? = null,
     val read: () -> File,
 )
 

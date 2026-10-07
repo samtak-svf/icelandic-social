@@ -102,12 +102,16 @@ interface Account {
     /** Deletes what has disappeared. */
     fun expire(): Outcome
 
-    /** Seals and uploads the file at [path], then sends it (0023); the core keeps its own copy. */
+    /**
+     * Seals and uploads the file at [path], then sends it under [name] (0023);
+     * the core keeps its own copy.
+     */
     fun sendMedia(
         conversation: String,
         path: String,
         mime: String,
         caption: String?,
+        name: String?,
     ): String
 
     /** The path of the media item at [seq], downloaded and checked the first time. */
@@ -207,7 +211,8 @@ class CoreAccount(
         path: String,
         mime: String,
         caption: String?,
-    ) = client.sendMedia(conversation, path, mime, caption)
+        name: String?,
+    ) = client.sendMedia(conversation, path, mime, caption, name)
 
     override fun media(
         conversation: String,

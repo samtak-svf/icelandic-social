@@ -320,20 +320,20 @@ class ConversationScreenTest {
     @Test
     fun aPhotoIsFetchedAndAFileOpensOnATap() {
         show(
-            item(1u, Content.Media("image/jpeg", 10uL, "Fjallið")),
-            item(2u, Content.Media("application/pdf", 10uL, null)),
+            item(1u, Content.Media("image/jpeg", 10uL, "Fjallið", null)),
+            item(2u, Content.Media("application/pdf", 10uL, null, "skýrsla.pdf")),
         )
         compose.waitForIdle()
         assertEquals("a photo downloads when it shows; a file waits", listOf("fetch 1"), calls)
         compose.onNodeWithText("Fjallið").assertIsDisplayed()
-        compose.onNodeWithText(text(R.string.file)).performClick()
+        compose.onNodeWithText("skýrsla.pdf").performClick()
         assertEquals(listOf("fetch 1", "open 2"), calls)
     }
 
     @Test
     fun aFailedDownloadCanBeTriedAgain() {
         show(
-            item(2u, Content.Media("application/pdf", 10uL, null)),
+            item(2u, Content.Media("application/pdf", 10uL, null, null)),
             media = mapOf(2uL to ConversationViewModel.Media.Failed),
         )
         compose.onNodeWithText(text(R.string.media_download_failed)).assertIsDisplayed()

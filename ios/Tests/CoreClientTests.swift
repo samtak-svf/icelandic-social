@@ -78,7 +78,8 @@ final class CoreClientTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: file) }
 
         _ = try a.sendMedia(
-            conversation: conversation, path: file.path(percentEncoded: false), mime: "image/png", caption: "sólarlag")
+            conversation: conversation, path: file.path(percentEncoded: false), mime: "image/png", caption: "sólarlag",
+            name: "../sólarlag.png")
         _ = try a.sync()
         _ = try deliver(b, device: "b1")
         let items = try b.timeline(conversation: conversation, before: nil, limit: 10)
@@ -86,10 +87,11 @@ final class CoreClientTests: XCTestCase {
             items.first {
                 if case .media = $0.content { true } else { false }
             })
-        guard case .media(let mime, let size, let caption) = item.content else { return XCTFail("\(item)") }
+        guard case .media(let mime, let size, let caption, let name) = item.content else { return XCTFail("\(item)") }
         XCTAssertEqual(mime, "image/png")
         XCTAssertEqual(size, UInt64(photo.count))
         XCTAssertEqual(caption, "sólarlag")
+        XCTAssertEqual(name, "sólarlag.png", "the core cuts the name to a bare one")
         let opened = try b.media(conversation: conversation, seq: try XCTUnwrap(item.seq))
         XCTAssertEqual(try Data(contentsOf: URL(filePath: opened)), photo)
     }

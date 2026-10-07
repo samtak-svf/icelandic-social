@@ -105,9 +105,14 @@ private fun FileRow(
         } else {
             Icon(Icons.Filled.Info, contentDescription = null, tint = foreground)
         }
+        val content = item.content as? Content.Media
         Column {
-            Text(text = lastLine(item), style = MaterialTheme.typography.bodyLarge, color = foreground)
-            (item.content as? Content.Media)?.let {
+            Text(
+                text = content?.name ?: lastLine(item),
+                style = MaterialTheme.typography.bodyLarge,
+                color = foreground,
+            )
+            content?.let {
                 Text(
                     text = Formatter.formatShortFileSize(LocalContext.current, it.size.toLong()),
                     style = MaterialTheme.typography.bodySmall,

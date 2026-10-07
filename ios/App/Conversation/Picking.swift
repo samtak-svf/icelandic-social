@@ -29,7 +29,7 @@ extension Picked {
     init(file: URL) {
         let mime = UTType(filenameExtension: file.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
         let size = (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init)
-        self.init(mime: mime, size: size) {
+        self.init(mime: mime, size: size, name: file.lastPathComponent) {
             let open = file.startAccessingSecurityScopedResource()
             defer { if open { file.stopAccessingSecurityScopedResource() } }
             return try copy(file)
@@ -45,15 +45,20 @@ private func copy(_ file: URL) throws -> URL {
 }
 
 /// The core keeps a file without a name ending, so the preview gets a copy
-/// named after its type; the folder is emptied when the preview closes.
+/// under the sender's name, or named after its type when there is none; the
+/// folder is emptied when the preview closes.
 enum PreviewCopy {
     private static var folder: URL { FileManager.default.temporaryDirectory.appending(path: "preview") }
 
     static func file(_ opened: ConversationModel.Opened) -> URL? {
         let fileManager = FileManager.default
         try? fileManager.removeItem(at: folder)
-        var url = folder.appending(path: URL(filePath: opened.path).lastPathComponent)
-        if let ending = UTType(mimeType: opened.mime)?.preferredFilenameExtension {
+        // The core cut the name to a bare one (decision 0023); lastPathComponent keeps it so.
+        let named = opened.name.map { URL(filePath: $0).lastPathComponent }.flatMap {
+            ["", ".", "..", "/"].contains($0) ? nil : $0
+        }
+        var url = folder.appending(path: named ?? URL(filePath: opened.path).lastPathComponent)
+        if named == nil, let ending = UTType(mimeType: opened.mime)?.preferredFilenameExtension {
             url.appendPathExtension(ending)
         }
         do {

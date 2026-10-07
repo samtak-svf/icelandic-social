@@ -28,7 +28,7 @@ func lastLine(_ item: Item, group: Bool = true) -> String {
     switch item.content {
     case .text(let text, _):
         text
-    case .media(let mime, _, let caption):
+    case .media(let mime, _, let caption, _):
         caption ?? localized(mime.hasPrefix("image/") ? "photo" : "file")
     case .deleted:
         localized("message_deleted")
