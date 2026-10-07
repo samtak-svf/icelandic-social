@@ -61,6 +61,10 @@ class MeScreenTest {
             override fun retry() {
                 calls += "retry"
             }
+
+            override fun notificationSettings() {
+                calls += "notificationSettings"
+            }
         }
 
     private fun text(id: Int) = InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
@@ -68,6 +72,7 @@ class MeScreenTest {
     private fun show(
         link: String? = null,
         blocked: List<Person> = emptyList(),
+        notificationsOff: Boolean = false,
     ) {
         val me =
             Me(
@@ -89,6 +94,7 @@ class MeScreenTest {
                         blocked = blocked,
                     ),
                     actions,
+                    notificationsOff,
                 )
             }
         }
@@ -120,6 +126,20 @@ class MeScreenTest {
             ).let { it[it.fetchSemanticsNodes().size - 1] }
             .performClick()
         assertEquals(listOf("revoke d2"), calls)
+    }
+
+    @Test
+    fun notificationsThatAreOnNeedNoRow() {
+        show()
+        compose.onNodeWithText(text(R.string.notifications_off)).assertDoesNotExist()
+    }
+
+    @Test
+    fun blockedNotificationsSayWhereToTurnThemOn() {
+        show(notificationsOff = true)
+        compose.onNodeWithText(text(R.string.notifications_off)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.notifications_settings)).performClick()
+        assertEquals(listOf("notificationSettings"), calls)
     }
 
     @Test

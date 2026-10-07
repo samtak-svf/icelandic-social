@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Asked once after sign-in (decision 0025); Ég points at the settings if refused. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- No backup and no device transfer: message history stays on the device
          that received it (decision 0006), and the MLS state must never be
@@ -52,6 +54,14 @@
                 <data android:pathPrefix="${linkPathPrefix}" />
             </intent-filter>
         </activity>
+        <!-- The contentless push and new tokens (push/Fcm.kt). -->
+        <service
+            android:name=".push.MessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
         <!-- Serves only the copies made to open a photo or file in another
              app (media/Files.kt), read-only and per grant. -->
         <provider

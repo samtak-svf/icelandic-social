@@ -290,13 +290,37 @@
       }
     },
     "push_fallback_body": {
-      "comment": "APNs alert text shown when the notification service extension cannot decrypt in time. Never names the sender.",
+      "comment": "Notification text when the device could not fetch what a push announced: the APNs alert the notification service extension keeps when it cannot decrypt in time, and Android's when its sync fails (docs/decisions/0025). Never names the sender.",
       "extractionState": "manual",
       "localizations": {
         "is": {
           "stringUnit": {
             "state": "translated",
             "value": "Ný skilaboð á Hjal"
+          }
+        }
+      }
+    },
+    "notifications_off": {
+      "comment": "Row on Ég when the system blocks the app's notifications: new messages are not announced until it is opened (docs/decisions/0025).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slökkt er á tilkynningum. Þú sérð ekki ný skilaboð fyrr en þú opnar appið."
+          }
+        }
+      }
+    },
+    "notifications_settings": {
+      "comment": "Action on the notifications_off row: opens the app's notification settings in the system.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opna stillingar"
           }
         }
       }

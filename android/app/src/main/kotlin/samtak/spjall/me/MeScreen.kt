@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -39,12 +40,14 @@ import java.time.format.FormatStyle
 
 /**
  * "Ég": the person, their invite link and QR code, the read-marker and typing
- * toggles, who they blocked, their devices, and deleting the account.
+ * toggles, who they blocked, their devices, and deleting the account. While
+ * the system blocks the app's notifications, a row at the top says so.
  */
 @Composable
 fun MeScreen(
     state: MeViewModel.State,
     actions: MeActions,
+    notificationsOff: Boolean = false,
 ) {
     var revoking by rememberSaveable { mutableStateOf<String?>(null) }
     var deleting by rememberSaveable { mutableStateOf(false) }
@@ -53,9 +56,7 @@ fun MeScreen(
             modifier = Modifier.safeDrawingPadding().verticalScroll(rememberScrollState()).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(text = stringResource(R.string.tab_me), style = MaterialTheme.typography.displaySmall)
-            if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            state.problem?.let { ProblemCard(it, actions::retry) }
+            Header(state, actions, notificationsOff)
             state.me?.let { me ->
                 me.name?.let { Text(text = it, style = MaterialTheme.typography.headlineSmall) }
                 if (me.verified) {
@@ -103,6 +104,29 @@ fun MeScreen(
             },
             onDismiss = { deleting = false },
         )
+    }
+}
+
+/** The title, and what needs the person's attention before the rest. */
+@Composable
+private fun Header(
+    state: MeViewModel.State,
+    actions: MeActions,
+    notificationsOff: Boolean,
+) {
+    Text(text = stringResource(R.string.tab_me), style = MaterialTheme.typography.displaySmall)
+    if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+    state.problem?.let { ProblemCard(it, actions::retry) }
+    if (notificationsOff) NotificationsOff(actions::notificationSettings)
+}
+
+@Composable
+private fun NotificationsOff(onSettings: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(text = stringResource(R.string.notifications_off), style = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = onSettings) { Text(stringResource(R.string.notifications_settings)) }
+        }
     }
 }
 

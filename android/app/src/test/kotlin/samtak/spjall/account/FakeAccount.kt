@@ -9,6 +9,7 @@ import samtak.spjall.core.Inviter
 import samtak.spjall.core.Item
 import samtak.spjall.core.ItemStatus
 import samtak.spjall.core.Me
+import samtak.spjall.core.Notices
 import samtak.spjall.core.Outcome
 import samtak.spjall.core.Person
 import samtak.spjall.core.Platform
@@ -38,6 +39,9 @@ class FakeAccount(
     /** Each conversation's items, oldest first; [send] adds a pending one. */
     val timelines = mutableMapOf<String, MutableList<Item>>()
     var typingOn = true
+
+    /** What the next [notices] returns; it is emptied once returned, as the core's is. */
+    var notices = Notices(emptyList(), emptyList())
 
     /** What the next sync and frames return; each is used once. */
     val outcomes = ArrayDeque<Outcome>()
@@ -113,6 +117,16 @@ class FakeAccount(
     override fun sync(): Outcome {
         call("sync")
         return outcomes.removeFirstOrNull() ?: Outcome(emptyList(), emptyList())
+    }
+
+    override fun setPushToken(
+        token: String,
+        sandbox: Boolean,
+    ) = call("setPushToken $token $sandbox")
+
+    override fun notices(): Notices {
+        call("notices")
+        return notices.also { notices = Notices(emptyList(), emptyList()) }
     }
 
     override fun onFrame(frame: String): Outcome {

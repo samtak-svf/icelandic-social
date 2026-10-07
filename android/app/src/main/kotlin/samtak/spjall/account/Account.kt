@@ -6,6 +6,7 @@ import samtak.spjall.core.CoreClient
 import samtak.spjall.core.Inviter
 import samtak.spjall.core.Item
 import samtak.spjall.core.Me
+import samtak.spjall.core.Notices
 import samtak.spjall.core.Outcome
 import samtak.spjall.core.Person
 import samtak.spjall.core.Platform
@@ -55,6 +56,18 @@ interface Account {
 
     /** Sends what is queued and fetches what is new. */
     fun sync(): Outcome
+
+    /**
+     * Keeps the platform's push token; the next [sync] sends it if the server
+     * does not have it yet (decision 0025). An unchanged token sends nothing.
+     */
+    fun setPushToken(
+        token: String,
+        sandbox: Boolean,
+    )
+
+    /** What to announce since the last call, each item once, and which conversations' notifications to take away. */
+    fun notices(): Notices
 
     /** One text frame from the socket. */
     fun onFrame(frame: String): Outcome
@@ -170,6 +183,13 @@ class CoreAccount(
     override fun deviceToken() = client.deviceToken()
 
     override fun sync() = client.sync()
+
+    override fun setPushToken(
+        token: String,
+        sandbox: Boolean,
+    ) = client.setPushToken(token, sandbox)
+
+    override fun notices() = client.notices()
 
     override fun onFrame(frame: String) = client.onFrame(frame)
 

@@ -1,9 +1,12 @@
 package samtak.spjall
 
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -28,8 +31,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -46,6 +54,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import samtak.spjall.brand.R
 import samtak.spjall.conversation.ConversationActions
@@ -79,6 +89,9 @@ class MainActivity : ComponentActivity() {
         viewModelFactory { initializer { SignInViewModel(graph.account, createSavedStateHandle()) } }
     }
 
+    /** A conversation a notification asked to open, held until the signed-in screens can. */
+    private val opens = Channel<String>(Channel.CONFLATED)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // The app has only a light theme: dark icons on its bars, whatever the system's mode.
@@ -97,8 +110,12 @@ class MainActivity : ComponentActivity() {
         handle(intent)
     }
 
-    /** An invite link, or Kenni's redirect back to the app's scheme. */
+    /** A tapped notification, an invite link, or Kenni's redirect back to the app's scheme. */
     private fun handle(intent: Intent) {
+        if (intent.action == ACTION_OPEN_CONVERSATION) {
+            intent.getStringExtra(EXTRA_CONVERSATION)?.let { opens.trySend(it) }
+            return
+        }
         val uri = intent.data?.takeIf { intent.action == Intent.ACTION_VIEW } ?: return
         val token = inviteToken(uri.toString())
         when {
@@ -141,6 +158,8 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(Unit) { graph.socket.start() }
         LaunchedEffect(list) { signIn.invites.collect { list.openInvite(it.token, it.signedUp) } }
         LaunchedEffect(list) { list.opened.collect { nav.navigate(conversation(it)) } }
+        LaunchedEffect(Unit) { opens.receiveAsFlow().collect { nav.navigate(conversation(it)) { popUpTo(LIST) } } }
+        AskForNotifications()
         val route =
             nav
                 .currentBackStackEntryAsState()
@@ -165,6 +184,25 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /** Once per install, after sign-in (decision 0025). Refused, Ég points at the settings. */
+    @Composable
+    private fun AskForNotifications() {
+        val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+        LaunchedEffect(Unit) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return@LaunchedEffect
+            val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+            if (prefs.getBoolean(ASKED_NOTIFICATIONS, false)) return@LaunchedEffect
+            prefs.edit { putBoolean(ASKED_NOTIFICATIONS, true) }
+            ask.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    private fun notificationSettings() {
+        startActivity(
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName),
+        )
     }
 
     @Composable
@@ -237,6 +275,7 @@ class MainActivity : ComponentActivity() {
         val model: ConversationViewModel =
             viewModel(key = "conversation-$id") { ConversationViewModel(id, graph.account, graph.socket) }
         val state by model.state.collectAsStateWithLifecycle()
+        LaunchedEffect(id) { graph.push.dismiss(id) }
         val photo =
             rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
                 uri?.let { model.attach(graph.files.picked(it)) }
@@ -300,8 +339,13 @@ class MainActivity : ComponentActivity() {
     private fun Me(signIns: Int) {
         val me: MeViewModel = viewModel(key = "me-$signIns") { MeViewModel(graph.account) }
         val state by me.state.collectAsStateWithLifecycle()
-        // A block from a conversation menu changes the list here.
-        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { me.load() }
+        val notifications = remember { NotificationManagerCompat.from(this) }
+        var notificationsOff by remember { mutableStateOf(false) }
+        // A block from a conversation menu changes the list here, and the settings the row opens may change.
+        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+            me.load()
+            notificationsOff = !notifications.areNotificationsEnabled()
+        }
         LaunchedEffect(state.signedOut) {
             if (state.signedOut) {
                 graph.socket.stop()
@@ -326,7 +370,10 @@ class MainActivity : ComponentActivity() {
                 override fun deleteAccount() = me.deleteAccount()
 
                 override fun retry() = me.retry()
+
+                override fun notificationSettings() = this@MainActivity.notificationSettings()
             },
+            notificationsOff = notificationsOff,
         )
     }
 
@@ -339,16 +386,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private companion object {
-        const val LIST = "conversations"
-        const val ME = "me"
-        const val PEOPLE = "people"
-        const val CONVERSATION = "conversation"
+    companion object {
+        /** A notification's tap (push/SystemNotifier.kt), with [EXTRA_CONVERSATION] unless it is the fallback. */
+        const val ACTION_OPEN_CONVERSATION = "samtak.spjall.OPEN_CONVERSATION"
+        const val EXTRA_CONVERSATION = "conversation"
 
-        fun conversation(id: String) = "$CONVERSATION/$id"
+        private const val LIST = "conversations"
+        private const val ME = "me"
+        private const val PEOPLE = "people"
+        private const val CONVERSATION = "conversation"
+        private const val PREFS = "push"
+        private const val ASKED_NOTIFICATIONS = "asked_notifications"
+
+        private fun conversation(id: String) = "$CONVERSATION/$id"
 
         /** A tab keeps one copy of itself on the stack, above the list. */
-        fun NavOptionsBuilder.tab() {
+        private fun NavOptionsBuilder.tab() {
             popUpTo(LIST) { saveState = true }
             launchSingleTop = true
             restoreState = true

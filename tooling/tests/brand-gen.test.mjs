@@ -82,10 +82,11 @@ describe("brand-gen", () => {
     const root = fixture();
     const xml = output(root, `${RES}/values/strings.xml`);
     expect(xml).toContain(`name="notification_channel_messages_name"`);
-    expect(xml).not.toContain(`name="push_fallback_body"`);
+    expect(xml).not.toContain(`name="link_open_in_app"`);
     const ios = JSON.parse(output(root, XCSTRINGS)).strings;
     expect(Object.keys(ios)).toContain("push_fallback_body");
     expect(Object.keys(ios)).not.toContain("notification_channel_messages_name");
+    expect(Object.keys(ios)).not.toContain("link_open_in_app");
     const ts = output(root, "backend/src/brand.gen.ts");
     expect(ts).toContain("push_fallback_body:");
     expect(ts).not.toContain("send:");

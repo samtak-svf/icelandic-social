@@ -17,4 +17,7 @@ interface MeActions {
     fun deleteAccount()
 
     fun retry()
+
+    /** The system's notification settings for the app. */
+    fun notificationSettings()
 }

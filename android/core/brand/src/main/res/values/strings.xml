@@ -50,10 +50,18 @@
         <item quantity="one">%1$d ólesið</item>
         <item quantity="other">%1$d ólesin</item>
     </plurals>
+    <!-- Notification text when the device could not fetch what a push announced: the APNs alert the notification service extension keeps when it cannot decrypt in time, and Android's when its sync fails (docs/decisions/0025). Never names the sender. -->
+    <string name="push_fallback_body">Ný skilaboð á Hjal</string>
     <!-- Android channel: messages. -->
     <string name="notification_channel_messages_name">Skilaboð</string>
     <!-- Android channel description: messages. -->
     <string name="notification_channel_messages_description">Ný skilaboð í samtölunum þínum.</string>
+    <!-- The reader in a message notification's conversation style; Android requires a name for them, though it rarely shows it (docs/decisions/0025). -->
+    <string name="notification_you">Þú</string>
+    <!-- Row on Ég when the system blocks the app's notifications: new messages are not announced until it is opened (docs/decisions/0025). -->
+    <string name="notifications_off">Slökkt er á tilkynningum. Þú sérð ekki ný skilaboð fyrr en þú opnar appið.</string>
+    <!-- Action on the notifications_off row: opens the app's notification settings in the system. -->
+    <string name="notifications_settings">Opna stillingar</string>
     <!-- System card in a conversation when a member adds a device (from an MLS add commit). -->
     <string name="new_device_card">%1$s bætti við nýju tæki.</string>
     <!-- System card when an account joins a group (docs/decisions/0022). -->

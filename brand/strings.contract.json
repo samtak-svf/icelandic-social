@@ -94,8 +94,8 @@
       "placeholders": { "count": "int" }
     },
     "push_fallback_body": {
-      "surfaces": ["ios", "backend"],
-      "description": "APNs alert text shown when the notification service extension cannot decrypt in time. Never names the sender."
+      "surfaces": ["android", "ios", "backend"],
+      "description": "Notification text when the device could not fetch what a push announced: the APNs alert the notification service extension keeps when it cannot decrypt in time, and Android's when its sync fails (docs/decisions/0025). Never names the sender."
     },
     "notification_channel_messages_name": {
       "surfaces": ["android"],
@@ -104,6 +104,18 @@
     "notification_channel_messages_description": {
       "surfaces": ["android"],
       "description": "Android channel description: messages."
+    },
+    "notification_you": {
+      "surfaces": ["android"],
+      "description": "The reader in a message notification's conversation style; Android requires a name for them, though it rarely shows it (docs/decisions/0025)."
+    },
+    "notifications_off": {
+      "surfaces": ["android", "ios"],
+      "description": "Row on Ég when the system blocks the app's notifications: new messages are not announced until it is opened (docs/decisions/0025)."
+    },
+    "notifications_settings": {
+      "surfaces": ["android", "ios"],
+      "description": "Action on the notifications_off row: opens the app's notification settings in the system."
     },
     "new_device_card": {
       "surfaces": ["android", "ios"],

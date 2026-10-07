@@ -4,7 +4,7 @@
 export const brandStrings = {
   /** Launcher label, home-screen name, store-facing display name. */
   app_name: "Hjal",
-  /** APNs alert text shown when the notification service extension cannot decrypt in time. Never names the sender. */
+  /** Notification text when the device could not fetch what a push announced: the APNs alert the notification service extension keeps when it cannot decrypt in time, and Android's when its sync fails (docs/decisions/0025). Never names the sender. */
   push_fallback_body: "Ný skilaboð á Hjal",
   /** Heading of the invite link page (/l/{token}) and of the app's invite screen when a person sent the link (docs/decisions/0019). */
   link_invited_by: "{name} býður þér á Hjal.",

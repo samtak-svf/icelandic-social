@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:networkSecurityConfig="@xml/debug_network_security" />
+    <application android:networkSecurityConfig="@xml/debug_network_security">
+        <!-- A push without Firebase, for testing by hand (push/DebugPushReceiver.kt).
+             DUMP is held by adb's shell and by no ordinary app. -->
+        <receiver
+            android:name=".push.DebugPushReceiver"
+            android:exported="true"
+            android:permission="android.permission.DUMP">
+            <intent-filter>
+                <action android:name="samtak.spjall.debug.PUSH" />
+            </intent-filter>
+        </receiver>
+    </application>
 </manifest>
