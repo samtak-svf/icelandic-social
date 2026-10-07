@@ -6,6 +6,9 @@
 // object wherever Cloudflare chose and could never be moved (decision 0001).
 
 import ids from "../../../identifiers/ids.json" with { type: "json" };
+import { log } from "../log.ts";
+import type { ApnsKey } from "../push/apns.ts";
+import type { FcmAccount } from "../push/fcm.ts";
 
 /** The platforms a client build can report; each has its own minimum version. */
 export type Platform = "android" | "ios";
@@ -51,7 +54,13 @@ export function inbox(env: Env, accountId: string) {
 }
 
 /** Worker secrets, which `wrangler types` cannot see (wrangler.jsonc names them). */
-type Secrets = { KENNITALA_HMAC_KEY?: string; KENNI_CLIENT_SECRET?: string };
+type Secrets = {
+  KENNITALA_HMAC_KEY?: string;
+  KENNI_CLIENT_SECRET?: string;
+  FCM_SERVICE_ACCOUNT?: string;
+  APNS_KEY_P8?: string;
+  APNS_KEY_ID?: string;
+};
 
 /**
  * Bound only by dev/worker.ts and test/worker.ts: the fake Kenni, reached in
@@ -106,4 +115,49 @@ export function appLinks(env: Env): { androidFingerprints: string[]; appleAppIds
     androidFingerprints: list(env.ANDROID_CERT_SHA256),
     appleAppIds: team ? [`${team}.${ids.store.iosBundleId}`, interim] : [interim],
   };
+}
+
+/** The push providers' credentials (decision 0025); each is absent until set. */
+export type PushConfig = { fcm?: FcmAccount; apns?: ApnsKey; fetch: typeof fetch };
+
+/**
+ * FCM from the `FCM_SERVICE_ACCOUNT` secret (the service account's JSON key);
+ * APNs from the `APNS_KEY_P8` and `APNS_KEY_ID` secrets and the
+ * `APNS_TEAM_ID` and `APNS_TOPIC` vars. A malformed key is logged and left
+ * out, so push stays off rather than failing every notify.
+ */
+export function pushConfig(env: Env): PushConfig {
+  const secrets = env as Env & Secrets;
+  const config: PushConfig = { fetch };
+  if (secrets.FCM_SERVICE_ACCOUNT) {
+    try {
+      const key = JSON.parse(secrets.FCM_SERVICE_ACCOUNT) as Record<string, unknown>;
+      const { project_id, client_email, private_key, token_uri } = key;
+      if (
+        typeof project_id !== "string" ||
+        typeof client_email !== "string" ||
+        typeof private_key !== "string"
+      ) {
+        throw new Error("fields");
+      }
+      config.fcm = {
+        projectId: project_id,
+        clientEmail: client_email,
+        privateKey: private_key,
+        tokenUri: typeof token_uri === "string" ? token_uri : "https://oauth2.googleapis.com/token",
+      };
+    } catch {
+      log("push.misconfigured", { code: "fcm" });
+    }
+  }
+  const teamId = env.APNS_TEAM_ID.trim();
+  const topic = env.APNS_TOPIC.trim();
+  if (secrets.APNS_KEY_P8 && secrets.APNS_KEY_ID) {
+    if (teamId && topic) {
+      config.apns = { keyId: secrets.APNS_KEY_ID, teamId, privateKey: secrets.APNS_KEY_P8, topic };
+    } else {
+      log("push.misconfigured", { code: "apns" });
+    }
+  }
+  return config;
 }

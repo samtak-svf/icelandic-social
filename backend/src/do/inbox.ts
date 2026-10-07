@@ -4,7 +4,7 @@ import { WsFrame } from "../api/frames.ts";
 import { SOCKET_ACCOUNT, SOCKET_DEVICE } from "../api/socket.ts";
 import { conversation } from "../env/index.ts";
 import { log } from "../log.ts";
-import { pushSender } from "../push.ts";
+import { pushSender } from "../push/index.ts";
 
 /** The protocol version `hello` announces (decision 0015). */
 const PROTOCOL = 1;
