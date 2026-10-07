@@ -7,6 +7,7 @@
   device as [0017](0017-conversations-on-the-server.md) says, not through the `Inbox` DO.
 - Date: 2026-10-05
 - Decided by: Guðröður
+- Amended by: [0025](0025-push-without-ids.md) (a push carries no ids)
 
 ## Decision
 
@@ -32,9 +33,10 @@ KeyPackages are consumed once on fetch; each device keeps one last-resort KeyPac
 told to replenish under a threshold. Welcome messages are routed by the `Inbox` DO to the new
 member's devices.
 
-Push carries a **fetch hint only** (`{conv, seq}`); the notification extension (iOS) or
-messaging service (Android) fetches and decrypts on the device. The APNs fallback text shown
-when decryption times out is a fixed brand string that never names the sender.
+Push carries **no ids at all** (0025 replaced the fetch hint `{conv, seq}`); the
+notification extension (iOS) or messaging service (Android) syncs and decrypts on the device.
+The APNs fallback text shown when decryption times out is a fixed brand string that never
+names the sender.
 
 ## Why
 

@@ -8,7 +8,8 @@
   [0015](0015-delivery-protocol.md) (the socket frames, retention),
   [0018](0018-the-client-engine-in-the-core.md) (the outbox, typing),
   [0021](0021-group-info-and-external-join.md) (rejoining)
-- Media is [0023](0023-media-as-encrypted-blobs.md); block is [0024](0024-block.md).
+- Media is [0023](0023-media-as-encrypted-blobs.md); block is [0024](0024-block.md); push is
+  [0025](0025-push-without-ids.md).
 
 ## Decision
 
@@ -90,8 +91,8 @@ the process lifecycle, and `URLSessionWebSocketTask` on iOS, bound to the scene 
 open in the foreground only, reconnects with jittered backoff, calls `sync()` on connect,
 passes each frame to `on_frame` and sends the frames each `Outcome` returns. Its state feeds
 the list's connection line (offline, connecting). Android may kill the socket in Doze without
-closing it, so the app treats a missed `pong` as closed. Push is a later batch; until then a
-closed app learns of messages when it opens.
+closing it, so the app treats a missed `pong` as closed. Push is
+[0025](0025-push-without-ids.md).
 
 ### What each screen shows
 

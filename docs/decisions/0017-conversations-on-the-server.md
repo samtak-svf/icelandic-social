@@ -5,6 +5,7 @@
   amended by [0020](0020-membership-bound-to-commits.md).
 - Date: 2026-10-06
 - Decided by: Guðröður, approving the plan for the delivery backend
+- Amended by: [0025](0025-push-without-ids.md) (the outbox is re-armed and sends one push per device)
 - Amends: [0015](0015-delivery-protocol.md) (how members, Welcomes and KeyPackages reach the server)
 
 ## Decision
@@ -53,8 +54,8 @@ any ciphertext.
   account a commit removes is notified of that commit too; its fetch then answers
   `not_a_member`, which is how its devices learn they are out.
 - **Push is an outbox.** The `Inbox` writes one row per device and conversation for a device
-  with no open socket whose cursor is behind, until that device acks. A sender interface
-  drains it; until FCM and APNs are set up, the only sender logs `push.skipped`.
+  with no open socket whose cursor is behind, until that device acks; 0025 re-arms it on
+  each newer urgent message. A sender interface drains it; until FCM and APNs are set up, the only sender logs `push.skipped`.
 - **Reconnecting catches up.** After `hello`, the `Inbox` sends `notify` for each conversation
   whose latest `seq` is past that device's cursor.
 

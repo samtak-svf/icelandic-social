@@ -4,7 +4,8 @@
   logs until FCM and APNs are set up.
 - Date: 2026-10-06
 - Decided by: Guðröður, approving the plan that acted on the phase-0 review
-- Amended by: [0017](0017-conversations-on-the-server.md) (the roster, Welcomes and KeyPackages)
+- Amended by: [0017](0017-conversations-on-the-server.md) (the roster, Welcomes and KeyPackages),
+  [0025](0025-push-without-ids.md) (what a push carries and when)
 
 ## Decision
 
@@ -35,9 +36,9 @@ platforms (decision 0005), and each call is idempotent and testable on its own.
 - **Typing is its own frame type** so the Durable Object can tell, without reading any
   ciphertext, that it must forward and never store it (decision 0009). Inside the ciphertext
   is the envelope's `typing` kind, as for every other kind.
-- **`ack` moves this device's cursor** in the account's `Inbox` (decision 0014). A push (the
-  fetch hint `{conv, seq}`, decision 0002) is sent only for a device whose cursor is behind
-  and which has no open socket.
+- **`ack` moves this device's cursor** in the account's `Inbox` (decision 0014). A push (with no
+  ids, decision 0025) is sent only for a device whose cursor is behind, which has no open
+  socket, and only for an urgent message.
 - **Retention:** the `Conversation` Durable Object deletes stored ciphertext 30 days after it
   was stored, with an alarm. A device offline for longer misses those messages and sees a
   system card saying so.
