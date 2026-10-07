@@ -100,7 +100,7 @@ describe("deleting an account", () => {
     await runInDurableObject(conversation(eu, conversationId), (_, state) => {
       state.storage.sql.exec("INSERT INTO roster (account) VALUES (?)", friend.accountId);
     });
-    await inbox(eu, phone.accountId).notify(phone.accountId, conversationId, 1);
+    await inbox(eu, phone.accountId).notify(phone.accountId, conversationId, 1, 1);
 
     // Someone this account let in, and its live invite.
     const rotated = await fetch("/v1/me/invite", { method: "POST", headers: phone.auth });
@@ -143,7 +143,7 @@ describe("deleting an account", () => {
     const phone = await device();
     expect((await remove("/v1/me", phone.auth)).status).toBe(204);
     const box = inbox(euEnv(env), phone.accountId);
-    await box.notify(phone.accountId, "c_late", 3);
+    await box.notify(phone.accountId, "c_late", 3, 3);
     expect(await box.latest()).toEqual({ c_late: 3 });
   });
 });

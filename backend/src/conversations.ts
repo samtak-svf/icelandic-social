@@ -15,6 +15,7 @@ type Body = {
   ciphertext: string;
   welcome?: { message: string };
   groupInfo?: string;
+  urgent?: boolean;
 };
 
 /** An account id, as `OpaqueId` and the core's `Device` take it. */
@@ -109,6 +110,7 @@ function checkCommit(input: SendInput, framing: Message, { welcome, groupInfo }:
   return {
     ok: {
       ...input,
+      urgent: false,
       commitEpoch: framing.epoch,
       roster: claim.roster,
       groupInfo: groupInfo.bytes,
@@ -132,7 +134,12 @@ export function checkSend(account: string, conversationId: string, body: Body): 
   // readParts let only a PublicMessage or PrivateMessage through as the main part.
   const framing = parts.main.message as Message;
   if (base64url(framing.groupId) !== conversationId) return { error: "group_mismatch" };
-  const input = { account, clientMsgId: body.clientMsgId, ciphertext: parts.main.bytes };
+  const input = {
+    account,
+    clientMsgId: body.clientMsgId,
+    ciphertext: parts.main.bytes,
+    urgent: body.urgent !== false,
+  };
   if (framing.contentType === "commit") return checkCommit(input, framing, parts);
   return parts.welcome || parts.groupInfo ? { error: "invalid_request" } : { ok: input };
 }

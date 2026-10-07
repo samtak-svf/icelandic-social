@@ -46,6 +46,7 @@ async function together(...members: Device[]) {
     account: creator!.accountId,
     clientMsgId: "add",
     ciphertext: Uint8Array.of(1),
+    urgent: false,
     commitEpoch: 0,
     roster: members.map((m) => m.accountId),
   });
@@ -58,6 +59,7 @@ async function together(...members: Device[]) {
         account: creator!.accountId,
         clientMsgId: `c${epoch}`,
         ciphertext: Uint8Array.of(2),
+        urgent: false,
         commitEpoch: epoch,
         roster: after.map((m) => m.accountId),
       }),

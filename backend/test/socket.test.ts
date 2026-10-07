@@ -23,7 +23,7 @@ async function outbox(accountId: string) {
 describe("the socket", () => {
   it("says hello, then notifies what this device has missed", async () => {
     const me = await device();
-    await inbox(testEnv, me.accountId).notify(me.accountId, "conv_seen", 3);
+    await inbox(testEnv, me.accountId).notify(me.accountId, "conv_seen", 3, 3);
     const socket = await connect(me.auth);
     const hello = await socket.next();
     expect(hello).toMatchObject({ type: "hello", protocol: 1 });
@@ -36,21 +36,21 @@ describe("the socket", () => {
     expect(await again.settle("n1")).toEqual({ type: "pong", nonce: "n1" });
   });
 
-  it("notifies an open socket, and owes one push to a device without one until it acks", async () => {
+  it("notifies an open socket, and owes a push to a device without one until it acks", async () => {
     const online = await device();
     const offline = await device({ accountId: online.accountId });
     const socket = await connect(online.auth);
     await socket.next();
 
     const box = inbox(testEnv, online.accountId);
-    await box.notify(online.accountId, "conv_push", 1);
+    await box.notify(online.accountId, "conv_push", 1, 1);
     expect(await socket.next()).toEqual({ type: "notify", conversationId: "conv_push", seq: 1 });
     expect(await outbox(online.accountId)).toEqual([
       { device_id: offline.deviceId, conversation_id: "conv_push", seq: 1, pushed: 1 },
     ]);
 
-    // Still one row, already pushed: no second push until the device acks.
-    await box.notify(online.accountId, "conv_push", 2);
+    // Still one row: a newer urgent message re-arms it, and it is pushed again.
+    await box.notify(online.accountId, "conv_push", 2, 2);
     expect(await outbox(online.accountId)).toEqual([
       { device_id: offline.deviceId, conversation_id: "conv_push", seq: 2, pushed: 1 },
     ]);
@@ -69,7 +69,7 @@ describe("the socket", () => {
     await socket.next();
     socket.send({ type: "ack", conversationId: "conv_ack", seq: 5 });
     await socket.settle("n3");
-    await inbox(testEnv, me.accountId).notify(me.accountId, "conv_ack", 5);
+    await inbox(testEnv, me.accountId).notify(me.accountId, "conv_ack", 5, 5);
     expect(await socket.settle("n4")).toEqual({ type: "pong", nonce: "n4" });
     expect(await outbox(me.accountId)).toEqual([]);
   });
@@ -85,6 +85,7 @@ describe("the socket", () => {
       account: a.accountId,
       clientMsgId: "add",
       ciphertext: Uint8Array.of(1),
+      urgent: false,
       commitEpoch: 0,
       roster: [a.accountId, b.accountId],
     });
@@ -134,7 +135,7 @@ describe("the socket", () => {
     socket.ws.close(1000, "bye");
     expect((await socket.closed).code).toBe(1000);
 
-    await inbox(testEnv, me.accountId).notify(me.accountId, "conv_closed", 1);
+    await inbox(testEnv, me.accountId).notify(me.accountId, "conv_closed", 1, 1);
     expect(await outbox(me.accountId)).toEqual([
       { device_id: me.deviceId, conversation_id: "conv_closed", seq: 1, pushed: 1 },
     ]);

@@ -107,26 +107,29 @@ describe("delivery", () => {
     socketB.send({ type: "ack", conversationId: CONVERSATION, seq: 3 });
     await socketB.settle("before-close");
 
-    // B goes offline; A's next message is owed to B's device as a push.
+    // B goes offline. A commit is not urgent (decision 0025), so B's device is
+    // owed no push for it; A's next message is owed to it as a push.
     socketB.ws.close(1000, "bye");
     await socketB.closed;
+    const outbox = () =>
+      runInDurableObject(inbox(euEnv(env), b.accountId), (_, state) =>
+        state.storage.sql.exec("SELECT device_id, conversation_id, seq FROM push_outbox").toArray(),
+      );
     const update = mls.claimed("a updates", [a.accountId, b.accountId]);
     const updated = { ciphertext: update, groupInfo: mls.groupInfo("a updates") };
     expect(await send("a updates", a.auth, updated)).toBe(4);
     expect(await socketA.next()).toEqual(notify(4));
+    expect(await outbox()).toEqual([]);
+    const text = { clientMsgId: "a_to_b_again", ciphertext: mls.base64("a to b") };
+    expect(await send("a to b", a.auth, text)).toBe(5);
+    expect(await socketA.next()).toEqual(notify(5));
     await expect
-      .poll(() =>
-        runInDurableObject(inbox(euEnv(env), b.accountId), (_, state) =>
-          state.storage.sql
-            .exec("SELECT device_id, conversation_id, seq FROM push_outbox")
-            .toArray(),
-        ),
-      )
-      .toEqual([{ device_id: b.deviceId, conversation_id: CONVERSATION, seq: 4 }]);
+      .poll(outbox)
+      .toEqual([{ device_id: b.deviceId, conversation_id: CONVERSATION, seq: 5 }]);
 
     // Back online, B is told what it missed.
     const again = await connect(b.auth);
     expect((await again.next()).type).toBe("hello");
-    expect(await again.next()).toEqual(notify(4));
+    expect(await again.next()).toEqual(notify(5));
   });
 });

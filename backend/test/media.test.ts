@@ -26,6 +26,7 @@ async function together(...members: Device[]) {
     account: members[0]!.accountId,
     clientMsgId: "add",
     ciphertext: Uint8Array.of(1),
+    urgent: false,
     commitEpoch: 0,
     roster: members.map((m) => m.accountId),
   });
@@ -98,6 +99,7 @@ describe("media", () => {
       account: alice.accountId,
       clientMsgId: "remove",
       ciphertext: Uint8Array.of(2),
+      urgent: false,
       commitEpoch: 1,
       roster: [alice.accountId],
     });

@@ -112,6 +112,59 @@ export const revokeDeviceRoute = createRoute({
   },
 });
 
+const PushToken = z
+  .object({
+    token: z.string().min(1).max(4096).openapi({
+      description: "The FCM registration token, or the APNs device token in hex",
+    }),
+    sandbox: z.boolean().optional().openapi({
+      description: "An APNs token from a development build; ignored on Android",
+    }),
+  })
+  .openapi("PushToken");
+
+const pushParams = z.object({ deviceId: OpaqueId });
+const NOT_THIS_DEVICE = {
+  403: errorResponse("not_this_device: only a device may set or remove its own push token"),
+};
+
+export const setPushTokenRoute = createRoute({
+  method: "put",
+  path: "/v1/devices/{deviceId}/push",
+  operationId: "setPushToken",
+  tags: ["devices"],
+  summary: "Register this device's push token (decision 0025)",
+  description:
+    "A token is one device's at a time: registering it takes it from any other device that had it.",
+  security: DEVICE_TOKEN,
+  request: {
+    params: pushParams,
+    body: { required: true, content: { "application/json": { schema: PushToken } } },
+  },
+  responses: {
+    204: { description: "The token is registered" },
+    ...INVALID,
+    ...AUTHED,
+    ...NOT_THIS_DEVICE,
+  },
+});
+
+export const clearPushTokenRoute = createRoute({
+  method: "delete",
+  path: "/v1/devices/{deviceId}/push",
+  operationId: "clearPushToken",
+  tags: ["devices"],
+  summary: "Remove this device's push token, so nothing is pushed to it",
+  security: DEVICE_TOKEN,
+  request: { params: pushParams },
+  responses: {
+    204: { description: "The device has no push token" },
+    ...INVALID,
+    ...AUTHED,
+    ...NOT_THIS_DEVICE,
+  },
+});
+
 export const deleteAccountRoute = createRoute({
   method: "delete",
   path: "/v1/me",

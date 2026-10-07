@@ -1,10 +1,10 @@
 import { log } from "./log.ts";
 
-// Push for a device with no open socket (decisions 0002, 0015, 0017). The
-// payload is only the fetch hint: which conversation, and up to which seq.
+// Push for a device with no open socket (decisions 0002, 0015, 0017, 0025).
+// A push names nothing: the device syncs every conversation that is behind.
 
 export type PushSender = {
-  send(push: { deviceId: string; conversationId: string; seq: number }): Promise<void>;
+  send(push: { deviceId: string }): Promise<void>;
 };
 
 /**
@@ -12,8 +12,8 @@ export type PushSender = {
  * due. Its replacement reads the device's platform and push token from D1.
  */
 const skipped: PushSender = {
-  async send({ deviceId, conversationId, seq }) {
-    log("push.skipped", { deviceId, conversationId, seq });
+  async send({ deviceId }) {
+    log("push.skipped", { deviceId });
   },
 };
 

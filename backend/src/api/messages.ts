@@ -34,6 +34,10 @@ const SendMessage = z
     welcome: WelcomeMessage.optional().openapi({
       description: "With a commit whose claim names whom it is for, and only then",
     }),
+    urgent: z.boolean().optional().openapi({
+      description:
+        "Whether the other members' devices are pushed for it: text and media are, receipts, reactions, edits and deletes are not. A commit never is (decision 0025)",
+    }),
     groupInfo: Ciphertext.optional().openapi({
       description:
         "With every commit, and only then: the MLS GroupInfo, with the ratchet tree, of the epoch the commit starts (decision 0021)",

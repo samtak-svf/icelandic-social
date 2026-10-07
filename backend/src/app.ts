@@ -4,9 +4,11 @@ import {
   type Device,
   deleteAccount,
   deviceForToken,
+  clearPushToken,
   me,
   registerDevice,
   revokeDevice,
+  setPushToken,
 } from "./accounts.ts";
 import { blockRoute, getAccountRoute, listBlocksRoute, unblockRoute } from "./api/accounts.ts";
 import {
@@ -15,10 +17,12 @@ import {
   getWelcomeRoute,
 } from "./api/conversations.ts";
 import {
+  clearPushTokenRoute,
   deleteAccountRoute,
   getMeRoute,
   registerDeviceRoute,
   revokeDeviceRoute,
+  setPushTokenRoute,
   signInConfigRoute,
 } from "./api/devices.ts";
 import { WsFrame } from "./api/frames.ts";
@@ -180,6 +184,28 @@ export function createApp() {
     }
     await inbox(c.env, accountId).closeDevice(deviceId);
     log("device.revoked", { accountId, deviceId });
+    return c.body(null, 204);
+  });
+
+  // Push tokens (decision 0025): a device sets and removes only its own.
+  app.openapi(setPushTokenRoute, async (c) => {
+    const { deviceId } = c.var.device;
+    if (c.req.valid("param").deviceId !== deviceId) {
+      return c.json({ error: "not_this_device" }, 403);
+    }
+    const { token, sandbox } = c.req.valid("json");
+    await setPushToken(c.env, deviceId, token, sandbox ?? false);
+    log("device.push_token_set", { deviceId });
+    return c.body(null, 204);
+  });
+
+  app.openapi(clearPushTokenRoute, async (c) => {
+    const { deviceId } = c.var.device;
+    if (c.req.valid("param").deviceId !== deviceId) {
+      return c.json({ error: "not_this_device" }, 403);
+    }
+    await clearPushToken(c.env, deviceId);
+    log("device.push_token_cleared", { deviceId });
     return c.body(null, 204);
   });
 

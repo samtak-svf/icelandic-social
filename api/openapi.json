@@ -259,7 +259,7 @@
         "properties": {
           "error": {
             "type": "string",
-            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, invite_required, device_key_taken, kenni_unavailable, rate_limited, blocked, conflict, too_large",
+            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, invite_required, device_key_taken, kenni_unavailable, rate_limited, blocked, conflict, too_large, not_this_device",
             "example": "unauthorized"
           }
         },
@@ -464,6 +464,24 @@
           "inviter"
         ]
       },
+      "PushToken": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096,
+            "description": "The FCM registration token, or the APNs device token in hex"
+          },
+          "sandbox": {
+            "type": "boolean",
+            "description": "An APNs token from a development build; ignored on Android"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
       "Sent": {
         "type": "object",
         "properties": {
@@ -494,6 +512,10 @@
           },
           "welcome": {
             "$ref": "#/components/schemas/WelcomeMessage"
+          },
+          "urgent": {
+            "type": "boolean",
+            "description": "Whether the other members' devices are pushed for it: text and media are, receipts, reactions, edits and deletes are not. A commit never is (decision 0025)"
           },
           "groupInfo": {
             "type": "string",
@@ -1164,6 +1186,137 @@
           },
           "404": {
             "description": "not_found: this account has no such active device",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/devices/{deviceId}/push": {
+      "put": {
+        "operationId": "setPushToken",
+        "tags": [
+          "devices"
+        ],
+        "summary": "Register this device's push token (decision 0025)",
+        "description": "A token is one device's at a time: registering it takes it from any other device that had it.",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "deviceId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushToken"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "The token is registered"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_this_device: only a device may set or remove its own push token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "clearPushToken",
+        "tags": [
+          "devices"
+        ],
+        "summary": "Remove this device's push token, so nothing is pushed to it",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "deviceId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The device has no push token"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_this_device: only a device may set or remove its own push token",
             "content": {
               "application/json": {
                 "schema": {

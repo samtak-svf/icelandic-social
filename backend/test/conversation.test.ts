@@ -26,6 +26,7 @@ const message = (account: string, clientMsgId: string, more: Partial<SendInput> 
   clientMsgId,
   ciphertext: bytes(clientMsgId.length),
   ...more,
+  urgent: more.urgent ?? false,
 });
 
 describe("a conversation", () => {

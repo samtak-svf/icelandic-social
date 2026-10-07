@@ -36,6 +36,36 @@ export async function activeDevices(env: Env, accountId: string): Promise<string
   return results.map((r) => r.deviceId);
 }
 
+/**
+ * Sets this device's push token (decision 0025). A token is one device's at
+ * a time: registering it here takes it from any other device that had it.
+ */
+export async function setPushToken(
+  env: Env,
+  deviceId: string,
+  token: string,
+  sandbox: boolean,
+): Promise<void> {
+  await db(env).batch([
+    db(env)
+      .prepare("UPDATE devices SET push_token = NULL WHERE push_token = ? AND device_id != ?")
+      .bind(token, deviceId),
+    db(env)
+      .prepare(
+        "UPDATE devices SET push_token = ?, push_sandbox = ? WHERE device_id = ? AND revoked_at IS NULL",
+      )
+      .bind(token, sandbox ? 1 : 0, deviceId),
+  ]);
+}
+
+/** Removes this device's push token, so nothing is pushed to it. */
+export async function clearPushToken(env: Env, deviceId: string): Promise<void> {
+  await db(env)
+    .prepare("UPDATE devices SET push_token = NULL, push_sandbox = 0 WHERE device_id = ?")
+    .bind(deviceId)
+    .run();
+}
+
 /** A fresh random id or token: `prefix` and 32 random bytes, base64url. */
 export function randomToken(prefix: string): string {
   return `${prefix}${base64url(crypto.getRandomValues(new Uint8Array(32)))}`;
@@ -185,7 +215,8 @@ export async function revokeDevice(
   const [revoked] = await db(env).batch([
     db(env)
       .prepare(
-        "UPDATE devices SET revoked_at = ? WHERE device_id = ? AND account_id = ? AND revoked_at IS NULL",
+        `UPDATE devices SET revoked_at = ?, push_token = NULL
+         WHERE device_id = ? AND account_id = ? AND revoked_at IS NULL`,
       )
       .bind(Date.now(), deviceId, accountId),
     db(env)
@@ -206,7 +237,9 @@ export async function revokeDevice(
  */
 export async function deleteAccount(env: Env, accountId: string): Promise<void> {
   await db(env)
-    .prepare("UPDATE devices SET revoked_at = ? WHERE account_id = ? AND revoked_at IS NULL")
+    .prepare(
+      "UPDATE devices SET revoked_at = ?, push_token = NULL WHERE account_id = ? AND revoked_at IS NULL",
+    )
     .bind(Date.now(), accountId)
     .run();
   const box = inbox(env, accountId);

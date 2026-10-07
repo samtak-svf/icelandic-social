@@ -134,11 +134,18 @@ export class Inbox extends DurableObject<Env> {
   }
 
   /**
-   * Conversation `conversationId` has stored up to `seq` (decision 0017).
-   * Moves a maximum, so a retry repeats nothing. Open sockets get `notify`;
-   * a device that is behind with no socket owes one push until it acks.
+   * Conversation `conversationId` has stored up to `seq`, and its latest
+   * urgent message for this account is `urgentSeq`, 0 for none (decisions
+   * 0017, 0025). Moves maxima, so a retry repeats nothing. Open sockets get
+   * `notify`; a device with no socket that is behind the urgent seq owes a
+   * push, and a newer urgent seq owes it again, until it acks.
    */
-  async notify(accountId: string, conversationId: string, seq: number): Promise<void> {
+  async notify(
+    accountId: string,
+    conversationId: string,
+    seq: number,
+    urgentSeq: number,
+  ): Promise<void> {
     this.sql.exec(
       `INSERT INTO conversations (conversation_id, latest_seq) VALUES (?, ?)
        ON CONFLICT DO UPDATE SET latest_seq = max(latest_seq, excluded.latest_seq)`,
@@ -154,13 +161,15 @@ export class Inbox extends DurableObject<Env> {
       }
     }
     for (const deviceId of await activeDevices(this.env, accountId)) {
-      if (online.has(deviceId) || this.cursor(deviceId, conversationId) >= seq) continue;
+      if (online.has(deviceId) || this.cursor(deviceId, conversationId) >= urgentSeq) continue;
       this.sql.exec(
         `INSERT INTO push_outbox (device_id, conversation_id, seq) VALUES (?, ?, ?)
-         ON CONFLICT DO UPDATE SET seq = max(seq, excluded.seq)`,
+         ON CONFLICT DO UPDATE SET
+           pushed = CASE WHEN excluded.seq > seq THEN 0 ELSE pushed END,
+           seq = max(seq, excluded.seq)`,
         deviceId,
         conversationId,
-        seq,
+        urgentSeq,
       );
     }
     await this.push();
@@ -215,30 +224,36 @@ export class Inbox extends DurableObject<Env> {
     return row?.seq ?? 0;
   }
 
-  /** Sends each owed push once; one that fails is tried again by the alarm. */
+  /**
+   * Sends each device that owes a push one push, however many rows it owes,
+   * and marks those rows sent; one that fails is tried again by the alarm. A
+   * row re-armed while the push was in flight stays owed.
+   */
   private async push(): Promise<void> {
     const sender = pushSender(this.env);
-    const due = this.sql
-      .exec<{ device_id: string; conversation_id: string; seq: number }>(
-        "SELECT device_id, conversation_id, seq FROM push_outbox WHERE pushed = 0",
-      )
-      .toArray();
+    const due = Map.groupBy(
+      this.sql
+        .exec<{ device_id: string; conversation_id: string; seq: number }>(
+          "SELECT device_id, conversation_id, seq FROM push_outbox WHERE pushed = 0",
+        )
+        .toArray(),
+      (row) => row.device_id,
+    );
     let failed = false;
-    for (const row of due) {
+    for (const [deviceId, rows] of due) {
       try {
-        await sender.send({
-          deviceId: row.device_id,
-          conversationId: row.conversation_id,
-          seq: row.seq,
-        });
-        this.sql.exec(
-          "UPDATE push_outbox SET pushed = 1 WHERE device_id = ? AND conversation_id = ?",
-          row.device_id,
-          row.conversation_id,
-        );
+        await sender.send({ deviceId });
+        for (const row of rows) {
+          this.sql.exec(
+            "UPDATE push_outbox SET pushed = 1 WHERE device_id = ? AND conversation_id = ? AND seq = ?",
+            deviceId,
+            row.conversation_id,
+            row.seq,
+          );
+        }
       } catch {
         failed = true;
-        log("push.failed", { deviceId: row.device_id, conversationId: row.conversation_id });
+        log("push.failed", { deviceId, count: rows.length });
       }
     }
     if (failed) await this.ctx.storage.setAlarm(Date.now() + RETRY_MS);

@@ -14,6 +14,8 @@ export type SendInput = {
   account: string;
   clientMsgId: string;
   ciphertext: Uint8Array;
+  /** The other members' devices are pushed for it; never a commit (decision 0025). */
+  urgent: boolean;
   /** Set for a commit: the epoch it was made on (decision 0015). */
   commitEpoch?: number;
   /** Set for a commit: every account its claim names (decision 0020). */
@@ -80,6 +82,7 @@ export class Conversation extends DurableObject<Env> {
         PRIMARY KEY (account, seq)
       );
       CREATE TABLE IF NOT EXISTS pending_notify (account TEXT PRIMARY KEY, seq INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS urgent (account TEXT PRIMARY KEY, seq INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS removed (account TEXT PRIMARY KEY, seq INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS roster_copy (
         id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -191,6 +194,15 @@ export class Conversation extends DurableObject<Env> {
         account,
         seq,
       );
+      // Pushed for, unless the account sent it (decision 0025).
+      if (input.urgent && account !== input.account) {
+        this.sql.exec(
+          `INSERT INTO urgent (account, seq) VALUES (?, ?)
+           ON CONFLICT (account) DO UPDATE SET seq = max(seq, excluded.seq)`,
+          account,
+          seq,
+        );
+      }
     }
     return { ok: { seq } };
   }
@@ -361,6 +373,7 @@ export class Conversation extends DurableObject<Env> {
     this.sql.exec("DELETE FROM roster WHERE account = ?", account);
     this.sql.exec("DELETE FROM removed WHERE account = ?", account);
     this.sql.exec("DELETE FROM pending_notify WHERE account = ?", account);
+    this.sql.exec("DELETE FROM urgent WHERE account = ?", account);
   }
 
   /**
@@ -391,12 +404,15 @@ export class Conversation extends DurableObject<Env> {
     if (!meta) return;
 
     const pending = this.sql
-      .exec<{ account: string; seq: number }>("SELECT account, seq FROM pending_notify")
+      .exec<{ account: string; seq: number; urgent: number }>(
+        `SELECT p.account, p.seq, coalesce(u.seq, 0) AS urgent
+           FROM pending_notify p LEFT JOIN urgent u ON u.account = p.account`,
+      )
       .toArray();
     let failed = 0;
-    for (const { account, seq } of pending) {
+    for (const { account, seq, urgent } of pending) {
       try {
-        await inbox(this.env, account).notify(account, meta.conversationId, seq);
+        await inbox(this.env, account).notify(account, meta.conversationId, seq, urgent);
         // A newer seq may have arrived meanwhile; it stays owed.
         this.sql.exec("DELETE FROM pending_notify WHERE account = ? AND seq = ?", account, seq);
       } catch {
