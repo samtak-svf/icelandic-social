@@ -1,13 +1,16 @@
-# samtak-spjall
+# icelandic-messenger
 
 A native Android and iOS messenger for Iceland, built by Samtak svf.
 
-**Status: in development, not usable.** The backend and the shared Rust core implement sign-in
-with Kenni, personal invites, devices, and end-to-end encrypted conversations with MLS
-([decision 0002](docs/decisions/0002-mls-end-to-end-encryption.md)), tested against each other.
-The apps build and start, but have no screens for any of it yet, and nothing is deployed. The
-code has not been reviewed by anyone outside the project. Do not rely on it to protect
-anything.
+**Status: in development, not yet released.** The backend, the shared Rust core and both apps
+implement sign-in with Kenni, personal invites, devices, and end-to-end encrypted 1:1 and
+group conversations with MLS ([decision 0002](docs/decisions/0002-mls-end-to-end-encryption.md)):
+text, photos and files, replies, edits, deletes, reactions, disappearing messages, block,
+account deletion, and push notifications that carry no message ids
+([decision 0025](docs/decisions/0025-push-without-ids.md)). The first release is a closed test
+group ([decision 0009](docs/decisions/0009-v1-scope.md)). Nothing is deployed yet, and sign-in
+has so far been tested only against a stand-in for Kenni. The code has not been reviewed by
+anyone outside the project. Do not rely on it to protect anything.
 
 ## Layout
 
