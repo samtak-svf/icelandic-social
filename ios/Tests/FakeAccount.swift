@@ -27,6 +27,16 @@ final class FakeAccount: Account, @unchecked Sendable {
     /// What `sync` and `onFrame` return.
     var outcome = Outcome(events: [], frames: [])
     var token: String? = "device-token"
+    /// Each conversation's items, oldest first; `send` adds a pending one.
+    var timelines: [String: [Item]] {
+        get { lock.withLock { _timelines } }
+        set { lock.withLock { _timelines = newValue } }
+    }
+    private var _timelines: [String: [Item]] = [:]
+    /// Whether `typing` makes a frame, as the setting does.
+    var typingOn = true
+    /// What `expire` returns, each once.
+    var expired: [Outcome] = []
     private var made = 0
     private var devices = [
         AccountDevice(deviceId: "d1", platform: .ios, createdAt: 1_700_000_000_000, current: true),
@@ -156,6 +166,43 @@ final class FakeAccount: Account, @unchecked Sendable {
         if let open = list.first(where: { $0.members.map(\.account) == [inviter] }) { return open.id }
         return try createConversation(with: [inviter])
     }
+
+    func timeline(_ conversation: String, before: UInt64?, limit: UInt32) throws -> [Item] {
+        try call("timeline \(conversation) \(before.map(String.init) ?? "-")")
+        let all = timelines[conversation] ?? []
+        let older = before.map { before in all.filter { ($0.seq ?? .max) < before } } ?? all
+        return Array(older.suffix(Int(limit)))
+    }
+
+    func send(_ conversation: String, body: Body) throws -> String {
+        try call("send \(conversation) \(body)")
+        let id = "e-sent\(calls.count)"
+        var pending = item(nil, sender: person("a1", "Jón Jónsson"), own: true, status: .pending)
+        pending.envelopeId = id
+        timelines[conversation, default: []].append(pending)
+        return id
+    }
+
+    func retry(_ conversation: String) throws -> Outcome {
+        try call("retry \(conversation)")
+        return Outcome(events: [], frames: [])
+    }
+
+    func markRead(_ conversation: String, seq: UInt64) throws {
+        try call("markRead \(conversation) \(seq)")
+    }
+
+    func typing(_ conversation: String, active: Bool) throws -> String? {
+        try call("typing \(conversation) \(active)")
+        return typingOn ? #"{"type":"typing","active":\#(active)}"# : nil
+    }
+
+    func expire() throws -> Outcome {
+        try call("expire")
+        return lock.withLock { expired.isEmpty ? Outcome(events: [], frames: []) : expired.removeFirst() }
+    }
+
+    static let now: UInt64 = 1_700_000_000_000
 }
 
 func conversation(
@@ -172,3 +219,30 @@ func person(_ account: String, _ name: String? = nil) -> Person {
 }
 
 let unreachable = CoreError.Unreachable(detail: "URLError -1001")
+
+func item(
+    _ seq: UInt64?,
+    text: String? = nil,
+    sender: Person = person("a2", "Anna"),
+    own: Bool = false,
+    ts: UInt64? = nil,
+    status: ItemStatus = .sent,
+    content: Content? = nil,
+    reactions: [Reaction] = [],
+    readBy: UInt32 = 0,
+    expiresAt: UInt64? = nil
+) -> Item {
+    Item(
+        seq: seq,
+        envelopeId: seq.map { "e\($0)" },
+        sender: sender,
+        own: own,
+        ts: ts ?? FakeAccount.now + (seq ?? 0) * 1_000,
+        status: status,
+        content: content ?? .text(text: text ?? "m\(seq.map(String.init) ?? "nil")", replyTo: nil),
+        edited: false,
+        reactions: reactions,
+        readBy: readBy,
+        expiresAt: expiresAt
+    )
+}

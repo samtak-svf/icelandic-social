@@ -32,6 +32,18 @@ protocol Account: Sendable {
     func createConversation(with accounts: [String]) throws -> String
     /// The 1:1 with whoever made this invite, made if there is none; its id.
     func openInvite(token: String) throws -> String
+    /// The conversation's items, oldest first, up to `limit` before the item `before`; the unsent ones last.
+    func timeline(_ conversation: String, before: UInt64?, limit: UInt32) throws -> [Item]
+    /// Queues a body to send; the next sync sends it.
+    func send(_ conversation: String, body: Body) throws -> String
+    /// Queues the failed items to send again.
+    func retry(_ conversation: String) throws -> Outcome
+    /// Everything up to `seq` was on screen; a receipt goes with the next sync when read markers are on.
+    func markRead(_ conversation: String, seq: UInt64) throws
+    /// The typing frame to send, or nil when typing is off or one went out less than 3 s ago.
+    func typing(_ conversation: String, active: Bool) throws -> String?
+    /// Deletes what is due to disappear.
+    func expire() throws -> Outcome
 }
 
 /// The core's client, opened on first use so a launch never waits for the
@@ -94,6 +106,26 @@ final class CoreAccount: Account, @unchecked Sendable {
     }
 
     func openInvite(token: String) throws -> String { try core().openInvite(token: token) }
+
+    func timeline(_ conversation: String, before: UInt64?, limit: UInt32) throws -> [Item] {
+        try core().timeline(conversation: conversation, before: before, limit: limit)
+    }
+
+    func send(_ conversation: String, body: Body) throws -> String {
+        try core().send(conversation: conversation, body: body)
+    }
+
+    func retry(_ conversation: String) throws -> Outcome { try core().retry(conversation: conversation) }
+
+    func markRead(_ conversation: String, seq: UInt64) throws {
+        try core().markRead(conversation: conversation, seq: seq)
+    }
+
+    func typing(_ conversation: String, active: Bool) throws -> String? {
+        try core().typing(conversation: conversation, active: active)
+    }
+
+    func expire() throws -> Outcome { try core().expire() }
 }
 
 /// Runs a blocking core call off the main actor.

@@ -47,7 +47,7 @@ struct HomeView: View {
                             path = [.conversation($0)]
                         }
                     case .conversation(let id):
-                        ConversationRoute(conversation: list.conversations.first { $0.id == id })
+                        ConversationRoute(id: id, account: signIn.account, live: socket)
                     }
                 }
             }
@@ -111,13 +111,15 @@ private struct PeopleRoute: View {
     }
 }
 
-/// Where a conversation opens; the conversation screen itself comes next.
+/// A conversation, with a model of its own each time it opens.
 private struct ConversationRoute: View {
-    let conversation: Conversation?
+    @State private var model: ConversationModel
+
+    init(id: String, account: Account, live: Live) {
+        _model = State(initialValue: ConversationModel(id: id, account: account, live: live))
+    }
 
     var body: some View {
-        ProgressView()
-            .navigationTitle(Text(verbatim: conversation.map(title) ?? ""))
-            .navigationBarTitleDisplayMode(.inline)
+        ConversationView(model: model)
     }
 }
