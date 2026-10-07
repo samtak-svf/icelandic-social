@@ -10,6 +10,7 @@ import samtak.spjall.core.Body
 import samtak.spjall.core.Content
 import samtak.spjall.core.CoreClient
 import samtak.spjall.core.Event
+import samtak.spjall.core.NoticeKind
 import samtak.spjall.core.Platform
 import samtak.spjall.core.SignedIn
 import java.io.File
@@ -18,7 +19,8 @@ import java.util.UUID
 /**
  * The core's client from Kotlin, as the app will call it (decisions 0018
  * and 0019): two devices, each with its own store and a Kotlin `Transport`,
- * sign in and exchange a message and a sealed file (0023).
+ * sign in and exchange a message and a sealed file (0023), and one is
+ * shown a notice for it and hands its push token to the server (0025).
  */
 @RunWith(AndroidJUnit4::class)
 class CoreClientTest {
@@ -75,6 +77,26 @@ class CoreClientTest {
         assertEquals("a", message.senderAccount)
         assertEquals("a1", message.senderDevice)
         assertTrue(b.history(conversation, null, 10u).any { it.envelope.id == id })
+    }
+
+    @Test
+    fun aNewMessageIsNoticedOnceAndThePushTokenReachesTheServer() {
+        val a = phone("a", "a1")
+        val b = phone("b", "b1")
+        val conversation = conversation(a, b)
+
+        b.setPushToken("fcm-b1", false)
+        b.sync()
+        a.send(conversation, Body.Text("vaknaðu"))
+        a.sync()
+        deliver(b, "b1")
+        assertEquals("fcm-b1" to false, relay.pushToken("b1"))
+        val notice = b.notices().shown.single()
+        assertEquals(conversation, notice.conversation)
+        assertEquals("a", notice.sender.account)
+        assertEquals(NoticeKind.TEXT, notice.kind)
+        assertEquals("vaknaðu", notice.text)
+        assertTrue(b.notices().shown.isEmpty())
     }
 
     @Test

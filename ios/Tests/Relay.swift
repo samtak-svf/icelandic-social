@@ -8,8 +8,8 @@ import SpjallCore
 /// other route answers 401 without it. A commit's claim (decision 0020) is
 /// found as the JSON text it is in the message's clear authenticated_data,
 /// and moves the roster and names the Welcome's recipients. Media blobs
-/// (decision 0023) are kept by path for the roster. The real rules live in
-/// the Worker and in the core's own relay.
+/// (decision 0023) are kept by path for the roster, and a device's push
+/// token (0025) by device. The real rules live in the Worker and in the core's own relay.
 final class Relay: @unchecked Sendable {
     /// Where Kenni's callback goes, from the frozen URL scheme.
     static let redirect = "is.samtak.spjall:/kenni"
@@ -48,6 +48,7 @@ final class Relay: @unchecked Sendable {
     private var conversations: [String: Conversation] = [:]
     private var waiting: [String: [String]] = [:]
     private var media: [String: Data] = [:]
+    private var push: [String: (token: String, sandbox: Bool)] = [:]
 
     final class Link: Transport, @unchecked Sendable {
         let relay: Relay
@@ -79,6 +80,11 @@ final class Relay: @unchecked Sendable {
     func link(account: String, device: String) -> Link {
         lock.withLock { devices[device] = account }
         return Link(relay: self, account: account, device: device)
+    }
+
+    /// The push token a device last set, and whether it is a sandbox one.
+    func pushToken(device: String) -> (token: String, sandbox: Bool)? {
+        lock.withLock { push[device] }
     }
 
     /// The frames waiting on a device's socket, oldest first.
@@ -122,6 +128,10 @@ final class Relay: @unchecked Sendable {
                 }
             }
             return ok(["keyPackages": claimed])
+        case (.put, 3, "devices") where parts[2] == "push":
+            guard parts[1] == device else { return refuse(403, "not_this_device") }
+            push[device] = (body["token"] as? String ?? "", body["sandbox"] as? Bool ?? false)
+            return HttpResponse(status: 204, body: "")
         case (.post, 1, "conversations"):
             let id = body["conversationId"] as? String ?? ""
             if conversations[id] == nil { conversations[id] = Conversation(roster: [account]) }

@@ -17,7 +17,8 @@ import java.io.File
  * other route answers 401 without it. A commit's claim (decision 0020) is
  * found as the JSON text it is in the message's clear authenticated_data,
  * and moves the roster and names the Welcome's recipients. Media blobs
- * (decision 0023) are kept by path for the roster. The real rules live in
+ * (decision 0023) are kept by path for the roster, and a device's push
+ * token (0025) by device. The real rules live in
  * the Worker and in the core's own relay.
  */
 class Relay {
@@ -47,6 +48,7 @@ class Relay {
     private val conversations = mutableMapOf<String, Conversation>()
     private val frames = mutableMapOf<String, MutableList<String>>()
     private val media = mutableMapOf<String, ByteArray>()
+    private val push = mutableMapOf<String, Pair<String, Boolean>>()
 
     fun link(
         account: String,
@@ -96,6 +98,9 @@ class Relay {
         return if (account in conversation.roster) null else refuse(403, "not_a_member")
     }
 
+    /** The push token a device last set, and whether it is a sandbox one. */
+    fun pushToken(device: String): Pair<String, Boolean>? = synchronized(this) { push[device] }
+
     /** The frames waiting on a device's socket, oldest first. */
     fun frames(device: String): List<String> = synchronized(this) { frames.remove(device).orEmpty() }
 
@@ -133,6 +138,11 @@ class Relay {
                     }
                 }
                 ok(JSONObject().put("keyPackages", claimed))
+            }
+            request.method == HttpMethod.PUT && parts.size == 3 && parts[0] == "devices" && parts[2] == "push" -> {
+                if (parts[1] != device) return refuse(403, "not_this_device")
+                push[device] = body.getString("token") to body.optBoolean("sandbox")
+                NO_CONTENT
             }
             request.method == HttpMethod.POST && parts == listOf("conversations") -> {
                 val id = body.getString("conversationId")

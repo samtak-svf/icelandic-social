@@ -4,7 +4,8 @@ import XCTest
 
 /// The core's client from Swift, as the app will call it (decisions 0018
 /// and 0019): two devices, each with its own store and a Swift `Transport`,
-/// sign in and exchange a message and a sealed file (0023).
+/// sign in and exchange a message and a sealed file (0023), and one is
+/// shown a notice for it and hands its push token to the server (0025).
 final class CoreClientTests: XCTestCase {
     private let relay = Relay()
     private var dirs: [URL] = []
@@ -66,6 +67,28 @@ final class CoreClientTests: XCTestCase {
         XCTAssertEqual(message.senderDevice, "a1")
         let history = try b.history(conversation: conversation, before: nil, limit: 10)
         XCTAssertTrue(history.contains { $0.envelope.id == id })
+    }
+
+    func testANewMessageIsNoticedOnceAndThePushTokenReachesTheServer() throws {
+        let a = try phone(account: "a", device: "a1")
+        let b = try phone(account: "b", device: "b1")
+        let conversation = try conversation(a, b)
+
+        try b.setPushToken(token: "apns-b1", sandbox: true)
+        _ = try b.sync()
+        _ = try a.send(conversation: conversation, body: .text(text: "vaknaðu"))
+        _ = try a.sync()
+        _ = try deliver(b, device: "b1")
+        let token = relay.pushToken(device: "b1")
+        XCTAssertEqual(token?.token, "apns-b1")
+        XCTAssertEqual(token?.sandbox, true)
+        let shown = try b.notices().shown
+        XCTAssertEqual(shown.count, 1)
+        XCTAssertEqual(shown.first?.conversation, conversation)
+        XCTAssertEqual(shown.first?.sender.account, "a")
+        XCTAssertEqual(shown.first?.kind, .text)
+        XCTAssertEqual(shown.first?.text, "vaknaðu")
+        XCTAssertEqual(try b.notices().shown, [])
     }
 
     func testAFileCrossesSealedAndOpensOnTheOtherSide() throws {

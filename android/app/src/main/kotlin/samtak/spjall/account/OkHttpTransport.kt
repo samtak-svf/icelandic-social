@@ -75,7 +75,7 @@ class OkHttpTransport(
     }
 
     // OkHttp wants a body on POST and PUT; the core sends one on every POST
-    // it makes, and its PUTs without a file carry none.
+    // it makes and on the push token's PUT, and its other PUTs carry none.
     private fun emptyBodyFor(method: HttpMethod) =
         if (method == HttpMethod.POST || method == HttpMethod.PUT) "".toRequestBody(JSON) else null
 
