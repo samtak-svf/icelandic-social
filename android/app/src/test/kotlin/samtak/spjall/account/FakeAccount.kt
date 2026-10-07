@@ -1,9 +1,13 @@
 package samtak.spjall.account
 
 import samtak.spjall.core.AccountDevice
+import samtak.spjall.core.Body
+import samtak.spjall.core.Content
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.Inviter
+import samtak.spjall.core.Item
+import samtak.spjall.core.ItemStatus
 import samtak.spjall.core.Me
 import samtak.spjall.core.Outcome
 import samtak.spjall.core.Person
@@ -29,6 +33,10 @@ class FakeAccount(
     var token: String? = "t1"
     var conversations = listOf<Conversation>()
     var people = listOf<Person>()
+
+    /** Each conversation's items, oldest first; [send] adds a pending one. */
+    val timelines = mutableMapOf<String, MutableList<Item>>()
+    var typingOn = true
 
     /** What the next sync and frames return; each is used once. */
     val outcomes = ArrayDeque<Outcome>()
@@ -134,7 +142,68 @@ class FakeAccount(
         return "c-${inviters.getValue(token)?.accountId}"
     }
 
+    override fun timeline(
+        conversation: String,
+        before: ULong?,
+        limit: UInt,
+    ): List<Item> {
+        call("timeline $conversation ${before ?: "-"}")
+        val all = timelines[conversation].orEmpty()
+        val older = if (before == null) all else all.filter { it.seq != null && it.seq!! < before }
+        return older.takeLast(limit.toInt())
+    }
+
+    override fun send(
+        conversation: String,
+        body: Body,
+    ): String {
+        call("send $conversation $body")
+        val id = "e-sent${calls.size}"
+        timelines.getOrPut(conversation) { mutableListOf() } +=
+            Item(
+                null,
+                id,
+                Person("a1", "Jón Jónsson", true),
+                true,
+                NOW,
+                ItemStatus.PENDING,
+                Content.Text((body as? Body.Text)?.text ?: body.toString(), null),
+                false,
+                emptyList(),
+                0u,
+                null,
+            )
+        return id
+    }
+
+    override fun retry(conversation: String): Outcome {
+        call("retry $conversation")
+        return Outcome(emptyList(), emptyList())
+    }
+
+    override fun markRead(
+        conversation: String,
+        seq: ULong,
+    ) {
+        call("markRead $conversation $seq")
+    }
+
+    override fun typing(
+        conversation: String,
+        active: Boolean,
+    ): String? {
+        call("typing $conversation $active")
+        return if (typingOn) """{"type":"typing","active":$active}""" else null
+    }
+
+    override fun expire(): Outcome {
+        call("expire")
+        return outcomes.removeFirstOrNull() ?: Outcome(emptyList(), emptyList())
+    }
+
     companion object {
+        const val NOW = 1_700_000_000_000uL
+
         const val KENNI = "https://kenni.test/oidc/auth?state=s1"
     }
 }

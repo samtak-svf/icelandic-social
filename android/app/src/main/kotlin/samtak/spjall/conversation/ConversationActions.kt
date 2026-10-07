@@ -1,0 +1,39 @@
+package samtak.spjall.conversation
+
+import samtak.spjall.core.Item
+
+/**
+ * What [ConversationScreen] can ask for: one function per thing a bubble or
+ * the composer offers, so it is long.
+ */
+@Suppress("TooManyFunctions")
+interface ConversationActions {
+    fun back()
+
+    fun draft(text: String)
+
+    fun send()
+
+    fun reply(item: Item)
+
+    fun edit(item: Item)
+
+    fun cancelMode()
+
+    fun delete(item: Item)
+
+    fun react(
+        item: Item,
+        emoji: String,
+    )
+
+    /** Sends the failed items again. */
+    fun resend()
+
+    fun loadOlder()
+
+    fun retry()
+
+    /** The screen left or went to the background. */
+    fun paused()
+}

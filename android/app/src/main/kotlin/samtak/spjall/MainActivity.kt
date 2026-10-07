@@ -41,10 +41,13 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import samtak.spjall.brand.R
+import samtak.spjall.conversation.ConversationActions
 import samtak.spjall.conversation.ConversationScreen
+import samtak.spjall.conversation.ConversationViewModel
 import samtak.spjall.conversations.ConversationsActions
 import samtak.spjall.conversations.ConversationsScreen
 import samtak.spjall.conversations.ConversationsViewModel
+import samtak.spjall.core.Item
 import samtak.spjall.core.inviteToken
 import samtak.spjall.me.MeActions
 import samtak.spjall.me.MeScreen
@@ -57,6 +60,11 @@ import samtak.spjall.signin.SignInViewModel
 import samtak.spjall.signin.SignInViewModel.Session
 import samtak.spjall.ui.SpjallTheme
 
+/**
+ * The one activity: sign-in, then the two tabs. It has one composable per
+ * destination, each tying a view model to its screen, which is why it is long.
+ */
+@Suppress("TooManyFunctions")
 class MainActivity : ComponentActivity() {
     private val graph get() = (application as SpjallApplication).graph
 
@@ -144,9 +152,7 @@ class MainActivity : ComponentActivity() {
                 composable(ME) { Me(signIns) }
                 composable(PEOPLE) { People(nav) }
                 composable("$CONVERSATION/{id}") { entry ->
-                    val id = entry.arguments?.getString("id")
-                    val listState by list.state.collectAsStateWithLifecycle()
-                    ConversationScreen(listState.conversations.firstOrNull { it.id == id }, onBack = nav::popBackStack)
+                    entry.arguments?.getString("id")?.let { Conversation(it, nav) }
                 }
             }
         }
@@ -210,6 +216,49 @@ class MainActivity : ComponentActivity() {
                 override fun invite() = nav.navigate(ME) { tab() }
 
                 override fun retry() = people.retry()
+            },
+        )
+    }
+
+    @Composable
+    private fun Conversation(
+        id: String,
+        nav: NavController,
+    ) {
+        val model: ConversationViewModel =
+            viewModel(key = "conversation-$id") { ConversationViewModel(id, graph.account, graph.socket) }
+        val state by model.state.collectAsStateWithLifecycle()
+        ConversationScreen(
+            state,
+            object : ConversationActions {
+                override fun back() {
+                    nav.popBackStack()
+                }
+
+                override fun draft(text: String) = model.draft(text)
+
+                override fun send() = model.send()
+
+                override fun reply(item: Item) = model.reply(item)
+
+                override fun edit(item: Item) = model.edit(item)
+
+                override fun cancelMode() = model.cancelMode()
+
+                override fun delete(item: Item) = model.delete(item)
+
+                override fun react(
+                    item: Item,
+                    emoji: String,
+                ) = model.react(item, emoji)
+
+                override fun resend() = model.resend()
+
+                override fun loadOlder() = model.loadOlder()
+
+                override fun retry() = model.retry()
+
+                override fun paused() = model.paused()
             },
         )
     }

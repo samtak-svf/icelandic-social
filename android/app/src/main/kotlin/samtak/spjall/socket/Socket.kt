@@ -63,7 +63,13 @@ interface Live {
     val events: SharedFlow<Event>
 
     /** Syncs now, as after a change the server has to hear of. */
-    fun sync()
+    fun sync() = perform { it.sync() }
+
+    /** Runs a core call that returns an [Outcome], in turn with the socket's own, and delivers it. */
+    fun perform(call: (Account) -> Outcome)
+
+    /** Sends a frame the core made, such as `typing`; dropped while the socket is closed. */
+    fun send(frame: String)
 }
 
 /**
@@ -104,8 +110,12 @@ class Socket(
         _connection.value = Connection.Connecting
     }
 
-    override fun sync() {
-        scope.launch { deliver { account.sync() } }
+    override fun perform(call: (Account) -> Outcome) {
+        scope.launch { deliver { call(account) } }
+    }
+
+    override fun send(frame: String) {
+        link?.send(frame)
     }
 
     private suspend fun run() {

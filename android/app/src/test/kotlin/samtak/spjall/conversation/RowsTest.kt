@@ -1,0 +1,84 @@
+package samtak.spjall.conversation
+
+import org.junit.Assert.assertEquals
+import org.junit.Test
+import samtak.spjall.core.Content
+import samtak.spjall.socket.item
+import samtak.spjall.socket.person
+import java.time.LocalDate
+import java.time.ZoneOffset
+
+class RowsTest {
+    private val day = 1_700_000_000_000uL // 2023-11-14 22:13 UTC
+    private val minute = 60_000uL
+    private val anna = person("a2", "Anna")
+    private val me = person("a1", "Jón")
+
+    private fun shape(rows: List<Row>) =
+        rows.map {
+            when (it) {
+                is Row.Day -> "day ${it.date}"
+                is Row.Card -> "card ${it.item.seq}"
+                is Row.Bubble -> "${it.item.seq}${if (it.first) " first" else ""}${it.readBy?.let { n ->
+                    " read $n"
+                } ?: ""}"
+            }
+        }
+
+    @Test
+    fun runsFromOneSenderWithinFiveMinutesGoTogether() {
+        val rows =
+            rows(
+                listOf(
+                    item(1u, sender = anna, ts = day),
+                    item(2u, sender = anna, ts = day + 5uL * minute),
+                    item(3u, sender = anna, ts = day + 11uL * minute),
+                    item(4u, sender = me, own = true, ts = day + 12uL * minute),
+                ),
+                ZoneOffset.UTC,
+            )
+        assertEquals(listOf("day 2023-11-14", "1 first", "2", "3 first", "4 first"), shape(rows))
+    }
+
+    @Test
+    fun aNewDayAndACardBreakARun() {
+        val rows =
+            rows(
+                listOf(
+                    item(1u, ts = day),
+                    item(2u, ts = day + 1uL * minute, content = Content.Timer(3_600u)),
+                    item(3u, ts = day + 2uL * minute),
+                    item(4u, ts = day + 120uL * minute),
+                ),
+                ZoneOffset.UTC,
+            )
+        assertEquals(
+            listOf("day 2023-11-14", "1 first", "card 2", "3 first", "day 2023-11-15", "4 first"),
+            shape(rows),
+        )
+        assertEquals(LocalDate.of(2023, 11, 15), (rows[4] as Row.Day).date)
+    }
+
+    @Test
+    fun theReadLineSitsUnderTheNewestOwnMessageSomeoneRead() {
+        val rows =
+            rows(
+                listOf(
+                    item(1u, sender = me, own = true, ts = day, readBy = 2u),
+                    item(2u, sender = me, own = true, ts = day, readBy = 1u),
+                    item(3u, sender = me, own = true, ts = day),
+                    item(null, sender = me, own = true, ts = day),
+                ),
+                ZoneOffset.UTC,
+            )
+        assertEquals(listOf("day 2023-11-14", "1 first", "2 read 1", "3", "null"), shape(rows))
+    }
+
+    @Test
+    fun keysAreUniqueAndStable() {
+        val items = listOf(item(1u), item(2u), item(null, ts = day + 9uL))
+        val keys = rows(items, ZoneOffset.UTC).map { it.key }
+        assertEquals(keys.toSet().size, keys.size)
+        assertEquals(keys, rows(items, ZoneOffset.UTC).map { it.key })
+    }
+}
