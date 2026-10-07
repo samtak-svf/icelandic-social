@@ -44,6 +44,17 @@ protocol Account: Sendable {
     func typing(_ conversation: String, active: Bool) throws -> String?
     /// Deletes what is due to disappear.
     func expire() throws -> Outcome
+    /// Seals and uploads the file at `path`, then sends it (decision 0023); the core keeps its own copy.
+    func sendMedia(_ conversation: String, path: String, mime: String, caption: String?) throws -> String
+    /// The path of the photo or file at `seq`, downloaded and checked the first time.
+    func media(_ conversation: String, seq: UInt64) throws -> String
+    /// Blocks `account` (decision 0024): it can no longer reach this one, and the 1:1 with it ends.
+    func block(_ account: String) throws -> Outcome
+    func unblock(_ account: String) throws
+    /// The accounts this one blocked, newest first.
+    func blocked() throws -> [Person]
+    func settings() throws -> Settings
+    func setSettings(_ settings: Settings) throws
 }
 
 /// The core's client, opened on first use so a launch never waits for the
@@ -126,6 +137,24 @@ final class CoreAccount: Account, @unchecked Sendable {
     }
 
     func expire() throws -> Outcome { try core().expire() }
+
+    func sendMedia(_ conversation: String, path: String, mime: String, caption: String?) throws -> String {
+        try core().sendMedia(conversation: conversation, path: path, mime: mime, caption: caption)
+    }
+
+    func media(_ conversation: String, seq: UInt64) throws -> String {
+        try core().media(conversation: conversation, seq: seq)
+    }
+
+    func block(_ account: String) throws -> Outcome { try core().block(account: account) }
+
+    func unblock(_ account: String) throws { try core().unblock(account: account) }
+
+    func blocked() throws -> [Person] { try core().blocked() }
+
+    func settings() throws -> Settings { try core().settings() }
+
+    func setSettings(_ settings: Settings) throws { try core().setSettings(settings: settings) }
 }
 
 /// Runs a blocking core call off the main actor.

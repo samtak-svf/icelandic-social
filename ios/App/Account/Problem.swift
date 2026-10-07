@@ -6,6 +6,8 @@ enum Problem: Equatable, Sendable {
     case unreachable
     /// Kenni signed the person in, but there is no account and no live invite.
     case inviteRequired
+    /// A photo or file over the 25 MB limit (decision 0023): trying again cannot help.
+    case tooLarge
     /// Anything else.
     case generic
 

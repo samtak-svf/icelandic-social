@@ -15,7 +15,22 @@ final class ConversationModel {
         case edit(Item)
     }
 
+    /// A photo or file of the timeline, by seq.
+    enum Media: Equatable {
+        case loading
+        case ready(String)
+        case failed
+    }
+
+    /// A file fetched for opening, and its type.
+    struct Opened: Equatable {
+        let path: String
+        let mime: String
+    }
+
     nonisolated static let page: UInt32 = 50
+    /// The largest photo or file the core sends (decision 0023), 25 MB.
+    nonisolated static let mediaLimit: Int64 = 25 * 1_024 * 1_024
     // The core sends at most one active frame each 3 s while one types.
     nonisolated static let typingIdle: Duration = .seconds(5)
     nonisolated static let typingShown: Duration = .seconds(6)
@@ -31,6 +46,9 @@ final class ConversationModel {
     private(set) var typing = false
     private(set) var draft = ""
     private(set) var mode = Mode.new
+    private(set) var media: [UInt64: Media] = [:]
+    /// The file to open next; `didOpen` clears it.
+    private(set) var opened: Opened?
     private(set) var problem: Problem?
 
     @ObservationIgnored private let account: Account
@@ -151,6 +169,75 @@ final class ConversationModel {
         await queue(.reaction(target: target, emoji: emoji, remove: remove))
     }
 
+    /// Sends a photo or file; one over the limit is refused before it is read.
+    func attach(_ picked: Picked) async {
+        if (picked.size ?? 0) > Self.mediaLimit {
+            problem = .tooLarge
+            return
+        }
+        problem = nil
+        let (account, id) = (account, id)
+        do {
+            let file = try await picked.read()
+            // The core copied it into its own folder.
+            defer { try? FileManager.default.removeItem(at: file) }
+            let size = (try FileManager.default.attributesOfItem(atPath: file.path)[.size] as? NSNumber)?.int64Value
+            if (size ?? 0) > Self.mediaLimit {
+                problem = .tooLarge
+                return
+            }
+            _ = try await offMain { try account.sendMedia(id, path: file.path, mime: picked.mime, caption: nil) }
+            failed = nil
+            live.sync()
+            await load()
+        } catch {
+            failed = { await self.attach(picked) }
+            problem = Problem(error)
+        }
+    }
+
+    /// Downloads the photo or file of `item`, once; a failed one can be asked for again.
+    func fetch(_ item: Item) async {
+        guard let seq = item.seq else { return }
+        switch media[seq] {
+        case .loading, .ready: return
+        case .failed, nil: await download(seq)
+        }
+    }
+
+    /// Fetches the file of `item` into `opened`.
+    func open(_ item: Item) async {
+        guard let seq = item.seq, case .media(let mime, _, _) = item.content else { return }
+        var ready = media[seq]
+        if case .ready = ready {} else { ready = await download(seq) }
+        if case .ready(let path) = ready { opened = Opened(path: path, mime: mime) }
+    }
+
+    func didOpen() {
+        opened = nil
+    }
+
+    /// Sets the disappearing timer, or turns it off with nil (decision 0022).
+    func timer(_ seconds: UInt32?) async {
+        await queue(.disappearing(seconds: seconds))
+    }
+
+    /// Blocks the other person of a 1:1 (decision 0024); the conversation ends.
+    func block() async {
+        guard let members = conversation?.members, members.count == 1 else { return }
+        let other = members[0].account
+        do {
+            try await live.performAndWait { try $0.block(other) }
+            failed = nil
+            problem = nil
+            await load()
+        } catch {
+            // Said, not swallowed: the person must not believe a block that did not happen.
+            failed = { await self.block() }
+            problem = Problem(error)
+        }
+    }
+
     /// Sends the failed items again.
     func resend() {
         let id = id
@@ -213,6 +300,20 @@ final class ConversationModel {
         live.sync()
     }
 
+    @discardableResult
+    private func download(_ seq: UInt64) async -> Media {
+        media[seq] = .loading
+        let (account, id) = (account, id)
+        let result: Media
+        do {
+            result = .ready(try await offMain { try account.media(id, seq: seq) })
+        } catch {
+            result = .failed
+        }
+        media[seq] = result
+        return result
+    }
+
     private func scheduleExpiry(_ items: [Item]) {
         expiry?.cancel()
         guard let due = items.compactMap(\.expiresAt).min() else { return }
@@ -257,6 +358,14 @@ final class ConversationModel {
         live.send(frame)
         if active { typingSent = true }
     }
+}
+
+/// A photo or file the person chose, not read yet. `size` is what the picker
+/// says, when it says; `read` copies it to a file the model deletes.
+struct Picked: Sendable {
+    let mime: String
+    let size: Int64?
+    let read: @Sendable () async throws -> URL
 }
 
 extension Event {

@@ -55,7 +55,7 @@ struct Bubble: View {
 
     private var bubble: some View {
         VStack(alignment: .leading, spacing: 4) {
-            BodyText(item: item, foreground: foreground)
+            BodyText(item: item, foreground: foreground, model: model)
             Text(verbatim: meta)
                 .font(.caption2)
                 .foregroundStyle(foreground)
@@ -107,6 +107,7 @@ struct Bubble: View {
 private struct BodyText: View {
     let item: Item
     let foreground: Color
+    let model: ConversationModel
 
     var body: some View {
         switch item.content {
@@ -122,8 +123,9 @@ private struct BodyText: View {
             Text(verbatim: text).foregroundStyle(foreground)
         case .deleted:
             Text("message_deleted").italic().foregroundStyle(foreground)
-        // Photos and files open in the next change; the row says what it is.
-        case .media, .members, .timer:
+        case .media(let mime, _, let caption):
+            Attachment(item: item, mime: mime, caption: caption, foreground: foreground, model: model)
+        case .members, .timer:
             Text(verbatim: lastLine(item)).foregroundStyle(foreground)
         }
     }

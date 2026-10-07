@@ -35,6 +35,8 @@ protocol Live: AnyObject {
     func events() -> AsyncStream<Event>
     /// Runs a core call that returns an `Outcome`, in turn with the socket's own, and delivers it.
     func perform(_ call: @escaping @Sendable (Account) throws -> Outcome)
+    /// As `perform`, but waits for the call, and throws what it threw.
+    func performAndWait(_ call: @escaping @Sendable (Account) throws -> Outcome) async throws
     /// Sends a frame the core made, such as `typing`; dropped while the socket is closed.
     func send(_ frame: String)
 }
@@ -98,6 +100,17 @@ final class Socket: Live {
         Task { await deliver { try call(account) } }
     }
 
+    func performAndWait(_ call: @escaping @Sendable (Account) throws -> Outcome) async throws {
+        let account = account
+        let previous = tail
+        let next = Task {
+            await previous?.value
+            emit(try await offMain { try call(account) })
+        }
+        tail = Task { _ = try? await next.value }
+        try await next.value
+    }
+
     func send(_ frame: String) {
         link?.send(frame)
     }
@@ -155,13 +168,17 @@ final class Socket: Live {
             await previous?.value
             // A failed call changed nothing; the next sync or frame tries again.
             guard let outcome = try? await offMain(call) else { return }
-            for frame in outcome.frames { link?.send(frame) }
-            for event in outcome.events {
-                for listener in listeners.values { listener.yield(event) }
-            }
+            emit(outcome)
         }
         tail = next
         await next.value
+    }
+
+    private func emit(_ outcome: Outcome) {
+        for frame in outcome.frames { link?.send(frame) }
+        for event in outcome.events {
+            for listener in listeners.values { listener.yield(event) }
+        }
     }
 
     /// Doubling from 1 s to 30 s, each wait drawn from its upper half so that devices spread out.

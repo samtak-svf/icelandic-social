@@ -9,8 +9,8 @@ struct ProblemCard: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(message)
                 .foregroundStyle(BrandTokens.Colors.fg)
-            // Without an invite, trying again cannot work; a link can.
-            if problem != .inviteRequired {
+            // Without an invite, trying again cannot work; a link can. Nor can it shrink a file.
+            if problem != .inviteRequired && problem != .tooLarge {
                 Button("try_again", action: onRetry)
             }
         }
@@ -23,6 +23,7 @@ struct ProblemCard: View {
         switch problem {
         case .unreachable: "error_unreachable"
         case .inviteRequired: "invite_required"
+        case .tooLarge: "media_too_large"
         case .generic: "error_generic"
         }
     }

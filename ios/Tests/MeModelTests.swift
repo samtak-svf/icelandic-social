@@ -74,4 +74,22 @@ final class MeModelTests: XCTestCase {
         await model.retry()
         XCTAssertEqual(model.me?.accountId, "a1")
     }
+
+    func testTheTogglesAreShownAndChanged() async {
+        let model = await model()
+        XCTAssertEqual(model.settings, Settings(readMarkers: true, typing: true))
+        await model.readMarkers(false)
+        await model.typing(false)
+        XCTAssertEqual(model.settings, Settings(readMarkers: false, typing: false))
+        XCTAssertEqual(account.current, Settings(readMarkers: false, typing: false))
+    }
+
+    func testTheBlockedAreListedAndCanBeUnblocked() async {
+        account.blockedPeople = [person("a3", "Bjarni"), person("a2", "Anna")]
+        let model = await model()
+        XCTAssertEqual(model.blocked.map(\.account), ["a3", "a2"])
+        await model.unblock("a3")
+        XCTAssertEqual(model.blocked.map(\.account), ["a2"])
+        XCTAssertTrue(account.calls.contains("unblock a3"))
+    }
 }

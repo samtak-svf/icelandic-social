@@ -1,3 +1,5 @@
+import PhotosUI
+import QuickLook
 import SpjallCore
 import SwiftUI
 
@@ -9,6 +11,7 @@ struct ConversationView: View {
 
     @State private var deleting: Item?
     @State private var reacting: Item?
+    @State private var preview: URL?
     @Environment(\.scenePhase) private var scenePhase
 
     private var group: Bool { (model.conversation?.members.count ?? 0) > 1 }
@@ -34,6 +37,20 @@ struct ConversationView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) { TitleView(conversation: model.conversation) }
+            if writable, let conversation = model.conversation {
+                ToolbarItem(placement: .topBarTrailing) { ConversationMenu(conversation: conversation, model: model) }
+            }
+        }
+        .quickLookPreview($preview)
+        .onChange(of: model.opened) { _, opened in
+            guard let opened else { return }
+            preview = PreviewCopy.file(opened)
+            if preview == nil { model.didOpen() }
+        }
+        .onChange(of: preview) { old, new in
+            guard old != nil, new == nil else { return }
+            PreviewCopy.clear()
+            model.didOpen()
         }
         .task { await model.follow() }
         .onChange(of: scenePhase) { _, phase in
@@ -186,6 +203,10 @@ private struct TypingRow: View {
 private struct Composer: View {
     let model: ConversationModel
 
+    @State private var photo: PhotosPickerItem?
+    @State private var picking = false
+    @State private var importing = false
+
     private var blank: Bool { model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     var body: some View {
@@ -197,6 +218,13 @@ private struct Composer: View {
             case .edit(let item): ModeLine(label: "edit", item: item, onCancel: model.cancelMode)
             }
             HStack(alignment: .bottom, spacing: 8) {
+                Menu {
+                    Button("photo", systemImage: "photo") { picking = true }
+                    Button("file", systemImage: "doc") { importing = true }
+                } label: {
+                    Image(systemName: "paperclip").frame(minWidth: 44, minHeight: 44)
+                }
+                .accessibilityLabel(Text("attach"))
                 TextField(
                     "composer_placeholder",
                     text: Binding(get: { model.draft }, set: { model.type($0) }),
@@ -213,6 +241,15 @@ private struct Composer: View {
                 .disabled(blank)
             }
             .padding(8)
+        }
+        .photosPicker(isPresented: $picking, selection: $photo, matching: .images)
+        .onChange(of: photo) { _, picked in
+            guard let picked else { return }
+            photo = nil
+            Task { await model.attach(Picked(photo: picked)) }
+        }
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.item]) { result in
+            if case .success(let file) = result { Task { await model.attach(Picked(file: file)) } }
         }
     }
 }

@@ -202,6 +202,62 @@ final class FakeAccount: Account, @unchecked Sendable {
         return lock.withLock { expired.isEmpty ? Outcome(events: [], frames: []) : expired.removeFirst() }
     }
 
+    /// Media paths by conversation and seq; a missing one fails the download.
+    var files: [String: String] {
+        get { lock.withLock { _files } }
+        set { lock.withLock { _files = newValue } }
+    }
+    private var _files: [String: String] = [:]
+    var blockedPeople: [Person] {
+        get { lock.withLock { _blocked } }
+        set { lock.withLock { _blocked = newValue } }
+    }
+    private var _blocked: [Person] = []
+    var current: Settings {
+        get { lock.withLock { _settings } }
+        set { lock.withLock { _settings = newValue } }
+    }
+    private var _settings = Settings(readMarkers: true, typing: true)
+
+    func sendMedia(_ conversation: String, path: String, mime: String, caption: String?) throws -> String {
+        let text = (try? String(contentsOfFile: path, encoding: .utf8)) ?? "?"
+        try call("sendMedia \(conversation) \(mime) \(text)")
+        return "e-media\(calls.count)"
+    }
+
+    func media(_ conversation: String, seq: UInt64) throws -> String {
+        try call("media \(conversation) \(seq)")
+        guard let path = files["\(conversation) \(seq)"] else { throw CoreError.Invalid(detail: "checksum") }
+        return path
+    }
+
+    func block(_ account: String) throws -> Outcome {
+        try call("block \(account)")
+        let person = met.first { $0.account == account } ?? Person(account: account, name: nil, verified: false)
+        blockedPeople.insert(person, at: 0)
+        return Outcome(events: [], frames: [])
+    }
+
+    func unblock(_ account: String) throws {
+        try call("unblock \(account)")
+        blockedPeople.removeAll { $0.account == account }
+    }
+
+    func blocked() throws -> [Person] {
+        try call("blocked")
+        return blockedPeople
+    }
+
+    func settings() throws -> Settings {
+        try call("settings")
+        return current
+    }
+
+    func setSettings(_ settings: Settings) throws {
+        try call("setSettings \(settings.readMarkers) \(settings.typing)")
+        current = settings
+    }
+
     static let now: UInt64 = 1_700_000_000_000
 }
 

@@ -1,7 +1,8 @@
 import SpjallCore
 import SwiftUI
 
-/// "Ég": the person, their invite link and QR code, their devices, and deleting the account.
+/// "Ég": the person, their invite link and QR code, their devices, the privacy
+/// toggles, who they blocked, and deleting the account.
 struct MeView: View {
     let model: MeModel
 
@@ -34,6 +35,12 @@ struct MeView: View {
                     ForEach(me.devices, id: \.deviceId) { device in
                         DeviceRow(device: device, enabled: !model.busy) { revoking = device.deviceId }
                     }
+                    if let settings = model.settings {
+                        Divider()
+                        PrivacySection(settings: settings, model: model)
+                    }
+                    Divider()
+                    BlockedSection(model: model)
                     Divider()
                     Button("delete_account", role: .destructive) { deleting = true }
                         .buttonStyle(.bordered)

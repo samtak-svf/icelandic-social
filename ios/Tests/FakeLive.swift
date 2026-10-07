@@ -30,6 +30,13 @@ final class FakeLive: Live {
         outcome.events.forEach(emit)
     }
 
+    func performAndWait(_ call: @escaping @Sendable (Account) throws -> Outcome) async throws {
+        performed += 1
+        let outcome = try call(account)
+        sent += outcome.frames
+        outcome.events.forEach(emit)
+    }
+
     func send(_ frame: String) {
         sent.append(frame)
     }
