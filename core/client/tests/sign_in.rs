@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use relay::{Link, REDIRECT, Relay};
 use spjall_client::api::{ApiError, Method, Platform};
-use spjall_client::{Client, ClientError};
+use spjall_client::{Client, ClientError, Settings};
 use tempfile::TempDir;
 
 const KEY: [u8; 32] = [7; 32];
@@ -319,6 +319,11 @@ fn signing_out_or_deleting_the_account_forgets_everything_here() {
     let key = a1.client.device_key().unwrap();
     a1.client.rotate_invite().unwrap();
     a1.client.create_conversation(&[]).unwrap();
+    let off = Settings {
+        read_markers: false,
+        typing: false,
+    };
+    a1.client.set_settings(off).unwrap();
 
     a1.client.revoke_device("a1").unwrap();
     assert!(!relay.registered("a1"));
@@ -330,6 +335,7 @@ fn signing_out_or_deleting_the_account_forgets_everything_here() {
     // The next sign-in is a new device, with a new key.
     a1.sign_in();
     assert_ne!(a1.client.device_key().unwrap(), key);
+    assert_eq!(a1.client.settings().unwrap(), Settings::default());
 
     a1.client.delete_account().unwrap();
     assert!(!relay.registered("a1"));

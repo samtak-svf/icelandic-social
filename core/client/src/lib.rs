@@ -19,12 +19,18 @@
 
 mod account;
 pub mod api;
+mod members;
+mod read;
+mod timeline;
 
+use std::collections::HashMap;
 use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 pub use account::{SignedIn, invite_token};
 use api::{Api, ApiError, Outgoing, Transport, conversation_id, group_id};
+pub use members::Person;
+pub use read::Settings;
 use serde::Deserialize;
 use spjall_envelope::{Body, Envelope, EnvelopeError};
 use spjall_mls::group::{
@@ -33,6 +39,10 @@ use spjall_mls::group::{
 use spjall_mls::storage::Provider;
 use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 use spjall_store::{Key, Store};
+pub use timeline::{Content, Item, Quote, Reaction, Status};
+
+use members::{refresh_members, set_members};
+use timeline::{fold, fold_members};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ClientError {
@@ -104,10 +114,18 @@ impl State {
     }
 }
 
+/// A conversation as the list shows it (0022).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Conversation {
     pub id: String,
     pub state: State,
+    /// Everyone here but this account, named ones first.
+    pub members: Vec<Person>,
+    /// The newest item, if any.
+    pub last: Option<Item>,
+    pub unread: u32,
+    /// The disappearing timer, in seconds.
+    pub timer: Option<u32>,
 }
 
 /// A message in history.
@@ -149,6 +167,15 @@ pub enum Event {
     Typing {
         conversation: String,
         active: bool,
+    },
+    /// Timeline items changed, by seq. Empty when only read state moved.
+    Timeline {
+        conversation: String,
+        changed: Vec<u64>,
+    },
+    /// The core fetched these accounts' names and marks.
+    Profiles {
+        accounts: Vec<String>,
     },
 }
 
@@ -231,6 +258,9 @@ enum Drain {
 /// How many times a join is made again in one call after another commit
 /// took its epoch.
 const JOIN_ATTEMPTS: usize = 3;
+
+/// At most one typing frame per conversation this often (0022).
+const TYPING_EVERY: Duration = Duration::from_secs(3);
 
 fn now() -> i64 {
     SystemTime::now()
@@ -479,6 +509,7 @@ fn seal_join(
          VALUES (?1, 'stale', 0, ?2) ON CONFLICT (group_id) DO NOTHING",
         params![group, now()],
     )?;
+    refresh_members(tx, group, &mls)?;
     let out = Outgoing {
         client_msg_id: random_id(),
         ciphertext: commit.message,
@@ -560,6 +591,8 @@ pub struct Client<T> {
     /// What happened since the last call returned; kept when a call fails
     /// half way, so the next one still reports it.
     outcome: Outcome,
+    /// When each conversation's last `active` typing frame was made.
+    typed: HashMap<Vec<u8>, Instant>,
 }
 
 impl<T: Transport> Client<T> {
@@ -576,6 +609,7 @@ impl<T: Transport> Client<T> {
             transport,
             token,
             outcome: Outcome::default(),
+            typed: HashMap::new(),
         })
     }
 
@@ -636,6 +670,8 @@ impl<T: Transport> Client<T> {
                  VALUES (?1, 'new', 0, ?2)",
                 params![group.id(), now()],
             )?;
+            // Who it is meant for, until the commit that adds them is back.
+            set_members(tx, group.id(), &intent)?;
             enqueue(
                 tx,
                 group.id(),
@@ -711,9 +747,23 @@ impl<T: Transport> Client<T> {
         Ok(envelope.id)
     }
 
-    /// A typing frame for the socket, sealed on the current epoch.
-    pub fn typing(&mut self, conversation: &str, active: bool) -> Result<String, ClientError> {
+    /// A typing frame for the socket, sealed on the current epoch. None
+    /// when typing is turned off, or when an `active` one was made here
+    /// less than 3 s ago.
+    pub fn typing(
+        &mut self,
+        conversation: &str,
+        active: bool,
+    ) -> Result<Option<String>, ClientError> {
         let group = group_id(conversation).ok_or(ClientError::UnknownConversation)?;
+        if active
+            && self
+                .typed
+                .get(&group)
+                .is_some_and(|t| t.elapsed() < TYPING_EVERY)
+        {
+            return Ok(None);
+        }
         let envelope = Envelope {
             id: random_id(),
             ts: now() as u64,
@@ -724,30 +774,174 @@ impl<T: Transport> Client<T> {
             if conversation_state(tx, &group)? != State::Active {
                 return Err(ClientError::UnknownConversation);
             }
+            if !read::settings(tx)?.typing {
+                return Ok(None);
+            }
             let provider = Provider::new(tx);
-            Ok(Group::load(&provider, &group)?.seal_typing(&provider, &envelope)?)
+            Ok(Some(
+                Group::load(&provider, &group)?.seal_typing(&provider, &envelope)?,
+            ))
         })?;
-        Ok(serde_json::json!({
-            "type": "typing",
-            "conversationId": conversation,
-            "ciphertext": api::base64(&sealed),
-        })
-        .to_string())
+        let Some(sealed) = sealed else {
+            return Ok(None);
+        };
+        if active {
+            self.typed.insert(group, Instant::now());
+        } else {
+            self.typed.remove(&group);
+        }
+        Ok(Some(
+            serde_json::json!({
+                "type": "typing",
+                "conversationId": conversation,
+                "ciphertext": api::base64(&sealed),
+            })
+            .to_string(),
+        ))
     }
 
+    /// Every conversation, the one with the newest activity first.
     pub fn conversations(&mut self) -> Result<Vec<Conversation>, ClientError> {
         self.store.try_write(|tx| {
             let mut statement = tx.prepare(&format!(
-                "SELECT group_id, {STATE} FROM conversations ORDER BY created_at"
+                "SELECT group_id, {STATE}, timer FROM conversations c
+                 ORDER BY MAX(created_at,
+                              COALESCE((SELECT MAX(stored_at) FROM timeline t
+                                        WHERE t.group_id = c.group_id), 0),
+                              COALESCE((SELECT MAX(created_at) FROM outbox o
+                                        WHERE o.group_id = c.group_id AND o.kind = 'message'),
+                                       0)) DESC,
+                          created_at DESC"
             ))?;
-            let rows = statement.query_map([], |r| {
-                Ok(Conversation {
-                    id: conversation_id(&r.get::<_, Vec<u8>>(0)?),
-                    state: State::parse(&r.get::<_, String>(1)?)?,
-                })
-            })?;
-            Ok(rows.collect::<Result<_, _>>()?)
+            let rows: Vec<(Vec<u8>, State, Option<u32>)> = statement
+                .query_map([], |r| {
+                    Ok((r.get(0)?, State::parse(&r.get::<_, String>(1)?)?, r.get(2)?))
+                })?
+                .collect::<rusqlite::Result<_>>()?;
+            if rows.is_empty() {
+                // Signed out, or none yet.
+                return Ok(Vec::new());
+            }
+            let (_, me) = this_device(tx)?;
+            let mut conversations = Vec::with_capacity(rows.len());
+            for (group, state, timer) in rows {
+                let others: Vec<String> = members::members(tx, &group)?
+                    .into_iter()
+                    .filter(|a| *a != me.account)
+                    .collect();
+                let mut members = members::people_of(tx, &others)?;
+                members.sort_by(|a, b| {
+                    (a.name.is_none(), &a.name, &a.account).cmp(&(
+                        b.name.is_none(),
+                        &b.name,
+                        &b.account,
+                    ))
+                });
+                conversations.push(Conversation {
+                    id: conversation_id(&group),
+                    state,
+                    members,
+                    last: timeline::items(tx, &group, &me.account, None, 1)?.pop(),
+                    unread: read::unread(tx, &group, &me.account)?,
+                    timer,
+                });
+            }
+            Ok(conversations)
         })
+    }
+
+    /// Up to `limit` items before the item `before` (or the newest), oldest
+    /// first; the newest page ends with what is still being sent (0022).
+    pub fn timeline(
+        &mut self,
+        conversation: &str,
+        before: Option<u64>,
+        limit: u32,
+    ) -> Result<Vec<Item>, ClientError> {
+        let group = group_id(conversation).ok_or(ClientError::UnknownConversation)?;
+        self.store.try_write(|tx| {
+            conversation_state(tx, &group)?;
+            let (_, me) = this_device(tx)?;
+            timeline::items(tx, &group, &me.account, before, limit)
+        })
+    }
+
+    /// Everything up to the item `seq` is on screen. With read markers on,
+    /// a receipt is queued when that moved this account's mark; the next
+    /// `sync` sends it.
+    pub fn mark_read(&mut self, conversation: &str, seq: u64) -> Result<(), ClientError> {
+        let group = group_id(conversation).ok_or(ClientError::UnknownConversation)?;
+        self.store.try_write(|tx| {
+            let state = conversation_state(tx, &group)?;
+            let (_, me) = this_device(tx)?;
+            if read::advance(tx, &group, &me.account, seq)?.is_none()
+                || !read::settings(tx)?.read_markers
+                || !matches!(state, State::Active | State::Excluded)
+            {
+                return Ok(());
+            }
+            let Some(up_to) = timeline::receipt_target(tx, &group, seq)? else {
+                return Ok(());
+            };
+            let envelope = Envelope {
+                id: random_id(),
+                ts: now() as u64,
+                body: Body::Receipt { up_to },
+            };
+            enqueue(tx, &group, "message", &envelope.encode()?)
+        })
+    }
+
+    /// Sends a conversation's failed items again.
+    pub fn retry(&mut self, conversation: &str) -> Result<Outcome, ClientError> {
+        let group = group_id(conversation).ok_or(ClientError::UnknownConversation)?;
+        self.store.try_write(|tx| {
+            conversation_state(tx, &group)?;
+            Ok::<_, ClientError>(
+                tx.execute("UPDATE outbox SET failed = 0 WHERE group_id = ?1", [&group])?,
+            )
+        })?;
+        self.sync_one(&group)?;
+        Ok(std::mem::take(&mut self.outcome))
+    }
+
+    /// The accounts met through shared conversations: whom a new
+    /// conversation can be started with.
+    pub fn people(&mut self) -> Result<Vec<Person>, ClientError> {
+        self.store.try_write(|tx| {
+            let (_, me) = this_device(tx)?;
+            Ok(members::people(tx, &me.account)?)
+        })
+    }
+
+    /// One account's name and mark, fetched now when the server will give
+    /// them, else as last fetched.
+    pub fn profile(&mut self, account: &str) -> Result<Person, ClientError> {
+        if !is_id(account) {
+            return Err(ClientError::Invalid("account id"));
+        }
+        let fetched = match authed(&self.transport, &self.token)?.profile(account) {
+            Ok(profile) => Some(Some(profile)),
+            Err(ApiError::Refused { status: 404, .. }) => Some(None),
+            Err(ApiError::Unreachable(_)) => None,
+            Err(error) => return Err(error.into()),
+        };
+        self.store.try_write(|tx| {
+            if let Some(profile) = &fetched {
+                members::store_profile(tx, account, profile.as_ref())?;
+            }
+            Ok(members::person(tx, account)?)
+        })
+    }
+
+    pub fn settings(&mut self) -> Result<Settings, ClientError> {
+        Ok(self.store.try_write(read::settings)?)
+    }
+
+    pub fn set_settings(&mut self, settings: Settings) -> Result<(), ClientError> {
+        Ok(self
+            .store
+            .try_write(|tx| read::set_settings(tx, settings))?)
     }
 
     /// Up to `limit` messages before `before` (or the newest), oldest first.
@@ -806,7 +1000,41 @@ impl<T: Transport> Client<T> {
         for group in groups {
             self.sync_one(&group)?;
         }
+        self.refresh_profiles()?;
         Ok(std::mem::take(&mut self.outcome))
+    }
+
+    /// Fetches the names and marks of accounts met since, or not fetched
+    /// for a day. One the server does not answer waits for the next call.
+    fn refresh_profiles(&mut self) -> Result<(), ClientError> {
+        let wanted = self.store.try_write(|tx| {
+            let (_, me) = this_device(tx)?;
+            Ok::<_, ClientError>(members::unfetched(tx, &me.account)?)
+        })?;
+        if wanted.is_empty() {
+            return Ok(());
+        }
+        let api = authed(&self.transport, &self.token)?;
+        let mut fetched = Vec::new();
+        for account in wanted {
+            match api.profile(&account) {
+                Ok(profile) => fetched.push((account, Some(profile))),
+                Err(ApiError::Refused { status: 404, .. }) => fetched.push((account, None)),
+                Err(_) => {}
+            }
+        }
+        if fetched.is_empty() {
+            return Ok(());
+        }
+        self.store.try_write(|tx| {
+            fetched.iter().try_for_each(|(account, profile)| {
+                members::store_profile(tx, account, profile.as_ref())
+            })
+        })?;
+        self.outcome.events.push(Event::Profiles {
+            accounts: fetched.into_iter().map(|(account, _)| account).collect(),
+        });
+        Ok(())
     }
 
     /// One frame from the socket.
@@ -835,6 +1063,7 @@ impl<T: Transport> Client<T> {
                     Some(_) => {}
                     None => self.join(&group)?,
                 }
+                self.refresh_profiles()?;
             }
             Incoming::Typing {
                 conversation,
@@ -845,7 +1074,9 @@ impl<T: Transport> Client<T> {
                 let sealed =
                     api::from_base64(&ciphertext).ok_or(ClientError::Protocol("typing"))?;
                 let opened = self.store.try_write(|tx| {
-                    if conversation_of(tx, &group)?.map(|c| c.0) != Some(State::Active) {
+                    if conversation_of(tx, &group)?.map(|c| c.0) != Some(State::Active)
+                        || !read::settings(tx)?.typing
+                    {
                         return Ok(None);
                     }
                     let provider = Provider::new(tx);
@@ -912,12 +1143,13 @@ impl<T: Transport> Client<T> {
             return Ok(Drain::Blocked);
         }
         if state == State::New {
-            match authed(&self.transport, &self.token)?.create_conversation(&conversation) {
+            let created = authed(&self.transport, &self.token)?.create_conversation(&conversation);
+            match created {
                 Ok(()) => {}
                 Err(ApiError::Refused { status: 409, .. }) => {
                     return Err(ClientError::Protocol("a random group id was taken"));
                 }
-                Err(error) => return Err(error.into()),
+                Err(error) => return Err(self.failed(group, error)),
             }
             self.store
                 .try_write(|tx| set_state(tx, group, State::Active))?;
@@ -934,10 +1166,11 @@ impl<T: Transport> Client<T> {
                     Sealed::Dropped => continue,
                 },
             };
-            match authed(&self.transport, &self.token)?.send_message(&conversation, &out) {
+            let sent = authed(&self.transport, &self.token)?.send_message(&conversation, &out);
+            match sent {
                 Ok(seq) => self.store.try_write(|tx| {
                     tx.execute(
-                        "UPDATE outbox SET seq = ?2 WHERE id = ?1",
+                        "UPDATE outbox SET seq = ?2, failed = 0 WHERE id = ?1",
                         params![row.id, seq as i64],
                     )
                     .map(drop)
@@ -958,9 +1191,31 @@ impl<T: Transport> Client<T> {
                     })?;
                     return Ok(Drain::Over);
                 }
-                Err(error) => return Err(error.into()),
+                Err(error) => return Err(self.failed(group, error)),
             }
         }
+    }
+
+    /// A send got no answer: what this conversation has queued shows as
+    /// failed until `retry` or the next send that gets through.
+    fn failed(&mut self, group: &[u8], error: ApiError) -> ClientError {
+        if matches!(error, ApiError::Unreachable(_)) {
+            let marked = self.store.try_write(|tx| {
+                tx.execute(
+                    "UPDATE outbox SET failed = 1
+                     WHERE group_id = ?1 AND kind = 'message' AND seq IS NULL",
+                    [group],
+                )
+            });
+            if let Err(stored) = marked {
+                return stored.into();
+            }
+            self.outcome.events.push(Event::Timeline {
+                conversation: conversation_id(group),
+                changed: Vec::new(),
+            });
+        }
+        error.into()
     }
 
     /// Seals one row into the bytes it is sent as from now on.
@@ -1156,6 +1411,7 @@ impl<T: Transport> Client<T> {
                          VALUES (?1, 'active', ?2, ?3)",
                         params![group, seq as i64, now()],
                     )?;
+                    refresh_members(tx, group, &mls)?;
                     Ok::<_, ClientError>(Welcomed::Joined)
                 })?;
                 match welcomed {
@@ -1276,6 +1532,12 @@ fn receive(
     let mut mls = Group::load(&provider, group)?;
     let (_, me) = this_device(tx)?;
     let mut events = Vec::new();
+    let timeline = |changed: Option<Vec<u64>>| {
+        changed.map(|changed| Event::Timeline {
+            conversation: conversation.clone(),
+            changed,
+        })
+    };
     type Own = (i64, String, Vec<u8>, Option<String>, Option<String>);
     let own: Option<Own> = tx
         .query_row(
@@ -1288,18 +1550,32 @@ fn receive(
     if let Some((id, kind, intent, roster_add, roster_remove)) = own {
         if Kind::parse(&kind)? == Kind::Message {
             store_message(tx, group, seq, &me, &intent)?;
+            let envelope = Envelope::decode(&intent)?;
+            let changed = fold(tx, group, seq, &me, &envelope, &me.account)?;
             events.push(Event::Message(Message {
                 conversation: conversation.clone(),
                 seq,
                 sender: me,
-                envelope: Envelope::decode(&intent)?,
+                envelope,
                 own: true,
             }));
+            events.extend(timeline(changed));
         } else {
             mls.merge_pending_commit(&provider)?;
+            refresh_members(tx, group, &mls)?;
             // An own claim is always backed.
             drop_correction(tx, group)?;
             let (added, removed) = (split(roster_add), split(roster_remove));
+            let card = fold_members(
+                tx,
+                group,
+                seq,
+                &me,
+                added.clone(),
+                removed.clone(),
+                Vec::new(),
+            )?;
+            events.extend(timeline(card.map(|seq| vec![seq])));
             if !added.is_empty() || !removed.is_empty() {
                 events.push(Event::Membership {
                     conversation: conversation.clone(),
@@ -1319,6 +1595,7 @@ fn receive(
                 }) => {}
                 Ok(envelope) => {
                     store_message(tx, group, seq, &sender, &plaintext)?;
+                    let changed = fold(tx, group, seq, &sender, &envelope, &me.account)?;
                     events.push(Event::Message(Message {
                         conversation: conversation.clone(),
                         own: sender == me,
@@ -1326,19 +1603,33 @@ fn receive(
                         seq,
                         envelope,
                     }));
+                    events.extend(timeline(changed));
                 }
                 // Unreadable plaintext is skipped; the group is still in step.
                 Err(_) => {}
             },
             Ok(Received::Commit {
-                removed_self: true, ..
+                removed_self: true,
+                by,
+                ..
             }) => {
                 set_state(tx, group, State::Removed)?;
+                let card = fold_members(
+                    tx,
+                    group,
+                    seq,
+                    &by,
+                    Vec::new(),
+                    vec![me.account.clone()],
+                    Vec::new(),
+                )?;
                 events.push(Event::Removed {
                     conversation: conversation.clone(),
                 });
+                events.extend(timeline(card.map(|seq| vec![seq])));
             }
             Ok(Received::Commit {
+                by,
                 added,
                 removed,
                 backed,
@@ -1350,6 +1641,17 @@ fn receive(
                 } else {
                     queue_correction(tx, group)?;
                 }
+                refresh_members(tx, group, &mls)?;
+                let card = fold_members(
+                    tx,
+                    group,
+                    seq,
+                    &by,
+                    accounts(added.clone()),
+                    accounts(removed.clone()),
+                    accounts(joined.clone()),
+                )?;
+                events.extend(timeline(card.map(|seq| vec![seq])));
                 if !added.is_empty() || !removed.is_empty() {
                     events.push(Event::Membership {
                         conversation: conversation.clone(),

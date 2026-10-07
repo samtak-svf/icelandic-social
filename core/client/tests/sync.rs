@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use relay::{Link, Relay};
 use spjall_client::api::{ApiError, Platform};
-use spjall_client::{Client, ClientError, Event, State};
+use spjall_client::{Client, ClientError, Content, Event, Item, Settings, State, Status};
 use spjall_envelope::Body;
 use spjall_mls::group::{GroupError, forge};
 use tempfile::TempDir;
@@ -141,6 +141,14 @@ fn devices(events: &[Event]) -> Vec<(String, String)> {
         })
         .flatten()
         .map(|d| (d.account.clone(), d.device.clone()))
+        .collect()
+}
+
+/// The events of 0018, without the timeline and profile events of 0022.
+fn classic(events: Vec<Event>) -> Vec<Event> {
+    events
+        .into_iter()
+        .filter(|e| !matches!(e, Event::Timeline { .. } | Event::Profiles { .. }))
         .collect()
 }
 
@@ -287,7 +295,7 @@ fn own_messages_are_known_by_their_seq() {
     let conversation = conversation(&mut a1, &mut b1);
 
     a1.send(&conversation, "mitt");
-    let events = a1.sync();
+    let events = classic(a1.sync());
     let [Event::Message(message)] = events.as_slice() else {
         panic!("{events:?}");
     };
@@ -305,7 +313,7 @@ fn typing_is_relayed_and_never_stored() {
     let mut b1 = Phone::new(&relay, "b", "b1");
     let conversation = conversation(&mut a1, &mut b1);
 
-    let frame = a1.client.typing(&conversation, true).unwrap();
+    let frame = a1.client.typing(&conversation, true).unwrap().unwrap();
     a1.forward(vec![frame]);
     assert_eq!(
         b1.deliver(),
@@ -341,7 +349,7 @@ fn a_removed_account_learns_it() {
         .unwrap();
     assert_eq!(membership(&a1.sync()), vec![(Vec::new(), strings(&["b"]))]);
     assert_eq!(
-        b1.deliver(),
+        classic(b1.deliver()),
         vec![Event::Removed {
             conversation: conversation.clone()
         }]
@@ -391,7 +399,7 @@ fn a_claim_that_leaves_a_member_out_is_corrected() {
     c1.deliver();
     assert_eq!(joined(&d1.deliver()), vec![conversation.clone()]);
     a1.deliver();
-    assert!(b1.deliver().is_empty());
+    assert!(classic(b1.deliver()).is_empty());
     assert_eq!(state(&mut b1), State::Active);
     assert_eq!(
         relay.sends("b1").len(),
@@ -591,4 +599,345 @@ fn a_conversation_made_offline_reaches_the_server_later() {
     let events = b1.deliver();
     assert_eq!(joined(&events), vec![conversation.clone()]);
     assert_eq!(texts(&events), strings(&["þegar netið kemur"]));
+}
+
+fn items(phone: &mut Phone, conversation: &str) -> Vec<Item> {
+    phone.client.timeline(conversation, None, 100).unwrap()
+}
+
+/// The text of each item, `None` for one that is not text.
+fn shown(items: &[Item]) -> Vec<Option<String>> {
+    items
+        .iter()
+        .map(|i| match &i.content {
+            Content::Text { text, .. } => Some(text.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn the_timeline_shows_each_message_as_it_now_is() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut a1, &mut b1);
+
+    let first = a1
+        .client
+        .send(
+            &conversation,
+            Body::Text {
+                text: "fyrst".into(),
+            },
+        )
+        .unwrap();
+    let second = a1
+        .client
+        .send(
+            &conversation,
+            Body::Text {
+                text: "annað".into(),
+            },
+        )
+        .unwrap();
+    a1.sync();
+    b1.deliver();
+    for body in [
+        Body::Reply {
+            to: first.clone(),
+            text: "svar".into(),
+        },
+        Body::Reaction {
+            target: first.clone(),
+            emoji: "👍".into(),
+            remove: false,
+        },
+        // Only a sender edits or deletes its own.
+        Body::Edit {
+            target: first.clone(),
+            text: "b breytti".into(),
+        },
+        Body::Delete {
+            target: second.clone(),
+        },
+    ] {
+        b1.client.send(&conversation, body).unwrap();
+    }
+    b1.sync();
+    a1.deliver();
+    for body in [
+        Body::Edit {
+            target: first.clone(),
+            text: "fyrst, lagað".into(),
+        },
+        Body::Delete {
+            target: second.clone(),
+        },
+        Body::Reaction {
+            target: first.clone(),
+            emoji: "👍".into(),
+            remove: false,
+        },
+    ] {
+        a1.client.send(&conversation, body).unwrap();
+    }
+    a1.sync();
+    b1.deliver();
+
+    // The creator sees the commit that added b as a card; b joined by it.
+    assert!(matches!(&items(&mut a1, &conversation)[0].content,
+        Content::Members { added, .. } if added.iter().any(|p| p.account == "b")));
+    for phone in [&mut a1, &mut b1] {
+        let mut items = items(phone, &conversation);
+        items.retain(|i| i.envelope_id.is_some());
+        assert_eq!(
+            shown(&items),
+            vec![Some("fyrst, lagað".into()), None, Some("svar".into())]
+        );
+        assert!(items[0].edited);
+        assert_eq!(items[1].content, Content::Deleted);
+        let Content::Text {
+            reply_to: Some(quote),
+            ..
+        } = &items[2].content
+        else {
+            panic!("{:?}", items[2]);
+        };
+        assert_eq!(quote.text.as_deref(), Some("fyrst, lagað"));
+        assert_eq!(quote.sender.as_ref().unwrap().account, "a");
+        let reactions = &items[0].reactions;
+        assert_eq!(reactions.len(), 1);
+        assert_eq!(reactions[0].emoji, "👍");
+        assert_eq!(reactions[0].people.len(), 2);
+        assert!(reactions[0].own);
+        assert!(items.iter().all(|i| i.status == Status::Sent));
+    }
+}
+
+#[test]
+fn unread_counts_and_read_markers_follow_the_toggle() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut a2 = Phone::new(&relay, "a", "a2");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut a1, &mut b1);
+    a2.deliver();
+
+    b1.send(&conversation, "eitt");
+    b1.send(&conversation, "tvö");
+    b1.sync();
+    a1.deliver();
+    a2.deliver();
+    assert_eq!(a1.client.conversations().unwrap()[0].unread, 2);
+    let newest = items(&mut a1, &conversation).last().unwrap().seq.unwrap();
+
+    a1.client.mark_read(&conversation, newest).unwrap();
+    assert_eq!(a1.client.conversations().unwrap()[0].unread, 0);
+    // Marking the same again queues nothing.
+    a1.client.mark_read(&conversation, newest).unwrap();
+    a1.sync();
+    let events = b1.deliver();
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, Event::Timeline { changed, .. }
+        if changed.len() == 2))
+    );
+    assert!(
+        items(&mut b1, &conversation)
+            .iter()
+            .skip(1)
+            .all(|i| i.read_by == 1)
+    );
+    // The receipt reads them on a's other device too.
+    a2.deliver();
+    assert_eq!(a2.client.conversations().unwrap()[0].unread, 0);
+
+    // Off: no receipt goes, and none is shown.
+    b1.client
+        .set_settings(Settings {
+            read_markers: false,
+            typing: true,
+        })
+        .unwrap();
+    assert!(!b1.client.settings().unwrap().read_markers);
+    assert!(items(&mut b1, &conversation).iter().all(|i| i.read_by == 0));
+    a1.send(&conversation, "þrjú");
+    a1.sync();
+    b1.deliver();
+    let stored = relay.stored(&conversation);
+    let newest = items(&mut b1, &conversation).last().unwrap().seq.unwrap();
+    b1.client.mark_read(&conversation, newest).unwrap();
+    b1.sync();
+    assert_eq!(relay.stored(&conversation), stored);
+    assert_eq!(b1.client.conversations().unwrap()[0].unread, 0);
+}
+
+#[test]
+fn a_send_without_an_answer_shows_failed_until_retried() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut a1, &mut b1);
+
+    a1.send(&conversation, "bíður");
+    let queued = items(&mut a1, &conversation);
+    let last = queued.last().unwrap();
+    assert_eq!((last.status, last.seq), (Status::Pending, None));
+    assert_eq!(
+        a1.client.conversations().unwrap()[0].last.as_ref(),
+        Some(last)
+    );
+
+    relay.fail_sends("a1", 1);
+    assert!(matches!(
+        a1.client.sync(),
+        Err(ClientError::Transport(ApiError::Unreachable(_)))
+    ));
+    assert_eq!(
+        items(&mut a1, &conversation).last().unwrap().status,
+        Status::Failed
+    );
+
+    let outcome = a1.client.retry(&conversation).unwrap();
+    a1.forward(outcome.frames);
+    let last = items(&mut a1, &conversation).pop().unwrap();
+    assert_eq!(last.status, Status::Sent);
+    assert!(last.seq.is_some());
+    assert_eq!(texts(&b1.deliver()), strings(&["bíður"]));
+}
+
+#[test]
+fn people_are_named_by_the_server_once_they_share_a_conversation() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let mut c1 = Phone::new(&relay, "c", "c1");
+    assert!(a1.client.people().unwrap().is_empty());
+    // Not yet: c shares nothing with a.
+    assert_eq!(a1.client.profile("c").unwrap().name, None);
+
+    let conversation = a1.client.create_conversation(&strings(&["b"])).unwrap();
+    let events = a1.sync();
+    assert!(events.contains(&Event::Profiles {
+        accounts: strings(&["b"])
+    }));
+    b1.deliver();
+    let people = a1.client.people().unwrap();
+    assert_eq!(people.len(), 1);
+    assert_eq!(people[0].name.as_deref(), Some("Name of b"));
+    assert!(people[0].verified);
+    let listed = a1.client.conversations().unwrap();
+    assert_eq!(listed[0].members, people);
+    // Fetched once, then from the store.
+    let asked = || {
+        relay
+            .requests("a1")
+            .iter()
+            .filter(|r| r.path == "/v1/accounts/b")
+            .count()
+    };
+    assert_eq!(asked(), 1);
+    a1.sync();
+    assert_eq!(asked(), 1);
+
+    a1.client
+        .add_accounts(&conversation, &strings(&["c"]))
+        .unwrap();
+    a1.sync();
+    c1.deliver();
+    assert_eq!(
+        a1.client.profile("c").unwrap().name.as_deref(),
+        Some("Name of c")
+    );
+}
+
+#[test]
+fn an_invite_opens_a_one_to_one_with_its_maker() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let link = a1.client.rotate_invite().unwrap();
+    let token = spjall_client::invite_token(&link).unwrap();
+
+    assert!(matches!(
+        a1.client.open_invite(&token),
+        Err(ClientError::Invalid(_))
+    ));
+    let one = b1.client.open_invite(&token).unwrap();
+    b1.sync();
+    assert_eq!(joined(&a1.deliver()), vec![one.clone()]);
+    assert_eq!(b1.client.open_invite(&token).unwrap(), one);
+    assert_eq!(
+        a1.client.conversations().unwrap()[0].members[0].account,
+        "b"
+    );
+
+    // A group with the inviter is not the 1:1.
+    let mut c1 = Phone::new(&relay, "c", "c1");
+    let group = conversation(&mut a1, &mut c1);
+    a1.client.add_accounts(&group, &strings(&["b"])).unwrap();
+    a1.sync();
+    b1.deliver();
+    assert_eq!(b1.client.open_invite(&token).unwrap(), one);
+}
+
+#[test]
+fn typing_is_sent_at_most_every_three_seconds_and_follows_the_toggle() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut a1, &mut b1);
+
+    assert!(a1.client.typing(&conversation, true).unwrap().is_some());
+    assert!(a1.client.typing(&conversation, true).unwrap().is_none());
+    assert!(a1.client.typing(&conversation, false).unwrap().is_some());
+    let frame = a1.client.typing(&conversation, true).unwrap().unwrap();
+
+    b1.client
+        .set_settings(Settings {
+            read_markers: true,
+            typing: false,
+        })
+        .unwrap();
+    a1.forward(vec![frame]);
+    assert!(b1.deliver().is_empty());
+    assert!(b1.client.typing(&conversation, true).unwrap().is_none());
+}
+
+#[test]
+fn the_disappearing_timer_is_a_card_and_stamps_what_follows() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut a1, &mut b1);
+
+    a1.client
+        .send(
+            &conversation,
+            Body::Disappearing {
+                seconds: Some(3600),
+            },
+        )
+        .unwrap();
+    a1.send(&conversation, "hverfur");
+    a1.sync();
+    b1.deliver();
+    for phone in [&mut a1, &mut b1] {
+        assert_eq!(phone.client.conversations().unwrap()[0].timer, Some(3600));
+        let items = items(phone, &conversation);
+        let [.., card, message] = items.as_slice() else {
+            panic!("{items:?}");
+        };
+        assert_eq!(
+            card.content,
+            Content::Timer {
+                seconds: Some(3600)
+            }
+        );
+        assert_eq!(card.sender.account, "a");
+        assert!(card.expires_at.is_none());
+        assert!(message.expires_at.is_some());
+    }
 }

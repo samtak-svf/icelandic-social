@@ -263,7 +263,18 @@ struct NewInvite {
 
 /// Who made an invite, as `resolveInvite` shows it before sign-in.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Inviter {
+    /// The account the invite opens a 1:1 with (0022).
+    pub account_id: String,
+    pub name: Option<String>,
+    pub verified: bool,
+}
+
+/// Another account's name and mark, as `getAccount` shows it to an account
+/// it shares a conversation with.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct Profile {
     pub name: Option<String>,
     pub verified: bool,
 }
@@ -495,6 +506,17 @@ impl<T: Transport + ?Sized> Api<'_, T> {
             "resolveInvite",
         )?;
         Ok(resolved.inviter)
+    }
+
+    /// `getAccount`: refused with 404 unless the two accounts share a
+    /// conversation.
+    pub fn profile(&self, account: &str) -> Result<Profile, ApiError> {
+        self.call(
+            Method::Get,
+            format!("/v1/accounts/{account}"),
+            None,
+            "getAccount",
+        )
     }
 
     /// `revokeDevice`.

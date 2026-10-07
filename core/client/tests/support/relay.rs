@@ -350,12 +350,27 @@ impl State {
                 answer(204, Value::Null)
             }
             (Method::Get, ["invites", token]) => match self.invites.get(*token) {
-                Some(_) => answer(
+                Some(inviter) => answer(
                     200,
-                    json!({ "inviter": { "name": null, "verified": true } }),
+                    json!({ "inviter": { "accountId": inviter, "name": null, "verified": true } }),
                 ),
                 None => refuse(404, "not_found"),
             },
+            // Named only to an account it shares a conversation with.
+            (Method::Get, ["accounts", id]) => {
+                let shared = self
+                    .conversations
+                    .values()
+                    .any(|c| c.roster.contains(account) && c.roster.contains(*id));
+                if shared {
+                    answer(
+                        200,
+                        json!({ "accountId": id, "name": format!("Name of {id}"), "verified": true }),
+                    )
+                } else {
+                    refuse(404, "not_found")
+                }
+            }
             (Method::Delete, ["devices", id]) => {
                 if self.devices.get(*id).map(String::as_str) != Some(account) {
                     return refuse(404, "not_found");

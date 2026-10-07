@@ -11,8 +11,8 @@ use std::sync::{Arc, Mutex};
 use relay::{Link, Relay};
 use spjall_client::api::{self, Transport as _};
 use spjall_core::client::{
-    ConversationState, CoreClient, Event, HttpMethod, HttpRequest, HttpResponse, Platform,
-    SignedIn, Transport, TransportError, invite_token,
+    Content, ConversationState, CoreClient, Event, HttpMethod, HttpRequest, HttpResponse,
+    ItemStatus, Platform, Settings, SignedIn, Transport, TransportError, invite_token,
 };
 use spjall_core::{Body, CoreError};
 
@@ -114,9 +114,14 @@ fn two_clients_talk_through_the_exported_api() {
     a1.client.sync().unwrap();
     assert_eq!(
         deliver(&relay, &b1, "b", "b1"),
-        vec![Event::Joined {
-            conversation: conversation.clone()
-        }]
+        vec![
+            Event::Joined {
+                conversation: conversation.clone()
+            },
+            Event::Profiles {
+                accounts: vec!["a".into()]
+            },
+        ]
     );
 
     let id = a1
@@ -125,9 +130,10 @@ fn two_clients_talk_through_the_exported_api() {
         .unwrap();
     a1.client.sync().unwrap();
     let events = deliver(&relay, &b1, "b", "b1");
-    let [Event::Message { message }] = events.as_slice() else {
+    let [Event::Message { message }, Event::Timeline { changed, .. }] = events.as_slice() else {
         panic!("{events:?}");
     };
+    assert_eq!(changed, &vec![message.seq]);
     assert_eq!(message.envelope.id, id);
     assert_eq!(message.envelope.body, Body::Text { text: "hæ".into() });
     assert_eq!(
@@ -139,13 +145,40 @@ fn two_clients_talk_through_the_exported_api() {
     );
     assert!(!message.own);
     assert_eq!(
-        b1.client.history(conversation, None, 10).unwrap(),
+        b1.client.history(conversation.clone(), None, 10).unwrap(),
         vec![message.clone()]
     );
+    let listed = b1.client.conversations().unwrap();
+    assert_eq!(listed[0].state, ConversationState::Active);
+    assert_eq!(listed[0].unread, 1);
+    assert_eq!(listed[0].members[0].account, "a");
+    assert_eq!(listed[0].members[0].name.as_deref(), Some("Name of a"));
+    assert_eq!(b1.client.people().unwrap(), listed[0].members);
+
+    let items = b1.client.timeline(conversation.clone(), None, 10).unwrap();
+    let item = items.last().unwrap();
+    assert_eq!(item.seq, Some(message.seq));
+    assert_eq!(item.status, ItemStatus::Sent);
     assert_eq!(
-        b1.client.conversations().unwrap()[0].state,
-        ConversationState::Active
+        item.content,
+        Content::Text {
+            text: "hæ".into(),
+            reply_to: None
+        }
     );
+    assert_eq!(listed[0].last.as_ref(), Some(item));
+    b1.client
+        .mark_read(conversation.clone(), message.seq)
+        .unwrap();
+    assert_eq!(b1.client.conversations().unwrap()[0].unread, 0);
+
+    let off = Settings {
+        read_markers: false,
+        typing: false,
+    };
+    b1.client.set_settings(off).unwrap();
+    assert_eq!(b1.client.settings().unwrap(), off);
+    assert_eq!(b1.client.typing(conversation.clone(), true).unwrap(), None);
 
     // Every request carried a path under /v1/, a body only on POST, and
     // the token on all but the two before sign-in.
@@ -189,7 +222,9 @@ fn an_account_is_run_through_the_exported_api() {
         app.clone(),
     )
     .unwrap();
-    assert!(b1.resolve_invite(token.clone()).unwrap().unwrap().verified);
+    let inviter = b1.resolve_invite(token.clone()).unwrap().unwrap();
+    assert_eq!(inviter.account_id, "a");
+    assert!(inviter.verified);
     let url = b1.begin_sign_in().unwrap();
     assert!(matches!(
         b1.complete_sign_in(
@@ -199,8 +234,12 @@ fn an_account_is_run_through_the_exported_api() {
         ),
         Err(CoreError::SignIn { .. })
     ));
-    b1.complete_sign_in(relay::kenni(&url), Some(token), Platform::Ios)
+    b1.complete_sign_in(relay::kenni(&url), Some(token.clone()), Platform::Ios)
         .unwrap();
+    // The link opens a 1:1 with its maker, the same one each time.
+    let one = b1.open_invite(token.clone()).unwrap();
+    assert_eq!(b1.open_invite(token).unwrap(), one);
+    assert_eq!(b1.conversations().unwrap()[0].id, one);
     for request in app.seen.lock().unwrap().iter() {
         let shown = format!("{request:?}");
         assert!(

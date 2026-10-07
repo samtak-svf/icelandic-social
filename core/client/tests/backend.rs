@@ -12,7 +12,7 @@ use std::net::TcpStream;
 use std::time::{Duration, Instant, SystemTime};
 
 use spjall_client::api::{Method, Platform, Request, Response, Transport, Unreachable};
-use spjall_client::{Client, Event, invite_token};
+use spjall_client::{Client, Content, Event, invite_token};
 use spjall_envelope::Body;
 use tempfile::TempDir;
 use tungstenite::client::IntoClientRequest as _;
@@ -300,7 +300,7 @@ fn devices_talk_through_the_worker() {
     );
 
     // Typing goes through the socket and is never stored.
-    let frame = a1.client.typing(&conversation, true).unwrap();
+    let frame = a1.client.typing(&conversation, true).unwrap().unwrap();
     a1.forward(vec![frame]);
     b1.deliver_until(has(Event::Typing {
         conversation: conversation.clone(),
@@ -321,7 +321,12 @@ fn devices_talk_through_the_worker() {
         added: vec![who.to_owned()],
         removed: Vec::new(),
     };
-    assert_eq!(a1.sync(), vec![added(&d), added(&c)]);
+    let membership: Vec<Event> = a1
+        .sync()
+        .into_iter()
+        .filter(|e| matches!(e, Event::Membership { .. }))
+        .collect();
+    assert_eq!(membership, vec![added(&d), added(&c)]);
     c1.deliver_until(has(joined.clone()));
     d1.deliver_until(has(joined.clone()));
 
@@ -370,4 +375,44 @@ fn devices_talk_through_the_worker() {
         phone.deliver_until(|events| texts(events).contains(&"frá d2".to_owned()));
     }
     assert_eq!(d2.texts(&conversation), strings(&["frá d2"]));
+
+    // a's link opens a 1:1 with a, and opening it again finds the same one
+    // (0022). Its timeline, unread count and read marker go both ways.
+    let one = c1.client.open_invite(&invite).unwrap();
+    assert_ne!(one, conversation);
+    c1.sync();
+    a1.deliver_until(has(Event::Joined {
+        conversation: one.clone(),
+    }));
+    assert_eq!(c1.client.open_invite(&invite).unwrap(), one);
+    c1.send(&one, "bara við");
+    c1.sync();
+    a1.deliver_until(|events| texts(events).contains(&"bara við".to_owned()));
+    let items = a1.client.timeline(&one, None, 10).unwrap();
+    let last = items.last().unwrap();
+    assert!(matches!(&last.content, Content::Text { text, .. } if text == "bara við"));
+    assert_eq!(last.sender.account, c);
+    let listed = a1.client.conversations().unwrap();
+    assert_eq!((listed[0].id.as_str(), listed[0].unread), (one.as_str(), 1));
+    assert_eq!(listed[0].members[0].account, c);
+
+    let seq = last.seq.unwrap();
+    a1.client.mark_read(&one, seq).unwrap();
+    assert_eq!(a1.client.conversations().unwrap()[0].unread, 0);
+    a1.sync();
+    c1.deliver_until(|events| {
+        events.iter().any(|e| {
+            matches!(e, Event::Timeline { conversation, changed }
+                if *conversation == one && changed.contains(&seq))
+        })
+    });
+    let own = c1.client.timeline(&one, None, 10).unwrap();
+    assert_eq!(own.last().unwrap().read_by, 1);
+    assert!(
+        c1.client
+            .people()
+            .unwrap()
+            .iter()
+            .any(|p| p.account == a1.account)
+    );
 }

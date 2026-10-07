@@ -208,6 +208,90 @@ const MIGRATIONS: &[(u32, &str)] = &[
          ALTER TABLE outbox_0021 RENAME TO outbox;
          CREATE INDEX outbox_by_group ON outbox (group_id, id);",
     ),
+    (
+        6,
+        // Decision 0022: the core folds each conversation into a timeline
+        // in the transaction that stores the message, and the apps draw it.
+        "-- One row per seq that shows something: a message, or a card for a
+         -- membership change or the timer. `envelope_id` is the sender's id,
+         -- which edits, deletes, reactions, replies and receipts address. A
+         -- deleted message keeps its row as a tombstone.
+         CREATE TABLE timeline (
+             group_id       BLOB NOT NULL
+                            REFERENCES conversations (group_id) ON DELETE CASCADE,
+             seq            INTEGER NOT NULL,
+             kind           TEXT NOT NULL
+                            CHECK (kind IN ('text', 'media', 'members', 'timer')),
+             sender_account TEXT NOT NULL,
+             sender_device  TEXT NOT NULL,
+             envelope_id    TEXT,
+             ts             INTEGER NOT NULL,
+             stored_at      INTEGER NOT NULL,
+             text           TEXT,
+             reply_to       TEXT,
+             -- A media body, or a card's accounts and seconds, as JSON.
+             detail         TEXT,
+             edited         INTEGER NOT NULL DEFAULT 0 CHECK (edited IN (0, 1)),
+             deleted        INTEGER NOT NULL DEFAULT 0 CHECK (deleted IN (0, 1)),
+             expires_at     INTEGER,
+             PRIMARY KEY (group_id, seq),
+             CHECK ((envelope_id IS NULL) = (kind IN ('members', 'timer'))),
+             CHECK (deleted = 0 OR (text IS NULL AND reply_to IS NULL AND detail IS NULL))
+         ) STRICT, WITHOUT ROWID;
+         CREATE INDEX timeline_by_envelope ON timeline (group_id, envelope_id);
+
+         -- Who reacted with what: one per account, whichever device sent it.
+         CREATE TABLE reactions (
+             group_id BLOB NOT NULL,
+             seq      INTEGER NOT NULL,
+             account  TEXT NOT NULL,
+             emoji    TEXT NOT NULL,
+             PRIMARY KEY (group_id, seq, account, emoji),
+             FOREIGN KEY (group_id, seq) REFERENCES timeline (group_id, seq) ON DELETE CASCADE
+         ) STRICT, WITHOUT ROWID;
+
+         -- How far each account has read, by its receipts; this account's
+         -- own row is the mark unread counts start from.
+         CREATE TABLE read_state (
+             group_id BLOB NOT NULL
+                      REFERENCES conversations (group_id) ON DELETE CASCADE,
+             account  TEXT NOT NULL,
+             seq      INTEGER NOT NULL,
+             PRIMARY KEY (group_id, account)
+         ) STRICT, WITHOUT ROWID;
+
+         -- The accounts in each group, as MLS holds them after each commit,
+         -- or as a new conversation intends them until its first one.
+         CREATE TABLE members (
+             group_id BLOB NOT NULL
+                      REFERENCES conversations (group_id) ON DELETE CASCADE,
+             account  TEXT NOT NULL,
+             PRIMARY KEY (group_id, account)
+         ) STRICT, WITHOUT ROWID;
+         CREATE INDEX members_by_account ON members (account);
+
+         -- Names and marks the server gave, by `GET /v1/accounts/{id}`.
+         CREATE TABLE profiles (
+             account    TEXT PRIMARY KEY,
+             name       TEXT,
+             verified   INTEGER NOT NULL CHECK (verified IN (0, 1)),
+             fetched_at INTEGER NOT NULL
+         ) STRICT, WITHOUT ROWID;
+
+         -- The toggles of 0009, on until turned off.
+         CREATE TABLE settings (
+             id           INTEGER PRIMARY KEY CHECK (id = 1),
+             read_markers INTEGER NOT NULL CHECK (read_markers IN (0, 1)),
+             typing       INTEGER NOT NULL CHECK (typing IN (0, 1))
+         ) STRICT;
+
+         -- The disappearing timer in seconds, from the last `Disappearing`.
+         ALTER TABLE conversations ADD COLUMN timer INTEGER CHECK (timer IS NULL OR timer > 0);
+
+         -- A message row whose last send got no answer, until it is sent.
+         ALTER TABLE outbox ADD COLUMN failed INTEGER NOT NULL DEFAULT 0
+             CHECK (failed IN (0, 1));",
+    ),
 ];
 
 pub struct Store {
