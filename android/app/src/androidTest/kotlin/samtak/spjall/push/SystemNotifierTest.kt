@@ -53,6 +53,8 @@ class SystemNotifierTest {
     @Test
     fun aSecondPushAddsToTheConversationsNotificationAndAReadTakesItAway() {
         notifier.show(listOf(Announcement("c1", "Anna", false, listOf(Line("Anna", "hæ", 1L)))))
+        // The second push adds to what the system shows, so the first must be showing by then.
+        assertEquals(setOf("c1"), showingSoon(setOf("c1")))
         notifier.show(
             listOf(
                 Announcement("c1", "Anna", false, listOf(Line("Anna", "ertu þarna?", 2L))),
