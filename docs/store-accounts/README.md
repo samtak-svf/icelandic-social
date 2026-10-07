@@ -126,7 +126,7 @@ next try is from an Apple device. Until the team exists:
    App Group `group.is.samtak.spjall`.
 3. Create the APNs key, a Distribution certificate and an App Store Connect API key. The app
    record itself is created in the web UI; the API cannot create it.
-4. Store the secrets in `fedora-setup-secrets` as `samtak-spjall-apns-key`,
+4. Store the secrets in `samtak-secrets` as `samtak-spjall-apns-key`,
    `samtak-spjall-ios-signing-p12`, `samtak-spjall-asc-api-key` (raw PEM, not base64).
 
 **Google:**

@@ -38,7 +38,7 @@
     "firebaseProjectId": "samtak-spjall",
     "appleTeamId": null,
     "gcpSecretPrefix": "samtak-spjall-",
-    "gcpSecretProject": "fedora-setup-secrets",
+    "gcpSecretProject": "samtak-secrets",
     "githubSlug": "samtak-svf/icelandic-messenger"
   },
   "appleInterim": {

@@ -17,7 +17,7 @@ contains no brand term, and is copied byte-for-byte into `identifiers/ids.lock.j
 | Identity   | Kenni client id `@innskraning.is/samtak-spjall`                                                                                                                                                               |
 | Cloudflare | Worker `spjall-api`, D1 `spjall-db`, R2 `spjall-media` and `spjall-artifacts`, DO classes `Conversation` and `Inbox`, jurisdiction `eu`                                                                       |
 | Hosts      | `spjall.samtak.is` for the API, and `spjall.samtak.is/l/` as the link host in App Links, Universal Links and links inside sent messages, so it must resolve forever. A brand host is only ever an extra alias |
-| Services   | Firebase project `samtak-spjall`, Apple team (`null` until 0010 is carried out), secret prefix `samtak-spjall-` in `fedora-setup-secrets`, GitHub `samtak-svf/samtak-spjall` (moved by 0012)                  |
+| Services   | Firebase project `samtak-spjall`, Apple team (`null` until 0010 is carried out), secret prefix `samtak-spjall-` in `samtak-secrets` (0026), GitHub `samtak-svf/samtak-spjall` (moved by 0012)                 |
 
 The brand (display name, all copy, tokens, icons, the Kenni application _Name_, store listing
 names) lives in `brand/<name>/` and nowhere else.
