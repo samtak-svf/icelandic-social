@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -15,10 +17,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.signin.SignInViewModel.Invite
+import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
+import samtak.spjall.ui.Type
+import samtak.spjall.ui.capitals
 
 /** The way in: who invited the person, if anyone, and the Kenni button. */
 @Composable
@@ -27,15 +34,16 @@ fun SignInScreen(
     onSignIn: () -> Unit,
     onRetry: () -> Unit,
 ) {
-    Surface(modifier = Modifier.fillMaxSize()) {
+    Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg) {
         Column(
             modifier = Modifier.safeDrawingPadding().padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.primary,
+                text = stringResource(R.string.app_name).capitals(),
+                style = Type.screenTitle,
+                color = Palette.fg,
+                modifier = Modifier.semantics { heading() },
             )
             when (val invite = state.invite) {
                 Invite.None, Invite.Loading -> Unit
@@ -58,16 +66,24 @@ fun SignInScreen(
             if (state.busy) {
                 CircularProgressIndicator()
             } else {
-                Button(onClick = onSignIn, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.sign_in))
+                Button(
+                    onClick = onSignIn,
+                    shape = RoundedCornerShape(PILL_RADIUS.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = PILL.dp),
+                ) {
+                    Text(stringResource(R.string.sign_in), style = MaterialTheme.typography.titleMedium)
                 }
             }
             Text(text = stringResource(R.string.sign_in_hint), style = MaterialTheme.typography.bodyMedium)
             Text(
                 text = stringResource(R.string.residency_claim),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = Palette.mutedFg,
             )
         }
     }
 }
+
+/** The design's pill: as tall as a thumb, fully rounded. */
+private const val PILL = 52
+private const val PILL_RADIUS = 26
