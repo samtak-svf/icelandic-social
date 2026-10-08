@@ -12,10 +12,17 @@ const config = () => parseJsonc(readFileSync(join(ROOT, "backend/wrangler.jsonc"
 
 const DB_ID = "0b6c1f3e-5d2a-4c8e-9f10-2a3b4c5d6e7f";
 
-/** wrangler.jsonc as it is once D1 exists: the same file with its database_id. */
+/** wrangler.jsonc with a known database_id, so the fake API can answer for it. */
 const deployed = () => {
   const c = config();
   c.d1_databases[0].database_id = DB_ID;
+  return c;
+};
+
+/** wrangler.jsonc as it was before D1 existed: the same file without its database_id. */
+const undeployed = () => {
+  const c = config();
+  delete c.d1_databases[0].database_id;
   return c;
 };
 
@@ -116,7 +123,7 @@ describe("jurisdiction-check, live", () => {
   });
 
   it("fails without a database_id, and on a missing D1 and a bucket outside the EU", async () => {
-    expect((await live({ d1: "eu", r2: bound }, config())).problems).toEqual([
+    expect((await live({ d1: "eu", r2: bound }, undeployed())).problems).toEqual([
       `D1 ${cloudflare.d1}: wrangler.jsonc has no database_id`,
     ]);
     const result = await live({ d1: null, r2: [] });
@@ -142,8 +149,12 @@ describe("jurisdiction-check, deploy", () => {
     expect(checkDeployable(deployed(), ids)).toEqual([]);
   });
 
-  it("refuses wrangler.jsonc as committed before D1 exists", () => {
-    expect(checkDeployable(config(), ids).join()).toMatch(/has no database_id/);
+  it("passes on backend/wrangler.jsonc as it is", () => {
+    expect(checkDeployable(config(), ids)).toEqual([]);
+  });
+
+  it("refuses a config whose D1 has no id", () => {
+    expect(checkDeployable(undeployed(), ids).join()).toMatch(/has no database_id/);
   });
 
   it("refuses a route off the frozen API host, a zone route and workers.dev", () => {

@@ -5,11 +5,10 @@
 // identifiers/ids.json; `node tooling/jurisdiction-check.mjs` fails when the two
 // disagree or when a bucket loses its jurisdiction.
 //
-// NOT DEPLOYABLE YET, on purpose. D1 has no `database_id` until it is created,
-// and wrangler auto-provisions a missing D1 or R2 on deploy WITHOUT a
-// jurisdiction, which can never be added afterwards (decision 0001).
-// `jurisdiction-check.mjs --deploy` refuses until then; the creation commands
-// and the deploy are in backend/README.md.
+// D1 and R2 exist, both in the EU jurisdiction (decision 0001). Wrangler would
+// auto-provision a missing one WITHOUT a jurisdiction, which can never be added
+// afterwards, so `jurisdiction-check.mjs --deploy` checks the bindings before
+// every deploy. The deploy and its tokens are in backend/README.md.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "spjall-api",
@@ -29,6 +28,7 @@
     {
       "binding": "DB",
       "database_name": "spjall-db",
+      "database_id": "7d38bae5-7ee1-4ff4-af95-49a1afbbdbbb",
       "migrations_dir": "migrations",
     },
   ],

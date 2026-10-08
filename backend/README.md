@@ -19,10 +19,14 @@ create a missing one without it, and a jurisdiction can never be added afterward
 
 2. Two API tokens, each stored in the vault (`samtak-secrets`, prefix `samtak-spjall-`):
 
-   | Token                           | Scopes                                                                                  | Where in GitHub                      |
-   | ------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------ |
-   | `CLOUDFLARE_JURISDICTION_TOKEN` | Account: D1 Read, Workers R2 Storage Read                                               | repo secret (CI's live check)        |
-   | `CLOUDFLARE_API_TOKEN`          | Account: Workers Scripts Edit, D1 Edit. Zone `samtak.is`: Workers Routes Edit, DNS Edit | `production` environment secret only |
+   | Token                           | Scopes                                                                                                                      | Where in GitHub                                      |
+   | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+   | `CLOUDFLARE_JURISDICTION_TOKEN` | Account: D1 Read, Workers R2 Storage Read                                                                                   | repo secret (CI) and `production` environment secret |
+   | `CLOUDFLARE_API_TOKEN`          | Account: Workers Scripts Edit, D1 Edit, Workers R2 Storage Read. Zone `samtak.is`: Workers Routes Edit, DNS Edit, Zone Read | `production` environment secret only                 |
+
+   The deploy token reads R2 because `wrangler deploy` checks that each bound bucket exists, and
+   reads the zone to attach the custom domain. In the vault they are
+   `samtak-spjall-cloudflare-jurisdiction-token` and `samtak-spjall-cloudflare-deploy-token`.
 
 3. `KENNITALA_HMAC_KEY`: 32 random bytes as hex, made straight into the vault as
    `samtak-spjall-kennitala-hmac-key` and never printed. **It is never rotated**: accounts are
