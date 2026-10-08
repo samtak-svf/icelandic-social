@@ -134,4 +134,43 @@ next try is from an Apple device. Until the team exists:
 1. Create the app `is.samtak.spjall`, set up internal testing.
 2. Generate the upload keystore; store it as `samtak-spjall-android-upload-keystore`.
 
+## Push credentials (decision 0025)
+
+**FCM**, on the Firebase project `samtak-spjall` in `samtak-org`, owned by `samtak@samtak.is`.
+Steps 1 to 3 were done on 2026-10-08: the project is on the Spark plan with no Analytics, the
+key-creation policy is overridden (not enforced) on this project only, and the service account
+has one user-managed key. Step 4 waits for the Worker.
+
+1. Create the project with the id `samtak-spjall` (the frozen `firebaseProjectId`), parent
+   `samtak-org`, Google Analytics off. Accepting the Firebase terms is the maintainer's.
+2. Add the Android app `is.samtak.spjall`. Download `google-services.json` into
+   `android/app/` (git-ignored; the build checks its `project_id` against `ids.json`) and
+   store it as `samtak-spjall-android-google-services`.
+3. Enable `fcm.googleapis.com`. Create the service account `spjall-fcm`, give it only
+   `roles/firebasecloudmessaging.admin` on the project, make one JSON key and store it as
+   `samtak-spjall-fcm-service-account`. If the org policy
+   `iam.disableServiceAccountKeyCreation` blocks the key, lift it for this project only.
+   Setting that override needs Organization Policy Administrator on `samtak-org`;
+   Organization Administrator alone cannot.
+4. After the Worker's first deploy (it does not exist before D1 and R2 do):
+
+   ```bash
+   gcloud secrets versions access latest --project=samtak-secrets \
+     --secret=samtak-spjall-fcm-service-account | npx wrangler secret put FCM_SERVICE_ACCOUNT
+   ```
+
+**APNs** waits for Samtak svf.'s Apple team (0025 puts the key there, not on the interim
+team). After step 3 of Apple above:
+
+1. Set `APNS_TEAM_ID` to the team id and `APNS_TOPIC` to `is.samtak.spjall` in
+   `backend/wrangler.jsonc`. `App/Spjall.entitlements` already carries `aps-environment`.
+2. Store the key id beside the key as `samtak-spjall-apns-key-id`, then:
+
+   ```bash
+   gcloud secrets versions access latest --project=samtak-secrets \
+     --secret=samtak-spjall-apns-key | npx wrangler secret put APNS_KEY_P8
+   gcloud secrets versions access latest --project=samtak-secrets \
+     --secret=samtak-spjall-apns-key-id | npx wrangler secret put APNS_KEY_ID
+   ```
+
 Neither store listing becomes public before the public release gate in 0009.
