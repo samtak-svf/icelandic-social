@@ -5,11 +5,9 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -26,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -34,17 +33,15 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import samtak.spjall.brand.BrandTokens.Colors
 import samtak.spjall.brand.R
 import samtak.spjall.core.Content
 import samtak.spjall.core.Item
 import samtak.spjall.core.ItemStatus
+import samtak.spjall.ui.Palette
+import samtak.spjall.ui.Type
+import samtak.spjall.ui.clockTime
 import samtak.spjall.ui.lastLine
 import samtak.spjall.ui.shownName
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /** What a long press offers on this item. */
 private class Offer(
@@ -59,7 +56,23 @@ private class Offer(
     val any = reply || react || edit || delete
 }
 
-/** One message: own on the right, its reactions, and a read line under the newest read. */
+/** A tombstone is a quiet line, not a bubble: there is nothing left to press. */
+@Composable
+private fun Tombstone() {
+    Text(
+        text = stringResource(R.string.message_deleted),
+        style = Type.bubble,
+        fontStyle = FontStyle.Italic,
+        color = Palette.mutedFg,
+        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+    )
+}
+
+/**
+ * One message (1c): own on the right in red, the other party's on the left
+ * in muted, the corner nearest the sender squared off. Under the end of a
+ * run, its time, and on the newest own message someone read, "Lesin".
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun Bubble(
@@ -73,58 +86,76 @@ internal fun Bubble(
     val attached = item.content is Content.Media
     val offer = Offer(item)
     var menu by remember { mutableStateOf(false) }
-    val background = Color(if (item.own) Colors.BUBBLE_OWN_BG else Colors.BUBBLE_OTHER_BG)
-    val foreground = Color(if (item.own) Colors.BUBBLE_OWN_FG else Colors.BUBBLE_OTHER_FG)
+    val background = if (item.own) Palette.bubbleOwnBg else Palette.bubbleOtherBg
+    val foreground = if (item.own) Palette.bubbleOwnFg else Palette.bubbleOtherFg
     val custom = accessibilityActions(offer, actions, onDelete) { menu = true }
     Column(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp)
+                .padding(horizontal = 16.dp)
                 .padding(top = if (row.first) 8.dp else 0.dp),
         horizontalAlignment = if (item.own) Alignment.End else Alignment.Start,
     ) {
         if (group && row.first && !item.own) {
             Text(
                 text = item.sender.shownName(),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+                style = Type.meta,
+                color = Palette.mutedFg,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
             )
         }
-        Box {
-            Surface(
-                color = background,
-                contentColor = foreground,
-                shape = RoundedCornerShape(BUBBLE_RADIUS.dp),
-                modifier =
-                    Modifier
-                        .widthIn(max = BUBBLE_WIDTH.dp)
-                        .semantics(mergeDescendants = true) { customActions = custom }
-                        .combinedClickable(
-                            enabled = offer.any || attached,
-                            onClickLabel = null,
-                            // A photo or file opens on a tap.
-                            onClick = { if (attached) actions.open(item) },
-                            onLongClickLabel = stringResource(R.string.react),
-                            onLongClick = { menu = true },
-                        ),
-            ) {
-                Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                    Body(item, media, foreground, actions)
-                    Meta(item, foreground)
+        if (item.content == Content.Deleted) {
+            Tombstone()
+        } else {
+            Box(modifier = Modifier.atMost(BUBBLE_SHARE)) {
+                Surface(
+                    color = background,
+                    contentColor = foreground,
+                    shape = bubbleShape(item.own),
+                    modifier =
+                        Modifier
+                            .semantics(mergeDescendants = true) { customActions = custom }
+                            .combinedClickable(
+                                enabled = offer.any || attached,
+                                onClickLabel = null,
+                                // A photo or file opens on a tap.
+                                onClick = { if (attached) actions.open(item) },
+                                onLongClickLabel = stringResource(R.string.react),
+                                onLongClick = { menu = true },
+                            ),
+                ) {
+                    Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp)) {
+                        Body(item, media, foreground, actions)
+                    }
                 }
+                Menu(menu, offer, actions, onDelete) { menu = false }
             }
-            Menu(menu, offer, actions, onDelete) { menu = false }
         }
         if (item.reactions.isNotEmpty()) Reactions(item, offer.react, actions)
         when (item.status) {
             ItemStatus.FAILED -> Failed(actions::resend)
-            ItemStatus.PENDING, ItemStatus.SENT -> Unit
+            ItemStatus.PENDING, ItemStatus.SENT -> Meta(row, group)
         }
-        row.readBy?.let { ReadLine(it, group) }
     }
 }
+
+/** Rounded all round but at the bottom corner on the sender's side. */
+private fun bubbleShape(own: Boolean) =
+    RoundedCornerShape(
+        topStart = BUBBLE_RADIUS.dp,
+        topEnd = BUBBLE_RADIUS.dp,
+        bottomEnd = (if (own) TAIL_RADIUS else BUBBLE_RADIUS).dp,
+        bottomStart = (if (own) BUBBLE_RADIUS else TAIL_RADIUS).dp,
+    )
+
+/** At most [fraction] of the width the parent offers: a bubble leaves room on the far side. */
+private fun Modifier.atMost(fraction: Float) =
+    layout { measurable, constraints ->
+        val max = if (constraints.hasBoundedWidth) (constraints.maxWidth * fraction).toInt() else constraints.maxWidth
+        val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = max))
+        layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+    }
 
 /** The long-press menu's entries, for TalkBack. */
 @Composable
@@ -175,39 +206,43 @@ private fun Body(
                     HorizontalDivider(color = foreground, modifier = Modifier.padding(top = 4.dp))
                 }
             }
-            Text(text = content.text, style = MaterialTheme.typography.bodyLarge, color = foreground)
+            Text(text = content.text, style = Type.bubble, color = foreground)
         }
-        Content.Deleted ->
-            Text(
-                text = stringResource(R.string.message_deleted),
-                style = MaterialTheme.typography.bodyLarge,
-                fontStyle = FontStyle.Italic,
-                color = foreground,
-            )
+        // Drawn by Bubble as a line of its own.
+        Content.Deleted -> Unit
         is Content.Media -> Attachment(item, content, media, foreground, actions)
         is Content.Members, is Content.Timer ->
-            Text(text = lastLine(item), style = MaterialTheme.typography.bodyLarge, color = foreground)
+            Text(text = lastLine(item), style = Type.bubble, color = foreground)
     }
 }
 
+/**
+ * The small line under a message: "breytt", then "Sendist…" or the time,
+ * then who read it. The time shows at the end of a run; the rest always.
+ */
 @Composable
-private fun ColumnScope.Meta(
-    item: Item,
-    foreground: Color,
+private fun Meta(
+    row: Row.Bubble,
+    group: Boolean,
 ) {
+    val item = row.item
+    val pending = item.status == ItemStatus.PENDING
     val parts =
         listOfNotNull(
             if (item.edited) stringResource(R.string.edited_marker) else null,
-            when (item.status) {
-                ItemStatus.PENDING -> stringResource(R.string.message_sending)
-                ItemStatus.SENT, ItemStatus.FAILED -> clock(item.ts)
+            when {
+                pending -> stringResource(R.string.message_sending)
+                row.last || row.readBy != null -> clockTime(item.ts)
+                else -> null
             },
+            row.readBy?.let { readLine(it, group) },
         )
+    if (parts.isEmpty()) return
     Text(
         text = parts.joinToString(" · "),
-        style = MaterialTheme.typography.labelSmall,
-        color = foreground,
-        modifier = Modifier.align(Alignment.End),
+        style = Type.meta,
+        color = Palette.mutedFg,
+        modifier = Modifier.padding(horizontal = 4.dp, vertical = 3.dp),
     )
 }
 
@@ -259,8 +294,8 @@ private fun Reactions(
                 onClick = { actions.react(item, reaction.emoji) },
                 enabled = enabled,
                 shape = RoundedCornerShape(CHIP_RADIUS.dp),
-                color = Color(if (reaction.own) Colors.SECONDARY else Colors.MUTED),
-                contentColor = Color(if (reaction.own) Colors.SECONDARY_FG else Colors.FG),
+                color = if (reaction.own) Palette.secondary else Palette.muted,
+                contentColor = if (reaction.own) Palette.secondaryFg else Palette.fg,
             ) {
                 Text(
                     text = "${reaction.emoji} ${reaction.people.size}",
@@ -278,36 +313,25 @@ private fun Failed(onResend: () -> Unit) {
         Text(
             text = stringResource(R.string.message_failed),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.error,
+            color = Palette.danger,
         )
         TextButton(onClick = onResend) { Text(stringResource(R.string.try_again)) }
     }
 }
 
 @Composable
-private fun ReadLine(
+private fun readLine(
     count: UInt,
     group: Boolean,
-) {
-    Text(
-        text =
-            if (group) {
-                pluralStringResource(R.plurals.read_by_count, count.toInt(), count.toInt())
-            } else {
-                stringResource(R.string.read_marker)
-            },
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-    )
-}
-
-private fun clock(millis: ULong): String =
-    DateTimeFormatter
-        .ofLocalizedTime(FormatStyle.SHORT)
-        .format(Instant.ofEpochMilli(millis.toLong()).atZone(ZoneId.systemDefault()))
+): String =
+    if (group) {
+        pluralStringResource(R.plurals.read_by_count, count.toInt(), count.toInt())
+    } else {
+        stringResource(R.string.read_marker)
+    }
 
 private val EMOJI = listOf("👍", "❤️", "😂", "😮", "😢", "🙏")
 private const val BUBBLE_RADIUS = 18
-private const val BUBBLE_WIDTH = 320
+private const val TAIL_RADIUS = 5
+private const val BUBBLE_SHARE = 0.76f
 private const val CHIP_RADIUS = 12

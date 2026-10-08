@@ -19,6 +19,7 @@ import samtak.spjall.core.Item
 import samtak.spjall.core.ItemStatus
 import samtak.spjall.core.Person
 import samtak.spjall.socket.Connection
+import samtak.spjall.ui.Dates
 import samtak.spjall.ui.SpjallTheme
 
 @RunWith(AndroidJUnit4::class)
@@ -93,8 +94,24 @@ class ConversationsScreenTest {
         compose.onNodeWithText(text(R.string.conversations_empty)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.connection_offline)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.invite)).performClick()
-        compose.onNodeWithText(text(R.string.new_conversation)).performClick()
+        compose.onNodeWithContentDescription(text(R.string.new_conversation)).performClick()
         assertEquals(listOf("invite", "newConversation"), calls)
+    }
+
+    @Test
+    fun theReadersOwnLastMessageStartsWithYou() {
+        val now = System.currentTimeMillis().toULong()
+        val last =
+            Item(6uL, "e6", anna, true, now, ItemStatus.SENT, Content.Text("Takk", null), false, emptyList(), 0u, null)
+        show(
+            ConversationsViewModel.State(
+                conversations = listOf(Conversation("c1", ConversationState.ACTIVE, listOf(anna), last, 0u, null)),
+                loaded = true,
+            ),
+        )
+        compose.onNodeWithText(context.getString(R.string.last_line_own, "Takk")).assertIsDisplayed()
+        // A message from today shows its time on a 24-hour clock, whatever the device's language.
+        compose.onNodeWithText(Dates.time(Dates.at(now))).assertIsDisplayed()
     }
 
     @Test

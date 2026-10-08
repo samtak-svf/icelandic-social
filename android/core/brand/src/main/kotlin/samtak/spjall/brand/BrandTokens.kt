@@ -6,7 +6,7 @@ package samtak.spjall.brand
 object BrandTokens {
     /** sRGB as 0xAARRGGBB, for `androidx.compose.ui.graphics.Color(Long)`. */
     object Colors {
-        /** Cream band and the other party's bubble. */
+        /** Cream band: headers, the account screen. */
         const val BG: Long = 0xFFFDE9D7L
         /** Screen background. */
         const val SURFACE: Long = 0xFFFFFFFFL
@@ -19,8 +19,13 @@ object BrandTokens {
         const val SECONDARY: Long = 0xFFEDA33BL
         const val SECONDARY_FG: Long = 0xFF071307L
         const val PROSE_BODY: Long = 0xFF1E293BL
+        /** Quiet fills: the other party's bubble, the composer field, icon wells. */
         const val MUTED: Long = 0xFFECE3DAL
         const val MUTED_FG: Long = 0xFF59677DL
+        /** Wash behind an unread conversation. */
+        const val PRIMARY_SUBTLE: Long = 0x1FB31800L
+        /** Wash behind a group avatar, a notice and the this-device pill. */
+        const val SECONDARY_SUBTLE: Long = 0x26EDA33BL
         /** Decorative dividers only. */
         const val BORDER: Long = 0x2E071307L
         /** Boundaries that identify a control. */
@@ -36,16 +41,26 @@ object BrandTokens {
         const val INFO_TEXT: Long = 0xFF0066B1L
         const val BUBBLE_OWN_BG: Long = 0xFFB31800L
         const val BUBBLE_OWN_FG: Long = 0xFFFFFFFFL
-        const val BUBBLE_OTHER_BG: Long = 0xFFFDE9D7L
+        const val BUBBLE_OTHER_BG: Long = 0xFFECE3DAL
         const val BUBBLE_OTHER_FG: Long = 0xFF071307L
         /** The verification dot. Same hue and chroma as secondary, lightness lowered until it meets the 3:1 non-text threshold (WCAG 1.4.11) on surface and bg, because the dot carries meaning. */
         const val VERIFIED_MARK: Long = 0xFFB46E00L
     }
 
-    /** Font family names; the font files are bundled by the app. */
+    /** Font family names, as the design names them. */
     object Fonts {
         const val SANS: String = "Gothic A1"
         const val HEADLINE: String = "Archivo Condensed"
+    }
+
+    /**
+     * Each family's bundled files as (font resource, weight). An empty list
+     * means the family is not bundled and the system font stands in. The
+     * licences that travel with the files are `R.raw.font_licenses`.
+     */
+    object FontFiles {
+        val SANS: List<Pair<Int, Int>> = listOf(R.font.font_sans_500 to 500, R.font.font_sans_900 to 900)
+        val HEADLINE: List<Pair<Int, Int>> = listOf(R.font.font_headline_800 to 800)
     }
 
     object Radius {

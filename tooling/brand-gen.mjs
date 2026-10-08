@@ -12,7 +12,7 @@
 // deterministic so --check can compare exactly.
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { checkBrand } from "./brand-check.mjs";
 import { android } from "./lib/brand-gen/android.mjs";
 import { backend } from "./lib/brand-gen/backend.mjs";
@@ -46,9 +46,23 @@ export function generate(name, root = ROOT) {
     tokens: readJson(`${dir}/tokens.json`, root),
     ids: readJson("identifiers/ids.json", root),
     iconSvg: readFileSync(join(root, dir, manifest.icon.foreground), "utf8"),
+    fonts: (manifest.fonts ?? []).map(
+      /** @param {{ family: string, weight: number, file: string, license: string }} font */
+      (font) => ({
+        family: font.family,
+        weight: font.weight,
+        fileName: basename(font.file),
+        bytes: readFileSync(join(root, dir, font.file)),
+        licenseName: basename(font.license),
+        license: readFileSync(join(root, dir, font.license), "utf8"),
+      }),
+    ),
   };
   const files = [...android(brand), ...ios(brand), ...backend(brand)];
-  return { problems: [], files: files.sort((a, b) => a.path.localeCompare(b.path)) };
+  return {
+    problems: [],
+    files: files.sort((a, b) => a.path.localeCompare(b.path)),
+  };
 }
 
 /**

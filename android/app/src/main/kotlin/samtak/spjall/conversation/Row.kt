@@ -30,6 +30,8 @@ sealed interface Row {
         val first: Boolean,
         /** Under the newest own message someone has read: how many have. */
         val readBy: UInt?,
+        /** The end of its run: the time goes under it. */
+        val last: Boolean = true,
     ) : Row {
         override val key = item.key()
     }
@@ -38,7 +40,8 @@ sealed interface Row {
 /**
  * The timeline's rows, oldest first: a [Row.Day] before each new day, and
  * messages from one sender within 5 minutes of each other run together
- * (decision 0022).
+ * (decision 0022), the first of a run marked [Row.Bubble.first] and the
+ * last [Row.Bubble.last].
  */
 fun rows(
     items: List<Item>,
@@ -67,7 +70,10 @@ fun rows(
         rows += Row.Bubble(item, first = !runs, readBy = if (item === read) item.readBy else null)
         previous = item
     }
-    return rows
+    return rows.mapIndexed { i, row ->
+        val next = rows.getOrNull(i + 1)
+        if (row is Row.Bubble && next is Row.Bubble && !next.first) row.copy(last = false) else row
+    }
 }
 
 fun Item.isCard() = content is Content.Members || content is Content.Timer

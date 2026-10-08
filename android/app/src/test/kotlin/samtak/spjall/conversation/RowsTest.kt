@@ -19,9 +19,13 @@ class RowsTest {
             when (it) {
                 is Row.Day -> "day ${it.date}"
                 is Row.Card -> "card ${it.item.seq}"
-                is Row.Bubble -> "${it.item.seq}${if (it.first) " first" else ""}${it.readBy?.let { n ->
-                    " read $n"
-                } ?: ""}"
+                is Row.Bubble ->
+                    listOfNotNull(
+                        "${it.item.seq}",
+                        "first".takeIf { _ -> it.first },
+                        "last".takeIf { _ -> it.last },
+                        it.readBy?.let { n -> "read $n" },
+                    ).joinToString(" ")
             }
         }
 
@@ -37,7 +41,7 @@ class RowsTest {
                 ),
                 ZoneOffset.UTC,
             )
-        assertEquals(listOf("day 2023-11-14", "1 first", "2", "3 first", "4 first"), shape(rows))
+        assertEquals(listOf("day 2023-11-14", "1 first", "2 last", "3 first last", "4 first last"), shape(rows))
     }
 
     @Test
@@ -53,7 +57,7 @@ class RowsTest {
                 ZoneOffset.UTC,
             )
         assertEquals(
-            listOf("day 2023-11-14", "1 first", "card 2", "3 first", "day 2023-11-15", "4 first"),
+            listOf("day 2023-11-14", "1 first last", "card 2", "3 first last", "day 2023-11-15", "4 first last"),
             shape(rows),
         )
         assertEquals(LocalDate.of(2023, 11, 15), (rows[4] as Row.Day).date)
@@ -71,7 +75,7 @@ class RowsTest {
                 ),
                 ZoneOffset.UTC,
             )
-        assertEquals(listOf("day 2023-11-14", "1 first", "2 read 1", "3", "null"), shape(rows))
+        assertEquals(listOf("day 2023-11-14", "1 first", "2 read 1", "3", "null last"), shape(rows))
     }
 
     @Test

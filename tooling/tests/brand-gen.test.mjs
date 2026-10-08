@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { generate, run } from "../brand-gen.mjs";
 import { leaksInFiles, loadBrands } from "../brand-leak-guard.mjs";
-import { androidEscape } from "../lib/brand-gen/android.mjs";
+import { androidEscape, fontResource } from "../lib/brand-gen/android.mjs";
 import { renderPng } from "../lib/brand-gen/icon.mjs";
 import { activeBrand, isOwned, OWNED_DIRS } from "../lib/brand-gen/paths.mjs";
 import { brandNames, readJson, ROOT } from "../lib/repo.mjs";
@@ -204,13 +204,53 @@ describe("brand-gen", () => {
     delete process.env.BRAND;
     try {
       expect(activeBrand(root)).toBe(BRAND);
-      cpSync(join(root, "brand", BRAND), join(root, "brand", "_drill"), { recursive: true });
+      cpSync(join(root, "brand", BRAND), join(root, "brand", "_drill"), {
+        recursive: true,
+      });
       expect(activeBrand(root)).toBe(BRAND);
-      cpSync(join(root, "brand", BRAND), join(root, "brand", "second"), { recursive: true });
+      cpSync(join(root, "brand", BRAND), join(root, "brand", "second"), {
+        recursive: true,
+      });
       expect(() => activeBrand(root)).toThrow(/set BRAND/);
     } finally {
       if (saved !== undefined) process.env.BRAND = saved;
     }
+  });
+
+  it("bundles each font byte for byte on both platforms, with its licence", () => {
+    const manifest = readJson(`brand/${BRAND}/brand.json`);
+    const files = generate(BRAND).files;
+    /** @param {string} path */
+    const bytes = (path) => files.find((f) => f.path === path)?.content;
+    for (const font of manifest.fonts ?? []) {
+      const source = readFileSync(join(ROOT, "brand", BRAND, font.file));
+      const android = bytes(`${RES}/font/${fontResource(font)}.ttf`);
+      const ios = bytes(`ios/Generated/Fonts/${font.file.split("/").pop()}`);
+      expect(Buffer.isBuffer(android) && source.equals(android)).toBe(true);
+      expect(Buffer.isBuffer(ios) && source.equals(ios)).toBe(true);
+      const license = readFileSync(join(ROOT, "brand", BRAND, font.license), "utf8").trimEnd();
+      expect(bytes(`${RES}/raw/font_licenses.txt`)?.toString()).toContain(license);
+      expect(output(ROOT, KOTLIN)).toContain(`R.font.${fontResource(font)} to ${font.weight}`);
+    }
+  });
+
+  it("refuses a font whose family is not a token or whose file is missing", () => {
+    const root = fixture();
+    editJson(root, `brand/${BRAND}/brand.json`, (m) => {
+      m.fonts = [
+        {
+          family: "nope",
+          weight: 400,
+          file: "assets/fonts/A.ttf",
+          license: "assets/fonts/A.txt",
+          source: "x",
+        },
+      ];
+    });
+    const { problems } = generate(BRAND, root);
+    expect(problems).toContain('fonts assets/fonts/A.ttf: family "nope" is not a font token');
+    expect(problems).toContain("fonts assets/fonts/A.ttf: missing");
+    expect(problems).toContain("fonts assets/fonts/A.txt: missing");
   });
 
   it("renders icons byte-identically, the iOS one without alpha", () => {

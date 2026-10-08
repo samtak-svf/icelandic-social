@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -21,6 +22,8 @@ import samtak.spjall.core.Person
 import samtak.spjall.core.Platform
 import samtak.spjall.core.Settings
 import samtak.spjall.ui.SpjallTheme
+import samtak.spjall.ui.calendarDate
+import samtak.spjall.ui.capitals
 
 /** Nothing that cannot be undone happens on one tap. */
 @RunWith(AndroidJUnit4::class)
@@ -81,7 +84,7 @@ class MeScreenTest {
                 true,
                 listOf(
                     AccountDevice("d1", Platform.ANDROID, 1_700_000_000_000u, current = true),
-                    AccountDevice("d2", Platform.IOS, 1_700_000_100_000u, current = false),
+                    AccountDevice("d2", Platform.IOS, 1_710_000_000_000u, current = false),
                 ),
             )
         compose.setContent {
@@ -129,6 +132,14 @@ class MeScreenTest {
     }
 
     @Test
+    fun devicesShowWhenTheyWereAddedAndWhichIsThisOne() {
+        show()
+        val added = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.onNodeWithText(text(R.string.device_this).capitals()).assertIsDisplayed()
+        compose.onNodeWithText(added.getString(R.string.device_added, calendarDate(1_710_000_000_000u))).assertExists()
+    }
+
+    @Test
     fun notificationsThatAreOnNeedNoRow() {
         show()
         compose.onNodeWithText(text(R.string.notifications_off)).assertDoesNotExist()
@@ -137,7 +148,7 @@ class MeScreenTest {
     @Test
     fun blockedNotificationsSayWhereToTurnThemOn() {
         show(notificationsOff = true)
-        compose.onNodeWithText(text(R.string.notifications_off)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.notifications_off)).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(text(R.string.notifications_settings)).performClick()
         assertEquals(listOf("notificationSettings"), calls)
     }
@@ -153,7 +164,9 @@ class MeScreenTest {
     @Test
     fun anExistingLinkIsShownAndShared() {
         show(link = "https://link.test/l/abc")
-        compose.onNodeWithText("https://link.test/l/abc").assertExists()
+        // The link travels as the QR code and the share sheet; its text stays out of sight.
+        compose.onNodeWithText("https://link.test/l/abc").assertDoesNotExist()
+        compose.onNodeWithContentDescription(text(R.string.invite_link_title)).assertExists()
         compose.onNodeWithText(text(R.string.share)).performScrollTo().performClick()
         assertEquals(listOf("share https://link.test/l/abc"), calls)
     }

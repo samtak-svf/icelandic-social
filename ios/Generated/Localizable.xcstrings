@@ -265,6 +265,30 @@
         }
       }
     },
+    "verified_short": {
+      "comment": "Short form of verified_with_kennitala, under the other person's name at the top of a conversation.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Staðfest"
+          }
+        }
+      }
+    },
+    "last_line_own": {
+      "comment": "The conversation list's preview line when the newest message is the reader's own.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þú: %1$@"
+          }
+        }
+      }
+    },
     "unread_count": {
       "comment": "Unread messages in a conversation.",
       "extractionState": "manual",

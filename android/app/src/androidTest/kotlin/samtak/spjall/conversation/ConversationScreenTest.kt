@@ -30,6 +30,7 @@ import samtak.spjall.core.Person
 import samtak.spjall.core.Quote
 import samtak.spjall.core.Reaction
 import samtak.spjall.ui.SpjallTheme
+import samtak.spjall.ui.clockTime
 
 @RunWith(AndroidJUnit4::class)
 class ConversationScreenTest {
@@ -176,9 +177,9 @@ class ConversationScreenTest {
         compose.onNodeWithText("Já, sæl", substring = true).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.edited_marker), substring = true).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.message_deleted)).assertIsDisplayed()
-        compose.onNodeWithText(text(R.string.read_marker)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.read_marker), substring = true).assertIsDisplayed()
         compose
-            .onNodeWithText(context.getString(R.string.typing_indicator, "Anna Jónsdóttir"))
+            .onNodeWithContentDescription(context.getString(R.string.typing_indicator, "Anna Jónsdóttir"))
             .assertIsDisplayed()
     }
 
@@ -193,9 +194,17 @@ class ConversationScreenTest {
         )
         compose.onNodeWithText("Anna Jónsdóttir").assertIsDisplayed()
         compose
-            .onNodeWithText(context.resources.getQuantityString(R.plurals.read_by_count, 2, 2))
+            .onNodeWithText(context.resources.getQuantityString(R.plurals.read_by_count, 2, 2), substring = true)
             .assertIsDisplayed()
-        compose.onNodeWithText(text(R.string.typing_indicator_group)).assertIsDisplayed()
+        compose.onNodeWithContentDescription(text(R.string.typing_indicator_group)).assertIsDisplayed()
+    }
+
+    @Test
+    fun theTimeGoesOnceUnderTheEndOfARun() {
+        val second = item(2u, Content.Text("Ertu við?", null))
+        show(item(1u, Content.Text("Sæl", null)), second)
+        // The two are a second apart: one clock, under the second, on a 24-hour clock.
+        compose.onAllNodesWithText(clockTime(second.ts)).assertCountEquals(1)
     }
 
     @Test

@@ -1,6 +1,7 @@
 // @ts-check
-// Android outputs of the brand: string resources, the token object and the
-// adaptive launcher icon, all in the `core/brand` module.
+// Android outputs of the brand: string resources, the token object, the
+// bundled fonts with their licences and the adaptive launcher icon, all in
+// the `core/brand` module.
 
 import { brandColors, fontFamilies, hex2, radii } from "./color.mjs";
 import { renderPng } from "./icon.mjs";
@@ -87,6 +88,46 @@ function constName(name) {
   return name.toUpperCase().replaceAll("-", "_");
 }
 
+/**
+ * The resource name of a bundled font: lowercase, digits and underscores,
+ * which is all `res/font` accepts.
+ *
+ * @param {{ family: string, weight: number }} font
+ */
+export function fontResource(font) {
+  return `font_${font.family.replaceAll("-", "_")}_${font.weight}`;
+}
+
+/**
+ * Each distinct licence once, in the order the fonts list them.
+ *
+ * @param {BrandInput} brand
+ */
+function fontLicenses(brand) {
+  /** @type {Map<string, string>} */
+  const texts = new Map();
+  for (const font of brand.fonts) texts.set(font.licenseName, font.license.trimEnd());
+  return [...texts.values()].join(`\n\n${"-".repeat(72)}\n\n`);
+}
+
+/**
+ * @param {BrandInput} brand
+ * @returns {OutputFile[]}
+ */
+function fontFiles(brand) {
+  if (brand.fonts.length === 0) return [];
+  return [
+    ...brand.fonts.map((font) => ({
+      path: `${RES}/font/${fontResource(font)}.ttf`,
+      content: font.bytes,
+    })),
+    {
+      path: `${RES}/raw/font_licenses.txt`,
+      content: `${fontLicenses(brand)}\n`,
+    },
+  ];
+}
+
 /** @param {BrandInput} brand */
 function tokensKotlin(brand) {
   /** @param {string | undefined} text */
@@ -98,6 +139,13 @@ function tokensKotlin(brand) {
   const fonts = fontFamilies(brand.tokens).map(
     (f) => `        const val ${constName(f.name)}: String = "${f.family}"`,
   );
+  const files = fontFamilies(brand.tokens).map((f) => {
+    const list = brand.fonts
+      .filter((font) => font.family === f.name)
+      .map((font) => `R.font.${fontResource(font)} to ${font.weight}`)
+      .join(", ");
+    return `        val ${constName(f.name)}: List<Pair<Int, Int>> = listOf(${list})`;
+  });
   const radius = radii(brand.tokens).map(
     (r) => `        const val ${constName(r.name)}_DP: Int = ${r.value}`,
   );
@@ -113,9 +161,18 @@ function tokensKotlin(brand) {
     ...colors,
     "    }",
     "",
-    "    /** Font family names; the font files are bundled by the app. */",
+    "    /** Font family names, as the design names them. */",
     "    object Fonts {",
     ...fonts,
+    "    }",
+    "",
+    "    /**",
+    "     * Each family's bundled files as (font resource, weight). An empty list",
+    "     * means the family is not bundled and the system font stands in. The",
+    "     * licences that travel with the files are `R.raw.font_licenses`.",
+    "     */",
+    "    object FontFiles {",
+    ...files,
     "    }",
     "",
     "    object Radius {",
@@ -174,6 +231,7 @@ export function android(brand) {
   return [
     { path: `${RES}/values/strings.xml`, content: stringsXml(brand) },
     { path: KOTLIN, content: tokensKotlin(brand) },
+    ...fontFiles(brand),
     ...launcherIcon(brand),
   ];
 }

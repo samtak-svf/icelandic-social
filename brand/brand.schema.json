@@ -45,6 +45,35 @@
         "background": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
       }
     },
+    "fonts": {
+      "description": "Font files bundled with both apps, one per family token (tokens.json font.*) and weight. tooling/brand-gen.mjs copies them byte for byte into the Android font resources and ios/Generated/Fonts/, with each file's licence beside them. A family without files falls back to the system font.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["family", "weight", "file", "license", "source"],
+        "properties": {
+          "family": {
+            "description": "A key of tokens.json font.",
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "weight": { "type": "integer", "minimum": 100, "maximum": 900, "multipleOf": 100 },
+          "file": { "type": "string", "pattern": "^assets/fonts/[A-Za-z0-9-]+\\.ttf$" },
+          "license": {
+            "description": "The licence text that has to travel with the file (the SIL OFL requires it).",
+            "type": "string",
+            "pattern": "^assets/fonts/[A-Za-z0-9-]+\\.txt$"
+          },
+          "source": {
+            "description": "Where the file came from and how it was cut, so it can be rebuilt.",
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
     "aliasHosts": {
       "description": "Brand hosts that serve assetlinks.json and apple-app-site-association IN ADDITION to the neutral link host in identifiers/ids.json. Additive only: links inside sent messages always use the neutral host, so a rename never breaks them.",
       "type": "array",

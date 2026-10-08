@@ -87,6 +87,15 @@
       "surfaces": ["android", "ios"],
       "description": "Badge on a person verified through Kenni."
     },
+    "verified_short": {
+      "surfaces": ["android", "ios"],
+      "description": "Short form of verified_with_kennitala, under the other person's name at the top of a conversation."
+    },
+    "last_line_own": {
+      "surfaces": ["android", "ios"],
+      "description": "The conversation list's preview line when the newest message is the reader's own.",
+      "placeholders": { "text": "string" }
+    },
     "unread_count": {
       "surfaces": ["android", "ios"],
       "description": "Unread messages in a conversation.",

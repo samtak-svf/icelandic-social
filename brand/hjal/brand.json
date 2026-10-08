@@ -4,6 +4,29 @@
   "displayName": "Hjal",
   "claims": { "residency": true },
   "icon": { "foreground": "assets/icon-foreground.svg", "background": "primary" },
+  "fonts": [
+    {
+      "family": "sans",
+      "weight": 500,
+      "file": "assets/fonts/GothicA1-Medium.ttf",
+      "license": "assets/fonts/OFL-GothicA1.txt",
+      "source": "google/fonts ofl/gothica1/GothicA1-Medium.ttf, subset to Latin (fontTools.subset, U+0000-024F, U+02B0-036F, U+1E00-1EFF, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+FB01-FB02)."
+    },
+    {
+      "family": "sans",
+      "weight": 900,
+      "file": "assets/fonts/GothicA1-Black.ttf",
+      "license": "assets/fonts/OFL-GothicA1.txt",
+      "source": "google/fonts ofl/gothica1/GothicA1-Black.ttf, subset to Latin as GothicA1-Medium.ttf."
+    },
+    {
+      "family": "headline",
+      "weight": 800,
+      "file": "assets/fonts/ArchivoCondensed-ExtraBold.ttf",
+      "license": "assets/fonts/OFL-Archivo.txt",
+      "source": "google/fonts ofl/archivo/Archivo[wdth,wght].ttf, instanced at wdth=75 wght=800 (fontTools.varLib.instancer --static --update-name-table), subset to Latin as GothicA1-Medium.ttf."
+    }
+  ],
   "aliasHosts": [],
   "externalSurfaces": [
     {

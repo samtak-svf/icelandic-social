@@ -59,6 +59,15 @@ export function camel(name) {
  *   tokens: any,
  *   ids: any,
  *   iconSvg: string,
+ *   fonts: BrandFont[],
  * }} BrandInput
+ * @typedef {{
+ *   family: string,
+ *   weight: number,
+ *   fileName: string,
+ *   bytes: Buffer,
+ *   licenseName: string,
+ *   license: string,
+ * }} BrandFont
  * @typedef {{ path: string, content: string | Buffer }} OutputFile
  */

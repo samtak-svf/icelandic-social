@@ -1,6 +1,7 @@
 // @ts-check
 // iOS outputs of the brand, all under ios/Generated/: the xcconfigs the
-// project includes, the string catalog, the token enum and the app icon.
+// project includes, the string catalog, the token enum, the bundled fonts
+// with their licences and the app icon.
 
 import { brandColors, fontFamilies, hex2, radii } from "./color.mjs";
 import { renderOpaquePng } from "./icon.mjs";
@@ -25,6 +26,28 @@ function specifier(position, type) {
 /** @param {unknown} value */
 function json(value) {
   return `${JSON.stringify(value, null, 2)}\n`;
+}
+
+/**
+ * The font files under their own names, and each licence beside them.
+ *
+ * @param {BrandInput} brand
+ * @returns {OutputFile[]}
+ */
+function fontFiles(brand) {
+  /** @type {Map<string, OutputFile>} */
+  const files = new Map();
+  for (const font of brand.fonts) {
+    files.set(font.fileName, {
+      path: `${DIR}/Fonts/${font.fileName}`,
+      content: font.bytes,
+    });
+    files.set(font.licenseName, {
+      path: `${DIR}/Fonts/${font.licenseName}`,
+      content: `${font.license.trimEnd()}\n`,
+    });
+  }
+  return [...files.values()];
 }
 
 /** @param {BrandInput} brand */
@@ -141,7 +164,10 @@ function stringCatalog(brand) {
     const value = brand.strings[key];
     /** @param {string} text */
     const unit = (text) => ({
-      stringUnit: { state: "translated", value: positional(text, spec, specifier) },
+      stringUnit: {
+        state: "translated",
+        value: positional(text, spec, specifier),
+      },
     });
     const localization =
       typeof value === "string"
@@ -219,7 +245,10 @@ function appIcon(brand) {
   const background = color ? `#${hex2(color.r)}${hex2(color.g)}${hex2(color.b)}` : "#000000";
   const set = `${DIR}/Assets.xcassets/AppIcon.appiconset`;
   return [
-    { path: `${DIR}/Assets.xcassets/Contents.json`, content: json({ info: XCODE_INFO }) },
+    {
+      path: `${DIR}/Assets.xcassets/Contents.json`,
+      content: json({ info: XCODE_INFO }),
+    },
     {
       path: `${set}/Contents.json`,
       content: json({
@@ -252,6 +281,7 @@ export function ios(brand) {
     ...interimFiles(brand),
     { path: `${DIR}/Localizable.xcstrings`, content: stringCatalog(brand) },
     { path: `${DIR}/BrandTokens.swift`, content: tokensSwift(brand) },
+    ...fontFiles(brand),
     ...appIcon(brand),
   ];
 }

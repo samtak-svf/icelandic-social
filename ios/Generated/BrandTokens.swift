@@ -5,7 +5,7 @@ import SwiftUI
 
 enum BrandTokens {
     enum Colors {
-        /// Cream band and the other party's bubble.
+        /// Cream band: headers, the account screen.
         static let bg = Color(.sRGB, red: 253 / 255, green: 233 / 255, blue: 215 / 255, opacity: 255 / 255) // #FDE9D7
         /// Screen background.
         static let surface = Color(.sRGB, red: 255 / 255, green: 255 / 255, blue: 255 / 255, opacity: 255 / 255) // #FFFFFF
@@ -18,8 +18,13 @@ enum BrandTokens {
         static let secondary = Color(.sRGB, red: 237 / 255, green: 163 / 255, blue: 59 / 255, opacity: 255 / 255) // #EDA33B
         static let secondaryFg = Color(.sRGB, red: 7 / 255, green: 19 / 255, blue: 7 / 255, opacity: 255 / 255) // #071307
         static let proseBody = Color(.sRGB, red: 30 / 255, green: 41 / 255, blue: 59 / 255, opacity: 255 / 255) // #1E293B
+        /// Quiet fills: the other party's bubble, the composer field, icon wells.
         static let muted = Color(.sRGB, red: 236 / 255, green: 227 / 255, blue: 218 / 255, opacity: 255 / 255) // #ECE3DA
         static let mutedFg = Color(.sRGB, red: 89 / 255, green: 103 / 255, blue: 125 / 255, opacity: 255 / 255) // #59677D
+        /// Wash behind an unread conversation.
+        static let primarySubtle = Color(.sRGB, red: 179 / 255, green: 24 / 255, blue: 0 / 255, opacity: 31 / 255) // #B318001F
+        /// Wash behind a group avatar, a notice and the this-device pill.
+        static let secondarySubtle = Color(.sRGB, red: 237 / 255, green: 163 / 255, blue: 59 / 255, opacity: 38 / 255) // #EDA33B26
         /// Decorative dividers only.
         static let border = Color(.sRGB, red: 7 / 255, green: 19 / 255, blue: 7 / 255, opacity: 46 / 255) // #0713072E
         /// Boundaries that identify a control.
@@ -35,7 +40,7 @@ enum BrandTokens {
         static let infoText = Color(.sRGB, red: 0 / 255, green: 102 / 255, blue: 177 / 255, opacity: 255 / 255) // #0066B1
         static let bubbleOwnBg = Color(.sRGB, red: 179 / 255, green: 24 / 255, blue: 0 / 255, opacity: 255 / 255) // #B31800
         static let bubbleOwnFg = Color(.sRGB, red: 255 / 255, green: 255 / 255, blue: 255 / 255, opacity: 255 / 255) // #FFFFFF
-        static let bubbleOtherBg = Color(.sRGB, red: 253 / 255, green: 233 / 255, blue: 215 / 255, opacity: 255 / 255) // #FDE9D7
+        static let bubbleOtherBg = Color(.sRGB, red: 236 / 255, green: 227 / 255, blue: 218 / 255, opacity: 255 / 255) // #ECE3DA
         static let bubbleOtherFg = Color(.sRGB, red: 7 / 255, green: 19 / 255, blue: 7 / 255, opacity: 255 / 255) // #071307
         /// The verification dot. Same hue and chroma as secondary, lightness lowered until it meets the 3:1 non-text threshold (WCAG 1.4.11) on surface and bg, because the dot carries meaning.
         static let verifiedMark = Color(.sRGB, red: 180 / 255, green: 110 / 255, blue: 0 / 255, opacity: 255 / 255) // #B46E00

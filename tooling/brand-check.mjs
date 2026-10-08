@@ -10,7 +10,9 @@
 //     plural key carries the Icelandic CLDR categories `one` and `other`;
 //   - a claim the brand makes is worded exactly as decided (CLAIMS below);
 //   - every colour pair in brand/contrast-pairs.json meets its WCAG threshold;
-//   - the icon's foreground SVG exists and its background token is opaque.
+//   - the icon's foreground SVG exists and its background token is opaque;
+//   - every bundled font names a font token, its file and licence exist, and
+//     no family carries the same weight twice.
 //
 // tooling/brand-gen.mjs refuses to generate from a brand this check rejects.
 
@@ -201,6 +203,31 @@ function checkIcon(icon, dir, root, tokens) {
 }
 
 /**
+ * @param {{ family: string, weight: number, file: string, license: string }[] | undefined} fonts
+ * @param {string} dir
+ * @param {string} root
+ * @param {any} tokens
+ * @returns {string[]}
+ */
+export function checkFonts(fonts, dir, root, tokens) {
+  /** @type {string[]} */
+  const problems = [];
+  const families = new Set(Object.keys(tokens.font ?? {}).filter((k) => !k.startsWith("$")));
+  const seen = new Set();
+  for (const font of fonts ?? []) {
+    if (!families.has(font.family))
+      problems.push(`fonts ${font.file}: family "${font.family}" is not a font token`);
+    const key = `${font.family}/${font.weight}`;
+    if (seen.has(key)) problems.push(`fonts ${font.file}: ${key} is bundled twice`);
+    seen.add(key);
+    for (const file of [font.file, font.license]) {
+      if (!existsSync(join(root, dir, file))) problems.push(`fonts ${file}: missing`);
+    }
+  }
+  return problems;
+}
+
+/**
  * Checks one brand directory. Pure apart from reading files under `root`.
  *
  * @param {string} name
@@ -228,6 +255,7 @@ export function checkBrand(name, root = ROOT) {
   );
   const tokens = readJson(`${dir}/tokens.json`, root);
   problems.push(...checkIcon(manifest.icon, dir, root, tokens));
+  problems.push(...checkFonts(manifest.fonts, dir, root, tokens));
   const contrast = checkContrast(tokens, readJson("brand/contrast-pairs.json", root));
   problems.push(...contrast.problems.map((p) => `contrast ${p}`));
   return { problems, rows: contrast.rows };

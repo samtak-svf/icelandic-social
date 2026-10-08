@@ -1,29 +1,39 @@
 package samtak.spjall.conversation
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.plus
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,28 +47,41 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import samtak.spjall.brand.R
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.ConversationState
 import samtak.spjall.core.Item
+import samtak.spjall.ui.AppIcons
+import samtak.spjall.ui.Avatar
+import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
+import samtak.spjall.ui.RoundButton
+import samtak.spjall.ui.SansFamily
+import samtak.spjall.ui.SectionLabel
 import samtak.spjall.ui.VerifiedMark
+import samtak.spjall.ui.avatarKind
+import samtak.spjall.ui.dayHeading
 import samtak.spjall.ui.lastLine
 import samtak.spjall.ui.shownName
 import samtak.spjall.ui.title
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /**
  * One conversation (1c): bubbles, own on the right, the composer below, and
@@ -78,8 +101,10 @@ fun ConversationScreen(
     val writable =
         conversation?.let { it.state.open() && it.members.isNotEmpty() } ?: false
     var deleting by remember { mutableStateOf<Item?>(null) }
-    Surface(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.safeDrawingPadding().imePadding()) {
+    Surface(modifier = Modifier.fillMaxSize(), color = Palette.surface) {
+        // The header pads for the status bar itself, so its cream reaches the top edge.
+        val sides = WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
+        Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(sides))) {
             TopBar(state, actions)
             conversation?.let { Banner(it) }
             state.problem?.let { Box(Modifier.padding(16.dp)) { ProblemCard(it, actions::retry) } }
@@ -117,37 +142,63 @@ fun ConversationScreen(
     }
 }
 
+/** The cream band: back, who this is with, whether Kenni vouched for them, and the menu. */
 @Composable
 private fun TopBar(
     state: ConversationViewModel.State,
     actions: ConversationActions,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(end = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        IconButton(onClick = actions::back) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-        }
-        state.conversation?.let {
-            // The title has all the room the menu leaves; the mark sits right after it.
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = it.title(),
-                    style = MaterialTheme.typography.titleLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false).semantics { heading() },
-                )
-                if (it.members.size == 1 && it.members.single().verified) VerifiedMark()
+    Column(modifier = Modifier.fillMaxWidth().background(Palette.bg)) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                    .padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            IconButton(onClick = actions::back) {
+                Icon(AppIcons.Back, contentDescription = stringResource(R.string.back), tint = Palette.fg)
             }
-            ConversationMenu(it, actions)
+            state.conversation?.let {
+                val one = it.members.singleOrNull()
+                val title = it.title()
+                Avatar(
+                    name = if (one == null) title else one.name,
+                    kind = it.avatarKind(),
+                    size = HEADER_AVATAR.dp,
+                )
+                // The title has all the room the menu leaves; the mark sits right after it.
+                Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        Text(
+                            text = title,
+                            style = TITLE,
+                            color = Palette.fg,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false).semantics { heading() },
+                        )
+                        if (one?.verified == true) VerifiedMark()
+                    }
+                    if (one?.verified == true) {
+                        // The dot already says it to TalkBack; this is its visible word.
+                        Text(
+                            text = stringResource(R.string.verified_short),
+                            style = SUBTITLE,
+                            color = Palette.mutedFg,
+                            modifier = Modifier.clearAndSetSemantics {},
+                        )
+                    }
+                }
+                ConversationMenu(it, actions)
+            }
         }
+        HorizontalDivider(color = Palette.border)
     }
 }
 
@@ -163,16 +214,17 @@ private fun Banner(conversation: Conversation) {
             ConversationState.NEW, ConversationState.ACTIVE ->
                 if (conversation.members.isEmpty()) R.string.conversation_alone_banner else return
         }
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-    ) {
-        Text(
-            text = stringResource(text),
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(16.dp),
-        )
-    }
+    Text(
+        text = stringResource(text),
+        style = MaterialTheme.typography.bodyMedium,
+        color = Palette.fg,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .background(Palette.secondarySubtle, RoundedCornerShape(BANNER_RADIUS.dp))
+                .padding(horizontal = 14.dp, vertical = 13.dp),
+    )
 }
 
 /** Newest at the bottom: the list is reversed, so it stays there as items arrive. */
@@ -218,19 +270,10 @@ private fun Timeline(
 
 @Composable
 private fun DayLine(date: LocalDate) {
-    val today = LocalDate.now()
-    val text =
-        when (date) {
-            today -> stringResource(R.string.day_today)
-            today.minusDays(1) -> stringResource(R.string.day_yesterday)
-            else -> DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).format(date)
-        }
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp).semantics { heading() },
-        textAlign = TextAlign.Center,
+    SectionLabel(
+        text = dayHeading(date),
+        align = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 6.dp).semantics { heading() },
     )
 }
 
@@ -242,59 +285,110 @@ private fun CardLine(
     Text(
         text = lastLine(item, group),
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Palette.mutedFg,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 8.dp),
         textAlign = TextAlign.Center,
     )
 }
 
-/** A 1:1 names who types; in a group the frame's sender is not known (0022). */
+/**
+ * Three dots in a muted pill, where the next message will appear. TalkBack
+ * reads who types: a 1:1 names them; in a group the frame's sender is not
+ * known (0022).
+ */
 @Composable
 private fun TypingRow(name: String?) {
-    Text(
-        text =
-            name?.let { stringResource(R.string.typing_indicator, it) }
-                ?: stringResource(R.string.typing_indicator_group),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp)
-                .semantics { liveRegion = LiveRegionMode.Polite },
-    )
+    val description =
+        name?.let { stringResource(R.string.typing_indicator, it) }
+            ?: stringResource(R.string.typing_indicator_group)
+    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+        Row(
+            modifier =
+                Modifier
+                    .background(Palette.muted, RoundedCornerShape(BUBBLE_PILL.dp))
+                    .padding(horizontal = 14.dp, vertical = 9.dp)
+                    .clearAndSetSemantics {
+                        contentDescription = description
+                        liveRegion = LiveRegionMode.Polite
+                    },
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            DOT_ALPHAS.forEach { alpha ->
+                Box(modifier = Modifier.size(DOT.dp).background(Palette.mutedFg.copy(alpha = alpha), CircleShape))
+            }
+        }
+    }
 }
 
+/**
+ * Attach, a pill to write in, and send (1c, 1f). The pill is muted until it
+ * has focus, then white with a dark edge, as the keyboard comes up.
+ */
 @Composable
 private fun Composer(
     state: ConversationViewModel.State,
     actions: ConversationActions,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        HorizontalDivider()
+        HorizontalDivider(color = Palette.border)
         when (val mode = state.mode) {
             ConversationViewModel.Mode.New -> Unit
             is ConversationViewModel.Mode.Reply -> ModeLine(R.string.reply, lastLine(mode.item), actions::cancelMode)
             is ConversationViewModel.Mode.Edit -> ModeLine(R.string.edit, lastLine(mode.item), actions::cancelMode)
         }
         Row(
-            modifier = Modifier.fillMaxWidth().padding(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (state.mode == ConversationViewModel.Mode.New) AttachButton(actions)
-            OutlinedTextField(
-                value = state.draft,
-                onValueChange = actions::draft,
-                placeholder = { Text(stringResource(R.string.composer_placeholder)) },
-                maxLines = COMPOSER_LINES,
-                modifier = Modifier.weight(1f),
+            if (state.mode == ConversationViewModel.Mode.New) AttachButton(actions) else Spacer(Modifier.width(12.dp))
+            Field(state.draft, actions::draft, Modifier.weight(1f))
+            val ready = state.draft.isNotBlank()
+            RoundButton(
+                icon = AppIcons.Send,
+                description = stringResource(R.string.send),
+                onClick = actions::send,
+                enabled = ready,
+                fill = if (ready) Palette.primary else Palette.muted,
+                tint = if (ready) Palette.primaryFg else Palette.mutedFg,
+                size = SEND.dp,
             )
-            IconButton(onClick = actions::send, enabled = state.draft.isNotBlank()) {
-                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.send))
-            }
         }
     }
+}
+
+@Composable
+private fun Field(
+    value: String,
+    onChange: (String) -> Unit,
+    modifier: Modifier,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val shape = RoundedCornerShape(FIELD_RADIUS.dp)
+    BasicTextField(
+        value = value,
+        onValueChange = onChange,
+        maxLines = COMPOSER_LINES,
+        textStyle = FIELD.copy(color = Palette.fg),
+        cursorBrush = SolidColor(Palette.fg),
+        interactionSource = interaction,
+        modifier =
+            modifier
+                .heightIn(min = FIELD_HEIGHT.dp)
+                .background(if (focused) Palette.surface else Palette.muted, shape)
+                .border(FIELD_EDGE.dp, if (focused) Palette.fg else Color.Transparent, shape),
+        decorationBox = { inner ->
+            Box(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                if (value.isEmpty()) {
+                    Text(text = stringResource(R.string.composer_placeholder), style = FIELD, color = Palette.mutedFg)
+                }
+                inner()
+            }
+        },
+    )
 }
 
 @Composable
@@ -308,20 +402,36 @@ private fun ModeLine(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = stringResource(label), style = MaterialTheme.typography.labelMedium)
+            Text(text = stringResource(label), style = MaterialTheme.typography.labelMedium, color = Palette.fg)
             Text(
                 text = text,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = Palette.mutedFg,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
         IconButton(onClick = onCancel) {
-            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.cancel))
+            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.cancel), tint = Palette.fg)
         }
     }
 }
 
 private const val OLDER_AHEAD = 10
 private const val COMPOSER_LINES = 5
+private const val HEADER_AVATAR = 38
+private const val BANNER_RADIUS = 14
+private const val BUBBLE_PILL = 18
+private const val DOT = 6
+private const val SEND = 40
+private const val FIELD_HEIGHT = 40
+private const val FIELD_RADIUS = 20
+private const val FIELD_EDGE = 1.5f
+
+/** The typing dots fade from left to right, as in the design. */
+private val DOT_ALPHAS = listOf(1f, 0.7f, 0.4f)
+
+private val TITLE = TextStyle(fontFamily = SansFamily, fontWeight = FontWeight.Black, fontSize = 15.5.sp)
+private val SUBTITLE = TextStyle(fontFamily = SansFamily, fontWeight = FontWeight.Medium, fontSize = 11.sp)
+private val FIELD =
+    TextStyle(fontFamily = SansFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp)

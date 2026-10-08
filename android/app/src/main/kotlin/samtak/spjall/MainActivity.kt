@@ -17,16 +17,10 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -75,7 +69,10 @@ import samtak.spjall.people.PeopleViewModel
 import samtak.spjall.signin.SignInScreen
 import samtak.spjall.signin.SignInViewModel
 import samtak.spjall.signin.SignInViewModel.Session
+import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.SpjallTheme
+import samtak.spjall.ui.Tab
+import samtak.spjall.ui.TabBar
 
 /**
  * The one activity: sign-in, then the two tabs. It has one composable per
@@ -166,7 +163,9 @@ class MainActivity : ComponentActivity() {
                 .value
                 ?.destination
                 ?.route
+        // Each screen pads for the status bar itself, so its cream band can reach the top edge.
         Scaffold(
+            contentWindowInsets = WindowInsets(0),
             bottomBar = {
                 if (route == LIST || route == ME) Tabs(route) { nav.navigate(it) { tab() } }
             },
@@ -210,20 +209,12 @@ class MainActivity : ComponentActivity() {
         route: String,
         go: (String) -> Unit,
     ) {
-        NavigationBar {
-            NavigationBarItem(
-                selected = route == LIST,
-                onClick = { go(LIST) },
-                icon = { Icon(Icons.Filled.Email, contentDescription = null) },
-                label = { Text(stringResource(R.string.tab_conversations)) },
-            )
-            NavigationBarItem(
-                selected = route == ME,
-                onClick = { go(ME) },
-                icon = { Icon(Icons.Filled.Person, contentDescription = null) },
-                label = { Text(stringResource(R.string.tab_me)) },
-            )
-        }
+        TabBar(
+            listOf(
+                Tab(AppIcons.Chat, stringResource(R.string.tab_conversations), route == LIST) { go(LIST) },
+                Tab(AppIcons.Person, stringResource(R.string.tab_me), route == ME) { go(ME) },
+            ),
+        )
     }
 
     @Composable

@@ -7,9 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -31,6 +28,9 @@ import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.ConversationState
+import samtak.spjall.ui.AppIcons
+import samtak.spjall.ui.Palette
+import samtak.spjall.ui.RoundButton
 import samtak.spjall.ui.duration
 import samtak.spjall.ui.shownName
 
@@ -47,7 +47,7 @@ internal fun ConversationMenu(
     val other = conversation.members.singleOrNull()
     Box {
         IconButton(onClick = { open = true }) {
-            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.more_options))
+            Icon(AppIcons.Menu, contentDescription = stringResource(R.string.more_options), tint = Palette.fg)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
@@ -135,9 +135,14 @@ private fun TimerDialog(
 internal fun AttachButton(actions: ConversationActions) {
     var open by rememberSaveable { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { open = true }) {
-            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.attach))
-        }
+        RoundButton(
+            icon = AppIcons.Plus,
+            description = stringResource(R.string.attach),
+            onClick = { open = true },
+            fill = Palette.muted,
+            tint = Palette.fg,
+            size = ATTACH.dp,
+        )
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.photo)) },
@@ -159,3 +164,5 @@ internal fun AttachButton(actions: ConversationActions) {
 
 /** One hour, one day, seven days and thirty days, in seconds. */
 private val TIMERS = listOf(3_600u, 86_400u, 604_800u, 2_592_000u)
+
+private const val ATTACH = 38

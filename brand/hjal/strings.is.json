@@ -21,6 +21,8 @@
   "day_today": "Í dag",
   "day_yesterday": "Í gær",
   "verified_with_kennitala": "Staðfest með kennitölu",
+  "verified_short": "Staðfest",
+  "last_line_own": "Þú: {text}",
   "unread_count": {
     "one": "{count} ólesin",
     "other": "{count} ólesin"

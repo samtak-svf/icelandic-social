@@ -72,6 +72,49 @@
       "bg": "bg",
       "level": "nonText",
       "use": "verification dot on the cream band"
+    },
+    { "fg": "primary", "bg": "bg", "level": "aaNormal", "use": "text buttons on the cream band" },
+    {
+      "fg": "fg",
+      "bg": "primary-subtle over surface",
+      "level": "aaNormal",
+      "use": "name in an unread conversation row"
+    },
+    {
+      "fg": "prose-body",
+      "bg": "primary-subtle over surface",
+      "level": "aaNormal",
+      "use": "last message in an unread conversation row"
+    },
+    {
+      "fg": "primary",
+      "bg": "primary-subtle over surface",
+      "level": "aaNormal",
+      "use": "time in an unread conversation row"
+    },
+    {
+      "fg": "verified-mark",
+      "bg": "primary-subtle over surface",
+      "level": "nonText",
+      "use": "verification dot in an unread conversation row"
+    },
+    {
+      "fg": "fg",
+      "bg": "secondary-subtle over surface",
+      "level": "aaNormal",
+      "use": "group avatar initials"
+    },
+    {
+      "fg": "fg",
+      "bg": "secondary-subtle over bg",
+      "level": "aaNormal",
+      "use": "notice text and the this-device pill on the cream band"
+    },
+    {
+      "fg": "primary",
+      "bg": "secondary-subtle over bg",
+      "level": "aaNormal",
+      "use": "the action inside a notice on the cream band"
     }
   ]
 }

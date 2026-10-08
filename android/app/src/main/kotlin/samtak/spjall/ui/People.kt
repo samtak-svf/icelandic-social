@@ -4,30 +4,24 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import samtak.spjall.brand.BrandTokens.Colors
+import androidx.compose.ui.unit.sp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Content
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.Item
 import samtak.spjall.core.Person
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /** The name the server gave (decision 0022), or a word for none. */
 @Composable
@@ -49,36 +43,63 @@ fun initials(name: String?): String {
         .joinToString("") { it.first().uppercase() }
 }
 
+/** How an avatar is filled: who it stands for, and whether Kenni vouched for them. */
+enum class AvatarKind { Verified, Unverified, Group, Me }
+
 /** A circle with the initials of whom a row is about; the row's text says who, so this says nothing. */
 @Composable
 fun Avatar(
     name: String?,
     modifier: Modifier = Modifier,
+    kind: AvatarKind = AvatarKind.Verified,
+    size: Dp = AVATAR.dp,
 ) {
+    val (fill, ink) =
+        when (kind) {
+            AvatarKind.Verified -> Palette.secondary to Palette.secondaryFg
+            AvatarKind.Unverified -> Palette.fg.copy(alpha = GREY) to Palette.fg
+            AvatarKind.Group -> Palette.secondarySubtle to Palette.fg
+            AvatarKind.Me -> Palette.fg to Palette.surface
+        }
     Box(
         modifier =
             modifier
-                .size(AVATAR.dp)
-                .background(MaterialTheme.colorScheme.secondary, CircleShape)
+                .size(size)
+                .background(fill, CircleShape)
                 .clearAndSetSemantics {},
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = initials(name),
-            color = MaterialTheme.colorScheme.onSecondary,
-            style = MaterialTheme.typography.titleMedium,
+            color = ink,
+            fontFamily = SansFamily,
+            fontWeight = FontWeight.Black,
+            fontSize = (size.value * INITIALS).sp,
         )
     }
 }
 
-/** The mark of a name Kenni verified. */
+/** The avatar's fill for a conversation: a group, or its one member verified or not. */
+fun Conversation.avatarKind(): AvatarKind =
+    when {
+        members.size > 1 -> AvatarKind.Group
+        members.singleOrNull()?.verified == true -> AvatarKind.Verified
+        else -> AvatarKind.Unverified
+    }
+
+/** The mark of a name Kenni verified: a gold dot, which TalkBack reads as the words. */
 @Composable
-fun VerifiedMark(modifier: Modifier = Modifier) {
-    Icon(
-        imageVector = Icons.Filled.CheckCircle,
-        contentDescription = stringResource(R.string.verified_with_kennitala),
-        tint = Color(Colors.VERIFIED_MARK),
-        modifier = modifier.size(MARK.dp),
+fun VerifiedMark(
+    modifier: Modifier = Modifier,
+    size: Dp = MARK.dp,
+) {
+    val description = stringResource(R.string.verified_with_kennitala)
+    Box(
+        modifier =
+            modifier
+                .size(size)
+                .background(Palette.verifiedMark, CircleShape)
+                .semantics { contentDescription = description },
     )
 }
 
@@ -122,20 +143,13 @@ fun duration(seconds: UInt): String {
     }
 }
 
-/** The time today, "yesterday", or the date. */
-@Composable
-fun shortTime(millis: ULong): String {
-    val zone = ZoneId.systemDefault()
-    val then = Instant.ofEpochMilli(millis.toLong()).atZone(zone)
-    val today = LocalDate.now(zone)
-    return when (then.toLocalDate()) {
-        today -> DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).format(then)
-        today.minusDays(1) -> stringResource(R.string.day_yesterday)
-        else -> DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).format(then)
-    }
-}
+private const val AVATAR = 46
+private const val MARK = 7
 
-private const val AVATAR = 48
-private const val MARK = 16
+/** The grey of an unverified person's avatar: fg at 9 %. */
+private const val GREY = 0.09f
+
+/** Initials take a third of the circle, as in the design (15 on 46). */
+private const val INITIALS = 0.33f
 private const val HOUR = 3_600
 private const val DAY = 86_400
