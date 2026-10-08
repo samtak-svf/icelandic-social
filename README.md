@@ -8,9 +8,10 @@ group conversations with MLS ([decision 0002](docs/decisions/0002-mls-end-to-end
 text, photos and files, replies, edits, deletes, reactions, disappearing messages, block,
 account deletion, and push notifications that carry no message ids
 ([decision 0025](docs/decisions/0025-push-without-ids.md)). The first release is a closed test
-group ([decision 0009](docs/decisions/0009-v1-scope.md)). Nothing is deployed yet, and sign-in
-has so far been tested only against a stand-in for Kenni. The code has not been reviewed by
-anyone outside the project. Do not rely on it to protect anything.
+group ([decision 0009](docs/decisions/0009-v1-scope.md)). The backend runs at
+`https://spjall.samtak.is` ([backend/README.md](backend/README.md)), but sign-in there waits for
+Kenni's production client, and has so far been tested only against a stand-in for Kenni. The
+code has not been reviewed by anyone outside the project. Do not rely on it to protect anything.
 
 ## Layout
 
