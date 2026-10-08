@@ -80,6 +80,9 @@ targets:
         Debug:
           SPJALL_APS_ENVIRONMENT: development
         Interim:
+          # XcodeGen's iOS preset sets CODE_SIGN_IDENTITY on each target, which
+          # hides the project-level Interim value, so the targets repeat it.
+          CODE_SIGN_IDENTITY: Apple Distribution
           PROVISIONING_PROFILE_SPECIFIER: $(SPJALL_APP_PROFILE)
           # No push on the interim team until 0011 allows an APNs key there
           # (decision 0025); its profile has no push entitlement to sign with.
@@ -108,6 +111,7 @@ targets:
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: "YES"
       configs:
         Interim:
+          CODE_SIGN_IDENTITY: Apple Distribution
           PROVISIONING_PROFILE_SPECIFIER: $(SPJALL_NSE_PROFILE)
 
   SpjallTests:

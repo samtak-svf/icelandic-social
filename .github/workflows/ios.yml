@@ -70,6 +70,25 @@ jobs:
           brew install xcodegen
           xcodegen generate
 
+      # ios-testflight.yml is the only workflow that signs, and it runs by hand,
+      # so a target-level setting that overrides the Interim signing (XcodeGen's
+      # iOS preset sets CODE_SIGN_IDENTITY on each target) surfaced only there.
+      - name: Interim signs with the distribution identity
+        working-directory: ios
+        run: |
+          fail=0
+          for target in Spjall NotificationService; do
+            settings=$(xcodebuild -showBuildSettings -project Spjall.xcodeproj \
+              -target "$target" -configuration Interim -sdk iphoneos -skipPackagePluginValidation 2>/dev/null)
+            for want in "CODE_SIGN_IDENTITY = Apple Distribution" "CODE_SIGN_STYLE = Manual" "DEVELOPMENT_TEAM = B4724Z74TM"; do
+              if ! grep -qxF "    $want" <<<"$settings"; then
+                echo "::error::$target (Interim): want '$want', got '$(grep -E "^    ${want%% =*} = " <<<"$settings" | sed 's/^ *//')'"
+                fail=1
+              fi
+            done
+          done
+          exit $fail
+
       - name: Pick an available iPhone simulator
         run: |
           SIM_UDID=$(xcrun simctl list devices available -j | jq -r '[.devices | to_entries[] | select(.key | startswith("com.apple.CoreSimulator.SimRuntime.iOS-")) | {runtime: .key, devices: [.value[] | select(.name | startswith("iPhone"))]} | select(.devices | length > 0)] | sort_by(.runtime) | (last // {}) | (.devices // []) | .[0] | .udid? // empty')
