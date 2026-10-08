@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- The App Group the notification service shares (identifiers/ids.json),
-     and push (decision 0025). Associated domains join once the app is
-     signed (decision 0010). -->
+     push (decision 0025), and the brand's link host, so invite links open
+     the app rather than Safari (decision 0011). -->
 <plist version="1.0">
 <dict>
 	<key>aps-environment</key>
 	<string>$(SPJALL_APS_ENVIRONMENT)</string>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>$(BRAND_ASSOCIATED_DOMAINS)</string>
+	</array>
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>$(SPJALL_APP_GROUP)</string>

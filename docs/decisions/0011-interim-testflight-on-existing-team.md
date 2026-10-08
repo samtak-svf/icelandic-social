@@ -60,6 +60,14 @@ team exists. This amends 0010's "no APNs key on `B4724Z74TM`" for the interim id
 - **When Samtak svf.'s team is active,** a key made there replaces these four values in the
   same change that moves the testers (0025), and the interim key is revoked.
 
+## Invite links on the interim team (2026-10-08)
+
+Without the Associated Domains capability an invite link opens in Safari, and a person who
+signs in from there has no invite. `is.samtak.spjall.beta` therefore has Associated Domains,
+`App/Spjall.entitlements` claims `BRAND_ASSOCIATED_DOMAINS`, and the host's
+`apple-app-site-association` names the interim app id. The frozen id gets the same
+capability on Samtak svf.'s team when it moves.
+
 ## Rules out
 
 - Registering a frozen id on `B4724Z74TM`, as before.
