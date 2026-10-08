@@ -10,7 +10,9 @@
     "typecheck": "wrangler types >/dev/null && tsc --noEmit",
     "check": "pnpm run typecheck && node scripts/openapi.ts --check",
     "test": "wrangler types >/dev/null && vitest run",
-    "invite:operator": "node scripts/invite-operator.ts"
+    "invite:operator": "node scripts/invite-operator.ts",
+    "migrate:remote": "node ../tooling/jurisdiction-check.mjs --deploy && wrangler d1 migrations apply spjall-db --remote",
+    "deploy": "node ../tooling/jurisdiction-check.mjs --deploy && wrangler deploy"
   },
   "dependencies": {
     "@hono/zod-openapi": "^1.6.3",

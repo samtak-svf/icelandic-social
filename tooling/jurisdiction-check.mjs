@@ -8,10 +8,15 @@
 // `node tooling/jurisdiction-check.mjs`         offline, in `pnpm check`:
 //     backend/wrangler.jsonc names exactly the frozen ids, every R2 binding
 //     says jurisdiction "eu", the account is the personal one, no Queues.
-// `node tooling/jurisdiction-check.mjs --live`  CI only, read-only token:
-//     asks the Cloudflare REST API whether D1 and both R2 buckets exist IN
-//     the EU jurisdiction. Needs CLOUDFLARE_JURISDICTION_TOKEN (D1 Read,
-//     Workers R2 Storage Read).
+// `node tooling/jurisdiction-check.mjs --live`  CI and deploy, read-only token:
+//     asks the Cloudflare REST API whether the D1 database wrangler.jsonc
+//     binds (by its database_id) and every R2 bucket it binds exist IN the EU
+//     jurisdiction. Needs CLOUDFLARE_JURISDICTION_TOKEN (D1 Read, Workers R2
+//     Storage Read).
+// `node tooling/jurisdiction-check.mjs --deploy`  before `wrangler deploy`:
+//     the config could be deployed without wrangler provisioning anything:
+//     D1 has its database_id, the Worker answers only on the frozen API host
+//     as a custom domain, and workers.dev is off.
 //
 // Durable Objects are not checked here: a namespace has no jurisdiction the
 // API can report. Each object id is pinned in code instead
@@ -76,10 +81,34 @@ export function checkConfig(config, cloudflare) {
  */
 
 /**
- * @param {{ accountId: string, token: string, cloudflare: any, fetch: Fetch }} options
+ * What `wrangler deploy` needs so it creates nothing by itself: a missing
+ * database_id makes it provision a D1 without a jurisdiction (decision 0001).
+ *
+ * @param {any} config parsed backend/wrangler.jsonc
+ * @param {any} ids identifiers/ids.json
+ * @returns {string[]} problems, empty when the config can be deployed
+ */
+export function checkDeployable(config, ids) {
+  /** @type {string[]} */
+  const problems = [];
+  const d1 = config.d1_databases?.[0];
+  if (typeof d1?.database_id !== "string" || !/^[0-9a-f-]{36}$/.test(d1.database_id)) {
+    problems.push(
+      `D1 ${ids.cloudflare.d1} has no database_id; create it with --jurisdiction eu first`,
+    );
+  }
+  const routes = JSON.stringify(config.routes ?? []);
+  const wanted = JSON.stringify([{ pattern: ids.hosts.api, custom_domain: true }]);
+  if (routes !== wanted) problems.push(`routes is ${routes}, expected ${wanted}`);
+  if (config.workers_dev !== false) problems.push("workers_dev must be false");
+  return problems;
+}
+
+/**
+ * @param {{ accountId: string, token: string, config: any, cloudflare: any, fetch: Fetch }} options
  * @returns {Promise<{ ok: string[], problems: string[] }>}
  */
-export async function checkLive({ accountId, token, cloudflare, fetch }) {
+export async function checkLive({ accountId, token, config, cloudflare, fetch }) {
   /** @type {string[]} */
   const ok = [];
   /** @type {string[]} */
@@ -95,19 +124,29 @@ export async function checkLive({ accountId, token, cloudflare, fetch }) {
   };
   const want = cloudflare.jurisdiction;
 
-  const list = await get(`/d1/database?name=${encodeURIComponent(cloudflare.d1)}`);
-  const db = (list.body.result ?? []).find((/** @type {any} */ d) => d.name === cloudflare.d1);
-  if (!db) {
-    problems.push(`D1 ${cloudflare.d1}: not found (status ${list.status})`);
+  // The database the Worker binds, by id: another database of the same name
+  // (say one recreated in the EU) would otherwise pass while the Worker still
+  // writes to the old one.
+  const id = config.d1_databases?.[0]?.database_id;
+  if (typeof id !== "string") {
+    problems.push(`D1 ${cloudflare.d1}: wrangler.jsonc has no database_id`);
   } else {
-    const detail = await get(`/d1/database/${db.uuid}`);
-    const actual = detail.body.result?.jurisdiction;
-    (actual === want ? ok : problems).push(
-      `D1 ${cloudflare.d1}: jurisdiction ${JSON.stringify(actual)}`,
-    );
+    const detail = await get(`/d1/database/${encodeURIComponent(id)}`);
+    const db = detail.body.result;
+    if (detail.status !== 200 || !db) {
+      problems.push(`D1 ${cloudflare.d1}: ${id} not found (status ${detail.status})`);
+    } else if (db.name !== cloudflare.d1) {
+      problems.push(`D1 ${id}: is named ${JSON.stringify(db.name)}, not ${cloudflare.d1}`);
+    } else {
+      (db.jurisdiction === want ? ok : problems).push(
+        `D1 ${cloudflare.d1}: jurisdiction ${JSON.stringify(db.jurisdiction)}`,
+      );
+    }
   }
 
-  for (const bucket of Object.values(cloudflare.r2)) {
+  // The buckets the Worker binds. A frozen name nothing binds (spjall-artifacts,
+  // retired by decision 0013) is not storage this Worker writes to.
+  for (const { bucket_name: bucket } of config.r2_buckets ?? []) {
     // Without this header an EU bucket is invisible, so a 404 means the bucket
     // is missing or was created outside the EU.
     const found = await get(`/r2/buckets/${bucket}`, { "cf-r2-jurisdiction": want });
@@ -121,8 +160,10 @@ export async function checkLive({ accountId, token, cloudflare, fetch }) {
 
 async function main() {
   const config = parseJsonc(readFileSync(join(ROOT, "backend/wrangler.jsonc"), "utf8"));
-  const { cloudflare } = readJson("identifiers/ids.json");
+  const ids = readJson("identifiers/ids.json");
+  const { cloudflare } = ids;
   const problems = checkConfig(config, cloudflare);
+  if (process.argv.includes("--deploy")) problems.push(...checkDeployable(config, ids));
 
   if (process.argv.includes("--live") && problems.length === 0) {
     const token = process.env.CLOUDFLARE_JURISDICTION_TOKEN;
@@ -133,6 +174,7 @@ async function main() {
     const live = await checkLive({
       accountId: config.account_id,
       token,
+      config,
       cloudflare,
       fetch: globalThis.fetch,
     });

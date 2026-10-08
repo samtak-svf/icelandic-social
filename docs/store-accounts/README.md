@@ -1,7 +1,7 @@
 # Store accounts for Samtak svf.
 
 Decision: [0010](../decisions/0010-samtak-own-store-accounts.md). Every step here is
-Guðröður's: each one pays money, signs for the organisation or creates something that cannot
+the maintainer's: each one pays money, signs for the organisation or creates something that cannot
 be undone. Agents prepare, they do not submit.
 
 The lessons below come from earlier 2026 enrollments of other apps.
@@ -71,7 +71,7 @@ must be identical in the D-U-N-S request, the Apple form and the Play form.
   there (`IS 0101101`). Click it, Ctrl+A, Delete, then type the postcode. Samtak's signup did
   not hit it: the address came from D&B as `Reykjavik - 112`.
 - **Other accounts:** "About you" asks for Google accounts used in Play Console in the past
-  six months; `gudrodur@gmail.com` is declared and verified.
+  six months; the maintainer's own account is declared and verified.
 - **After approval:** register the package name `is.samtak.spjall` under Android developer
   verification. It shows as Draft first, then Registered.
 
@@ -152,25 +152,15 @@ has one user-managed key. Step 4 waits for the Worker.
    `iam.disableServiceAccountKeyCreation` blocks the key, lift it for this project only.
    Setting that override needs Organization Policy Administrator on `samtak-org`;
    Organization Administrator alone cannot.
-4. After the Worker's first deploy (it does not exist before D1 and R2 do):
-
-   ```bash
-   gcloud secrets versions access latest --project=samtak-secrets \
-     --secret=samtak-spjall-fcm-service-account | npx wrangler secret put FCM_SERVICE_ACCOUNT
-   ```
+4. After the Worker's first deploy, `node tooling/worker-secrets.mjs` copies it (and
+   `KENNITALA_HMAC_KEY`) from the vault into the Worker; see `backend/README.md`.
 
 **APNs** waits for Samtak svf.'s Apple team (0025 puts the key there, not on the interim
 team). After step 3 of Apple above:
 
 1. Set `APNS_TEAM_ID` to the team id and `APNS_TOPIC` to `is.samtak.spjall` in
    `backend/wrangler.jsonc`. `App/Spjall.entitlements` already carries `aps-environment`.
-2. Store the key id beside the key as `samtak-spjall-apns-key-id`, then:
-
-   ```bash
-   gcloud secrets versions access latest --project=samtak-secrets \
-     --secret=samtak-spjall-apns-key | npx wrangler secret put APNS_KEY_P8
-   gcloud secrets versions access latest --project=samtak-secrets \
-     --secret=samtak-spjall-apns-key-id | npx wrangler secret put APNS_KEY_ID
-   ```
+2. Store the key id beside the key as `samtak-spjall-apns-key-id`, mark both `APNS_*` rows
+   in `tooling/worker-secrets.mjs` as `now`, and run it.
 
 Neither store listing becomes public before the public release gate in 0009.

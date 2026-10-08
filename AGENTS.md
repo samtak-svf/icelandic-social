@@ -145,7 +145,10 @@ comments, docs, commits, PRs, issues) is English.
   nowhere in the repo. Signing material for a whole team goes in a GitHub environment, never
   in repo secrets. gitleaks runs pre-commit and in CI.
 - Creating Cloudflare, Firebase, Apple, Play or Kenni resources, and DNS, is Guðröður's
-  step. Agents prepare the exact commands and values, they do not run them.
+  step. Agents prepare the exact commands and values, they do not run them. One standing
+  exception, approved 2026-10-08: the first-deploy steps in `backend/README.md` (EU D1/R2, the
+  R2 lifecycle rule, the API tokens, the custom domain). Approving a `production` deploy run
+  stays the maintainer's.
 
 ## Decision records
 

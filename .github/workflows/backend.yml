@@ -4,9 +4,8 @@ name: backend
 # workerd. Path-filtered; the repo-wide seam and jurisdiction config checks
 # run in ci.yml on every PR.
 #
-# No deploy job yet: D1 and R2 do not exist until Guðröður creates them with
-# --jurisdiction eu, and a deploy before that would let wrangler
-# auto-provision them without one (backend/wrangler.jsonc).
+# Deploying is the `deploy` workflow's job, by hand and behind the
+# `production` environment (backend/README.md).
 
 permissions:
   contents: read
@@ -55,8 +54,8 @@ jobs:
       - name: Tests in workerd
         run: pnpm --filter spjall-backend test
 
-  # Asks Cloudflare whether D1 and both R2 buckets exist in the EU
-  # jurisdiction. Skipped until the read-only token is set, which happens when
+  # Asks Cloudflare whether the D1 database and the R2 bucket wrangler.jsonc
+  # binds exist in the EU jurisdiction. Skipped until the read-only token is set, which happens when
   # the resources are created; from then on a missing or non-EU resource fails.
   jurisdiction:
     runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.GUARD_RUNNER_LABELS || '["ubuntu-latest"]') }}

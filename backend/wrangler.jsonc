@@ -5,15 +5,11 @@
 // identifiers/ids.json; `node tooling/jurisdiction-check.mjs` fails when the two
 // disagree or when a bucket loses its jurisdiction.
 //
-// NOT DEPLOYABLE YET, on purpose. D1 has no `database_id` until Guðröður creates
-// it, and wrangler auto-provisions a missing D1 or R2 on deploy WITHOUT a
-// jurisdiction, which can never be added afterwards (decision 0001). Create
-// them first, by hand:
-//
-//   wrangler d1 create spjall-db --jurisdiction eu
-//   wrangler r2 bucket create spjall-media --jurisdiction eu
-//
-// then paste the D1 id here. backend.yml has no deploy job until that is done.
+// NOT DEPLOYABLE YET, on purpose. D1 has no `database_id` until it is created,
+// and wrangler auto-provisions a missing D1 or R2 on deploy WITHOUT a
+// jurisdiction, which can never be added afterwards (decision 0001).
+// `jurisdiction-check.mjs --deploy` refuses until then; the creation commands
+// and the deploy are in backend/README.md.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "spjall-api",
@@ -23,6 +19,11 @@
   "observability": {
     "enabled": true,
   },
+  // The Worker answers only on the frozen API host (ids.json hosts.api), as a
+  // custom domain on the samtak.is zone; workers.dev stays off so there is one
+  // public address. `jurisdiction-check.mjs --deploy` holds both.
+  "routes": [{ "pattern": "spjall.samtak.is", "custom_domain": true }],
+  "workers_dev": false,
   // Read only through src/env/ (tooling/seam-guard.mjs).
   "d1_databases": [
     {
