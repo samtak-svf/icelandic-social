@@ -46,6 +46,20 @@ the keychain do not follow it, and push tokens are issued again. That is accepta
 closed test group and is why this stays a TestFlight-only arrangement: nothing under the
 interim ids goes to the App Store.
 
+## Push on the interim team (2026-10-08)
+
+Decided by the maintainer, so that testers on TestFlight get notifications before Samtak svf.'s
+team exists. This amends 0010's "no APNs key on `B4724Z74TM`" for the interim ids only.
+
+- **`is.samtak.spjall.beta` has the Push Notifications capability,** and its App Store
+  profile carries `aps-environment` = `production`. The Interim configuration signs
+  `App/Spjall.entitlements`, as Release does; `ios.yml` checks both settings.
+- **One APNs key on `B4724Z74TM`, used only by the Worker.** It is stored as
+  `samtak-spjall-apns-key` and `samtak-spjall-apns-key-id` (0026), and `APNS_TEAM_ID` /
+  `APNS_TOPIC` are `B4724Z74TM` / `is.samtak.spjall.beta`.
+- **When Samtak svf.'s team is active,** a key made there replaces these four values in the
+  same change that moves the testers (0025), and the interim key is revoked.
+
 ## Rules out
 
 - Registering a frozen id on `B4724Z74TM`, as before.

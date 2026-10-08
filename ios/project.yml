@@ -88,9 +88,8 @@ targets:
           # hides the project-level Interim value, so the targets repeat it.
           CODE_SIGN_IDENTITY: Apple Distribution
           PROVISIONING_PROFILE_SPECIFIER: $(SPJALL_APP_PROFILE)
-          # No push on the interim team until 0011 allows an APNs key there
-          # (decision 0025); its profile has no push entitlement to sign with.
-          CODE_SIGN_ENTITLEMENTS: App/Interim.entitlements
+          # Interim pushes through the interim team's APNs key (decision 0011),
+          # so it signs App/Spjall.entitlements with production APNs, as Release.
     scheme:
       testTargets:
         - SpjallTests

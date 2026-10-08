@@ -77,9 +77,10 @@
     "ANDROID_CERT_SHA256": "",
     "APPLE_TEAM_ID": "",
     // APNs (decision 0025): the team that owns the APNs key, and the bundle id
-    // pushed to. Empty until the key exists; iOS push is off until then.
-    "APNS_TEAM_ID": "",
-    "APNS_TOPIC": "",
+    // pushed to. The interim team and bundle id until Samtak's team exists
+    // (decision 0011).
+    "APNS_TEAM_ID": "B4724Z74TM",
+    "APNS_TOPIC": "is.samtak.spjall.beta",
   },
   // Secrets, set with `wrangler secret put`, never in this file:
   //   KENNITALA_HMAC_KEY   the key of the kennitala HMAC (decisions 0014, 0019)

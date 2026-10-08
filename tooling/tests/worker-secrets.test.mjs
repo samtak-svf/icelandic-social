@@ -33,10 +33,12 @@ describe("worker-secrets", () => {
     expect(select(SECRETS, null).map((s) => s.name)).toEqual([
       "KENNITALA_HMAC_KEY",
       "FCM_SERVICE_ACCOUNT",
+      "APNS_KEY_P8",
+      "APNS_KEY_ID",
     ]);
   });
 
-  it("sends a named `later` row, and refuses unknown and unused names", () => {
+  it("sends a named row, and refuses unknown and unused names", () => {
     expect(select(SECRETS, ["APNS_KEY_ID"]).map((s) => s.name)).toEqual(["APNS_KEY_ID"]);
     expect(() => select(SECRETS, ["NOPE"])).toThrow(/not a Worker secret/);
     expect(() => select(SECRETS, ["KENNI_CLIENT_SECRET"])).toThrow(/public/);

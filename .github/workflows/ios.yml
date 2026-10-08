@@ -88,6 +88,15 @@ jobs:
               fi
             done
           done
+          # Interim takes push through the interim team's APNs key (decision 0011).
+          settings=$(xcodebuild -showBuildSettings -project Spjall.xcodeproj \
+            -target Spjall -configuration Interim -sdk iphoneos -skipPackagePluginValidation 2>/dev/null)
+          for want in "CODE_SIGN_ENTITLEMENTS = App/Spjall.entitlements" "SPJALL_APS_ENVIRONMENT = production"; do
+            if ! grep -qxF "    $want" <<<"$settings"; then
+              echo "::error::Spjall (Interim): want '$want', got '$(grep -E "^    ${want%% =*} = " <<<"$settings" | sed 's/^ *//')'"
+              fail=1
+            fi
+          done
           exit $fail
 
       - name: Pick an available iPhone simulator

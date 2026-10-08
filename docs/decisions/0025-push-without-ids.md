@@ -117,5 +117,4 @@ a preview-off setting in v1 (the lock-screen settings of each OS cover previews)
 - **Android lowers a high-priority FCM message's priority** for an app that often shows
   nothing after one. The urgent flag keeps those cases rare.
 - **The APNs key belongs to an Apple team.** It is made on Samtak svf.'s own team (0010).
-  Until that team exists, iOS push works only if the maintainer amends 0011 to allow a key
-  on the interim team.
+  Until that team exists, 0011 allows one on the interim team for the interim bundle id.

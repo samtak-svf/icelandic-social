@@ -41,14 +41,12 @@ export const SECRETS = [
   {
     name: "APNS_KEY_P8",
     vault: "apns-key",
-    when: "later",
-    reason: "the APNs key waits for Samtak's own Apple team (decision 0025)",
+    when: "now",
   },
   {
     name: "APNS_KEY_ID",
     vault: "apns-key-id",
-    when: "later",
-    reason: "the APNs key waits for Samtak's own Apple team (decision 0025)",
+    when: "now",
   },
 ];
 

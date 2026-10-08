@@ -163,12 +163,13 @@ has one user-managed key. Step 4 waits for the Worker.
 4. After the Worker's first deploy, `node tooling/worker-secrets.mjs` copies it (and
    `KENNITALA_HMAC_KEY`) from the vault into the Worker; see `backend/README.md`.
 
-**APNs** waits for Samtak svf.'s Apple team (0025 puts the key there, not on the interim
-team). After step 3 of Apple above:
+**APNs** runs on the interim team for now (0011, "Push on the interim team"): the key is
+on `B4724Z74TM`, `APNS_TOPIC` is `is.samtak.spjall.beta`, and the key is in the vault under
+the names below. When Samtak svf.'s Apple team exists, after step 3 of Apple above:
 
 1. Set `APNS_TEAM_ID` to the team id and `APNS_TOPIC` to `is.samtak.spjall` in
    `backend/wrangler.jsonc`. `App/Spjall.entitlements` already carries `aps-environment`.
-2. Store the key id beside the key as `samtak-spjall-apns-key-id`, mark both `APNS_*` rows
-   in `tooling/worker-secrets.mjs` as `now`, and run it.
+2. Store the new key and its id as new versions of `samtak-spjall-apns-key` and
+   `samtak-spjall-apns-key-id`, run `tooling/worker-secrets.mjs`, then revoke the interim key.
 
 Neither store listing becomes public before the public release gate in 0009.
