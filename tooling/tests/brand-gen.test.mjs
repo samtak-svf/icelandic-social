@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { generate, run } from "../brand-gen.mjs";
 import { leaksInFiles, loadBrands } from "../brand-leak-guard.mjs";
 import { androidEscape, fontResource } from "../lib/brand-gen/android.mjs";
+import { postScriptName } from "../lib/brand-gen/font-name.mjs";
 import { renderPng } from "../lib/brand-gen/icon.mjs";
 import { activeBrand, isOwned, OWNED_DIRS } from "../lib/brand-gen/paths.mjs";
 import { brandNames, readJson, ROOT } from "../lib/repo.mjs";
@@ -232,6 +233,38 @@ describe("brand-gen", () => {
       expect(bytes(`${RES}/raw/font_licenses.txt`)?.toString()).toContain(license);
       expect(output(ROOT, KOTLIN)).toContain(`R.font.${fontResource(font)} to ${font.weight}`);
     }
+  });
+
+  it("makes the primary colour the iOS accent", () => {
+    const swift = output(ROOT, "ios/Generated/BrandTokens.swift");
+    const [, r, g, b] =
+      /static let primary = Color\(\.sRGB, red: (\d+) \/ 255, green: (\d+) \/ 255, blue: (\d+) \/ 255/.exec(
+        swift,
+      ) ?? [];
+    const accent = JSON.parse(
+      output(ROOT, "ios/Generated/Assets.xcassets/AccentColor.colorset/Contents.json"),
+    );
+    const hex = (/** @type {string | undefined} */ v) =>
+      `0x${Number(v).toString(16).padStart(2, "0").toUpperCase()}`;
+    expect(accent.colors[0].color.components).toEqual({
+      alpha: "1.000",
+      red: hex(r),
+      green: hex(g),
+      blue: hex(b),
+    });
+  });
+
+  it("lists each iOS face by file, PostScript name and weight", () => {
+    const manifest = readJson(`brand/${BRAND}/brand.json`);
+    const swift = output(ROOT, "ios/Generated/BrandTokens.swift");
+    for (const font of manifest.fonts ?? []) {
+      const bytes = readFileSync(join(ROOT, "brand", BRAND, font.file));
+      const name = postScriptName(bytes);
+      // A PostScript name is printable ASCII without spaces.
+      expect(name).toMatch(/^[\x21-\x7e]{1,63}$/);
+      expect(swift).toContain(`("${font.file.split("/").pop()}", "${name}", ${font.weight}),`);
+    }
+    expect(() => postScriptName(Buffer.alloc(12))).toThrow(/no name table/);
   });
 
   it("refuses a font whose family is not a token or whose file is missing", () => {

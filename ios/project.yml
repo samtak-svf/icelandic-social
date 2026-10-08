@@ -58,6 +58,11 @@ targets:
       - path: Generated/BrandTokens.swift
       - path: Generated/Localizable.xcstrings
       - path: Generated/Assets.xcassets
+      # The brand's font files and licences, copied as one Fonts folder;
+      # Typefaces.register() loads the faces BrandTokens.FontFiles lists.
+      - path: Generated/Fonts
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: SpjallCore
       - package: SpjallAPI
@@ -70,6 +75,9 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: "YES"
         INFOPLIST_FILE: App/Info.plist
+        # The brand's primary (Generated/Assets.xcassets), so alerts, dialogs
+        # and system controls never show the system blue.
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         CODE_SIGN_ENTITLEMENTS: App/Spjall.entitlements
         # APNs' sandbox for development builds (decision 0025).
         SPJALL_APS_ENVIRONMENT: production

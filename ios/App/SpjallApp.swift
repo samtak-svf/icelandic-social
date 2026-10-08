@@ -7,9 +7,15 @@ struct SpjallApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var signIn = SignInModel(account: SpjallApp.account)
 
+    init() {
+        Typefaces.register()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView(signIn: signIn, push: delegate.push)
+                .font(.sans(16))
+                .tint(BrandTokens.Colors.primary)
         }
     }
 

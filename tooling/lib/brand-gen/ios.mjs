@@ -1,9 +1,10 @@
 // @ts-check
 // iOS outputs of the brand, all under ios/Generated/: the xcconfigs the
 // project includes, the string catalog, the token enum, the bundled fonts
-// with their licences and the app icon.
+// with their licences, the app icon and the accent colour.
 
 import { brandColors, fontFamilies, hex2, radii } from "./color.mjs";
+import { postScriptName } from "./font-name.mjs";
 import { renderOpaquePng } from "./icon.mjs";
 import { camel, keysFor, positional } from "./strings.mjs";
 
@@ -199,6 +200,18 @@ function tokensSwift(brand) {
   const fonts = fontFamilies(brand.tokens).map(
     (f) => `        static let ${camel(f.name)} = "${f.family}"`,
   );
+  const type = "[(file: String, name: String, weight: Int)]";
+  const faces = fontFamilies(brand.tokens).flatMap((f) => {
+    const list = brand.fonts
+      .filter((font) => font.family === f.name)
+      .map(
+        (font) =>
+          `            ("${font.fileName}", "${postScriptName(font.bytes)}", ${font.weight}),`,
+      );
+    return list.length === 0
+      ? [`        static let ${camel(f.name)}: ${type} = []`]
+      : [`        static let ${camel(f.name)}: ${type} = [`, ...list, "        ]"];
+  });
   const radius = radii(brand.tokens).map(
     (r) => `        static let ${camel(r.name)}: CGFloat = ${r.value}`,
   );
@@ -213,9 +226,17 @@ function tokensSwift(brand) {
     ...colors,
     "    }",
     "",
-    "    /// Font family names; the font files are bundled by the app.",
+    "    /// Font family names, as the design names them.",
     "    enum Fonts {",
     ...fonts,
+    "    }",
+    "",
+    "    /// Each family's bundled faces: the file in Fonts/, the PostScript name",
+    "    /// iOS finds it by, and its weight. An empty list means the family is",
+    "    /// not bundled and the system font stands in. The licences travel in",
+    "    /// Fonts/ beside the files.",
+    "    enum FontFiles {",
+    ...faces,
     "    }",
     "",
     "    enum Radius {",
@@ -271,6 +292,39 @@ function appIcon(brand) {
 }
 
 /**
+ * The catalog's AccentColor, the brand's primary, which the project names as
+ * the app's global accent so system controls never fall back to their blue.
+ *
+ * @param {BrandInput} brand
+ * @returns {OutputFile}
+ */
+function accentColor(brand) {
+  const color = brandColors(brand.tokens).find((c) => c.name === "primary");
+  if (!color) throw new Error("tokens have no primary colour for the accent");
+  const component = (/** @type {number} */ byte) => `0x${hex2(byte)}`;
+  return {
+    path: `${DIR}/Assets.xcassets/AccentColor.colorset/Contents.json`,
+    content: json({
+      colors: [
+        {
+          color: {
+            "color-space": "srgb",
+            components: {
+              alpha: (color.a / 255).toFixed(3),
+              blue: component(color.b),
+              green: component(color.g),
+              red: component(color.r),
+            },
+          },
+          idiom: "universal",
+        },
+      ],
+      info: XCODE_INFO,
+    }),
+  };
+}
+
+/**
  * @param {BrandInput} brand
  * @returns {OutputFile[]}
  */
@@ -283,5 +337,6 @@ export function ios(brand) {
     { path: `${DIR}/BrandTokens.swift`, content: tokensSwift(brand) },
     ...fontFiles(brand),
     ...appIcon(brand),
+    accentColor(brand),
   ];
 }

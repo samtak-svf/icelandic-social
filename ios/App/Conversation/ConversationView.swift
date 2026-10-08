@@ -29,6 +29,7 @@ struct ConversationView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            TopBar(conversation: model.conversation, model: model, writable: writable)
             if let conversation = model.conversation { Banner(conversation: conversation) }
             if let problem = model.problem {
                 ProblemCard(problem: problem) { Task { await model.retry() } }.padding(16)
@@ -38,13 +39,8 @@ struct ConversationView: View {
             if writable { Composer(model: model) }
         }
         .background(BrandTokens.Colors.surface)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) { TitleView(conversation: model.conversation) }
-            if writable, let conversation = model.conversation {
-                ToolbarItem(placement: .topBarTrailing) { ConversationMenu(conversation: conversation, model: model) }
-            }
-        }
+        .toolbar(.hidden, for: .navigationBar)
+        .background { SwipeBack().frame(width: 0, height: 0) }
         .quickLookPreview($preview)
         .onChange(of: model.opened) { _, opened in
             guard let opened else { return }
@@ -87,7 +83,7 @@ struct ConversationView: View {
         let shown = rows(model.items)
         return ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 2) {
+                LazyVStack(spacing: 0) {
                     if model.older && !model.items.isEmpty {
                         ProgressView().padding(8).onAppear { Task { await model.loadOlder() } }
                     }
@@ -95,9 +91,9 @@ struct ConversationView: View {
                         switch row {
                         case .day(let date): DayLine(date: date)
                         case .card(let item): CardLine(item: item, group: group)
-                        case .bubble(let item, let first, let readBy):
+                        case .bubble(let item, let first, let last, let readBy):
                             Bubble(
-                                item: item, first: first, readBy: readBy, group: group, model: model,
+                                item: item, first: first, last: last, readBy: readBy, group: group, model: model,
                                 onDelete: { deleting = item }, onReact: { reacting = item })
                         }
                     }
@@ -112,7 +108,7 @@ struct ConversationView: View {
             .onChange(of: shown.last?.id) { _, newest in
                 guard newest != nil else { return }
                 var own = false
-                if case .bubble(let item, _, _)? = shown.last { own = item.own }
+                if case .bubble(let item, _, _, _)? = shown.last { own = item.own }
                 if own || atBottom { withAnimation { proxy.scrollTo(Self.bottom, anchor: .bottom) } }
             }
         }
@@ -124,17 +120,68 @@ struct ConversationView: View {
 /// The reactions a long press offers.
 let emoji = ["👍", "❤️", "😂", "😮", "😢", "🙏"]
 
-private struct TitleView: View {
+/// The cream bar across the top: back, who this is with and whether Kenni
+/// verified them, and the conversation's menu.
+private struct TopBar: View {
     let conversation: Conversation?
+    let model: ConversationModel
+    let writable: Bool
+
+    @Environment(\.dismiss) private var dismiss
+
+    private var verified: Bool {
+        guard let conversation, conversation.members.count == 1 else { return false }
+        return conversation.members[0].verified
+    }
 
     var body: some View {
-        if let conversation {
-            HStack(spacing: 4) {
-                Text(verbatim: title(conversation)).font(.headline).lineLimit(1)
-                if conversation.members.count == 1, conversation.members[0].verified { VerifiedMark() }
+        HStack(spacing: 10) {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(BrandTokens.Colors.fg)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isHeader)
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("back"))
+            if let conversation {
+                let group = conversation.members.count > 1
+                Avatar(
+                    name: group ? title(conversation) : conversation.members.first?.name,
+                    kind: avatarKind(conversation), size: 38)
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 5) {
+                        Text(verbatim: title(conversation))
+                            .font(.sans(15.5, black: true, relativeTo: .headline))
+                            .foregroundStyle(BrandTokens.Colors.fg)
+                            .lineLimit(1)
+                        if verified { VerifiedMark() }
+                    }
+                    if verified {
+                        // The mark already says it to VoiceOver.
+                        Text("verified_short")
+                            .font(.sans(11, relativeTo: .caption))
+                            .foregroundStyle(BrandTokens.Colors.mutedFg)
+                            .accessibilityHidden(true)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isHeader)
+            }
+            Spacer(minLength: 0)
+            if writable, let conversation {
+                ConversationMenu(conversation: conversation, model: model)
+            }
+        }
+        .padding(.leading, 4)
+        .padding(.trailing, 8)
+        .padding(.vertical, 6)
+        .background(BrandTokens.Colors.bg.ignoresSafeArea(edges: .top))
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(BrandTokens.Colors.border).frame(height: 1)
         }
     }
 }
@@ -145,10 +192,11 @@ private struct Banner: View {
     var body: some View {
         if let text {
             Text(text)
+                .font(.sans(13))
                 .foregroundStyle(BrandTokens.Colors.fg)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-                .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 12))
+                .padding(14)
+                .background(BrandTokens.Colors.secondarySubtle, in: RoundedRectangle(cornerRadius: 14))
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
         }
@@ -168,20 +216,11 @@ private struct DayLine: View {
     let date: Date
 
     var body: some View {
-        Group {
-            if Calendar.current.isDateInToday(date) {
-                Text("day_today")
-            } else if Calendar.current.isDateInYesterday(date) {
-                Text("day_yesterday")
-            } else {
-                Text(verbatim: date.formatted(date: .abbreviated, time: .omitted))
-            }
-        }
-        .font(.caption)
-        .foregroundStyle(BrandTokens.Colors.mutedFg)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .accessibilityAddTraits(.isHeader)
+        SectionLabel(text: dayHeading(date))
+            .frame(maxWidth: .infinity)
+            .padding(.top, 16)
+            .padding(.bottom, 6)
+            .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -191,7 +230,7 @@ private struct CardLine: View {
 
     var body: some View {
         Text(verbatim: lastLine(item, group: group))
-            .font(.footnote)
+            .font(.sans(12, relativeTo: .footnote))
             .foregroundStyle(BrandTokens.Colors.mutedFg)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
@@ -200,23 +239,31 @@ private struct CardLine: View {
     }
 }
 
-/// A 1:1 names who types; in a group the frame's sender is not known (0022).
+/// Three dots in a grey bubble. A 1:1 names who types to VoiceOver; in a
+/// group the frame's sender is not known (0022).
 private struct TypingRow: View {
     let name: String?
 
+    private var label: String {
+        name.map { localized("typing_indicator", $0) } ?? localized("typing_indicator_group")
+    }
+
     var body: some View {
-        Group {
-            if let name {
-                Text(verbatim: localized("typing_indicator", name))
-            } else {
-                Text("typing_indicator_group")
+        HStack(spacing: 4) {
+            ForEach([1, 0.7, 0.4], id: \.self) { alpha in
+                Circle()
+                    .fill(BrandTokens.Colors.mutedFg.opacity(alpha))
+                    .frame(width: 6, height: 6)
             }
         }
-        .font(.footnote)
-        .foregroundStyle(BrandTokens.Colors.mutedFg)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 18))
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
         .padding(.vertical, 4)
+        .accessibilityElement()
+        .accessibilityLabel(Text(verbatim: label))
         .accessibilityAddTraits(.updatesFrequently)
     }
 }
@@ -227,6 +274,7 @@ private struct Composer: View {
     @State private var photo: PhotosPickerItem?
     @State private var picking = false
     @State private var importing = false
+    @FocusState private var focused: Bool
 
     private var blank: Bool { model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
@@ -238,31 +286,54 @@ private struct Composer: View {
             case .reply(let item): ModeLine(label: "reply", item: item, onCancel: model.cancelMode)
             case .edit(let item): ModeLine(label: "edit", item: item, onCancel: model.cancelMode)
             }
-            HStack(alignment: .bottom, spacing: 8) {
-                Menu {
-                    Button("photo", systemImage: "photo") { picking = true }
-                    Button("file", systemImage: "doc") { importing = true }
-                } label: {
-                    Image(systemName: "paperclip").frame(minWidth: 44, minHeight: 44)
+            HStack(alignment: .bottom, spacing: 0) {
+                // Attaching starts a message of its own, so not while replying or editing.
+                if model.mode == .new {
+                    Menu {
+                        Button("photo", systemImage: "photo") { picking = true }
+                        Button("file", systemImage: "doc") { importing = true }
+                    } label: {
+                        RoundIcon(
+                            systemImage: "plus", fill: BrandTokens.Colors.muted, tint: BrandTokens.Colors.fg, size: 38)
+                    }
+                    .accessibilityLabel(Text("attach"))
+                } else {
+                    Spacer().frame(width: 12)
                 }
-                .accessibilityLabel(Text("attach"))
                 TextField(
                     "composer_placeholder",
                     text: Binding(get: { model.draft }, set: { model.type($0) }),
                     axis: .vertical
                 )
+                .font(.sans(14))
                 .lineLimit(1...5)
-                .textFieldStyle(.roundedBorder)
-                Button {
-                    Task { await model.send() }
-                } label: {
-                    Image(systemName: "paperplane.fill").frame(minWidth: 44, minHeight: 44)
+                .focused($focused)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .frame(minHeight: 40)
+                .background(
+                    focused ? BrandTokens.Colors.surface : BrandTokens.Colors.muted,
+                    in: RoundedRectangle(cornerRadius: 20)
+                )
+                .overlay {
+                    if focused {
+                        RoundedRectangle(cornerRadius: 20).strokeBorder(BrandTokens.Colors.fg, lineWidth: 1.5)
+                    }
                 }
-                .accessibilityLabel(Text("send"))
-                .disabled(blank)
+                .padding(.vertical, 2)
+                RoundButton(
+                    systemImage: "paperplane.fill", label: "send",
+                    fill: blank ? BrandTokens.Colors.muted : BrandTokens.Colors.primary,
+                    tint: blank ? BrandTokens.Colors.mutedFg : BrandTokens.Colors.primaryFg,
+                    size: 40, enabled: !blank
+                ) {
+                    Task { await model.send() }
+                }
             }
-            .padding(8)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 6)
         }
+        .background(BrandTokens.Colors.surface)
         .photosPicker(isPresented: $picking, selection: $photo, matching: .images)
         .onChange(of: photo) { _, picked in
             guard let picked else { return }
@@ -283,9 +354,9 @@ private struct ModeLine: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(label).font(.caption.weight(.semibold))
+                Text(label).font(TypeStyle.meta).foregroundStyle(BrandTokens.Colors.primary)
                 Text(verbatim: lastLine(item))
-                    .font(.caption)
+                    .font(.sans(12, relativeTo: .caption))
                     .foregroundStyle(BrandTokens.Colors.mutedFg)
                     .lineLimit(1)
             }

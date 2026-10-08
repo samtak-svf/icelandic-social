@@ -57,11 +57,11 @@ func duration(_ seconds: UInt32) -> String {
     return plural("duration_hours", Int(max(1, seconds / hour)))
 }
 
-/// The time today, "yesterday", or the date.
-func shortTime(_ millis: UInt64) -> String {
-    let date = Date(timeIntervalSince1970: TimeInterval(millis) / 1_000)
-    let calendar = Calendar.current
-    if calendar.isDateInToday(date) { return date.formatted(date: .omitted, time: .shortened) }
-    if calendar.isDateInYesterday(date) { return localized("day_yesterday") }
-    return date.formatted(date: .numeric, time: .omitted)
+/// A conversation row's preview: the newest item, the reader's own words marked as theirs (`last_line_own`).
+func previewLine(_ item: Item, group: Bool) -> String {
+    let line = lastLine(item, group: group)
+    switch item.content {
+    case .text, .media: return item.own ? localized("last_line_own", line) : line
+    case .deleted, .members, .timer: return line
+    }
 }

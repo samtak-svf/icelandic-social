@@ -20,8 +20,9 @@ final class RowsTests: XCTestCase {
             switch $0 {
             case .day(let date): "day \(date.formatted(format))"
             case .card(let item): "card \(item.seq ?? 0)"
-            case .bubble(let item, let first, let readBy):
+            case .bubble(let item, let first, let last, let readBy):
                 "\(item.seq.map(String.init) ?? "nil")\(first ? " first" : "")\(readBy.map { " read \($0)" } ?? "")"
+                    + (last ? " last" : "")
             }
         }
     }
@@ -34,7 +35,7 @@ final class RowsTests: XCTestCase {
                 item(3, sender: anna, ts: day + 11 * minute),
                 item(4, sender: me, own: true, ts: day + 12 * minute),
             ], calendar: utc)
-        XCTAssertEqual(shape(rows), ["day 2023-11-14", "1 first", "2", "3 first", "4 first"])
+        XCTAssertEqual(shape(rows), ["day 2023-11-14", "1 first", "2 last", "3 first last", "4 first last"])
     }
 
     func testANewDayAndACardBreakARun() {
@@ -46,7 +47,8 @@ final class RowsTests: XCTestCase {
                 item(4, ts: day + 120 * minute),
             ], calendar: utc)
         XCTAssertEqual(
-            shape(rows), ["day 2023-11-14", "1 first", "card 2", "3 first", "day 2023-11-15", "4 first"])
+            shape(rows),
+            ["day 2023-11-14", "1 first last", "card 2", "3 first last", "day 2023-11-15", "4 first last"])
     }
 
     func testTheReadLineSitsUnderTheNewestOwnMessageSomeoneRead() {
@@ -57,7 +59,7 @@ final class RowsTests: XCTestCase {
                 item(3, sender: me, own: true, ts: day),
                 item(nil, sender: me, own: true, ts: day),
             ], calendar: utc)
-        XCTAssertEqual(shape(rows), ["day 2023-11-14", "1 first", "2 read 1", "3", "nil"])
+        XCTAssertEqual(shape(rows), ["day 2023-11-14", "1 first", "2 read 1", "3", "nil last"])
     }
 
     func testIdsAreUniqueAndStable() {

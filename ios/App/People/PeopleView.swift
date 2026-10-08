@@ -52,8 +52,8 @@ private struct PersonRow: View {
     var body: some View {
         Button(action: onToggle) {
             HStack(spacing: 12) {
-                Avatar(name: person.name)
-                Text(verbatim: shownName(person)).font(.headline)
+                Avatar(name: person.name, kind: avatarKind(person))
+                Text(verbatim: shownName(person)).font(.sans(14.5, black: true))
                 if person.verified { VerifiedMark() }
                 Spacer()
                 Image(systemName: picked ? "checkmark.circle.fill" : "circle")

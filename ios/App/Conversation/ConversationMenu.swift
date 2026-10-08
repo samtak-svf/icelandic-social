@@ -18,7 +18,10 @@ struct ConversationMenu: View {
                 Button("block", systemImage: "hand.raised", role: .destructive) { blocking = true }
             }
         } label: {
-            Image(systemName: "ellipsis.circle").frame(minWidth: 44, minHeight: 44)
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(BrandTokens.Colors.fg)
+                .frame(minWidth: 44, minHeight: 44)
         }
         .accessibilityLabel(Text("more_options"))
         .sheet(isPresented: $timing) {

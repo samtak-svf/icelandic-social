@@ -7,39 +7,83 @@ struct PrivacySection: View {
     let model: MeModel
 
     var body: some View {
-        Toggle(
-            isOn: Binding(get: { settings.readMarkers }, set: { on in Task { await model.readMarkers(on) } })
-        ) {
+        Setting(
+            text: "read_receipts_setting", hint: "read_receipts_hint",
+            isOn: Binding(get: { settings.readMarkers }, set: { on in Task { await model.readMarkers(on) } }),
+            enabled: !model.busy)
+        Hairline()
+        Setting(
+            text: "typing_setting", hint: nil,
+            isOn: Binding(get: { settings.typing }, set: { on in Task { await model.typing(on) } }),
+            enabled: !model.busy)
+    }
+}
+
+/// One toggle in a card, red when on as the design's switches.
+private struct Setting: View {
+    let text: LocalizedStringKey
+    let hint: LocalizedStringKey?
+    let isOn: Binding<Bool>
+    let enabled: Bool
+
+    var body: some View {
+        Toggle(isOn: isOn) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("read_receipts_setting")
-                Text("read_receipts_hint").font(.footnote).foregroundStyle(BrandTokens.Colors.mutedFg)
+                Text(text)
+                    .font(.sans(14, black: true))
+                    .foregroundStyle(BrandTokens.Colors.fg)
+                if let hint {
+                    Text(hint)
+                        .font(.sans(12, relativeTo: .footnote))
+                        .foregroundStyle(BrandTokens.Colors.mutedFg)
+                }
             }
         }
-        .disabled(model.busy)
-        Toggle(
-            "typing_setting", isOn: Binding(get: { settings.typing }, set: { on in Task { await model.typing(on) } })
-        )
-        .disabled(model.busy)
+        .tint(BrandTokens.Colors.primary)
+        .disabled(!enabled)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
     }
 }
 
 /// Who this account blocked (decision 0024), newest first; unblock asks first.
+/// The caller gives it its title.
 struct BlockedSection: View {
     let model: MeModel
 
     @State private var unblocking: Person?
 
     var body: some View {
-        Text("blocked_title").font(.headline)
-        if model.blocked.isEmpty {
-            Text("blocked_empty").font(.subheadline).foregroundStyle(BrandTokens.Colors.mutedFg)
-        }
-        ForEach(model.blocked, id: \.account) { person in
-            HStack(spacing: 4) {
-                Text(verbatim: shownName(person))
-                if person.verified { VerifiedMark() }
-                Spacer()
-                Button("unblock") { unblocking = person }.disabled(model.busy)
+        Group {
+            if model.blocked.isEmpty {
+                Text("blocked_empty")
+                    .font(.sans(13))
+                    .foregroundStyle(BrandTokens.Colors.mutedFg)
+                    .padding(14)
+            }
+            ForEach(Array(model.blocked.enumerated()), id: \.element.account) { index, person in
+                if index > 0 { Hairline() }
+                HStack(spacing: 6) {
+                    Text(verbatim: shownName(person))
+                        .font(.sans(14, black: true))
+                        .foregroundStyle(BrandTokens.Colors.fg)
+                    if person.verified { VerifiedMark() }
+                    Spacer()
+                    Button {
+                        unblocking = person
+                    } label: {
+                        Text("unblock")
+                            .font(.sans(12, black: true))
+                            .foregroundStyle(BrandTokens.Colors.primary)
+                            .padding(.horizontal, 10)
+                            .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(model.busy)
+                }
+                .padding(.leading, 14)
+                .padding(.trailing, 4)
+                .padding(.vertical, 4)
             }
         }
         .alert(

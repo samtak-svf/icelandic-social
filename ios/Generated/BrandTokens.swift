@@ -46,10 +46,24 @@ enum BrandTokens {
         static let verifiedMark = Color(.sRGB, red: 180 / 255, green: 110 / 255, blue: 0 / 255, opacity: 255 / 255) // #B46E00
     }
 
-    /// Font family names; the font files are bundled by the app.
+    /// Font family names, as the design names them.
     enum Fonts {
         static let sans = "Gothic A1"
         static let headline = "Archivo Condensed"
+    }
+
+    /// Each family's bundled faces: the file in Fonts/, the PostScript name
+    /// iOS finds it by, and its weight. An empty list means the family is
+    /// not bundled and the system font stands in. The licences travel in
+    /// Fonts/ beside the files.
+    enum FontFiles {
+        static let sans: [(file: String, name: String, weight: Int)] = [
+            ("GothicA1-Medium.ttf", "GothicA1-Medium", 500),
+            ("GothicA1-Black.ttf", "GothicA1-Black", 900),
+        ]
+        static let headline: [(file: String, name: String, weight: Int)] = [
+            ("ArchivoCondensed-ExtraBold.ttf", "ArchivoRoman-CondensedExtraBold", 800),
+        ]
     }
 
     enum Radius {

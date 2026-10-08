@@ -1,7 +1,7 @@
 import SpjallCore
 import SwiftUI
 
-/// The two tabs of 1a, Samtöl and Ég, and the screens they lead to. The
+/// The two tabs of 1a, the conversations and "Ég", and the screens they lead to. The
 /// socket is open while the scene is active (decision 0022). While it is,
 /// what arrives is on screen, so push announces none of it (decision 0025).
 struct HomeView: View {
@@ -35,32 +35,40 @@ struct HomeView: View {
     }
 
     var body: some View {
-        TabView(selection: $tab) {
-            NavigationStack(path: $path) {
-                ConversationsView(
-                    model: list,
-                    onOpen: { path.append(.conversation($0)) },
-                    onNew: { path.append(.people) },
-                    onInvite: { tab = .me }
-                )
-                .navigationDestination(for: Route.self) { route in
-                    switch route {
-                    case .people:
-                        PeopleRoute(account: signIn.account, live: socket, onInvite: { tab = .me }) {
-                            path = [.conversation($0)]
+        VStack(spacing: 0) {
+            switch tab {
+            case .conversations:
+                NavigationStack(path: $path) {
+                    ConversationsView(
+                        model: list,
+                        onOpen: { path.append(.conversation($0)) },
+                        onNew: { path.append(.people) },
+                        onInvite: { tab = .me }
+                    )
+                    .navigationDestination(for: Route.self) { route in
+                        switch route {
+                        case .people:
+                            PeopleRoute(account: signIn.account, live: socket, onInvite: { tab = .me }) {
+                                path = [.conversation($0)]
+                            }
+                        case .conversation(let id):
+                            ConversationRoute(id: id, account: signIn.account, live: socket)
+                                .task(id: id) { await push.dismiss(id) }
                         }
-                    case .conversation(let id):
-                        ConversationRoute(id: id, account: signIn.account, live: socket)
-                            .task(id: id) { await push.dismiss(id) }
                     }
                 }
+            case .me:
+                MeView(model: me, push: push)
             }
-            .tabItem { Label("tab_conversations", systemImage: "bubble.left.and.bubble.right") }
-            .tag(Tab.conversations)
-
-            MeView(model: me, push: push)
-                .tabItem { Label("tab_me", systemImage: "person.crop.circle") }
-                .tag(Tab.me)
+            // Only on the two roots: a conversation and the picker have the screen to themselves.
+            if path.isEmpty || tab == .me {
+                TabBar(
+                    selection: $tab,
+                    items: [
+                        .init(tab: .conversations, label: localized("tab_conversations"), systemImage: "bubble.left"),
+                        .init(tab: .me, label: localized("tab_me"), systemImage: "person"),
+                    ])
+            }
         }
         .tint(BrandTokens.Colors.primary)
         .task {

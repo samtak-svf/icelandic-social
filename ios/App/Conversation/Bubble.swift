@@ -21,10 +21,13 @@ struct Offer {
     var any: Bool { reply || react || edit || delete }
 }
 
-/// One message: own on the right, its reactions, and a read line under the newest read.
+/// One message (1c): own on the right in red, the other party's on the left
+/// in muted, the corner nearest the sender squared off. Under the end of a
+/// run, its time, and on the newest own message someone read, the read marker.
 struct Bubble: View {
     let item: Item
     let first: Bool
+    let last: Bool
     let readBy: UInt32?
     let group: Bool
     let model: ConversationModel
@@ -35,37 +38,62 @@ struct Bubble: View {
     private var background: Color { item.own ? BrandTokens.Colors.bubbleOwnBg : BrandTokens.Colors.bubbleOtherBg }
     private var foreground: Color { item.own ? BrandTokens.Colors.bubbleOwnFg : BrandTokens.Colors.bubbleOtherFg }
 
+    /// Rounded all round but at the bottom corner on the sender's side.
+    private var shape: UnevenRoundedRectangle {
+        UnevenRoundedRectangle(
+            topLeadingRadius: Self.radius,
+            bottomLeadingRadius: item.own ? Self.radius : Self.tail,
+            bottomTrailingRadius: item.own ? Self.tail : Self.radius,
+            topTrailingRadius: Self.radius
+        )
+    }
+
     var body: some View {
-        VStack(alignment: item.own ? .trailing : .leading, spacing: 2) {
+        VStack(alignment: item.own ? .trailing : .leading, spacing: 0) {
             if group && first && !item.own {
                 Text(verbatim: shownName(item.sender))
-                    .font(.caption)
+                    .font(TypeStyle.meta)
                     .foregroundStyle(BrandTokens.Colors.mutedFg)
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
             }
-            bubble
-            if !item.reactions.isEmpty { Reactions(item: item, enabled: offer.react, model: model) }
-            if item.status == .failed { Failed(onResend: model.resend) }
-            if let readBy { ReadLine(count: readBy, group: group) }
+            if item.content == .deleted {
+                // A tombstone is a quiet line, not a bubble: there is nothing left to press.
+                Text("message_deleted")
+                    .font(TypeStyle.bubble)
+                    .italic()
+                    .foregroundStyle(BrandTokens.Colors.mutedFg)
+                    .padding(4)
+            } else {
+                AtMost(fraction: Self.share) { bubble }
+            }
+            if !item.reactions.isEmpty {
+                Reactions(item: item, enabled: offer.react, model: model).padding(.top, 2)
+            }
+            if item.status == .failed {
+                Failed(onResend: model.resend)
+            } else if let meta {
+                Text(verbatim: meta)
+                    .font(TypeStyle.meta)
+                    .foregroundStyle(BrandTokens.Colors.mutedFg)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 3)
+            }
         }
         .frame(maxWidth: .infinity, alignment: item.own ? .trailing : .leading)
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 16)
         .padding(.top, first ? 8 : 0)
     }
 
     private var bubble: some View {
         VStack(alignment: .leading, spacing: 4) {
             BodyText(item: item, foreground: foreground, model: model)
-            Text(verbatim: meta)
-                .font(.caption2)
-                .foregroundStyle(foreground)
-                .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .fixedSize(horizontal: false, vertical: true)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(background, in: RoundedRectangle(cornerRadius: 18))
-        .frame(maxWidth: 320, alignment: item.own ? .trailing : .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(background, in: shape)
+        .contentShape(.contextMenuPreview, shape)
         .contextMenu {
             if offer.any { menu }
         }
@@ -91,17 +119,26 @@ struct Bubble: View {
         if offer.delete { Button("delete_for_everyone", systemImage: "trash", role: .destructive, action: onDelete) }
     }
 
-    private var meta: String {
+    /// The small line under a message: the edited marker, then sending or
+    /// the time, then who read it. The time shows at the end of a run; the rest
+    /// always.
+    private var meta: String? {
         var parts: [String] = []
         if item.edited { parts.append(localized("edited_marker")) }
-        switch item.status {
-        case .pending: parts.append(localized("message_sending"))
-        case .sent, .failed:
-            parts.append(
-                Date(timeIntervalSince1970: TimeInterval(item.ts) / 1_000).formatted(date: .omitted, time: .shortened))
+        if item.status == .pending {
+            parts.append(localized("message_sending"))
+        } else if last || readBy != nil {
+            parts.append(clockTime(item.ts))
         }
-        return parts.joined(separator: " · ")
+        if let readBy {
+            parts.append(group ? plural("read_by_count", Int(readBy)) : localized("read_marker"))
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
+
+    private static let radius: CGFloat = 18
+    private static let tail: CGFloat = 5
+    private static let share: CGFloat = 0.76
 }
 
 private struct BodyText: View {
@@ -120,15 +157,16 @@ private struct BodyText: View {
                 }
                 .foregroundStyle(foreground)
             }
-            Text(verbatim: text).foregroundStyle(foreground)
+            Text(verbatim: text).font(TypeStyle.bubble).lineSpacing(3).foregroundStyle(foreground)
         case .deleted:
-            Text("message_deleted").italic().foregroundStyle(foreground)
+            // Drawn by Bubble as a line of its own.
+            EmptyView()
         case .media(let mime, let size, let caption, let name):
             Attachment(
                 item: item, mime: mime, size: size, caption: caption, name: name, foreground: foreground,
                 model: model)
         case .members, .timer:
-            Text(verbatim: lastLine(item)).foregroundStyle(foreground)
+            Text(verbatim: lastLine(item)).font(TypeStyle.bubble).foregroundStyle(foreground)
         }
     }
 }
@@ -167,26 +205,8 @@ private struct Failed: View {
 
     var body: some View {
         HStack {
-            Text("message_failed").font(.caption).foregroundStyle(BrandTokens.Colors.danger)
-            Button("try_again", action: onResend).font(.caption)
+            Text("message_failed").font(TypeStyle.meta).foregroundStyle(BrandTokens.Colors.danger)
+            Button("try_again", action: onResend).font(.sans(12, black: true, relativeTo: .caption))
         }
-    }
-}
-
-private struct ReadLine: View {
-    let count: UInt32
-    let group: Bool
-
-    var body: some View {
-        Group {
-            if group {
-                Text(verbatim: plural("read_by_count", Int(count)))
-            } else {
-                Text("read_marker")
-            }
-        }
-        .font(.caption2)
-        .foregroundStyle(BrandTokens.Colors.mutedFg)
-        .padding(.horizontal, 4)
     }
 }
