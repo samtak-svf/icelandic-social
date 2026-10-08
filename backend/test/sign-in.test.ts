@@ -35,7 +35,7 @@ describe("GET /v1/sign-in", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       authorizationEndpoint: "https://spjall.test/dev/kenni/oidc/auth",
-      clientId: "@innskraning.is/samtak-spjall",
+      clientId: "@innskraning.is/spjall",
       redirectUri: "is.samtak.spjall:/kenni",
       scope: "openid national_id audkenni_name",
     });

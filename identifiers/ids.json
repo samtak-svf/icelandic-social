@@ -14,7 +14,7 @@
     "databaseFile": "spjall.db"
   },
   "identity": {
-    "kenniClientId": "@innskraning.is/samtak-spjall"
+    "kenniClientId": "@innskraning.is/spjall"
   },
   "cloudflare": {
     "worker": "spjall-api",

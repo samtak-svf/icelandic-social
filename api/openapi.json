@@ -236,7 +236,7 @@
           },
           "clientId": {
             "type": "string",
-            "example": "@innskraning.is/samtak-spjall"
+            "example": "@innskraning.is/spjall"
           },
           "redirectUri": {
             "type": "string",

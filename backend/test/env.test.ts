@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import ids from "../../identifiers/ids.json" with { type: "json" };
-import { appLinks, conversation, inbox } from "../src/env/index.ts";
+import { appLinks, conversation, inbox, kenni } from "../src/env/index.ts";
 import { euOnly } from "./support.ts";
 
 // tooling/seam-guard.mjs keeps stubs out of every module but src/env; this
@@ -49,5 +49,15 @@ describe("appLinks", () => {
         `${ids.appleInterim.teamId}.${ids.appleInterim.iosBundleId}`,
       ],
     });
+  });
+});
+
+describe("kenni", () => {
+  // A deployed Worker has no fake, so kenni.fetch is the runtime's own fetch,
+  // called as a method. workerd refuses fetch with a foreign `this` ("Illegal
+  // invocation"), which every sign-in reported as kenni_unavailable.
+  it("calls the network's fetch without a foreign this", async () => {
+    const provider = kenni(env);
+    await expect(provider.fetch("not a url")).rejects.toThrow(/invalid url/i);
   });
 });

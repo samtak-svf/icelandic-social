@@ -56,6 +56,4 @@ keeps the two in step. Run it after the first deploy and whenever a vault value 
 
 ## Not yet
 
-- Sign-in needs Kenni's production client `@innskraning.is/samtak-spjall` (decision 0019).
-  Until it exists, `/v1/sign-in` answers `discovery_failed`.
 - iOS push needs the APNs key (decision 0025, `docs/store-accounts/README.md`).

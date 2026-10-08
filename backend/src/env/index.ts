@@ -86,7 +86,11 @@ export function kenni(env: Env): Kenni {
     clientId: ids.identity.kenniClientId,
     clientSecret: (env as Env & Secrets).KENNI_CLIENT_SECRET || undefined,
     redirectUri: `${ids.store.urlScheme}:/kenni`,
-    fetch: (env as Env & Fake).KENNI_FAKE?.fetch.bind((env as Env & Fake).KENNI_FAKE) ?? fetch,
+    // Wrapped, not stored: workerd refuses its fetch called as a method of
+    // another object ("Illegal invocation").
+    fetch:
+      (env as Env & Fake).KENNI_FAKE?.fetch.bind((env as Env & Fake).KENNI_FAKE) ??
+      ((input, init) => fetch(input, init)),
   };
 }
 

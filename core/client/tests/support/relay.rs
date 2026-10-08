@@ -319,7 +319,7 @@ impl State {
                 200,
                 json!({
                     "authorizationEndpoint": "https://kenni.test/oidc/auth",
-                    "clientId": "@innskraning.is/samtak-spjall",
+                    "clientId": "@innskraning.is/spjall",
                     "redirectUri": REDIRECT,
                     "scope": "openid national_id audkenni_name",
                 }),

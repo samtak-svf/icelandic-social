@@ -72,7 +72,7 @@ const SignInConfig = z
     authorizationEndpoint: z
       .string()
       .openapi({ example: "https://idp.kenni.is/innskraning.is/oidc/auth" }),
-    clientId: z.string().openapi({ example: "@innskraning.is/samtak-spjall" }),
+    clientId: z.string().openapi({ example: "@innskraning.is/spjall" }),
     redirectUri: z.string().openapi({ example: "is.samtak.spjall:/kenni" }),
     scope: z.string().openapi({ example: "openid national_id audkenni_name" }),
   })

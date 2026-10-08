@@ -500,7 +500,7 @@ mod tests {
         };
         let url = authorize_url(
             "https://idp.test/oidc/auth",
-            "@innskraning.is/samtak-spjall",
+            "@innskraning.is/spjall",
             &pending.redirect_uri,
             "openid national_id",
             &pending,
@@ -509,7 +509,7 @@ mod tests {
             url,
             format!(
                 "https://idp.test/oidc/auth?response_type=code\
-                 &client_id=%40innskraning.is%2Fsamtak-spjall\
+                 &client_id=%40innskraning.is%2Fspjall\
                  &redirect_uri=is.samtak.spjall%3A%2Fkenni\
                  &scope=openid%20national_id&state=st&nonce=no\
                  &code_challenge={}&code_challenge_method=S256",

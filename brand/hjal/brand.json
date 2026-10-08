@@ -8,7 +8,7 @@
   "externalSurfaces": [
     {
       "id": "kenni-application-name",
-      "where": "Kenni portal, application @innskraning.is/samtak-spjall: Name (shown in the login flow)",
+      "where": "Kenni portal, application @innskraning.is/spjall: Name (shown in the login flow)",
       "value": "Hjal",
       "owner": "Guðröður"
     },
