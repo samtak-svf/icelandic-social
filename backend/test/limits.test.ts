@@ -16,13 +16,28 @@ async function statuses(n: number, request: () => Promise<Response>) {
   return seen;
 }
 
-describe("the public routes", () => {
+/**
+ * Waits, if the current window is nearly over, for the next one. Local workerd
+ * aligns each 60 s window to the wall clock (miniflare's rate limiter), so a
+ * burst that crosses a minute is counted in two windows and never reaches the
+ * limit. A burst here takes a few seconds; 20 s left is ample.
+ */
+async function oneWindow() {
+  const left = 60_000 - (Date.now() % 60_000);
+  if (left < 20_000) await new Promise((resolve) => setTimeout(resolve, left + 100));
+}
+
+/** Room for oneWindow's wait on top of the burst itself. */
+const burst = { timeout: 40_000 };
+
+describe("the public routes", burst, () => {
   const from = (address: string) => () =>
     exports.default.fetch(`${BASE}/v1/invites/inv_no_such_invite_here`, {
       headers: { "cf-connecting-ip": address },
     });
 
   it("answer 30 requests a minute from one address, then rate_limited", async () => {
+    await oneWindow();
     const seen = await statuses(31, from("192.0.2.1"));
     expect(seen.slice(0, 30).every((s) => s === 404)).toBe(true);
     expect(seen[30]).toBe(429);
@@ -32,6 +47,7 @@ describe("the public routes", () => {
   });
 
   it("count every public route against the same address", async () => {
+    await oneWindow();
     await statuses(30, from("192.0.2.3"));
     const signIn = await exports.default.fetch(`${BASE}/v1/sign-in`, {
       headers: { "cf-connecting-ip": "192.0.2.3" },
@@ -40,7 +56,7 @@ describe("the public routes", () => {
   });
 });
 
-describe("claiming KeyPackages", () => {
+describe("claiming KeyPackages", burst, () => {
   it("answers 120 claims a minute from one account, then rate_limited", async () => {
     const owner = await device();
     const claimer = await device();
@@ -50,6 +66,7 @@ describe("claiming KeyPackages", () => {
         headers: { "content-type": "application/json", ...claimer.auth },
         body: "{}",
       });
+    await oneWindow();
     const seen = await statuses(121, claim);
     expect(seen.slice(0, 120).every((s) => s !== 429)).toBe(true);
     expect(seen[120]).toBe(429);
