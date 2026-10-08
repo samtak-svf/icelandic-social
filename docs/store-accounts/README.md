@@ -115,7 +115,15 @@ next try is from an Apple device. Until the team exists:
 - The bundle ids and the App Store profiles are created through the App Store Connect API.
   The profiles are named `<bundle id> appstore`, the names `ios/Generated/IdsInterim.xcconfig`
   expects. The App Group and its assignment to both ids, and the app record, are web UI only.
-- `ios-testflight.yml` (manual) builds the `Interim` configuration and uploads it.
+- `ios-testflight.yml` (manual) builds the `Interim` configuration and uploads it. Each run
+  waits for the maintainer to approve the `testflight` environment.
+- Testers are in the internal group "Prufuflug", which has access to every build, so a new
+  build needs no assignment (App Store Connect refuses one for an internal group with 422).
+  Add a tester by email: `POST /v1/betaTesters` with the email and the group. Linking an
+  existing tester record to the group answers 409 "Tester(s) cannot be assigned".
+- App Store Connect reports a refused upload under `/v1/apps/{id}/buildUploads` (state
+  `FAILED`, with the error codes), while the upload step can keep waiting. That endpoint takes
+  no `sort`.
 
 ## After enrollment
 
