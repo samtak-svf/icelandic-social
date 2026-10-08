@@ -20,9 +20,9 @@
     <!-- Banner in a conversation this account was removed from; the conversation is read-only (docs/decisions/0022). -->
     <string name="conversation_removed_banner">Þú ert ekki lengur í þessu samtali.</string>
     <!-- Banner in a conversation no other account is in any more, as a 1:1 after a block; nothing can be sent there (docs/decisions/0024). -->
-    <string name="conversation_alone_banner">Enginn annar er lengur í þessu samtali.</string>
+    <string name="conversation_alone_banner">Aðeins þú ert eftir í þessu samtali.</string>
     <!-- Title of a conversation no other account is in any more; a conversation is otherwise titled by its members (docs/decisions/0022). -->
-    <string name="conversation_alone_title">Enginn annar</string>
+    <string name="conversation_alone_title">Aðeins þú</string>
     <!-- Banner in a conversation the server refuses this device for; read-only until the next try (docs/decisions/0020, 0022). -->
     <string name="conversation_excluded_banner">Þetta tæki fær ekki aðgang að samtalinu eins og er. Reynt verður aftur.</string>
     <!-- Banner while this device rejoins a conversation it fell behind in (docs/decisions/0021, 0022). -->
@@ -38,7 +38,7 @@
     <!-- Status of an own message that is still being sent. -->
     <string name="message_sending">Í sendingu</string>
     <!-- Status of an own message that could not be sent; the bubble offers try_again. -->
-    <string name="message_failed">Ekki sent.</string>
+    <string name="message_failed">Ekki send.</string>
     <!-- Day separator for today's messages. -->
     <string name="day_today">Í dag</string>
     <!-- Day separator for yesterday's messages. -->
@@ -47,7 +47,7 @@
     <string name="verified_with_kennitala">Staðfest með kennitölu</string>
     <!-- Unread messages in a conversation. -->
     <plurals name="unread_count">
-        <item quantity="one">%1$d ólesið</item>
+        <item quantity="one">%1$d ólesin</item>
         <item quantity="other">%1$d ólesin</item>
     </plurals>
     <!-- Notification text when the device could not fetch what a push announced: the APNs alert the notification service extension keeps when it cannot decrypt in time, and Android's when its sync fails (docs/decisions/0025). Never names the sender. -->
@@ -63,7 +63,7 @@
     <!-- Action on the notifications_off row: opens the app's notification settings in the system. -->
     <string name="notifications_settings">Opna stillingar</string>
     <!-- System card in a conversation when a member adds a device (from an MLS add commit). -->
-    <string name="new_device_card">%1$s bætti við nýju tæki.</string>
+    <string name="new_device_card">%1$s tengdi nýtt tæki.</string>
     <!-- System card when an account joins a group (docs/decisions/0022). -->
     <string name="member_added_card">%1$s bættist í hópinn.</string>
     <!-- System card when an account leaves a group, is removed, or deletes its account (docs/decisions/0022). -->
@@ -114,19 +114,19 @@
     <!-- Marker on a message that was edited. -->
     <string name="edited_marker">breytt</string>
     <!-- Delete an own message on every member's devices. -->
-    <string name="delete_for_everyone">Eyða fyrir öllum</string>
+    <string name="delete_for_everyone">Taka til baka</string>
     <!-- Confirmation before deleting an own message for everyone. -->
-    <string name="delete_confirm">Eyða skilaboðunum fyrir öllum? Þau hverfa af tækjum allra í samtalinu.</string>
+    <string name="delete_confirm">Taka skilaboðin til baka? Þau hverfa úr tækjum allra í samtalinu.</string>
     <!-- Tombstone left where a deleted message was. -->
-    <string name="message_deleted">Þessum skilaboðum var eytt.</string>
+    <string name="message_deleted">Skilaboðin voru tekin til baka.</string>
     <!-- Add a reaction to a message. -->
     <string name="react">Bregðast við</string>
     <!-- Per-conversation setting: messages delete themselves after a set time. -->
-    <string name="disappearing_messages">Skilaboð sem hverfa</string>
+    <string name="disappearing_messages">Tímabundin skilaboð</string>
     <!-- System card when a member sets the disappearing timer; duration is formatted by the client. -->
-    <string name="disappearing_set_card">%1$s stillti skilaboð á að hverfa eftir %2$s.</string>
+    <string name="disappearing_set_card">%1$s stillti á að skilaboð hverfi eftir %2$s.</string>
     <!-- System card when a member turns the disappearing timer off. -->
-    <string name="disappearing_off_card">%1$s slökkti á skilaboðum sem hverfa.</string>
+    <string name="disappearing_off_card">%1$s slökkti á tímabundnum skilaboðum.</string>
     <!-- Timer option: messages do not disappear. -->
     <string name="disappearing_off">Slökkt</string>
     <!-- Timer option label; duration is one of the duration keys below (docs/decisions/0022). -->
@@ -142,7 +142,7 @@
         <item quantity="other">%1$d daga</item>
     </plurals>
     <!-- Marker on an own message the other party has read. -->
-    <string name="read_marker">Lesið</string>
+    <string name="read_marker">Lesin</string>
     <!-- Under an own message in a group: how many members have read it (docs/decisions/0022). -->
     <plurals name="read_by_count">
         <item quantity="one">%1$d hefur lesið</item>
@@ -161,11 +161,11 @@
     <!-- Block a person. -->
     <string name="block">Loka á</string>
     <!-- Confirmation before blocking. -->
-    <string name="block_confirm">Loka á %1$s? Viðkomandi getur ekki sent þér skilaboð.</string>
+    <string name="block_confirm">%1$s getur þá ekki sent þér skilaboð. Loka?</string>
     <!-- Unblock a person, from the blocked list (docs/decisions/0024). -->
     <string name="unblock">Opna fyrir</string>
     <!-- Confirmation before unblocking. -->
-    <string name="unblock_confirm">Opna fyrir %1$s? Viðkomandi getur aftur sent þér skilaboð.</string>
+    <string name="unblock_confirm">%1$s getur þá aftur sent þér skilaboð. Opna fyrir?</string>
     <!-- Heading of the list of blocked people on "Ég" (docs/decisions/0024). -->
     <string name="blocked_title">Lokað á</string>
     <!-- The blocked list when it is empty. -->
@@ -201,7 +201,7 @@
     <!-- Signs a device out of the account (DELETE /v1/devices/{id}). -->
     <string name="device_revoke">Aftengja</string>
     <!-- Confirmation before signing a device out; says what it stops. -->
-    <string name="device_revoke_confirm">Aftengja tækið? Það getur ekki lengur sent eða tekið við skilaboðum.</string>
+    <string name="device_revoke_confirm">Aftengja tækið? Þá getur það hvorki sent né tekið við skilaboðum.</string>
     <!-- The only permitted statement about where data lives (docs/decisions/0001). -->
     <string name="residency_claim">Gögnin eru geymd varanlega innan ESB; unnin á netkerfi Cloudflare.</string>
 </resources>
