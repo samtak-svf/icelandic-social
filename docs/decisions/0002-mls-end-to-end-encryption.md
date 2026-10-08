@@ -50,5 +50,19 @@ instances through the real DO.
 Server-side search or moderation of 1:1 and group content (reports upload the decrypted
 messages from the reporting device, with MLS sender authentication); push payloads with
 content; storing MLS state in the Keychain (it lives in the core's SQLite store, decision
-0006). Large public groups are not MLS (decision 0007). `ITSAppUsesNonExemptEncryption` is
-`YES` on iOS.
+0006). Large public groups are not MLS (decision 0007).
+
+## Export compliance
+
+MLS counts as encryption under the US export rules, but it uses only standard algorithms
+(X25519, Ed25519, AES-128-GCM, HKDF-SHA256) from open-source libraries. App Store Connect needs
+export documentation only for proprietary algorithms, or for standard ones offered in France:
+it refuses to create a declaration for any other case (409), so no compliance code exists to
+put in the bundle. `ITSAppUsesNonExemptEncryption` asks whether that documentation is needed,
+so it is `NO` on iOS. It was `YES` until 2026-10-08, and App Store Connect refused the first
+upload with error 90592 for the missing code.
+
+- Offering the app in France turns it `YES`: the declaration is filed and its code goes in
+  `ITSEncryptionExportComplianceCode`.
+- The US mass-market rule (EAR 740.17(b)(1)) still asks for a year-end self-classification
+  report to BIS, part of the encryption export gate in [0009](0009-v1-scope.md).

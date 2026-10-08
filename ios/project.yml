@@ -30,7 +30,6 @@ settings:
     SWIFT_VERSION: "6.0"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: 1
-    TARGETED_DEVICE_FAMILY: "1"
     # Unsigned until Samtak svf.'s Apple team exists (decision 0010); the
     # release workflow that signs arrives with it. Only Interim signs.
     CODE_SIGN_IDENTITY: ""
@@ -66,6 +65,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(SPJALL_BUNDLE_ID)
+        # iPhone only. XcodeGen's iOS preset sets "1,2" on each target, which
+        # hides a project-level value.
+        TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: "YES"
         INFOPLIST_FILE: App/Info.plist
         CODE_SIGN_ENTITLEMENTS: App/Spjall.entitlements
@@ -74,8 +76,10 @@ targets:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
-        # MLS is encryption the export rules count (decision 0002).
-        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: "YES"
+        # The key asks whether App Store Connect needs export documentation, not
+        # whether the encryption is exempt. MLS uses standard algorithms and the
+        # app is not offered in France, so none is needed (decision 0002).
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: "NO"
       configs:
         Debug:
           SPJALL_APS_ENVIRONMENT: development
@@ -105,10 +109,11 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(SPJALL_NSE_BUNDLE_ID)
+        TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: "YES"
         INFOPLIST_FILE: NotificationService/Info.plist
         CODE_SIGN_ENTITLEMENTS: NotificationService/NotificationService.entitlements
-        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: "YES"
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: "NO"
       configs:
         Interim:
           CODE_SIGN_IDENTITY: Apple Distribution

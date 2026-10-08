@@ -71,16 +71,17 @@ jobs:
           xcodegen generate
 
       # ios-testflight.yml is the only workflow that signs, and it runs by hand,
-      # so a target-level setting that overrides the Interim signing (XcodeGen's
-      # iOS preset sets CODE_SIGN_IDENTITY on each target) surfaced only there.
-      - name: Interim signs with the distribution identity
+      # so a target-level setting that overrides a project-level one (XcodeGen's
+      # iOS preset sets CODE_SIGN_IDENTITY and TARGETED_DEVICE_FAMILY on each
+      # target) surfaced only there, or at App Store Connect.
+      - name: Interim signs with the distribution identity, for iPhone only
         working-directory: ios
         run: |
           fail=0
           for target in Spjall NotificationService; do
             settings=$(xcodebuild -showBuildSettings -project Spjall.xcodeproj \
               -target "$target" -configuration Interim -sdk iphoneos -skipPackagePluginValidation 2>/dev/null)
-            for want in "CODE_SIGN_IDENTITY = Apple Distribution" "CODE_SIGN_STYLE = Manual" "DEVELOPMENT_TEAM = B4724Z74TM"; do
+            for want in "CODE_SIGN_IDENTITY = Apple Distribution" "CODE_SIGN_STYLE = Manual" "DEVELOPMENT_TEAM = B4724Z74TM" "TARGETED_DEVICE_FAMILY = 1"; do
               if ! grep -qxF "    $want" <<<"$settings"; then
                 echo "::error::$target (Interim): want '$want', got '$(grep -E "^    ${want%% =*} = " <<<"$settings" | sed 's/^ *//')'"
                 fail=1
