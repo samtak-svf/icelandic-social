@@ -13,7 +13,7 @@ use std::fs::{self, File};
 use std::io::{self, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 
-use aes_gcm::aead::{AeadInPlace, KeyInit};
+use aes_gcm::aead::{AeadInOut, KeyInit};
 use aes_gcm::{Aes256Gcm, Nonce, Tag};
 use base64::Engine as _;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -106,7 +106,7 @@ pub(crate) fn seal(from: &Path, to: &Path, key: &[u8; 32]) -> Result<(u64, Strin
             return Err(MediaError::TooLarge);
         }
         let tag = cipher
-            .encrypt_in_place_detached(&nonce(index, last), b"", segment)
+            .encrypt_inout_detached(&nonce(index, last), b"", (&mut *segment).into())
             .expect("a segment is far below the AES-GCM limit");
         for part in [&*segment, tag.as_slice()] {
             hash.update(part);
@@ -136,8 +136,9 @@ pub(crate) fn open(from: &Path, to: &Path, key: &[u8], sha256: &str) -> Result<(
         if size > MAX_SIZE {
             return Err(MediaError::TooLarge);
         }
+        let tag = Tag::try_from(&*tag).map_err(|_| MediaError::Tampered)?;
         cipher
-            .decrypt_in_place_detached(&nonce(index, last), b"", plain, Tag::from_slice(tag))
+            .decrypt_inout_detached(&nonce(index, last), b"", (&mut *plain).into(), &tag)
             .map_err(|_| MediaError::Tampered)?;
         out.write_all(plain)?;
         Ok(())
@@ -447,5 +448,22 @@ mod tests {
         }
         assert_eq!(file_name(&id, "IMAGE/JPEG"), format!("{id}.jpg"));
         assert_eq!(file_name(&id, "text/html"), format!("{id}.bin"));
+    }
+
+    /// A blob sealed by an earlier build opens with this one: the same key
+    /// and file always seal to the same bytes (0023).
+    #[test]
+    fn a_fixed_file_seals_to_fixed_bytes() {
+        let dir = tempfile::tempdir().unwrap();
+        let (from, to) = (dir.path().join("in"), dir.path().join("out"));
+        let file: Vec<u8> = (0..(SEGMENT as u32 + 1000))
+            .map(|i| (i % 251) as u8)
+            .collect();
+        std::fs::write(&from, &file).unwrap();
+        let (_, sha) = seal(&from, &to, &[7; 32]).unwrap();
+        assert_eq!(
+            sha,
+            "fdf931059e0548899ec4dcc3d12bb97e5c995459f5e98f47bfc991cb98fc109c"
+        );
     }
 }
