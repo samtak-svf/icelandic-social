@@ -61,7 +61,7 @@ node tooling/ids-freeze.mjs --base origin/main   # what CI runs on a PR
 
 # The Worker (backend/ is a package of the root workspace; `pnpm install` at the root covers it)
 pnpm --filter spjall-backend check     # cf workers types, tsc, api/openapi.json drift
-pnpm --filter spjall-backend test      # vitest inside workerd (@cloudflare/vitest-pool-workers)
+pnpm --filter spjall-backend test      # vitest inside workerd (@cloudflare/vitest-plugin)
 pnpm --filter spjall-backend openapi   # regenerate api/openapi.json after a zod change ...
 node tooling/ws-kotlin.mjs   # ... then the Kotlin WS frames from it
 
