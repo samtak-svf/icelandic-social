@@ -72,41 +72,85 @@ type Secrets = {
   KENNITALA_HMAC_KEY?: string;
   KENNITALA_HMAC_KEY_PREVIOUS?: string;
   KENNI_CLIENT_SECRET?: string;
+  GOOGLE_CLIENT_SECRET?: string;
   FCM_SERVICE_ACCOUNT?: string;
   APNS_KEY_P8?: string;
   APNS_KEY_ID?: string;
 };
 
 /**
- * Bound only by dev/worker.ts and test/worker.ts: the fake Kenni, reached in
- * process. A deployed Worker has no such binding and fetches the issuer.
+ * Bound only by dev/worker.ts and test/worker.ts: the fake Kenni and Google,
+ * reached in process. A deployed Worker has no such binding and fetches the
+ * issuer.
  */
-type Fake = { KENNI_FAKE?: Fetcher };
+type Fake = { KENNI_FAKE?: Fetcher; GOOGLE_FAKE?: Fetcher };
 
-/** Kenni, the identity provider (decision 0019). */
-export type Kenni = {
+/** The ways to sign in (decision 0033). */
+export type ProviderName = "kenni" | "google";
+
+/** An OpenID Connect provider the Worker redeems codes at (decisions 0019, 0033). */
+export type IdentityProvider = {
+  name: ProviderName;
   issuer: string;
+  /** What an ID token's `iss` may be: the issuer, and for Google its bare host. */
+  issuers: string[];
   clientId: string;
-  /** Only for a confidential client; a native one has none. */
+  /** Only for a confidential client: Google's web client has one, Kenni's native one none. */
   clientSecret: string | undefined;
-  /** The one redirect the Worker redeems a code for: the app's own scheme. */
+  /** The one redirect the Worker redeems a code for. */
   redirectUri: string;
+  scope: string;
   /** How the Worker reaches the issuer: the network, or the fake in process. */
   fetch: typeof fetch;
 };
 
-export function kenni(env: Env): Kenni {
+// Wrapped, not stored: workerd refuses its fetch called as a method of
+// another object ("Illegal invocation").
+function reach(fake: Fetcher | undefined): typeof fetch {
+  return fake?.fetch.bind(fake) ?? ((input, init) => fetch(input, init));
+}
+
+/** Kenni, which signs in and verifies a name (decisions 0019, 0033). */
+export function kenni(env: Env): IdentityProvider {
   return {
+    name: "kenni",
     issuer: env.KENNI_ISSUER,
+    issuers: [env.KENNI_ISSUER],
     clientId: ids.identity.kenniClientId,
     clientSecret: (env as Env & Secrets).KENNI_CLIENT_SECRET || undefined,
+    // The app's own scheme.
     redirectUri: `${ids.store.urlScheme}:/kenni`,
-    // Wrapped, not stored: workerd refuses its fetch called as a method of
-    // another object ("Illegal invocation").
-    fetch:
-      (env as Env & Fake).KENNI_FAKE?.fetch.bind((env as Env & Fake).KENNI_FAKE) ??
-      ((input, init) => fetch(input, init)),
+    scope: "openid national_id audkenni_name",
+    fetch: reach((env as Env & Fake).KENNI_FAKE),
   };
+}
+
+/**
+ * Google, the first way to sign in (decision 0033), or null until both its
+ * client id and secret are set. Google refuses a custom scheme for a web
+ * client, so the code comes back through the link host's /oauth/google.
+ */
+export function google(env: Env): IdentityProvider | null {
+  const clientId = env.GOOGLE_CLIENT_ID.trim();
+  const clientSecret = (env as Env & Secrets).GOOGLE_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return null;
+  const issuer = env.GOOGLE_ISSUER;
+  return {
+    name: "google",
+    issuer,
+    // Google's tokens carry either form (its OpenID Connect documentation).
+    issuers: [issuer, issuer.replace(/^https:\/\//, "")],
+    clientId,
+    clientSecret,
+    redirectUri: `https://${ids.hosts.link}/oauth/google`,
+    scope: "openid email profile",
+    fetch: reach((env as Env & Fake).GOOGLE_FAKE),
+  };
+}
+
+/** A provider by name, or null when it is not configured. */
+export function identityProvider(env: Env, name: ProviderName): IdentityProvider | null {
+  return name === "kenni" ? kenni(env) : google(env);
 }
 
 /**

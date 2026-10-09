@@ -3,7 +3,7 @@ import { runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../src/api/common.ts";
 import { conversation, inbox } from "../src/env/index.ts";
-import { invite, signIn } from "./kenni.ts";
+import { invite, signIn } from "./oidc.ts";
 import { connect } from "./socket.ts";
 import { device, euEnv } from "./support.ts";
 import { worker } from "./main.ts";

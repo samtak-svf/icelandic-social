@@ -1,4 +1,4 @@
-import { fakeKenni, fakeKenniFetcher, KENNI_PATH } from "./kenni.ts";
+import { withFakes } from "./oidc.ts";
 import worker, { Conversation as RealConversation, Inbox as RealInbox } from "../src/index.ts";
 import { OPERATOR_INVITE_PATH, operatorInvite } from "../scripts/operator-invite.ts";
 
@@ -10,8 +10,9 @@ import { OPERATOR_INVITE_PATH, operatorInvite } from "../scripts/operator-invite
 // It differs from the real Worker in these ways only:
 // - local workerd throws on `jurisdiction()`, so each namespace answers
 //   `.jurisdiction("eu")` with itself (test/worker.ts refuses anything else);
-// - it serves the fake Kenni (dev/kenni.ts) under /dev/kenni and reaches it in
-//   process; the interop mode sets KENNI_ISSUER to it;
+// - it serves the fake Kenni and Google (dev/oidc.ts) under /dev/kenni and
+//   /dev/google and reaches them in process; the interop mode sets
+//   KENNI_ISSUER, GOOGLE_ISSUER and GOOGLE_CLIENT_ID to them;
 // - a POST to /dev/operator-invite writes an operator invite into the local D1
 //   and answers its link (scripts/invite-operator.ts --local), since cf has no
 //   local `d1 query`.
@@ -54,13 +55,13 @@ export class Inbox extends RealInbox {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    if (url.pathname.startsWith(KENNI_PATH)) return fakeKenni(request, env.KENNI_ISSUER);
+    const fakes = withFakes(request, env);
+    if (fakes.response) return fakes.response;
     if (url.pathname === OPERATOR_INVITE_PATH && request.method === "POST") {
       const { link, sql } = await operatorInvite();
       await env.DB.prepare(sql).run();
       return new Response(link);
     }
-    const withFake = { ...devEnv(env), KENNI_FAKE: fakeKenniFetcher(env.KENNI_ISSUER) };
-    return worker.fetch(request, withFake, ctx);
+    return worker.fetch(request, { ...devEnv(env), ...fakes.env }, ctx);
   },
 } satisfies ExportedHandler<Env>;

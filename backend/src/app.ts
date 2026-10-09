@@ -5,6 +5,7 @@ import {
   deleteAccount,
   deviceForToken,
   clearPushToken,
+  linkIdentity,
   me,
   registerDevice,
   revokeDevice,
@@ -21,6 +22,7 @@ import {
   clearPushTokenRoute,
   deleteAccountRoute,
   getMeRoute,
+  linkIdentityRoute,
   registerDeviceRoute,
   revokeDeviceRoute,
   setPushTokenRoute,
@@ -37,8 +39,14 @@ import { block, blockedByAny, blockList, unblock } from "./blocks.ts";
 import { fromBase64, toBase64 } from "./bytes.ts";
 import { belowFloor, CLIENT_HEADER } from "./client-version.ts";
 import { checkSend } from "./conversations.ts";
-import { conversation, inbox, kenni, minClientVersions, withinLimit } from "./env/index.ts";
-import { redeem, signInConfig } from "./identity.ts";
+import {
+  conversation,
+  identityProvider,
+  inbox,
+  minClientVersions,
+  withinLimit,
+} from "./env/index.ts";
+import { authorized, signInConfig, unavailable } from "./identity.ts";
 import { inviteLink, resolveInvite, revokeInvite, rotateInvite } from "./invites.ts";
 import { claim, ownsLeaf, upload } from "./key-packages.ts";
 import { linkHost } from "./link.ts";
@@ -119,30 +127,26 @@ export function createApp() {
   // Sign-in (decision 0019). Routes are registered in the order
   // api/openapi.json lists them.
   app.openapi(signInConfigRoute, async (c) => {
+    const name = c.req.valid("query").provider ?? "kenni";
+    const provider = identityProvider(c.env, name);
+    if (!provider) return c.json({ error: unavailable(name) }, 503);
     try {
-      return c.json(await signInConfig(kenni(c.env)), 200);
+      return c.json(await signInConfig(provider), 200);
     } catch {
-      log("sign_in.failed", { code: "discovery_failed" });
-      return c.json({ error: "kenni_unavailable" }, 503);
+      log("sign_in.failed", { code: "discovery_failed", provider: name });
+      return c.json({ error: unavailable(name) }, 503);
     }
   });
 
   app.openapi(registerDeviceRoute, async (c) => {
     const body = c.req.valid("json");
-    const provider = kenni(c.env);
-    // Only the app's own redirect: a code issued for any other is not this app's.
-    if (body.redirectUri !== provider.redirectUri) return c.json({ error: "sign_in_failed" }, 403);
-    const person = await redeem(provider, {
-      code: body.kenniCode,
-      verifier: body.codeVerifier,
-      redirectUri: body.redirectUri,
-      nonce: body.nonce,
-    });
+    const code = body.code ?? body.kenniCode;
+    if (!code) return c.json({ error: "invalid_request" }, 400);
+    const person = await authorized(c.env, { ...body, provider: body.provider ?? "kenni", code });
     if ("error" in person) {
-      log("sign_in.failed", { code: person.error });
-      return person.error === "discovery_failed"
-        ? c.json({ error: "kenni_unavailable" }, 503)
-        : c.json({ error: "sign_in_failed" }, 403);
+      return person.error === "sign_in_failed"
+        ? c.json({ error: person.error }, 403)
+        : c.json({ error: person.error }, 503);
     }
     const registered = await registerDevice(c.env, person.ok, {
       platform: body.platform,
@@ -151,13 +155,29 @@ export function createApp() {
     });
     if ("error" in registered) {
       log("sign_in.failed", { code: registered.error });
-      return registered.error === "invite_required"
-        ? c.json({ error: registered.error }, 403)
-        : c.json({ error: registered.error }, 409);
+      return c.json({ error: registered.error }, 409);
     }
     const { accountId, deviceId } = registered.ok;
-    log("device.registered", { accountId, deviceId });
+    log("device.registered", { accountId, deviceId, provider: person.ok.provider });
     return c.json(registered.ok, 200);
+  });
+
+  app.openapi(linkIdentityRoute, async (c) => {
+    const { accountId } = c.var.device;
+    const body = c.req.valid("json");
+    const person = await authorized(c.env, body);
+    if ("error" in person) {
+      return person.error === "sign_in_failed"
+        ? c.json({ error: person.error }, 403)
+        : c.json({ error: person.error }, 503);
+    }
+    const linked = await linkIdentity(c.env, accountId, person.ok);
+    if ("error" in linked) {
+      log("identity.link_refused", { accountId, code: linked.error, provider: body.provider });
+      return c.json({ error: linked.error }, 409);
+    }
+    log("identity.linked", { accountId, provider: body.provider });
+    return c.body(null, 204);
   });
 
   app.openapi(getMeRoute, async (c) => {

@@ -89,12 +89,35 @@ function appleAppSiteAssociation(env: Env): Response {
   });
 }
 
+/**
+ * Google's redirect (decision 0033). Google refuses a custom scheme for a web
+ * client, so the code comes here and goes on to the app's scheme. Only
+ * `code`, `state` and `error` pass; PKCE makes the code useless without the
+ * verifier the app holds.
+ */
+function googleRedirect(url: URL): Response {
+  const onward = new URLSearchParams();
+  for (const key of ["code", "state", "error"]) {
+    const value = url.searchParams.get(key);
+    if (value !== null) onward.set(key, value);
+  }
+  return new Response(null, {
+    status: 302,
+    headers: {
+      location: `${ids.store.urlScheme}:/google?${onward}`,
+      "cache-control": "no-store",
+      "referrer-policy": "no-referrer",
+    },
+  });
+}
+
 /** The link host's routes, outside the API and its contract. */
 export function linkHost() {
   const host = new Hono<{ Bindings: Env }>();
   host.get(`${ids.hosts.linkPathPrefix}:token`, (c) =>
     invitePage(c.env, c.req.param("token") ?? ""),
   );
+  host.get("/oauth/google", (c) => googleRedirect(new URL(c.req.url)));
   host.get("/.well-known/assetlinks.json", (c) => assetLinks(c.env));
   host.get("/.well-known/apple-app-site-association", (c) => appleAppSiteAssociation(c.env));
   return host;

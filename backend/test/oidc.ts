@@ -3,8 +3,9 @@ import { randomToken, tokenHash } from "../src/accounts.ts";
 import { base64url, toBase64 } from "../src/bytes.ts";
 import { worker } from "./main.ts";
 
-// Signing in as an app does (decision 0019): the authorize URL from
-// /v1/sign-in, the fake Kenni's redirect, then POST /v1/devices.
+// Signing in as an app does (decisions 0019, 0033): the authorize URL from
+// /v1/sign-in, the fake provider's redirect, then POST /v1/devices, or
+// POST /v1/me/identities to link.
 
 const BASE = "https://spjall.test";
 const fetch = (path: string, init?: RequestInit) => worker.fetch(`${BASE}${path}`, init);
@@ -60,21 +61,33 @@ async function challenge(verifier: string) {
   return base64url(new Uint8Array(digest));
 }
 
+let subjects = 0;
+
+/** A new Google subject: opaque, like Google's `sub`. */
+export function newSubject(): string {
+  return `sub${++subjects}${crypto.randomUUID().slice(0, 8)}`;
+}
+
 type SignIn = {
+  /** kenni when left out. */
+  provider?: "kenni" | "google";
   kennitala?: string;
+  /** A Google sign-in's `sub`. */
+  sub?: string;
   name?: string;
   inviteToken?: string;
   /** Merged over the fake's ID-token claims. */
   claims?: Record<string, unknown>;
-  /** Sign the ID token with a key Kenni does not publish, or name no key. */
+  /** Sign the ID token with a key the provider does not publish, or name no key. */
   sign?: "wrong" | "nokid";
   /** What POST /v1/devices is sent, over what the app would send. */
   register?: Record<string, unknown>;
 };
 
-/** The authorization code for a person, as the fake Kenni redirects with it. */
+/** The authorization code for a person, as the fake provider redirects with it. */
 export async function authorize(options: SignIn = {}) {
-  const config = (await (await fetch("/v1/sign-in")).json()) as {
+  const provider = options.provider ?? "kenni";
+  const config = (await (await fetch(`/v1/sign-in?provider=${provider}`)).json()) as {
     authorizationEndpoint: string;
     clientId: string;
     redirectUri: string;
@@ -93,7 +106,8 @@ export async function authorize(options: SignIn = {}) {
     nonce,
     code_challenge: await challenge(verifier),
     code_challenge_method: "S256",
-    login_hint: options.kennitala ?? newKennitala(),
+    login_hint:
+      provider === "kenni" ? (options.kennitala ?? newKennitala()) : (options.sub ?? newSubject()),
   };
   if (options.name !== undefined) params.x_name = options.name;
   if (options.claims) params.x_claims = JSON.stringify(options.claims);
@@ -111,11 +125,14 @@ export async function authorize(options: SignIn = {}) {
   };
 }
 
-/** A whole sign-in: the response of POST /v1/devices. */
+/**
+ * A whole sign-in: the response of POST /v1/devices. Kenni's code goes as
+ * `kenniCode`, as clients before decision 0033 send it; Google's as `code`.
+ */
 export async function signIn(options: SignIn = {}) {
   const { code, verifier, nonce, redirectUri } = await authorize(options);
   const body = {
-    kenniCode: code,
+    ...(options.provider === "google" ? { provider: "google", code } : { kenniCode: code }),
     codeVerifier: verifier,
     redirectUri,
     nonce,
@@ -132,5 +149,22 @@ export function registerWith(body: unknown) {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
+  });
+}
+
+/** Links a person's identity to the account `auth` acts as: POST /v1/me/identities. */
+export async function link(auth: Record<string, string>, options: SignIn = {}) {
+  const { code, verifier, nonce, redirectUri } = await authorize(options);
+  return fetch("/v1/me/identities", {
+    method: "POST",
+    headers: { "content-type": "application/json", ...auth },
+    body: JSON.stringify({
+      provider: options.provider ?? "kenni",
+      code,
+      codeVerifier: verifier,
+      redirectUri,
+      nonce,
+      ...options.register,
+    }),
   });
 }

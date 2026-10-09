@@ -12,26 +12,50 @@ import {
 
 // Accounts and devices (decision 0014).
 
+const UNAVAILABLE = errorResponse(
+  "kenni_unavailable: Kenni could not be reached; google_unavailable: Google could not be reached or is not configured",
+);
+
+/** The ways to sign in (decision 0033). */
+const Provider = z.enum(["google", "kenni"]).openapi("IdentityProviderName");
+
+/** What a browser sign-in hands back: the code and the PKCE and nonce that bind it. */
+const authorization = {
+  codeVerifier: z
+    .string()
+    .regex(/^[A-Za-z0-9._~-]{43,128}$/)
+    .openapi({ description: "The PKCE verifier for that code" }),
+  redirectUri: z.string().min(1).max(512).openapi({
+    description: "The redirect the code was issued for: SignInConfig.redirectUri",
+  }),
+  nonce: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{22,128}$/)
+    .openapi({ description: "The nonce the app put in the authorization request" }),
+};
+
+const Code = z.string().min(1).max(2048);
+
 const RegisterDevice = z
   .object({
-    kenniCode: z.string().min(1).max(2048).openapi({ description: "The Kenni authorization code" }),
-    codeVerifier: z
-      .string()
-      .regex(/^[A-Za-z0-9._~-]{43,128}$/)
-      .openapi({ description: "The PKCE verifier for that code" }),
-    redirectUri: z.string().min(1).max(512).openapi({
-      description: "The redirect the code was issued for: SignInConfig.redirectUri",
+    provider: Provider.optional().openapi({
+      description: "Who issued the code; kenni when left out (decision 0033)",
     }),
-    nonce: z
-      .string()
-      .regex(/^[A-Za-z0-9_-]{22,128}$/)
-      .openapi({ description: "The nonce the app put in the authorization request" }),
+    code: Code.optional().openapi({
+      description: "The authorization code; this or kenniCode is required",
+    }),
+    kenniCode: Code.optional().openapi({
+      description: "The Kenni authorization code, as clients before 0.3.0 send it",
+      deprecated: true,
+    }),
+    ...authorization,
     platform: z.enum(["android", "ios"]),
     deviceKey: base64(32).openapi({
       description: "The device's Ed25519 public key, also its MLS credential key",
     }),
     inviteToken: z.string().min(1).max(256).optional().openapi({
-      description: "Required when the Kenni sign-in has no account yet (decision 0009)",
+      description:
+        "The invite link that brought this person, recorded on a new account (decision 0033)",
     }),
   })
   .openapi("RegisterDevice");
@@ -49,7 +73,9 @@ export const registerDeviceRoute = createRoute({
   path: "/v1/devices",
   operationId: "registerDevice",
   tags: ["devices"],
-  summary: "Sign in with Kenni and register this device",
+  summary: "Sign in with Google or Kenni and register this device",
+  description:
+    "A sign-in whose identity no account holds makes a new account; no invite is needed (decision 0033).",
   request: {
     body: { required: true, content: { "application/json": { schema: RegisterDevice } } },
   },
@@ -60,12 +86,12 @@ export const registerDeviceRoute = createRoute({
     },
     ...INVALID,
     403: errorResponse(
-      "sign_in_failed: Kenni refused the code or its ID token did not verify; invite_required: no account for this person and no live invite",
+      "sign_in_failed: the provider refused the code, its ID token did not verify, or Google has not verified the address",
     ),
     409: errorResponse("device_key_taken: another device registered this device key"),
     ...TOO_OLD,
     ...RATE_LIMITED,
-    503: errorResponse("kenni_unavailable: Kenni could not be reached"),
+    503: UNAVAILABLE,
   },
 });
 
@@ -85,15 +111,49 @@ export const signInConfigRoute = createRoute({
   path: "/v1/sign-in",
   operationId: "getSignInConfig",
   tags: ["devices"],
-  summary: "Where the app sends a person to sign in with Kenni (decision 0019)",
+  summary: "Where the app sends a person to sign in (decisions 0019, 0033)",
+  request: {
+    query: z.object({
+      provider: Provider.optional().openapi({ description: "kenni when left out" }),
+    }),
+  },
   responses: {
     200: {
       description: "The authorization request's parts; the app adds PKCE, state and nonce",
       content: { "application/json": { schema: SignInConfig } },
     },
+    ...INVALID,
     ...TOO_OLD,
     ...RATE_LIMITED,
-    503: errorResponse("kenni_unavailable: Kenni could not be reached"),
+    503: UNAVAILABLE,
+  },
+});
+
+const LinkIdentity = z
+  .object({ provider: Provider, code: Code, ...authorization })
+  .openapi("LinkIdentity");
+
+export const linkIdentityRoute = createRoute({
+  method: "post",
+  path: "/v1/me/identities",
+  operationId: "linkIdentity",
+  tags: ["devices"],
+  summary: "Link another way to sign in to this account (decision 0033)",
+  description:
+    "Linking Kenni marks the account verified and gives it the registry's name. Linking the identity this account already holds succeeds again.",
+  security: DEVICE_TOKEN,
+  request: {
+    body: { required: true, content: { "application/json": { schema: LinkIdentity } } },
+  },
+  responses: {
+    204: { description: "The account holds the identity" },
+    ...INVALID,
+    ...AUTHED,
+    403: errorResponse("sign_in_failed: as registerDevice"),
+    409: errorResponse(
+      "identity_taken: another account holds this identity; already_linked: this account holds another identity of this provider",
+    ),
+    503: UNAVAILABLE,
   },
 });
 
@@ -183,7 +243,9 @@ export const deleteAccountRoute = createRoute({
 const Me = z
   .object({
     accountId: OpaqueId,
-    name: z.string().nullable().openapi({ description: "The registry name, if Kenni gave one" }),
+    name: z.string().nullable().openapi({
+      description: "The registry name once Kenni is linked, else the name Google gave",
+    }),
     verified: z.boolean().openapi({ description: "Kenni vouched for the name (decision 0009)" }),
     devices: z.array(
       z.object({

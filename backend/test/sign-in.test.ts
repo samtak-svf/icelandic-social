@@ -3,13 +3,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { registerDevice } from "../src/accounts.ts";
 import { ApiError } from "../src/api/common.ts";
 import { fromBase64, toBase64 } from "../src/bytes.ts";
-import { authorize, invite, newKennitala, registerWith, signIn } from "./kenni.ts";
+import { authorize, invite, newKennitala, registerWith, signIn } from "./oidc.ts";
 import { device } from "./support.ts";
 import { worker } from "./main.ts";
 
-// Sign-in with Kenni (decision 0019): the Worker redeems the app's code at
-// Kenni, verifies the ID token itself, and gives the person a device on their
-// account, or on a new one when an invite lets them in.
+// Sign-in with Kenni (decisions 0019, 0033): the Worker redeems the app's
+// code at Kenni, verifies the ID token itself, and gives the person a device
+// on their account, or on a new verified one. Google is google-sign-in.test.ts.
 
 const BASE = "https://spjall.test";
 const fetch = (path: string, init?: RequestInit) => worker.fetch(`${BASE}${path}`, init);
@@ -45,10 +45,13 @@ describe("GET /v1/sign-in", () => {
 });
 
 describe("POST /v1/devices", () => {
-  it("refuses a new person who has no invite", async () => {
-    const response = await signIn();
-    expect(response.status).toBe(403);
-    expect(await errorOf(response)).toBe("invite_required");
+  it("makes a verified account for a new person who has no invite", async () => {
+    const me = await registered(await signIn({ name: "Prófun Prófsdóttir" }));
+    expect(await account(me.accountId)).toMatchObject({
+      name: "Prófun Prófsdóttir",
+      verified: 1,
+      invitedBy: null,
+    });
   });
 
   it("makes an account with the registry's name and the mark for an invited person", async () => {
@@ -95,7 +98,7 @@ describe("POST /v1/devices", () => {
     const again = (under: Env) =>
       registerDevice(
         under,
-        { nationalId: kennitala, name: null },
+        { provider: "kenni", subject: kennitala, name: null },
         {
           platform: "android",
           deviceKey: crypto.getRandomValues(new Uint8Array(32)),
@@ -103,10 +106,14 @@ describe("POST /v1/devices", () => {
         },
       );
 
-    // A new key alone orphans the account; that is why the previous one stays.
-    expect(await again(keys({ KENNITALA_HMAC_KEY: "rotated-test-key" }))).toEqual({
-      error: "invite_required",
-    });
+    // A new key alone orphans the account, and the person gets a second one;
+    // that is why the previous key stays. The orphan's twin is removed again.
+    const orphaned = await again(keys({ KENNITALA_HMAC_KEY: "rotated-test-key" }));
+    if (!("ok" in orphaned)) throw new Error("no account");
+    expect(orphaned.ok.accountId).not.toBe(first.accountId);
+    await env.DB.prepare("DELETE FROM accounts WHERE account_id = ?")
+      .bind(orphaned.ok.accountId)
+      .run();
     const rotating = keys({
       KENNITALA_HMAC_KEY: "rotated-test-key",
       KENNITALA_HMAC_KEY_PREVIOUS: "test-only-kennitala-key",
@@ -155,23 +162,21 @@ describe("POST /v1/devices", () => {
     expect(response.status).not.toBe(401);
   });
 
-  it("refuses a revoked invite", async () => {
-    const response = await signIn({ inviteToken: await invite({ revoked: true }) });
-    expect(response.status).toBe(403);
-    expect(await errorOf(response)).toBe("invite_required");
+  it("records no inviter for a revoked invite, or one that does not exist", async () => {
+    const inviter = (await device()).accountId;
+    for (const inviteToken of [await invite({ inviter, revoked: true }), "no-such-invite-token"]) {
+      const me = await registered(await signIn({ inviteToken }));
+      expect(await account(me.accountId)).toMatchObject({ invitedBy: null });
+    }
   });
 
-  it("refuses an invite that does not exist", async () => {
-    const response = await signIn({ inviteToken: "no-such-invite-token" });
-    expect(response.status).toBe(403);
-  });
-
-  it("lets one person in on a single-use invite, and nobody after", async () => {
-    const token = await invite({ singleUse: true });
-    await registered(await signIn({ inviteToken: token }));
-    const second = await signIn({ inviteToken: token });
-    expect(second.status).toBe(403);
-    expect(await errorOf(second)).toBe("invite_required");
+  it("spends a single-use invite on the first person, and records nobody after", async () => {
+    const inviter = (await device()).accountId;
+    const token = await invite({ inviter, singleUse: true });
+    const first = await registered(await signIn({ inviteToken: token }));
+    expect(await account(first.accountId)).toMatchObject({ invitedBy: inviter });
+    const second = await registered(await signIn({ inviteToken: token }));
+    expect(await account(second.accountId)).toMatchObject({ invitedBy: null });
   });
 
   it("lets many people in on a personal invite", async () => {
@@ -244,7 +249,6 @@ describe("POST /v1/devices", () => {
       const me = await registered(await signIn({ kennitala, name, inviteToken: await invite() }));
       const lines = spy.mock.calls.map(([line]) => String(line));
       expect(lines.some((line) => line.includes("device.registered"))).toBe(true);
-      expect(lines.some((line) => line.includes("invite_required"))).toBe(true);
       for (const line of lines) {
         expect(line).not.toContain(kennitala);
         expect(line).not.toContain("Leynd");

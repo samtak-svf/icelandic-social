@@ -57,6 +57,7 @@ describe("the delivery contract", () => {
       "post /v1/conversations/{conversationId}/messages sendMessage",
       "post /v1/devices registerDevice",
       "post /v1/key-packages uploadKeyPackages",
+      "post /v1/me/identities linkIdentity",
       "post /v1/me/invite rotateInvite",
       "put /v1/blocks/{accountId} blockAccount",
       "put /v1/conversations/{conversationId}/media/{mediaId} putMedia",

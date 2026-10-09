@@ -15,6 +15,8 @@ type Fields = {
   status: number;
   durationMs: number;
   code: string;
+  /** Which way a person signed in (decision 0033), never who. */
+  provider: "kenni" | "google";
 };
 
 const ALLOWED: ReadonlySet<string> = new Set<keyof Fields>([
@@ -27,6 +29,7 @@ const ALLOWED: ReadonlySet<string> = new Set<keyof Fields>([
   "status",
   "durationMs",
   "code",
+  "provider",
 ]);
 const EVENT = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/;
 const OPAQUE = /^[A-Za-z0-9_:-]{1,128}$/;

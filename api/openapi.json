@@ -259,7 +259,7 @@
         "properties": {
           "error": {
             "type": "string",
-            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, invite_required, device_key_taken, kenni_unavailable, rate_limited, blocked, conflict, too_large, not_this_device, no_key_packages, client_too_old, claim_names_departed",
+            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, not_this_device, no_key_packages, client_too_old, claim_names_departed",
             "example": "unauthorized"
           },
           "minVersion": {
@@ -271,6 +271,14 @@
         "required": [
           "error"
         ]
+      },
+      "IdentityProviderName": {
+        "type": "string",
+        "enum": [
+          "google",
+          "kenni"
+        ],
+        "description": "kenni when left out"
       },
       "RegisteredDevice": {
         "type": "object",
@@ -299,11 +307,28 @@
       "RegisterDevice": {
         "type": "object",
         "properties": {
+          "provider": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IdentityProviderName"
+              },
+              {
+                "description": "Who issued the code; kenni when left out (decision 0033)"
+              }
+            ]
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048,
+            "description": "The authorization code; this or kenniCode is required"
+          },
           "kenniCode": {
             "type": "string",
             "minLength": 1,
             "maxLength": 2048,
-            "description": "The Kenni authorization code"
+            "description": "The Kenni authorization code, as clients before 0.3.0 send it",
+            "deprecated": true
           },
           "codeVerifier": {
             "type": "string",
@@ -339,16 +364,51 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 256,
-            "description": "Required when the Kenni sign-in has no account yet (decision 0009)"
+            "description": "The invite link that brought this person, recorded on a new account (decision 0033)"
           }
         },
         "required": [
-          "kenniCode",
           "codeVerifier",
           "redirectUri",
           "nonce",
           "platform",
           "deviceKey"
+        ]
+      },
+      "LinkIdentity": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/IdentityProviderName"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "codeVerifier": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._~-]{43,128}$",
+            "description": "The PKCE verifier for that code"
+          },
+          "redirectUri": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "description": "The redirect the code was issued for: SignInConfig.redirectUri"
+          },
+          "nonce": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{22,128}$",
+            "description": "The nonce the app put in the authorization request"
+          }
+        },
+        "required": [
+          "provider",
+          "code",
+          "codeVerifier",
+          "redirectUri",
+          "nonce"
         ]
       },
       "Me": {
@@ -364,7 +424,7 @@
               "string",
               "null"
             ],
-            "description": "The registry name, if Kenni gave one"
+            "description": "The registry name once Kenni is linked, else the name Google gave"
           },
           "verified": {
             "type": "boolean",
@@ -876,7 +936,18 @@
         "tags": [
           "devices"
         ],
-        "summary": "Where the app sends a person to sign in with Kenni (decision 0019)",
+        "summary": "Where the app sends a person to sign in (decisions 0019, 0033)",
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/IdentityProviderName"
+            },
+            "required": false,
+            "description": "kenni when left out",
+            "name": "provider",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "The authorization request's parts; the app adds PKCE, state and nonce",
@@ -884,6 +955,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SignInConfig"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
@@ -909,7 +990,7 @@
             }
           },
           "503": {
-            "description": "kenni_unavailable: Kenni could not be reached",
+            "description": "kenni_unavailable: Kenni could not be reached; google_unavailable: Google could not be reached or is not configured",
             "content": {
               "application/json": {
                 "schema": {
@@ -927,7 +1008,8 @@
         "tags": [
           "devices"
         ],
-        "summary": "Sign in with Kenni and register this device",
+        "summary": "Sign in with Google or Kenni and register this device",
+        "description": "A sign-in whose identity no account holds makes a new account; no invite is needed (decision 0033).",
         "requestBody": {
           "required": true,
           "content": {
@@ -960,7 +1042,7 @@
             }
           },
           "403": {
-            "description": "sign_in_failed: Kenni refused the code or its ID token did not verify; invite_required: no account for this person and no live invite",
+            "description": "sign_in_failed: the provider refused the code, its ID token did not verify, or Google has not verified the address",
             "content": {
               "application/json": {
                 "schema": {
@@ -1000,7 +1082,97 @@
             }
           },
           "503": {
-            "description": "kenni_unavailable: Kenni could not be reached",
+            "description": "kenni_unavailable: Kenni could not be reached; google_unavailable: Google could not be reached or is not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/identities": {
+      "post": {
+        "operationId": "linkIdentity",
+        "tags": [
+          "devices"
+        ],
+        "summary": "Link another way to sign in to this account (decision 0033)",
+        "description": "Linking Kenni marks the account verified and gives it the registry's name. Linking the identity this account already holds succeeds again.",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkIdentity"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "The account holds the identity"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "sign_in_failed: as registerDevice",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "identity_taken: another account holds this identity; already_linked: this account holds another identity of this provider",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "kenni_unavailable: Kenni could not be reached; google_unavailable: Google could not be reached or is not configured",
             "content": {
               "application/json": {
                 "schema": {

@@ -24,7 +24,7 @@ export const ApiError = z
   .object({
     error: z.string().openapi({
       description:
-        "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, invite_required, device_key_taken, kenni_unavailable, rate_limited, blocked, conflict, too_large, not_this_device, no_key_packages, client_too_old, claim_names_departed",
+        "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, not_this_device, no_key_packages, client_too_old, claim_names_departed",
       example: "unauthorized",
     }),
     minVersion: z.string().optional().openapi({

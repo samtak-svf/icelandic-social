@@ -16,9 +16,11 @@ export default defineConfig({
         durableObjects: await ownDurableObjects(),
         bindings: {
           TEST_MIGRATIONS: await readD1Migrations("./migrations"),
-          // The fake Kenni that test/worker.ts serves, and a key for the
-          // kennitala HMAC that guards nothing real.
+          // The fake Kenni and Google that test/worker.ts serves, and a key
+          // for the HMAC that guards nothing real.
           KENNI_ISSUER: "https://spjall.test/dev/kenni",
+          GOOGLE_ISSUER: "https://spjall.test/dev/google",
+          GOOGLE_CLIENT_ID: "fake-google-client",
           KENNITALA_HMAC_KEY: "test-only-kennitala-key",
         },
       },

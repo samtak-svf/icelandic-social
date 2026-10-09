@@ -1,5 +1,5 @@
 import { base64url } from "./bytes.ts";
-import { conversation, db, inbox, kennitalaKeys } from "./env/index.ts";
+import { conversation, db, inbox, kennitalaKeys, type ProviderName } from "./env/index.ts";
 import type { Person } from "./identity.ts";
 import { deleteAccountMedia } from "./media.ts";
 
@@ -72,11 +72,11 @@ export function randomToken(prefix: string): string {
 }
 
 /**
- * HMAC-SHA256 of a kennitala under a Worker secret, hex: the only form a
- * kennitala is kept in (decisions 0014, 0019). Equal for the same person, so it
- * finds their account; useless without the key.
+ * HMAC-SHA256 under a Worker secret, hex: the only form a kennitala or a
+ * Google subject is kept in (decisions 0014, 0019, 0033). Equal for the same
+ * person, so it finds their account; useless without the key.
  */
-async function kennitalaHmac(secret: string, nationalId: string): Promise<string> {
+async function hmacHex(secret: string, input: string): Promise<string> {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     "raw",
@@ -85,8 +85,80 @@ async function kennitalaHmac(secret: string, nationalId: string): Promise<string
     false,
     ["sign"],
   );
-  const mac = await crypto.subtle.sign("HMAC", key, encoder.encode(nationalId));
+  const mac = await crypto.subtle.sign("HMAC", key, encoder.encode(input));
   return [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * The person's subject HMAC under the current key, and under the previous
+ * one while a rotation runs (else the same). A Kenni subject is the bare
+ * kennitala, so rows from before decision 0033 still match; a Google one is
+ * prefixed, so the two can never collide.
+ */
+async function subjectHmacs(env: Env, person: Person) {
+  const keys = kennitalaKeys(env);
+  const input = person.provider === "kenni" ? person.subject : `google:${person.subject}`;
+  const hmac = await hmacHex(keys.key, input);
+  const old = keys.previous ? await hmacHex(keys.previous, input) : hmac;
+  return { hmac, old };
+}
+
+type Hmacs = Awaited<ReturnType<typeof subjectHmacs>>;
+
+/**
+ * The account that holds this identity, under either key. A Kenni identity
+ * is also looked up in accounts.kennitala_hmac, which old code still wrote
+ * between migration 0008 and the deploy after it.
+ */
+function holder(env: Env, provider: ProviderName, { hmac, old }: Hmacs) {
+  const legacy =
+    provider === "kenni"
+      ? " UNION ALL SELECT account_id FROM accounts WHERE kennitala_hmac IN (?2, ?3)"
+      : "";
+  return db(env)
+    .prepare(
+      `SELECT account_id AS accountId FROM identities
+        WHERE provider = ?1 AND subject_hmac IN (?2, ?3)${legacy} LIMIT 1`,
+    )
+    .bind(provider, hmac, old)
+    .first<{ accountId: string }>();
+}
+
+/**
+ * Writes the identity under the current key for this account, replacing a
+ * row under the previous key, so a rotation completes as people sign in. A
+ * Kenni identity is written to accounts.kennitala_hmac as well, so the code
+ * before decision 0033 still finds it if a deploy is rolled back.
+ */
+function holdIdentity(
+  env: Env,
+  accountId: string,
+  provider: ProviderName,
+  { hmac, old }: Hmacs,
+  now: number,
+  orIgnore: "OR IGNORE" | "" = "OR IGNORE",
+) {
+  const statements = [
+    db(env)
+      .prepare(
+        "DELETE FROM identities WHERE provider = ? AND subject_hmac = ? AND subject_hmac != ? AND account_id = ?",
+      )
+      .bind(provider, old, hmac, accountId),
+    db(env)
+      .prepare(
+        `INSERT ${orIgnore} INTO identities (provider, subject_hmac, account_id, created_at)
+         VALUES (?, ?, ?, ?)`,
+      )
+      .bind(provider, hmac, accountId, now),
+  ];
+  if (provider === "kenni") {
+    statements.push(
+      db(env)
+        .prepare("UPDATE accounts SET kennitala_hmac = ? WHERE account_id = ?")
+        .bind(hmac, accountId),
+    );
+  }
+  return statements;
 }
 
 export type NewDevice = {
@@ -96,20 +168,19 @@ export type NewDevice = {
 };
 
 /**
- * Gives the person a new device: on their account if the kennitala HMAC has
- * one, else on a new account, which needs a live invite (decision 0019). An
- * account found under the previous key moves to the current one here, so a
- * rotation completes as people sign in.
- * Refuses a device key some device already has; migration 0003's index
- * holds that under a race too.
+ * Gives the person a new device: on the account that holds their identity,
+ * else on a new account (decision 0033: no invite needed). A Kenni sign-in
+ * makes a verified account, a Google one an unverified account with Google's
+ * name. A live invite, when given, is recorded as `invited_by` and spent if
+ * single-use. Refuses a device key some device already has; migration
+ * 0003's index holds that under a race too.
  */
 export async function registerDevice(
   env: Env,
   person: Person,
   device: NewDevice,
 ): Promise<
-  | { ok: { accountId: string; deviceId: string; token: string } }
-  | { error: "invite_required" | "device_key_taken" }
+  { ok: { accountId: string; deviceId: string; token: string } } | { error: "device_key_taken" }
 > {
   const taken = await db(env)
     .prepare("SELECT 1 FROM devices WHERE device_key = ?")
@@ -117,9 +188,7 @@ export async function registerDevice(
     .first();
   if (taken) return { error: "device_key_taken" };
 
-  const keys = kennitalaKeys(env);
-  const hmac = await kennitalaHmac(keys.key, person.nationalId);
-  const old = keys.previous ? await kennitalaHmac(keys.previous, person.nationalId) : hmac;
+  const hmacs = await subjectHmacs(env, person);
   const deviceId = randomToken("d_");
   const token = randomToken("dt_");
   const hash = await tokenHash(token);
@@ -132,58 +201,93 @@ export async function registerDevice(
       )
       .bind(deviceId, accountId, device.platform, device.deviceKey, hash, now);
 
-  const existing = () =>
-    db(env)
-      .prepare("SELECT account_id AS accountId FROM accounts WHERE kennitala_hmac IN (?, ?)")
-      .bind(hmac, old)
-      .first<{ accountId: string }>();
-
-  const known = await existing();
+  const known = await holder(env, person.provider, hmacs);
   if (known) {
     await db(env).batch([
-      db(env)
-        .prepare("UPDATE accounts SET kennitala_hmac = ? WHERE account_id = ?")
-        .bind(hmac, known.accountId),
+      ...holdIdentity(env, known.accountId, person.provider, hmacs, now),
       insertDevice(known.accountId),
     ]);
     return { ok: { accountId: known.accountId, deviceId, token } };
   }
-  if (!device.inviteToken) return { error: "invite_required" };
 
-  // One transaction: the account is written only if the invite is live, a
-  // single-use invite is spent by it, and the device's foreign key fails the
-  // whole batch when no account was written. So an invite that dies between
-  // the read and the write lets nobody in.
+  // One transaction: the account, its identity and its device. The identity's
+  // primary key fails the whole batch when the same person signed in at the
+  // same moment, and this device then joins the account that request made.
   const accountId = randomToken("a_");
-  const invite = await tokenHash(device.inviteToken);
+  const kenni = person.provider === "kenni";
+  const invite = device.inviteToken ? await tokenHash(device.inviteToken) : null;
   try {
     await db(env).batch([
       db(env)
         .prepare(
           `INSERT INTO accounts (account_id, display_name, verified, kennitala_hmac, created_at, invited_by)
-           SELECT ?, ?, 1, ?, ?, inviter_account_id
-             FROM invites WHERE token_hash = ? AND revoked_at IS NULL`,
+           VALUES (?, ?, ?, ?, ?,
+             (SELECT inviter_account_id FROM invites WHERE token_hash = ? AND revoked_at IS NULL))`,
         )
-        .bind(accountId, person.name, hmac, now, invite),
+        .bind(accountId, person.name, kenni ? 1 : 0, kenni ? hmacs.hmac : null, now, invite),
       db(env)
         .prepare(
           "UPDATE invites SET revoked_at = ? WHERE token_hash = ? AND single_use = 1 AND revoked_at IS NULL",
         )
         .bind(now, invite),
+      ...holdIdentity(env, accountId, person.provider, hmacs, now, ""),
       insertDevice(accountId),
     ]);
   } catch (error) {
-    // The same person signing in twice at once: the other request made the
-    // account, so this device joins it.
-    const raced = await existing();
-    if (raced) {
-      await insertDevice(raced.accountId).run();
-      return { ok: { accountId: raced.accountId, deviceId, token } };
-    }
-    if (String(error).includes("FOREIGN KEY")) return { error: "invite_required" };
-    throw error;
+    const raced = await holder(env, person.provider, hmacs);
+    if (!raced) throw error;
+    await insertDevice(raced.accountId).run();
+    return { ok: { accountId: raced.accountId, deviceId, token } };
   }
   return { ok: { accountId, deviceId, token } };
+}
+
+/**
+ * Links an identity to this account (decision 0033). Linking Kenni makes the
+ * account verified and gives it the registry's name, when Kenni gave one.
+ * Linking the identity the account already holds succeeds again. Refuses an
+ * identity another account holds, and a second identity of one provider.
+ */
+export async function linkIdentity(
+  env: Env,
+  accountId: string,
+  person: Person,
+): Promise<{ ok: true } | { error: "identity_taken" | "already_linked" }> {
+  const hmacs = await subjectHmacs(env, person);
+  const owner = await holder(env, person.provider, hmacs);
+  if (owner && owner.accountId !== accountId) return { error: "identity_taken" };
+  if (!owner) {
+    const other = await db(env)
+      .prepare("SELECT 1 FROM identities WHERE account_id = ? AND provider = ?")
+      .bind(accountId, person.provider)
+      .first();
+    if (other) return { error: "already_linked" };
+  }
+  const verify =
+    person.provider === "kenni"
+      ? [
+          db(env)
+            .prepare(
+              "UPDATE accounts SET verified = 1, display_name = COALESCE(?, display_name) WHERE account_id = ?",
+            )
+            .bind(person.name, accountId),
+        ]
+      : [];
+  try {
+    await db(env).batch([
+      ...holdIdentity(env, accountId, person.provider, hmacs, Date.now(), owner ? "OR IGNORE" : ""),
+      ...verify,
+    ]);
+  } catch (error) {
+    // Another request linked this identity, or another of this provider,
+    // between the read and the write.
+    const raced = await holder(env, person.provider, hmacs);
+    if (raced?.accountId === accountId) return { ok: true };
+    if (raced) return { error: "identity_taken" };
+    if (String(error).includes("UNIQUE")) return { error: "already_linked" };
+    throw error;
+  }
+  return { ok: true };
 }
 
 /** The account as its owner sees it: name, mark and active devices. */

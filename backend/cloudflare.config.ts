@@ -46,6 +46,15 @@ export default defineConfig(({ mode }) => ({
           ? "http://127.0.0.1:8787/dev/kenni"
           : "https://idp.kenni.is/innskraning.is",
       ),
+      // Google, the first way to sign in (decision 0033): its issuer, and the
+      // web client the consent screen belongs to. The client id is not a
+      // frozen id; the apps get it from /v1/sign-in. Empty until the client
+      // exists: Google sign-in then answers 503 and Kenni still works. The
+      // interop run signs in with dev/worker.ts's fake Google.
+      GOOGLE_ISSUER: bindings.text(
+        mode === "interop" ? "http://127.0.0.1:8787/dev/google" : "https://accounts.google.com",
+      ),
+      GOOGLE_CLIENT_ID: bindings.text(mode === "interop" ? "fake-google-client" : ""),
       // The link host's association files (decision 0019). Empty until the
       // store accounts exist: the Play app-signing certificate's SHA-256
       // fingerprints, comma-separated, and the Apple team of is.samtak.spjall.
@@ -76,6 +85,7 @@ export default defineConfig(({ mode }) => ({
       //   KENNITALA_HMAC_KEY   the key of the kennitala HMAC (decisions 0014, 0019)
       //   KENNITALA_HMAC_KEY_PREVIOUS  the key before it, only while a rotation runs
       //   KENNI_CLIENT_SECRET  only if Kenni ever issues a confidential client
+      //   GOOGLE_CLIENT_SECRET the Google web client's secret (decision 0033)
       //   FCM_SERVICE_ACCOUNT  the FCM service account's JSON key (decision 0025)
       //   APNS_KEY_P8          the APNs auth key (.p8), and APNS_KEY_ID its key id
     },

@@ -45,6 +45,12 @@ export const SECRETS = [
     when: "never",
     reason: "the Kenni client is public (decision 0019)",
   },
+  {
+    name: "GOOGLE_CLIENT_SECRET",
+    vault: "google-client-secret",
+    when: "later",
+    reason: "set once the Google web client exists (decision 0033)",
+  },
   { name: "FCM_SERVICE_ACCOUNT", vault: "fcm-service-account", when: "now" },
   {
     name: "APNS_KEY_P8",

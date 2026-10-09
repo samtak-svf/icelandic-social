@@ -4,7 +4,7 @@ import ids from "../../identifiers/ids.json" with { type: "json" };
 import { ApiError } from "../src/api/common.ts";
 import { brandStrings } from "../src/brand.gen.ts";
 import { operatorInvite } from "../scripts/invite-operator.ts";
-import { invite, signIn } from "./kenni.ts";
+import { invite, signIn } from "./oidc.ts";
 import { worker } from "./main.ts";
 
 // Invites and the link host (decision 0019): one personal link per account,
@@ -72,15 +72,24 @@ describe("POST /v1/me/invite", () => {
     expect(row?.invitedBy).toBe(alice.accountId);
   });
 
-  it("revokes the link before, so only the newest lets anyone in", async () => {
+  it("revokes the link before, so only the newest names its owner", async () => {
     const alice = await person();
     const old = await rotate(alice);
     const fresh = await rotate(alice);
     expect(fresh.token).not.toBe(old.token);
-    const refused = await signIn({ inviteToken: old.token });
-    expect(refused.status).toBe(403);
-    expect(await errorOf(refused)).toBe("invite_required");
-    expect((await signIn({ inviteToken: fresh.token })).status).toBe(200);
+    const invitedBy = async (token: string) => {
+      const response = await signIn({ inviteToken: token });
+      expect(response.status).toBe(200);
+      const { accountId } = (await response.json()) as Registered;
+      const row = await env.DB.prepare(
+        "SELECT invited_by AS invitedBy FROM accounts WHERE account_id = ?",
+      )
+        .bind(accountId)
+        .first<{ invitedBy: string | null }>();
+      return row?.invitedBy;
+    };
+    expect(await invitedBy(old.token)).toBeNull();
+    expect(await invitedBy(fresh.token)).toBe(alice.accountId);
   });
 
   it("keeps only the token's hash", async () => {
@@ -97,7 +106,6 @@ describe("DELETE /v1/me/invite", () => {
     const { token } = await rotate(alice);
     const response = await fetch("/v1/me/invite", { method: "DELETE", headers: alice.auth });
     expect(response.status).toBe(204);
-    expect((await signIn({ inviteToken: token })).status).toBe(403);
     expect((await fetch(`/v1/invites/${token}`)).status).toBe(404);
   });
 });
@@ -135,7 +143,7 @@ describe("GET /v1/invites/{token}", () => {
 });
 
 describe("the operator's invite", () => {
-  it("lets exactly one person in, and names no inviter", async () => {
+  it("is spent by the first person, and names no inviter", async () => {
     const { token, link, sql } = await operatorInvite();
     expect(link.endsWith(`/l/${token}`)).toBe(true);
     expect(sql).not.toContain(token);
@@ -147,7 +155,7 @@ describe("the operator's invite", () => {
       .bind(first.accountId)
       .first<{ invitedBy: string | null }>();
     expect(row?.invitedBy).toBeNull();
-    expect((await signIn({ inviteToken: token })).status).toBe(403);
+    expect((await fetch(`/v1/invites/${token}`)).status).toBe(404);
   });
 });
 
