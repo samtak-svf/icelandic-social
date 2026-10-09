@@ -117,7 +117,8 @@ impl Transport for Http {
         let mut call = self
             .agent
             .put(&url)
-            .header("content-type", "application/octet-stream");
+            .header("content-type", "application/octet-stream")
+            .header("spjall-client", request.client.unwrap_or_default());
         if let Some(token) = request.bearer {
             call = call.header("authorization", format!("Bearer {token}"));
         }
@@ -129,7 +130,10 @@ impl Transport for Http {
 
     fn download(&self, request: Request, to: &Path) -> Result<Response, Unreachable> {
         let url = format!("{}{}", self.base, request.path);
-        let mut call = self.agent.get(&url);
+        let mut call = self
+            .agent
+            .get(&url)
+            .header("spjall-client", request.client.unwrap_or_default());
         if let Some(token) = request.bearer {
             call = call.header("authorization", format!("Bearer {token}"));
         }
@@ -219,6 +223,11 @@ impl Phone {
             format!("Bearer {}", client.device_token().unwrap())
                 .parse()
                 .unwrap(),
+        );
+        // The app sets Spjall-Client on the upgrade itself, as on every request.
+        request.headers_mut().insert(
+            "spjall-client",
+            client.client_header().unwrap().parse().unwrap(),
         );
         let (socket, _) = tungstenite::connect(request).unwrap();
         if let MaybeTlsStream::Plain(stream) = socket.get_ref() {
