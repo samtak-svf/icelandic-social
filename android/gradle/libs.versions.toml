@@ -2,17 +2,17 @@
 # so one Gradle cache serves both on the shared runners.
 
 [versions]
-agp = "9.2.0"
-kotlin = "2.3.21"
+agp = "9.4.1"
+kotlin = "2.4.20"
 ktlint = "14.2.0"
 detekt = "2.0.0-alpha.6"
 openapiGenerator = "7.25.0"
-coreKtx = "1.18.0"
+coreKtx = "1.19.1"
 exifinterface = "1.4.2"
 lifecycle = "2.10.0"
-navigation = "2.9.8"
+navigation = "2.10.2"
 activityCompose = "1.13.0"
-composeBom = "2026.04.01"
+composeBom = "2026.09.00"
 serialization = "1.11.0"
 coroutines = "1.11.0"
 okhttp = "5.5.0"
