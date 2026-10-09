@@ -21,8 +21,9 @@
   credential key (decision 0002), and its platform. The server answers with `accountId`,
   `deviceId` and an opaque **device token**. The token is stored hashed in D1 and is shown
   once.
-- **Every other route and the WebSocket upgrade carry `Authorization: Bearer <device
-token>`.** There is no account-level session and no refresh token. A token lives until its
+- **Every other route and the WebSocket upgrade carry
+  `Authorization: Bearer <device token>`.** There is no account-level session and no refresh
+  token. A token lives until its
   device is revoked (`DELETE /v1/devices/{deviceId}`, from that device or another device of
   the same account) or the account is deleted.
 - **One `Inbox` Durable Object per account** (`inbox(env, accountId)` in `backend/src/env/`).

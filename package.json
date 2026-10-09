@@ -32,7 +32,7 @@
     "ajv": "^8",
     "knip": "^6",
     "lefthook": "^2",
-    "oxfmt": "^0.70",
+    "oxfmt": "^0.72",
     "oxlint": "^1",
     "typescript": "^7",
     "vitest": "^5"
