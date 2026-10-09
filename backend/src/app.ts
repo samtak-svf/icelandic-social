@@ -13,6 +13,7 @@ import {
 import { blockRoute, getAccountRoute, listBlocksRoute, unblockRoute } from "./api/accounts.ts";
 import {
   createConversationRoute,
+  getConversationDevicesRoute,
   getGroupInfoRoute,
   getWelcomeRoute,
 } from "./api/conversations.ts";
@@ -34,6 +35,7 @@ import { listMessagesRoute, sendMessageRoute } from "./api/messages.ts";
 import { SOCKET_ACCOUNT, SOCKET_DEVICE, socketRoute } from "./api/socket.ts";
 import { block, blockedByAny, blockList, unblock } from "./blocks.ts";
 import { fromBase64, toBase64 } from "./bytes.ts";
+import { belowFloor, CLIENT_HEADER } from "./client-version.ts";
 import { checkSend } from "./conversations.ts";
 import { conversation, inbox, kenni, minClientVersions, withinLimit } from "./env/index.ts";
 import { redeem, signInConfig } from "./identity.ts";
@@ -42,7 +44,7 @@ import { claim, ownsLeaf, upload } from "./key-packages.ts";
 import { linkHost } from "./link.ts";
 import { log } from "./log.ts";
 import { getMedia, MAX_CIPHERTEXT, putMedia } from "./media.ts";
-import { profile } from "./profiles.ts";
+import { activeDevices, profile } from "./profiles.ts";
 
 /** OpenAPI 3.1 document metadata; the routes and schemas come from src/api/. */
 export const DOCUMENT_INFO = {
@@ -60,6 +62,13 @@ const PUBLIC = [/^GET \/v1\/sign-in$/, /^POST \/v1\/devices$/, /^GET \/v1\/invit
 
 const isPublic = (c: { req: { method: string; path: string } }) =>
   PUBLIC.some((pattern) => pattern.test(`${c.req.method} ${c.req.path}`));
+
+/** Every /v1 route refuses a build below its platform's floor (decision 0030). */
+const clientFloor = createMiddleware<AppEnv>(async (c, next) => {
+  const refusal = belowFloor(c.env, c.req.header(CLIENT_HEADER));
+  if (!refusal) return next();
+  return refusal.error === "invalid_request" ? c.json(refusal, 400) : c.json(refusal, 426);
+});
 
 /**
  * The public routes are limited per address. Cloudflare sets
@@ -99,6 +108,7 @@ export function createApp() {
     scheme: "bearer",
     description: "The device token from registerDevice (decision 0014)",
   });
+  app.use("/v1/*", clientFloor);
   app.use("/v1/*", publicLimit);
   app.use("/v1/*", deviceToken);
 
@@ -239,6 +249,7 @@ export function createApp() {
       case "not_a_member":
         return c.json({ error: result.error }, 403);
       case "epoch_conflict":
+      case "claim_names_departed":
         return c.json({ error: result.error }, 409);
       default:
         return c.json({ error: "invalid_request" }, 400);
@@ -296,6 +307,17 @@ export function createApp() {
         : c.json({ error: "not_found" }, 404);
     }
     return c.json({ seq: result.ok.seq, groupInfo: toBase64(result.ok.groupInfo) }, 200);
+  });
+
+  app.openapi(getConversationDevicesRoute, async (c) => {
+    const { conversationId } = c.req.valid("param");
+    const result = await conversation(c.env, conversationId).roster(c.var.device.accountId);
+    if ("error" in result) {
+      return result.error === "not_a_member"
+        ? c.json({ error: result.error }, 403)
+        : c.json({ error: "not_found" }, 404);
+    }
+    return c.json({ accounts: await activeDevices(c.env, result.ok) }, 200);
   });
 
   // Media (decision 0023): the roster check is the Conversation DO's, as for messages.

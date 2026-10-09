@@ -1,5 +1,13 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import { AUTHED, ConversationId, DEVICE_TOKEN, errorResponse, INVALID, MEMBER } from "./common.ts";
+import {
+  AUTHED,
+  ConversationId,
+  DEVICE_TOKEN,
+  errorResponse,
+  INVALID,
+  MEMBER,
+  OpaqueId,
+} from "./common.ts";
 import { Ciphertext, params, Seq } from "./messages.ts";
 
 // A conversation on the server is a roster of accounts under the MLS group id
@@ -79,6 +87,33 @@ export const getGroupInfoRoute = createRoute({
     200: {
       description: "The GroupInfo of the current epoch (decision 0021)",
       content: { "application/json": { schema: GroupInfo } },
+    },
+    ...INVALID,
+    ...MEMBER,
+    ...AUTHED,
+  },
+});
+
+const ConversationDevices = z
+  .object({
+    accounts: z
+      .array(z.object({ accountId: OpaqueId, deviceIds: z.array(OpaqueId) }))
+      .openapi({ description: "Every roster account, with the devices the server still serves" }),
+  })
+  .openapi("ConversationDevices");
+
+export const getConversationDevicesRoute = createRoute({
+  method: "get",
+  path: "/v1/conversations/{conversationId}/devices",
+  operationId: "getConversationDevices",
+  tags: ["conversations"],
+  summary: "The active devices of each member account, to remove any other leaf (decision 0028)",
+  security: DEVICE_TOKEN,
+  request: { params },
+  responses: {
+    200: {
+      description: "A deleted account's entry has no devices",
+      content: { "application/json": { schema: ConversationDevices } },
     },
     ...INVALID,
     ...MEMBER,

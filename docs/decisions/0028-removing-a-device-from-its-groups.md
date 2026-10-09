@@ -1,6 +1,8 @@
 # 0028. A device the server no longer serves is removed from its groups
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the backend (the conversation devices route and the
+  departed-account refusal); the core's part (removing devices and the device check) designed, not
+  yet implemented
 - Date: 2026-10-09
 - Decided by: the maintainer, approving the plan that acted on architecture review #100
 - Amends: [0014](0014-accounts-devices-and-auth.md) (who removes a deleted account's leaves),

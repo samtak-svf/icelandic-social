@@ -1,6 +1,7 @@
 import { createRoute, z } from "@hono/zod-openapi";
 import {
   AUTHED,
+  TOO_OLD,
   base64,
   DEVICE_TOKEN,
   errorResponse,
@@ -62,6 +63,7 @@ export const registerDeviceRoute = createRoute({
       "sign_in_failed: Kenni refused the code or its ID token did not verify; invite_required: no account for this person and no live invite",
     ),
     409: errorResponse("device_key_taken: another device registered this device key"),
+    ...TOO_OLD,
     ...RATE_LIMITED,
     503: errorResponse("kenni_unavailable: Kenni could not be reached"),
   },
@@ -89,6 +91,7 @@ export const signInConfigRoute = createRoute({
       description: "The authorization request's parts; the app adds PKCE, state and nonce",
       content: { "application/json": { schema: SignInConfig } },
     },
+    ...TOO_OLD,
     ...RATE_LIMITED,
     503: errorResponse("kenni_unavailable: Kenni could not be reached"),
   },

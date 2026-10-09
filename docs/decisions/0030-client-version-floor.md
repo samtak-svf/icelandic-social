@@ -1,6 +1,7 @@
 # 0030. Every request names its client version, and the Worker enforces the floor
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the backend (the floor middleware); the core's header and the
+  apps' update screen designed, not yet implemented
 - Date: 2026-10-09
 - Decided by: the maintainer, approving the plan that acted on architecture review #100
 - Amends: [0002](0002-mls-end-to-end-encryption.md) (how `minClientVersion` forces an upgrade)

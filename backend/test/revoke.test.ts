@@ -139,6 +139,37 @@ describe("deleting an account", () => {
     expect(invited).toEqual({ invited_by: null });
   });
 
+  it("reaches a conversation its inbox never listed", async () => {
+    const phone = await device();
+    const friend = await device();
+    const conversationId = `c_${crypto.randomUUID()}`;
+    const eu = euEnv(env);
+    const stub = conversation(eu, conversationId);
+    await stub.create(friend.accountId, conversationId);
+    await stub.send({
+      account: friend.accountId,
+      clientMsgId: "add",
+      ciphertext: Uint8Array.of(1),
+      urgent: false,
+      commitEpoch: 0,
+      roster: [friend.accountId, phone.accountId],
+    });
+    // The notification never reached the inbox: only the roster copy in D1
+    // knows of the conversation.
+    await runInDurableObject(stub, async (_, state) => {
+      await state.storage.deleteAlarm();
+      state.storage.sql.exec("DELETE FROM pending_notify");
+    });
+    await inbox(eu, phone.accountId).wipe();
+    expect(await inbox(eu, phone.accountId).latest()).toEqual({});
+    expect(await stub.roster(friend.accountId)).toEqual({
+      ok: [friend.accountId, phone.accountId],
+    });
+
+    expect((await remove("/v1/me", phone.auth)).status).toBe(204);
+    expect(await stub.roster(friend.accountId)).toEqual({ ok: [friend.accountId] });
+  });
+
   it("leaves an inbox that still takes a late notify", async () => {
     const phone = await device();
     expect((await remove("/v1/me", phone.auth)).status).toBe(204);

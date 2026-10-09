@@ -24,8 +24,12 @@ export const ApiError = z
   .object({
     error: z.string().openapi({
       description:
-        "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, invite_required, device_key_taken, kenni_unavailable, rate_limited, blocked, conflict, too_large, not_this_device, no_key_packages",
+        "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, invite_required, device_key_taken, kenni_unavailable, rate_limited, blocked, conflict, too_large, not_this_device, no_key_packages, client_too_old, claim_names_departed",
       example: "unauthorized",
+    }),
+    minVersion: z.string().optional().openapi({
+      description: "With client_too_old: the lowest version this platform accepts (decision 0030)",
+      example: "0.2.0",
     }),
   })
   .openapi("ApiError");
@@ -35,9 +39,17 @@ const error = (description: string) => ({
   content: { "application/json": { schema: ApiError } },
 });
 
+/** What every /v1 route answers a build below its platform's floor (decision 0030). */
+export const TOO_OLD = {
+  426: error(
+    "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+  ),
+};
+
 /** The answers every route that needs a device token can give. */
 export const AUTHED = {
   401: error("No device token, or one that is not valid"),
+  ...TOO_OLD,
 };
 
 export const INVALID = { 400: error("The request does not match the schema") };

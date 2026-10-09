@@ -1,7 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { inbox } from "../env/index.ts";
 import { log } from "../log.ts";
-import { copyRoster } from "../profiles.ts";
+import { copyRoster, dropRoster } from "../profiles.ts";
 
 /** Stored ciphertext and Welcomes are deleted this long after they were stored (decision 0015). */
 export const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -34,7 +34,8 @@ type Refusal =
   | "conversation_exists"
   | "epoch_conflict"
   | "welcome_not_a_member"
-  | "external_changes_roster";
+  | "external_changes_roster"
+  | "claim_names_departed";
 
 export type Result<T> = { ok: T } | { error: Refusal };
 
@@ -45,7 +46,9 @@ export type Result<T> = { ok: T } | { error: Refusal };
  * Welcomes that travel with commits, the latest commit's GroupInfo, and
  * ciphertext kept for 30 days. A stored
  * message and the notifications it owes the members are one transaction;
- * the alarm delivers the notifications and deletes what has expired.
+ * the alarm delivers the notifications and deletes what has expired. A
+ * deleted account is kept out of every later claim (0028), and a
+ * conversation whose roster empties is deleted whole.
  */
 export class Conversation extends DurableObject<Env> {
   private readonly sql: SqlStorage;
@@ -53,6 +56,10 @@ export class Conversation extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     this.sql = ctx.storage.sql;
+    this.schema();
+  }
+
+  private schema(): void {
     this.sql.exec(`
       CREATE TABLE IF NOT EXISTS meta (
         id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -94,6 +101,7 @@ export class Conversation extends DurableObject<Env> {
         seq INTEGER NOT NULL,
         message BLOB NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS departed (account TEXT PRIMARY KEY, at INTEGER NOT NULL);
     `);
   }
 
@@ -212,8 +220,9 @@ export class Conversation extends DurableObject<Env> {
    * commit must be made on the current epoch: the one after the last stored
    * commit's (decision 0015), and epoch 0, the group's own, for the first
    * (decision 0020). An external commit adds a device of a member account,
-   * so it keeps the roster (0021). The epoch is checked first: a join that
-   * lost its epoch must hear so, to make its commit again on the new one.
+   * so it keeps the roster (0021). A claim never names a deleted account
+   * (0028). The epoch is checked first: a join that lost its epoch must hear
+   * so, to make its commit again on the new one.
    */
   private refusal(input: SendInput, before: string[], after: Set<string>): Refusal | null {
     if (input.commitEpoch !== undefined) {
@@ -226,7 +235,12 @@ export class Conversation extends DurableObject<Env> {
       return "external_changes_roster";
     }
     if (input.welcome?.to.some((account) => !after.has(account))) return "welcome_not_a_member";
+    if (input.roster?.some((account) => this.hasDeparted(account))) return "claim_names_departed";
     return null;
+  }
+
+  private hasDeparted(account: string): boolean {
+    return this.sql.exec("SELECT 1 FROM departed WHERE account = ?", account).toArray().length > 0;
   }
 
   /**
@@ -362,18 +376,44 @@ export class Conversation extends DurableObject<Env> {
     return { ok: null };
   }
 
+  /** The roster, for a member to check its accounts' devices against (decision 0028). */
+  async roster(account: string): Promise<Result<string[]>> {
+    if (!this.meta()) return { error: "not_found" };
+    return this.isMember(account) ? { ok: this.members() } : { error: "not_a_member" };
+  }
+
   /** Whether the account is in the roster now: who may store or fetch media (decision 0023). */
   async member(account: string): Promise<Result<null>> {
     if (!this.meta()) return { error: "not_found" };
     return this.isMember(account) ? { ok: null } : { error: "not_a_member" };
   }
 
-  /** Drops an account that no longer exists (decision 0014, `DELETE /v1/me`). */
+  /**
+   * Drops an account that no longer exists (decision 0014, `DELETE /v1/me`)
+   * and keeps it out of every later claim (0028); account ids are never
+   * reused. The members' devices remove its leaves. A conversation left with
+   * no members is deleted, with its roster copy in D1.
+   */
   async removeAccount(account: string): Promise<void> {
-    this.sql.exec("DELETE FROM roster WHERE account = ?", account);
-    this.sql.exec("DELETE FROM removed WHERE account = ?", account);
-    this.sql.exec("DELETE FROM pending_notify WHERE account = ?", account);
-    this.sql.exec("DELETE FROM urgent WHERE account = ?", account);
+    const meta = this.meta();
+    if (!meta) return;
+    this.ctx.storage.transactionSync(() => {
+      this.sql.exec("DELETE FROM roster WHERE account = ?", account);
+      this.sql.exec("DELETE FROM removed WHERE account = ?", account);
+      this.sql.exec("DELETE FROM pending_notify WHERE account = ?", account);
+      this.sql.exec("DELETE FROM urgent WHERE account = ?", account);
+      this.sql.exec(
+        "INSERT OR IGNORE INTO departed (account, at) VALUES (?, ?)",
+        account,
+        Date.now(),
+      );
+    });
+    if (this.members().length) return;
+    await dropRoster(this.env, meta.conversationId);
+    await this.ctx.storage.deleteAlarm();
+    await this.ctx.storage.deleteAll();
+    this.schema();
+    log("conversation.deleted", { conversationId: meta.conversationId });
   }
 
   /**
@@ -428,6 +468,11 @@ export class Conversation extends DurableObject<Env> {
       expired,
     );
     this.sql.exec("DELETE FROM welcomes WHERE stored_at < ?", expired);
+    // A commit whose message has expired is needed only for the next epoch.
+    this.sql.exec(
+      `DELETE FROM commits WHERE seq NOT IN (SELECT seq FROM messages)
+         AND epoch < (SELECT max(epoch) FROM commits)`,
+    );
 
     try {
       await this.copyRoster();

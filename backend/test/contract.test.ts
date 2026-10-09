@@ -43,6 +43,7 @@ describe("the delivery contract", () => {
       "get /health getHealth",
       "get /v1/accounts/{accountId} getAccount",
       "get /v1/blocks listBlocks",
+      "get /v1/conversations/{conversationId}/devices getConversationDevices",
       "get /v1/conversations/{conversationId}/group-info getGroupInfo",
       "get /v1/conversations/{conversationId}/media/{mediaId} getMedia",
       "get /v1/conversations/{conversationId}/messages listMessages",

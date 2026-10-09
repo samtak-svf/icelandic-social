@@ -18,7 +18,9 @@ export const socketRoute = createRoute({
   "x-ws-frames": { $ref: "#/components/schemas/WsFrame" },
   responses: {
     101: { description: "Switching to the WebSocket" },
-    426: errorResponse("upgrade_required: not a WebSocket upgrade"),
     ...AUTHED,
+    426: errorResponse(
+      "upgrade_required: not a WebSocket upgrade; client_too_old: below the floor (decision 0030)",
+    ),
   },
 });

@@ -224,4 +224,67 @@ describe("a conversation", () => {
       expect(await state.storage.getAlarm()).toBeGreaterThan(Date.now() + RETENTION_MS - 60_000);
     });
   });
+
+  it("drops commits whose messages expired, and still knows the next epoch", async () => {
+    const { stub } = await created("a");
+    await stub.send(message("a", "c0", { commitEpoch: 0 }));
+    await stub.send(message("a", "c1", { commitEpoch: 1 }));
+    await runInDurableObject(stub, (_, state) => {
+      state.storage.sql.exec("UPDATE messages SET stored_at = ?", Date.now() - RETENTION_MS - 1);
+    });
+    await runDurableObjectAlarm(stub);
+    const epochs = await runInDurableObject(stub, (_, state) =>
+      state.storage.sql.exec<{ epoch: number }>("SELECT epoch FROM commits").toArray(),
+    );
+    expect(epochs).toEqual([{ epoch: 1 }]);
+    expect(await stub.send(message("a", "c1b", { commitEpoch: 1 }))).toEqual({
+      error: "epoch_conflict",
+    });
+    expect(await stub.send(message("a", "c2", { commitEpoch: 2 }))).toEqual({ ok: { seq: 3 } });
+  });
+
+  it("keeps a deleted account out of every later claim (0028)", async () => {
+    const { stub } = await created("a");
+    await stub.send(message("a", "add", { commitEpoch: 0, roster: ["a", "b"] }));
+    await stub.removeAccount("b");
+    expect(await stub.roster("a")).toEqual({ ok: ["a"] });
+
+    // A commit on a stale epoch hears of its epoch first.
+    expect(await stub.send(message("a", "old", { commitEpoch: 0, roster: ["a", "b"] }))).toEqual({
+      error: "epoch_conflict",
+    });
+    expect(await stub.send(message("a", "back", { commitEpoch: 1, roster: ["a", "b"] }))).toEqual({
+      error: "claim_names_departed",
+    });
+    expect(await stub.send(message("a", "fix", { commitEpoch: 1, roster: ["a"] }))).toEqual({
+      ok: { seq: 2 },
+    });
+  });
+
+  it("answers its roster to members only", async () => {
+    const { stub } = await created("a");
+    expect(await stub.roster("a")).toEqual({ ok: ["a"] });
+    expect(await stub.roster("x")).toEqual({ error: "not_a_member" });
+    expect(await conversation(testEnv, "conv_never").roster("a")).toEqual({ error: "not_found" });
+  });
+
+  it("is deleted whole when its last member's account is", async () => {
+    const { id, stub } = await created("a");
+    await stub.send(message("a", "m1"));
+    await stub.removeAccount("a");
+    expect(await stub.member("a")).toEqual({ error: "not_found" });
+    expect(await stub.list("a", 0, 10)).toEqual({ error: "not_found" });
+    await runInDurableObject(stub, async (_, state) => {
+      expect(await state.storage.getAlarm()).toBeNull();
+      expect(state.storage.sql.exec("SELECT count(*) AS n FROM messages").one().n).toBe(0);
+    });
+    const copy = await env.DB.prepare(
+      "SELECT count(*) AS n FROM conversation_rosters WHERE conversation_id = ?",
+    )
+      .bind(id)
+      .first<{ n: number }>();
+    expect(copy?.n).toBe(0);
+    // The id can be created afresh.
+    expect(await stub.create("c", id)).toEqual({ ok: null });
+  });
 });

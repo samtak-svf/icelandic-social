@@ -243,8 +243,14 @@ export async function deleteAccount(env: Env, accountId: string): Promise<void> 
     .bind(Date.now(), accountId)
     .run();
   const box = inbox(env, accountId);
-  const conversations = Object.keys(await box.latest());
-  await Promise.all(conversations.map((id) => conversation(env, id).removeAccount(accountId)));
+  // The inbox lists a conversation only once something was stored in it;
+  // the roster copy also has those it was added to and never heard from.
+  const { results: copied } = await db(env)
+    .prepare("SELECT conversation_id AS id FROM conversation_members WHERE account_id = ?")
+    .bind(accountId)
+    .all<{ id: string }>();
+  const conversations = new Set([...Object.keys(await box.latest()), ...copied.map((r) => r.id)]);
+  await Promise.all([...conversations].map((id) => conversation(env, id).removeAccount(accountId)));
   await box.wipe();
   await deleteAccountMedia(env, accountId);
   // Devices, KeyPackages, invites, roster copies and blocks cascade;
