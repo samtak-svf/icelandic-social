@@ -5,7 +5,8 @@
   amended by [0020](0020-membership-bound-to-commits.md).
 - Date: 2026-10-06
 - Decided by: Guðröður, approving the plan for the delivery backend
-- Amended by: [0025](0025-push-without-ids.md) (the outbox is re-armed and sends one push per device)
+- Amended by: [0025](0025-push-without-ids.md) (the outbox is re-armed and sends one push per device),
+  [0029](0029-key-package-lifetime.md) (what `{available}` counts, and the claim)
 - Amends: [0015](0015-delivery-protocol.md) (how members, Welcomes and KeyPackages reach the server)
 
 ## Decision

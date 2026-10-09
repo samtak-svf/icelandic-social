@@ -7,6 +7,7 @@
   sockets and the delivery cursors.
 - Date: 2026-10-06
 - Decided by: Guðröður, approving the plan that acted on the phase-0 review
+- Amended by: [0028](0028-removing-a-device-from-its-groups.md) (who removes a deleted account's leaves)
 
 ## Decision
 
@@ -39,7 +40,8 @@ token>`.** There is no account-level session and no refresh token. A token lives
 
   What the server cannot delete: messages already delivered to other people's devices, and
   the account's membership in other people's MLS groups. Those groups' remaining devices
-  issue the removal commits when they next see the account is gone. The dialog in the app
+  issue the removal commits when they next see the account is gone, as
+  [0028](0028-removing-a-device-from-its-groups.md) says. The dialog in the app
   says both (decision 0009).
 
 ## Why

@@ -5,6 +5,7 @@
 - Decided by: the maintainer, approving the plan that followed the architecture review
 - Amends: [0017](0017-conversations-on-the-server.md) (how the roster moves, and what a
   `403 not_a_member` means)
+- Amended by: [0028](0028-removing-a-device-from-its-groups.md) (the claim when a sibling device leaves)
 
 ## Decision
 

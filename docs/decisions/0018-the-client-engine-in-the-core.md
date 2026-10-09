@@ -9,6 +9,7 @@
 - Builds on: [0002](0002-mls-end-to-end-encryption.md), [0006](0006-device-local-history.md),
   [0015](0015-delivery-protocol.md), [0016](0016-one-encrypted-store-owned-by-the-core.md),
   [0017](0017-conversations-on-the-server.md)
+- Amended by: [0028](0028-removing-a-device-from-its-groups.md) (device-level group changes)
 
 ## Decision
 
@@ -104,7 +105,8 @@ uses it without ever losing, repeating or forking anything.
 ## Not in this decision
 
 A new device of an existing account joining that account's groups; rejoining a stale
-conversation from its stored GroupInfo; leaving a group; updating one's own leaf for
+conversation from its stored GroupInfo; removing a device the server no longer serves
+([0028](0028-removing-a-device-from-its-groups.md)); leaving a group; updating one's own leaf for
 post-compromise security; attachments. Each gets its own decision when it is built.
 
 ## Why

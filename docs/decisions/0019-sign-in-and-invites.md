@@ -6,6 +6,7 @@
 - Builds on: [0008](0008-no-pii-in-logs.md), [0009](0009-v1-scope.md),
   [0014](0014-accounts-devices-and-auth.md), [0018](0018-the-client-engine-in-the-core.md)
 - Amends: 0018, where the app told the core its ids after registering; the core now registers
+- Amended by: [0028](0028-removing-a-device-from-its-groups.md) (a revoked device's leaves)
 
 ## Decision
 
@@ -97,8 +98,8 @@ The Worker also serves the link host:
 ### The end of a device, and of an account
 
 - **Revoking a device** stamps `revoked_at`, so its token fails at once. It also deletes its
-  KeyPackages and closes its socket through the `Inbox`. Its leaves stay in its groups until a
-  member removes them; 0018 already leaves device-level group changes to a later decision.
+  KeyPackages and closes its socket through the `Inbox`. Its leaves are removed from its
+  groups by a member's commit, as [0028](0028-removing-a-device-from-its-groups.md) says.
 - **`DELETE /v1/me` keeps 0014's order:**
   1. every device token is revoked;
   2. each conversation the `Inbox` knows drops the account from its roster

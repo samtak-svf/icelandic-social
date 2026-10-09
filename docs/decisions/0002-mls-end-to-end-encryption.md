@@ -7,7 +7,8 @@
   device as [0017](0017-conversations-on-the-server.md) says, not through the `Inbox` DO.
 - Date: 2026-10-05
 - Decided by: Guðröður
-- Amended by: [0025](0025-push-without-ids.md) (a push carries no ids)
+- Amended by: [0025](0025-push-without-ids.md) (a push carries no ids),
+  [0029](0029-key-package-lifetime.md) (the replenish threshold), [0030](0030-client-version-floor.md) (how the version floor is enforced)
 
 ## Decision
 
