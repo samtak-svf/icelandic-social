@@ -29,8 +29,12 @@ create a missing one without it, and a jurisdiction can never be added afterward
    `samtak-spjall-cloudflare-jurisdiction-token` and `samtak-spjall-cloudflare-deploy-token`.
 
 3. `KENNITALA_HMAC_KEY`: 32 random bytes as hex, made straight into the vault as
-   `samtak-spjall-kennitala-hmac-key` and never printed. **It is never rotated**: accounts are
-   found by HMAC(kennitala), so a new key orphans every one of them.
+   `samtak-spjall-kennitala-hmac-key` and never printed. Accounts are found by HMAC(kennitala),
+   so a new key on its own orphans every one of them. To rotate it (an exposed key, a
+   departing operator), put the old value as `KENNITALA_HMAC_KEY_PREVIOUS` and a new one as
+   `KENNITALA_HMAC_KEY`. A person's row moves to the new key when they next sign in, the only
+   time the Worker sees a kennitala. A row that has not moved still matches the old key, so
+   the previous key stays set for as long as such an account may come back.
 
 ## Every deploy
 

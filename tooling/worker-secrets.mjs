@@ -28,9 +28,16 @@ import { readJson, ROOT } from "./lib/repo.mjs";
 
 /** @type {Secret[]} the vault name is without the prefix from ids.json */
 export const SECRETS = [
-  // The HMAC key of kennitölur (decisions 0014, 0019). Never rotated: every
-  // account is looked up by HMAC(kennitala), so a new key orphans them all.
+  // The HMAC key of kennitölur (decisions 0014, 0019). Every account is looked
+  // up by HMAC(kennitala), so a rotation keeps the old key as the previous one
+  // while rows move at sign-in (backend/README.md).
   { name: "KENNITALA_HMAC_KEY", vault: "kennitala-hmac-key", when: "now" },
+  {
+    name: "KENNITALA_HMAC_KEY_PREVIOUS",
+    vault: "kennitala-hmac-key-previous",
+    when: "later",
+    reason: "set only while the kennitala HMAC key is rotated",
+  },
   {
     name: "KENNI_CLIENT_SECRET",
     vault: null,

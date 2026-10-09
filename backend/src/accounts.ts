@@ -1,5 +1,5 @@
 import { base64url } from "./bytes.ts";
-import { conversation, db, inbox, kennitalaKey } from "./env/index.ts";
+import { conversation, db, inbox, kennitalaKeys } from "./env/index.ts";
 import type { Person } from "./identity.ts";
 import { deleteAccountMedia } from "./media.ts";
 
@@ -72,15 +72,15 @@ export function randomToken(prefix: string): string {
 }
 
 /**
- * HMAC-SHA256 of a kennitala under the Worker secret, hex: the only form a
+ * HMAC-SHA256 of a kennitala under a Worker secret, hex: the only form a
  * kennitala is kept in (decisions 0014, 0019). Equal for the same person, so it
  * finds their account; useless without the key.
  */
-async function kennitalaHmac(env: Env, nationalId: string): Promise<string> {
+async function kennitalaHmac(secret: string, nationalId: string): Promise<string> {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     "raw",
-    encoder.encode(kennitalaKey(env)),
+    encoder.encode(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
@@ -97,7 +97,9 @@ export type NewDevice = {
 
 /**
  * Gives the person a new device: on their account if the kennitala HMAC has
- * one, else on a new account, which needs a live invite (decision 0019).
+ * one, else on a new account, which needs a live invite (decision 0019). An
+ * account found under the previous key moves to the current one here, so a
+ * rotation completes as people sign in.
  * Refuses a device key some device already has; migration 0003's index
  * holds that under a race too.
  */
@@ -115,7 +117,9 @@ export async function registerDevice(
     .first();
   if (taken) return { error: "device_key_taken" };
 
-  const hmac = await kennitalaHmac(env, person.nationalId);
+  const keys = kennitalaKeys(env);
+  const hmac = await kennitalaHmac(keys.key, person.nationalId);
+  const old = keys.previous ? await kennitalaHmac(keys.previous, person.nationalId) : hmac;
   const deviceId = randomToken("d_");
   const token = randomToken("dt_");
   const hash = await tokenHash(token);
@@ -130,13 +134,18 @@ export async function registerDevice(
 
   const existing = () =>
     db(env)
-      .prepare("SELECT account_id AS accountId FROM accounts WHERE kennitala_hmac = ?")
-      .bind(hmac)
+      .prepare("SELECT account_id AS accountId FROM accounts WHERE kennitala_hmac IN (?, ?)")
+      .bind(hmac, old)
       .first<{ accountId: string }>();
 
   const known = await existing();
   if (known) {
-    await insertDevice(known.accountId).run();
+    await db(env).batch([
+      db(env)
+        .prepare("UPDATE accounts SET kennitala_hmac = ? WHERE account_id = ?")
+        .bind(hmac, known.accountId),
+      insertDevice(known.accountId),
+    ]);
     return { ok: { accountId: known.accountId, deviceId, token } };
   }
   if (!device.inviteToken) return { error: "invite_required" };

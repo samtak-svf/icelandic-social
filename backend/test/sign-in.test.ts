@@ -1,5 +1,6 @@
 import { env, exports } from "cloudflare:workers";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { registerDevice } from "../src/accounts.ts";
 import { ApiError } from "../src/api/common.ts";
 import { fromBase64, toBase64 } from "../src/bytes.ts";
 import { authorize, invite, newKennitala, registerWith, signIn } from "./kenni.ts";
@@ -82,6 +83,41 @@ describe("POST /v1/devices", () => {
     expect(second.accountId).toBe(first.accountId);
     expect(second.deviceId).not.toBe(first.deviceId);
     expect(second.token).not.toBe(first.token);
+  });
+
+  it("finds an account under the previous key while a rotation runs, and moves it", async () => {
+    const kennitala = newKennitala();
+    const first = await registered(await signIn({ kennitala, inviteToken: await invite() }));
+    const before = (await account(first.accountId))?.hmac;
+    const keys = (secrets: Record<string, string>) =>
+      Object.assign(Object.create(env) as Env, secrets);
+    const again = (under: Env) =>
+      registerDevice(
+        under,
+        { nationalId: kennitala, name: null },
+        {
+          platform: "android",
+          deviceKey: crypto.getRandomValues(new Uint8Array(32)),
+          inviteToken: undefined,
+        },
+      );
+
+    // A new key alone orphans the account; that is why the previous one stays.
+    expect(await again(keys({ KENNITALA_HMAC_KEY: "rotated-test-key" }))).toEqual({
+      error: "invite_required",
+    });
+    const rotating = keys({
+      KENNITALA_HMAC_KEY: "rotated-test-key",
+      KENNITALA_HMAC_KEY_PREVIOUS: "test-only-kennitala-key",
+    });
+    expect(await again(rotating)).toMatchObject({ ok: { accountId: first.accountId } });
+    const after = (await account(first.accountId))?.hmac;
+    expect(after).toMatch(/^[0-9a-f]{64}$/);
+    expect(after).not.toBe(before);
+    // Moved: the new key finds it with the previous one gone.
+    expect(await again(keys({ KENNITALA_HMAC_KEY: "rotated-test-key" }))).toMatchObject({
+      ok: { accountId: first.accountId },
+    });
   });
 
   it("refuses a device key another device registered, the same person's or not", async () => {

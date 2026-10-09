@@ -56,6 +56,7 @@ export function inbox(env: Env, accountId: string) {
 /** Worker secrets, which `wrangler types` cannot see (wrangler.jsonc names them). */
 type Secrets = {
   KENNITALA_HMAC_KEY?: string;
+  KENNITALA_HMAC_KEY_PREVIOUS?: string;
   KENNI_CLIENT_SECRET?: string;
   FCM_SERVICE_ACCOUNT?: string;
   APNS_KEY_P8?: string;
@@ -95,13 +96,14 @@ export function kenni(env: Env): Kenni {
 }
 
 /**
- * The key of the kennitala HMAC. A Worker without it cannot tell a returning
- * person from a new one, so it refuses to register anyone rather than guess.
+ * The keys of the kennitala HMAC: the current one, and while a rotation runs,
+ * the one before it. A Worker without a key cannot tell a returning person
+ * from a new one, so it refuses to register anyone rather than guess.
  */
-export function kennitalaKey(env: Env): string {
-  const key = (env as Env & Secrets).KENNITALA_HMAC_KEY;
-  if (!key) throw new Error("KENNITALA_HMAC_KEY is not set");
-  return key;
+export function kennitalaKeys(env: Env): { key: string; previous: string | null } {
+  const secrets = env as Env & Secrets;
+  if (!secrets.KENNITALA_HMAC_KEY) throw new Error("KENNITALA_HMAC_KEY is not set");
+  return { key: secrets.KENNITALA_HMAC_KEY, previous: secrets.KENNITALA_HMAC_KEY_PREVIOUS || null };
 }
 
 /** What the association files vouch for: the apps that may open /l/ links. */
