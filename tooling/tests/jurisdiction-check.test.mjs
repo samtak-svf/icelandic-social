@@ -84,6 +84,18 @@ describe("jurisdiction-check, config", () => {
     expect(checkConfig(c, cloudflare).join()).toMatch(/account id/);
   });
 
+  it("refuses a Durable Object class missing from exports, kv storage, or migrations back", () => {
+    const c = config();
+    c.classes = c.classes.filter((k) => k.className !== "Inbox");
+    expect(checkConfig(c, cloudflare).join()).toMatch(/DO classes declared in exports/);
+    const d = config();
+    /** @type {any} */ (d.classes[0]).storage = "legacy-kv";
+    expect(checkConfig(d, cloudflare).join()).toMatch(/storage is "legacy-kv"/);
+    const e = config();
+    e.legacyMigrations = true;
+    expect(checkConfig(e, cloudflare).join()).toMatch(/replaced by `exports`/);
+  });
+
   it("passes the APNs vars of the interim team, and refuses any other pair", () => {
     expect(checkApns(config(), ids)).toEqual([]);
     const c = config();

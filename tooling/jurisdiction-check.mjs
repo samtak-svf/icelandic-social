@@ -28,7 +28,7 @@
 import { readJson } from "./lib/repo.mjs";
 import { readWorkerConfig } from "./lib/worker-config.mjs";
 
-/** Samtak's own Cloudflare account (AGENTS.md § Infrastructure, decision 0032). */
+/** Samtak's own Cloudflare account (AGENTS.md § Infrastructure, decision 0031). */
 export const SAMTAK_ACCOUNT = "af4d4a9c4527ce1e46d0c2dc1165e801";
 const API = "https://api.cloudflare.com/client/v4";
 
@@ -73,6 +73,23 @@ export function checkConfig(config, cloudflare) {
     Object.values(cloudflare.durableObjects).sort().join(","),
     "DO classes",
   );
+
+  // Every live class is declared in `exports` as sqlite, and the legacy
+  // `migrations` array is gone for good (decision 0032): a deploy that
+  // dropped a class from `exports` would delete its namespace.
+  if (config.legacyMigrations) {
+    problems.push("Durable Object `migrations` are replaced by `exports` (decision 0032)");
+  }
+  const live = config.classes.filter((c) => c.state === "created");
+  expect(
+    live
+      .map((c) => c.className)
+      .sort()
+      .join(","),
+    Object.values(cloudflare.durableObjects).sort().join(","),
+    "DO classes declared in exports",
+  );
+  for (const c of live) expect(c.storage, "sqlite", `DO ${c.className} storage`);
 
   if (config.queues) problems.push("Queues have no jurisdiction and are ruled out (decision 0001)");
   return problems;

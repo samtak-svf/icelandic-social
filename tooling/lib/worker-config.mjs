@@ -1,7 +1,7 @@
 // @ts-check
 // The Worker's deploy config, read once for every guard (jurisdiction-check,
 // seam-guard). The guards see this model, never the file's own keys, so moving
-// off Wrangler (decision 0031) changes this file and nothing that checks it.
+// off Wrangler (decision 0032) changes this file and nothing that checks it.
 //
 // A key the model does not know is an error, not a skip: a new kind of binding
 // would otherwise reach the Worker unseen by the seam guard.
@@ -25,6 +25,8 @@ const CONFIG_FILE = "backend/wrangler.jsonc";
  *   d1: { binding: string, name: unknown, id: unknown, migrationsDir: unknown }[],
  *   r2: { binding: string, bucket: unknown, jurisdiction: unknown }[],
  *   durableObjects: { binding: string, className: unknown }[],
+ *   classes: { className: string, storage: unknown, state: unknown }[],
+ *   legacyMigrations: boolean,
  *   rateLimits: { binding: string, namespaceId: unknown }[],
  *   services: { binding: string }[],
  *   vars: Record<string, unknown>,
@@ -34,7 +36,7 @@ const CONFIG_FILE = "backend/wrangler.jsonc";
  */
 
 /** Keys that carry no binding and nothing a guard checks. */
-const INERT = new Set(["$schema", "compatibility_date", "observability", "migrations"]);
+const INERT = new Set(["$schema", "compatibility_date", "observability"]);
 /** Keys the model reads. */
 const READ = new Set([
   "account_id",
@@ -45,6 +47,8 @@ const READ = new Set([
   "d1_databases",
   "r2_buckets",
   "durable_objects",
+  "exports",
+  "migrations",
   "ratelimits",
   "kv_namespaces",
   "services",
@@ -92,6 +96,14 @@ export function normalise(raw, file = CONFIG_FILE) {
       binding: b.name,
       className: b.class_name,
     })),
+    classes: Object.entries(raw.exports ?? {})
+      .filter(([, e]) => /** @type {any} */ (e).type === "durable-object")
+      .map(([className, /** @type {any} */ e]) => ({
+        className,
+        storage: e.storage,
+        state: e.state ?? "created",
+      })),
+    legacyMigrations: raw.migrations !== undefined,
     rateLimits: list(raw.ratelimits).map((/** @type {any} */ l) => ({
       binding: l.name,
       namespaceId: l.namespace_id,

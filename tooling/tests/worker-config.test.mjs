@@ -15,7 +15,11 @@ describe("worker-config", () => {
       d1_databases: [{ binding: "DB", database_name: "d", database_id: "i", migrations_dir: "m" }],
       r2_buckets: [{ binding: "R", bucket_name: "b", jurisdiction: "eu" }],
       durable_objects: { bindings: [{ name: "NS", class_name: "C" }] },
-      migrations: [{ tag: "v1", new_sqlite_classes: ["C"] }],
+      exports: {
+        C: { type: "durable-object", storage: "sqlite" },
+        Old: { type: "durable-object", state: "deleted" },
+        W: { type: "workflow" },
+      },
       ratelimits: [{ name: "L", namespace_id: "1", simple: { limit: 1, period: 60 } }],
       kv_namespaces: [{ binding: "KV", id: "k" }],
       services: [{ binding: "SVC", service: "s" }],
@@ -29,6 +33,11 @@ describe("worker-config", () => {
     expect(config.d1).toEqual([{ binding: "DB", name: "d", id: "i", migrationsDir: "m" }]);
     expect(config.r2).toEqual([{ binding: "R", bucket: "b", jurisdiction: "eu" }]);
     expect(config.durableObjects).toEqual([{ binding: "NS", className: "C" }]);
+    expect(config.classes).toEqual([
+      { className: "C", storage: "sqlite", state: "created" },
+      { className: "Old", storage: undefined, state: "deleted" },
+    ]);
+    expect(config.legacyMigrations).toBe(false);
     expect(config.crons).toEqual(["0 0 * * *"]);
     expect(config.queues).toBe(false);
     expect(configuredNames(config).sort()).toEqual(["DB", "KV", "L", "NS", "R", "SVC", "V"]);

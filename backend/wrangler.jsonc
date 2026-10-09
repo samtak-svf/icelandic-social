@@ -47,7 +47,13 @@
       { "name": "INBOX", "class_name": "Inbox" },
     ],
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Conversation", "Inbox"] }],
+  // Durable Object classes, declared (decision 0032). Both were created as
+  // sqlite classes under the old `migrations` tag v1; the namespaces stay as
+  // they are. There is no way back to `migrations` once this is deployed.
+  "exports": {
+    "Conversation": { "type": "durable-object", "storage": "sqlite" },
+    "Inbox": { "type": "durable-object", "storage": "sqlite" },
+  },
   // Once a day the Worker deletes media past its 30 days (decision 0023). An
   // R2 lifecycle rule on spjall-media is the backstop, made with the bucket:
   //   wrangler r2 bucket lifecycle add spjall-media expire-media --expire-days 31 --jurisdiction eu
