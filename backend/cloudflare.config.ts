@@ -36,8 +36,8 @@ export default defineConfig(({ mode }) => ({
       // The oldest client build that may talk to this Worker, per platform.
       // Raised when a protocol change would break older builds; the apps read
       // it from /health and ask the user to update.
-      MIN_CLIENT_VERSION_ANDROID: bindings.text("0.1.0"),
-      MIN_CLIENT_VERSION_IOS: bindings.text("0.1.0"),
+      MIN_CLIENT_VERSION_ANDROID: bindings.text("0.2.0"),
+      MIN_CLIENT_VERSION_IOS: bindings.text("0.2.0"),
       // Kenni's issuer for this Samtak team (decision 0019). The Worker reads
       // its discovery document; the apps get the authorize endpoint from
       // /v1/sign-in. The interop run signs in with dev/worker.ts's fake Kenni.

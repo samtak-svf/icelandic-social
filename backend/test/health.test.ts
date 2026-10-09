@@ -7,7 +7,7 @@ describe("/health", () => {
     const response = await worker.fetch("https://spjall.test/health");
     expect(response.status).toBe(200);
     const body = Health.parse(await response.json());
-    expect(body.minClientVersion).toEqual({ android: "0.1.0", ios: "0.1.0" });
+    expect(body.minClientVersion).toEqual({ android: "0.2.0", ios: "0.2.0" });
   });
 
   it("is the only route so far", async () => {

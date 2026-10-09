@@ -1,7 +1,8 @@
 # 0030. Every request names its client version, and the Worker enforces the floor
 
 - Status: accepted; implemented in the backend (#104: the floor middleware), the core (0.10.0:
-  the header and `ClientTooOld`) and the apps (0.2.0: the version and the update screen)
+  the header and `ClientTooOld`) and the apps (0.2.0: the version and the update screen); the floor
+  raised to 0.2.0 on both platforms in #124
 - Date: 2026-10-09
 - Decided by: the maintainer, approving the plan that acted on architecture review #100
 - Amends: [0002](0002-mls-end-to-end-encryption.md) (how `minClientVersion` forces an upgrade)
