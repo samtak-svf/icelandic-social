@@ -74,6 +74,7 @@ import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.Tab
 import samtak.spjall.ui.TabBar
+import samtak.spjall.ui.rememberBack
 
 /**
  * The one activity: sign-in, then the two tabs. It has one composable per
@@ -295,12 +296,11 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(model) {
             model.opened.collect { open(it) }
         }
+        val pop = rememberBack(nav)
         ConversationScreen(
             state,
             object : ConversationActions {
-                override fun back() {
-                    nav.popBackStack()
-                }
+                override fun back() = pop()
 
                 override fun draft(text: String) = model.draft(text)
 
