@@ -3,6 +3,8 @@
 - Status: accepted
 - Date: 2026-10-05
 - Decided by: Guðröður (the scope questions); the implementation choices below follow from them
+- Amended by: [0033](0033-google-sign-in-and-kenni-verification.md) (the invite is no longer the beta gate),
+  [0034](0034-fljotid-and-the-wall.md) (Fljótið and the wall: three tabs, finding people)
 - Built on by: [0022](0022-the-conversation-surfaces.md) (the list, the conversation, the
   toggles), [0023](0023-media-as-encrypted-blobs.md) (photos and files),
   [0024](0024-block.md) (block)

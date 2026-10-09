@@ -7,7 +7,8 @@
   sockets and the delivery cursors.
 - Date: 2026-10-06
 - Decided by: Guðröður, approving the plan that acted on the phase-0 review
-- Amended by: [0028](0028-removing-a-device-from-its-groups.md) (who removes a deleted account's leaves)
+- Amended by: [0028](0028-removing-a-device-from-its-groups.md) (who removes a deleted account's leaves),
+  [0033](0033-google-sign-in-and-kenni-verification.md) (an account is created by Google or Kenni, without an invite)
 
 ## Decision
 

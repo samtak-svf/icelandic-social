@@ -6,7 +6,8 @@
 - Builds on: [0008](0008-no-pii-in-logs.md), [0009](0009-v1-scope.md),
   [0014](0014-accounts-devices-and-auth.md), [0018](0018-the-client-engine-in-the-core.md)
 - Amends: 0018, where the app told the core its ids after registering; the core now registers
-- Amended by: [0028](0028-removing-a-device-from-its-groups.md) (a revoked device's leaves)
+- Amended by: [0028](0028-removing-a-device-from-its-groups.md) (a revoked device's leaves),
+  [0033](0033-google-sign-in-and-kenni-verification.md) (Google signs in, Kenni verifies, identities, no invite needed)
 
 ## Decision
 
