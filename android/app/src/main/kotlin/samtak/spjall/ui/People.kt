@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -87,20 +88,17 @@ fun Conversation.avatarKind(): AvatarKind =
         else -> AvatarKind.Unverified
     }
 
-/** The mark of a name Kenni verified: a gold dot, which TalkBack reads as the words. */
+/** The mark of a name Kenni verified: a gold shield with a check, which TalkBack reads as the words. */
 @Composable
 fun VerifiedMark(
     modifier: Modifier = Modifier,
     size: Dp = MARK.dp,
 ) {
     val description = stringResource(R.string.verified_with_kennitala)
-    Box(
-        modifier =
-            modifier
-                .size(size)
-                .background(Palette.verifiedMark, CircleShape)
-                .semantics { contentDescription = description },
-    )
+    Box(modifier = modifier.size(size).semantics { contentDescription = description }) {
+        Icon(AppIcons.Shield, contentDescription = null, tint = Palette.verifiedMark, modifier = Modifier.size(size))
+        Icon(AppIcons.ShieldCheck, contentDescription = null, tint = Palette.surface, modifier = Modifier.size(size))
+    }
 }
 
 /** An item as one line of the list; [group] words a member card for a group rather than a 1:1. */
@@ -144,7 +142,7 @@ fun duration(seconds: UInt): String {
 }
 
 private const val AVATAR = 46
-private const val MARK = 7
+private const val MARK = 14
 
 /** The grey of an unverified person's avatar: fg at 9 %. */
 private const val GREY = 0.09f

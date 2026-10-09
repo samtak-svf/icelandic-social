@@ -5,8 +5,10 @@
     <string name="app_name">Hjal</string>
     <!-- Bottom tab: the conversation list. -->
     <string name="tab_conversations">Hjal</string>
-    <!-- Bottom tab: own profile and settings. -->
+    <!-- Bottom tab: own profile, invite link and the way to settings (docs/decisions/0034). -->
     <string name="tab_me">Ég</string>
+    <!-- Title of the settings screen, and the screen-reader label of the gear on Ég that opens it (docs/decisions/0034). -->
+    <string name="settings_title">Stillingar</string>
     <!-- Action that starts a new conversation. -->
     <string name="new_conversation">Nýtt hjal</string>
     <!-- The conversation list when there is none yet; points at the invite link (docs/decisions/0022). -->

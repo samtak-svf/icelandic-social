@@ -12,7 +12,11 @@
     },
     "tab_me": {
       "surfaces": ["android", "ios"],
-      "description": "Bottom tab: own profile and settings."
+      "description": "Bottom tab: own profile, invite link and the way to settings (docs/decisions/0034)."
+    },
+    "settings_title": {
+      "surfaces": ["android", "ios"],
+      "description": "Title of the settings screen, and the screen-reader label of the gear on Ég that opens it (docs/decisions/0034)."
     },
     "new_conversation": {
       "surfaces": ["android", "ios"],
@@ -66,7 +70,10 @@
       "surfaces": ["android", "ios"],
       "description": "Empty message composer."
     },
-    "send": { "surfaces": ["android", "ios"], "description": "Send button." },
+    "send": {
+      "surfaces": ["android", "ios"],
+      "description": "Send button."
+    },
     "message_sending": {
       "surfaces": ["android", "ios"],
       "description": "Status of an own message that is still being sent."
@@ -94,13 +101,17 @@
     "last_line_own": {
       "surfaces": ["android", "ios"],
       "description": "The conversation list's preview line when the newest message is the reader's own.",
-      "placeholders": { "text": "string" }
+      "placeholders": {
+        "text": "string"
+      }
     },
     "unread_count": {
       "surfaces": ["android", "ios"],
       "description": "Unread messages in a conversation.",
       "plural": true,
-      "placeholders": { "count": "int" }
+      "placeholders": {
+        "count": "int"
+      }
     },
     "push_fallback_body": {
       "surfaces": ["android", "ios", "backend"],
@@ -129,7 +140,9 @@
     "new_device_card": {
       "surfaces": ["android", "ios"],
       "description": "System card in a conversation when a member adds a device (from an MLS add commit).",
-      "placeholders": { "name": "string" }
+      "placeholders": {
+        "name": "string"
+      }
     },
     "member_added_card": {
       "surfaces": ["android", "ios"],
@@ -148,7 +161,9 @@
     "member_removed_card_direct": {
       "surfaces": ["android", "ios"],
       "description": "System card in a 1:1 when the other account leaves it, as on a block; member_removed_card says the same of a group (docs/decisions/0022).",
-      "placeholders": { "name": "string" }
+      "placeholders": {
+        "name": "string"
+      }
     },
     "history_device_local_notice": {
       "surfaces": ["android", "ios"],
@@ -173,7 +188,9 @@
     "link_invited_by": {
       "surfaces": ["android", "ios", "backend"],
       "description": "Heading of the invite link page (/l/{token}) and of the app's invite screen when a person sent the link (docs/decisions/0019).",
-      "placeholders": { "name": "string" }
+      "placeholders": {
+        "name": "string"
+      }
     },
     "link_invited": {
       "surfaces": ["android", "ios", "backend"],
@@ -211,7 +228,9 @@
       "surfaces": ["android", "ios"],
       "description": "Members in a group.",
       "plural": true,
-      "placeholders": { "count": "int" }
+      "placeholders": {
+        "count": "int"
+      }
     },
     "attach": {
       "surfaces": ["android", "ios"],
@@ -241,8 +260,14 @@
       "surfaces": ["android", "ios"],
       "description": "A received file was opened, but no app on the device opens its type."
     },
-    "reply": { "surfaces": ["android", "ios"], "description": "Quote-reply to a message." },
-    "edit": { "surfaces": ["android", "ios"], "description": "Edit an own message." },
+    "reply": {
+      "surfaces": ["android", "ios"],
+      "description": "Quote-reply to a message."
+    },
+    "edit": {
+      "surfaces": ["android", "ios"],
+      "description": "Edit an own message."
+    },
     "edited_marker": {
       "surfaces": ["android", "ios"],
       "description": "Marker on a message that was edited."
@@ -259,7 +284,10 @@
       "surfaces": ["android", "ios"],
       "description": "Tombstone left where a deleted message was."
     },
-    "react": { "surfaces": ["android", "ios"], "description": "Add a reaction to a message." },
+    "react": {
+      "surfaces": ["android", "ios"],
+      "description": "Add a reaction to a message."
+    },
     "disappearing_messages": {
       "surfaces": ["android", "ios"],
       "description": "Per-conversation setting: messages delete themselves after a set time."
@@ -267,12 +295,17 @@
     "disappearing_set_card": {
       "surfaces": ["android", "ios"],
       "description": "System card when a member sets the disappearing timer; duration is formatted by the client.",
-      "placeholders": { "name": "string", "duration": "string" }
+      "placeholders": {
+        "name": "string",
+        "duration": "string"
+      }
     },
     "disappearing_off_card": {
       "surfaces": ["android", "ios"],
       "description": "System card when a member turns the disappearing timer off.",
-      "placeholders": { "name": "string" }
+      "placeholders": {
+        "name": "string"
+      }
     },
     "disappearing_off": {
       "surfaces": ["android", "ios"],
@@ -328,17 +361,24 @@
     "typing_indicator": {
       "surfaces": ["android", "ios"],
       "description": "Shown while another member is typing.",
-      "placeholders": { "name": "string" }
+      "placeholders": {
+        "name": "string"
+      }
     },
     "typing_indicator_group": {
       "surfaces": ["android", "ios"],
       "description": "Shown while a member of a group is typing; a group's typing frame does not prove who sent it, so it names no one (docs/decisions/0022)."
     },
-    "block": { "surfaces": ["android", "ios"], "description": "Block a person." },
+    "block": {
+      "surfaces": ["android", "ios"],
+      "description": "Block a person."
+    },
     "block_confirm": {
       "surfaces": ["android", "ios"],
       "description": "Confirmation before blocking.",
-      "placeholders": { "name": "string" }
+      "placeholders": {
+        "name": "string"
+      }
     },
     "unblock": {
       "surfaces": ["android", "ios"],
@@ -414,7 +454,9 @@
     "device_added": {
       "surfaces": ["android", "ios"],
       "description": "When a device was signed in, under its name in the device list.",
-      "placeholders": { "date": "string" }
+      "placeholders": {
+        "date": "string"
+      }
     },
     "device_revoke": {
       "surfaces": ["android", "ios"],

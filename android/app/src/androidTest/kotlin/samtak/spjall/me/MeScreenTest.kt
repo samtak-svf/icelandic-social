@@ -1,10 +1,6 @@
 package samtak.spjall.me
 
-import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsOff
-import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -18,14 +14,11 @@ import org.junit.runner.RunWith
 import samtak.spjall.brand.R
 import samtak.spjall.core.AccountDevice
 import samtak.spjall.core.Me
-import samtak.spjall.core.Person
 import samtak.spjall.core.Platform
-import samtak.spjall.core.Settings
 import samtak.spjall.ui.SpjallTheme
-import samtak.spjall.ui.calendarDate
 import samtak.spjall.ui.capitals
 
-/** Nothing that cannot be undone happens on one tap. */
+/** Ég shows the person and their link; everything else is behind the gear (decision 0034). */
 @RunWith(AndroidJUnit4::class)
 class MeScreenTest {
     @get:Rule val compose = createComposeRule()
@@ -72,11 +65,7 @@ class MeScreenTest {
 
     private fun text(id: Int) = InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
 
-    private fun show(
-        link: String? = null,
-        blocked: List<Person> = emptyList(),
-        notificationsOff: Boolean = false,
-    ) {
+    private fun show(link: String? = null) {
         val me =
             Me(
                 "a1",
@@ -93,64 +82,27 @@ class MeScreenTest {
                     MeViewModel.State(
                         me = me,
                         link = link,
-                        settings = Settings(readMarkers = true, typing = false),
-                        blocked = blocked,
                     ),
                     actions,
-                    notificationsOff,
+                    onSettings = { calls += "settings" },
                 )
             }
         }
     }
 
     @Test
-    fun deletingTheAccountAsksFirstAndCancelDoesNothing() {
+    fun theGearOpensTheSettings() {
         show()
-        compose.onNodeWithText(text(R.string.delete_account)).performScrollTo().performClick()
-        compose.onNodeWithText(text(R.string.delete_account_confirm)).assertExists()
-        compose.onNodeWithText(text(R.string.cancel)).performClick()
-        assertEquals(emptyList<String>(), calls)
-
-        compose.onNodeWithText(text(R.string.delete_account)).performScrollTo().performClick()
-        // The dialog's button carries the same words as the one that opened it.
-        compose.onAllNodesWithText(text(R.string.delete_account))[1].performClick()
-        assertEquals(listOf("deleteAccount"), calls)
+        compose.onNodeWithContentDescription(text(R.string.settings_title)).performClick()
+        assertEquals(listOf("settings"), calls)
     }
 
     @Test
-    fun revokingADeviceAsksFirst() {
+    fun theSettingsAreNotOnEg() {
         show()
-        compose.onAllNodesWithText(text(R.string.device_revoke))[1].performScrollTo().performClick()
-        assertEquals(emptyList<String>(), calls)
-        compose.onNodeWithText(text(R.string.device_revoke_confirm)).assertExists()
-        compose
-            .onAllNodesWithText(
-                text(R.string.device_revoke),
-            ).let { it[it.fetchSemanticsNodes().size - 1] }
-            .performClick()
-        assertEquals(listOf("revoke d2"), calls)
-    }
-
-    @Test
-    fun devicesShowWhenTheyWereAddedAndWhichIsThisOne() {
-        show()
-        val added = InstrumentationRegistry.getInstrumentation().targetContext
-        compose.onNodeWithText(text(R.string.device_this).capitals()).assertIsDisplayed()
-        compose.onNodeWithText(added.getString(R.string.device_added, calendarDate(1_710_000_000_000u))).assertExists()
-    }
-
-    @Test
-    fun notificationsThatAreOnNeedNoRow() {
-        show()
-        compose.onNodeWithText(text(R.string.notifications_off)).assertDoesNotExist()
-    }
-
-    @Test
-    fun blockedNotificationsSayWhereToTurnThemOn() {
-        show(notificationsOff = true)
-        compose.onNodeWithText(text(R.string.notifications_off)).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText(text(R.string.notifications_settings)).performClick()
-        assertEquals(listOf("notificationSettings"), calls)
+        compose.onNodeWithText(text(R.string.delete_account)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.devices_title).capitals()).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.devices_title)).assertDoesNotExist()
     }
 
     @Test
@@ -169,38 +121,5 @@ class MeScreenTest {
         compose.onNodeWithContentDescription(text(R.string.invite_link_title)).assertExists()
         compose.onNodeWithText(text(R.string.share)).performScrollTo().performClick()
         assertEquals(listOf("share https://link.test/l/abc"), calls)
-    }
-
-    @Test
-    fun theTogglesShowTheSettingsAndChangeThem() {
-        show()
-        compose
-            .onNodeWithText(text(R.string.read_receipts_setting))
-            .performScrollTo()
-            .assertIsOn()
-            .performClick()
-        compose
-            .onNodeWithText(text(R.string.typing_setting))
-            .performScrollTo()
-            .assertIsOff()
-            .performClick()
-        assertEquals(listOf("readMarkers false", "typing true"), calls)
-    }
-
-    @Test
-    fun unblockingAsksFirst() {
-        show(blocked = listOf(Person("a3", "Björn", false)))
-        compose.onNodeWithText("Björn").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText(text(R.string.unblock)).performScrollTo().performClick()
-        val confirm = InstrumentationRegistry.getInstrumentation().targetContext
-        compose.onNodeWithText(confirm.getString(R.string.unblock_confirm, "Björn")).assertIsDisplayed()
-        compose.onAllNodesWithText(text(R.string.unblock))[1].performClick()
-        assertEquals(listOf("unblock a3"), calls)
-    }
-
-    @Test
-    fun noOneBlockedSaysSo() {
-        show()
-        compose.onNodeWithText(text(R.string.blocked_empty)).performScrollTo().assertIsDisplayed()
     }
 }

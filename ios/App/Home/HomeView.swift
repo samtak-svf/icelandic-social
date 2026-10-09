@@ -12,6 +12,8 @@ struct HomeView: View {
         case conversation(String)
     }
 
+    enum MeRoute: Hashable { case settings }
+
     let signIn: SignInModel
     let push: PushModel
     let onSignedOut: () -> Void
@@ -21,6 +23,7 @@ struct HomeView: View {
     @State private var me: MeModel
     @State private var tab = Tab.conversations
     @State private var path: [Route] = []
+    @State private var mePath: [MeRoute] = []
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -58,10 +61,15 @@ struct HomeView: View {
                     }
                 }
             case .me:
-                MeView(model: me, push: push)
+                NavigationStack(path: $mePath) {
+                    MeView(model: me, onSettings: { mePath.append(.settings) })
+                        .navigationDestination(for: MeRoute.self) { _ in
+                            SettingsView(model: me, push: push)
+                        }
+                }
             }
-            // Only on the two roots: a conversation and the picker have the screen to themselves.
-            if path.isEmpty || tab == .me {
+            // Only on the two roots: a conversation, the picker and the settings have the screen to themselves.
+            if tab == .conversations ? path.isEmpty : mePath.isEmpty {
                 TabBar(
                     selection: $tab,
                     items: [

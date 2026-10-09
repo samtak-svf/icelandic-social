@@ -63,6 +63,7 @@ import samtak.spjall.core.inviteToken
 import samtak.spjall.me.MeActions
 import samtak.spjall.me.MeScreen
 import samtak.spjall.me.MeViewModel
+import samtak.spjall.me.SettingsScreen
 import samtak.spjall.people.PeopleActions
 import samtak.spjall.people.PeopleScreen
 import samtak.spjall.people.PeopleViewModel
@@ -194,7 +195,8 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier.padding(padding).consumeWindowInsets(padding),
             ) {
                 composable(LIST) { Conversations(list, nav) }
-                composable(ME) { Me(signIns) }
+                composable(ME) { Me(signIns, nav, settings = false) }
+                composable(SETTINGS) { Me(signIns, nav, settings = true) }
                 composable(PEOPLE) { People(nav) }
                 composable("$CONVERSATION/{id}") { entry ->
                     entry.arguments?.getString("id")?.let { Conversation(it, nav) }
@@ -343,9 +345,15 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    /** Ég and its settings share one view model, so a change in one shows in the other. */
     @Composable
-    private fun Me(signIns: Int) {
-        val me: MeViewModel = viewModel(key = "me-$signIns") { MeViewModel(graph.account) }
+    private fun Me(
+        signIns: Int,
+        nav: NavController,
+        settings: Boolean,
+    ) {
+        val me: MeViewModel =
+            viewModel(viewModelStoreOwner = this, key = "me-$signIns") { MeViewModel(graph.account) }
         val state by me.state.collectAsStateWithLifecycle()
         val notifications = remember { NotificationManagerCompat.from(this) }
         var notificationsOff by remember { mutableStateOf(false) }
@@ -360,8 +368,7 @@ class MainActivity : ComponentActivity() {
                 signIn.signedOut()
             }
         }
-        MeScreen(
-            state,
+        val actions =
             object : MeActions {
                 override fun newLink() = me.newLink()
 
@@ -380,9 +387,12 @@ class MainActivity : ComponentActivity() {
                 override fun retry() = me.retry()
 
                 override fun notificationSettings() = this@MainActivity.notificationSettings()
-            },
-            notificationsOff = notificationsOff,
-        )
+            }
+        if (settings) {
+            SettingsScreen(state, actions, onBack = rememberBack(nav), notificationsOff = notificationsOff)
+        } else {
+            MeScreen(state, actions, onSettings = { nav.navigate(SETTINGS) })
+        }
     }
 
     /** Hands a fetched file to another app. */
@@ -401,6 +411,7 @@ class MainActivity : ComponentActivity() {
 
         private const val LIST = "conversations"
         private const val ME = "me"
+        private const val SETTINGS = "settings"
         private const val PEOPLE = "people"
         private const val CONVERSATION = "conversation"
         private const val PREFS = "push"
