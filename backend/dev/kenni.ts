@@ -11,7 +11,8 @@ import ids from "../../identifiers/ids.json" with { type: "json" };
 // request without one gets a form asking for it. Tests bend the ID token with
 // two extra authorize parameters:
 // - `x_claims`: JSON merged over the claims, e.g. `{"aud":"someone-else"}`;
-// - `x_sign=wrong`: sign with another key under the same `kid`.
+// - `x_sign=wrong`: sign with another key under the same `kid`;
+// - `x_sign=nokid`: sign with the right key, but name no `kid`.
 
 export const KENNI_PATH = "/dev/kenni";
 
@@ -19,12 +20,19 @@ const KID = "fake-kenni-1";
 const CODE_TTL_MS = 60 * 1000;
 const TOKEN_TTL_S = 300;
 
+/** How the ID token is signed: as Kenni does, or bent for a test. */
+const SIGNINGS = ["right", "wrong", "nokid"] as const;
+type Signing = (typeof SIGNINGS)[number];
+
+const signingOf = (asked: string | null): Signing =>
+  SIGNINGS.find((how) => how === asked) ?? "right";
+
 type Grant = {
   clientId: string;
   redirectUri: string;
   challenge: string;
   claims: Record<string, unknown>;
-  wrongKey: boolean;
+  signing: Signing;
   expires: number;
 };
 
@@ -65,10 +73,11 @@ function base64url(bytes: Uint8Array): string {
 
 const encode = (value: unknown) => base64url(new TextEncoder().encode(JSON.stringify(value)));
 
-async function sign(claims: Record<string, unknown>, wrongKey: boolean): Promise<string> {
+async function sign(claims: Record<string, unknown>, how: Signing): Promise<string> {
   const { signing, wrong } = await signingKeys();
-  const input = `${encode({ alg: "RS256", typ: "JWT", kid: KID })}.${encode(claims)}`;
-  const key = (wrongKey ? wrong : signing).privateKey;
+  const header = { alg: "RS256", typ: "JWT", ...(how !== "nokid" && { kid: KID }) };
+  const input = `${encode(header)}.${encode(claims)}`;
+  const key = (how === "wrong" ? wrong : signing).privateKey;
   const signature = await crypto.subtle.sign(
     "RSASSA-PKCS1-v1_5",
     key,
@@ -143,7 +152,7 @@ async function authorize(url: URL, issuer: string): Promise<Response> {
     redirectUri,
     challenge,
     claims,
-    wrongKey: q.get("x_sign") === "wrong",
+    signing: signingOf(q.get("x_sign")),
     expires: Date.now() + CODE_TTL_MS,
   });
   const back = new URL(redirectUri);
@@ -171,7 +180,7 @@ async function token(request: Request): Promise<Response> {
     access_token: base64url(crypto.getRandomValues(new Uint8Array(32))),
     token_type: "Bearer",
     expires_in: TOKEN_TTL_S,
-    id_token: await sign(grant.claims, grant.wrongKey),
+    id_token: await sign(grant.claims, grant.signing),
   });
 }
 

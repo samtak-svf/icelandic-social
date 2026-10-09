@@ -29,6 +29,15 @@ describe("log", () => {
     expect(written()).toEqual([{ event: "request.failed", code: "[redacted]", deviceId: "d_9f3" }]);
   });
 
+  it("redacts a run of digits that could be a phone number or a kennitala", () => {
+    const written = lines();
+    const digits = "1".repeat(10);
+    log("request.failed", { code: digits, deviceId: digits.slice(0, 7), accountId: "a_123" });
+    expect(written()).toEqual([
+      { event: "request.failed", code: "[redacted]", deviceId: "[redacted]", accountId: "a_123" },
+    ]);
+  });
+
   it("refuses an event name that is not a dotted identifier", () => {
     expect(() => log("user Jón logged in" as never, {})).toThrow(/event/);
   });

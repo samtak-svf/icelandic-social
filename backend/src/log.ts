@@ -30,6 +30,9 @@ const ALLOWED: ReadonlySet<string> = new Set<keyof Fields>([
 ]);
 const EVENT = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/;
 const OPAQUE = /^[A-Za-z0-9_:-]{1,128}$/;
+// Ids carry letters; seven or more digits alone look like a phone number or a
+// kennitala, and are redacted even under an allowed name.
+const DIGITS = /^\d{7,}$/;
 
 export function log(event: `${string}.${string}`, fields: Partial<Fields>): void {
   if (!EVENT.test(event)) throw new Error(`log event must be dotted.snake_case: ${event}`);
@@ -37,7 +40,8 @@ export function log(event: `${string}.${string}`, fields: Partial<Fields>): void
   for (const [key, value] of Object.entries(fields)) {
     if (!ALLOWED.has(key)) continue;
     if (typeof value === "number" && Number.isFinite(value)) line[key] = value;
-    else if (typeof value === "string") line[key] = OPAQUE.test(value) ? value : "[redacted]";
+    else if (typeof value === "string")
+      line[key] = OPAQUE.test(value) && !DIGITS.test(value) ? value : "[redacted]";
   }
   console.log(JSON.stringify(line));
 }

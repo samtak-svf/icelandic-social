@@ -194,8 +194,10 @@ describe("urgency", () => {
     await expect
       .poll(() => outbox(b.accountId))
       .toEqual([{ device_id: b.deviceId, conversation_id: CONVERSATION, seq: text, pushed: 1 }]);
-    const latest = await inbox(testEnv, a.accountId).latest();
-    expect(latest[CONVERSATION]).toBe(receipt);
+    // Members are notified at once, so A's may land after B's push.
+    await expect
+      .poll(async () => (await inbox(testEnv, a.accountId).latest())[CONVERSATION])
+      .toBe(receipt);
     expect(await outbox(a.accountId)).toEqual([]);
   });
 });

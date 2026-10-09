@@ -191,12 +191,18 @@ describe("a conversation", () => {
     await stub.send(message("n_a", "drop", { commitEpoch: 1, roster: ["n_a", "n_b"] }));
     await stub.send(message("n_b", "hi"));
     await runDurableObjectAlarm(stub);
-    expect(await inbox(testEnv, "n_a").latest()).toEqual({ [id]: 3 });
-    expect(await inbox(testEnv, "n_b").latest()).toEqual({ [id]: 3 });
+    // An alarm a send set off may still be notifying; what it leaves owed
+    // it sends at once, so the end state is polled for.
+    await expect.poll(() => inbox(testEnv, "n_a").latest()).toEqual({ [id]: 3 });
+    await expect.poll(() => inbox(testEnv, "n_b").latest()).toEqual({ [id]: 3 });
     expect(await inbox(testEnv, "n_c").latest()).toEqual({ [id]: 2 });
-    await runInDurableObject(stub, (_, state) => {
-      expect(state.storage.sql.exec("SELECT * FROM pending_notify").toArray()).toEqual([]);
-    });
+    await expect
+      .poll(() =>
+        runInDurableObject(stub, (_, state) =>
+          state.storage.sql.exec("SELECT * FROM pending_notify").toArray(),
+        ),
+      )
+      .toEqual([]);
   });
 
   it("deletes messages and Welcomes 30 days after they were stored, not the GroupInfo", async () => {

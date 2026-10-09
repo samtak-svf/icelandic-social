@@ -108,12 +108,14 @@ async function verifySignature(kenni: Kenni, token: string, now: number) {
   if (!header || !body || !signature || !/^[A-Za-z0-9_-]+$/.test(signature)) {
     return "token_malformed" as const;
   }
-  // Only RS256: an `alg` the token picks for itself is never trusted.
-  if (header.alg !== "RS256") return "signature_invalid" as const;
+  // Only RS256: an `alg` the token picks for itself is never trusted. The
+  // token names its key, so a rollover never checks it against another one.
+  if (header.alg !== "RS256" || typeof header.kid !== "string") {
+    return "signature_invalid" as const;
+  }
 
   let entry = await provider(kenni, now);
-  const find = () =>
-    entry.keys.find((k) => k.kty === "RSA" && (header.kid === undefined || k.kid === header.kid));
+  const find = () => entry.keys.find((k) => k.kty === "RSA" && k.kid === header.kid);
   let jwk = find();
   if (!jwk && now - entry.at >= REFETCH_MS) {
     entry = await load(kenni, now);

@@ -65,8 +65,8 @@ type SignIn = {
   inviteToken?: string;
   /** Merged over the fake's ID-token claims. */
   claims?: Record<string, unknown>;
-  /** Sign the ID token with a key Kenni does not publish. */
-  wrongKey?: boolean;
+  /** Sign the ID token with a key Kenni does not publish, or name no key. */
+  sign?: "wrong" | "nokid";
   /** What POST /v1/devices is sent, over what the app would send. */
   register?: Record<string, unknown>;
 };
@@ -96,7 +96,7 @@ export async function authorize(options: SignIn = {}) {
   };
   if (options.name !== undefined) params.x_name = options.name;
   if (options.claims) params.x_claims = JSON.stringify(options.claims);
-  if (options.wrongKey) params.x_sign = "wrong";
+  if (options.sign) params.x_sign = options.sign;
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
 
   const redirect = await exports.default.fetch(url.toString(), { redirect: "manual" });

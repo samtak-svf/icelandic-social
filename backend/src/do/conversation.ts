@@ -1,6 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { inbox } from "../env/index.ts";
 import { log } from "../log.ts";
+import { within } from "../within.ts";
 import { copyRoster, dropRoster } from "../profiles.ts";
 
 /** Stored ciphertext and Welcomes are deleted this long after they were stored (decision 0015). */
@@ -8,6 +9,13 @@ export const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** How soon a failed fan-out is tried again. */
 const RETRY_MS = 10_000;
+
+/**
+ * How long the alarm waits on one member's Inbox. A notify that takes longer
+ * (a push service that hangs) stays owed and is sent again; notify moves
+ * maxima, so a second one repeats nothing.
+ */
+const NOTIFY_TIMEOUT_MS = 10_000;
 
 /** What the Worker learned from the message's framing before calling `send`. */
 export type SendInput = {
@@ -449,17 +457,23 @@ export class Conversation extends DurableObject<Env> {
            FROM pending_notify p LEFT JOIN urgent u ON u.account = p.account`,
       )
       .toArray();
-    let failed = 0;
-    for (const { account, seq, urgent } of pending) {
-      try {
-        await inbox(this.env, account).notify(account, meta.conversationId, seq, urgent);
+    // Every member at once, each bounded: one slow Inbox delays no other.
+    const notified = await Promise.allSettled(
+      pending.map(async ({ account, seq, urgent }) => {
+        try {
+          await within(
+            NOTIFY_TIMEOUT_MS,
+            inbox(this.env, account).notify(account, meta.conversationId, seq, urgent),
+          );
+        } catch (error) {
+          log("conversation.notify_failed", { conversationId: meta.conversationId, seq });
+          throw error;
+        }
         // A newer seq may have arrived meanwhile; it stays owed.
         this.sql.exec("DELETE FROM pending_notify WHERE account = ? AND seq = ?", account, seq);
-      } catch {
-        failed++;
-        log("conversation.notify_failed", { conversationId: meta.conversationId, seq });
-      }
-    }
+      }),
+    );
+    let failed = notified.filter((r) => r.status === "rejected").length;
 
     const expired = Date.now() - RETENTION_MS;
     this.sql.exec("DELETE FROM messages WHERE stored_at < ?", expired);

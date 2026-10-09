@@ -145,7 +145,8 @@ describe("POST /v1/devices", () => {
 
   describe("refuses an ID token that does not verify", () => {
     const cases: [string, Parameters<typeof signIn>[0]][] = [
-      ["signed with another key", { wrongKey: true }],
+      ["signed with another key", { sign: "wrong" }],
+      ["naming no key", { sign: "nokid" }],
       ["for another client", { claims: { aud: "@innskraning.is/someone-else" } }],
       ["from another issuer", { claims: { iss: "https://idp.kenni.is/elsewhere" } }],
       ["expired", { claims: { exp: Math.floor(Date.now() / 1000) - 3600 } }],

@@ -12,6 +12,13 @@ const PROTOCOL = 1;
 /** How soon a push that failed to send is tried again. */
 const RETRY_MS = 30_000;
 
+/**
+ * The least time between two typing frames one device relays for one
+ * conversation. Apps send one every few seconds while the user types; more
+ * is dropped, so a client cannot fan out a call to every member per frame.
+ */
+const TYPING_MS = 2_000;
+
 /** Policy violation: a frame that does not parse, or one only the server sends. */
 const POLICY = 1008;
 
@@ -30,6 +37,8 @@ type Attachment = { accountId: string; deviceId: string };
  */
 export class Inbox extends DurableObject<Env> {
   private readonly sql: SqlStorage;
+  /** When each device last relayed typing for a conversation; lost on hibernation, which is fine. */
+  private readonly typed = new Map<string, number>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -108,9 +117,14 @@ export class Inbox extends DurableObject<Env> {
         return;
       case "pong":
         return;
-      case "typing":
+      case "typing": {
+        const key = `${deviceId} ${frame.conversationId}`;
+        const now = Date.now();
+        if (now - (this.typed.get(key) ?? -Infinity) < TYPING_MS) return;
+        this.typed.set(key, now);
         await conversation(this.env, frame.conversationId).typing(accountId, frame.ciphertext);
         return;
+      }
       default:
         ws.close(POLICY, "server frame");
     }
@@ -239,10 +253,16 @@ export class Inbox extends DurableObject<Env> {
         .toArray(),
       (row) => row.device_id,
     );
-    let failed = false;
-    for (const [deviceId, rows] of due) {
-      try {
-        await sender.send({ deviceId });
+    // Devices are pushed at once, not one after another, so one slow push
+    // service holds the round up by one call, not by one call per device.
+    const sent = await Promise.allSettled(
+      [...due].map(async ([deviceId, rows]) => {
+        try {
+          await sender.send({ deviceId });
+        } catch (error) {
+          log("push.failed", { deviceId, count: rows.length });
+          throw error;
+        }
         for (const row of rows) {
           this.sql.exec(
             "UPDATE push_outbox SET pushed = 1 WHERE device_id = ? AND conversation_id = ? AND seq = ?",
@@ -251,12 +271,11 @@ export class Inbox extends DurableObject<Env> {
             row.seq,
           );
         }
-      } catch {
-        failed = true;
-        log("push.failed", { deviceId, count: rows.length });
-      }
+      }),
+    );
+    if (sent.some((r) => r.status === "rejected")) {
+      await this.ctx.storage.setAlarm(Date.now() + RETRY_MS);
     }
-    if (failed) await this.ctx.storage.setAlarm(Date.now() + RETRY_MS);
   }
 }
 

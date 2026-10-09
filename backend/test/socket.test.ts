@@ -113,6 +113,29 @@ describe("the socket", () => {
     expect("ok" in page && page.ok.messages.map((m) => m.seq)).toEqual([1]);
   });
 
+  it("relays one typing frame per device and conversation in two seconds", async () => {
+    const a = await device();
+    const b = await device();
+    const id = "conv_typing_burst";
+    const stub = conversation(testEnv, id);
+    await stub.create(a.accountId, id);
+    await stub.send({
+      account: a.accountId,
+      clientMsgId: "add",
+      ciphertext: Uint8Array.of(1),
+      urgent: false,
+      commitEpoch: 0,
+      roster: [a.accountId, b.accountId],
+    });
+
+    const [sa, sb] = [await connect(a.auth), await connect(b.auth)];
+    for (const s of [sa, sb]) await s.next();
+    for (let i = 0; i < 5; i++) sa.send({ type: "typing", conversationId: id, ciphertext: TYPING });
+    await sa.settle("b1");
+    expect(await sb.nextOf("typing")).toMatchObject({ type: "typing", conversationId: id });
+    expect(await sb.settle("b2")).toEqual({ type: "pong", nonce: "b2" });
+  });
+
   it.each([
     ["not JSON", "{"],
     ["a frame that does not parse", JSON.stringify({ type: "ack", seq: -1 })],
