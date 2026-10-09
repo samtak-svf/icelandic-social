@@ -6,10 +6,11 @@
 // checks, because neither can see what the other can:
 //
 // `node tooling/jurisdiction-check.mjs`         offline, in `pnpm check`:
-//     backend/wrangler.jsonc names exactly the frozen ids, every R2 binding
-//     says jurisdiction "eu", the account is the personal one, no Queues.
+//     the Worker config names exactly the frozen ids, every R2 binding says
+//     jurisdiction "eu", the account is Samtak's own, no Queues, and the APNs
+//     vars match the Apple ids.
 // `node tooling/jurisdiction-check.mjs --live`  CI and deploy, read-only token:
-//     asks the Cloudflare REST API whether the D1 database wrangler.jsonc
+//     asks the Cloudflare REST API whether the D1 database the config
 //     binds (by its database_id) and every R2 bucket it binds exist IN the EU
 //     jurisdiction. Needs CLOUDFLARE_JURISDICTION_TOKEN (D1 Read, Workers R2
 //     Storage Read).
@@ -21,18 +22,22 @@
 // Durable Objects are not checked here: a namespace has no jurisdiction the
 // API can report. Each object id is pinned in code instead
 // (tooling/seam-guard.mjs).
+//
+// The config is read through tooling/lib/worker-config.mjs, never parsed here.
 
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { readJson, ROOT } from "./lib/repo.mjs";
-import { parseJsonc } from "./lib/source.mjs";
+import { readJson } from "./lib/repo.mjs";
+import { readWorkerConfig } from "./lib/worker-config.mjs";
 
-/** Samtak's personal Cloudflare account (AGENTS.md § Infrastructure). */
-export const PERSONAL_ACCOUNT = "af4d4a9c4527ce1e46d0c2dc1165e801";
+/** Samtak's own Cloudflare account (AGENTS.md § Infrastructure, decision 0032). */
+export const SAMTAK_ACCOUNT = "af4d4a9c4527ce1e46d0c2dc1165e801";
 const API = "https://api.cloudflare.com/client/v4";
 
 /**
- * @param {any} config parsed backend/wrangler.jsonc
+ * @typedef {import("./lib/worker-config.mjs").WorkerConfig} WorkerConfig
+ */
+
+/**
+ * @param {WorkerConfig} config
  * @param {any} cloudflare the `cloudflare` block of identifiers/ids.json
  * @returns {string[]} problems, empty when the config is right
  */
@@ -48,24 +53,21 @@ export function checkConfig(config, cloudflare) {
       problems.push(`${what} is ${JSON.stringify(actual)}, frozen id is ${JSON.stringify(wanted)}`);
   };
 
-  expect(config.account_id, PERSONAL_ACCOUNT, "account_id");
+  expect(config.accountId, SAMTAK_ACCOUNT, "account id");
   expect(config.name, cloudflare.worker, "Worker name");
 
-  const d1 = config.d1_databases ?? [];
-  expect(d1.length, 1, "number of D1 databases");
-  expect(d1[0]?.database_name, cloudflare.d1, "D1 database_name");
+  expect(config.d1.length, 1, "number of D1 databases");
+  expect(config.d1[0]?.name, cloudflare.d1, "D1 database name");
 
   const frozenBuckets = new Set(Object.values(cloudflare.r2));
-  for (const bucket of config.r2_buckets ?? []) {
-    if (!frozenBuckets.has(bucket.bucket_name)) {
-      problems.push(`R2 bucket ${bucket.bucket_name} is not a frozen id`);
+  for (const bucket of config.r2) {
+    if (!frozenBuckets.has(bucket.bucket)) {
+      problems.push(`R2 bucket ${bucket.bucket} is not a frozen id`);
     }
     expect(bucket.jurisdiction, cloudflare.jurisdiction, `R2 ${bucket.binding} jurisdiction`);
   }
 
-  const classes = (config.durable_objects?.bindings ?? []).map(
-    (/** @type {any} */ b) => b.class_name,
-  );
+  const classes = config.durableObjects.map((b) => String(b.className));
   expect(
     classes.sort().join(","),
     Object.values(cloudflare.durableObjects).sort().join(","),
@@ -77,6 +79,38 @@ export function checkConfig(config, cloudflare) {
 }
 
 /**
+ * The APNs vars name the team and the bundle id that one Apple team owns:
+ * the interim ones (decision 0011) or Samtak's own once it exists (0010).
+ *
+ * @param {WorkerConfig} config
+ * @param {any} ids identifiers/ids.json
+ * @returns {string[]} problems, empty when the vars are right
+ */
+export function checkApns(config, ids) {
+  /** @type {string[]} */
+  const problems = [];
+  const own = ids.services.appleTeamId;
+  const pairs = [{ team: ids.appleInterim.teamId, topic: ids.appleInterim.iosBundleId }];
+  if (own) pairs.push({ team: own, topic: ids.store.iosBundleId });
+  const { APNS_TEAM_ID: team, APNS_TOPIC: topic, APPLE_TEAM_ID: linkTeam } = config.vars;
+  const pair = pairs.find((p) => p.team === team);
+  if (!pair) {
+    const teams = pairs.map((p) => JSON.stringify(p.team)).join(" or ");
+    problems.push(`APNS_TEAM_ID is ${JSON.stringify(team)}, expected ${teams}`);
+  } else if (topic !== pair.topic) {
+    problems.push(
+      `APNS_TOPIC is ${JSON.stringify(topic)}, team ${pair.team} pushes to ${pair.topic}`,
+    );
+  }
+  // The link host's association files name the app of the store bundle id,
+  // which only Samtak's own team signs.
+  if (linkTeam !== "" && linkTeam !== own) {
+    problems.push(`APPLE_TEAM_ID is ${JSON.stringify(linkTeam)}, expected "" or ${own}`);
+  }
+  return problems;
+}
+
+/**
  * @typedef {(url: string, init: { headers: Record<string, string> }) => Promise<{ status: number, json(): Promise<any> }>} Fetch
  */
 
@@ -84,28 +118,28 @@ export function checkConfig(config, cloudflare) {
  * What `wrangler deploy` needs so it creates nothing by itself: a missing
  * database_id makes it provision a D1 without a jurisdiction (decision 0001).
  *
- * @param {any} config parsed backend/wrangler.jsonc
+ * @param {WorkerConfig} config
  * @param {any} ids identifiers/ids.json
  * @returns {string[]} problems, empty when the config can be deployed
  */
 export function checkDeployable(config, ids) {
   /** @type {string[]} */
   const problems = [];
-  const d1 = config.d1_databases?.[0];
-  if (typeof d1?.database_id !== "string" || !/^[0-9a-f-]{36}$/.test(d1.database_id)) {
+  const id = config.d1[0]?.id;
+  if (typeof id !== "string" || !/^[0-9a-f-]{36}$/.test(id)) {
     problems.push(
       `D1 ${ids.cloudflare.d1} has no database_id; create it with --jurisdiction eu first`,
     );
   }
-  const routes = JSON.stringify(config.routes ?? []);
-  const wanted = JSON.stringify([{ pattern: ids.hosts.api, custom_domain: true }]);
+  const routes = JSON.stringify(config.routes);
+  const wanted = JSON.stringify([{ pattern: ids.hosts.api, customDomain: true }]);
   if (routes !== wanted) problems.push(`routes is ${routes}, expected ${wanted}`);
-  if (config.workers_dev !== false) problems.push("workers_dev must be false");
+  if (config.workersDev !== false) problems.push("workers_dev must be false");
   return problems;
 }
 
 /**
- * @param {{ accountId: string, token: string, config: any, cloudflare: any, fetch: Fetch }} options
+ * @param {{ accountId: string, token: string, config: WorkerConfig, cloudflare: any, fetch: Fetch }} options
  * @returns {Promise<{ ok: string[], problems: string[] }>}
  */
 export async function checkLive({ accountId, token, config, cloudflare, fetch }) {
@@ -127,9 +161,9 @@ export async function checkLive({ accountId, token, config, cloudflare, fetch })
   // The database the Worker binds, by id: another database of the same name
   // (say one recreated in the EU) would otherwise pass while the Worker still
   // writes to the old one.
-  const id = config.d1_databases?.[0]?.database_id;
+  const id = config.d1[0]?.id;
   if (typeof id !== "string") {
-    problems.push(`D1 ${cloudflare.d1}: wrangler.jsonc has no database_id`);
+    problems.push(`D1 ${cloudflare.d1}: ${config.file} has no database id`);
   } else {
     const detail = await get(`/d1/database/${encodeURIComponent(id)}`);
     const db = detail.body.result;
@@ -146,7 +180,7 @@ export async function checkLive({ accountId, token, config, cloudflare, fetch })
 
   // The buckets the Worker binds. A frozen name nothing binds (spjall-artifacts,
   // retired by decision 0013) is not storage this Worker writes to.
-  for (const { bucket_name: bucket } of config.r2_buckets ?? []) {
+  for (const { bucket } of config.r2) {
     // Without this header an EU bucket is invisible, so a 404 means the bucket
     // is missing or was created outside the EU.
     const found = await get(`/r2/buckets/${bucket}`, { "cf-r2-jurisdiction": want });
@@ -159,10 +193,10 @@ export async function checkLive({ accountId, token, config, cloudflare, fetch })
 }
 
 async function main() {
-  const config = parseJsonc(readFileSync(join(ROOT, "backend/wrangler.jsonc"), "utf8"));
+  const config = readWorkerConfig();
   const ids = readJson("identifiers/ids.json");
   const { cloudflare } = ids;
-  const problems = checkConfig(config, cloudflare);
+  const problems = [...checkConfig(config, cloudflare), ...checkApns(config, ids)];
   if (process.argv.includes("--deploy")) problems.push(...checkDeployable(config, ids));
 
   if (process.argv.includes("--live") && problems.length === 0) {
@@ -172,7 +206,7 @@ async function main() {
       process.exit(1);
     }
     const live = await checkLive({
-      accountId: config.account_id,
+      accountId: String(config.accountId),
       token,
       config,
       cloudflare,
@@ -186,7 +220,7 @@ async function main() {
     console.log("✓ storage is pinned to the EU jurisdiction under the frozen names");
     return;
   }
-  for (const problem of problems) console.error(`::error file=backend/wrangler.jsonc::${problem}`);
+  for (const problem of problems) console.error(`::error file=${config.file}::${problem}`);
   console.error(`
 Every D1 database and R2 bucket is created with --jurisdiction eu, which can
 never be added later (AGENTS.md § Infrastructure, docs/decisions/0001).`);

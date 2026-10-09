@@ -1,28 +1,26 @@
 // @ts-check
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { checkConfig, checkDeployable, checkLive } from "../jurisdiction-check.mjs";
-import { readJson, ROOT } from "../lib/repo.mjs";
-import { parseJsonc } from "../lib/source.mjs";
+import { checkApns, checkConfig, checkDeployable, checkLive } from "../jurisdiction-check.mjs";
+import { readJson } from "../lib/repo.mjs";
+import { readWorkerConfig } from "../lib/worker-config.mjs";
 
 const ids = readJson("identifiers/ids.json");
 const { cloudflare } = ids;
-const config = () => parseJsonc(readFileSync(join(ROOT, "backend/wrangler.jsonc"), "utf8"));
+const config = () => readWorkerConfig();
 
 const DB_ID = "0b6c1f3e-5d2a-4c8e-9f10-2a3b4c5d6e7f";
 
-/** wrangler.jsonc with a known database_id, so the fake API can answer for it. */
+/** The Worker config with a known database id, so the fake API can answer for it. */
 const deployed = () => {
   const c = config();
-  c.d1_databases[0].database_id = DB_ID;
+  /** @type {any} */ (c.d1[0]).id = DB_ID;
   return c;
 };
 
-/** wrangler.jsonc as it was before D1 existed: the same file without its database_id. */
+/** The config as it was before D1 existed: the same file without its database id. */
 const undeployed = () => {
   const c = config();
-  delete c.d1_databases[0].database_id;
+  /** @type {any} */ (c.d1[0]).id = undefined;
   return c;
 };
 
@@ -62,33 +60,54 @@ const live = (
   checkLive({ accountId: "acct", token: "t", config: c, cloudflare, fetch: fakeApi(state).fetch });
 
 describe("jurisdiction-check, config", () => {
-  it("passes on backend/wrangler.jsonc as it is", () => {
+  it("passes on the Worker config as it is", () => {
     expect(checkConfig(config(), cloudflare)).toEqual([]);
   });
 
   it("fails on an R2 binding without the EU jurisdiction", () => {
     const c = config();
-    delete c.r2_buckets[0].jurisdiction;
+    /** @type {any} */ (c.r2[0]).jurisdiction = undefined;
     expect(checkConfig(c, cloudflare).join()).toMatch(/R2 MEDIA jurisdiction is undefined/);
   });
 
   it("fails on a renamed D1 database, a stray bucket and a queue", () => {
     const c = config();
-    c.d1_databases[0].database_name = "spjall-db-2";
-    c.r2_buckets.push({ binding: "X", bucket_name: "other", jurisdiction: "eu" });
-    c.queues = { producers: [] };
+    /** @type {any} */ (c.d1[0]).name = "spjall-db-2";
+    c.r2.push({ binding: "X", bucket: "other", jurisdiction: "eu" });
+    c.queues = true;
     expect(checkConfig(c, cloudflare)).toHaveLength(3);
   });
 
   it("fails on another Cloudflare account", () => {
     const c = config();
-    c.account_id = "0".repeat(32);
-    expect(checkConfig(c, cloudflare).join()).toMatch(/account_id/);
+    c.accountId = "0".repeat(32);
+    expect(checkConfig(c, cloudflare).join()).toMatch(/account id/);
+  });
+
+  it("passes the APNs vars of the interim team, and refuses any other pair", () => {
+    expect(checkApns(config(), ids)).toEqual([]);
+    const c = config();
+    c.vars.APNS_TOPIC = ids.store.iosBundleId;
+    expect(checkApns(c, ids).join()).toMatch(/APNS_TOPIC/);
+    const d = config();
+    d.vars.APNS_TEAM_ID = "ZZZZZZZZZZ";
+    expect(checkApns(d, ids).join()).toMatch(/APNS_TEAM_ID/);
+  });
+
+  it("passes Samtak's own team once ids.json names it, with its bundle id", () => {
+    const own = { ...ids, services: { ...ids.services, appleTeamId: "SAMTAK0001" } };
+    const c = config();
+    c.vars.APNS_TEAM_ID = "SAMTAK0001";
+    c.vars.APNS_TOPIC = ids.store.iosBundleId;
+    c.vars.APPLE_TEAM_ID = "SAMTAK0001";
+    expect(checkApns(c, own)).toEqual([]);
+    c.vars.APPLE_TEAM_ID = ids.appleInterim.teamId;
+    expect(checkApns(c, own).join()).toMatch(/APPLE_TEAM_ID/);
   });
 });
 
 describe("jurisdiction-check, live", () => {
-  const bound = deployed().r2_buckets.map((/** @type {any} */ b) => String(b.bucket_name));
+  const bound = deployed().r2.map((b) => String(b.bucket));
 
   it("passes when the bound D1 and every bound bucket report eu", async () => {
     const result = await live({ d1: "eu", r2: bound });
@@ -124,7 +143,7 @@ describe("jurisdiction-check, live", () => {
 
   it("fails without a database_id, and on a missing D1 and a bucket outside the EU", async () => {
     expect((await live({ d1: "eu", r2: bound }, undeployed())).problems).toEqual([
-      `D1 ${cloudflare.d1}: wrangler.jsonc has no database_id`,
+      `D1 ${cloudflare.d1}: backend/wrangler.jsonc has no database id`,
     ]);
     const result = await live({ d1: null, r2: [] });
     expect(result.problems).toHaveLength(2);
@@ -149,7 +168,7 @@ describe("jurisdiction-check, deploy", () => {
     expect(checkDeployable(deployed(), ids)).toEqual([]);
   });
 
-  it("passes on backend/wrangler.jsonc as it is", () => {
+  it("passes on the Worker config as it is", () => {
     expect(checkDeployable(config(), ids)).toEqual([]);
   });
 
@@ -159,12 +178,12 @@ describe("jurisdiction-check, deploy", () => {
 
   it("refuses a route off the frozen API host, a zone route and workers.dev", () => {
     const c = deployed();
-    c.routes = [{ pattern: "api.example.org", custom_domain: true }];
+    c.routes = [{ pattern: "api.example.org", customDomain: true }];
     expect(checkDeployable(c, ids).join()).toMatch(/routes is/);
-    c.routes = [{ pattern: `${ids.hosts.api}/*`, zone_name: "samtak.is" }];
+    c.routes = [{ pattern: ids.hosts.api, customDomain: false }];
     expect(checkDeployable(c, ids).join()).toMatch(/routes is/);
     const d = deployed();
-    delete d.workers_dev;
+    d.workersDev = undefined;
     expect(checkDeployable(d, ids)).toEqual(["workers_dev must be false"]);
   });
 });

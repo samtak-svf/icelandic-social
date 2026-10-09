@@ -2,8 +2,9 @@
 // Seam guard for the Worker (plan §4, decision 0001).
 //
 // 1. Only `backend/src/env/` reads a binding, a var or a secret. Their names
-//    come from `backend/wrangler.jsonc` and `backend/.dev.vars.example`, so a
-//    new binding is covered the moment it is configured.
+//    come from the Worker config (tooling/lib/worker-config.mjs) and the
+//    secrets table of tooling/worker-secrets.mjs, so a new binding is covered
+//    the moment it is configured.
 // 2. A Durable Object id or stub is made only in `backend/src/env/`, and only
 //    as `<namespace>.jurisdiction("eu").<idFromName|idFromString|newUniqueId|getByName>(…)`.
 //    A namespace has no jurisdiction of its own; a bare `idFromName` creates
@@ -16,10 +17,12 @@
 // a log line naming a binding is not a violation (tooling/lib/source.mjs).
 // Tests are not scanned: they build their own env on purpose.
 
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT, visibleFiles } from "./lib/repo.mjs";
-import { lineOf, parseJsonc, stripCommentsAndStrings } from "./lib/source.mjs";
+import { lineOf, stripCommentsAndStrings } from "./lib/source.mjs";
+import { configuredNames, readWorkerConfig } from "./lib/worker-config.mjs";
+import { SECRETS } from "./worker-secrets.mjs";
 
 const SRC = "backend/src/";
 const SEAM = "backend/src/env/";
@@ -34,26 +37,15 @@ const ANY_JURISDICTION = /\.\s*jurisdiction\s*\(([^)]*)\)/g;
  */
 
 /**
- * Every name a Worker reads from `env`: bindings and vars from the wrangler
- * config, secrets from `.dev.vars.example` (names only, values are fake).
+ * Every name a Worker reads from `env`: what the config declares, and the
+ * secrets, which a config never holds.
  *
- * @param {any} config parsed wrangler.jsonc
- * @param {string} [devVarsExample] contents of `.dev.vars.example`
+ * @param {import("./lib/worker-config.mjs").WorkerConfig} config
+ * @param {string[]} [secrets]
  * @returns {string[]}
  */
-export function bindingNames(config, devVarsExample = "") {
-  /** @type {string[]} */
-  const names = [];
-  for (const key of ["d1_databases", "r2_buckets", "kv_namespaces", "services", "queues"]) {
-    for (const entry of config[key] ?? []) names.push(entry.binding);
-  }
-  for (const entry of config.durable_objects?.bindings ?? []) names.push(entry.name);
-  names.push(...Object.keys(config.vars ?? {}));
-  for (const line of devVarsExample.split("\n")) {
-    const match = /^\s*([A-Z][A-Z0-9_]*)\s*=/.exec(line);
-    if (match?.[1]) names.push(match[1]);
-  }
-  return [...new Set(names.filter(Boolean))].sort();
+export function bindingNames(config, secrets = SECRETS.map((s) => s.name)) {
+  return [...new Set([...configuredNames(config), ...secrets].filter(Boolean))].sort();
 }
 
 /**
@@ -112,9 +104,7 @@ export function findInSource(file, source, bindings) {
  * @returns {{ files: number, violations: Violation[] }}
  */
 export function findViolations(root = ROOT) {
-  const config = parseJsonc(readFileSync(join(root, "backend/wrangler.jsonc"), "utf8"));
-  const example = join(root, "backend/.dev.vars.example");
-  const bindings = bindingNames(config, existsSync(example) ? readFileSync(example, "utf8") : "");
+  const bindings = bindingNames(readWorkerConfig(root));
   const files = visibleFiles(root).filter((f) => f.startsWith(SRC) && /\.[cm]?[jt]s$/.test(f));
   const violations = files.flatMap((file) =>
     findInSource(file, readFileSync(join(root, file), "utf8"), bindings),

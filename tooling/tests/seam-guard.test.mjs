@@ -1,6 +1,10 @@
 // @ts-check
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { bindingNames, findInSource, findViolations } from "../seam-guard.mjs";
+import { normalise } from "../lib/worker-config.mjs";
+import { copyRepo, initRepo } from "./helpers.mjs";
 
 const BINDINGS = ["CONVERSATION", "DB", "KENNI_CLIENT_SECRET"];
 const rules = (/** @type {string} */ file, /** @type {string} */ source) =>
@@ -11,17 +15,35 @@ describe("seam-guard", () => {
     expect(findViolations().violations).toEqual([]);
   });
 
-  it("collects bindings, vars and secret names", () => {
-    const config = {
+  it("collects bindings, rate limits, vars and secret names", () => {
+    const config = normalise({
       d1_databases: [{ binding: "DB" }],
       durable_objects: { bindings: [{ name: "INBOX" }] },
+      ratelimits: [{ name: "LIMIT" }],
       vars: { MIN: "1" },
-    };
-    expect(bindingNames(config, "# fake values\nKENNI_CLIENT_SECRET=x\n")).toEqual([
+    });
+    expect(bindingNames(config, ["KENNI_CLIENT_SECRET"])).toEqual([
       "DB",
       "INBOX",
       "KENNI_CLIENT_SECRET",
+      "LIMIT",
       "MIN",
+    ]);
+  });
+
+  it("fails on a rate limit or a secret read outside the seam, in the real config", () => {
+    // Rate limits and secrets are configured outside `vars` and the binding
+    // lists: a guard that reads only those misses them.
+    const root = copyRepo(["backend/wrangler.jsonc"]);
+    mkdirSync(join(root, "backend/src"), { recursive: true });
+    writeFileSync(
+      join(root, "backend/src/app.ts"),
+      "const a = env.PUBLIC_LIMIT;\nconst b = env.KENNITALA_HMAC_KEY;\n",
+    );
+    initRepo(root);
+    expect(findViolations(root).violations.map((v) => `${v.rule}:${v.line}`)).toEqual([
+      "binding:1",
+      "binding:2",
     ]);
   });
 
