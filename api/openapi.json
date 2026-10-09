@@ -259,7 +259,7 @@
         "properties": {
           "error": {
             "type": "string",
-            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, not_this_device, no_key_packages, client_too_old, claim_names_departed",
+            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author",
             "example": "unauthorized"
           },
           "minVersion": {
@@ -849,7 +849,7 @@
               "string",
               "null"
             ],
-            "description": "The registry name, if Kenni gave one"
+            "description": "The name shown: the registry's once Kenni verified it, else the one the sign-in gave"
           },
           "verified": {
             "type": "boolean"
@@ -903,6 +903,198 @@
           "name",
           "verified",
           "blockedAt"
+        ]
+      },
+      "PostPage": {
+        "type": "object",
+        "properties": {
+          "posts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Post"
+            },
+            "description": "Newest first"
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The cursor of the next page, null on the last"
+          }
+        },
+        "required": [
+          "posts",
+          "next"
+        ]
+      },
+      "Post": {
+        "type": "object",
+        "properties": {
+          "postId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "author": {
+            "$ref": "#/components/schemas/Author"
+          },
+          "body": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "Unix milliseconds"
+          },
+          "replyCount": {
+            "type": "integer",
+            "description": "Replies the caller can see"
+          },
+          "reactions": {
+            "type": "object",
+            "properties": {
+              "heart": {
+                "type": "integer"
+              },
+              "thumbs_up": {
+                "type": "integer"
+              },
+              "laugh": {
+                "type": "integer"
+              },
+              "wow": {
+                "type": "integer"
+              },
+              "sad": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "heart",
+              "thumbs_up",
+              "laugh",
+              "wow",
+              "sad"
+            ]
+          },
+          "myReaction": {
+            "$ref": "#/components/schemas/Reaction"
+          }
+        },
+        "required": [
+          "postId",
+          "author",
+          "body",
+          "createdAt",
+          "replyCount",
+          "reactions",
+          "myReaction"
+        ]
+      },
+      "Author": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "verified": {
+            "type": "boolean",
+            "description": "Kenni vouches for the name (decision 0033)"
+          }
+        },
+        "required": [
+          "accountId",
+          "name",
+          "verified"
+        ]
+      },
+      "Reaction": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "heart",
+          "thumbs_up",
+          "laugh",
+          "wow",
+          "sad",
+          null
+        ]
+      },
+      "NewPost": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "ReplyPage": {
+        "type": "object",
+        "properties": {
+          "replies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Reply"
+            },
+            "description": "Oldest first"
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The cursor of the next page, null on the last"
+          }
+        },
+        "required": [
+          "replies",
+          "next"
+        ]
+      },
+      "Reply": {
+        "type": "object",
+        "properties": {
+          "replyId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "postId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "author": {
+            "$ref": "#/components/schemas/Author"
+          },
+          "body": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "Unix milliseconds"
+          }
+        },
+        "required": [
+          "replyId",
+          "postId",
+          "author",
+          "body",
+          "createdAt"
         ]
       }
     },
@@ -2607,7 +2799,7 @@
         "tags": [
           "accounts"
         ],
-        "summary": "The name and mark of an account this one shares a conversation with",
+        "summary": "The name and mark of any account (decision 0034)",
         "security": [
           {
             "deviceToken": []
@@ -2657,7 +2849,7 @@
             }
           },
           "404": {
-            "description": "not_found: no such account, or none this account shares a conversation with",
+            "description": "not_found: no such account",
             "content": {
               "application/json": {
                 "schema": {
@@ -2834,6 +3026,867 @@
           },
           "401": {
             "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/feed": {
+      "get": {
+        "operationId": "getFeed",
+        "tags": [
+          "posts"
+        ],
+        "summary": "Fljótið: every account's posts, newest first",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "From `next`"
+            },
+            "required": false,
+            "description": "From `next`",
+            "name": "before",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: the query, or a cursor not from `next`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/posts": {
+      "get": {
+        "operationId": "getWall",
+        "tags": [
+          "posts"
+        ],
+        "summary": "An account's wall: its own posts, newest first",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "accountId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "From `next`"
+            },
+            "required": false,
+            "description": "From `next`",
+            "name": "before",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page; empty for an account the caller blocked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: the query, or a cursor not from `next`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/posts": {
+      "post": {
+        "operationId": "createPost",
+        "tags": [
+          "posts"
+        ],
+        "summary": "Post to Fljótið and the caller's wall",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewPost"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The post",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: too many requests in the last minute; try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/posts/{postId}": {
+      "get": {
+        "operationId": "getPost",
+        "tags": [
+          "posts"
+        ],
+        "summary": "One post",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "postId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The post",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such post, or one by an account you blocked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deletePost",
+        "tags": [
+          "posts"
+        ],
+        "summary": "Delete one of the caller's posts, with its replies and reactions",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "postId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_author: only its author may delete it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such item",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/posts/{postId}/reaction": {
+      "put": {
+        "operationId": "reactToPost",
+        "tags": [
+          "posts"
+        ],
+        "summary": "Set the caller's one reaction to a post",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "postId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reaction": {
+                    "$ref": "#/components/schemas/Reaction"
+                  }
+                },
+                "required": [
+                  "reaction"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Set, replacing any other"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "blocked: the post's author has blocked this account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such post, or one by an account you blocked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "unreactToPost",
+        "tags": [
+          "posts"
+        ],
+        "summary": "Take back the caller's reaction",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "postId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No reaction, whether there was one or not"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/posts/{postId}/replies": {
+      "get": {
+        "operationId": "listReplies",
+        "tags": [
+          "posts"
+        ],
+        "summary": "A post's replies, oldest first",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "postId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "From `next`"
+            },
+            "required": false,
+            "description": "From `next`",
+            "name": "after",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplyPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: the query, or a cursor not from `next`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such post, or one by an account you blocked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createReply",
+        "tags": [
+          "posts"
+        ],
+        "summary": "Reply to a post",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "postId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewPost"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The reply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reply"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "blocked: the post's author has blocked this account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such post, or one by an account you blocked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: too many requests in the last minute; try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/replies/{replyId}": {
+      "delete": {
+        "operationId": "deleteReply",
+        "tags": [
+          "posts"
+        ],
+        "summary": "Delete one of the caller's replies",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "replyId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_author: only its author may delete it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such item",
             "content": {
               "application/json": {
                 "schema": {

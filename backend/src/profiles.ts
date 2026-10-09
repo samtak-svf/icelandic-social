@@ -1,8 +1,8 @@
 import { db } from "./env/index.ts";
 
-// Names of other accounts (decision 0022). An account may read the name and
-// mark of an account it shares a conversation with, and of no other. The
-// Conversation DO owns the roster; D1 holds a copy of it to answer that.
+// Names of other accounts (decisions 0022, 0034), and the copy of each
+// conversation's roster in D1. The Conversation DO owns the roster; the copy
+// tells account deletion which conversations to leave.
 
 /**
  * Copies a conversation's roster as of the commit at `seq` into D1, in one
@@ -69,21 +69,14 @@ export async function activeDevices(
 
 export type Profile = { accountId: string; name: string | null; verified: boolean };
 
-/** The account as `reader` may see it: itself, or one it shares a conversation with. */
-export async function profile(
-  env: Env,
-  reader: string,
-  accountId: string,
-): Promise<Profile | null> {
+/**
+ * An account's name and mark. Every signed-in account may read any account's:
+ * everyone is in Fljótið, where the name is shown anyway (decision 0034).
+ */
+export async function profile(env: Env, accountId: string): Promise<Profile | null> {
   const row = await db(env)
-    .prepare(
-      `SELECT display_name AS name, verified FROM accounts
-        WHERE account_id = ?1 AND (?1 = ?2 OR EXISTS (
-          SELECT 1 FROM conversation_members theirs
-            JOIN conversation_members mine ON mine.conversation_id = theirs.conversation_id
-           WHERE theirs.account_id = ?1 AND mine.account_id = ?2))`,
-    )
-    .bind(accountId, reader)
+    .prepare("SELECT display_name AS name, verified FROM accounts WHERE account_id = ?")
+    .bind(accountId)
     .first<{ name: string | null; verified: number }>();
   return row ? { accountId, name: row.name, verified: row.verified === 1 } : null;
 }

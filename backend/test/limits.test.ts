@@ -4,7 +4,7 @@ import { device } from "./support.ts";
 import { worker } from "./main.ts";
 
 // Workers rate limits (cloudflare.config.ts): per address on the routes a person
-// reaches before signing in, per account on key-package claims.
+// reaches before signing in, per account on key-package claims and on posts.
 
 const BASE = "https://spjall.test";
 const errorOf = async (response: Response) => ApiError.parse(await response.json()).error;
@@ -78,5 +78,28 @@ describe("claiming KeyPackages", burst, () => {
       body: "{}",
     });
     expect(theirs.status).not.toBe(429);
+  });
+});
+
+describe("posting to Fljótið", burst, () => {
+  it("answers 20 posts and replies a minute from one account, then rate_limited", async () => {
+    const author = await device();
+    const write = (path: string, by = author) =>
+      worker.fetch(`${BASE}${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", ...by.auth },
+        body: JSON.stringify({ body: "x" }),
+      });
+    await oneWindow();
+    const seen = await statuses(19, () => write("/v1/posts"));
+    expect(seen.every((s) => s === 201)).toBe(true);
+    const { postId } = (await (await write("/v1/posts")).json()) as { postId: string };
+    // Replies count against the same limit.
+    const reply = await write(`/v1/posts/${postId}/replies`);
+    expect(reply.status).toBe(429);
+    expect(await errorOf(reply)).toBe("rate_limited");
+    expect((await write("/v1/posts")).status).toBe(429);
+    // Another account is counted on its own.
+    expect((await write("/v1/posts", await device())).status).toBe(201);
   });
 });

@@ -1,12 +1,15 @@
 import { createRoute, z } from "@hono/zod-openapi";
 import { AUTHED, DEVICE_TOKEN, errorResponse, INVALID, OpaqueId } from "./common.ts";
 
-// Other accounts' names (decision 0022) and block (decision 0024).
+// Other accounts' names (decisions 0022, 0034) and block (decision 0024).
 
 const Profile = z
   .object({
     accountId: OpaqueId,
-    name: z.string().nullable().openapi({ description: "The registry name, if Kenni gave one" }),
+    name: z.string().nullable().openapi({
+      description:
+        "The name shown: the registry's once Kenni verified it, else the one the sign-in gave",
+    }),
     verified: z.boolean(),
   })
   .openapi("Profile");
@@ -31,15 +34,13 @@ export const getAccountRoute = createRoute({
   path: "/v1/accounts/{accountId}",
   operationId: "getAccount",
   tags: ["accounts"],
-  summary: "The name and mark of an account this one shares a conversation with",
+  summary: "The name and mark of any account (decision 0034)",
   security: DEVICE_TOKEN,
   request: { params: account },
   responses: {
     200: { description: "The account", content: { "application/json": { schema: Profile } } },
     ...INVALID,
-    404: errorResponse(
-      "not_found: no such account, or none this account shares a conversation with",
-    ),
+    404: errorResponse("not_found: no such account"),
     ...AUTHED,
   },
 });

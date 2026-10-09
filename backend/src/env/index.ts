@@ -41,14 +41,17 @@ export function db(env: Env): D1Database {
 
 /**
  * Whether a request may go on: per address on the routes a person reaches
- * before signing in, per account on key-package claims (cloudflare.config.ts).
+ * before signing in, per account on key-package claims and on posts and
+ * replies (cloudflare.config.ts).
  */
 export async function withinLimit(
   env: Env,
-  limit: "public" | "claims",
+  limit: "public" | "claims" | "posts",
   key: string,
 ): Promise<boolean> {
-  const binding = limit === "public" ? env.PUBLIC_LIMIT : env.CLAIM_LIMIT;
+  const binding = { public: env.PUBLIC_LIMIT, claims: env.CLAIM_LIMIT, posts: env.POST_LIMIT }[
+    limit
+  ];
   return (await binding.limit({ key })).success;
 }
 

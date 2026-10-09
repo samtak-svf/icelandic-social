@@ -49,6 +49,7 @@ import {
 import { authorized, signInConfig, unavailable } from "./identity.ts";
 import { inviteLink, resolveInvite, revokeInvite, rotateInvite } from "./invites.ts";
 import { claim, ownsLeaf, upload } from "./key-packages.ts";
+import { postRoutes } from "./feed.ts";
 import { linkHost } from "./link.ts";
 import { log } from "./log.ts";
 import { getMedia, MAX_CIPHERTEXT, putMedia } from "./media.ts";
@@ -63,7 +64,7 @@ export const DOCUMENT_INFO = {
 const BEARER = /^Bearer ([A-Za-z0-9_-]{16,256})$/;
 
 /** What every handler sees: the bindings, and the device a token resolved to. */
-type AppEnv = { Bindings: Env; Variables: { device: Device } };
+export type AppEnv = { Bindings: Env; Variables: { device: Device } };
 
 /** The /v1 routes a person reaches before they have a device (decision 0019). */
 const PUBLIC = [/^GET \/v1\/sign-in$/, /^POST \/v1\/devices$/, /^GET \/v1\/invites\/[^/]+$/];
@@ -417,7 +418,7 @@ export function createApp() {
 
   // Other accounts (decisions 0022, 0024).
   app.openapi(getAccountRoute, async (c) => {
-    const found = await profile(c.env, c.var.device.accountId, c.req.valid("param").accountId);
+    const found = await profile(c.env, c.req.valid("param").accountId);
     return found ? c.json(found, 200) : c.json({ error: "not_found" }, 404);
   });
 
@@ -440,6 +441,9 @@ export function createApp() {
     log("account.unblocked", { accountId });
     return c.body(null, 204);
   });
+
+  // Fljótið and the walls (decision 0034).
+  postRoutes(app);
 
   // The socket lives in the account's Inbox; the Worker tells it which
   // device this is, replacing any such header the client sent.

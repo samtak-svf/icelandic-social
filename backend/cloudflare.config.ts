@@ -78,9 +78,11 @@ export default defineConfig(({ mode }) => ({
       // a brake on abuse, not an exact quota. PUBLIC_LIMIT is per address on
       // the routes a person reaches before signing in; CLAIM_LIMIT is per
       // account on key-package claims, which spend another account's
-      // packages. A namespace is unique within the Cloudflare account.
+      // packages. POST_LIMIT is per account on posts and replies to Fljótið
+      // (decision 0034). A namespace is unique within the Cloudflare account.
       PUBLIC_LIMIT: bindings.rateLimit({ namespace: "1001", simple: { limit: 30, period: 60 } }),
       CLAIM_LIMIT: bindings.rateLimit({ namespace: "1002", simple: { limit: 120, period: 60 } }),
+      POST_LIMIT: bindings.rateLimit({ namespace: "1003", simple: { limit: 20, period: 60 } }),
       // Secrets, set by `node tooling/worker-secrets.mjs`, never in this file:
       //   KENNITALA_HMAC_KEY   the key of the kennitala HMAC (decisions 0014, 0019)
       //   KENNITALA_HMAC_KEY_PREVIOUS  the key before it, only while a rotation runs

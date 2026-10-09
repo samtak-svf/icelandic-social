@@ -9,10 +9,10 @@ import { hexBytes, mls } from "./mls.ts";
 import { device, euEnv } from "./support.ts";
 import { worker } from "./main.ts";
 
-// Other accounts' names (decision 0022) and block (decision 0024): a name
-// only for an account that shares a conversation, as the Conversation DO's
-// roster copy in D1 says; a blocked account cannot claim the blocker's
-// KeyPackages or bring the blocker into a group.
+// Other accounts' names (decisions 0022, 0034) and block (decision 0024):
+// any signed-in account reads any account's name and mark; the Conversation
+// DO's roster copy in D1 follows its commits; a blocked account cannot claim
+// the blocker's KeyPackages or bring the blocker into a group.
 
 const BASE = "https://spjall.test";
 const fetch = (path: string, init?: RequestInit) => worker.fetch(`${BASE}${path}`, init);
@@ -70,6 +70,16 @@ async function together(...members: Device[]) {
 const profileOf = (accountId: string, by: Device) =>
   fetch(`/v1/accounts/${accountId}`, { headers: by.auth });
 
+/** The accounts D1's roster copy holds for a conversation. */
+async function copied(conversationId: string) {
+  const { results } = await env.DB.prepare(
+    "SELECT account_id AS id FROM conversation_members WHERE conversation_id = ? ORDER BY id",
+  )
+    .bind(conversationId)
+    .all<{ id: string }>();
+  return results.map((r) => r.id);
+}
+
 describe("GET /v1/accounts/{accountId}", () => {
   it("names an account that shares a conversation", async () => {
     const [alice, bob] = [await named("Alísa Prófsdóttir"), await named("Bjarni Prófsson")];
@@ -83,16 +93,25 @@ describe("GET /v1/accounts/{accountId}", () => {
     });
   });
 
-  it("answers a stranger, or no account at all, the same 404", async () => {
+  it("names a stranger too: everyone is in Fljótið (decision 0034)", async () => {
     const [alice, stranger] = [
       await named("Alísa Prófsdóttir"),
       await named("Ókunnug Prófsdóttir"),
     ];
-    for (const id of [stranger.accountId, "acct_none"]) {
-      const response = await profileOf(id, alice);
-      expect(response.status).toBe(404);
-      expect(await errorOf(response)).toBe("not_found");
-    }
+    const response = await profileOf(stranger.accountId, alice);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      accountId: stranger.accountId,
+      name: "Ókunnug Prófsdóttir",
+      verified: true,
+    });
+  });
+
+  it("answers no account at all with 404", async () => {
+    const alice = await named("Alísa Prófsdóttir");
+    const response = await profileOf("acct_none", alice);
+    expect(response.status).toBe(404);
+    expect(await errorOf(response)).toBe("not_found");
   });
 
   it("names the caller's own account", async () => {
@@ -100,13 +119,18 @@ describe("GET /v1/accounts/{accountId}", () => {
     expect((await profileOf(alice.accountId, alice)).status).toBe(200);
   });
 
-  it("stops naming an account once a commit leaves it out", async () => {
+  it("needs a device token", async () => {
+    expect((await fetch("/v1/accounts/acct_1")).status).toBe(401);
+  });
+});
+
+describe("the roster copy in D1", () => {
+  it("drops an account once a commit leaves it out", async () => {
     const [alice, bob, carol] = [await named("A"), await named("B"), await named("C")];
-    const { commit } = await together(alice, bob, carol);
-    expect((await profileOf(carol.accountId, bob)).status).toBe(200);
+    const { id, commit } = await together(alice, bob, carol);
+    expect(await copied(id)).toEqual([alice, bob, carol].map((d) => d.accountId).sort());
     await commit(1, [alice, bob]);
-    expect((await profileOf(carol.accountId, bob)).status).toBe(404);
-    expect((await profileOf(bob.accountId, alice)).status).toBe(200);
+    expect(await copied(id)).toEqual([alice, bob].map((d) => d.accountId).sort());
   });
 
   it("keeps the newest roster when an older copy arrives late", async () => {
@@ -117,11 +141,7 @@ describe("GET /v1/accounts/{accountId}", () => {
     // seq 1 that arrives after the one at seq 2 changes nothing.
     await runDurableObjectAlarm(stub);
     await copyRoster(env, id, 1, [alice.accountId, bob.accountId]);
-    expect((await profileOf(bob.accountId, alice)).status).toBe(404);
-  });
-
-  it("needs a device token", async () => {
-    expect((await fetch("/v1/accounts/acct_1")).status).toBe(401);
+    expect(await copied(id)).toEqual([alice.accountId]);
   });
 });
 

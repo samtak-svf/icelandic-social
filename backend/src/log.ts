@@ -9,6 +9,7 @@ type Fields = {
   accountId: string;
   deviceId: string;
   conversationId: string;
+  postId: string;
   seq: number;
   epoch: number;
   count: number;
@@ -23,6 +24,7 @@ const ALLOWED: ReadonlySet<string> = new Set<keyof Fields>([
   "accountId",
   "deviceId",
   "conversationId",
+  "postId",
   "seq",
   "epoch",
   "count",

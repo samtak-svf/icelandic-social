@@ -66,7 +66,15 @@ describe("worker-config", () => {
 
   it("reads the real config with every binding the Worker reads", async () => {
     const names = configuredNames(await readWorkerConfig());
-    for (const name of ["DB", "MEDIA", "CONVERSATION", "INBOX", "PUBLIC_LIMIT", "CLAIM_LIMIT"]) {
+    for (const name of [
+      "DB",
+      "MEDIA",
+      "CONVERSATION",
+      "INBOX",
+      "PUBLIC_LIMIT",
+      "CLAIM_LIMIT",
+      "POST_LIMIT",
+    ]) {
       expect(names).toContain(name);
     }
   });
