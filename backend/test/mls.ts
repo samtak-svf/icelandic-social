@@ -25,24 +25,39 @@ function skip(bytes: Uint8Array, at: number): number {
   throw new Error("vector too long for the fixture");
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /**
  * The fixture's KeyPackage with another identity and signature key in its
- * leaf. Its signature no longer verifies, which only a client checks; the
- * server reads who the package names (0018), and that is what this changes.
+ * leaf, and a lifetime ending at `notAfter` (milliseconds; 84 days from now
+ * if not given, as a device makes it, 0029). Its signature no longer
+ * verifies, which only a client checks; the server reads who the package
+ * names (0018) and when it expires, and that is what this changes.
  */
-function keyPackageNaming(identity: string, signatureKey: Uint8Array): string {
+function keyPackageNaming(
+  identity: string,
+  signatureKey: Uint8Array,
+  notAfter = Date.now() + 84 * DAY_MS,
+): string {
   const bytes = hexBytes(fixture.keyPackage.hex);
   const initKey = 8; // MLSMessage version and wire format, then version and suite
   const keyAt = skip(bytes, skip(bytes, initKey)); // past init_key and encryption_key
   const credentialAt = skip(bytes, keyAt);
   const rest = skip(bytes, credentialAt + 2); // past the credential type and identity
+  let lifetime = rest;
+  for (let i = 0; i < 5; i++) lifetime = skip(bytes, lifetime); // the capabilities
+  lifetime += 1; // the leaf's source, a KeyPackage
+  const seconds = Math.floor(notAfter / 1000);
   return toBase64(
     Uint8Array.from([
       ...bytes.subarray(0, keyAt),
       ...vector(signatureKey),
       ...bytes.subarray(credentialAt, credentialAt + 2),
       ...vector(new TextEncoder().encode(identity)),
-      ...bytes.subarray(rest),
+      ...bytes.subarray(rest, lifetime),
+      ...u64(seconds - 2 * 60 * 60),
+      ...u64(seconds),
+      ...bytes.subarray(lifetime + 16),
     ]),
   );
 }

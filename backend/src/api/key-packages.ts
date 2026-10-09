@@ -25,7 +25,13 @@ const UploadKeyPackages = z
 
 const KeyPackageStock = z
   .object({
-    available: z.int().min(0).openapi({ description: "This device's unclaimed packages" }),
+    available: z.int().min(0).openapi({
+      description: "This device's unclaimed packages valid for at least 14 more days",
+    }),
+    lastResortNotAfter: z
+      .int()
+      .nullable()
+      .openapi({ description: "When the last resort expires, in Unix milliseconds; null if none" }),
   })
   .openapi("KeyPackageStock");
 
@@ -53,7 +59,7 @@ export const uploadKeyPackagesRoute = createRoute({
       content: { "application/json": { schema: KeyPackageStock } },
     },
     400: errorResponse(
-      "invalid_request: not a KeyPackage naming this device and its key, or more than 100 held",
+      "invalid_request: not a KeyPackage naming this device and its key, expired or valid for more than 90 days, or more than 100 held",
     ),
     ...AUTHED,
   },
@@ -75,6 +81,7 @@ export const claimKeyPackagesRoute = createRoute({
     ...INVALID,
     403: errorResponse("blocked: the account has blocked this one (decision 0024)"),
     404: errorResponse("not_found: no such account, or it has no devices"),
+    409: errorResponse("no_key_packages: no other device of the account has a valid package"),
     ...AUTHED,
     ...RATE_LIMITED,
   },

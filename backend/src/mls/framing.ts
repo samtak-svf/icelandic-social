@@ -1,7 +1,8 @@
 // The unencrypted framing of an MLS message (RFC 9420 §6), which is all the
 // server reads (decisions 0002, 0017, 0020, 0021): which group, which epoch,
 // whether it is a commit, the authenticated_data a commit's claim is in, the
-// leaf an external commit brings, and the group and epoch of a GroupInfo.
+// leaf an external commit brings, a KeyPackage's lifetime, and the group and
+// epoch of a GroupInfo.
 // Everything after those fields is ciphertext or signed content it neither
 // needs nor checks. api/fixtures/mls-framing.json holds
 // real OpenMLS messages to test against.
@@ -40,7 +41,12 @@ export type Framing =
       joiner?: Leaf;
     }
   | { wireFormat: "welcome"; cipherSuite: number }
-  | ({ wireFormat: "key_package"; cipherSuite: number } & Leaf)
+  | ({
+      wireFormat: "key_package";
+      cipherSuite: number;
+      /** When the package expires, in seconds since the epoch (0029). */
+      notAfter: number;
+    } & Leaf)
   | { wireFormat: "group_info"; groupId: Uint8Array; epoch: number };
 
 /** Bytes that are not a well-formed MLS 1.0 message. */
@@ -135,6 +141,20 @@ function readLeaf(reader: Reader): Leaf {
   return { identity: reader.vector(), signatureKey };
 }
 
+/** RFC 9420 §7.2, `LeafNodeSource.key_package`. */
+const FROM_KEY_PACKAGE = 1;
+
+/**
+ * RFC 9420 §7.2, the rest of a KeyPackage's leaf after its credential: past
+ * the capabilities to its source, whose lifetime ends at `not_after`.
+ */
+function readNotAfter(reader: Reader): number {
+  for (let i = 0; i < 5; i++) reader.vector(); // versions, suites, extensions, proposals, credentials
+  if (reader.u8() !== FROM_KEY_PACKAGE) throw new FramingError("leaf not from a KeyPackage");
+  reader.u64(); // not_before
+  return reader.u64();
+}
+
 /**
  * RFC 9420 §12.4: an external commit's proposals, then the path its joiner
  * must bring (§12.4.3.2), whose leaf is the joiner's own.
@@ -151,7 +171,7 @@ function readJoiner(reader: Reader): Leaf {
  * to the fields the server uses, since the rest is signed content whose
  * checking is the clients' (decision 0002). A KeyPackage, and an external
  * commit's path, are read into their leaf as far as the credential, which
- * must be a BasicCredential.
+ * must be a BasicCredential; a KeyPackage's further, to its lifetime.
  */
 export function readFraming(bytes: Uint8Array): Framing {
   const reader = new Reader(bytes);
@@ -193,7 +213,8 @@ export function readFraming(bytes: Uint8Array): Framing {
       if (reader.u16() !== MLS10) throw new FramingError("KeyPackage not MLS 1.0");
       const cipherSuite = reader.u16();
       reader.vector(); // init_key
-      return { wireFormat, cipherSuite, ...readLeaf(reader) };
+      const leaf = readLeaf(reader);
+      return { wireFormat, cipherSuite, ...leaf, notAfter: readNotAfter(reader) };
     }
     case "group_info": {
       // RFC 9420 §12.4.3.1: the GroupInfo opens with its GroupContext.

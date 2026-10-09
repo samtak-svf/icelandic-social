@@ -138,6 +138,7 @@ describe("block", () => {
   it("stops the blocked account claiming the blocker's KeyPackages, until lifted", async () => {
     const [alice, bob] = [await named("A"), await named("B")];
     await stock(alice);
+    await stock(bob);
     expect((await send("PUT", `/v1/blocks/${bob.accountId}`, alice.auth)).status).toBe(204);
     expect((await send("PUT", `/v1/blocks/${bob.accountId}`, alice.auth)).status).toBe(204);
 

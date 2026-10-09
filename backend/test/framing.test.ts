@@ -100,6 +100,19 @@ describe("the MLS framing reader", () => {
       cipherSuite: mls.ciphersuite,
       identity: new TextEncoder().encode(`${mls.keyPackage.accountId}/${mls.keyPackage.deviceId}`),
       signatureKey: hexBytes(mls.keyPackage.devicePublic),
+      notAfter: expect.any(Number),
+    });
+  });
+
+  it("reads when a KeyPackage expires from its leaf", () => {
+    const notAfter = Date.UTC(2027, 0, 6);
+    const bytes = Uint8Array.from(
+      atob(mls.keyPackageNaming("a_1/d_1", new Uint8Array(32), notAfter)),
+      (c) => c.charCodeAt(0),
+    );
+    expect(readFraming(bytes)).toMatchObject({
+      wireFormat: "key_package",
+      notAfter: notAfter / 1000,
     });
   });
 

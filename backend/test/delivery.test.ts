@@ -53,7 +53,7 @@ describe("delivery", () => {
       { keyPackages: [b.keyPackage], lastResort: b.keyPackage },
       b.auth,
     );
-    expect(await stocked.json()).toEqual({ available: 1 });
+    expect(await stocked.json()).toEqual({ available: 1, lastResortNotAfter: expect.any(Number) });
 
     const socketA = await connect(a.auth);
     const socketB = await connect(b.auth);

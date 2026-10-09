@@ -364,7 +364,8 @@ export function createApp() {
       return c.json({ error: "blocked" }, 403);
     }
     const claimed = await claim(c.env, accountId, c.var.device.deviceId);
-    if (!claimed) return c.json({ error: "not_found" }, 404);
+    if (claimed === "none") return c.json({ error: "not_found" }, 404);
+    if (claimed === "expired") return c.json({ error: "no_key_packages" }, 409);
     const keyPackages = claimed.map((p) => ({
       deviceId: p.deviceId,
       keyPackage: toBase64(p.keyPackage),

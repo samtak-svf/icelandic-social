@@ -259,7 +259,7 @@
         "properties": {
           "error": {
             "type": "string",
-            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, invite_required, device_key_taken, kenni_unavailable, rate_limited, blocked, conflict, too_large, not_this_device",
+            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, invite_required, device_key_taken, kenni_unavailable, rate_limited, blocked, conflict, too_large, not_this_device, no_key_packages",
             "example": "unauthorized"
           }
         },
@@ -663,11 +663,19 @@
           "available": {
             "type": "integer",
             "minimum": 0,
-            "description": "This device's unclaimed packages"
+            "description": "This device's unclaimed packages valid for at least 14 more days"
+          },
+          "lastResortNotAfter": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "When the last resort expires, in Unix milliseconds; null if none"
           }
         },
         "required": [
-          "available"
+          "available",
+          "lastResortNotAfter"
         ]
       },
       "UploadKeyPackages": {
@@ -1982,7 +1990,7 @@
             }
           },
           "400": {
-            "description": "invalid_request: not a KeyPackage naming this device and its key, or more than 100 held",
+            "description": "invalid_request: not a KeyPackage naming this device and its key, expired or valid for more than 90 days, or more than 100 held",
             "content": {
               "application/json": {
                 "schema": {
@@ -2071,6 +2079,16 @@
           },
           "404": {
             "description": "not_found: no such account, or it has no devices",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "no_key_packages: no other device of the account has a valid package",
             "content": {
               "application/json": {
                 "schema": {

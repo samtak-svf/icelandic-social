@@ -1,6 +1,7 @@
 # 0029. KeyPackages have a lifetime the server reads and the core keeps ahead of
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the backend; the core's part (the lifetime constant,
+  restocking, `Expired`) is designed, not yet implemented
 - Date: 2026-10-09
 - Decided by: the maintainer, approving the plan that acted on architecture review #100
 - Amends: [0002](0002-mls-end-to-end-encryption.md) (the replenish threshold),
