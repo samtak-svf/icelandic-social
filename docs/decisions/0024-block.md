@@ -1,6 +1,7 @@
 # 0024. Block is per account: the server refuses new contact, the core hides the rest
 
-- Status: accepted; to be built in the backend and the core
+- Status: accepted; implemented in the backend (#55) and the core (#58); the apps offer it
+  since #64 and #67
 - Date: 2026-10-07
 - Decided by: the maintainer, approving the plan for the conversation UI
 - Builds on: [0009](0009-v1-scope.md) (block is in v1),

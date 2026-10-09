@@ -1,7 +1,7 @@
 # 0015. What persists goes over REST; the WebSocket carries only what is live
 
-- Status: accepted; implemented in the Worker and the core. Push goes to a sender that only
-  logs until FCM and APNs are set up.
+- Status: accepted; implemented in the Worker and the core. Push goes to FCM and APNs as
+  [0025](0025-push-without-ids.md) says.
 - Date: 2026-10-06
 - Decided by: Guðröður, approving the plan that acted on the phase-0 review
 - Amended by: [0017](0017-conversations-on-the-server.md) (the roster, Welcomes and KeyPackages),

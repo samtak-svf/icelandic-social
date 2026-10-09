@@ -1,6 +1,7 @@
 # 0025. A push says only "sync"; the device decides what to show
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the backend (#75, #76), the core (#77) and both apps (#80,
+  #81)
 - Date: 2026-10-07
 - Decided by: the maintainer, approving the plan for push notifications
 - Amends: [0002](0002-mls-end-to-end-encryption.md) (the fetch hint),

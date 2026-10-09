@@ -29,6 +29,30 @@ function headerOf(text) {
   return header;
 }
 
+/**
+ * What a Status may say after `accepted`: nothing, or a first clause that
+ * starts with one of these. A status is a claim about the code, so the words
+ * are few and each one can be checked against it; "to be built" and the like
+ * drift silently once the code lands.
+ */
+const STATES = [
+  /^implemented\b/,
+  /^designed, not yet implemented\b/,
+  /^deferred\b/,
+  /^(?:[a-z ]+ )?amended by\b/,
+];
+
+/**
+ * @param {string} status
+ * @returns {boolean}
+ */
+function statusIsKnown(status) {
+  const rest = /^accepted(?:$|[;.] (.*)$)/.exec(status);
+  if (!rest) return false;
+  const clause = rest[1];
+  return clause === undefined || STATES.some((state) => state.test(clause));
+}
+
 describe("decision records", () => {
   it("are numbered without gaps from 0001", () => {
     const numbers = records.map((f) => Number(f.slice(0, 4)));
@@ -41,11 +65,23 @@ describe("decision records", () => {
     expect(header.get("Status")).toBe("accepted; designed, not built");
   });
 
+  it("knows the states a status may claim, and no others", () => {
+    expect(statusIsKnown("accepted")).toBe(true);
+    expect(statusIsKnown("accepted; implemented in the core (#58)")).toBe(true);
+    expect(statusIsKnown("accepted; designed, not yet implemented")).toBe(true);
+    expect(statusIsKnown("accepted; deferred beyond v1 (0009)")).toBe(true);
+    expect(statusIsKnown("accepted; registration amended by 0019")).toBe(true);
+    expect(statusIsKnown("accepted; to be built in the backend")).toBe(false);
+    expect(statusIsKnown("accepted. The apps reach the server")).toBe(false);
+    expect(statusIsKnown("proposed")).toBe(false);
+  });
+
   it.each(records)("%s has its title, header block and decision", (file) => {
     const text = readFileSync(join(DIR, file), "utf8");
     expect(text.split("\n")[0]).toMatch(new RegExp(`^# ${file.slice(0, 4)}\\. \\S`));
     const header = headerOf(text);
     expect(header.get("Status")).toMatch(/^accepted\b/);
+    expect(statusIsKnown(header.get("Status") ?? ""), header.get("Status")).toBe(true);
     expect(header.get("Date")).toMatch(/^\d{4}-\d{2}-\d{2}\b/);
     expect(header.get("Decided by")).toMatch(/^\S/);
     expect(header.get("Decided by")).not.toMatch(/\bagent\b/i);

@@ -1,6 +1,7 @@
 # 0023. Photos and files are encrypted blobs in R2, bound to a conversation
 
-- Status: accepted; to be built in the backend and the core
+- Status: accepted; implemented in the backend (#56) and the core (#58); the apps send and
+  show it since #64 and #67
 - Date: 2026-10-07
 - Decided by: the maintainer, approving the plan for the conversation UI
 - Builds on: [0001](0001-eu-storage-and-residency-wording.md) (EU storage),

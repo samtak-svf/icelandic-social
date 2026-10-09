@@ -1,6 +1,6 @@
 # 0005. The API contract is zod → OpenAPI; REST clients are generated, WebSocket frames are emitted
 
-- Status: accepted. The apps reach the server through the Rust core (decision
+- Status: accepted; implemented. The apps reach the server through the Rust core (decision
   [0018](0018-the-client-engine-in-the-core.md)), whose request and response types live in
   `core/client/src/api.rs` and are proved against the real Worker by the interop test. The
   generated Kotlin and Swift clients serve only `/health` today. Whether they stay, once the

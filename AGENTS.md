@@ -156,7 +156,8 @@ comments, docs, commits, PRs, issues) is English.
 and what it rules out. A superseded record is kept and marked, not deleted.
 
 Each record opens with `# NNNN. Title` and a header list: `- Status:` (`accepted`, with
-"designed, not yet implemented", "deferred" or "amended by NNNN" when that applies),
+"implemented …", "designed, not yet implemented", "deferred" or "amended by NNNN" when that
+applies; the test refuses any other state, so a status is updated in the PR that lands the work),
 `- Date:` and `- Decided by:` (a person, never an agent), then any `Amended by`, `Supersedes` or
 `Closes` lines. The body starts at `## Decision`; `tooling/tests/decisions.test.mjs` holds this.
 

@@ -1,6 +1,7 @@
 # 0022. The core folds every conversation into a timeline; the apps only draw it
 
-- Status: accepted; to be built in the core, the backend and both apps
+- Status: accepted; implemented in the backend (#55), the core (#57, #58, #69) and both apps
+  (#62 to #67)
 - Date: 2026-10-07
 - Decided by: the maintainer, approving the plan for the conversation UI after a review of it
 - Builds on: [0006](0006-device-local-history.md) (single writer),
