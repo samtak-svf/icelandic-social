@@ -13,12 +13,13 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -28,6 +29,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,7 +41,14 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import samtak.spjall.brand.R
+import samtak.spjall.feed.ComposePill
+import samtak.spjall.feed.ComposerSheet
+import samtak.spjall.feed.PostsActions
+import samtak.spjall.feed.PostsViewModel
+import samtak.spjall.feed.posts
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
@@ -51,43 +61,77 @@ import samtak.spjall.ui.VerifiedMark
 import samtak.spjall.ui.capitals
 
 /**
- * "Ég" (1e), on cream: the person and their invite link and QR code. The gear
- * at the top opens [SettingsScreen], which holds the rest (decision 0034).
+ * "Ég" (1e), on cream: the person and their invite link and QR code, then
+ * their wall: a way to post and their own posts (decision 0034). The gear at
+ * the top opens [SettingsScreen], which holds the rest.
  */
 @Composable
 fun MeScreen(
     state: MeViewModel.State,
     actions: MeActions,
     onSettings: () -> Unit,
+    wall: PostsViewModel.State = PostsViewModel.State(),
+    wallActions: PostsActions? = null,
+    posted: Flow<Unit> = emptyFlow(),
 ) {
+    var composing by rememberSaveable { mutableStateOf(false) }
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
-        Column(
-            modifier =
-                Modifier
-                    .safeDrawingPadding()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            state.problem?.let { ProblemCard(it, actions::retry) }
-            state.me?.let { me ->
-                Row(verticalAlignment = Alignment.Top) {
-                    Box(modifier = Modifier.weight(1f)) { Who(me.name, me.verified) }
-                    IconButton(onClick = onSettings) {
-                        Icon(
-                            AppIcons.Settings,
-                            contentDescription = stringResource(R.string.settings_title),
-                            tint = Palette.fg,
+        LazyColumn(modifier = Modifier.safeDrawingPadding()) {
+            item(key = "me") {
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    state.problem?.let { ProblemCard(it, actions::retry) }
+                    state.me?.let { me ->
+                        Row(verticalAlignment = Alignment.Top) {
+                            Box(modifier = Modifier.weight(1f)) { Who(me.name, me.verified) }
+                            IconButton(onClick = onSettings) {
+                                Icon(
+                                    AppIcons.Settings,
+                                    contentDescription = stringResource(R.string.settings_title),
+                                    tint = Palette.fg,
+                                )
+                            }
+                        }
+                        if (!me.verified) VerifyLink(actions::verify)
+                        Label(R.string.invite_link_title)
+                        InviteCard(state.link, state.busy, actions)
+                    }
+                    if (wallActions != null) {
+                        ComposePill(
+                            stringResource(R.string.wall_composer_placeholder),
+                            onClick = { composing = true },
+                            modifier = Modifier.padding(top = 8.dp),
                         )
                     }
                 }
-                if (!me.verified) VerifyLink(actions::verify)
-                Label(R.string.invite_link_title)
-                InviteCard(state.link, state.busy, actions)
             }
+            wallActions?.let { wallPosts(wall, it) }
         }
     }
+    if (composing && wallActions != null) {
+        ComposerSheet(
+            placeholder = stringResource(R.string.wall_composer_placeholder),
+            busy = wall.posting,
+            posted = posted,
+            onPost = wallActions::post,
+            onDismiss = { composing = false },
+        )
+    }
+}
+
+/** Ég's own posts, on white under the cream header, as they show in Fljótið. */
+private fun LazyListScope.wallPosts(
+    wall: PostsViewModel.State,
+    actions: PostsActions,
+) {
+    item(key = "wall") { HorizontalDivider(color = Palette.border) }
+    wall.problem?.let {
+        item(key = "wall-problem") { Box(modifier = Modifier.padding(16.dp)) { ProblemCard(it, actions::refresh) } }
+    }
+    posts(wall, actions, empty = R.string.wall_empty)
 }
 
 /** The dark circle with the initials, the name in capitals, and whether Kenni vouched for it. */

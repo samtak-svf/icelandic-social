@@ -13,6 +13,12 @@ import samtak.spjall.core.Notices
 import samtak.spjall.core.Outcome
 import samtak.spjall.core.Person
 import samtak.spjall.core.Platform
+import samtak.spjall.core.Post
+import samtak.spjall.core.PostPage
+import samtak.spjall.core.PostReaction
+import samtak.spjall.core.ReactionCounts
+import samtak.spjall.core.Reply
+import samtak.spjall.core.ReplyPage
 import samtak.spjall.core.Settings
 import samtak.spjall.core.SignInProvider
 
@@ -288,8 +294,118 @@ class FakeAccount(
         current = settings
     }
 
+    /** Fljótið, newest first; [createPost] adds at the top. */
+    val posts = mutableListOf<Post>()
+
+    /** Each post's replies, oldest first. */
+    val replies = mutableMapOf<String, MutableList<Reply>>()
+
+    /** The page that starts at [cursor], an index; `next` is the index of the page after, as text. */
+    private fun <T> page(
+        all: List<T>,
+        cursor: String?,
+        limit: UInt,
+    ): Pair<List<T>, String?> {
+        val from = cursor?.toInt() ?: 0
+        val to = minOf(all.size, from + limit.toInt())
+        return all.subList(from, to).toList() to to.takeIf { it < all.size }?.toString()
+    }
+
+    override fun feed(
+        before: String?,
+        limit: UInt,
+    ): PostPage {
+        call("feed ${before ?: "-"}")
+        val (page, next) = page(posts.toList(), before, limit)
+        return PostPage(page, next)
+    }
+
+    override fun wall(
+        account: String,
+        before: String?,
+        limit: UInt,
+    ): PostPage {
+        call("wall $account ${before ?: "-"}")
+        val (page, next) = page(posts.filter { it.author.account == account }, before, limit)
+        return PostPage(page, next)
+    }
+
+    override fun post(postId: String): Post {
+        call("post $postId")
+        return posts.firstOrNull { it.postId == postId } ?: throw CoreException.Refused(404u, "not_found")
+    }
+
+    override fun createPost(body: String): Post {
+        call("createPost $body")
+        return post("p-new${calls.size}", ME, body).also { posts.add(0, it) }
+    }
+
+    override fun deletePost(postId: String) {
+        call("deletePost $postId")
+        posts.removeAll { it.postId == postId }
+    }
+
+    override fun reactToPost(
+        postId: String,
+        reaction: PostReaction?,
+    ) {
+        call("reactToPost $postId ${reaction ?: "-"}")
+    }
+
+    override fun replies(
+        postId: String,
+        after: String?,
+        limit: UInt,
+    ): ReplyPage {
+        call("replies $postId ${after ?: "-"}")
+        if (posts.none { it.postId == postId }) throw CoreException.Refused(404u, "not_found")
+        val (page, next) = page(replies[postId].orEmpty(), after, limit)
+        return ReplyPage(page, next)
+    }
+
+    override fun createReply(
+        postId: String,
+        body: String,
+    ): Reply {
+        call("createReply $postId $body")
+        if (posts.none { it.postId == postId }) throw CoreException.Refused(404u, "not_found")
+        return Reply("r-new${calls.size}", postId, ME, body, NOW).also {
+            replies.getOrPut(postId) { mutableListOf() } += it
+        }
+    }
+
+    override fun deleteReply(replyId: String) {
+        call("deleteReply $replyId")
+        replies.values.forEach { list -> list.removeAll { it.replyId == replyId } }
+    }
+
+    override fun profile(account: String): Person {
+        call("profile $account")
+        return people.firstOrNull { it.account == account } ?: throw CoreException.Refused(404u, "not_found")
+    }
+
+    override fun openDirect(account: String): String {
+        call("openDirect $account")
+        if (account == ME.account || blockedPeople.any { it.account == account }) {
+            throw CoreException.Invalid("no 1:1 with this account")
+        }
+        return "c-$account"
+    }
+
     companion object {
         const val NOW = 1_700_000_000_000uL
+
+        /** This account, as an author. */
+        val ME = Person("a1", "Jón Jónsson", true)
+
+        fun post(
+            id: String,
+            author: Person,
+            body: String = "Halló $id",
+            replies: UInt = 0u,
+            reactions: ReactionCounts = ReactionCounts(0u, 0u, 0u, 0u, 0u),
+            mine: PostReaction? = null,
+        ) = Post(id, author, body, NOW, replies, reactions, mine)
 
         const val KENNI = "https://kenni.test/oidc/auth?state=s1"
         const val GOOGLE = "https://google.test/o/oauth2/auth?state=s1"

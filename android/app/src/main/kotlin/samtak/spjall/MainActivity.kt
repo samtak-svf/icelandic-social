@@ -59,7 +59,16 @@ import samtak.spjall.conversations.ConversationsActions
 import samtak.spjall.conversations.ConversationsScreen
 import samtak.spjall.conversations.ConversationsViewModel
 import samtak.spjall.core.Item
+import samtak.spjall.core.Person
+import samtak.spjall.core.Post
 import samtak.spjall.core.inviteToken
+import samtak.spjall.feed.FeedScreen
+import samtak.spjall.feed.PostsActions
+import samtak.spjall.feed.PostsViewModel
+import samtak.spjall.feed.RepliesActions
+import samtak.spjall.feed.RepliesScreen
+import samtak.spjall.feed.RepliesViewModel
+import samtak.spjall.feed.WallScreen
 import samtak.spjall.me.MeActions
 import samtak.spjall.me.MeScreen
 import samtak.spjall.me.MeViewModel
@@ -166,7 +175,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** The two tabs of 1a, Samtöl and Ég, and the screens they lead to. */
+    /** The three tabs, Fljótið, Samtöl and Ég (decision 0034), and the screens they lead to. */
     @Composable
     private fun Home(signIns: Int) {
         val nav = rememberNavController()
@@ -175,7 +184,12 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(Unit) { graph.socket.start() }
         LaunchedEffect(list) { signIn.invites.collect { list.openInvite(it.token, it.signedUp) } }
         LaunchedEffect(list) { list.opened.collect { nav.navigate(conversation(it)) } }
-        LaunchedEffect(Unit) { opens.receiveAsFlow().collect { nav.navigate(conversation(it)) { popUpTo(LIST) } } }
+        LaunchedEffect(Unit) {
+            opens.receiveAsFlow().collect {
+                nav.navigate(LIST) { tab() }
+                nav.navigate(conversation(it))
+            }
+        }
         AskForNotifications()
         val route =
             nav
@@ -187,19 +201,26 @@ class MainActivity : ComponentActivity() {
         Scaffold(
             contentWindowInsets = WindowInsets(0),
             bottomBar = {
-                if (route == LIST || route == ME) Tabs(route) { nav.navigate(it) { tab() } }
+                if (route in TABS) Tabs(route) { nav.navigate(it) { tab() } }
             },
         ) { padding ->
             NavHost(
                 navController = nav,
-                startDestination = LIST,
+                startDestination = FEED,
                 modifier = Modifier.padding(padding).consumeWindowInsets(padding),
             ) {
+                composable(FEED) { Feed(signIns, nav) }
                 composable(LIST) { Conversations(list, nav) }
                 composable(ME) { Me(signIns, nav, settings = false) }
                 composable(SETTINGS) { Me(signIns, nav, settings = true) }
                 composable(VERIFY) { Verify(nav) }
                 composable(PEOPLE) { People(nav) }
+                composable("$WALL/{account}") { entry ->
+                    entry.arguments?.getString("account")?.let { Wall(it, nav) }
+                }
+                composable("$REPLIES/{id}") { entry ->
+                    entry.arguments?.getString("id")?.let { Replies(it, nav) }
+                }
                 composable("$CONVERSATION/{id}") { entry ->
                     entry.arguments?.getString("id")?.let { Conversation(it, nav) }
                 }
@@ -228,11 +249,12 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun Tabs(
-        route: String,
+        route: String?,
         go: (String) -> Unit,
     ) {
         TabBar(
             listOf(
+                Tab(AppIcons.Waves, stringResource(R.string.tab_feed), route == FEED) { go(FEED) },
                 Tab(AppIcons.Chat, stringResource(R.string.tab_conversations), route == LIST) { go(LIST) },
                 Tab(AppIcons.Person, stringResource(R.string.tab_me), route == ME) { go(ME) },
             ),
@@ -257,6 +279,99 @@ class MainActivity : ComponentActivity() {
                 override fun retry() = list.load()
             },
         )
+    }
+
+    /** Fljótið; read again whenever it shows, since nothing is pushed (decision 0034). */
+    @Composable
+    private fun Feed(
+        signIns: Int,
+        nav: NavController,
+    ) {
+        val feed: PostsViewModel =
+            viewModel(viewModelStoreOwner = this, key = "feed-$signIns") {
+                PostsViewModel(PostsViewModel.Source.Feed, graph.account)
+            }
+        val state by feed.state.collectAsStateWithLifecycle()
+        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { feed.refresh() }
+        FeedScreen(state, postsActions(feed, state.me, nav), feed.posted)
+    }
+
+    /** Another account's wall, and the 1:1 its button opens. */
+    @Composable
+    private fun Wall(
+        account: String,
+        nav: NavController,
+    ) {
+        val wall: PostsViewModel =
+            viewModel(key = "wall-$account") { PostsViewModel(PostsViewModel.Source.Wall(account), graph.account) }
+        val state by wall.state.collectAsStateWithLifecycle()
+        LaunchedEffect(wall) {
+            wall.opened.collect {
+                graph.socket.sync()
+                nav.navigate(conversation(it))
+            }
+        }
+        WallScreen(state, postsActions(wall, state.me, nav), onBack = rememberBack(nav), onContact = wall::contact)
+    }
+
+    @Composable
+    private fun Replies(
+        postId: String,
+        nav: NavController,
+    ) {
+        val model: RepliesViewModel = viewModel(key = "replies-$postId") { RepliesViewModel(postId, graph.account) }
+        val state by model.state.collectAsStateWithLifecycle()
+        val pop = rememberBack(nav)
+        RepliesScreen(
+            state,
+            object : RepliesActions {
+                override fun back() = pop()
+
+                override fun author(person: Person) = openAuthor(person, state.me, nav)
+
+                override fun heart() = model.toggleHeart()
+
+                override fun deletePost() = model.deletePost()
+
+                override fun send(body: String) = model.send(body)
+
+                override fun delete(replyId: String) = model.delete(replyId)
+
+                override fun loadMore() = model.loadMore()
+
+                override fun retry() = model.load()
+            },
+            model.sent,
+        )
+    }
+
+    private fun postsActions(
+        model: PostsViewModel,
+        me: String?,
+        nav: NavController,
+    ) = object : PostsActions {
+        override fun author(person: Person) = openAuthor(person, me, nav)
+
+        override fun heart(post: Post) = model.toggleHeart(post)
+
+        override fun replies(postId: String) = nav.navigate("$REPLIES/$postId")
+
+        override fun delete(postId: String) = model.delete(postId)
+
+        override fun post(body: String) = model.post(body)
+
+        override fun loadMore() = model.loadMore()
+
+        override fun refresh() = model.refresh()
+    }
+
+    /** An author's wall; this account's own is Ég. */
+    private fun openAuthor(
+        person: Person,
+        me: String?,
+        nav: NavController,
+    ) {
+        if (person.account == me) nav.navigate(ME) { tab() } else nav.navigate("$WALL/${person.account}")
     }
 
     @Composable
@@ -395,7 +510,20 @@ class MainActivity : ComponentActivity() {
         if (settings) {
             SettingsScreen(state, actions, onBack = rememberBack(nav), notificationsOff = notificationsOff)
         } else {
-            MeScreen(state, actions, onSettings = { nav.navigate(SETTINGS) })
+            val wall: PostsViewModel =
+                viewModel(viewModelStoreOwner = this, key = "mine-$signIns") {
+                    PostsViewModel(PostsViewModel.Source.Mine, graph.account)
+                }
+            val posts by wall.state.collectAsStateWithLifecycle()
+            LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { wall.refresh() }
+            MeScreen(
+                state,
+                actions,
+                onSettings = { nav.navigate(SETTINGS) },
+                wall = posts,
+                wallActions = postsActions(wall, posts.me, nav),
+                posted = wall.posted,
+            )
         }
     }
 
@@ -428,12 +556,16 @@ class MainActivity : ComponentActivity() {
         const val ACTION_OPEN_CONVERSATION = "samtak.spjall.OPEN_CONVERSATION"
         const val EXTRA_CONVERSATION = "conversation"
 
+        private const val FEED = "feed"
         private const val LIST = "conversations"
         private const val ME = "me"
         private const val SETTINGS = "settings"
         private const val VERIFY = "verify"
         private const val PEOPLE = "people"
         private const val CONVERSATION = "conversation"
+        private const val WALL = "wall"
+        private const val REPLIES = "replies"
+        private val TABS = setOf(FEED, LIST, ME)
         private const val PREFS = "push"
         private const val ASKED_NOTIFICATIONS = "asked_notifications"
 
@@ -441,7 +573,7 @@ class MainActivity : ComponentActivity() {
 
         /** A tab keeps one copy of itself on the stack, above the list. */
         private fun NavOptionsBuilder.tab() {
-            popUpTo(LIST) { saveState = true }
+            popUpTo(FEED) { saveState = true }
             launchSingleTop = true
             restoreState = true
         }

@@ -13,6 +13,18 @@
         }
       }
     },
+    "tab_feed": {
+      "comment": "The first tab: the public feed every account is in (docs/decisions/0034).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fljótið"
+          }
+        }
+      }
+    },
     "tab_conversations": {
       "comment": "Bottom tab: the conversation list.",
       "extractionState": "manual",
@@ -1161,6 +1173,174 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fá staðfestingarmerki"
+          }
+        }
+      }
+    },
+    "feed_public_notice": {
+      "comment": "One line on the feed's header: posts are public and not end-to-end encrypted (0034).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allir sem nota Hjal sjá það sem skrifað er hér. Það er ekki dulkóðað eins og samtölin."
+          }
+        }
+      }
+    },
+    "feed_composer_placeholder": {
+      "comment": "The feed's way to write a post, and the composer's placeholder.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hvað er að frétta?"
+          }
+        }
+      }
+    },
+    "wall_composer_placeholder": {
+      "comment": "Ég's way to write a post, and the composer's placeholder there.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrifa á vegginn þinn…"
+          }
+        }
+      }
+    },
+    "feed_empty": {
+      "comment": "The feed when no post is there yet.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekkert hefur verið skrifað í Fljótið enn."
+          }
+        }
+      }
+    },
+    "wall_empty": {
+      "comment": "A wall without posts.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekkert á veggnum enn."
+          }
+        }
+      }
+    },
+    "post_action": {
+      "comment": "The composer's button that posts.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Birta"
+          }
+        }
+      }
+    },
+    "post_react": {
+      "comment": "A post's heart button, as an accessibility label.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bregðast við"
+          }
+        }
+      }
+    },
+    "post_reply": {
+      "comment": "A post's button that opens its replies.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Svara"
+          }
+        }
+      }
+    },
+    "post_delete_confirm": {
+      "comment": "Confirms deleting one's own post.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eyða þessari færslu? Svörin og viðbrögðin fara með henni."
+          }
+        }
+      }
+    },
+    "reply_delete_confirm": {
+      "comment": "Confirms deleting one's own reply.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eyða þessu svari?"
+          }
+        }
+      }
+    },
+    "delete": {
+      "comment": "Deletes one's own post or reply, in its menu and its confirmation.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eyða"
+          }
+        }
+      }
+    },
+    "replies_title": {
+      "comment": "The title of a post's replies screen.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Svör"
+          }
+        }
+      }
+    },
+    "reply_placeholder": {
+      "comment": "The replies screen's composer placeholder.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrifa svar…"
+          }
+        }
+      }
+    },
+    "replies_empty": {
+      "comment": "A post without replies.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engin svör enn."
           }
         }
       }

@@ -296,6 +296,102 @@ final class FakeAccount: Account, @unchecked Sendable {
         }
     }
 
+    /// Fljótið, newest first; `createPost` adds to the top. A wall is the posts of one author.
+    var posts: [Post] {
+        get { lock.withLock { _posts } }
+        set { lock.withLock { _posts = newValue } }
+    }
+    private var _posts: [Post] = []
+    /// Each post's replies, oldest first.
+    var postReplies: [String: [Reply]] {
+        get { lock.withLock { _replies } }
+        set { lock.withLock { _replies = newValue } }
+    }
+    private var _replies: [String: [Reply]] = [:]
+    /// Who `profile` says an account is; one not here is nameless.
+    var profiles: [String: Person] = [:]
+    private var written = 0
+
+    func feed(before: String?, limit: UInt32) throws -> PostPage {
+        try call("feed \(before ?? "-")")
+        return Self.page(posts, before, limit)
+    }
+
+    func wall(account: String, before: String?, limit: UInt32) throws -> PostPage {
+        try call("wall \(account) \(before ?? "-")")
+        return Self.page(posts.filter { $0.author.account == account }, before, limit)
+    }
+
+    func post(_ postId: String) throws -> Post {
+        try call("post \(postId)")
+        guard let post = posts.first(where: { $0.postId == postId }) else {
+            throw CoreError.Refused(status: 404, code: "not_found")
+        }
+        return post
+    }
+
+    func createPost(body: String) throws -> Post {
+        try call("createPost \(body)")
+        let post = lock.withLock {
+            written += 1
+            return samplePost("p-new\(written)", author: person("a1", "Jón Jónsson"), body: body)
+        }
+        posts.insert(post, at: 0)
+        return post
+    }
+
+    func deletePost(_ postId: String) throws {
+        try call("deletePost \(postId)")
+        posts.removeAll { $0.postId == postId }
+    }
+
+    func reactToPost(_ postId: String, reaction: PostReaction?) throws {
+        try call("reactToPost \(postId) \(reaction.map { "\($0)" } ?? "nil")")
+    }
+
+    func replies(_ postId: String, after: String?, limit: UInt32) throws -> ReplyPage {
+        try call("replies \(postId) \(after ?? "-")")
+        let all = postReplies[postId] ?? []
+        let start = after.flatMap(Int.init) ?? 0
+        let end = min(all.count, start + Int(limit))
+        return ReplyPage(replies: Array(all[start..<end]), next: end < all.count ? String(end) : nil)
+    }
+
+    func createReply(_ postId: String, body: String) throws -> Reply {
+        try call("createReply \(postId) \(body)")
+        let reply = lock.withLock {
+            written += 1
+            return sampleReply("r-new\(written)", postId: postId, author: person("a1", "Jón Jónsson"), body: body)
+        }
+        postReplies[postId, default: []].append(reply)
+        return reply
+    }
+
+    func deleteReply(_ replyId: String) throws {
+        try call("deleteReply \(replyId)")
+        lock.withLock {
+            for key in _replies.keys { _replies[key]?.removeAll { $0.replyId == replyId } }
+        }
+    }
+
+    func profile(_ account: String) throws -> Person {
+        try call("profile \(account)")
+        return profiles[account] ?? Person(account: account, name: nil, verified: false)
+    }
+
+    func openDirect(_ account: String) throws -> String {
+        try call("openDirect \(account)")
+        if let open = list.first(where: { $0.members.map(\.account) == [account] }) { return open.id }
+        return try createConversation(with: [account])
+    }
+
+    /// `limit` posts from the index `before` names; `next` is the index after them.
+    private static func page(_ posts: [Post], _ before: String?, _ limit: UInt32) -> PostPage {
+        let start = before.flatMap(Int.init) ?? 0
+        let end = min(posts.count, start + Int(limit))
+        return PostPage(posts: Array(posts[start..<end]), next: end < posts.count ? String(end) : nil)
+    }
+
     static let now: UInt64 = 1_700_000_000_000
 }
 
@@ -339,4 +435,27 @@ func item(
         readBy: readBy,
         expiresAt: expiresAt
     )
+}
+
+func samplePost(
+    _ id: String,
+    author: Person = person("a2", "Anna"),
+    body: String? = nil,
+    replies: UInt32 = 0,
+    hearts: UInt32 = 0,
+    mine: PostReaction? = nil
+) -> Post {
+    Post(
+        postId: id,
+        author: author,
+        body: body ?? "body of \(id)",
+        createdAt: FakeAccount.now,
+        replyCount: replies,
+        reactions: ReactionCounts(heart: hearts, thumbsUp: 0, laugh: 0, wow: 0, sad: 0),
+        myReaction: mine
+    )
+}
+
+func sampleReply(_ id: String, postId: String, author: Person = person("a2", "Anna"), body: String? = nil) -> Reply {
+    Reply(replyId: id, postId: postId, author: author, body: body ?? "reply \(id)", createdAt: FakeAccount.now)
 }

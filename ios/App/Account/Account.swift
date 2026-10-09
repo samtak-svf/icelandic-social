@@ -62,6 +62,25 @@ protocol Account: Sendable {
     func setPushToken(_ token: String, sandbox: Bool) throws
     /// What to announce since the last call, and the conversations read since; each notice is given once.
     func notices() throws -> Notices
+    /// A page of Fljótið, newest first; `before` is the `next` of the page before (decision 0034).
+    func feed(before: String?, limit: UInt32) throws -> PostPage
+    /// A page of one account's wall, newest first.
+    func wall(account: String, before: String?, limit: UInt32) throws -> PostPage
+    /// One post; `Refused` with 404 when it is gone.
+    func post(_ postId: String) throws -> Post
+    /// Posts to Fljótið and this account's wall.
+    func createPost(body: String) throws -> Post
+    func deletePost(_ postId: String) throws
+    /// This account's one reaction to a post, or none.
+    func reactToPost(_ postId: String, reaction: PostReaction?) throws
+    /// A page of a post's replies, oldest first; `after` is the `next` of the page before.
+    func replies(_ postId: String, after: String?, limit: UInt32) throws -> ReplyPage
+    func createReply(_ postId: String, body: String) throws -> Reply
+    func deleteReply(_ replyId: String) throws
+    /// Who an account is, as Fljótið shows them.
+    func profile(_ account: String) throws -> Person
+    /// The 1:1 with `account`, made if there is none, without an invite; its id.
+    func openDirect(_ account: String) throws -> String
 }
 
 /// The core's client, opened on first use so a launch never waits for the
@@ -171,6 +190,36 @@ final class CoreAccount: Account, @unchecked Sendable {
     func setPushToken(_ token: String, sandbox: Bool) throws { try core().setPushToken(token: token, sandbox: sandbox) }
 
     func notices() throws -> Notices { try core().notices() }
+
+    func feed(before: String?, limit: UInt32) throws -> PostPage { try core().feed(before: before, limit: limit) }
+
+    func wall(account: String, before: String?, limit: UInt32) throws -> PostPage {
+        try core().wall(account: account, before: before, limit: limit)
+    }
+
+    func post(_ postId: String) throws -> Post { try core().post(postId: postId) }
+
+    func createPost(body: String) throws -> Post { try core().createPost(body: body) }
+
+    func deletePost(_ postId: String) throws { try core().deletePost(postId: postId) }
+
+    func reactToPost(_ postId: String, reaction: PostReaction?) throws {
+        try core().reactToPost(postId: postId, reaction: reaction)
+    }
+
+    func replies(_ postId: String, after: String?, limit: UInt32) throws -> ReplyPage {
+        try core().replies(postId: postId, after: after, limit: limit)
+    }
+
+    func createReply(_ postId: String, body: String) throws -> Reply {
+        try core().createReply(postId: postId, body: body)
+    }
+
+    func deleteReply(_ replyId: String) throws { try core().deleteReply(replyId: replyId) }
+
+    func profile(_ account: String) throws -> Person { try core().profile(account: account) }
+
+    func openDirect(_ account: String) throws -> String { try core().openDirect(account: account) }
 }
 
 /// Runs a blocking core call off the main actor.

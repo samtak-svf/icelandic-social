@@ -1,10 +1,12 @@
 package samtak.spjall.me
 
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
@@ -14,7 +16,12 @@ import org.junit.runner.RunWith
 import samtak.spjall.brand.R
 import samtak.spjall.core.AccountDevice
 import samtak.spjall.core.Me
+import samtak.spjall.core.Person
 import samtak.spjall.core.Platform
+import samtak.spjall.core.Post
+import samtak.spjall.core.ReactionCounts
+import samtak.spjall.feed.PostsViewModel
+import samtak.spjall.feed.RecordingPostsActions
 import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.capitals
 
@@ -72,6 +79,7 @@ class MeScreenTest {
     private fun show(
         link: String? = null,
         verified: Boolean = true,
+        wall: List<Post> = emptyList(),
     ) {
         val me =
             Me(
@@ -92,9 +100,37 @@ class MeScreenTest {
                     ),
                     actions,
                     onSettings = { calls += "settings" },
+                    wall = PostsViewModel.State(posts = wall, loaded = true, me = "a1"),
+                    wallActions = RecordingPostsActions(calls),
                 )
             }
         }
+    }
+
+    @Test
+    fun egIsTheWallWithItsOwnPosts() {
+        val mine =
+            Post(
+                "p1",
+                Person("a1", "Jón Jónsson", true),
+                "Fyrsta færslan",
+                1_700_000_000_000u,
+                0u,
+                ReactionCounts(0u, 0u, 0u, 0u, 0u),
+                null,
+            )
+        show(wall = listOf(mine))
+        compose.onNodeWithText("Fyrsta færslan").performScrollTo().assertExists()
+        compose.onNodeWithText(text(R.string.wall_composer_placeholder)).performScrollTo().performClick()
+        compose.onNode(hasSetTextAction()).performTextInput("Önnur")
+        compose.onNodeWithText(text(R.string.post_action)).performClick()
+        assertEquals(listOf("post Önnur"), calls)
+    }
+
+    @Test
+    fun anEmptyWallSaysSo() {
+        show()
+        compose.onNodeWithText(text(R.string.wall_empty)).performScrollTo().assertExists()
     }
 
     @Test

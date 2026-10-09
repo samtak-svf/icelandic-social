@@ -3,6 +3,8 @@
 <resources>
     <!-- Launcher label, home-screen name, store-facing display name. -->
     <string name="app_name">Hjal</string>
+    <!-- The first tab: the public feed every account is in (docs/decisions/0034). -->
+    <string name="tab_feed">Fljótið</string>
     <!-- Bottom tab: the conversation list. -->
     <string name="tab_conversations">Hjal</string>
     <!-- Bottom tab: own profile, invite link and the way to settings (docs/decisions/0034). -->
@@ -206,6 +208,34 @@
     <string name="verify_later">Seinna</string>
     <!-- On Ég and in settings for an account Kenni has not verified: opens the verify screen. -->
     <string name="verify_cta">Fá staðfestingarmerki</string>
+    <!-- One line on the feed's header: posts are public and not end-to-end encrypted (0034). -->
+    <string name="feed_public_notice">Allir sem nota Hjal sjá það sem skrifað er hér. Það er ekki dulkóðað eins og samtölin.</string>
+    <!-- The feed's way to write a post, and the composer's placeholder. -->
+    <string name="feed_composer_placeholder">Hvað er að frétta?</string>
+    <!-- Ég's way to write a post, and the composer's placeholder there. -->
+    <string name="wall_composer_placeholder">Skrifa á vegginn þinn…</string>
+    <!-- The feed when no post is there yet. -->
+    <string name="feed_empty">Ekkert hefur verið skrifað í Fljótið enn.</string>
+    <!-- A wall without posts. -->
+    <string name="wall_empty">Ekkert á veggnum enn.</string>
+    <!-- The composer's button that posts. -->
+    <string name="post_action">Birta</string>
+    <!-- A post's heart button, as an accessibility label. -->
+    <string name="post_react">Bregðast við</string>
+    <!-- A post's button that opens its replies. -->
+    <string name="post_reply">Svara</string>
+    <!-- Confirms deleting one's own post. -->
+    <string name="post_delete_confirm">Eyða þessari færslu? Svörin og viðbrögðin fara með henni.</string>
+    <!-- Confirms deleting one's own reply. -->
+    <string name="reply_delete_confirm">Eyða þessu svari?</string>
+    <!-- Deletes one's own post or reply, in its menu and its confirmation. -->
+    <string name="delete">Eyða</string>
+    <!-- The title of a post's replies screen. -->
+    <string name="replies_title">Svör</string>
+    <!-- The replies screen's composer placeholder. -->
+    <string name="reply_placeholder">Skrifa svar…</string>
+    <!-- A post without replies. -->
+    <string name="replies_empty">Engin svör enn.</string>
     <!-- Kenni verified a person whose kennitala is on another account (409 identity_taken). -->
     <string name="identity_taken">Þessi rafrænu skilríki eru þegar tengd öðrum aðgangi.</string>
     <!-- The server could not be reached; the action can be tried again. -->

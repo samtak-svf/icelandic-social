@@ -10,6 +10,11 @@ import samtak.spjall.core.Notices
 import samtak.spjall.core.Outcome
 import samtak.spjall.core.Person
 import samtak.spjall.core.Platform
+import samtak.spjall.core.Post
+import samtak.spjall.core.PostPage
+import samtak.spjall.core.PostReaction
+import samtak.spjall.core.Reply
+import samtak.spjall.core.ReplyPage
 import samtak.spjall.core.Settings
 import samtak.spjall.core.SignInProvider
 
@@ -151,6 +156,52 @@ interface Account {
     fun settings(): Settings
 
     fun setSettings(settings: Settings)
+
+    /** Fljótið, newest first; [before] is the last page's `next` (decision 0034). */
+    fun feed(
+        before: String?,
+        limit: UInt,
+    ): PostPage
+
+    /** One account's posts, newest first. */
+    fun wall(
+        account: String,
+        before: String?,
+        limit: UInt,
+    ): PostPage
+
+    /** `Refused` 404 when the post is gone. */
+    fun post(postId: String): Post
+
+    fun createPost(body: String): Post
+
+    fun deletePost(postId: String)
+
+    /** Null takes this account's reaction back. */
+    fun reactToPost(
+        postId: String,
+        reaction: PostReaction?,
+    )
+
+    /** A post's replies, oldest first; [after] is the last page's `next`. */
+    fun replies(
+        postId: String,
+        after: String?,
+        limit: UInt,
+    ): ReplyPage
+
+    fun createReply(
+        postId: String,
+        body: String,
+    ): Reply
+
+    fun deleteReply(replyId: String)
+
+    /** Another account's name and mark, for its wall. */
+    fun profile(account: String): Person
+
+    /** The 1:1 with [account], made when there is none; `Invalid` for this account or a blocked one. */
+    fun openDirect(account: String): String
 }
 
 /** [Account] over the core's client, opened on the first call. */
@@ -259,6 +310,45 @@ class CoreAccount(
     override fun settings() = client.settings()
 
     override fun setSettings(settings: Settings) = client.setSettings(settings)
+
+    override fun feed(
+        before: String?,
+        limit: UInt,
+    ) = client.feed(before, limit)
+
+    override fun wall(
+        account: String,
+        before: String?,
+        limit: UInt,
+    ) = client.wall(account, before, limit)
+
+    override fun post(postId: String) = client.post(postId)
+
+    override fun createPost(body: String) = client.createPost(body)
+
+    override fun deletePost(postId: String) = client.deletePost(postId)
+
+    override fun reactToPost(
+        postId: String,
+        reaction: PostReaction?,
+    ) = client.reactToPost(postId, reaction)
+
+    override fun replies(
+        postId: String,
+        after: String?,
+        limit: UInt,
+    ) = client.replies(postId, after, limit)
+
+    override fun createReply(
+        postId: String,
+        body: String,
+    ) = client.createReply(postId, body)
+
+    override fun deleteReply(replyId: String) = client.deleteReply(replyId)
+
+    override fun profile(account: String) = client.profile(account)
+
+    override fun openDirect(account: String) = client.openDirect(account)
 
     private companion object {
         // Each account that starts a conversation with this one claims one.

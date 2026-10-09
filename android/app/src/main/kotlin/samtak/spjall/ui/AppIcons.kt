@@ -26,6 +26,35 @@ object AppIcons {
             "M4 17c0-3.3 2.7-5 6-5s6 1.7 6 5",
         )
 
+    /** The Fljótið tab: two waves. */
+    val Waves =
+        outline("waves", 20f, 1.8f, "M2 8c2.7-2.7 5.3-2.7 8 0s5.3 2.7 8 0", "M2 13c2.7-2.7 5.3-2.7 8 0s5.3 2.7 8 0")
+
+    /** A post's reaction, not yet given; [HeartFilled] once it is. */
+    val Heart =
+        outline(
+            "heart",
+            20f,
+            1.8f,
+            "M10 16.5S3 12.4 3 7.6A3.6 3.6 0 0 1 10 6a3.6 3.6 0 0 1 7 1.6c0 4.8-7 8.9-7 8.9z",
+        )
+
+    val HeartFilled =
+        filled("heart-filled", 20f, "M10 16.5S3 12.4 3 7.6A3.6 3.6 0 0 1 10 6a3.6 3.6 0 0 1 7 1.6c0 4.8-7 8.9-7 8.9z")
+
+    /** A post's replies. */
+    val Bubble =
+        outline("bubble", 20f, 1.8f, "M4 5h12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H9l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z")
+
+    /** A post's own menu: three dots. */
+    val More =
+        filled(
+            "more",
+            20f,
+            "M4 10a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0z " +
+                "M8.5 10a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0zM13 10a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0z",
+        )
+
     val Plus = outline("plus", 16f, 1.9f, "M8 3v10M3 8h10")
 
     val Back = outline("back", 20f, 2f, "M12 4l-6 6 6 6")

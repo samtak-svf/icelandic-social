@@ -6,6 +6,10 @@
       "surfaces": ["android", "ios", "backend"],
       "description": "Launcher label, home-screen name, store-facing display name."
     },
+    "tab_feed": {
+      "surfaces": ["android", "ios"],
+      "description": "The first tab: the public feed every account is in (docs/decisions/0034)."
+    },
     "tab_conversations": {
       "surfaces": ["android", "ios"],
       "description": "Bottom tab: the conversation list."
@@ -446,6 +450,62 @@
     "verify_cta": {
       "surfaces": ["android", "ios"],
       "description": "On Ég and in settings for an account Kenni has not verified: opens the verify screen."
+    },
+    "feed_public_notice": {
+      "surfaces": ["android", "ios"],
+      "description": "One line on the feed's header: posts are public and not end-to-end encrypted (0034)."
+    },
+    "feed_composer_placeholder": {
+      "surfaces": ["android", "ios"],
+      "description": "The feed's way to write a post, and the composer's placeholder."
+    },
+    "wall_composer_placeholder": {
+      "surfaces": ["android", "ios"],
+      "description": "Ég's way to write a post, and the composer's placeholder there."
+    },
+    "feed_empty": {
+      "surfaces": ["android", "ios"],
+      "description": "The feed when no post is there yet."
+    },
+    "wall_empty": {
+      "surfaces": ["android", "ios"],
+      "description": "A wall without posts."
+    },
+    "post_action": {
+      "surfaces": ["android", "ios"],
+      "description": "The composer's button that posts."
+    },
+    "post_react": {
+      "surfaces": ["android", "ios"],
+      "description": "A post's heart button, as an accessibility label."
+    },
+    "post_reply": {
+      "surfaces": ["android", "ios"],
+      "description": "A post's button that opens its replies."
+    },
+    "post_delete_confirm": {
+      "surfaces": ["android", "ios"],
+      "description": "Confirms deleting one's own post."
+    },
+    "reply_delete_confirm": {
+      "surfaces": ["android", "ios"],
+      "description": "Confirms deleting one's own reply."
+    },
+    "delete": {
+      "surfaces": ["android", "ios"],
+      "description": "Deletes one's own post or reply, in its menu and its confirmation."
+    },
+    "replies_title": {
+      "surfaces": ["android", "ios"],
+      "description": "The title of a post's replies screen."
+    },
+    "reply_placeholder": {
+      "surfaces": ["android", "ios"],
+      "description": "The replies screen's composer placeholder."
+    },
+    "replies_empty": {
+      "surfaces": ["android", "ios"],
+      "description": "A post without replies."
     },
     "identity_taken": {
       "surfaces": ["android", "ios"],
