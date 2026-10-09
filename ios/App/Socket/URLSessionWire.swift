@@ -3,21 +3,25 @@ import Foundation
 /// `Wire` over `URLSessionWebSocketTask`. A ping every 20 s fails the socket
 /// when its pong is missed: a network change can end a socket without closing
 /// it (decision 0022). Nothing here logs, since the upgrade carries the device
-/// token.
+/// token. The upgrade names the build as every core request does (decision
+/// 0030).
 struct URLSessionWire: Wire {
     private let url: URL
     private let session: URLSession
+    private let client: String?
 
-    init(baseURL: URL, session: URLSession = .shared) {
+    init(baseURL: URL, session: URLSession = .shared, client: String? = nil) {
         var components = URLComponents(url: baseURL.appending(path: "v1/ws"), resolvingAgainstBaseURL: false)
         components?.scheme = baseURL.scheme == "http" ? "ws" : "wss"
         self.url = components?.url ?? baseURL
         self.session = session
+        self.client = client
     }
 
     func open(token: String, on: @escaping @Sendable (Signal) -> Void) -> Link {
         var request = URLRequest(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if let client { request.setValue(client, forHTTPHeaderField: "Spjall-Client") }
         let link = WebSocketLink(task: session.webSocketTask(with: request), on: on)
         link.start()
         return link

@@ -28,10 +28,28 @@ struct SpjallApp: App {
 struct RootView: View {
     let signIn: SignInModel
     let push: PushModel
+    var update = Update.shared
 
     @Environment(\.webAuthenticationSession) private var webAuthenticationSession
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
+        Group {
+            // Below the server's floor nothing else would work (decision 0030).
+            if update.min != nil {
+                UpdateView(onUpdate: { openURL(Self.store) })
+            } else {
+                screens
+            }
+        }
+        .task { await signIn.check() }
+        .onOpenURL { url in
+            guard let token = inviteToken(link: url.absoluteString) else { return }
+            Task { await signIn.openInvite(token: token) }
+        }
+    }
+
+    @ViewBuilder private var screens: some View {
         Group {
             switch signIn.session {
             case .checking:
@@ -48,7 +66,7 @@ struct RootView: View {
                     HomeView(
                         signIn: signIn,
                         push: push,
-                        wire: URLSessionWire(baseURL: base),
+                        wire: URLSessionWire(baseURL: base, client: CoreStore.client),
                         onSignedOut: signIn.signedOut
                     )
                     // A fresh socket, list and "Ég" for each sign-in.
@@ -56,12 +74,11 @@ struct RootView: View {
                 }
             }
         }
-        .task { await signIn.check() }
-        .onOpenURL { url in
-            guard let token = inviteToken(link: url.absoluteString) else { return }
-            Task { await signIn.openInvite(token: token) }
-        }
     }
+
+    /// Where a newer build is: the builds reach testers through TestFlight
+    /// until the app is in the App Store.
+    private static let store = URL(string: "itms-beta://")!
 
     /// Kenni in a browser sheet that shares no cookies with Safari; nil when
     /// the person closed it.

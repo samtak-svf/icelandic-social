@@ -493,6 +493,42 @@
         }
       }
     },
+    "update_required_title": {
+      "comment": "Heading of the screen shown once the server no longer serves this build (docs/decisions/0030).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uppfærsla nauðsynleg"
+          }
+        }
+      }
+    },
+    "update_required_body": {
+      "comment": "The update screen: this build is too old, and installing the newest one lets the person go on.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þessi útgáfa er orðin of gömul. Sæktu nýjustu útgáfuna til að halda áfram."
+          }
+        }
+      }
+    },
+    "update_required_action": {
+      "comment": "Button on the update screen that opens the app's store page.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uppfæra"
+          }
+        }
+      }
+    },
     "new_group": {
       "comment": "Action that starts a new group.",
       "extractionState": "manual",

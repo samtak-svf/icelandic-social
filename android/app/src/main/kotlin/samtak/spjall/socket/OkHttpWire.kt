@@ -10,11 +10,13 @@ import java.util.concurrent.TimeUnit
 /**
  * [Wire] over OkHttp's WebSocket. OkHttp pings on its own and fails the socket
  * when a pong is missed: Doze can end a socket without closing it (decision
- * 0022). Nothing here logs, since the upgrade carries the device token.
+ * 0022). Nothing here logs, since the upgrade carries the device token. The
+ * upgrade names the build as every core request does (decision 0030).
  */
 class OkHttpWire(
     baseUrl: String,
     http: OkHttpClient,
+    private val client: String? = null,
 ) : Wire {
     private val url = baseUrl.trimEnd('/') + "/v1/ws"
     private val http = http.newBuilder().pingInterval(PING_SECONDS, TimeUnit.SECONDS).build()
@@ -28,6 +30,7 @@ class OkHttpWire(
                 .Builder()
                 .url(url)
                 .header("Authorization", "Bearer $token")
+                .apply { client?.let { header("Spjall-Client", it) } }
                 .build()
         val socket =
             http.newWebSocket(

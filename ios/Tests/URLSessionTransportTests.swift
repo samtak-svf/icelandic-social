@@ -9,18 +9,21 @@ final class URLSessionTransportTests: XCTestCase {
         Stub.reset()
     }
 
-    private func transport() -> URLSessionTransport {
+    private func transport(tooOld: @escaping @Sendable (String) -> Void = { _ in }) -> URLSessionTransport {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [Stub.self]
         return URLSessionTransport(
-            baseURL: URL(string: "https://api.test/")!, session: URLSession(configuration: configuration))
+            baseURL: URL(string: "https://api.test/")!, session: URLSession(configuration: configuration),
+            tooOld: tooOld)
     }
 
     func testSendsTheCoresRequestAsItIs() throws {
         Stub.answer = .status(200, #"{"seq":1}"#)
         let token = ["dev", "ice", "-", "tok"].joined()
         let response = try transport().request(
-            request: HttpRequest(method: .post, path: "/v1/conversations/c1/messages", body: #"{"a":1}"#, bearer: token)
+            request: HttpRequest(
+                method: .post, path: "/v1/conversations/c1/messages", body: #"{"a":1}"#, bearer: token,
+                client: "ios/0.2.0")
         )
         XCTAssertEqual(response.status, 200)
         XCTAssertEqual(response.body, #"{"seq":1}"#)
@@ -29,6 +32,7 @@ final class URLSessionTransportTests: XCTestCase {
         XCTAssertEqual(sent.request.httpMethod, "POST")
         XCTAssertEqual(sent.request.url?.absoluteString, "https://api.test/v1/conversations/c1/messages")
         XCTAssertEqual(sent.request.value(forHTTPHeaderField: "Authorization"), "Bearer \(token)")
+        XCTAssertEqual(sent.request.value(forHTTPHeaderField: "Spjall-Client"), "ios/0.2.0")
         XCTAssertEqual(sent.request.value(forHTTPHeaderField: "Content-Type"), "application/json")
         XCTAssertEqual(sent.body, Data(#"{"a":1}"#.utf8))
     }
@@ -36,7 +40,8 @@ final class URLSessionTransportTests: XCTestCase {
     func testKeepsTheQueryAndSendsNoBearerWithoutOne() throws {
         Stub.answer = .status(200, "[]")
         _ = try transport().request(
-            request: HttpRequest(method: .get, path: "/v1/conversations/c1/messages?after=4", body: nil, bearer: nil)
+            request: HttpRequest(
+                method: .get, path: "/v1/conversations/c1/messages?after=4", body: nil, bearer: nil, client: nil)
         )
         let sent = try XCTUnwrap(Stub.sent)
         XCTAssertEqual(sent.request.httpMethod, "GET")
@@ -44,10 +49,24 @@ final class URLSessionTransportTests: XCTestCase {
         XCTAssertNil(sent.request.value(forHTTPHeaderField: "Authorization"))
     }
 
+    func testABuildBelowTheFloorIsAnAnswerAndIsHeard() throws {
+        let heard = Heard()
+        Stub.answer = .status(426, #"{"error":"client_too_old","minVersion":"0.3.0"}"#)
+        let response = try transport(tooOld: heard.add).request(
+            request: HttpRequest(method: .get, path: "/v1/me", body: nil, bearer: nil, client: "ios/0.2.0")
+        )
+        XCTAssertEqual(response.status, 426)
+        Stub.answer = .status(426, "not json")
+        _ = try transport(tooOld: heard.add).request(
+            request: HttpRequest(method: .get, path: "/v1/me", body: nil, bearer: nil, client: "ios/0.2.0")
+        )
+        XCTAssertEqual(heard.all, ["0.3.0"])
+    }
+
     func testAnErrorStatusIsAnAnswerForTheCore() throws {
         Stub.answer = .status(403, #"{"error":"not_a_member"}"#)
         let response = try transport().request(
-            request: HttpRequest(method: .delete, path: "/v1/devices/d2", body: nil, bearer: nil)
+            request: HttpRequest(method: .delete, path: "/v1/devices/d2", body: nil, bearer: nil, client: nil)
         )
         XCTAssertEqual(response.status, 403)
         XCTAssertEqual(response.body, #"{"error":"not_a_member"}"#)
@@ -59,7 +78,8 @@ final class URLSessionTransportTests: XCTestCase {
         try Data([0, 1, 2]).write(to: file)
         defer { try? FileManager.default.removeItem(at: file) }
         let response = try transport().upload(
-            request: HttpRequest(method: .put, path: "/v1/conversations/c1/media/m1", body: nil, bearer: "t"),
+            request: HttpRequest(
+                method: .put, path: "/v1/conversations/c1/media/m1", body: nil, bearer: "t", client: nil),
             path: file.path(percentEncoded: false)
         )
         XCTAssertEqual(response.status, 204)
@@ -72,7 +92,8 @@ final class URLSessionTransportTests: XCTestCase {
     func testAFileComesDownIntoItsPathAndAnErrorLeavesNone() throws {
         let to = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: to) }
-        let request = HttpRequest(method: .get, path: "/v1/conversations/c1/media/m1", body: nil, bearer: "t")
+        let request = HttpRequest(
+            method: .get, path: "/v1/conversations/c1/media/m1", body: nil, bearer: "t", client: nil)
 
         Stub.answer = .status(200, "blob")
         XCTAssertEqual(try transport().download(request: request, to: to.path(percentEncoded: false)).status, 200)
@@ -90,7 +111,8 @@ final class URLSessionTransportTests: XCTestCase {
         Stub.answer = .failure(URLError(.timedOut))
         XCTAssertThrowsError(
             try transport().request(
-                request: HttpRequest(method: .get, path: "/v1/invites/secret-token", body: nil, bearer: nil)
+                request: HttpRequest(
+                    method: .get, path: "/v1/invites/secret-token", body: nil, bearer: nil, client: nil)
             )
         ) { error in
             guard case TransportError.Unreachable(let detail) = error else {
@@ -160,5 +182,17 @@ private final class Stub: URLProtocol {
             data.append(buffer, count: count)
         }
         return data
+    }
+}
+
+/// The minimum versions a transport reported, from whichever thread.
+private final class Heard: @unchecked Sendable {
+    private let lock = NSLock()
+    private var versions: [String] = []
+
+    var all: [String] { lock.withLock { versions } }
+
+    func add(_ version: String) {
+        lock.withLock { versions.append(version) }
     }
 }

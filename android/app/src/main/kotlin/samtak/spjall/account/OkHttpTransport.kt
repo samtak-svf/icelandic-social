@@ -1,5 +1,8 @@
 package samtak.spjall.account
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -22,10 +25,13 @@ import java.io.IOException
  * core as one; only no answer at all is `Unreachable`. Nothing here logs: the
  * bearer is a device token, and paths can carry an invite token. Files
  * (decision 0023) go by path both ways and are streamed, never held whole.
+ * A 426 also goes to [tooOld] with the minimum version (decision 0030), since
+ * the core meets it on paths whose errors the app never sees.
  */
 class OkHttpTransport(
     baseUrl: String,
     private val http: OkHttpClient,
+    private val tooOld: (String) -> Unit = {},
 ) : Transport {
     private val base = baseUrl.trimEnd('/')
 
@@ -48,7 +54,19 @@ class OkHttpTransport(
             HttpResponse(response.code.toUShort(), "")
         }
 
-    private fun answer(response: Response) = HttpResponse(response.code.toUShort(), response.body.string())
+    private fun answer(response: Response): HttpResponse {
+        val body = response.body.string()
+        if (response.code == UPGRADE_REQUIRED) minVersion(body)?.let(tooOld)
+        return HttpResponse(response.code.toUShort(), body)
+    }
+
+    private fun minVersion(body: String): String? =
+        runCatching { Json.parseToJsonElement(body) }
+            .getOrNull()
+            .let { (it as? JsonObject)?.get("minVersion") as? JsonPrimitive }
+            ?.takeIf { it.isString }
+            ?.content
+            ?.ifEmpty { null }
 
     private fun carry(
         request: HttpRequest,
@@ -61,6 +79,7 @@ class OkHttpTransport(
                 .url(base + request.path)
                 .method(request.method.name, body)
                 .apply { request.bearer?.let { header("Authorization", "Bearer $it") } }
+                .apply { request.client?.let { header("Spjall-Client", it) } }
                 .build()
         return try {
             http.newCall(call).execute().use(read)
@@ -83,5 +102,6 @@ class OkHttpTransport(
         val JSON = "application/json".toMediaType()
         val OCTETS = "application/octet-stream".toMediaType()
         const val OK = 200
+        const val UPGRADE_REQUIRED = 426
     }
 }

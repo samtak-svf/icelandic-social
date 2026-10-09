@@ -191,6 +191,18 @@
       "surfaces": ["android", "ios", "backend"],
       "description": "The invite link page and the app's invite screen for a link that was rotated, revoked or never existed."
     },
+    "update_required_title": {
+      "surfaces": ["android", "ios"],
+      "description": "Heading of the screen shown once the server no longer serves this build (docs/decisions/0030)."
+    },
+    "update_required_body": {
+      "surfaces": ["android", "ios"],
+      "description": "The update screen: this build is too old, and installing the newest one lets the person go on."
+    },
+    "update_required_action": {
+      "surfaces": ["android", "ios"],
+      "description": "Button on the update screen that opens the app's store page."
+    },
     "new_group": {
       "surfaces": ["android", "ios"],
       "description": "Action that starts a new group."

@@ -3,12 +3,14 @@ package samtak.spjall.crypto
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import samtak.spjall.core.Body
 import samtak.spjall.core.Content
 import samtak.spjall.core.CoreClient
+import samtak.spjall.core.CoreException
 import samtak.spjall.core.Event
 import samtak.spjall.core.NoticeKind
 import samtak.spjall.core.Platform
@@ -21,6 +23,7 @@ import java.util.UUID
  * and 0019): two devices, each with its own store and a Kotlin `Transport`,
  * sign in and exchange a message and a sealed file (0023), and one is
  * shown a notice for it and hands its push token to the server (0025).
+ * Every request names the build, and one below the floor is told (0030).
  */
 @RunWith(AndroidJUnit4::class)
 class CoreClientTest {
@@ -32,7 +35,8 @@ class CoreClientTest {
     ): CoreClient {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val dir = File(context.cacheDir, UUID.randomUUID().toString()).apply { mkdirs() }
-        val client = CoreClient.open(dir.path, ByteArray(32) { 7 }, relay.link(account, device))
+        val client =
+            CoreClient.open(dir.path, ByteArray(32) { 7 }, relay.link(account, device), Platform.ANDROID, "0.2.0")
         assertEquals(null, client.signedIn())
         // The app opens this URL in a Custom Tab and is handed the callback.
         val callback = Relay.kenni(client.beginSignIn())
@@ -116,5 +120,17 @@ class CoreClientTest {
         assertEquals(Content.Media("image/png", photo.size.toULong(), "sólarlag", "sólarlag.png"), item.content)
         val opened = File(b.media(conversation, item.seq!!))
         assertTrue(opened.readBytes().contentEquals(photo))
+    }
+
+    @Test
+    fun everyRequestNamesTheBuildAndOneBelowTheFloorIsTold() {
+        val a = phone("a", "a1")
+        assertEquals("android/0.2.0", a.clientHeader())
+        a.sync()
+        assertTrue(relay.clients().all { it == "android/0.2.0" })
+
+        relay.floor = "0.3.0"
+        val refused = assertThrows(CoreException.ClientTooOld::class.java) { a.sync() }
+        assertEquals("0.3.0", refused.minVersion)
     }
 }

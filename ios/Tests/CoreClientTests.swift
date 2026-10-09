@@ -6,6 +6,7 @@ import XCTest
 /// and 0019): two devices, each with its own store and a Swift `Transport`,
 /// sign in and exchange a message and a sealed file (0023), and one is
 /// shown a notice for it and hands its push token to the server (0025).
+/// Every request names the build, and one below the floor is told (0030).
 final class CoreClientTests: XCTestCase {
     private let relay = Relay()
     private var dirs: [URL] = []
@@ -21,7 +22,9 @@ final class CoreClientTests: XCTestCase {
         let client = try CoreClient.open(
             dir: dir.path(percentEncoded: false),
             key: Data(repeating: 7, count: 32),
-            transport: relay.link(account: account, device: device)
+            transport: relay.link(account: account, device: device),
+            platform: .ios,
+            version: "0.2.0"
         )
         XCTAssertNil(try client.signedIn())
         // The app opens this URL in ASWebAuthenticationSession and is handed the callback.
@@ -117,5 +120,18 @@ final class CoreClientTests: XCTestCase {
         XCTAssertEqual(name, "sólarlag.png", "the core cuts the name to a bare one")
         let opened = try b.media(conversation: conversation, seq: try XCTUnwrap(item.seq))
         XCTAssertEqual(try Data(contentsOf: URL(filePath: opened)), photo)
+    }
+
+    func testEveryRequestNamesTheBuildAndOneBelowTheFloorIsTold() throws {
+        let a = try phone(account: "a", device: "a1")
+        XCTAssertEqual(try a.clientHeader(), "ios/0.2.0")
+        _ = try a.sync()
+        XCTAssertTrue(relay.clientHeaders().allSatisfy { $0 == "ios/0.2.0" })
+
+        relay.setFloor("0.3.0")
+        XCTAssertThrowsError(try a.sync()) { error in
+            guard case CoreError.ClientTooOld(let min) = error else { return XCTFail("\(error)") }
+            XCTAssertEqual(min, "0.3.0")
+        }
     }
 }

@@ -9,7 +9,9 @@ import SpjallCore
 /// found as the JSON text it is in the message's clear authenticated_data,
 /// and moves the roster and names the Welcome's recipients. Media blobs
 /// (decision 0023) are kept by path for the roster, and a device's push
-/// token (0025) by device. The real rules live in the Worker and in the core's own relay.
+/// token (0025) by device. It serves a conversation's devices (0028), keeps
+/// the build each request named, and refuses one below its floor (0030). The
+/// real rules live in the Worker and in the core's own relay.
 final class Relay: @unchecked Sendable {
     /// Where Kenni's callback goes, from the frozen URL scheme.
     static let redirect = "is.samtak.spjall:/kenni"
@@ -49,6 +51,8 @@ final class Relay: @unchecked Sendable {
     private var waiting: [String: [String]] = [:]
     private var media: [String: Data] = [:]
     private var push: [String: (token: String, sandbox: Bool)] = [:]
+    private var clients: [String?] = []
+    private var floor: String?
 
     final class Link: Transport, @unchecked Sendable {
         let relay: Relay
@@ -87,6 +91,16 @@ final class Relay: @unchecked Sendable {
         lock.withLock { push[device] }
     }
 
+    /// The `Spjall-Client` each request named, in order.
+    func clientHeaders() -> [String?] {
+        lock.withLock { clients }
+    }
+
+    /// The lowest version served, as `x.y.z`; nil serves every build.
+    func setFloor(_ min: String?) {
+        lock.withLock { floor = min }
+    }
+
     /// The frames waiting on a device's socket, oldest first.
     func frames(device: String) -> [String] {
         lock.withLock { waiting.removeValue(forKey: device) ?? [] }
@@ -99,6 +113,13 @@ final class Relay: @unchecked Sendable {
         let after = pieces.count > 1 ? Int(pieces[1].replacingOccurrences(of: "after=", with: "")) ?? 0 : 0
         let parts = pieces[0].dropFirst("/v1/".count).split(separator: "/").map(String.init)
         let token = "token-\(device)"
+        clients.append(request.client)
+        if let floor {
+            let version = request.client?.split(separator: "/").last.map(String.init) ?? "0.1.0"
+            if version.compare(floor, options: .numeric) == .orderedAscending {
+                return HttpResponse(status: 426, body: json(["error": "client_too_old", "minVersion": floor]))
+            }
+        }
         switch (request.method, parts) {
         case (.get, ["sign-in"]):
             return ok([
@@ -146,6 +167,12 @@ final class Relay: @unchecked Sendable {
                 let messages = conversation.messages.filter { $0.seq > after }
                     .map { ["seq": $0.seq, "ciphertext": $0.ciphertext] as [String: Any] }
                 return ok(["messages": messages, "more": false])
+            case (.get, "devices"):
+                let accounts = conversation.roster.sorted().map { owner in
+                    let ids = devices.filter { $0.value == owner }.keys.sorted()
+                    return ["accountId": owner, "deviceIds": ids] as [String: Any]
+                }
+                return ok(["accounts": accounts])
             case (.get, "welcome"):
                 guard let welcome = conversation.welcomes.last(where: { $0.to.contains(account) }) else {
                     return refuse(404, "not_found")

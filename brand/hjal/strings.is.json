@@ -47,6 +47,9 @@
   "link_open_in_app": "Opna í Hjal",
   "link_test_group": "Hjal er í lokuðum prófunum. Ef appið er ekki komið í símann þinn, biddu þann sem bauð þér um aðgang að prófunum.",
   "link_expired": "Þessi hlekkur er ekki lengur í gildi. Biddu um nýjan.",
+  "update_required_title": "Uppfærsla nauðsynleg",
+  "update_required_body": "Þessi útgáfa er orðin of gömul. Sæktu nýjustu útgáfuna til að halda áfram.",
+  "update_required_action": "Uppfæra",
   "new_group": "Nýr hópur",
   "group_member_count": {
     "one": "{count} meðlimur",

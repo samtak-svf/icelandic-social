@@ -8,7 +8,9 @@ import okhttp3.OkHttpClient
 import samtak.spjall.account.Account
 import samtak.spjall.account.CoreAccount
 import samtak.spjall.account.OkHttpTransport
+import samtak.spjall.account.Update
 import samtak.spjall.core.CoreClient
+import samtak.spjall.core.Platform
 import samtak.spjall.crypto.StoreKey
 import samtak.spjall.media.Files
 import samtak.spjall.push.Push
@@ -27,12 +29,21 @@ class AppGraph(
 
     private val http = OkHttpClient()
 
+    /** Set when the server no longer serves this build (decision 0030). */
+    val update = Update()
+
     val account: Account =
         CoreAccount {
             storeDir.mkdirs()
             val key = StoreKey.forDevice(storeDir).load()
             try {
-                CoreClient.open(storeDir.path, key, OkHttpTransport(BuildConfig.API_BASE_URL, http))
+                CoreClient.open(
+                    storeDir.path,
+                    key,
+                    OkHttpTransport(BuildConfig.API_BASE_URL, http, update::required),
+                    Platform.ANDROID,
+                    BuildConfig.VERSION_NAME,
+                )
             } finally {
                 key.fill(0)
             }
@@ -41,7 +52,13 @@ class AppGraph(
     val files = Files(context)
 
     /** Open while the app is in the foreground (SpjallApplication). */
-    val socket = Socket(account, OkHttpWire(BuildConfig.API_BASE_URL, http), MainScope())
+    val socket =
+        Socket(
+            account,
+            // What the core names this build in every request (decision 0030).
+            OkHttpWire(BuildConfig.API_BASE_URL, http, "android/${BuildConfig.VERSION_NAME}"),
+            MainScope(),
+        )
 
     private val notifier = SystemNotifier(context)
 

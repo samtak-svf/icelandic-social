@@ -90,6 +90,12 @@
     <string name="link_invited">Þér er boðið á Hjal.</string>
     <!-- The invite link page and the app's invite screen for a link that was rotated, revoked or never existed. -->
     <string name="link_expired">Þessi hlekkur er ekki lengur í gildi. Biddu um nýjan.</string>
+    <!-- Heading of the screen shown once the server no longer serves this build (docs/decisions/0030). -->
+    <string name="update_required_title">Uppfærsla nauðsynleg</string>
+    <!-- The update screen: this build is too old, and installing the newest one lets the person go on. -->
+    <string name="update_required_body">Þessi útgáfa er orðin of gömul. Sæktu nýjustu útgáfuna til að halda áfram.</string>
+    <!-- Button on the update screen that opens the app's store page. -->
+    <string name="update_required_action">Uppfæra</string>
     <!-- Action that starts a new group. -->
     <string name="new_group">Nýr hópur</string>
     <!-- Members in a group. -->

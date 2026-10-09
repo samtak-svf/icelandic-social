@@ -85,5 +85,5 @@ fun SignInScreen(
 }
 
 /** The design's pill: as tall as a thumb, fully rounded. */
-private const val PILL = 52
-private const val PILL_RADIUS = 26
+internal const val PILL = 52
+internal const val PILL_RADIUS = 26

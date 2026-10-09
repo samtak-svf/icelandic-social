@@ -18,8 +18,9 @@ import java.io.File
  * found as the JSON text it is in the message's clear authenticated_data,
  * and moves the roster and names the Welcome's recipients. Media blobs
  * (decision 0023) are kept by path for the roster, and a device's push
- * token (0025) by device. The real rules live in
- * the Worker and in the core's own relay.
+ * token (0025) by device. It serves a conversation's devices (0028), keeps
+ * the build each request named, and refuses one below its floor (0030). The
+ * real rules live in the Worker and in the core's own relay.
  */
 class Relay {
     private class Stored(
@@ -49,6 +50,10 @@ class Relay {
     private val frames = mutableMapOf<String, MutableList<String>>()
     private val media = mutableMapOf<String, ByteArray>()
     private val push = mutableMapOf<String, Pair<String, Boolean>>()
+    private val clients = mutableListOf<String?>()
+
+    /** The lowest version served, as `x.y.z`; null serves every build. */
+    var floor: String? = null
 
     fun link(
         account: String,
@@ -101,6 +106,9 @@ class Relay {
     /** The push token a device last set, and whether it is a sandbox one. */
     fun pushToken(device: String): Pair<String, Boolean>? = synchronized(this) { push[device] }
 
+    /** The `Spjall-Client` each request named, in order. */
+    fun clients(): List<String?> = synchronized(this) { clients.toList() }
+
     /** The frames waiting on a device's socket, oldest first. */
     fun frames(device: String): List<String> = synchronized(this) { frames.remove(device).orEmpty() }
 
@@ -114,6 +122,13 @@ class Relay {
         val after = request.path.substringAfter("after=", "0").toLong()
         val parts = path.removePrefix("/v1/").split('/')
         val token = "token-$device"
+        clients += request.client
+        floor?.let { min ->
+            val version = request.client?.substringAfter('/') ?: "0.1.0"
+            if (version.split('.').map(String::toInt).compareTo(min.split('.').map(String::toInt)) < 0) {
+                return HttpResponse(426u, JSONObject().put("error", "client_too_old").put("minVersion", min).toString())
+            }
+        }
         when {
             request.method == HttpMethod.GET && parts == listOf("sign-in") -> return ok(SIGN_IN)
             request.method == HttpMethod.POST && parts == listOf("devices") -> {
@@ -160,6 +175,14 @@ class Relay {
                         val messages = JSONArray()
                         rows.forEach { messages.put(JSONObject().put("seq", it.seq).put("ciphertext", it.ciphertext)) }
                         ok(JSONObject().put("messages", messages).put("more", false))
+                    }
+                    parts[2] == "devices" -> {
+                        val accounts = JSONArray()
+                        conversation.roster.forEach { owner ->
+                            val ids = JSONArray(devices.filterValues { it == owner }.keys.toList())
+                            accounts.put(JSONObject().put("accountId", owner).put("deviceIds", ids))
+                        }
+                        ok(JSONObject().put("accounts", accounts))
                     }
                     parts[2] == "welcome" -> {
                         val welcome =
@@ -220,6 +243,9 @@ class Relay {
     ) = HttpResponse(status.toUShort(), JSONObject().put("error", code).toString())
 
     private fun JSONArray.strings() = List(length(), ::getString)
+
+    private fun List<Int>.compareTo(other: List<Int>): Int =
+        zip(other).map { (a, b) -> a.compareTo(b) }.firstOrNull { it != 0 } ?: 0
 
     companion object {
         private val NO_CONTENT = HttpResponse(204u, "")

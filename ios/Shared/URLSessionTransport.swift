@@ -7,16 +7,24 @@ import SpjallCore
 /// and goes back to the core as one; only no answer at all is `Unreachable`.
 /// Nothing here logs: the bearer is a device token, and paths can carry an
 /// invite token. Files (decision 0023) go by path both ways and are
-/// streamed, never held whole.
+/// streamed, never held whole. A 426 also goes to `tooOld` with the minimum
+/// version (decision 0030), since the core meets it on paths whose errors the
+/// app never sees.
 final class URLSessionTransport: Transport, Sendable {
     private let base: String
     private let session: URLSession
+    private let tooOld: @Sendable (String) -> Void
 
-    init(baseURL: URL, session: URLSession = URLSession(configuration: .ephemeral)) {
+    init(
+        baseURL: URL,
+        session: URLSession = URLSession(configuration: .ephemeral),
+        tooOld: @escaping @Sendable (String) -> Void = { _ in }
+    ) {
         var base = baseURL.absoluteString
         while base.hasSuffix("/") { base.removeLast() }
         self.base = base
         self.session = session
+        self.tooOld = tooOld
     }
 
     func request(request: HttpRequest) throws -> HttpResponse {
@@ -71,6 +79,9 @@ final class URLSessionTransport: Transport, Sendable {
         if let bearer = request.bearer {
             call.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
         }
+        if let client = request.client {
+            call.setValue(client, forHTTPHeaderField: "Spjall-Client")
+        }
         return call
     }
 
@@ -85,7 +96,14 @@ final class URLSessionTransport: Transport, Sendable {
             done.signal()
         }.resume()
         done.wait()
-        return try answer.result()
+        let response = try answer.result()
+        if response.status == 426, let min = Self.minVersion(response.body) { tooOld(min) }
+        return response
+    }
+
+    private static func minVersion(_ body: String) -> String? {
+        let answer = try? JSONSerialization.jsonObject(with: Data(body.utf8)) as? [String: Any]
+        return (answer?["minVersion"] as? String).flatMap { $0.isEmpty ? nil : $0 }
     }
 
     /// What came back, handed from URLSession's queue to the waiting thread.
