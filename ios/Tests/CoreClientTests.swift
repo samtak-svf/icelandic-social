@@ -28,7 +28,7 @@ final class CoreClientTests: XCTestCase {
         )
         XCTAssertNil(try client.signedIn())
         // The app opens this URL in ASWebAuthenticationSession and is handed the callback.
-        let callback = Relay.kenni(try client.beginSignIn())
+        let callback = Relay.kenni(try client.beginSignIn(provider: .kenni))
         let signedIn = SignedIn(accountId: account, deviceId: device)
         XCTAssertEqual(try client.completeSignIn(callback: callback, inviteToken: nil, platform: .ios), signedIn)
         XCTAssertEqual(try client.signedIn(), signedIn)

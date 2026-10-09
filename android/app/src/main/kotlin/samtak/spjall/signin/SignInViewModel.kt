@@ -19,15 +19,18 @@ import samtak.spjall.account.Problem
 import samtak.spjall.account.isNotFound
 import samtak.spjall.account.problem
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.SignInProvider
 
 /**
- * Whether this device is signed in, and the way there (decision 0019): an
- * invite link names who invited the person, the sign-in button opens Kenni in
- * a Custom Tab, and Kenni's redirect comes back to [complete].
+ * Whether this device is signed in, and the way there (decisions 0019, 0033):
+ * an invite link names who invited the person, a sign-in button opens Google
+ * or Kenni in a Custom Tab, and the provider's redirect comes back to
+ * [complete]. Signed in, the same browser links Kenni to the account
+ * ([verify]), and its redirect comes back to [complete] too.
  *
- * The invite token and an unfinished callback live in [saved], so they
- * survive the process ending while the browser is open; the core keeps the
- * pending sign-in itself.
+ * The invite token, the provider and an unfinished callback live in [saved],
+ * so they survive the process ending while the browser is open; the core
+ * keeps the pending sign-in or link itself.
  */
 class SignInViewModel(
     private val account: Account,
@@ -64,7 +67,7 @@ class SignInViewModel(
 
     private val _browser = Channel<String>(Channel.BUFFERED)
 
-    /** Kenni URLs for the activity to open in a Custom Tab. */
+    /** Provider URLs for the activity to open in a Custom Tab. */
     val browser: Flow<String> = _browser.receiveAsFlow()
 
     /** An invite token to open as a 1:1; [signedUp] when it is the link that just let the person in. */
@@ -78,18 +81,23 @@ class SignInViewModel(
     /** Invite links to open as a 1:1, once signed in (decision 0022). */
     val invites: Flow<Link> = _invites.receiveAsFlow()
 
+    private val _linked = Channel<Unit>(Channel.BUFFERED)
+
+    /** Kenni is linked to the account: its name and mark are now the registry's. */
+    val linked: Flow<Unit> = _linked.receiveAsFlow()
+
     init {
         viewModelScope.launch {
             val signedIn = runCatching { withContext(io) { account.signedIn() } }.getOrDefault(false)
-            // A callback that arrived meanwhile may have signed in already.
-            if (_state.value.session != Session.Checking) return@launch
             if (signedIn) {
                 signedIn()
             } else {
                 _state.update { it.copy(session = Session.SignedOut) }
                 saved.get<String>(INVITE)?.let(::resolve)
-                saved.get<String>(CALLBACK)?.let(::finish)
             }
+            // A sign-in or link the process ended in the middle of, or one
+            // whose callback came before this check.
+            saved.get<String>(CALLBACK)?.let(::redeem)
         }
     }
 
@@ -103,12 +111,20 @@ class SignInViewModel(
         resolve(token)
     }
 
-    fun signIn() {
+    fun signIn(provider: SignInProvider) {
+        saved[PROVIDER] = provider.name
+        open { account.beginSignIn(provider) }
+    }
+
+    /** Signed in: opens Kenni to link it to the account, for the registry's name and the mark. */
+    fun verify() = open { account.beginLink(SignInProvider.KENNI) }
+
+    private fun open(begin: () -> String) {
         if (_state.value.busy) return
         _state.update { it.copy(busy = true, problem = null) }
         viewModelScope.launch {
             try {
-                _browser.send(withContext(io) { account.beginSignIn() })
+                _browser.send(withContext(io) { begin() })
                 _state.update { it.copy(busy = false) }
             } catch (e: CoreException) {
                 _state.update { it.copy(busy = false, problem = e.problem()) }
@@ -116,27 +132,35 @@ class SignInViewModel(
         }
     }
 
-    /** No app on the device can open the Kenni URL. */
+    /** No app on the device can open the provider's URL. */
     fun browserMissing() {
         _state.update { it.copy(problem = Problem.Generic) }
     }
 
-    /** The URL Kenni redirected to. */
+    /**
+     * The URL the provider redirected to: a link when signed in, else a
+     * sign-in. Before the first check it waits for that check to say which.
+     */
     fun complete(callback: String) {
         saved[CALLBACK] = callback
-        finish(callback)
+        if (_state.value.session != Session.Checking) redeem(callback)
     }
 
-    /** Tries again what failed: the same callback when one is pending, else a new sign-in. */
+    /** Tries again what failed: the same callback when one is pending, else a new sign-in or link. */
     fun retry() {
         val callback = saved.get<String>(CALLBACK)
-        if (callback != null) finish(callback) else signIn()
+        when {
+            callback != null -> redeem(callback)
+            _state.value.session == Session.SignedIn -> verify()
+            else -> signIn(saved.get<String>(PROVIDER)?.let(SignInProvider::valueOf) ?: SignInProvider.GOOGLE)
+        }
     }
 
     /** The account or this device is gone; start over. */
     fun signedOut() {
         saved.remove<String>(INVITE)
         saved.remove<String>(CALLBACK)
+        saved.remove<String>(PROVIDER)
         _state.update { State(session = Session.SignedOut, signIns = it.signIns) }
     }
 
@@ -155,20 +179,29 @@ class SignInViewModel(
         }
     }
 
-    private fun finish(callback: String) {
+    /** Finishes the sign-in or, signed in, the link the callback belongs to. */
+    private fun redeem(callback: String) {
+        val linking = _state.value.session == Session.SignedIn
         _state.update { it.copy(busy = true, problem = null) }
         viewModelScope.launch {
             try {
-                val invite = saved.get<String>(INVITE)
-                withContext(io) { account.completeSignIn(callback, invite) }
-                saved.remove<String>(INVITE)
-                saved.remove<String>(CALLBACK)
-                signedIn()
-                // The link that let the person in also opens its 1:1.
-                invite?.let { _invites.trySend(Link(it, signedUp = true)) }
+                if (linking) {
+                    withContext(io) { account.completeLink(callback) }
+                    saved.remove<String>(CALLBACK)
+                    _state.update { it.copy(busy = false) }
+                    _linked.trySend(Unit)
+                } else {
+                    val invite = saved.get<String>(INVITE)
+                    withContext(io) { account.completeSignIn(callback, invite) }
+                    saved.remove<String>(INVITE)
+                    saved.remove<String>(CALLBACK)
+                    signedIn()
+                    // The link that let the person in also opens its 1:1.
+                    invite?.let { _invites.trySend(Link(it, signedUp = true)) }
+                }
             } catch (e: CoreException) {
-                // Unreachable keeps the sign-in pending in the core, so the same
-                // callback can finish it; any other failure ended it.
+                // Unreachable keeps the sign-in or link pending in the core, so
+                // the same callback can finish it; any other failure ended it.
                 if (e !is CoreException.Unreachable) saved.remove<String>(CALLBACK)
                 _state.update { it.copy(busy = false, problem = e.problem()) }
             }
@@ -187,5 +220,6 @@ class SignInViewModel(
     private companion object {
         const val INVITE = "invite"
         const val CALLBACK = "callback"
+        const val PROVIDER = "provider"
     }
 }

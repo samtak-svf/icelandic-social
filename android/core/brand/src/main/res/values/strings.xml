@@ -84,8 +84,6 @@
     <string name="invite_link_hint">Sýndu kóðann eða deildu hlekknum. Sá sem opnar hann getur hafið samtal við þig.</string>
     <!-- Replace the invite link; the old one stops working. -->
     <string name="invite_link_rotate">Búa til nýjan hlekk</string>
-    <!-- Shown after Kenni sign-in without a valid invite during the closed test (docs/decisions/0009). -->
-    <string name="invite_required">Hjal er í lokuðum prófunum. Þú þarft hlekk frá einhverjum sem er þegar á Hjal.</string>
     <!-- Heading of the invite link page (/l/{token}) and of the app's invite screen when a person sent the link (docs/decisions/0019). -->
     <string name="link_invited_by">%1$s býður þér á Hjal.</string>
     <!-- Heading of the invite link page and of the app's invite screen when the operator sent the link, or the inviter has no name. -->
@@ -186,10 +184,30 @@
     <string name="delete_account">Eyða aðgangi</string>
     <!-- Confirmation before deleting the account; says what the server deletes and what it cannot. -->
     <string name="delete_account_confirm">Öllu sem tengist aðganginum þínum verður eytt af þjóninum. Skilaboð sem eru þegar á tækjum annarra eyðast ekki.</string>
-    <!-- Button that starts signing in with Kenni (docs/decisions/0019). -->
-    <string name="sign_in">Skrá inn</string>
-    <!-- Under the sign-in button: how the person signs in. -->
-    <string name="sign_in_hint">Þú skráir þig inn með rafrænum skilríkjum.</string>
+    <!-- Under the sign-in buttons: what Google is asked for, and that Kenni can verify later. -->
+    <string name="sign_in_hint">Við biðjum Google aðeins um nafn og netfang. Þú getur síðar staðfest auðkenni með rafrænum skilríkjum.</string>
+    <!-- Primary sign-in button: signs in with Google (docs/decisions/0033). -->
+    <string name="sign_in_google">Halda áfram með Google</string>
+    <!-- Secondary sign-in button: signs in with Kenni, as accounts made before Google sign-in do. -->
+    <string name="sign_in_kenni">Skrá inn með rafrænum skilríkjum</string>
+    <!-- Heading of the screen that links Kenni to the account (docs/decisions/0033). -->
+    <string name="verify_title">Fáðu staðfestingarmerki</string>
+    <!-- What verifying with Kenni gives the person. -->
+    <string name="verify_body">Staðfestu hver þú ert með rafrænum skilríkjum. Þá birtist skjöldur við nafnið þitt og aðrir vita að nafnið er rétt.</string>
+    <!-- Verify screen: the registry name replaces the account's name. -->
+    <string name="verify_point_name">Nafnið þitt verður nafnið sem stendur í Þjóðskrá.</string>
+    <!-- Verify screen: the kennitala is kept only as an HMAC (docs/decisions/0019). -->
+    <string name="verify_point_kennitala">Kennitalan er aldrei sýnd öðrum. Þjónninn geymir hana ekki, aðeins óafturkræft fingrafar hennar.</string>
+    <!-- Verify screen: verifying is optional. -->
+    <string name="verify_point_optional">Valfrjálst. Þú getur notað Hjal áfram án þess.</string>
+    <!-- Verify screen: opens Kenni to link it to the account. -->
+    <string name="verify_action">Staðfesta með rafrænum skilríkjum</string>
+    <!-- Verify screen: leaves without verifying. -->
+    <string name="verify_later">Seinna</string>
+    <!-- On Ég and in settings for an account Kenni has not verified: opens the verify screen. -->
+    <string name="verify_cta">Fá staðfestingarmerki</string>
+    <!-- Kenni verified a person whose kennitala is on another account (409 identity_taken). -->
+    <string name="identity_taken">Þessi rafrænu skilríki eru þegar tengd öðrum aðgangi.</string>
     <!-- The server could not be reached; the action can be tried again. -->
     <string name="error_unreachable">Ekki náðist samband við þjóninn. Reyndu aftur.</string>
     <!-- Something failed that the person cannot fix but may retry. -->

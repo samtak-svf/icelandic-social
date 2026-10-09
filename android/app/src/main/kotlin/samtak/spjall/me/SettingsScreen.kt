@@ -83,6 +83,7 @@ fun SettingsScreen(
                 if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 state.problem?.let { ProblemCard(it, actions::retry) }
                 state.me?.let { me ->
+                    if (!me.verified) VerifyLink(actions::verify)
                     Label(R.string.devices_title)
                     Devices(me.devices, enabled = !state.busy) { revoking = it }
                     if (notificationsOff) NotificationsOff(actions::notificationSettings)

@@ -5,9 +5,12 @@ import SpjallCore
 /// network, so the models make them off the main actor.
 protocol Account: Sendable {
     func signedIn() throws -> Bool
-    /// Kenni's authorize URL, for the browser.
-    func beginSignIn() throws -> String
+    /// The provider's authorize URL, for the browser (decision 0033).
+    func beginSignIn(provider: SignInProvider) throws -> String
     func completeSignIn(callback: String, inviteToken: String?) throws
+    /// The authorize URL that links the provider to the signed-in account.
+    func beginLink(provider: SignInProvider) throws -> String
+    func completeLink(callback: String) throws
     func stockKeyPackages() throws
     /// Who sent the invite; nil when the operator did or the inviter has no name.
     func resolveInvite(token: String) throws -> Inviter?
@@ -86,11 +89,15 @@ final class CoreAccount: Account, @unchecked Sendable {
 
     func signedIn() throws -> Bool { try core().signedIn() != nil }
 
-    func beginSignIn() throws -> String { try core().beginSignIn() }
+    func beginSignIn(provider: SignInProvider) throws -> String { try core().beginSignIn(provider: provider) }
 
     func completeSignIn(callback: String, inviteToken: String?) throws {
         _ = try core().completeSignIn(callback: callback, inviteToken: inviteToken, platform: .ios)
     }
+
+    func beginLink(provider: SignInProvider) throws -> String { try core().beginLink(provider: provider) }
+
+    func completeLink(callback: String) throws { try core().completeLink(callback: callback) }
 
     func stockKeyPackages() throws { _ = try core().stockKeyPackages(target: Self.keyPackages) }
 

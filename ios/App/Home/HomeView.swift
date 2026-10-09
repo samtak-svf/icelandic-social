@@ -12,11 +12,13 @@ struct HomeView: View {
         case conversation(String)
     }
 
-    enum MeRoute: Hashable { case settings }
+    enum MeRoute: Hashable { case settings, verify }
 
     let signIn: SignInModel
     let push: PushModel
     let onSignedOut: () -> Void
+    /// The browser Kenni's link opens in.
+    let browser: (URL) async throws -> URL?
 
     @State private var socket: Socket
     @State private var list: ConversationsModel
@@ -27,8 +29,15 @@ struct HomeView: View {
 
     @Environment(\.scenePhase) private var scenePhase
 
-    init(signIn: SignInModel, push: PushModel, wire: Wire, onSignedOut: @escaping () -> Void) {
+    init(
+        signIn: SignInModel,
+        push: PushModel,
+        wire: Wire,
+        browser: @escaping (URL) async throws -> URL?,
+        onSignedOut: @escaping () -> Void
+    ) {
         self.signIn = signIn
+        self.browser = browser
         self.push = push
         self.onSignedOut = onSignedOut
         let socket = Socket(account: signIn.account, wire: wire)
@@ -62,9 +71,19 @@ struct HomeView: View {
                 }
             case .me:
                 NavigationStack(path: $mePath) {
-                    MeView(model: me, onSettings: { mePath.append(.settings) })
-                        .navigationDestination(for: MeRoute.self) { _ in
-                            SettingsView(model: me, push: push)
+                    MeView(model: me, onSettings: { mePath.append(.settings) }, onVerify: { mePath.append(.verify) })
+                        .navigationDestination(for: MeRoute.self) { route in
+                            switch route {
+                            case .settings:
+                                SettingsView(model: me, push: push, onVerify: { mePath.append(.verify) })
+                            case .verify:
+                                VerifyView(
+                                    model: signIn,
+                                    onVerify: { Task { await signIn.verify(browser: browser) } },
+                                    onLater: { mePath.removeLast() },
+                                    onRetry: { Task { await signIn.retry(browser: browser) } }
+                                )
+                            }
                         }
                 }
             }
@@ -99,6 +118,11 @@ struct HomeView: View {
         }
         .onChange(of: push.opened) { _, conversation in
             if conversation != nil { openTapped() }
+        }
+        .onChange(of: signIn.links) {
+            // Linked: back to where the offer was opened, with the shield and the registry name.
+            mePath.removeAll { $0 == .verify }
+            Task { await me.load() }
         }
         .onChange(of: signIn.signedInInvite) { _, token in
             if token != nil { openInvite() }

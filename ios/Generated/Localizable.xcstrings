@@ -457,18 +457,6 @@
         }
       }
     },
-    "invite_required": {
-      "comment": "Shown after Kenni sign-in without a valid invite during the closed test (docs/decisions/0009).",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hjal er í lokuðum prófunum. Þú þarft hlekk frá einhverjum sem er þegar á Hjal."
-          }
-        }
-      }
-    },
     "link_invited_by": {
       "comment": "Heading of the invite link page (/l/{token}) and of the app's invite screen when a person sent the link (docs/decisions/0019).",
       "extractionState": "manual",
@@ -1045,26 +1033,146 @@
         }
       }
     },
-    "sign_in": {
-      "comment": "Button that starts signing in with Kenni (docs/decisions/0019).",
+    "sign_in_hint": {
+      "comment": "Under the sign-in buttons: what Google is asked for, and that Kenni can verify later.",
       "extractionState": "manual",
       "localizations": {
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Skrá inn"
+            "value": "Við biðjum Google aðeins um nafn og netfang. Þú getur síðar staðfest auðkenni með rafrænum skilríkjum."
           }
         }
       }
     },
-    "sign_in_hint": {
-      "comment": "Under the sign-in button: how the person signs in.",
+    "sign_in_google": {
+      "comment": "Primary sign-in button: signs in with Google (docs/decisions/0033).",
       "extractionState": "manual",
       "localizations": {
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Þú skráir þig inn með rafrænum skilríkjum."
+            "value": "Halda áfram með Google"
+          }
+        }
+      }
+    },
+    "sign_in_kenni": {
+      "comment": "Secondary sign-in button: signs in with Kenni, as accounts made before Google sign-in do.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrá inn með rafrænum skilríkjum"
+          }
+        }
+      }
+    },
+    "verify_title": {
+      "comment": "Heading of the screen that links Kenni to the account (docs/decisions/0033).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fáðu staðfestingarmerki"
+          }
+        }
+      }
+    },
+    "verify_body": {
+      "comment": "What verifying with Kenni gives the person.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Staðfestu hver þú ert með rafrænum skilríkjum. Þá birtist skjöldur við nafnið þitt og aðrir vita að nafnið er rétt."
+          }
+        }
+      }
+    },
+    "verify_point_name": {
+      "comment": "Verify screen: the registry name replaces the account's name.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nafnið þitt verður nafnið sem stendur í Þjóðskrá."
+          }
+        }
+      }
+    },
+    "verify_point_kennitala": {
+      "comment": "Verify screen: the kennitala is kept only as an HMAC (docs/decisions/0019).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kennitalan er aldrei sýnd öðrum. Þjónninn geymir hana ekki, aðeins óafturkræft fingrafar hennar."
+          }
+        }
+      }
+    },
+    "verify_point_optional": {
+      "comment": "Verify screen: verifying is optional.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Valfrjálst. Þú getur notað Hjal áfram án þess."
+          }
+        }
+      }
+    },
+    "verify_action": {
+      "comment": "Verify screen: opens Kenni to link it to the account.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Staðfesta með rafrænum skilríkjum"
+          }
+        }
+      }
+    },
+    "verify_later": {
+      "comment": "Verify screen: leaves without verifying.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seinna"
+          }
+        }
+      }
+    },
+    "verify_cta": {
+      "comment": "On Ég and in settings for an account Kenni has not verified: opens the verify screen.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fá staðfestingarmerki"
+          }
+        }
+      }
+    },
+    "identity_taken": {
+      "comment": "Kenni verified a person whose kennitala is on another account (409 identity_taken).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þessi rafrænu skilríki eru þegar tengd öðrum aðgangi."
           }
         }
       }

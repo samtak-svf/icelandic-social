@@ -8,6 +8,7 @@ import SwiftUI
 struct SettingsView: View {
     let model: MeModel
     let push: PushModel
+    let onVerify: () -> Void
 
     @State private var revoking: String?
     @State private var deleting = false
@@ -26,6 +27,7 @@ struct SettingsView: View {
                         ProblemCard(problem: problem) { Task { await model.retry() } }
                     }
                     if let me = model.me {
+                        if !me.verified { VerifyLink(onVerify: onVerify) }
                         CardLabel(key: "devices_title")
                         Panel {
                             ForEach(Array(me.devices.enumerated()), id: \.element.deviceId) { index, device in

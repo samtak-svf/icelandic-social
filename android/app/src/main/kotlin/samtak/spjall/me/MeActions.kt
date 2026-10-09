@@ -18,6 +18,9 @@ interface MeActions {
 
     fun retry()
 
+    /** Opens the screen that links Kenni, for an account it has not verified (decision 0033). */
+    fun verify()
+
     /** The system's notification settings for the app. */
     fun notificationSettings()
 }

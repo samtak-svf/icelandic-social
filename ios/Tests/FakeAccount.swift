@@ -7,11 +7,20 @@ import SpjallCore
 /// throw instead, and `calls` records what was asked, in order.
 final class FakeAccount: Account, @unchecked Sendable {
     static let kenni = "https://kenni.test/oidc/auth?state=s1"
+    static let google = "https://google.test/o/oauth2/auth?state=s1"
+
+    static func url(_ provider: SignInProvider) -> String { provider == .google ? google : kenni }
 
     private let lock = NSLock()
     private var _calls: [String] = []
     private var _failNext: Error?
     private var _signedIn: Bool
+    private var _verified = true
+    /// Whether Kenni vouches for the account; a link sets it.
+    var verified: Bool {
+        get { lock.withLock { _verified } }
+        set { lock.withLock { _verified = newValue } }
+    }
     private var _link: String?
     private var links = 0
     var inviters: [String: Inviter?] = [:]
@@ -80,9 +89,19 @@ final class FakeAccount: Account, @unchecked Sendable {
         return lock.withLock { _signedIn }
     }
 
-    func beginSignIn() throws -> String {
-        try call("beginSignIn")
-        return Self.kenni
+    func beginSignIn(provider: SignInProvider) throws -> String {
+        try call("beginSignIn \(provider)")
+        return Self.url(provider)
+    }
+
+    func beginLink(provider: SignInProvider) throws -> String {
+        try call("beginLink \(provider)")
+        return Self.url(provider)
+    }
+
+    func completeLink(callback: String) throws {
+        try call("completeLink \(callback)")
+        lock.withLock { _verified = true }
     }
 
     func completeSignIn(callback: String, inviteToken: String?) throws {
@@ -100,7 +119,7 @@ final class FakeAccount: Account, @unchecked Sendable {
 
     func me() throws -> Me {
         try call("me")
-        return lock.withLock { Me(accountId: "a1", name: "Jón Jónsson", verified: true, devices: devices) }
+        return lock.withLock { Me(accountId: "a1", name: "Jón Jónsson", verified: _verified, devices: devices) }
     }
 
     func inviteLink() throws -> String? {

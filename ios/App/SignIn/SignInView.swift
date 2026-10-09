@@ -1,10 +1,12 @@
+import SpjallCore
 import SwiftUI
 
 /// The way in, on cream: the name in capitals, who invited the person (if
-/// anyone) in a card, and the Kenni button as a red pill.
+/// anyone) in a card, Google as a white pill and Kenni as a text button under
+/// it (decision 0033).
 struct SignInView: View {
     let model: SignInModel
-    let onSignIn: () -> Void
+    let onSignIn: (SignInProvider) -> Void
     let onRetry: () -> Void
 
     var body: some View {
@@ -30,13 +32,30 @@ struct SignInView: View {
             if model.busy {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 50)
             } else {
-                Button(action: onSignIn) {
-                    Text("sign_in")
-                        .font(.sans(15, black: true))
-                        .foregroundStyle(BrandTokens.Colors.primaryFg)
-                        .frame(maxWidth: .infinity, minHeight: 50)
-                        .background(BrandTokens.Colors.primary, in: Capsule())
-                        .contentShape(Capsule())
+                Button {
+                    onSignIn(.google)
+                } label: {
+                    HStack(spacing: 10) {
+                        // Google's own colours, as its sign-in guidelines ask.
+                        Image("GoogleG").resizable().frame(width: 20, height: 20)
+                        Text("sign_in_google")
+                            .font(.sans(15, black: true))
+                            .foregroundStyle(BrandTokens.Colors.fg)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 52)
+                    .background(BrandTokens.Colors.surface, in: Capsule())
+                    .overlay(Capsule().stroke(BrandTokens.Colors.border))
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                Button {
+                    onSignIn(.kenni)
+                } label: {
+                    Text("sign_in_kenni")
+                        .font(.sans(14, black: true))
+                        .foregroundStyle(BrandTokens.Colors.primary)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }

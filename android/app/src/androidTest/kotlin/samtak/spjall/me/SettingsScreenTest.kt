@@ -68,6 +68,10 @@ class SettingsScreenTest {
             override fun notificationSettings() {
                 calls += "notificationSettings"
             }
+
+            override fun verify() {
+                calls += "verify"
+            }
         }
 
     private fun text(id: Int) = InstrumentationRegistry.getInstrumentation().targetContext.getString(id)

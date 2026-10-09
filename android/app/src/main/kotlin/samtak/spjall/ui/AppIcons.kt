@@ -68,6 +68,26 @@ object AppIcons {
 
     val ShieldCheck = outline("shield-check", 24f, 2f, "M8.5 12l2.5 2.5 4.5-5")
 
+    /**
+     * Google's "G", in Google's own colours rather than the brand's, as its
+     * sign-in guidelines ask; shown with `Image`, never tinted.
+     */
+    val GoogleG: ImageVector =
+        ImageVector
+            .Builder("google-g", 24.dp, 24.dp, 24f, 24f)
+            .apply {
+                listOf(
+                    0xFF4285F4 to
+                        "M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.2-2.1 3.5-5.1 3.5-8.7z",
+                    0xFF34A853 to
+                        "M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5" +
+                        "H1.3v3.1A12 12 0 0 0 12 24z",
+                    0xFFFBBC05 to "M5.3 14.3a7.2 7.2 0 0 1 0-4.6V6.6H1.3a12 12 0 0 0 0 10.8l4-3.1z",
+                    0xFFEA4335 to
+                        "M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.3 6.6l4 3.1c.9-2.9 3.6-4.9 6.7-4.9z",
+                ).forEach { (colour, path) -> addPath(pathData = addPathNodes(path), fill = SolidColor(Color(colour))) }
+            }.build()
+
     private fun outline(
         name: String,
         box: Float,

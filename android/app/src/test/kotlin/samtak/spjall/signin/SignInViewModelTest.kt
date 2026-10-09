@@ -20,6 +20,7 @@ import samtak.spjall.account.Problem
 import samtak.spjall.account.unreachable
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.Inviter
+import samtak.spjall.core.SignInProvider
 import samtak.spjall.signin.SignInViewModel.Invite
 import samtak.spjall.signin.SignInViewModel.Session
 
@@ -54,8 +55,8 @@ class SignInViewModelTest {
             advanceUntilIdle()
             assertEquals(Invite.From("Anna"), model.state.value.invite)
 
-            model.signIn()
-            assertEquals(FakeAccount.KENNI, model.browser.first())
+            model.signIn(SignInProvider.GOOGLE)
+            assertEquals(FakeAccount.GOOGLE, model.browser.first())
             model.complete("cb1")
             advanceUntilIdle()
             assertEquals(Session.SignedIn, model.state.value.session)
@@ -122,9 +123,22 @@ class SignInViewModelTest {
         }
 
     @Test
-    fun anyOtherFailureEndsTheSignInSoRetryingStartsANewOne() =
+    fun eachButtonOpensItsProvider() =
         runTest(dispatcher) {
             val model = model()
+            model.signIn(SignInProvider.KENNI)
+            assertEquals(FakeAccount.KENNI, model.browser.first())
+            model.signIn(SignInProvider.GOOGLE)
+            assertEquals(FakeAccount.GOOGLE, model.browser.first())
+            assertEquals(listOf("beginSignIn KENNI", "beginSignIn GOOGLE"), account.calls.drop(1))
+        }
+
+    @Test
+    fun anyOtherFailureEndsTheSignInSoRetryingStartsANewOneWithTheSameProvider() =
+        runTest(dispatcher) {
+            val model = model()
+            model.signIn(SignInProvider.KENNI)
+            model.browser.first()
             account.failNext = CoreException.SignIn("state mismatch")
             model.complete("cb1")
             advanceUntilIdle()
@@ -133,17 +147,51 @@ class SignInViewModelTest {
             model.retry()
             advanceUntilIdle()
             assertEquals(FakeAccount.KENNI, model.browser.first())
-            assertEquals("beginSignIn", account.calls.last())
+            assertEquals("beginSignIn KENNI", account.calls.last())
         }
 
     @Test
-    fun withoutAnInviteANewPersonIsToldTheyNeedOne() =
+    fun signedInTheRedirectLinksKenniInsteadOfSigningIn() =
         runTest(dispatcher) {
+            account.signedIn = true
+            account.verified = false
             val model = model()
-            account.failNext = CoreException.Refused(403u, "invite_required")
+            model.verify()
+            assertEquals(FakeAccount.KENNI, model.browser.first())
             model.complete("cb1")
             advanceUntilIdle()
-            assertEquals(Problem.InviteRequired, model.state.value.problem)
+            model.linked.first()
+            assertEquals(listOf("beginLink KENNI", "completeLink cb1"), account.calls.drop(2))
+            assertEquals(Session.SignedIn, model.state.value.session)
+            assertNull(model.state.value.problem)
+        }
+
+    @Test
+    fun aKennitalaOnAnotherAccountIsSaidAndEndsTheLink() =
+        runTest(dispatcher) {
+            account.signedIn = true
+            val model = model()
+            account.failNext = CoreException.Refused(409u, "identity_taken")
+            model.complete("cb1")
+            advanceUntilIdle()
+            assertEquals(Problem.IdentityTaken, model.state.value.problem)
+
+            // The callback is spent: trying again opens Kenni anew.
+            model.retry()
+            assertEquals(FakeAccount.KENNI, model.browser.first())
+            assertEquals("beginLink KENNI", account.calls.last())
+            assertNull(model.state.value.problem)
+        }
+
+    @Test
+    fun aLinkTheProcessEndedInTheMiddleOfIsFinished() =
+        runTest(dispatcher) {
+            account.signedIn = true
+            saved["callback"] = "cb1"
+            val model = model()
+            model.linked.first()
+            assertEquals("completeLink cb1", account.calls.last())
+            assertNull(saved.get<String>("callback"))
         }
 
     @Test

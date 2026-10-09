@@ -61,16 +61,23 @@ class MeScreenTest {
             override fun notificationSettings() {
                 calls += "notificationSettings"
             }
+
+            override fun verify() {
+                calls += "verify"
+            }
         }
 
     private fun text(id: Int) = InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
 
-    private fun show(link: String? = null) {
+    private fun show(
+        link: String? = null,
+        verified: Boolean = true,
+    ) {
         val me =
             Me(
                 "a1",
                 "Jón Jónsson",
-                true,
+                verified,
                 listOf(
                     AccountDevice("d1", Platform.ANDROID, 1_700_000_000_000u, current = true),
                     AccountDevice("d2", Platform.IOS, 1_710_000_000_000u, current = false),
@@ -95,6 +102,19 @@ class MeScreenTest {
         show()
         compose.onNodeWithContentDescription(text(R.string.settings_title)).performClick()
         assertEquals(listOf("settings"), calls)
+    }
+
+    @Test
+    fun anAccountKenniHasNotVerifiedIsOfferedTheShield() {
+        show(verified = false)
+        compose.onNodeWithText(text(R.string.verify_cta)).performClick()
+        assertEquals(listOf("verify"), calls)
+    }
+
+    @Test
+    fun aVerifiedAccountIsNotOfferedItAgain() {
+        show()
+        compose.onNodeWithText(text(R.string.verify_cta)).assertDoesNotExist()
     }
 
     @Test

@@ -4,8 +4,8 @@ import SpjallCore
 enum Problem: Equatable, Sendable {
     /// No answer from the server: trying again may work.
     case unreachable
-    /// Kenni signed the person in, but there is no account and no live invite.
-    case inviteRequired
+    /// The kennitala is already linked to another account (decision 0033).
+    case identityTaken
     /// A photo or file over the 25 MB limit (decision 0023): trying again cannot help.
     case tooLarge
     /// Anything else.
@@ -14,7 +14,7 @@ enum Problem: Equatable, Sendable {
     init(_ error: Error) {
         switch error {
         case CoreError.Unreachable: self = .unreachable
-        case CoreError.Refused(_, "invite_required"): self = .inviteRequired
+        case CoreError.Refused(_, "identity_taken"): self = .identityTaken
         default: self = .generic
         }
     }

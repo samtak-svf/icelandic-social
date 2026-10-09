@@ -14,6 +14,7 @@ import samtak.spjall.core.Outcome
 import samtak.spjall.core.Person
 import samtak.spjall.core.Platform
 import samtak.spjall.core.Settings
+import samtak.spjall.core.SignInProvider
 
 /**
  * The core as the view models see it, in memory. [failNext] makes the next
@@ -60,9 +61,9 @@ class FakeAccount(
         return signedIn
     }
 
-    override fun beginSignIn(): String {
-        call("beginSignIn")
-        return KENNI
+    override fun beginSignIn(provider: SignInProvider): String {
+        call("beginSignIn $provider")
+        return url(provider)
     }
 
     override fun completeSignIn(
@@ -71,6 +72,19 @@ class FakeAccount(
     ) {
         call("completeSignIn $callback ${inviteToken ?: "-"}")
         signedIn = true
+    }
+
+    /** Whether Kenni has vouched for the account's name; a link sets it. */
+    var verified = true
+
+    override fun beginLink(provider: SignInProvider): String {
+        call("beginLink $provider")
+        return url(provider)
+    }
+
+    override fun completeLink(callback: String) {
+        call("completeLink $callback")
+        verified = true
     }
 
     override fun stockKeyPackages() = call("stockKeyPackages")
@@ -83,7 +97,7 @@ class FakeAccount(
 
     override fun me(): Me {
         call("me")
-        return Me("a1", "Jón Jónsson", true, devices)
+        return Me("a1", "Jón Jónsson", verified, devices)
     }
 
     override fun inviteLink(): String? {
@@ -278,6 +292,13 @@ class FakeAccount(
         const val NOW = 1_700_000_000_000uL
 
         const val KENNI = "https://kenni.test/oidc/auth?state=s1"
+        const val GOOGLE = "https://google.test/o/oauth2/auth?state=s1"
+
+        fun url(provider: SignInProvider) =
+            when (provider) {
+                SignInProvider.KENNI -> KENNI
+                SignInProvider.GOOGLE -> GOOGLE
+            }
     }
 }
 

@@ -11,6 +11,7 @@ import samtak.spjall.core.Outcome
 import samtak.spjall.core.Person
 import samtak.spjall.core.Platform
 import samtak.spjall.core.Settings
+import samtak.spjall.core.SignInProvider
 
 /**
  * What the screens and the socket ask of the core (decisions 0018, 0019, 0022).
@@ -23,14 +24,20 @@ import samtak.spjall.core.Settings
 interface Account {
     fun signedIn(): Boolean
 
-    /** The Kenni URL to open in a Custom Tab. */
-    fun beginSignIn(): String
+    /** The provider's URL to open in a Custom Tab. */
+    fun beginSignIn(provider: SignInProvider): String
 
     /** `Unreachable` leaves the sign-in pending, so the same callback can be tried again. */
     fun completeSignIn(
         callback: String,
         inviteToken: String?,
     )
+
+    /** The provider's URL that links it to this account (decision 0033): Kenni verifies the name. */
+    fun beginLink(provider: SignInProvider): String
+
+    /** Finishes a link with the redirect; `Refused(409, "identity_taken")` when another account holds it. */
+    fun completeLink(callback: String)
 
     /** Tops up this device's KeyPackages, so other accounts can add it to a conversation. */
     fun stockKeyPackages()
@@ -155,7 +162,7 @@ class CoreAccount(
 
     override fun signedIn() = client.signedIn() != null
 
-    override fun beginSignIn() = client.beginSignIn()
+    override fun beginSignIn(provider: SignInProvider) = client.beginSignIn(provider)
 
     override fun completeSignIn(
         callback: String,
@@ -163,6 +170,10 @@ class CoreAccount(
     ) {
         client.completeSignIn(callback, inviteToken, Platform.ANDROID)
     }
+
+    override fun beginLink(provider: SignInProvider) = client.beginLink(provider)
+
+    override fun completeLink(callback: String) = client.completeLink(callback)
 
     override fun stockKeyPackages() {
         client.stockKeyPackages(KEY_PACKAGES)

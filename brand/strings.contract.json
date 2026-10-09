@@ -181,10 +181,6 @@
       "surfaces": ["android", "ios"],
       "description": "Replace the invite link; the old one stops working."
     },
-    "invite_required": {
-      "surfaces": ["android", "ios"],
-      "description": "Shown after Kenni sign-in without a valid invite during the closed test (docs/decisions/0009)."
-    },
     "link_invited_by": {
       "surfaces": ["android", "ios", "backend"],
       "description": "Heading of the invite link page (/l/{token}) and of the app's invite screen when a person sent the link (docs/decisions/0019).",
@@ -407,13 +403,53 @@
       "surfaces": ["android", "ios"],
       "description": "Confirmation before deleting the account; says what the server deletes and what it cannot."
     },
-    "sign_in": {
-      "surfaces": ["android", "ios"],
-      "description": "Button that starts signing in with Kenni (docs/decisions/0019)."
-    },
     "sign_in_hint": {
       "surfaces": ["android", "ios"],
-      "description": "Under the sign-in button: how the person signs in."
+      "description": "Under the sign-in buttons: what Google is asked for, and that Kenni can verify later."
+    },
+    "sign_in_google": {
+      "surfaces": ["android", "ios"],
+      "description": "Primary sign-in button: signs in with Google (docs/decisions/0033)."
+    },
+    "sign_in_kenni": {
+      "surfaces": ["android", "ios"],
+      "description": "Secondary sign-in button: signs in with Kenni, as accounts made before Google sign-in do."
+    },
+    "verify_title": {
+      "surfaces": ["android", "ios"],
+      "description": "Heading of the screen that links Kenni to the account (docs/decisions/0033)."
+    },
+    "verify_body": {
+      "surfaces": ["android", "ios"],
+      "description": "What verifying with Kenni gives the person."
+    },
+    "verify_point_name": {
+      "surfaces": ["android", "ios"],
+      "description": "Verify screen: the registry name replaces the account's name."
+    },
+    "verify_point_kennitala": {
+      "surfaces": ["android", "ios"],
+      "description": "Verify screen: the kennitala is kept only as an HMAC (docs/decisions/0019)."
+    },
+    "verify_point_optional": {
+      "surfaces": ["android", "ios"],
+      "description": "Verify screen: verifying is optional."
+    },
+    "verify_action": {
+      "surfaces": ["android", "ios"],
+      "description": "Verify screen: opens Kenni to link it to the account."
+    },
+    "verify_later": {
+      "surfaces": ["android", "ios"],
+      "description": "Verify screen: leaves without verifying."
+    },
+    "verify_cta": {
+      "surfaces": ["android", "ios"],
+      "description": "On Ég and in settings for an account Kenni has not verified: opens the verify screen."
+    },
+    "identity_taken": {
+      "surfaces": ["android", "ios"],
+      "description": "Kenni verified a person whose kennitala is on another account (409 identity_taken)."
     },
     "error_unreachable": {
       "surfaces": ["android", "ios"],

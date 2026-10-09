@@ -11,8 +11,8 @@ final class SignInModelTests: XCTestCase {
     private let defaults = UserDefaults(suiteName: "SignInModelTests.\(UUID())")!
     private var opened: [URL] = []
 
-    /// Kenni, which redirects straight back with `callback`.
-    private func kenni(_ callback: String) -> (URL) async throws -> URL? {
+    /// The provider, which redirects straight back with `callback`.
+    private func browser(_ callback: String) -> (URL) async throws -> URL? {
         { url in
             self.opened.append(url)
             return URL(string: callback)
@@ -40,8 +40,8 @@ final class SignInModelTests: XCTestCase {
         await model.openInvite(token: "t1")
         XCTAssertEqual(model.invite, .from(name: "Anna"))
 
-        await model.signIn(browser: kenni("cb:1"))
-        XCTAssertEqual(opened, [URL(string: FakeAccount.kenni)!])
+        await model.signIn(provider: .google, browser: browser("cb:1"))
+        XCTAssertEqual(opened, [URL(string: FakeAccount.google)!])
         XCTAssertEqual(model.session, .signedIn)
         XCTAssertEqual(account.calls.filter { $0.hasPrefix("complete") }, ["completeSignIn cb:1 t1"])
     }
@@ -69,7 +69,7 @@ final class SignInModelTests: XCTestCase {
 
     func testClosingTheBrowserIsNotAProblem() async {
         let model = await model()
-        await model.signIn { _ in nil }
+        await model.signIn(provider: .google) { _ in nil }
         XCTAssertEqual(model.session, .signedOut)
         XCTAssertNil(model.problem)
         XCTAssertFalse(model.busy)
@@ -78,43 +78,98 @@ final class SignInModelTests: XCTestCase {
     func testAnUnreachableCompletionKeepsTheCallbackForRetry() async {
         let model = await model()
         let account = account
-        await model.signIn { _ in
-            // Kenni answered; the server will not.
+        await model.signIn(provider: .google) { _ in
+            // Google answered; the server will not.
             account.failNext = unreachable
             return URL(string: "cb:1")
         }
         XCTAssertEqual(model.session, .signedOut)
         XCTAssertEqual(model.problem, .unreachable)
 
-        await model.retry(browser: kenni("cb:other"))
+        await model.retry(browser: browser("cb:other"))
         XCTAssertEqual(model.session, .signedIn)
         XCTAssertNil(model.problem)
         XCTAssertEqual(account.calls.filter { $0 == "completeSignIn cb:1 -" }.count, 2)
-        XCTAssertEqual(account.calls.filter { $0 == "beginSignIn" }.count, 1, "retry must not open Kenni again")
+        XCTAssertEqual(
+            account.calls.filter { $0.hasPrefix("beginSignIn") }.count, 1, "retry must not open Google again")
     }
 
-    func testAnyOtherFailureEndsTheSignInSoRetryingStartsANewOne() async {
+    func testEachButtonOpensItsProvider() async {
+        let model = await model()
+        await model.signIn(provider: .kenni) { url in
+            self.opened.append(url)
+            return nil
+        }
+        await model.signIn(provider: .google) { url in
+            self.opened.append(url)
+            return nil
+        }
+        XCTAssertEqual(opened, [URL(string: FakeAccount.kenni)!, URL(string: FakeAccount.google)!])
+        XCTAssertEqual(account.calls.filter { $0.hasPrefix("begin") }, ["beginSignIn kenni", "beginSignIn google"])
+    }
+
+    func testAnyOtherFailureEndsTheSignInSoRetryingStartsANewOneWithTheSameProvider() async {
         let model = await model()
         let account = account
-        await model.signIn { _ in
+        await model.signIn(provider: .kenni) { _ in
             account.failNext = CoreError.SignIn(detail: "state mismatch")
             return URL(string: "cb:1")
         }
         XCTAssertEqual(model.problem, .generic)
 
-        await model.retry(browser: kenni("cb:2"))
-        XCTAssertEqual(account.calls.filter { $0 == "beginSignIn" }.count, 2)
+        await model.retry(browser: browser("cb:2"))
+        XCTAssertEqual(
+            account.calls.filter { $0.hasPrefix("beginSignIn") },
+            ["beginSignIn kenni", "beginSignIn kenni"]
+        )
         XCTAssertEqual(model.session, .signedIn)
     }
 
-    func testWithoutAnInviteANewPersonIsToldTheyNeedOne() async {
-        let model = await model()
-        let account = account
-        await model.signIn { _ in
-            account.failNext = CoreError.Refused(status: 403, code: "invite_required")
-            return URL(string: "cb:1")
+    func testSignedInTheRedirectLinksKenniInsteadOfSigningIn() async {
+        let account = FakeAccount(signedIn: true)
+        account.verified = false
+        let model = SignInModel(account: account, defaults: defaults)
+        await model.check()
+        await model.verify(browser: browser("cb:k"))
+        XCTAssertEqual(opened, [URL(string: FakeAccount.kenni)!])
+        XCTAssertEqual(
+            account.calls.filter { $0.hasPrefix("begin") || $0.hasPrefix("complete") },
+            ["beginLink kenni", "completeLink cb:k"])
+        XCTAssertEqual(model.links, 1)
+        XCTAssertEqual(model.signIns, 1, "a link is not another sign-in")
+        XCTAssertTrue(account.verified)
+    }
+
+    func testAKennitalaOnAnotherAccountIsSaidAndEndsTheLink() async {
+        let account = FakeAccount(signedIn: true)
+        let model = SignInModel(account: account, defaults: defaults)
+        await model.check()
+        await model.verify { _ in
+            account.failNext = CoreError.Refused(status: 409, code: "identity_taken")
+            return URL(string: "cb:k")
         }
-        XCTAssertEqual(model.problem, .inviteRequired)
+        XCTAssertEqual(model.problem, .identityTaken)
+        XCTAssertEqual(model.links, 0)
+
+        // The link ended, so trying again opens Kenni again.
+        await model.retry(browser: browser("cb:k2"))
+        XCTAssertEqual(account.calls.filter { $0.hasPrefix("beginLink") }.count, 2)
+        XCTAssertEqual(model.links, 1)
+    }
+
+    func testAnUnreachableLinkKeepsTheCallbackForRetry() async {
+        let account = FakeAccount(signedIn: true)
+        let model = SignInModel(account: account, defaults: defaults)
+        await model.check()
+        await model.verify { _ in
+            account.failNext = unreachable
+            return URL(string: "cb:k")
+        }
+        XCTAssertEqual(model.problem, .unreachable)
+        await model.retry(browser: browser("cb:other"))
+        XCTAssertEqual(account.calls.filter { $0 == "completeLink cb:k" }.count, 2)
+        XCTAssertEqual(account.calls.filter { $0.hasPrefix("beginLink") }.count, 1)
+        XCTAssertEqual(model.links, 1)
     }
 
     func testTheInviteSurvivesTheAppEnding() async {
@@ -125,7 +180,7 @@ final class SignInModelTests: XCTestCase {
         // iOS ended the app while the person was in their authenticator.
         let after = await model()
         XCTAssertEqual(after.invite, .from(name: "Anna"))
-        await after.signIn(browser: kenni("cb:1"))
+        await after.signIn(provider: .google, browser: browser("cb:1"))
         XCTAssertEqual(account.calls.filter { $0.hasPrefix("complete") }, ["completeSignIn cb:1 t1"])
 
         // Used, it is gone: the next sign-in carries no invite.
@@ -136,7 +191,7 @@ final class SignInModelTests: XCTestCase {
 
     func testASignInBeforeTheFirstCheckIsNotUndoneByIt() async {
         let model = SignInModel(account: account, defaults: defaults)
-        await model.signIn(browser: kenni("cb:1"))
+        await model.signIn(provider: .google, browser: browser("cb:1"))
         account.failNext = unreachable
         await model.check()
         XCTAssertEqual(model.session, .signedIn)
@@ -148,7 +203,7 @@ final class SignInModelTests: XCTestCase {
         model.signedOut()
         XCTAssertEqual(model.session, .signedOut)
         XCTAssertEqual(model.invite, .none)
-        await model.signIn(browser: kenni("cb:2"))
+        await model.signIn(provider: .google, browser: browser("cb:2"))
         XCTAssertEqual(model.signIns, 2)
     }
 

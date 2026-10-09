@@ -24,7 +24,7 @@ struct SpjallApp: App {
 }
 
 /// Sign-in until the device is signed in, then "Ég". Invite links arrive
-/// through `onOpenURL`; Kenni's redirect comes back to the browser session.
+/// through `onOpenURL`; the providers' redirects come back to the browser session.
 struct RootView: View {
     let signIn: SignInModel
     let push: PushModel
@@ -57,7 +57,7 @@ struct RootView: View {
             case .signedOut:
                 SignInView(
                     model: signIn,
-                    onSignIn: { Task { await signIn.signIn(browser: browser) } },
+                    onSignIn: { provider in Task { await signIn.signIn(provider: provider, browser: browser) } },
                     onRetry: { Task { await signIn.retry(browser: browser) } }
                 )
             case .signedIn:
@@ -67,6 +67,7 @@ struct RootView: View {
                         signIn: signIn,
                         push: push,
                         wire: URLSessionWire(baseURL: base, client: CoreStore.client),
+                        browser: browser,
                         onSignedOut: signIn.signedOut
                     )
                     // A fresh socket, list and "Ég" for each sign-in.
@@ -80,8 +81,8 @@ struct RootView: View {
     /// until the app is in the App Store.
     private static let store = URL(string: "itms-beta://")!
 
-    /// Kenni in a browser sheet that shares no cookies with Safari; nil when
-    /// the person closed it.
+    /// The provider in a browser sheet that shares no cookies with Safari; nil
+    /// when the person closed it.
     private func browser(_ url: URL) async throws -> URL? {
         do {
             return try await webAuthenticationSession.authenticate(
@@ -94,6 +95,6 @@ struct RootView: View {
         }
     }
 
-    /// The scheme Kenni redirects to (identifiers/ids.json `urlScheme`).
+    /// The scheme the providers' redirects come back to (identifiers/ids.json `urlScheme`).
     private static let scheme = Bundle.main.object(forInfoDictionaryKey: "SpjallURLScheme") as? String ?? ""
 }

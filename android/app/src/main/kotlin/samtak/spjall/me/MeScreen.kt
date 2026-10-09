@@ -82,6 +82,7 @@ fun MeScreen(
                         )
                     }
                 }
+                if (!me.verified) VerifyLink(actions::verify)
                 Label(R.string.invite_link_title)
                 InviteCard(state.link, state.busy, actions)
             }
@@ -115,6 +116,20 @@ private fun Who(
             }
             if (verified) SectionLabel(stringResource(R.string.verified_with_kennitala))
         }
+    }
+}
+
+/** The way to the gold shield, for an account Kenni has not verified. */
+@Composable
+internal fun VerifyLink(onVerify: () -> Unit) {
+    TextButton(onClick = onVerify) {
+        VerifiedMark(size = MARK_LINK.dp)
+        Text(
+            text = stringResource(R.string.verify_cta),
+            modifier = Modifier.padding(start = 8.dp),
+            style = TextStyle(fontFamily = SansFamily, fontWeight = FontWeight.Black, fontSize = 14.sp),
+            color = Palette.fg,
+        )
     }
 }
 
@@ -237,6 +252,7 @@ internal fun Confirm(
 
 private const val AVATAR = 56
 private const val MARK = 8
+private const val MARK_LINK = 18
 private const val CARD_RADIUS = 18
 private const val QR = 104
 private const val QR_RADIUS = 12

@@ -14,6 +14,7 @@ import samtak.spjall.core.CoreException
 import samtak.spjall.core.Event
 import samtak.spjall.core.NoticeKind
 import samtak.spjall.core.Platform
+import samtak.spjall.core.SignInProvider
 import samtak.spjall.core.SignedIn
 import java.io.File
 import java.util.UUID
@@ -39,7 +40,7 @@ class CoreClientTest {
             CoreClient.open(dir.path, ByteArray(32) { 7 }, relay.link(account, device), Platform.ANDROID, "0.2.0")
         assertEquals(null, client.signedIn())
         // The app opens this URL in a Custom Tab and is handed the callback.
-        val callback = Relay.kenni(client.beginSignIn())
+        val callback = Relay.kenni(client.beginSignIn(SignInProvider.KENNI))
         assertEquals(SignedIn(account, device), client.completeSignIn(callback, null, Platform.ANDROID))
         assertEquals(SignedIn(account, device), client.signedIn())
         assertEquals("token-$device", client.deviceToken())

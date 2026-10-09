@@ -1,10 +1,12 @@
 import Foundation
 import Observation
+import SpjallCore
 
-/// Whether this device is signed in, and the way there (decision 0019): an
-/// invite link names who invited the person, the sign-in button opens Kenni
-/// in an ASWebAuthenticationSession, and Kenni's redirect comes back to
-/// `signIn(browser:)`.
+/// Whether this device is signed in, and the way there (decisions 0019 and
+/// 0033): an invite link names who invited the person, each sign-in button
+/// opens its provider in an ASWebAuthenticationSession, and the redirect comes
+/// back to `signIn(provider:browser:)`. Signed in, `verify(browser:)` links
+/// Kenni the same way, which puts the shield on the account.
 ///
 /// The invite token is kept in `defaults` until the sign-in it belongs to
 /// ends: iOS may end the app while the person approves in their
@@ -31,6 +33,8 @@ final class SignInModel {
     private(set) var problem: Problem?
     /// Counts sign-ins, so each one gets a fresh "Ég" screen.
     private(set) var signIns = 0
+    /// Counts finished Kenni links, so the verify screen closes and "Ég" reloads.
+    private(set) var links = 0
     /// Topping up this device's KeyPackages after the last sign-in.
     @ObservationIgnored private(set) var stocking: Task<Void, Never>?
 
@@ -42,6 +46,8 @@ final class SignInModel {
     }
     /// A callback the server could not be reached to finish; `retry` sends it again.
     private var pendingCallback: String?
+    /// The provider of the last sign-in, which a retry opens again.
+    private var provider = SignInProvider.google
 
     private static let inviteKey = "signIn.invite"
 
@@ -89,15 +95,28 @@ final class SignInModel {
         }
     }
 
-    /// Opens Kenni with `browser`, which returns the URL Kenni redirected to,
-    /// or nil when the person closed it.
-    func signIn(browser: (URL) async throws -> URL?) async {
+    /// Opens `provider` with `browser`, which returns the URL the provider
+    /// redirected to, or nil when the person closed it.
+    func signIn(provider: SignInProvider, browser: (URL) async throws -> URL?) async {
+        self.provider = provider
+        await open(browser: browser) { try $0.beginSignIn(provider: provider) }
+    }
+
+    /// Signed in: opens Kenni to link it to the account (decision 0033).
+    func verify(browser: (URL) async throws -> URL?) async {
+        await open(browser: browser) { try $0.beginLink(provider: .kenni) }
+    }
+
+    private func open(
+        browser: (URL) async throws -> URL?,
+        begin: @escaping @Sendable (Account) throws -> String
+    ) async {
         guard !busy else { return }
         busy = true
         problem = nil
         let account = account
         do {
-            let authorize = try await offMain { try account.beginSignIn() }
+            let authorize = try await offMain { try begin(account) }
             guard let url = URL(string: authorize), let callback = try await browser(url) else {
                 busy = false
                 return
@@ -110,12 +129,15 @@ final class SignInModel {
         }
     }
 
-    /// Tries again what failed: the same callback when one is pending, else a new sign-in.
+    /// Tries again what failed: the same callback when one is pending, else a
+    /// new link when signed in, else a new sign-in with the same provider.
     func retry(browser: (URL) async throws -> URL?) async {
         if let pendingCallback {
             await complete(callback: pendingCallback)
+        } else if session == .signedIn {
+            await verify(browser: browser)
         } else {
-            await signIn(browser: browser)
+            await signIn(provider: provider, browser: browser)
         }
     }
 
@@ -136,19 +158,28 @@ final class SignInModel {
         session = .signedOut
     }
 
+    /// Finishes the sign-in or, signed in, the link the callback belongs to.
     private func complete(callback: String) async {
         busy = true
         problem = nil
         let account = account
         let token = inviteToken
+        let linking = session == .signedIn
         do {
-            try await offMain { try account.completeSignIn(callback: callback, inviteToken: token) }
-            inviteToken = nil
-            pendingCallback = nil
-            didSignIn()
+            if linking {
+                try await offMain { try account.completeLink(callback: callback) }
+                pendingCallback = nil
+                busy = false
+                links += 1
+            } else {
+                try await offMain { try account.completeSignIn(callback: callback, inviteToken: token) }
+                inviteToken = nil
+                pendingCallback = nil
+                didSignIn()
+            }
         } catch {
-            // Unreachable keeps the sign-in pending in the core, so the same
-            // callback can finish it; any other failure ended it.
+            // Unreachable keeps the sign-in or link pending in the core, so the
+            // same callback can finish it; any other failure ended it.
             let problem = Problem(error)
             pendingCallback = problem == .unreachable ? callback : nil
             busy = false

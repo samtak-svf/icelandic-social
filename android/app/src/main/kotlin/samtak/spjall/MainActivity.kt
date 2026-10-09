@@ -71,6 +71,7 @@ import samtak.spjall.signin.SignInScreen
 import samtak.spjall.signin.SignInViewModel
 import samtak.spjall.signin.SignInViewModel.Session
 import samtak.spjall.signin.UpdateScreen
+import samtak.spjall.signin.VerifyScreen
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.Tab
@@ -110,7 +111,7 @@ class MainActivity : ComponentActivity() {
         handle(intent)
     }
 
-    /** A tapped notification, an invite link, or Kenni's redirect back to the app's scheme. */
+    /** A tapped notification, an invite link, or a provider's redirect back to the app's scheme. */
     private fun handle(intent: Intent) {
         if (intent.action == ACTION_OPEN_CONVERSATION) {
             intent.getStringExtra(EXTRA_CONVERSATION)?.let { opens.trySend(it) }
@@ -128,7 +129,7 @@ class MainActivity : ComponentActivity() {
         try {
             CustomTabsIntent.Builder().build().launchUrl(this, url.toUri())
         } catch (_: ActivityNotFoundException) {
-            // No browser at all: nothing on this device can show Kenni.
+            // No browser at all: nothing on this device can show the provider.
             signIn.browserMissing()
         }
     }
@@ -197,6 +198,7 @@ class MainActivity : ComponentActivity() {
                 composable(LIST) { Conversations(list, nav) }
                 composable(ME) { Me(signIns, nav, settings = false) }
                 composable(SETTINGS) { Me(signIns, nav, settings = true) }
+                composable(VERIFY) { Verify(nav) }
                 composable(PEOPLE) { People(nav) }
                 composable("$CONVERSATION/{id}") { entry ->
                     entry.arguments?.getString("id")?.let { Conversation(it, nav) }
@@ -387,12 +389,29 @@ class MainActivity : ComponentActivity() {
                 override fun retry() = me.retry()
 
                 override fun notificationSettings() = this@MainActivity.notificationSettings()
+
+                override fun verify() = nav.navigate(VERIFY)
             }
         if (settings) {
             SettingsScreen(state, actions, onBack = rememberBack(nav), notificationsOff = notificationsOff)
         } else {
             MeScreen(state, actions, onSettings = { nav.navigate(SETTINGS) })
         }
+    }
+
+    /** Kenni's link (decision 0033); once linked, back to where it was opened, which reloads `me`. */
+    @Composable
+    private fun Verify(nav: NavController) {
+        val state by signIn.state.collectAsStateWithLifecycle()
+        val pop = rememberBack(nav)
+        // Not [pop]: the link may finish before the screen is resumed again.
+        LaunchedEffect(Unit) { signIn.linked.collect { nav.popBackStack(VERIFY, inclusive = true) } }
+        VerifyScreen(
+            state,
+            onVerify = signIn::verify,
+            onLater = pop,
+            onRetry = signIn::retry,
+        )
     }
 
     /** Hands a fetched file to another app. */
@@ -412,6 +431,7 @@ class MainActivity : ComponentActivity() {
         private const val LIST = "conversations"
         private const val ME = "me"
         private const val SETTINGS = "settings"
+        private const val VERIFY = "verify"
         private const val PEOPLE = "people"
         private const val CONVERSATION = "conversation"
         private const val PREFS = "push"

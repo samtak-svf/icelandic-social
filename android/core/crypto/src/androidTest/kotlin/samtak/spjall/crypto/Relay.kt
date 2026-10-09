@@ -132,7 +132,11 @@ class Relay {
         when {
             request.method == HttpMethod.GET && parts == listOf("sign-in") -> return ok(SIGN_IN)
             request.method == HttpMethod.POST && parts == listOf("devices") -> {
-                if (body.optString("kenniCode").isEmpty() || body.optString("codeVerifier").isEmpty()) {
+                val signedIn =
+                    body.optString("provider") == "kenni" &&
+                        body.optString("code").isNotEmpty() &&
+                        body.optString("codeVerifier").isNotEmpty()
+                if (!signedIn) {
                     return refuse(400, "bad_request")
                 }
                 return ok(JSONObject().put("accountId", account).put("deviceId", device).put("token", token))

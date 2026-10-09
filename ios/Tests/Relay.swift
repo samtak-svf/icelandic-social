@@ -129,7 +129,9 @@ final class Relay: @unchecked Sendable {
                 "scope": "openid national_id audkenni_name",
             ])
         case (.post, ["devices"]):
-            guard body["kenniCode"] as? String ?? "" != "", body["codeVerifier"] as? String ?? "" != "" else {
+            guard body["provider"] as? String == "kenni", body["code"] as? String ?? "" != "",
+                body["codeVerifier"] as? String ?? "" != ""
+            else {
                 return refuse(400, "bad_request")
             }
             return ok(["accountId": account, "deviceId": device, "token": token])

@@ -6,6 +6,7 @@ import SwiftUI
 struct MeView: View {
     let model: MeModel
     let onSettings: () -> Void
+    let onVerify: () -> Void
 
     var body: some View {
         ScrollView {
@@ -30,6 +31,7 @@ struct MeView: View {
                         .buttonStyle(.plain)
                         .accessibilityLabel(Text("settings_title"))
                     }
+                    if !me.verified { VerifyLink(onVerify: onVerify) }
                     CardLabel(key: "invite_link_title")
                     InviteCard(model: model)
                 }
