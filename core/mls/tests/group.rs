@@ -598,3 +598,125 @@ fn a_group_info_without_its_tree_or_from_a_message_is_refused() {
         ));
     }
 }
+
+/// `a/d2` is revoked: its sibling `a/d1` removes the leaf, and `a` stays in
+/// the claim because it keeps a leaf (0028).
+#[test]
+fn a_device_removes_a_sibling_device() {
+    let (mut d1, mut d2, mut d3, id, _) = three();
+    let remove = d1.group(&id, |g, p, identity| {
+        let commit = g
+            .remove_devices(p, identity, &[Device::new("a", "d2").unwrap()])
+            .unwrap();
+        g.merge_pending_commit(p).unwrap();
+        commit
+    });
+    assert!(remove.removed.is_empty(), "{:?}", remove.removed);
+    assert_eq!(remove.claim, claim(&["a", "b"], &[]));
+
+    let Received::Commit {
+        removed,
+        removed_self,
+        backed,
+        ..
+    } = d3.receive(&id, &remove.message).unwrap()
+    else {
+        panic!("not a commit");
+    };
+    assert_eq!(removed, [Device::new("a", "d2").unwrap()]);
+    assert!(!removed_self);
+    assert!(backed);
+    assert!(matches!(
+        d2.receive(&id, &remove.message).unwrap(),
+        Received::Commit {
+            removed_self: true,
+            ..
+        }
+    ));
+
+    // What is sent after the removal is not for the removed leaf.
+    let after = d1.send(&id, b"after");
+    assert_eq!(d3.text(&id, &after).1, b"after");
+    assert!(d2.receive(&id, &after).is_err());
+}
+
+#[test]
+fn a_device_cannot_remove_its_own_leaf() {
+    let (mut d1, _, _, id, _) = three();
+    let refused = d1.group(&id, |g, p, identity| {
+        g.remove_devices(p, identity, &[Device::new("a", "d1").unwrap()])
+    });
+    assert!(matches!(refused, Err(GroupError::OwnDevice)));
+}
+
+#[test]
+fn removing_the_last_device_removes_the_account_from_the_claim() {
+    let (mut d1, mut d2, _d3, id, _) = three();
+    let remove = d1.group(&id, |g, p, identity| {
+        let commit = g
+            .remove_devices(p, identity, &[Device::new("b", "d3").unwrap()])
+            .unwrap();
+        g.merge_pending_commit(p).unwrap();
+        commit
+    });
+    assert_eq!(remove.removed, ["b"]);
+    assert_eq!(remove.claim, claim(&["a"], &[]));
+    assert!(matches!(
+        d2.receive(&id, &remove.message).unwrap(),
+        Received::Commit { backed: true, .. }
+    ));
+}
+
+/// A package past its `not_after` is refused as expired, not as malformed,
+/// so the client can tell the server's stock is stale (0029).
+#[test]
+fn an_expired_key_package_is_refused_as_expired() {
+    let provider = openmls_rust_crypto::OpenMlsRustCrypto::default();
+    let signer = SignatureKeyPair::new(CIPHERSUITE.signature_algorithm()).unwrap();
+    let credential = CredentialWithKey {
+        credential: BasicCredential::new(b"b/d3".to_vec()).into(),
+        signature_key: signer.to_public_vec().into(),
+    };
+    let bundle = KeyPackage::builder()
+        .key_package_lifetime(Lifetime::init(1, 2))
+        .build(CIPHERSUITE, &provider, &signer, credential)
+        .unwrap();
+    let message: MlsMessageOut = bundle.key_package().clone().into();
+    let claimed = [Claimed {
+        device: Device::new("b", "d3").unwrap(),
+        key_package: message.tls_serialize_detached().unwrap(),
+    }];
+    let mut d1 = Dev::new("a", "d1");
+    let refused = d1.with(|p, identity| {
+        let mut group = Group::create(p, identity).unwrap();
+        group.add(p, identity, &claimed)
+    });
+    assert!(matches!(refused, Err(GroupError::Expired)), "{refused:?}");
+}
+
+/// Every package this core makes runs the full lifetime from now.
+#[test]
+fn a_key_package_carries_the_lifetime_of_0029() {
+    let mut d3 = Dev::new("b", "d3");
+    let bytes = d3.with(|p, identity| identity.last_resort(p).unwrap());
+    let MlsMessageBodyIn::KeyPackage(package) =
+        <MlsMessageIn as openmls::prelude::tls_codec::Deserialize>::tls_deserialize_exact(&bytes)
+            .unwrap()
+            .extract()
+    else {
+        panic!("not a KeyPackage");
+    };
+    let provider = openmls_rust_crypto::OpenMlsRustCrypto::default();
+    let package = package
+        .validate(provider.crypto(), ProtocolVersion::Mls10)
+        .unwrap();
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let not_after = package.life_time().not_after();
+    assert!(
+        not_after.abs_diff(now + KEY_PACKAGE_LIFETIME_SECS) < 60,
+        "{not_after}"
+    );
+}

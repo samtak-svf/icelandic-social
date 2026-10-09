@@ -180,7 +180,8 @@ impl<T: Transport> Client<T> {
         let Some((device, token, sandbox)) = unsent else {
             return Ok(());
         };
-        authed(&self.transport, &self.token)?.set_push_token(&device, &token, sandbox)?;
+        authed(&self.transport, &self.token, &self.client)?
+            .set_push_token(&device, &token, sandbox)?;
         self.store.try_write(|tx| {
             tx.execute(
                 "UPDATE push SET sent = 1 WHERE id = 1 AND token = ?1 AND sandbox = ?2",

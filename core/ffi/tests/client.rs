@@ -38,6 +38,7 @@ impl App {
             path: request.path,
             body: request.body,
             bearer: request.bearer,
+            client: request.client,
         }
     }
 
@@ -96,6 +97,8 @@ fn phone(relay: &Arc<Relay>, account: &str, device: &str) -> Phone {
         dir.path().to_string_lossy().into_owned(),
         vec![7; 32],
         app.clone(),
+        Platform::Android,
+        "0.2.0".into(),
     )
     .unwrap();
     assert_eq!(client.device_key().unwrap().len(), 32);
@@ -230,10 +233,16 @@ fn two_clients_talk_through_the_exported_api() {
     assert_eq!(b1.client.settings().unwrap(), off);
     assert_eq!(b1.client.typing(conversation.clone(), true).unwrap(), None);
 
-    // Every request carried a path under /v1/, a body only on POST, and
-    // the token on all but the two before sign-in.
+    // Every request carried a path under /v1/, a body only on POST, the
+    // build (0030), and the token on all but the two before sign-in.
+    assert_eq!(a1.client.client_header().unwrap(), "android/0.2.0");
     for request in a1.app.seen.lock().unwrap().iter() {
         assert!(request.path.starts_with("/v1/"), "{request:?}");
+        assert_eq!(
+            request.client.as_deref(),
+            Some("android/0.2.0"),
+            "{request:?}"
+        );
         assert_eq!(request.body.is_some(), request.method == HttpMethod::Post);
         let before = request.path == "/v1/sign-in" || request.path == "/v1/devices";
         assert_eq!(request.bearer.is_none(), before, "{request:?}");
@@ -270,6 +279,8 @@ fn an_account_is_run_through_the_exported_api() {
         dir.path().to_string_lossy().into_owned(),
         vec![7; 32],
         app.clone(),
+        Platform::Android,
+        "0.2.0".into(),
     )
     .unwrap();
     let inviter = b1.resolve_invite(token.clone()).unwrap().unwrap();
@@ -326,8 +337,19 @@ fn errors_cross_as_records() {
         Err(CoreError::Invalid { .. })
     ));
     assert!(matches!(
-        CoreClient::open(String::new(), vec![7; 31], a1.app.clone()),
+        CoreClient::open(String::new(), vec![7; 31], a1.app.clone(), Platform::Android, "0.2.0".into()),
         Err(CoreError::Store { detail }) if detail.contains("32 bytes")
+    ));
+    let dir = tempfile::tempdir().unwrap();
+    assert!(matches!(
+        CoreClient::open(
+            dir.path().to_string_lossy().into_owned(),
+            vec![7; 32],
+            a1.app.clone(),
+            Platform::Ios,
+            "0.2".into(),
+        ),
+        Err(CoreError::Invalid { .. })
     ));
 }
 

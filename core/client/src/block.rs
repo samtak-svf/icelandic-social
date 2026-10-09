@@ -45,7 +45,7 @@ impl<T: Transport> Client<T> {
         if me.account == account {
             return Err(ClientError::Invalid("an account cannot block itself"));
         }
-        authed(&self.transport, &self.token)?.block(account)?;
+        authed(&self.transport, &self.token, &self.client)?.block(account)?;
         let ended = self.store.try_write(|tx| {
             let new = tx.execute(
                 "INSERT INTO blocks (account, blocked_at) VALUES (?1, ?2)
@@ -74,7 +74,7 @@ impl<T: Transport> Client<T> {
         if !is_id(account) {
             return Err(ClientError::Invalid("account id"));
         }
-        authed(&self.transport, &self.token)?.unblock(account)?;
+        authed(&self.transport, &self.token, &self.client)?.unblock(account)?;
         self.store.try_write(|tx| {
             tx.execute("DELETE FROM blocks WHERE account = ?1", [account])
                 .map(drop)
@@ -102,7 +102,7 @@ impl<T: Transport> Client<T> {
     /// Takes the server's list, which holds blocks set on this account's
     /// other devices, with the names it gives.
     pub(crate) fn refresh_blocks(&mut self) -> Result<(), ClientError> {
-        let blocked = authed(&self.transport, &self.token)?.blocks()?;
+        let blocked = authed(&self.transport, &self.token, &self.client)?.blocks()?;
         self.store.try_write(|tx| {
             tx.execute("DELETE FROM blocks", [])?;
             for b in &blocked {

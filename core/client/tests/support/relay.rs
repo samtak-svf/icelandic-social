@@ -13,6 +13,10 @@
 //!
 //! Media (0023) is kept per conversation for its roster, and blocks (0024)
 //! refuse the blocked account the blocker's KeyPackages.
+//!
+//! It serves a conversation's devices and refuses a claim naming a deleted
+//! account (0028), says when each last resort expires (0029), and refuses a
+//! client below its floor (0030).
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::Path;
@@ -46,6 +50,8 @@ struct Conversation {
     removed: BTreeMap<String, u64>,
     /// The latest commit's seq and GroupInfo.
     group_info: Option<(u64, String)>,
+    /// Accounts deleted while in the roster: no claim names them again.
+    departed: BTreeSet<String>,
 }
 
 #[derive(Default)]
@@ -54,6 +60,8 @@ struct State {
     devices: BTreeMap<String, String>,
     /// device → its token
     tokens: BTreeMap<String, String>,
+    /// device → the token it had when it was revoked
+    revoked: BTreeMap<String, String>,
     /// device → its push token and whether it is a sandbox one (0025)
     push: BTreeMap<String, (String, bool)>,
     /// invite token → the account that made it
@@ -63,6 +71,10 @@ struct State {
     requests: BTreeMap<String, Vec<Request>>,
     packages: BTreeMap<String, VecDeque<String>>,
     last_resort: BTreeMap<String, String>,
+    /// device → when its last resort expires, in milliseconds (0029).
+    last_resort_not_after: BTreeMap<String, u64>,
+    /// The lowest version served (0030); a request without one is 0.1.0.
+    floor: Option<(u32, u32, u32)>,
     conversations: BTreeMap<String, Conversation>,
     /// Frames waiting for each device's socket.
     frames: BTreeMap<String, Vec<String>>,
@@ -89,6 +101,25 @@ pub struct Link {
     relay: Arc<Relay>,
     account: String,
     device: String,
+}
+
+/// 84 days, as the core builds every KeyPackage (0029).
+const KEY_PACKAGE_LIFETIME_MS: u64 = 84 * 24 * 60 * 60 * 1000;
+
+fn now() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64
+}
+
+/// The version a `Spjall-Client` value names, 0.1.0 without one (0030).
+fn version_of(client: Option<&str>) -> (u32, u32, u32) {
+    let Some((_, version)) = client.and_then(|c| c.split_once('/')) else {
+        return (0, 1, 0);
+    };
+    let parts: Vec<u32> = version.split('.').map(|p| p.parse().unwrap()).collect();
+    (parts[0], parts[1], parts[2])
 }
 
 fn answer(status: u16, body: Value) -> Response {
@@ -194,6 +225,44 @@ impl Relay {
             let middle = blob.len() / 2;
             blob[middle] ^= 1;
         }
+    }
+
+    /// The device's last resort now expires in `ms` (0029).
+    pub fn age_last_resort(&self, device: &str, ms: u64) {
+        self.state()
+            .last_resort_not_after
+            .insert(device.into(), now() + ms);
+    }
+
+    pub fn last_resort(&self, device: &str) -> Option<String> {
+        self.state().last_resort.get(device).cloned()
+    }
+
+    pub fn packages(&self, device: &str) -> usize {
+        self.state().packages.get(device).map_or(0, VecDeque::len)
+    }
+
+    /// Revoked from somewhere the test does not hold: the server stops
+    /// serving the device.
+    pub fn revoke(&self, device: &str) {
+        let mut state = self.state();
+        state.devices.remove(device);
+        if let Some(token) = state.tokens.remove(device) {
+            state.revoked.insert(device.into(), token);
+        }
+    }
+
+    /// A server that kept answering a revoked device's old token, so its
+    /// store can be shown what was sent after its removal.
+    pub fn answer_revoked(&self, device: &str) {
+        let mut state = self.state();
+        let token = state.revoked[device].clone();
+        state.tokens.insert(device.into(), token);
+    }
+
+    /// Below this version every request is refused (0030).
+    pub fn set_floor(&self, floor: (u32, u32, u32)) {
+        self.state().floor = Some(floor);
     }
 
     pub fn frames(&self, device: &str) -> Vec<String> {
@@ -314,6 +383,15 @@ impl State {
         {
             return refuse(401, "unauthorized");
         }
+        if let Some(floor) = self.floor
+            && version_of(request.client.as_deref()) < floor
+        {
+            let (x, y, z) = floor;
+            return answer(
+                426,
+                json!({ "error": "client_too_old", "minVersion": format!("{x}.{y}.{z}") }),
+            );
+        }
         match (request.method, parts.as_slice()) {
             (Method::Get, ["sign-in"]) => answer(
                 200,
@@ -367,6 +445,11 @@ impl State {
                     self.tokens.remove(&d);
                 }
                 self.invites.retain(|_, a| a != account);
+                for conversation in self.conversations.values_mut() {
+                    if conversation.roster.remove(account) {
+                        conversation.departed.insert(account.to_owned());
+                    }
+                }
                 answer(204, Value::Null)
             }
             (Method::Post, ["me", "invite"]) => {
@@ -445,7 +528,9 @@ impl State {
                     return refuse(404, "not_found");
                 }
                 self.devices.remove(*id);
-                self.tokens.remove(*id);
+                if let Some(token) = self.tokens.remove(*id) {
+                    self.revoked.insert((*id).to_owned(), token);
+                }
                 self.push.remove(*id);
                 answer(204, Value::Null)
             }
@@ -479,6 +564,7 @@ impl State {
                         removed: BTreeMap::new(),
                         expired_to: 0,
                         group_info: None,
+                        departed: BTreeSet::new(),
                     },
                 );
                 answer(200, json!({ "conversationId": id }))
@@ -537,6 +623,28 @@ impl State {
                     None => refuse(404, "not_found"),
                 }
             }
+            (Method::Get, ["conversations", id, "devices"]) => {
+                let Some(conversation) = self.conversations.get(*id) else {
+                    return refuse(404, "not_found");
+                };
+                if !conversation.roster.contains(account) {
+                    return refuse(403, "not_a_member");
+                }
+                let accounts: Vec<Value> = conversation
+                    .roster
+                    .iter()
+                    .map(|a| {
+                        let ids: Vec<&String> = self
+                            .devices
+                            .iter()
+                            .filter(|(_, owner)| *owner == a)
+                            .map(|(d, _)| d)
+                            .collect();
+                        json!({ "accountId": a, "deviceIds": ids })
+                    })
+                    .collect();
+                answer(200, json!({ "accounts": accounts }))
+            }
             (Method::Get, ["conversations", id, "group-info"]) => {
                 let Some(conversation) = self.conversations.get(*id) else {
                     return refuse(404, "not_found");
@@ -557,8 +665,16 @@ impl State {
                 let available = queue.len();
                 if let Some(last) = body["lastResort"].as_str() {
                     self.last_resort.insert(device.into(), last.into());
+                    self.last_resort_not_after
+                        .insert(device.into(), now() + KEY_PACKAGE_LIFETIME_MS);
                 }
-                answer(200, json!({ "available": available }))
+                answer(
+                    200,
+                    json!({
+                        "available": available,
+                        "lastResortNotAfter": self.last_resort_not_after.get(device),
+                    }),
+                )
             }
             (Method::Post, ["accounts", owner, "key-packages"]) => {
                 if self
@@ -706,6 +822,9 @@ impl State {
                 return refuse(400, "invalid_request");
             }
             after = claim.roster.into_iter().collect();
+            if after.iter().any(|a| conversation.departed.contains(a)) {
+                return refuse(409, "claim_names_departed");
+            }
             if claim.welcome.iter().any(|a| !after.contains(a)) {
                 return refuse(400, "welcome_not_a_member");
             }

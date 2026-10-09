@@ -18,6 +18,10 @@ pub const MAX_PAST_EPOCHS: usize = 5;
 /// The length of a group id this core creates.
 const GROUP_ID_LEN: usize = 32;
 
+/// How long a KeyPackage this core makes is valid: the 84 days OpenMLS allows
+/// at most, set here so the server and the restock share one number (0029).
+pub const KEY_PACKAGE_LIFETIME_SECS: u64 = 60 * 60 * 24 * 84;
+
 const TYPING_LABEL: &str = "spjall typing";
 const TYPING_KEY_LEN: usize = 16;
 const TYPING_NONCE_LEN: usize = 12;
@@ -43,6 +47,12 @@ pub enum GroupError {
     /// Leaving a group is not built yet (0018).
     #[error("a device cannot remove its own account")]
     OwnAccount,
+    /// Removing one's own leaf would be leaving too (0028).
+    #[error("a device cannot remove its own leaf")]
+    OwnDevice,
+    /// A claimed KeyPackage outside its lifetime (0029).
+    #[error("a KeyPackage is expired")]
+    Expired,
     /// The message is on an epoch this device does not hold.
     #[error("the message is on epoch {message}, the group is on {group}")]
     Epoch { message: u64, group: u64 },
@@ -140,11 +150,13 @@ impl Identity {
     fn key_package(&self, provider: &Provider, last_resort: bool) -> Result<Vec<u8>, GroupError> {
         // An extension in a KeyPackage must be in its leaf's capabilities,
         // so every package advertises LastResort, whether marked or not.
-        let mut builder = KeyPackage::builder().leaf_node_capabilities(
-            Capabilities::builder()
-                .extensions(vec![ExtensionType::LastResort])
-                .build(),
-        );
+        let mut builder = KeyPackage::builder()
+            .key_package_lifetime(Lifetime::new(KEY_PACKAGE_LIFETIME_SECS))
+            .leaf_node_capabilities(
+                Capabilities::builder()
+                    .extensions(vec![ExtensionType::LastResort])
+                    .build(),
+            );
         if last_resort {
             builder = builder.mark_as_last_resort();
         }
@@ -540,7 +552,10 @@ impl Group {
             };
             let package = package
                 .validate(provider.crypto(), ProtocolVersion::Mls10)
-                .map_err(|_| GroupError::Malformed("KeyPackage"))?;
+                .map_err(|error| match error {
+                    KeyPackageVerifyError::LifetimeError(_) => GroupError::Expired,
+                    _ => GroupError::Malformed("KeyPackage"),
+                })?;
             if package.ciphersuite() != CIPHERSUITE {
                 return Err(GroupError::Malformed("KeyPackage"));
             }
@@ -611,6 +626,54 @@ impl Group {
             .0
             .remove_members(provider, &identity.signer, &leaves)
             .map_err(at("remove"))?;
+        Ok(Commit {
+            message: message.tls_serialize_detached().map_err(at("commit"))?,
+            welcome: None,
+            added: Vec::new(),
+            removed,
+            claim,
+            group_info: group_info_bytes(group_info)?,
+        })
+    }
+
+    /// A commit removing these leaves, which the server no longer serves
+    /// (0028). An account stays in the claim while it keeps a leaf, and
+    /// `removed` names only the accounts whose last leaf goes. Removing this
+    /// device's own leaf would be leaving, which is not built yet.
+    pub fn remove_devices(
+        &mut self,
+        provider: &Provider,
+        identity: &Identity,
+        remove: &[Device],
+    ) -> Result<Commit, GroupError> {
+        self.check_no_commit_in_flight()?;
+        if remove.contains(&identity.device) {
+            return Err(GroupError::OwnDevice);
+        }
+        let mut leaves = Vec::new();
+        let mut kept = Vec::new();
+        for member in self.0.members() {
+            let device = Device::from_credential(&member.credential)?;
+            if remove.contains(&device) {
+                leaves.push(member.index);
+            } else {
+                kept.push(device);
+            }
+        }
+        if leaves.is_empty() {
+            return Err(GroupError::Missing("device in the group"));
+        }
+        let roster = accounts(kept);
+        let removed = accounts(remove.iter().cloned())
+            .into_iter()
+            .filter(|a| !roster.contains(a))
+            .collect();
+        let claim = Claim::new(roster, Vec::new()).forged();
+        self.0.set_aad(claim.encode());
+        let (message, _, group_info) = self
+            .0
+            .remove_members(provider, &identity.signer, &leaves)
+            .map_err(at("remove devices"))?;
         Ok(Commit {
             message: message.tls_serialize_detached().map_err(at("commit"))?,
             welcome: None,

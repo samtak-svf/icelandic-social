@@ -54,6 +54,10 @@ pub enum CoreError {
     /// A file could not be read or written on this device.
     #[error("{detail}")]
     File { detail: String },
+    /// This build is below the server's floor; the app asks the person to
+    /// update to at least `min_version` (0030).
+    #[error("this build is too old; the server needs {min_version}")]
+    ClientTooOld { min_version: String },
 }
 
 impl From<envelope::EnvelopeError> for CoreError {
@@ -372,7 +376,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().to_string_lossy().into_owned();
         let store = CoreStore::open(path.clone(), vec![1; 32]).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 8);
+        assert_eq!(store.schema_version().unwrap(), 9);
         drop(store);
         assert!(matches!(
             CoreStore::open(path.clone(), vec![2; 32]),

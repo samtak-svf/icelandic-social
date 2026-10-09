@@ -31,7 +31,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 pub use account::{SignedIn, invite_token};
-use api::{Api, ApiError, Outgoing, Profile, Transport, conversation_id, group_id};
+use api::{Api, ApiError, Outgoing, Platform, Profile, Transport, conversation_id, group_id};
 pub use media::{MAX_SIZE, MediaError};
 pub use members::Person;
 pub use notice::{Notice, NoticeKind, Notices};
@@ -229,6 +229,8 @@ enum Kind {
     Correct,
     /// An external commit, sealed when it is made (0021).
     Join,
+    /// A commit removing leaves the server no longer serves (0028).
+    RemoveDevices,
 }
 
 impl Kind {
@@ -239,6 +241,7 @@ impl Kind {
             "remove" => Self::Remove,
             "correct" => Self::Correct,
             "join" => Self::Join,
+            "remove_devices" => Self::RemoveDevices,
             _ => return Err(rusqlite::Error::InvalidQuery),
         })
     }
@@ -274,6 +277,29 @@ const JOIN_ATTEMPTS: usize = 3;
 
 /// At most one typing frame per conversation this often (0022).
 const TYPING_EVERY: Duration = Duration::from_secs(3);
+
+/// How often each conversation's devices are checked against the server's
+/// (0028), in milliseconds.
+const DEVICES_CHECK_EVERY: i64 = 60 * 60 * 1000;
+
+/// How often `sync` counts this device's KeyPackages (0029), in milliseconds.
+const STOCK_EVERY: i64 = 24 * 60 * 60 * 1000;
+
+/// How many unclaimed KeyPackages `sync` keeps on the server.
+const KEY_PACKAGE_TARGET: u32 = 10;
+
+/// A last resort that expires sooner than this is replaced (0029), in
+/// milliseconds: the server stops counting a package this close to expiry.
+const LAST_RESORT_RENEW: u64 = 14 * 24 * 60 * 60 * 1000;
+
+/// Only `ClientTooOld` of what failed: a step the next sync tries again
+/// cannot be, for a build the server no longer serves (0030).
+fn too_old<T>(result: Result<T, ClientError>) -> Result<(), ClientError> {
+    match result {
+        Err(error @ ClientError::Transport(ApiError::ClientTooOld { .. })) => Err(error),
+        _ => Ok(()),
+    }
+}
 
 fn now() -> i64 {
     SystemTime::now()
@@ -372,7 +398,6 @@ fn enqueue(tx: &Transaction, group: &[u8], kind: &str, intent: &[u8]) -> Result<
     Ok(())
 }
 
-/// The first row of this conversation the server has not answered.
 /// Whether a message wakes the other members' devices (0025): a new text,
 /// reply or file does; a receipt, reaction, edit, delete or timer does not.
 fn urgent(intent: &[u8]) -> bool {
@@ -384,6 +409,9 @@ fn urgent(intent: &[u8]) -> bool {
     })
 }
 
+/// The first row of this conversation the server has not answered: a
+/// sealed one, which is sent as the same bytes until it is, then a removal
+/// of leaves the server no longer serves (0028), then the rest in order.
 fn next_unsent(tx: &Transaction, group: &[u8]) -> Result<Option<Unsent>, ClientError> {
     type Row = (
         i64,
@@ -398,7 +426,7 @@ fn next_unsent(tx: &Transaction, group: &[u8]) -> Result<Option<Unsent>, ClientE
         .query_row(
             "SELECT id, kind, intent, client_msg_id, ciphertext, welcome, group_info
              FROM outbox WHERE group_id = ?1 AND seq IS NULL AND kind != 'join'
-             ORDER BY id LIMIT 1",
+             ORDER BY ciphertext IS NULL, kind = 'remove_devices' DESC, id LIMIT 1",
             [group],
             |r| {
                 Ok((
@@ -612,9 +640,19 @@ fn store_message(
 fn authed<'a, T: Transport>(
     transport: &'a T,
     token: &'a Option<String>,
+    client: &'a Option<String>,
 ) -> Result<Api<'a, T>, ClientError> {
     let token = token.as_deref().ok_or(ClientError::NotRegistered)?;
-    Ok(Api::new(transport, Some(token)))
+    Ok(Api::new(transport, Some(token)).client(client.as_deref()))
+}
+
+/// `major.minor.patch`, each at most six digits, as the server reads it.
+fn is_version(text: &str) -> bool {
+    let parts: Vec<&str> = text.split('.').collect();
+    parts.len() == 3
+        && parts
+            .iter()
+            .all(|p| (1..=6).contains(&p.len()) && p.bytes().all(|b| b.is_ascii_digit()))
 }
 
 fn ack(conversation: &str, seq: u64) -> String {
@@ -633,6 +671,9 @@ pub struct Client<T> {
     typed: HashMap<Vec<u8>, Instant>,
     /// The store's folder for decrypted and sent files.
     media: PathBuf,
+    /// This build as `Spjall-Client` names it (0030); none until the app
+    /// sets it, which the server reads as the oldest build.
+    client: Option<String>,
 }
 
 impl<T: Transport> Client<T> {
@@ -656,7 +697,32 @@ impl<T: Transport> Client<T> {
             outcome: Outcome::default(),
             typed: HashMap::new(),
             media,
+            client: None,
         })
+    }
+
+    /// Names this build on every request from now on, so the server can
+    /// tell a build below its floor to update (0030).
+    pub fn set_client_version(
+        &mut self,
+        platform: Platform,
+        version: &str,
+    ) -> Result<(), ClientError> {
+        if !is_version(version) {
+            return Err(ClientError::Invalid("client version"));
+        }
+        let platform = match platform {
+            Platform::Android => "android",
+            Platform::Ios => "ios",
+        };
+        self.client = Some(format!("{platform}/{version}"));
+        Ok(())
+    }
+
+    /// The `Spjall-Client` value, for the app to set on the WebSocket
+    /// upgrade, which it makes itself.
+    pub fn client_header(&self) -> Option<&str> {
+        self.client.as_deref()
     }
 
     /// This device's public key, made on first use. It is what
@@ -679,15 +745,26 @@ impl<T: Transport> Client<T> {
     }
 
     /// Tops this device's unclaimed KeyPackages up to `target`, at most 100
-    /// at a time, with a fresh last-resort package whenever it uploads.
-    /// Returns how many the server holds.
+    /// at a time, with a fresh last-resort package whenever it uploads, and
+    /// replaces a last resort near its expiry (0029). Returns how many the
+    /// server holds.
     pub fn stock_key_packages(&mut self, target: u32) -> Result<u32, ClientError> {
-        let api = authed(&self.transport, &self.token)?;
-        let available = api.upload_key_packages(&[], None)?;
-        if available >= target {
-            return Ok(available);
+        let api = authed(&self.transport, &self.token, &self.client)?;
+        let stock = api.upload_key_packages(&[], None)?;
+        let renew = stock
+            .last_resort_not_after
+            .is_none_or(|at| at < now() as u64 + LAST_RESORT_RENEW);
+        let stocked = |client: &mut Self| {
+            client.store.try_write(|tx| {
+                tx.execute("UPDATE account SET key_packages_stocked_at = ?1", [now()])
+                    .map(drop)
+            })
+        };
+        if stock.available >= target && !renew {
+            stocked(self)?;
+            return Ok(stock.available);
         }
-        let n = (target - available).min(100) as usize;
+        let n = target.saturating_sub(stock.available).min(100) as usize;
         let (packages, last_resort) = self.store.try_write(|tx| {
             let provider = Provider::new(tx);
             let identity = identity(tx, &provider)?;
@@ -696,7 +773,25 @@ impl<T: Transport> Client<T> {
                 identity.last_resort(&provider)?,
             ))
         })?;
-        Ok(api.upload_key_packages(&packages, Some(&last_resort))?)
+        let stock = api.upload_key_packages(&packages, Some(&last_resort))?;
+        stocked(self)?;
+        Ok(stock.available)
+    }
+
+    /// Counts this device's KeyPackages if a day has passed since (0029).
+    fn restock(&mut self) -> Result<(), ClientError> {
+        let due = self.store.try_write(|tx| {
+            let at: Option<Option<i64>> = tx
+                .query_row("SELECT key_packages_stocked_at FROM account", [], |r| {
+                    r.get(0)
+                })
+                .optional()?;
+            Ok::<_, ClientError>(at.flatten().is_none_or(|at| at + STOCK_EVERY <= now()))
+        })?;
+        if due {
+            self.stock_key_packages(KEY_PACKAGE_TARGET)?;
+        }
+        Ok(())
     }
 
     /// A new conversation with these accounts and this account's other
@@ -956,7 +1051,7 @@ impl<T: Transport> Client<T> {
         if !is_id(account) {
             return Err(ClientError::Invalid("account id"));
         }
-        let fetched = match authed(&self.transport, &self.token)?.profile(account) {
+        let fetched = match authed(&self.transport, &self.token, &self.client)?.profile(account) {
             Ok(profile) => Some(Some(profile)),
             Err(ApiError::Refused { status: 404, .. }) => Some(None),
             Err(ApiError::Unreachable(_)) => None,
@@ -1036,12 +1131,13 @@ impl<T: Transport> Client<T> {
         for group in groups {
             self.sync_one(&group)?;
         }
+        // KeyPackages, blocks set on another device of this account and
+        // the push token: the next sync tries each again, unless this
+        // build is too old to be served at all (0030).
+        too_old(self.restock())?;
         self.refresh_profiles()?;
-        // Blocks set on another device of this account; the next sync
-        // tries again.
-        let _ = self.refresh_blocks();
-        // The push token: the next sync sends it again.
-        let _ = self.send_push_token();
+        too_old(self.refresh_blocks())?;
+        too_old(self.send_push_token())?;
         self.purge()?;
         self.sweep_media()?;
         Ok(std::mem::take(&mut self.outcome))
@@ -1081,7 +1177,7 @@ impl<T: Transport> Client<T> {
         if wanted.is_empty() {
             return Ok(());
         }
-        let api = authed(&self.transport, &self.token)?;
+        let api = authed(&self.transport, &self.token, &self.client)?;
         let mut fetched = Vec::new();
         for account in wanted {
             // The server names other accounts only to co-members; this one's
@@ -1097,6 +1193,7 @@ impl<T: Transport> Client<T> {
             match profile {
                 Ok(profile) => fetched.push((account, Some(profile))),
                 Err(ApiError::Refused { status: 404, .. }) => fetched.push((account, None)),
+                Err(error @ ApiError::ClientTooOld { .. }) => return Err(error.into()),
                 Err(_) => {}
             }
         }
@@ -1193,7 +1290,77 @@ impl<T: Transport> Client<T> {
                 break;
             }
         }
+        if self.check_devices(group)? {
+            self.exchange(group)?;
+        }
         Ok(())
+    }
+
+    /// Queues the removal of every leaf the server no longer serves: a
+    /// revoked device, or a deleted account's (0028). At most hourly per
+    /// conversation, or at once after the server refused a claim naming a
+    /// departed account. Not while a correction is queued: a claim that
+    /// left an account out is set right first, so a forged roster never
+    /// makes an honest member remove anyone. True when one was queued.
+    fn check_devices(&mut self, group: &[u8]) -> Result<bool, ClientError> {
+        let due = self.store.try_write(|tx| {
+            let row: Option<(String, Option<i64>, bool)> = tx
+                .query_row(
+                    &format!(
+                        "SELECT {STATE}, devices_checked_at,
+                             EXISTS (SELECT 1 FROM outbox o WHERE o.group_id = c.group_id
+                                     AND o.kind IN ('correct', 'remove_devices')
+                                     AND o.seq IS NULL)
+                         FROM conversations c WHERE group_id = ?1"
+                    ),
+                    [group],
+                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+                )
+                .optional()?;
+            Ok::<_, ClientError>(match row {
+                Some((state, at, false)) if state == State::Active.as_str() => {
+                    at.is_none_or(|at| at + DEVICES_CHECK_EVERY <= now())
+                }
+                _ => false,
+            })
+        })?;
+        if !due {
+            return Ok(false);
+        }
+        let conversation = conversation_id(group);
+        let served = match authed(&self.transport, &self.token, &self.client)?
+            .conversation_devices(&conversation)
+        {
+            Ok(served) => served,
+            // The next fetch learns why.
+            Err(ApiError::Refused { .. }) => return Ok(false),
+            Err(error) => return Err(error.into()),
+        };
+        self.store.try_write(|tx| {
+            tx.execute(
+                "UPDATE conversations SET devices_checked_at = ?2 WHERE group_id = ?1",
+                params![group, now()],
+            )?;
+            let provider = Provider::new(tx);
+            let mls = Group::load(&provider, group)?;
+            let (_, me) = this_device(tx)?;
+            let gone: Vec<String> = mls
+                .devices()?
+                .into_iter()
+                .filter(|d| {
+                    *d != me
+                        && !served
+                            .iter()
+                            .any(|(a, ds)| *a == d.account && ds.contains(&d.device))
+                })
+                .map(|d| d.identity())
+                .collect();
+            if gone.is_empty() {
+                return Ok(false);
+            }
+            enqueue(tx, group, "remove_devices", gone.join("\n").as_bytes())?;
+            Ok::<_, ClientError>(true)
+        })
     }
 
     fn exchange(&mut self, group: &[u8]) -> Result<(), ClientError> {
@@ -1221,7 +1388,8 @@ impl<T: Transport> Client<T> {
             return Ok(Drain::Blocked);
         }
         if state == State::New {
-            let created = authed(&self.transport, &self.token)?.create_conversation(&conversation);
+            let created = authed(&self.transport, &self.token, &self.client)?
+                .create_conversation(&conversation);
             match created {
                 Ok(()) => {}
                 Err(ApiError::Refused { status: 409, .. }) => {
@@ -1244,7 +1412,8 @@ impl<T: Transport> Client<T> {
                     Sealed::Dropped => continue,
                 },
             };
-            let sent = authed(&self.transport, &self.token)?.send_message(&conversation, &out);
+            let sent = authed(&self.transport, &self.token, &self.client)?
+                .send_message(&conversation, &out);
             match sent {
                 Ok(seq) => self.store.try_write(|tx| {
                     tx.execute(
@@ -1253,10 +1422,22 @@ impl<T: Transport> Client<T> {
                     )
                     .map(drop)
                 })?,
-                Err(ApiError::Refused { status: 409, .. }) => {
+                Err(ApiError::Refused { status: 409, code }) => {
                     // Another commit took this epoch. Forget ours, keep its
                     // intent, and seal it again once the fetch has caught up.
-                    self.store.try_write(|tx| unseal(tx, group, row.id))?;
+                    // A claim naming a departed account waits for the leaves
+                    // the device check removes, which runs at once (0028).
+                    self.store.try_write(|tx| {
+                        unseal(tx, group, row.id)?;
+                        if code == "claim_names_departed" {
+                            tx.execute(
+                                "UPDATE conversations SET devices_checked_at = NULL
+                                 WHERE group_id = ?1",
+                                [group],
+                            )?;
+                        }
+                        Ok::<_, ClientError>(())
+                    })?;
                     return Ok(Drain::Blocked);
                 }
                 Err(ApiError::Refused { status: 403, .. }) => {
@@ -1303,7 +1484,7 @@ impl<T: Transport> Client<T> {
         // made while the store is locked.
         let mut claimed = Vec::new();
         if row.kind == Kind::Add {
-            let api = authed(&self.transport, &self.token)?;
+            let api = authed(&self.transport, &self.token, &self.client)?;
             for account in intent_accounts() {
                 match api.claim_key_packages(&account) {
                     Ok(packages) => {
@@ -1314,8 +1495,10 @@ impl<T: Transport> Client<T> {
                             });
                         }
                     }
-                    // The account has no device left: there is nothing to add.
+                    // The account has no device left, or none with a
+                    // KeyPackage still valid (0029): there is nothing to add.
                     Err(ApiError::Refused { status: 404, .. }) => {}
+                    Err(ApiError::Refused { status: 409, code }) if code == "no_key_packages" => {}
                     Err(error) => return Err(error.into()),
                 }
             }
@@ -1352,7 +1535,7 @@ impl<T: Transport> Client<T> {
                 ),
                 // Never in the outbox unsealed.
                 Kind::Join => return Err(ClientError::Protocol("an unsealed join")),
-                Kind::Add | Kind::Remove | Kind::Correct => {
+                Kind::Add | Kind::Remove | Kind::Correct | Kind::RemoveDevices => {
                     let commit = if row.kind == Kind::Correct {
                         Some(mls.correct(&provider, &identity)?)
                     } else if row.kind == Kind::Add {
@@ -1361,6 +1544,18 @@ impl<T: Transport> Client<T> {
                         claimed.retain(|c| !members.contains(&c.device));
                         (!claimed.is_empty())
                             .then(|| mls.add(&provider, &identity, &claimed))
+                            .transpose()?
+                    } else if row.kind == Kind::RemoveDevices {
+                        // Leaves a commit since this was queued already removed.
+                        let members = mls.devices()?;
+                        let remove: Vec<Device> = String::from_utf8_lossy(&row.intent)
+                            .split('\n')
+                            .filter_map(|line| line.split_once('/'))
+                            .filter_map(|(account, device)| Device::new(account, device).ok())
+                            .filter(|d| members.contains(d) && d != identity.device())
+                            .collect();
+                        (!remove.is_empty())
+                            .then(|| mls.remove_devices(&provider, &identity, &remove))
                             .transpose()?
                     } else {
                         let present = accounts(mls.devices()?);
@@ -1425,7 +1620,9 @@ impl<T: Transport> Client<T> {
                 break;
             };
             let api::Page { messages, more } =
-                match authed(&self.transport, &self.token)?.list_messages(&conversation, cursor) {
+                match authed(&self.transport, &self.token, &self.client)?
+                    .list_messages(&conversation, cursor)
+                {
                     Ok(page) => page,
                     // Past the commit that left this account out, by a claim
                     // this device may not have seen backed (0020).
@@ -1468,7 +1665,7 @@ impl<T: Transport> Client<T> {
     /// what came after it.
     fn join(&mut self, group: &[u8]) -> Result<(), ClientError> {
         let conversation = conversation_id(group);
-        match authed(&self.transport, &self.token)?.get_welcome(&conversation) {
+        match authed(&self.transport, &self.token, &self.client)?.get_welcome(&conversation) {
             Ok((seq, welcome)) => {
                 let welcomed = self.store.try_write(|tx| {
                     if conversation_of(tx, group)?.is_some() {
@@ -1527,7 +1724,7 @@ impl<T: Transport> Client<T> {
             let (id, out) = match self.store.try_write(|tx| pending_join(tx, group))? {
                 Some(pending) => pending,
                 None => {
-                    let api = authed(&self.transport, &self.token)?;
+                    let api = authed(&self.transport, &self.token, &self.client)?;
                     let group_info = match api.get_group_info(&conversation) {
                         Ok((_, group_info)) => group_info,
                         Err(ApiError::Refused {
@@ -1539,7 +1736,9 @@ impl<T: Transport> Client<T> {
                         .try_write(|tx| seal_join(tx, group, &group_info))?
                 }
             };
-            match authed(&self.transport, &self.token)?.send_message(&conversation, &out) {
+            match authed(&self.transport, &self.token, &self.client)?
+                .send_message(&conversation, &out)
+            {
                 Ok(seq) => {
                     self.store.try_write(|tx| {
                         tx.execute("DELETE FROM outbox WHERE id = ?1", [id])?;
@@ -1551,6 +1750,12 @@ impl<T: Transport> Client<T> {
                     })?;
                     self.outcome.events.push(Event::Joined { conversation });
                     return Ok(true);
+                }
+                // The tree still holds a departed account's leaves, which a
+                // member's device check removes (0028); a later sync joins.
+                Err(ApiError::Refused { status: 409, code }) if code == "claim_names_departed" => {
+                    self.store.try_write(|tx| drop_join(tx, group, id))?;
+                    return Ok(false);
                 }
                 Err(ApiError::Refused { status: 409, .. }) => {
                     self.store.try_write(|tx| drop_join(tx, group, id))?;
@@ -1727,6 +1932,13 @@ fn receive(
                     queue_correction(tx, group)?;
                 }
                 refresh_members(tx, group, &mls)?;
+                // An account that keeps a leaf is still a member: removing a
+                // revoked device of it changes no one (0028).
+                let present = accounts(mls.devices()?);
+                let removed: Vec<Device> = removed
+                    .into_iter()
+                    .filter(|d| !present.contains(&d.account))
+                    .collect();
                 let card = fold_members(
                     tx,
                     group,

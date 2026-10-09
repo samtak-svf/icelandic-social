@@ -253,7 +253,11 @@ impl<T: Transport> Client<T> {
         getrandom::fill(&mut key).expect("the OS has randomness");
         let sent = (|| {
             let (size, sha256) = seal(path, &sealed, &key)?;
-            authed(&self.transport, &self.token)?.put_media(conversation, &object, &sealed)?;
+            authed(&self.transport, &self.token, &self.client)?.put_media(
+                conversation,
+                &object,
+                &sealed,
+            )?;
             fs::copy(path, self.media.join(file_name(&object, mime))).map_err(MediaError::from)?;
             Ok::<_, ClientError>(Body::Media {
                 object,
@@ -303,7 +307,11 @@ impl<T: Transport> Client<T> {
             incoming.join(&object),
         );
         let opened = (|| {
-            authed(&self.transport, &self.token)?.get_media(conversation, &object, &blob)?;
+            authed(&self.transport, &self.token, &self.client)?.get_media(
+                conversation,
+                &object,
+                &blob,
+            )?;
             open(&blob, &plain, &key, &sha256)?;
             fs::rename(&plain, &kept).map_err(MediaError::from)?;
             Ok::<_, ClientError>(())

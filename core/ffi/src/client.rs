@@ -19,14 +19,16 @@ pub enum HttpMethod {
 
 /// A request to the API. `path` starts at `/v1/` and holds any query. The
 /// transport adds the base URL, `Authorization: Bearer <bearer>` when there
-/// is a bearer, and `content-type: application/json` when there is a body.
-/// The bearer is the device token: the transport never logs it.
+/// is a bearer, `Spjall-Client: <client>` when there is a client (0030), and
+/// `content-type: application/json` when there is a body. The bearer is the
+/// device token: the transport never logs it.
 #[derive(Clone, PartialEq, Eq, uniffi::Record)]
 pub struct HttpRequest {
     pub method: HttpMethod,
     pub path: String,
     pub body: Option<String>,
     pub bearer: Option<String>,
+    pub client: Option<String>,
 }
 
 /// The method and path only: the body can hold a sign-in's verifier.
@@ -84,6 +86,7 @@ fn http_request(request: api::Request) -> HttpRequest {
         path: request.path,
         body: request.body,
         bearer: request.bearer,
+        client: request.client,
     }
 }
 
@@ -139,6 +142,9 @@ impl From<ClientError> for CoreError {
             }
             ClientError::Transport(api::ApiError::Refused { status, code }) => {
                 Self::Refused { status, code }
+            }
+            ClientError::Transport(api::ApiError::ClientTooOld { min }) => {
+                Self::ClientTooOld { min_version: min }
             }
             ClientError::Transport(api::ApiError::Malformed(what)) => Self::Protocol {
                 detail: format!("malformed answer to {what}"),
@@ -719,14 +725,27 @@ impl CoreClient {
         dir: String,
         key: Vec<u8>,
         transport: Arc<dyn Transport>,
+        platform: Platform,
+        version: String,
     ) -> Result<Arc<Self>, CoreError> {
         let key: spjall_store::Key = key.try_into().map_err(|key: Vec<u8>| CoreError::Store {
             detail: format!("the store key must be 32 bytes, not {}", key.len()),
         })?;
-        let client = core::Client::open(Path::new(&dir), &key, Foreign(transport))?;
+        let mut client = core::Client::open(Path::new(&dir), &key, Foreign(transport))?;
+        client.set_client_version(platform.into(), &version)?;
         Ok(Arc::new(Self {
             client: Mutex::new(client),
         }))
+    }
+
+    /// The `Spjall-Client` value every request carries (0030), for the
+    /// app to set on the WebSocket upgrade too.
+    pub fn client_header(&self) -> Result<String, CoreError> {
+        Ok(self
+            .client()?
+            .client_header()
+            .unwrap_or_default()
+            .to_owned())
     }
 
     /// This device's Ed25519 public key, made on first call: the

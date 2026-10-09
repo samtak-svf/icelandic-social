@@ -18,8 +18,9 @@ pub enum Method {
 
 /// A request to the API: `path` starts at `/v1/` and holds any query, and
 /// `body` is JSON. The transport adds the base URL, `Authorization: Bearer`
-/// with `bearer` when there is one, and `content-type: application/json`
-/// when there is a body; the Worker answers 415 without it.
+/// with `bearer` when there is one, `Spjall-Client` with `client` when there
+/// is one (0030), and `content-type: application/json` when there is a body;
+/// the Worker answers 415 without it.
 ///
 /// The core hands the transport the device token on each request rather
 /// than the transport asking for it, because the app's transport runs while
@@ -30,6 +31,7 @@ pub struct Request {
     pub path: String,
     pub body: Option<String>,
     pub bearer: Option<String>,
+    pub client: Option<String>,
 }
 
 /// Never prints the token or the body, which can hold a PKCE verifier.
@@ -80,6 +82,10 @@ pub enum ApiError {
     /// The server answered with something the contract does not allow.
     #[error("malformed answer to {0}")]
     Malformed(&'static str),
+    /// This build is below the version floor; `min` is the lowest the
+    /// server still serves on this platform (0030).
+    #[error("this build is too old; the server needs {min}")]
+    ClientTooOld { min: String },
 }
 
 impl ApiError {
@@ -176,9 +182,26 @@ struct LatestGroupInfo {
     group_info: String,
 }
 
+/// `uploadKeyPackages`' answer (0029).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Stock {
+    /// Unclaimed packages valid for at least 14 more days.
+    pub available: u32,
+    /// When the last resort expires, in milliseconds; none if there is none.
+    pub last_resort_not_after: Option<u64>,
+}
+
 #[derive(Deserialize)]
-struct Stock {
-    available: u32,
+struct ConversationDevices {
+    accounts: Vec<AccountDevices>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AccountDevices {
+    account_id: String,
+    device_ids: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -195,8 +218,10 @@ struct ClaimedPackage {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ErrorBody {
     error: String,
+    min_version: Option<String>,
 }
 
 /// `getSignInConfig`: where the app sends the person to sign in.
@@ -321,11 +346,22 @@ struct Resolved {
 pub struct Api<'a, T: ?Sized> {
     transport: &'a T,
     bearer: Option<&'a str>,
+    client: Option<&'a str>,
 }
 
 impl<'a, T: Transport + ?Sized> Api<'a, T> {
     pub fn new(transport: &'a T, bearer: Option<&'a str>) -> Self {
-        Self { transport, bearer }
+        Self {
+            transport,
+            bearer,
+            client: None,
+        }
+    }
+
+    /// Names this build in `Spjall-Client` on every request (0030).
+    pub fn client(mut self, client: Option<&'a str>) -> Self {
+        self.client = client;
+        self
     }
 
     /// The answer on 200 or 204, or the `ApiError` code it was refused with.
@@ -345,6 +381,7 @@ impl<'a, T: Transport + ?Sized> Api<'a, T> {
             path,
             body,
             bearer: self.bearer.map(str::to_owned),
+            client: self.client.map(str::to_owned),
         }
     }
 
@@ -352,9 +389,12 @@ impl<'a, T: Transport + ?Sized> Api<'a, T> {
         if response.status == 200 || response.status == 204 {
             return Ok(response);
         }
-        let code = serde_json::from_str::<ErrorBody>(&response.body)
-            .map(|e| e.error)
-            .unwrap_or_default();
+        let body = serde_json::from_str::<ErrorBody>(&response.body).ok();
+        if response.status == 426 {
+            let min = body.and_then(|b| b.min_version).unwrap_or_default();
+            return Err(ApiError::ClientTooOld { min });
+        }
+        let code = body.map(|b| b.error).unwrap_or_default();
         Err(ApiError::Refused {
             status: response.status,
             code,
@@ -452,25 +492,44 @@ impl<'a, T: Transport + ?Sized> Api<'a, T> {
         Ok((latest.seq, bytes))
     }
 
-    /// `uploadKeyPackages`: how many unclaimed packages this device now holds.
+    /// `uploadKeyPackages`: what this device now holds on the server.
     pub fn upload_key_packages(
         &self,
         packages: &[Vec<u8>],
         last_resort: Option<&[u8]>,
-    ) -> Result<u32, ApiError> {
+    ) -> Result<Stock, ApiError> {
         let mut body = serde_json::json!({
             "keyPackages": packages.iter().map(|p| base64(p)).collect::<Vec<_>>(),
         });
         if let Some(last_resort) = last_resort {
             body["lastResort"] = base64(last_resort).into();
         }
-        let stock: Stock = self.call(
+        let stock = self.call::<Stock>(
             Method::Post,
             "/v1/key-packages".into(),
             Self::json(&body),
             "uploadKeyPackages",
         )?;
-        Ok(stock.available)
+        Ok(stock)
+    }
+
+    /// `getConversationDevices`: each roster account and the devices the
+    /// server still serves, none for a deleted account (0028).
+    pub fn conversation_devices(
+        &self,
+        conversation: &str,
+    ) -> Result<Vec<(String, Vec<String>)>, ApiError> {
+        let listed: ConversationDevices = self.call(
+            Method::Get,
+            format!("/v1/conversations/{conversation}/devices"),
+            None,
+            "getConversationDevices",
+        )?;
+        Ok(listed
+            .accounts
+            .into_iter()
+            .map(|a| (a.account_id, a.device_ids))
+            .collect())
     }
 
     /// `claimKeyPackages`: one per device of the account but this one.

@@ -66,16 +66,17 @@ impl Transport for Http {
     fn request(&self, request: Request) -> Result<Response, Unreachable> {
         let url = format!("{}{}", self.base, request.path);
         let auth = request.bearer.map(|token| format!("Bearer {token}"));
+        let client = request.client.unwrap_or_default();
         let answer = match request.method {
             Method::Get => {
-                let mut call = self.agent.get(&url);
+                let mut call = self.agent.get(&url).header("spjall-client", &client);
                 if let Some(auth) = &auth {
                     call = call.header("authorization", auth);
                 }
                 call.call()
             }
             Method::Delete => {
-                let mut call = self.agent.delete(&url);
+                let mut call = self.agent.delete(&url).header("spjall-client", &client);
                 if let Some(auth) = &auth {
                     call = call.header("authorization", auth);
                 }
@@ -85,14 +86,15 @@ impl Transport for Http {
                 let mut call = self
                     .agent
                     .post(&url)
-                    .header("content-type", "application/json");
+                    .header("content-type", "application/json")
+                    .header("spjall-client", &client);
                 if let Some(auth) = &auth {
                     call = call.header("authorization", auth);
                 }
                 call.send(request.body.unwrap_or_default())
             }
             Method::Put => {
-                let mut call = self.agent.put(&url);
+                let mut call = self.agent.put(&url).header("spjall-client", &client);
                 if let Some(auth) = &auth {
                     call = call.header("authorization", auth);
                 }
@@ -175,6 +177,7 @@ fn kennitala(run: u64, n: u64) -> String {
 
 struct Phone {
     account: String,
+    device: String,
     pushes: Arc<Mutex<Vec<u16>>>,
     _dir: TempDir,
     client: Client<Http>,
@@ -193,6 +196,9 @@ impl Phone {
             pushes: pushes.clone(),
         };
         let mut client = Client::open(dir.path(), &KEY, transport).unwrap();
+        client
+            .set_client_version(Platform::Android, env!("CARGO_PKG_VERSION"))
+            .unwrap();
         let url = client.begin_sign_in().unwrap();
         let answer = agent()
             .get(format!("{url}&login_hint={kennitala}"))
@@ -222,6 +228,7 @@ impl Phone {
         }
         Self {
             account: device.account,
+            device: device.device,
             pushes,
             _dir: dir,
             client,
@@ -539,4 +546,18 @@ fn devices_talk_through_the_worker() {
     assert!(a1.client.blocked().unwrap().is_empty());
     c1.sync();
     a1.deliver_until(|events| events.iter().any(|e| matches!(e, Event::Joined { .. })));
+
+    // Revoking a2 takes its leaf from every group a1 knows, with no card
+    // for the others, and the conversation goes on without it (0028).
+    a1.client.revoke_device(&a2.device).unwrap();
+    a1.sync();
+    a1.send(&conversation, "án a2");
+    a1.sync();
+    for phone in [&mut c1, &mut d1, &mut d2] {
+        let events = phone.deliver_until(|events| texts(events).contains(&"án a2".to_owned()));
+        assert!(
+            !events.iter().any(|e| matches!(e, Event::Membership { .. })),
+            "no card for a sibling device"
+        );
+    }
 }

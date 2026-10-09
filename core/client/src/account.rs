@@ -11,12 +11,12 @@ use base64::Engine as _;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use sha2::{Digest as _, Sha256};
 use spjall_mls::group::Device;
-use spjall_store::rusqlite::{OptionalExtension, Transaction, params};
+use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 
 use crate::api::conversation_id;
 use crate::api::{Api, ApiError, Inviter, Me, Platform, Registration, Transport};
 use crate::members::members;
-use crate::{Client, ClientError, authed, is_id, now, this_device};
+use crate::{Client, ClientError, authed, enqueue, is_id, now, this_device};
 
 /// The link host and the app's scheme, as `hosts.link`,
 /// `hosts.linkPathPrefix` and `store.urlScheme` in `identifiers/ids.json`
@@ -192,7 +192,9 @@ impl<T: Transport> Client<T> {
             return Err(ClientError::Invalid("already signed in"));
         }
         self.device_key()?;
-        let config = Api::new(&self.transport, None).sign_in_config()?;
+        let config = Api::new(&self.transport, None)
+            .client(self.client.as_deref())
+            .sign_in_config()?;
         let pending = Pending {
             verifier: random(32),
             state: random(16),
@@ -264,6 +266,7 @@ impl<T: Transport> Client<T> {
                 Err(ClientError::SignIn("the callback has no code".into()))
             }
             (None, Some(code)) => Api::new(&self.transport, None)
+                .client(self.client.as_deref())
                 .register_device(&Registration {
                     code,
                     verifier: &pending.verifier,
@@ -310,7 +313,7 @@ impl<T: Transport> Client<T> {
 
     /// This account's name, mark and devices.
     pub fn me(&mut self) -> Result<Me, ClientError> {
-        Ok(authed(&self.transport, &self.token)?.me()?)
+        Ok(authed(&self.transport, &self.token, &self.client)?.me()?)
     }
 
     /// Who made an invite, before sign-in; `None` for the operator's. A
@@ -319,7 +322,9 @@ impl<T: Transport> Client<T> {
         if !is_token(token) {
             return Err(ClientError::Invalid("invite token"));
         }
-        Ok(Api::new(&self.transport, None).resolve_invite(token)?)
+        Ok(Api::new(&self.transport, None)
+            .client(self.client.as_deref())
+            .resolve_invite(token)?)
     }
 
     /// The 1:1 an invite link opens (0022): the conversation this account
@@ -372,7 +377,7 @@ impl<T: Transport> Client<T> {
 
     /// A new invite link, which ends the one before.
     pub fn rotate_invite(&mut self) -> Result<String, ClientError> {
-        let link = authed(&self.transport, &self.token)?.rotate_invite()?;
+        let link = authed(&self.transport, &self.token, &self.client)?.rotate_invite()?;
         self.store.write(|tx| {
             tx.execute("UPDATE account SET invite_link = ?1", [&link])
                 .map(drop)
@@ -382,7 +387,7 @@ impl<T: Transport> Client<T> {
 
     /// Ends this account's invite link and leaves it with none.
     pub fn revoke_invite(&mut self) -> Result<(), ClientError> {
-        authed(&self.transport, &self.token)?.revoke_invite()?;
+        authed(&self.transport, &self.token, &self.client)?.revoke_invite()?;
         self.store.write(|tx| {
             tx.execute("UPDATE account SET invite_link = NULL", [])
                 .map(drop)
@@ -395,18 +400,33 @@ impl<T: Transport> Client<T> {
     /// already dead.
     pub fn revoke_device(&mut self, device: &str) -> Result<(), ClientError> {
         let this = self.signed_in()?.ok_or(ClientError::NotRegistered)?;
-        let answer = authed(&self.transport, &self.token)?.revoke_device(device);
+        let answer = authed(&self.transport, &self.token, &self.client)?.revoke_device(device);
         let own = this.device == device;
         match answer {
             Ok(()) if own => self.forget(),
             Err(ApiError::Refused { status: 401, .. }) if own => self.forget(),
+            // Its leaf goes from every group on the next sync, so it reads
+            // nothing sent after (0028); one it was never in drops the row.
+            Ok(()) => {
+                let gone = Device::new(&this.account, device)?.identity();
+                self.store.try_write(|tx| {
+                    let groups: Vec<Vec<u8>> = tx
+                        .prepare("SELECT group_id FROM conversations WHERE state = 'active'")?
+                        .query_map([], |r| r.get(0))?
+                        .collect::<rusqlite::Result<_>>()?;
+                    for group in groups {
+                        enqueue(tx, &group, "remove_devices", gone.as_bytes())?;
+                    }
+                    Ok::<_, ClientError>(())
+                })
+            }
             answer => Ok(answer?),
         }
     }
 
     /// Deletes the account on the server, then everything in this store.
     pub fn delete_account(&mut self) -> Result<(), ClientError> {
-        authed(&self.transport, &self.token)?.delete_account()?;
+        authed(&self.transport, &self.token, &self.client)?.delete_account()?;
         self.forget()
     }
 

@@ -330,6 +330,56 @@ const MIGRATIONS: &[(u32, &str)] = &[
          UPDATE conversations SET noticed = COALESCE(
              (SELECT MAX(seq) FROM timeline t WHERE t.group_id = conversations.group_id), 0);",
     ),
+    (
+        9,
+        // Decisions 0028 and 0029.
+        "-- The outbox again, with `remove_devices`: a commit that removes
+         -- leaves the server no longer serves, one `account/device` per line.
+         -- It names an account in `roster_remove` only when its last leaf
+         -- goes.
+         CREATE TABLE outbox_0028 (
+             id            INTEGER PRIMARY KEY,
+             group_id      BLOB NOT NULL
+                           REFERENCES conversations (group_id) ON DELETE CASCADE,
+             kind          TEXT NOT NULL
+                           CHECK (kind IN ('message', 'add', 'remove', 'correct', 'join',
+                                           'remove_devices')),
+             intent        BLOB NOT NULL,
+             client_msg_id TEXT UNIQUE,
+             ciphertext    BLOB,
+             roster_add    TEXT,
+             roster_remove TEXT,
+             welcome       BLOB,
+             group_info    BLOB,
+             seq           INTEGER,
+             created_at    INTEGER NOT NULL,
+             failed        INTEGER NOT NULL DEFAULT 0 CHECK (failed IN (0, 1)),
+             CHECK ((client_msg_id IS NULL) = (ciphertext IS NULL)),
+             CHECK (seq IS NULL OR ciphertext IS NOT NULL),
+             CHECK (welcome IS NULL OR kind = 'add'),
+             CHECK (kind IN ('add', 'remove', 'remove_devices') OR
+                    (roster_add IS NULL AND roster_remove IS NULL)),
+             CHECK (group_info IS NULL OR (kind != 'message' AND ciphertext IS NOT NULL)),
+             CHECK (kind != 'join' OR ciphertext IS NOT NULL)
+         ) STRICT;
+         INSERT INTO outbox_0028 (id, group_id, kind, intent, client_msg_id, ciphertext,
+                                  roster_add, roster_remove, welcome, group_info, seq,
+                                  created_at, failed)
+             SELECT id, group_id, kind, intent, client_msg_id, ciphertext,
+                    roster_add, roster_remove, welcome, group_info, seq,
+                    created_at, failed
+             FROM outbox;
+         DROP TABLE outbox;
+         ALTER TABLE outbox_0028 RENAME TO outbox;
+         CREATE INDEX outbox_by_group ON outbox (group_id, id);
+
+         -- When this device last asked the server which devices a
+         -- conversation's accounts have (0028).
+         ALTER TABLE conversations ADD COLUMN devices_checked_at INTEGER;
+
+         -- When this device last counted its KeyPackages on the server (0029).
+         ALTER TABLE account ADD COLUMN key_packages_stocked_at INTEGER;",
+    ),
 ];
 
 pub struct Store {
