@@ -2,7 +2,7 @@ import ids from "../../identifiers/ids.json" with { type: "json" };
 
 // A fake Kenni (decision 0019): a real OpenID Connect provider for one client,
 // the app's, mounted by dev/worker.ts and test/worker.ts under `/dev/kenni`.
-// Never deployed: src/ does not import it, and `wrangler deploy` reads
+// Never deployed: src/ does not import it, and `cf deploy` builds
 // src/index.ts.
 //
 // It serves discovery, authorize, token and JWKS, signs ID tokens RS256 with a

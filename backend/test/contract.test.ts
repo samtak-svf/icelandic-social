@@ -1,9 +1,9 @@
-import { exports } from "cloudflare:workers";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createApp, DOCUMENT_INFO } from "../src/app.ts";
 import { ApiError } from "../src/api/common.ts";
 import { WsFrame } from "../src/api/frames.ts";
 import { device, revoke } from "./support.ts";
+import { worker } from "./main.ts";
 
 // The delivery contract of decisions 0014 and 0015: every route is in the
 // document with an operation id, every route but device registration needs a
@@ -16,7 +16,7 @@ const TOKEN_VALUE = `dt_${"0".repeat(32)}`;
 const TOKEN = { authorization: `Bearer ${TOKEN_VALUE}` };
 const CIPHERTEXT = "AAEC";
 
-const fetch = (path: string, init?: RequestInit) => exports.default.fetch(`${BASE}${path}`, init);
+const fetch = (path: string, init?: RequestInit) => worker.fetch(`${BASE}${path}`, init);
 const json = (body: unknown, headers: Record<string, string> = {}): RequestInit => ({
   method: "POST",
   headers: { "content-type": "application/json", ...headers },

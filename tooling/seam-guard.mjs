@@ -101,10 +101,10 @@ export function findInSource(file, source, bindings) {
 
 /**
  * @param {string} [root]
- * @returns {{ files: number, violations: Violation[] }}
+ * @returns {Promise<{ files: number, violations: Violation[] }>}
  */
-export function findViolations(root = ROOT) {
-  const bindings = bindingNames(readWorkerConfig(root));
+export async function findViolations(root = ROOT) {
+  const bindings = bindingNames(await readWorkerConfig(root));
   const files = visibleFiles(root).filter((f) => f.startsWith(SRC) && /\.[cm]?[jt]s$/.test(f));
   const violations = files.flatMap((file) =>
     findInSource(file, readFileSync(join(root, file), "utf8"), bindings),
@@ -112,8 +112,8 @@ export function findViolations(root = ROOT) {
   return { files: files.length, violations };
 }
 
-function main() {
-  const { files, violations } = findViolations();
+async function main() {
+  const { files, violations } = await findViolations();
   if (violations.length === 0) {
     console.log(`✓ seams intact in ${files} file(s) under ${SRC}`);
     return;
@@ -129,4 +129,4 @@ goes through ${LOG_HELPER} only (docs/decisions/0008).`);
   process.exit(1);
 }
 
-if (import.meta.main) main();
+if (import.meta.main) await main();

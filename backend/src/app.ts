@@ -73,7 +73,7 @@ const clientFloor = createMiddleware<AppEnv>(async (c, next) => {
 /**
  * The public routes are limited per address. Cloudflare sets
  * cf-connecting-ip on every request it serves; only workerd on its own, in
- * tests and `wrangler dev`, leaves it out, and those are not limited.
+ * tests and `cf dev`, leaves it out, and those are not limited.
  */
 const publicLimit = createMiddleware<AppEnv>(async (c, next) => {
   const address = c.req.header("cf-connecting-ip");

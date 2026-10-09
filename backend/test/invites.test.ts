@@ -1,17 +1,18 @@
-import { env, exports } from "cloudflare:workers";
+import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import ids from "../../identifiers/ids.json" with { type: "json" };
 import { ApiError } from "../src/api/common.ts";
 import { brandStrings } from "../src/brand.gen.ts";
 import { operatorInvite } from "../scripts/invite-operator.ts";
 import { invite, signIn } from "./kenni.ts";
+import { worker } from "./main.ts";
 
 // Invites and the link host (decision 0019): one personal link per account,
 // rotated or revoked by its owner; what a link says before sign-in; the page
 // a browser shows for it; and the files that hand /l/ links to the apps.
 
 const BASE = "https://spjall.test";
-const fetch = (path: string, init?: RequestInit) => exports.default.fetch(`${BASE}${path}`, init);
+const fetch = (path: string, init?: RequestInit) => worker.fetch(`${BASE}${path}`, init);
 const errorOf = async (response: Response) => ApiError.parse(await response.json()).error;
 
 type Registered = { accountId: string; deviceId: string; token: string };

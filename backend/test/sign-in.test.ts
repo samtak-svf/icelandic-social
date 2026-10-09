@@ -1,17 +1,18 @@
-import { env, exports } from "cloudflare:workers";
+import { env } from "cloudflare:workers";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { registerDevice } from "../src/accounts.ts";
 import { ApiError } from "../src/api/common.ts";
 import { fromBase64, toBase64 } from "../src/bytes.ts";
 import { authorize, invite, newKennitala, registerWith, signIn } from "./kenni.ts";
 import { device } from "./support.ts";
+import { worker } from "./main.ts";
 
 // Sign-in with Kenni (decision 0019): the Worker redeems the app's code at
 // Kenni, verifies the ID token itself, and gives the person a device on their
 // account, or on a new one when an invite lets them in.
 
 const BASE = "https://spjall.test";
-const fetch = (path: string, init?: RequestInit) => exports.default.fetch(`${BASE}${path}`, init);
+const fetch = (path: string, init?: RequestInit) => worker.fetch(`${BASE}${path}`, init);
 const errorOf = async (response: Response) => ApiError.parse(await response.json()).error;
 
 type Registered = { accountId: string; deviceId: string; token: string };

@@ -1,9 +1,9 @@
-import { exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../src/api/common.ts";
 import { device } from "./support.ts";
+import { worker } from "./main.ts";
 
-// Workers rate limits (wrangler.jsonc): per address on the routes a person
+// Workers rate limits (cloudflare.config.ts): per address on the routes a person
 // reaches before signing in, per account on key-package claims.
 
 const BASE = "https://spjall.test";
@@ -32,7 +32,7 @@ const burst = { timeout: 40_000 };
 
 describe("the public routes", burst, () => {
   const from = (address: string) => () =>
-    exports.default.fetch(`${BASE}/v1/invites/inv_no_such_invite_here`, {
+    worker.fetch(`${BASE}/v1/invites/inv_no_such_invite_here`, {
       headers: { "cf-connecting-ip": address },
     });
 
@@ -49,7 +49,7 @@ describe("the public routes", burst, () => {
   it("count every public route against the same address", async () => {
     await oneWindow();
     await statuses(30, from("192.0.2.3"));
-    const signIn = await exports.default.fetch(`${BASE}/v1/sign-in`, {
+    const signIn = await worker.fetch(`${BASE}/v1/sign-in`, {
       headers: { "cf-connecting-ip": "192.0.2.3" },
     });
     expect(signIn.status).toBe(429);
@@ -61,7 +61,7 @@ describe("claiming KeyPackages", burst, () => {
     const owner = await device();
     const claimer = await device();
     const claim = () =>
-      exports.default.fetch(`${BASE}/v1/accounts/${owner.accountId}/key-packages`, {
+      worker.fetch(`${BASE}/v1/accounts/${owner.accountId}/key-packages`, {
         method: "POST",
         headers: { "content-type": "application/json", ...claimer.auth },
         body: "{}",
@@ -72,14 +72,11 @@ describe("claiming KeyPackages", burst, () => {
     expect(seen[120]).toBe(429);
     // Another account of the same person's contacts is not slowed by it.
     const other = await device();
-    const theirs = await exports.default.fetch(
-      `${BASE}/v1/accounts/${owner.accountId}/key-packages`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json", ...other.auth },
-        body: "{}",
-      },
-    );
+    const theirs = await worker.fetch(`${BASE}/v1/accounts/${owner.accountId}/key-packages`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...other.auth },
+      body: "{}",
+    });
     expect(theirs.status).not.toBe(429);
   });
 });

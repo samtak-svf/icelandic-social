@@ -7,8 +7,22 @@
 
 import ids from "../../../identifiers/ids.json" with { type: "json" };
 import { log } from "../log.ts";
+import type { Conversation } from "../do/conversation.ts";
+import type { Inbox } from "../do/inbox.ts";
 import type { ApnsKey } from "../push/apns.ts";
 import type { FcmAccount } from "../push/fcm.ts";
+
+// `cf workers types` types a Durable Object binding by its class only when the
+// config holds the Worker's module, and cloudflare.config.ts names its own
+// Worker by name. The classes are given here, next to the stubs.
+declare global {
+  namespace Cloudflare {
+    interface Env {
+      CONVERSATION: DurableObjectNamespace<Conversation>;
+      INBOX: DurableObjectNamespace<Inbox>;
+    }
+  }
+}
 
 /** The platforms a client build can report; each has its own minimum version. */
 export type Platform = "android" | "ios";
@@ -27,7 +41,7 @@ export function db(env: Env): D1Database {
 
 /**
  * Whether a request may go on: per address on the routes a person reaches
- * before signing in, per account on key-package claims (wrangler.jsonc).
+ * before signing in, per account on key-package claims (cloudflare.config.ts).
  */
 export async function withinLimit(
   env: Env,
@@ -53,7 +67,7 @@ export function inbox(env: Env, accountId: string) {
   return env.INBOX.jurisdiction("eu").getByName(accountId);
 }
 
-/** Worker secrets, which `wrangler types` cannot see (wrangler.jsonc names them). */
+/** Worker secrets, which `cf workers types` cannot see (cloudflare.config.ts names them). */
 type Secrets = {
   KENNITALA_HMAC_KEY?: string;
   KENNITALA_HMAC_KEY_PREVIOUS?: string;

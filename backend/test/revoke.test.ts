@@ -1,4 +1,4 @@
-import { env, exports } from "cloudflare:workers";
+import { env } from "cloudflare:workers";
 import { runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../src/api/common.ts";
@@ -6,13 +6,14 @@ import { conversation, inbox } from "../src/env/index.ts";
 import { invite, signIn } from "./kenni.ts";
 import { connect } from "./socket.ts";
 import { device, euEnv } from "./support.ts";
+import { worker } from "./main.ts";
 
 // The end of a device and of an account (decision 0019): a revoked token
 // fails at once and its socket closes; a deleted account leaves no roster
 // entry, no inbox, no rows and no working invite behind.
 
 const BASE = "https://spjall.test";
-const fetch = (path: string, init?: RequestInit) => exports.default.fetch(`${BASE}${path}`, init);
+const fetch = (path: string, init?: RequestInit) => worker.fetch(`${BASE}${path}`, init);
 const errorOf = async (response: Response) => ApiError.parse(await response.json()).error;
 const remove = (path: string, auth: Record<string, string>) =>
   fetch(path, { method: "DELETE", headers: auth });

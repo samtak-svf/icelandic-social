@@ -1,5 +1,5 @@
-import { exports } from "cloudflare:workers";
 import { expect } from "vitest";
+import { worker } from "./main.ts";
 
 // A client for the socket of decision 0015, shared by the socket and the
 // end-to-end tests.
@@ -7,7 +7,7 @@ import { expect } from "vitest";
 type Frame = Record<string, unknown>;
 
 export async function connect(auth: Record<string, string>, extra: Record<string, string> = {}) {
-  const response = await exports.default.fetch("https://spjall.test/v1/ws", {
+  const response = await worker.fetch("https://spjall.test/v1/ws", {
     headers: { upgrade: "websocket", ...auth, ...extra },
   });
   expect(response.status).toBe(101);

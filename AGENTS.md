@@ -60,7 +60,7 @@ pnpm format            # oxfmt --write .
 node tooling/ids-freeze.mjs --base origin/main   # what CI runs on a PR
 
 # The Worker (backend/ is a package of the root workspace; `pnpm install` at the root covers it)
-pnpm --filter spjall-backend check     # wrangler types, tsc, api/openapi.json drift
+pnpm --filter spjall-backend check     # cf workers types, tsc, api/openapi.json drift
 pnpm --filter spjall-backend test      # vitest inside workerd (@cloudflare/vitest-pool-workers)
 pnpm --filter spjall-backend openapi   # regenerate api/openapi.json after a zod change ...
 node tooling/ws-kotlin.mjs   # ... then the Kotlin WS frames from it
@@ -76,7 +76,7 @@ cd android && ./gradlew check assembleDebug   # ktlint, detekt, lint (warnings a
 cd ios && xcodegen && xcodebuild test -scheme Spjall -skipPackagePluginValidation   # macOS only
 ```
 
-A debug Android build talks to a local `wrangler dev` with `spjall.debugApiBaseUrl=http://10.0.2.2:8787`
+A debug Android build talks to a local `pnpm --filter spjall-backend dev` (`cf dev`) with `spjall.debugApiBaseUrl=http://10.0.2.2:8787`
 in `android/local.properties` (gitignored) or `SPJALL_DEBUG_API_BASE_URL`.
 
 The core vendors OpenSSL (rusqlite's `bundled-sqlcipher-vendored-openssl`), so its build needs
@@ -126,19 +126,20 @@ comments, docs, commits, PRs, issues) is English.
 ## Infrastructure
 
 - **Cloudflare: Samtak's own account**, never another organisation's. Every stateful
-  resource is created in the **EU jurisdiction**: `wrangler d1 create … --jurisdiction eu`,
-  `wrangler r2 bucket create … --jurisdiction eu`. A jurisdiction can only be set at
+  resource is created in the **EU jurisdiction**: `cf d1 create --name … --jurisdiction eu`,
+  `cf r2 buckets create --name … --cf-r2-jurisdiction eu`. A jurisdiction can only be set at
   creation. Durable Objects are pinned **per object id in code**:
   `env.CONVERSATION.jurisdiction("eu").getByName(…)`; a bare `idFromName` or `getByName` on
   the namespace is a residency bug (decision 0001).
 - **Only `backend/src/env/` reads a binding, var or secret, and only it makes DO stubs**
   (`tooling/seam-guard.mjs`). `tooling/jurisdiction-check.mjs` checks that
-  `backend/wrangler.jsonc` names the frozen ids with R2 jurisdiction `eu`; with `--live` (CI,
+  `backend/cloudflare.config.ts` names the frozen ids with R2 jurisdiction `eu`; with `--live` (CI,
   read-only token) it asks the Cloudflare API whether D1 and R2 really are in the EU.
 - Local workerd does not implement DO jurisdictions: `jurisdiction()` throws there. Tests wrap
   the namespace (`backend/test/env.test.ts`) instead of loosening the seam.
-- **Never deploy before D1 and R2 exist.** wrangler auto-provisions a missing one without a
-  jurisdiction. The creation commands are at the top of `backend/wrangler.jsonc`.
+- **Never deploy before D1 and R2 exist.** `cf deploy` provisions a missing one without a
+  jurisdiction, so every deploy runs `cf deploy --no-provision` behind
+  `jurisdiction-check.mjs --deploy`. The creation commands are in `backend/README.md`.
 - **No Cloudflare Queues** (no jurisdiction). Nothing personal is stored outside D1, R2 and
   the Durable Objects.
 - **Secrets** live in the maintainer's GCP vault under the prefix `samtak-spjall-`, and

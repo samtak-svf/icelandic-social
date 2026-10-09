@@ -7,7 +7,7 @@ plugins {
     id("spjall.brand")
 }
 
-// A debug build can point at a local `wrangler dev` instead of the deployed
+// A debug build can point at a local `cf dev` instead of the deployed
 // Worker: `spjall.debugApiBaseUrl` in local.properties (gitignored) or
 // SPJALL_DEBUG_API_BASE_URL, e.g. http://10.0.2.2:8787 from the emulator.
 val debugApiBaseUrl: String? =

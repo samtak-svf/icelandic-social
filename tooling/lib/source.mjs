@@ -22,28 +22,6 @@ export function stripCommentsAndStrings(source) {
 }
 
 /**
- * Remove comments from JSONC and drop trailing commas, keeping strings, so
- * `JSON.parse` accepts it (wrangler.jsonc).
- *
- * @param {string} source
- * @returns {any}
- */
-export function parseJsonc(source) {
-  const noComments = rewrite(source, (span) =>
-    span.kind === "comment" ? blank(span.text) : span.text,
-  );
-  // A comma followed only by whitespace and a closing bracket is trailing.
-  // Strings are masked with a non-space while looking, so `, "x"]` is not.
-  const masked = rewrite(noComments, (span) => span.text.replace(/[^\n]/g, "_"));
-  let out = "";
-  for (let i = 0; i < noComments.length; i += 1) {
-    if (masked[i] === "," && /^\s*[\]}]/.test(masked.slice(i + 1))) continue;
-    out += noComments[i];
-  }
-  return JSON.parse(out);
-}
-
-/**
  * @param {string} source
  * @param {(span: Span) => string} replace
  */

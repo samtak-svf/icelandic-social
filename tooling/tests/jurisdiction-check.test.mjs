@@ -6,7 +6,8 @@ import { readWorkerConfig } from "../lib/worker-config.mjs";
 
 const ids = readJson("identifiers/ids.json");
 const { cloudflare } = ids;
-const config = () => readWorkerConfig();
+const real = await readWorkerConfig();
+const config = () => structuredClone(real);
 
 const DB_ID = "0b6c1f3e-5d2a-4c8e-9f10-2a3b4c5d6e7f";
 
@@ -84,7 +85,7 @@ describe("jurisdiction-check, config", () => {
     expect(checkConfig(c, cloudflare).join()).toMatch(/account id/);
   });
 
-  it("refuses a Durable Object class missing from exports, kv storage, or migrations back", () => {
+  it("refuses a Durable Object class missing from exports, kv storage, or another Worker's", () => {
     const c = config();
     c.classes = c.classes.filter((k) => k.className !== "Inbox");
     expect(checkConfig(c, cloudflare).join()).toMatch(/DO classes declared in exports/);
@@ -92,8 +93,8 @@ describe("jurisdiction-check, config", () => {
     /** @type {any} */ (d.classes[0]).storage = "legacy-kv";
     expect(checkConfig(d, cloudflare).join()).toMatch(/storage is "legacy-kv"/);
     const e = config();
-    e.legacyMigrations = true;
-    expect(checkConfig(e, cloudflare).join()).toMatch(/replaced by `exports`/);
+    /** @type {any} */ (e.durableObjects[0]).worker = "other-worker";
+    expect(checkConfig(e, cloudflare).join()).toMatch(/Worker is "other-worker"/);
   });
 
   it("passes the APNs vars of the interim team, and refuses any other pair", () => {
@@ -153,9 +154,9 @@ describe("jurisdiction-check, live", () => {
     expect(result.problems.join()).toMatch(/is named "spjall-db-old"/);
   });
 
-  it("fails without a database_id, and on a missing D1 and a bucket outside the EU", async () => {
+  it("fails without a database id, and on a missing D1 and a bucket outside the EU", async () => {
     expect((await live({ d1: "eu", r2: bound }, undeployed())).problems).toEqual([
-      `D1 ${cloudflare.d1}: backend/wrangler.jsonc has no database id`,
+      `D1 ${cloudflare.d1}: backend/cloudflare.config.ts has no database id`,
     ]);
     const result = await live({ d1: null, r2: [] });
     expect(result.problems).toHaveLength(2);
@@ -185,7 +186,14 @@ describe("jurisdiction-check, deploy", () => {
   });
 
   it("refuses a config whose D1 has no id", () => {
-    expect(checkDeployable(undeployed(), ids).join()).toMatch(/has no database_id/);
+    expect(checkDeployable(undeployed(), ids).join()).toMatch(/has no id/);
+  });
+
+  it("refuses the interop entry, which serves a fake Kenni", async () => {
+    const c = deployed();
+    c.main = "dev/worker.ts";
+    expect(checkDeployable(c, ids).join()).toMatch(/entrypoint is "dev\/worker.ts"/);
+    expect((await readWorkerConfig(undefined, "interop")).main).toBe("dev/worker.ts");
   });
 
   it("refuses a route off the frozen API host, a zone route and workers.dev", () => {
@@ -196,6 +204,6 @@ describe("jurisdiction-check, deploy", () => {
     expect(checkDeployable(c, ids).join()).toMatch(/routes is/);
     const d = deployed();
     d.workersDev = undefined;
-    expect(checkDeployable(d, ids)).toEqual(["workers_dev must be false"]);
+    expect(checkDeployable(d, ids)).toEqual(["workersDev must be false"]);
   });
 });

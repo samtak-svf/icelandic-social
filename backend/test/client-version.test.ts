@@ -1,7 +1,8 @@
-import { env, exports } from "cloudflare:workers";
+import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { belowFloor } from "../src/client-version.ts";
 import { device } from "./support.ts";
+import { worker } from "./main.ts";
 
 // The client version floor (decision 0030): Spjall-Client on every /v1
 // request, a build below its platform's floor told to update, a request
@@ -9,7 +10,7 @@ import { device } from "./support.ts";
 
 const BASE = "https://spjall.test";
 const fetch = (path: string, headers: Record<string, string>) =>
-  exports.default.fetch(`${BASE}${path}`, { headers });
+  worker.fetch(`${BASE}${path}`, { headers });
 
 const floors = (android: string, ios: string) =>
   ({ ...env, MIN_CLIENT_VERSION_ANDROID: android, MIN_CLIENT_VERSION_IOS: ios }) as Env;

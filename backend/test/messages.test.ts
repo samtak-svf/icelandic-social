@@ -1,15 +1,15 @@
-import { exports } from "cloudflare:workers";
 import { beforeAll, describe, expect, it } from "vitest";
 import { ApiError } from "../src/api/common.ts";
 import { base64url } from "../src/bytes.ts";
 import { device } from "./support.ts";
 import { hexBytes, mls } from "./mls.ts";
+import { worker } from "./main.ts";
 
 // Conversations over HTTP with real OpenMLS messages (api/fixtures/
 // mls-framing.json): the Worker reads their framing, the DO keeps them.
 
 const BASE = "https://spjall.test";
-const fetch = (path: string, init?: RequestInit) => exports.default.fetch(`${BASE}${path}`, init);
+const fetch = (path: string, init?: RequestInit) => worker.fetch(`${BASE}${path}`, init);
 const post = (path: string, body: unknown, auth: Record<string, string>) =>
   fetch(path, {
     method: "POST",

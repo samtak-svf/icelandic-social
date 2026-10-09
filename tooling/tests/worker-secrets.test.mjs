@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readJson, ROOT } from "../lib/repo.mjs";
-import { SECRETS, select, vaultName } from "../worker-secrets.mjs";
+import { mergePatch, SECRETS, select, vaultName } from "../worker-secrets.mjs";
 
 const { services } = readJson("identifiers/ids.json");
 
@@ -42,5 +42,11 @@ describe("worker-secrets", () => {
     expect(select(SECRETS, ["APNS_KEY_ID"]).map((s) => s.name)).toEqual(["APNS_KEY_ID"]);
     expect(() => select(SECRETS, ["NOPE"])).toThrow(/not a Worker secret/);
     expect(() => select(SECRETS, ["KENNI_CLIENT_SECRET"])).toThrow(/public/);
+  });
+
+  it("sends each value as a secret_text in the merge patch, and nothing else", () => {
+    expect(mergePatch({ A: "1" })).toEqual({
+      secrets: { A: { name: "A", type: "secret_text", text: "1" } },
+    });
   });
 });

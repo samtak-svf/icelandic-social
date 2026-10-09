@@ -1,9 +1,10 @@
 // @ts-check
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { bindingNames, findInSource, findViolations } from "../seam-guard.mjs";
 import { normalise } from "../lib/worker-config.mjs";
+import { ROOT } from "../lib/repo.mjs";
 import { copyRepo, initRepo } from "./helpers.mjs";
 
 const BINDINGS = ["CONVERSATION", "DB", "KENNI_CLIENT_SECRET"];
@@ -11,16 +12,20 @@ const rules = (/** @type {string} */ file, /** @type {string} */ source) =>
   findInSource(file, source, BINDINGS).map((v) => `${v.rule}:${v.line}`);
 
 describe("seam-guard", () => {
-  it("passes on the repo as it is", () => {
-    expect(findViolations().violations).toEqual([]);
+  it("passes on the repo as it is", async () => {
+    expect((await findViolations()).violations).toEqual([]);
   });
 
   it("collects bindings, rate limits, vars and secret names", () => {
     const config = normalise({
-      d1_databases: [{ binding: "DB" }],
-      durable_objects: { bindings: [{ name: "INBOX" }] },
-      ratelimits: [{ name: "LIMIT" }],
-      vars: { MIN: "1" },
+      worker: {
+        env: {
+          DB: { type: "d1" },
+          INBOX: { type: "durable-object" },
+          LIMIT: { type: "rate-limit" },
+          MIN: { type: "text", value: "1" },
+        },
+      },
     });
     expect(bindingNames(config, ["KENNI_CLIENT_SECRET"])).toEqual([
       "DB",
@@ -31,17 +36,19 @@ describe("seam-guard", () => {
     ]);
   });
 
-  it("fails on a rate limit or a secret read outside the seam, in the real config", () => {
+  it("fails on a rate limit or a secret read outside the seam, in the real config", async () => {
     // Rate limits and secrets are configured outside `vars` and the binding
     // lists: a guard that reads only those misses them.
-    const root = copyRepo(["backend/wrangler.jsonc"]);
+    const root = copyRepo(["backend/cloudflare.config.ts", "backend/package.json"]);
+    // The config imports cf/config, resolved from backend/node_modules.
+    symlinkSync(join(ROOT, "backend/node_modules"), join(root, "backend/node_modules"));
     mkdirSync(join(root, "backend/src"), { recursive: true });
     writeFileSync(
       join(root, "backend/src/app.ts"),
       "const a = env.PUBLIC_LIMIT;\nconst b = env.KENNITALA_HMAC_KEY;\n",
     );
     initRepo(root);
-    expect(findViolations(root).violations.map((v) => `${v.rule}:${v.line}`)).toEqual([
+    expect((await findViolations(root)).violations.map((v) => `${v.rule}:${v.line}`)).toEqual([
       "binding:1",
       "binding:2",
     ]);

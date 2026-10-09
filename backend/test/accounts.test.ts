@@ -1,4 +1,4 @@
-import { env, exports } from "cloudflare:workers";
+import { env } from "cloudflare:workers";
 import { runDurableObjectAlarm } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../src/api/common.ts";
@@ -7,6 +7,7 @@ import { conversation } from "../src/env/index.ts";
 import { copyRoster } from "../src/profiles.ts";
 import { hexBytes, mls } from "./mls.ts";
 import { device, euEnv } from "./support.ts";
+import { worker } from "./main.ts";
 
 // Other accounts' names (decision 0022) and block (decision 0024): a name
 // only for an account that shares a conversation, as the Conversation DO's
@@ -14,7 +15,7 @@ import { device, euEnv } from "./support.ts";
 // KeyPackages or bring the blocker into a group.
 
 const BASE = "https://spjall.test";
-const fetch = (path: string, init?: RequestInit) => exports.default.fetch(`${BASE}${path}`, init);
+const fetch = (path: string, init?: RequestInit) => worker.fetch(`${BASE}${path}`, init);
 const send = (method: string, path: string, auth: Record<string, string>, body?: unknown) =>
   fetch(path, {
     method,

@@ -4,15 +4,15 @@
   "description": "The Worker spjall-api: REST + WebSocket delivery service. A package of the root pnpm workspace (AGENTS.md § Commands).",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
-    "types": "wrangler types",
+    "dev": "cf dev",
+    "types": "cf workers types",
     "openapi": "node scripts/openapi.ts",
-    "typecheck": "wrangler types >/dev/null && tsc --noEmit",
+    "typecheck": "cf workers types >/dev/null && tsc --noEmit",
     "check": "pnpm run typecheck && node scripts/openapi.ts --check",
-    "test": "wrangler types >/dev/null && vitest run",
+    "test": "cf workers types >/dev/null && vitest run",
     "invite:operator": "node scripts/invite-operator.ts",
-    "migrate:remote": "node ../tooling/jurisdiction-check.mjs --deploy && wrangler d1 migrations apply spjall-db --remote",
-    "deploy": "node ../tooling/jurisdiction-check.mjs --deploy && wrangler deploy"
+    "migrate:remote": "node ../tooling/jurisdiction-check.mjs --deploy && node scripts/d1.ts migrate",
+    "deploy": "node ../tooling/jurisdiction-check.mjs --deploy && cf deploy --no-provision"
   },
   "dependencies": {
     "@hono/zod-openapi": "^1.6.3",
@@ -20,11 +20,12 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@cloudflare/vitest-plugin": "1.4.0",
     "@types/node": "^26.6.4",
+    "cf": "1.0.0-beta.13",
     "typescript": "^7.0.2",
     "vitest": "~4.1",
-    "wrangler": "^4.147.0"
+    "wrangler": "4.149.0"
   },
   "engines": {
     "node": ">=24.2"

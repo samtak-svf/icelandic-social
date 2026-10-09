@@ -1,4 +1,4 @@
-import { env, exports } from "cloudflare:workers";
+import { env } from "cloudflare:workers";
 import { runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
 import { ApiError } from "../src/api/common.ts";
@@ -6,13 +6,14 @@ import { base64url } from "../src/bytes.ts";
 import { inbox } from "../src/env/index.ts";
 import { hexBytes, mls } from "./mls.ts";
 import { device, euEnv } from "./support.ts";
+import { worker } from "./main.ts";
 
 // Push (decision 0025): each device registers its own token, only an urgent
 // message pushes, a newer urgent message re-arms a device's push, and one
 // round sends a device at most one push however many conversations owe it.
 
 const BASE = "https://spjall.test";
-const fetch = (path: string, init?: RequestInit) => exports.default.fetch(`${BASE}${path}`, init);
+const fetch = (path: string, init?: RequestInit) => worker.fetch(`${BASE}${path}`, init);
 const errorOf = async (response: Response) => ApiError.parse(await response.json()).error;
 const call = (method: string, path: string, auth: Record<string, string>, body?: unknown) =>
   fetch(path, {

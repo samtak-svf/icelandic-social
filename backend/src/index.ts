@@ -8,7 +8,7 @@ export { Inbox } from "./do/inbox.ts";
 
 export default {
   fetch: createApp().fetch,
-  // The daily cron in wrangler.jsonc: media past its 30 days (decision 0023)
+  // The daily cron in cloudflare.config.ts: media past its 30 days (decision 0023)
   // and expired KeyPackages (0029).
   async scheduled(_controller, env) {
     log("media.expired", { count: await expireMedia(env) });

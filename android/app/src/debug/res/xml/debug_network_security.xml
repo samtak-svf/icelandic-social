@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Debug builds only: plain HTTP to a local `wrangler dev`, from the emulator
+<!-- Debug builds only: plain HTTP to a local `cf dev`, from the emulator
      (10.0.2.2) or over adb reverse (localhost). Release builds allow none. -->
 <network-security-config>
     <domain-config cleartextTrafficPermitted="true">

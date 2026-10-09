@@ -76,10 +76,12 @@ jobs:
         working-directory: android
         run: ./gradlew --console=plain :app:assembleDebug
 
-      # --dry-run bundles without talking to Cloudflare.
+      # cf build bundles without talking to Cloudflare.
       - name: Worker bundle from the fixture
         working-directory: backend
-        run: pnpm exec wrangler deploy --dry-run --outdir "$RUNNER_TEMP/worker"
+        env:
+          CF_SEND_TELEMETRY: "false"
+        run: pnpm exec cf build
 
       # The Worker imports no brand string yet, so it can only prove absence.
       # Move it before --absent once it ships one (the push fallback).
@@ -87,4 +89,4 @@ jobs:
         run: >-
           node tooling/rename-drill.mjs scan
           android/app/build/outputs/apk/debug/app-debug.apk
-          --absent "$RUNNER_TEMP/worker/index.js"
+          --absent backend/.cloudflare/output/v0/workers/default/bundle/index.js

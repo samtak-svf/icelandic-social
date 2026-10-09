@@ -5,52 +5,67 @@ import { configuredNames, normalise, readWorkerConfig } from "../lib/worker-conf
 describe("worker-config", () => {
   it("normalises every kind of binding the Worker uses", () => {
     const config = normalise({
-      $schema: "x",
-      name: "w",
-      account_id: "a",
-      main: "src/index.ts",
-      compatibility_date: "2026-01-01",
-      routes: ["h/*", { pattern: "h", custom_domain: true }],
-      workers_dev: false,
-      d1_databases: [{ binding: "DB", database_name: "d", database_id: "i", migrations_dir: "m" }],
-      r2_buckets: [{ binding: "R", bucket_name: "b", jurisdiction: "eu" }],
-      durable_objects: { bindings: [{ name: "NS", class_name: "C" }] },
-      exports: {
-        C: { type: "durable-object", storage: "sqlite" },
-        Old: { type: "durable-object", state: "deleted" },
-        W: { type: "workflow" },
+      accountId: "a",
+      worker: {
+        name: "w",
+        entrypoint: "src/index.ts",
+        compatibilityDate: "2026-01-01",
+        domains: ["h"],
+        routes: ["h/*"],
+        workersDev: false,
+        triggers: [{ type: "scheduled", schedule: "0 0 * * *" }],
+        env: {
+          V: { type: "text", value: "1" },
+          DB: { type: "d1", name: "d", id: "i" },
+          R: { type: "r2", name: "b", jurisdiction: "eu" },
+          NS: { type: "durable-object", worker: "w", exportName: "C" },
+          L: { type: "rate-limit", namespace: "1", simple: { limit: 1, period: 60 } },
+          KV: { type: "kv", id: "k" },
+          SVC: { type: "worker", worker: "s" },
+        },
+        exports: {
+          C: { type: "durable-object", storage: "sqlite" },
+          Old: { type: "durable-object", state: "deleted" },
+          W: { type: "workflow" },
+        },
       },
-      ratelimits: [{ name: "L", namespace_id: "1", simple: { limit: 1, period: 60 } }],
-      kv_namespaces: [{ binding: "KV", id: "k" }],
-      services: [{ binding: "SVC", service: "s" }],
-      triggers: { crons: ["0 0 * * *"] },
-      vars: { V: "1" },
     });
+    expect(config.main).toBe("src/index.ts");
     expect(config.routes).toEqual([
       { pattern: "h/*", customDomain: false },
       { pattern: "h", customDomain: true },
     ]);
-    expect(config.d1).toEqual([{ binding: "DB", name: "d", id: "i", migrationsDir: "m" }]);
+    expect(config.d1).toEqual([{ binding: "DB", name: "d", id: "i" }]);
     expect(config.r2).toEqual([{ binding: "R", bucket: "b", jurisdiction: "eu" }]);
-    expect(config.durableObjects).toEqual([{ binding: "NS", className: "C" }]);
+    expect(config.durableObjects).toEqual([{ binding: "NS", className: "C", worker: "w" }]);
     expect(config.classes).toEqual([
       { className: "C", storage: "sqlite", state: "created" },
       { className: "Old", storage: undefined, state: "deleted" },
     ]);
-    expect(config.legacyMigrations).toBe(false);
     expect(config.crons).toEqual(["0 0 * * *"]);
     expect(config.queues).toBe(false);
     expect(configuredNames(config).sort()).toEqual(["DB", "KV", "L", "NS", "R", "SVC", "V"]);
   });
 
-  it("refuses a key it does not know, so no binding kind goes unseen", () => {
-    expect(() => normalise({ name: "w", hyperdrive: [{ binding: "H" }] })).toThrow(
-      /hyperdrive not known to tooling\/lib\/worker-config\.mjs/,
+  it("refuses a key or a binding type it does not know, so no binding goes unseen", () => {
+    expect(() => normalise({ worker: { name: "w", limits: {} } })).toThrow(
+      /limits not known to tooling\/lib\/worker-config\.mjs/,
+    );
+    expect(() => normalise({ worker: { env: { H: { type: "hyperdrive", id: "h" } } } })).toThrow(
+      /env\.H \(hyperdrive\) not known/,
     );
   });
 
-  it("reads the real config with every binding the Worker reads", () => {
-    const names = configuredNames(readWorkerConfig());
+  it("sees a queue as a binding and as a trigger", () => {
+    const bound = normalise({ worker: { env: { Q: { type: "queue", name: "q" } } } });
+    expect(bound.queues).toBe(true);
+    expect(configuredNames(bound)).toEqual(["Q"]);
+    const consumer = normalise({ worker: { triggers: [{ type: "queue", queue: "q" }] } });
+    expect(consumer.queues).toBe(true);
+  });
+
+  it("reads the real config with every binding the Worker reads", async () => {
+    const names = configuredNames(await readWorkerConfig());
     for (const name of ["DB", "MEDIA", "CONVERSATION", "INBOX", "PUBLIC_LIMIT", "CLAIM_LIMIT"]) {
       expect(names).toContain(name);
     }

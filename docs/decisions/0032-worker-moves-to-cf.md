@@ -1,6 +1,6 @@
 # 0032. The Worker moves to the cf CLI now, in two steps
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented, step 1 in #120 and step 2 in the PR that removed `wrangler.jsonc`
 - Date: 2026-10-09
 - Decided by: the maintainer, deciding #37
 
@@ -31,6 +31,23 @@ It is made in two steps, so the one step that cannot be undone is taken alone.
    tests run from the new config, or from a config generated from it and checked for drift in
    `pnpm check`; never from a second hand-written one. `cf` and `@cloudflare/config` are pinned
    to exact versions, since both are beta and may change without notice.
+
+### How step 2 landed
+
+- `cf deploy --no-provision` deploys, behind `jurisdiction-check.mjs --deploy`, which also
+  refuses any entry but `src/index.ts`. `cf build` makes the bundle the rename drill scans.
+- The tests run from `cloudflare.config.ts` through `@cloudflare/vitest-plugin`. Its 1.4.0 reads
+  a Durable Object binding that names its Worker as another Worker's, so `vitest.config.ts`
+  re-declares the Worker's own bindings, derived from the same config.
+- `cf dev` takes no `--var` and no `--persist-to`. The interop run therefore uses a mode:
+  `cf dev --mode interop` runs `dev/worker.ts` with the fake Kenni as issuer, the kennitala key
+  comes from a `.dev.vars` written for the run, and D1 migrations go to `.wrangler/state`, where
+  `cf dev` keeps its state. cf has no local `d1 query`, so the operator invite for that run is
+  written by the dev Worker itself (`POST /dev/operator-invite`), never deployed.
+- `cf d1 migrations apply --local` prints its result but does not exit: its Miniflare keeps
+  watching the dev registry. `scripts/d1.ts` reads the result, ends cf, and gives each run a
+  registry of its own, because an entry left in the shared one breaks the next local command.
+- `wrangler` stays a pinned dev dependency: `cf dev` and `cf build` delegate to it.
 
 ## Rules out
 

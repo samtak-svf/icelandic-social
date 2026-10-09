@@ -4,12 +4,12 @@
     ".": {
       "entry": ["tooling/*.mjs", "tooling/tests/**/*.test.mjs"],
       "project": ["tooling/**/*.mjs"],
-      "ignoreBinaries": ["gcloud", "wrangler"]
+      "ignoreBinaries": ["gcloud", "cf"]
     },
     "backend": {
-      "entry": ["scripts/*.ts", "test/worker.ts", "test/setup.ts", "dev/worker.ts"],
+      "entry": ["scripts/*.ts", "test/worker.ts", "dev/worker.ts"],
       "project": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts", "dev/**/*.ts"],
-      "ignoreDependencies": ["cloudflare"]
+      "ignoreDependencies": ["cloudflare", "wrangler"]
     }
   }
 }

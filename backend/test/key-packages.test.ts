@@ -1,16 +1,17 @@
-import { env, exports } from "cloudflare:workers";
+import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../src/api/common.ts";
 import { expireKeyPackages } from "../src/key-packages.ts";
 import { device, revoke } from "./support.ts";
 import { hexBytes, mls } from "./mls.ts";
+import { worker } from "./main.ts";
 
 // KeyPackages in D1 (decisions 0017, 0018, 0029): uploaded per device and
 // naming it, claimed one per active device of an account but the caller's,
 // the last resort never consumed, none handed out about to expire.
 
 const BASE = "https://spjall.test";
-const fetch = (path: string, init?: RequestInit) => exports.default.fetch(`${BASE}${path}`, init);
+const fetch = (path: string, init?: RequestInit) => worker.fetch(`${BASE}${path}`, init);
 const post = (path: string, body: unknown, auth: Record<string, string>) =>
   fetch(path, {
     method: "POST",

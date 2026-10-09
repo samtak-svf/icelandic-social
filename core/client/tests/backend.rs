@@ -1,4 +1,4 @@
-//! The sync engine against the real Worker under `wrangler dev`, over HTTP
+//! The sync engine against the real Worker under `cf dev`, over HTTP
 //! and the WebSocket. Ignored by `cargo test`; interop.yml runs it with
 //! the Worker started from `backend/dev/worker.ts`, its fake Kenni as the
 //! issuer, and an operator invite to let the first account in:
@@ -203,7 +203,7 @@ impl Phone {
         let answer = agent()
             .get(format!("{url}&login_hint={kennitala}"))
             .call()
-            .expect("is wrangler dev running dev/worker.ts with its fake Kenni?");
+            .expect("is `cf dev --mode interop` running, with its fake Kenni?");
         assert_eq!(answer.status(), 302);
         let callback = answer.headers()["location"].to_str().unwrap().to_owned();
         let device = client
@@ -324,7 +324,7 @@ fn strings(items: &[&str]) -> Vec<String> {
 }
 
 #[test]
-#[ignore = "needs `wrangler dev dev/worker.ts`; run by interop.yml"]
+#[ignore = "needs `cf dev --mode interop`; run by interop.yml"]
 fn devices_talk_through_the_worker() {
     // People of their own, so a run never meets an earlier one's accounts.
     let run = SystemTime::now()

@@ -6,8 +6,9 @@
 //   node tooling/worker-secrets.mjs [--only=NAME,NAME] [--gcloud-account=ADDRESS]
 //
 // Each value is read with `gcloud secrets versions access` and the set goes as
-// JSON on stdin to `wrangler secret bulk`; `wrangler secret list` then has to
-// show every name sent. Run it after the Worker's first deploy (a secret needs
+// a JSON Merge Patch on stdin to `cf workers secrets bulk` (one new version
+// with every change); `cf workers secrets list` then has to show every name
+// sent. Neither the values nor the API's answer are printed. Run it after the Worker's first deploy (a secret needs
 // a Worker to belong to) and again whenever a vault value changes.
 //
 // SECRETS below has one row per name in the `Secrets` type of
@@ -83,6 +84,19 @@ export function vaultName(services, row) {
   return `${services.gcpSecretPrefix}${row.vault}`;
 }
 
+/**
+ * The secrets-bulk body: each name set as text, every other secret left alone.
+ *
+ * @param {Record<string, string>} values
+ */
+export function mergePatch(values) {
+  return {
+    secrets: Object.fromEntries(
+      Object.entries(values).map(([name, text]) => [name, { name, type: "secret_text", text }]),
+    ),
+  };
+}
+
 function main() {
   const arg = (/** @type {string} */ flag) =>
     process.argv.find((a) => a.startsWith(`${flag}=`))?.slice(flag.length + 1);
@@ -118,21 +132,27 @@ function main() {
   }
 
   const backend = join(ROOT, "backend");
-  execFileSync("pnpm", ["exec", "wrangler", "secret", "bulk"], {
-    cwd: backend,
-    input: JSON.stringify(values),
-    stdio: ["pipe", "inherit", "inherit"],
-  });
+  const worker = ["--worker", "spjall-api"];
+  execFileSync(
+    "pnpm",
+    ["exec", "cf", "workers", "secrets", "bulk", ...worker, "--file", "/dev/stdin"],
+    {
+      cwd: backend,
+      input: JSON.stringify(mergePatch(values)),
+      stdio: ["pipe", "ignore", "inherit"],
+    },
+  );
 
   const listed = JSON.parse(
-    execFileSync("pnpm", ["exec", "wrangler", "secret", "list", "--format=json"], {
+    execFileSync("pnpm", ["exec", "cf", "workers", "secrets", "list", ...worker], {
       cwd: backend,
       encoding: "utf8",
+      stdio: ["ignore", "pipe", "inherit"],
     }),
   ).map((/** @type {{ name: string }} */ s) => s.name);
   const missing = Object.keys(values).filter((name) => !listed.includes(name));
   if (missing.length > 0) {
-    console.error(`❌ wrangler secret list does not show ${missing.join(", ")}`);
+    console.error(`❌ cf workers secrets list does not show ${missing.join(", ")}`);
     process.exit(1);
   }
   console.log(`✓ ${Object.keys(values).join(", ")} set on the Worker`);

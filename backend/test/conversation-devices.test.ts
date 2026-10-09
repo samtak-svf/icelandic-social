@@ -1,14 +1,15 @@
-import { env, exports } from "cloudflare:workers";
+import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { conversation } from "../src/env/index.ts";
 import { device, euEnv, revoke } from "./support.ts";
+import { worker } from "./main.ts";
 
 // The devices a member checks its group's leaves against (decision 0028):
 // each roster account's active devices, shown to members only.
 
 const BASE = "https://spjall.test";
 const fetch = (path: string, auth: Record<string, string>) =>
-  exports.default.fetch(`${BASE}${path}`, { headers: auth });
+  worker.fetch(`${BASE}${path}`, { headers: auth });
 const testEnv = euEnv(env);
 let made = 0;
 

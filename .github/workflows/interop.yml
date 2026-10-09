@@ -1,13 +1,13 @@
 name: interop
 
 # The core's sync engine against the real Worker (decision 0018): the Worker
-# runs under `wrangler dev` from backend/dev/worker.ts, the dev entry that
-# shims the EU jurisdiction local workerd cannot pin and serves the fake Kenni
-# (decision 0019), and core/client/tests/backend.rs signs five devices in
-# through it, the first with an operator invite, and drives them over HTTP and
-# the WebSocket. Nothing is deployed and no Cloudflare account is touched: D1
-# and the Durable Objects are local files, and the kennitala key is made here
-# for this run.
+# runs under `cf dev --mode interop`, whose entry is backend/dev/worker.ts, the
+# dev entry that shims the EU jurisdiction local workerd cannot pin and serves
+# the fake Kenni (decision 0019), and core/client/tests/backend.rs signs five
+# devices in through it, the first with an operator invite, and drives them
+# over HTTP and the WebSocket. Nothing is deployed and no Cloudflare account is
+# touched: D1 and the Durable Objects are local files under backend/.wrangler,
+# and the kennitala key is made here for this run, in backend/.dev.vars.
 
 permissions:
   contents: read
@@ -35,6 +35,8 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  CF_SEND_TELEMETRY: "false"
+  # cf dev delegates to Wrangler, which has its own switch.
   WRANGLER_SEND_METRICS: "false"
 
 jobs:
@@ -70,20 +72,23 @@ jobs:
 
       - name: Start the Worker
         working-directory: backend
+        timeout-minutes: 5
         run: |
-          npx wrangler d1 migrations apply spjall-db --local --persist-to "$RUNNER_TEMP/state"
-          link=$(node scripts/invite-operator.ts --local --persist-to "$RUNNER_TEMP/state")
-          echo "SPJALL_INVITE=$link" >> "$GITHUB_ENV"
-          nohup npx wrangler dev dev/worker.ts --ip 127.0.0.1 --port 8787 \
-            --var KENNI_ISSUER:http://127.0.0.1:8787/dev/kenni \
-            --var "KENNITALA_HMAC_KEY:$(openssl rand -hex 32)" \
-            --persist-to "$RUNNER_TEMP/state" > "$RUNNER_TEMP/wrangler.log" 2>&1 &
+          # cf has no --persist-to for dev: the migrations go where cf dev
+          # keeps its state, and the operator invite goes through the dev
+          # Worker itself (scripts/invite-operator.ts --local).
+          node scripts/d1.ts migrate --local --persist-to .wrangler/state
+          printf 'KENNITALA_HMAC_KEY=%s\n' "$(openssl rand -hex 32)" > .dev.vars
+          nohup pnpm exec cf dev --mode interop > "$RUNNER_TEMP/worker.log" 2>&1 &
           for _ in $(seq 60); do
-            curl -sf http://127.0.0.1:8787/health >/dev/null && exit 0
+            curl -sf -m 5 http://127.0.0.1:8787/health >/dev/null && break
             sleep 1
           done
-          cat "$RUNNER_TEMP/wrangler.log"
-          exit 1
+          if ! link=$(node scripts/invite-operator.ts --local); then
+            cat "$RUNNER_TEMP/worker.log"
+            exit 1
+          fi
+          echo "SPJALL_INVITE=$link" >> "$GITHUB_ENV"
 
       - name: Devices through the Worker
         working-directory: core
@@ -92,5 +97,5 @@ jobs:
         run: cargo test --locked -p spjall-client --test backend -- --ignored
 
       - name: Worker log
-        if: failure()
-        run: cat "$RUNNER_TEMP/wrangler.log"
+        if: failure() || cancelled()
+        run: cat "$RUNNER_TEMP/worker.log"

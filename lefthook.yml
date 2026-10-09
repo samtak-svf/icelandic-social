@@ -79,7 +79,7 @@ pre-push:
       run: node tooling/thankastrik.mjs
 
     # Bindings and DO stubs only in backend/src/env/, every stub pinned to
-    # the EU; wrangler.jsonc names the frozen ids with jurisdiction eu.
+    # the EU; cloudflare.config.ts names the frozen ids with jurisdiction eu.
     seams:
       run: node tooling/seam-guard.mjs
 

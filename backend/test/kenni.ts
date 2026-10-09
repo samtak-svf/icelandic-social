@@ -1,12 +1,13 @@
-import { env, exports } from "cloudflare:workers";
+import { env } from "cloudflare:workers";
 import { randomToken, tokenHash } from "../src/accounts.ts";
 import { base64url, toBase64 } from "../src/bytes.ts";
+import { worker } from "./main.ts";
 
 // Signing in as an app does (decision 0019): the authorize URL from
 // /v1/sign-in, the fake Kenni's redirect, then POST /v1/devices.
 
 const BASE = "https://spjall.test";
-const fetch = (path: string, init?: RequestInit) => exports.default.fetch(`${BASE}${path}`, init);
+const fetch = (path: string, init?: RequestInit) => worker.fetch(`${BASE}${path}`, init);
 
 const WEIGHTS = [3, 2, 7, 6, 5, 4, 3, 2];
 let people = 0;
@@ -99,7 +100,7 @@ export async function authorize(options: SignIn = {}) {
   if (options.sign) params.x_sign = options.sign;
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
 
-  const redirect = await exports.default.fetch(url.toString(), { redirect: "manual" });
+  const redirect = await worker.fetch(url.toString(), { redirect: "manual" });
   const back = new URL(redirect.headers.get("location") ?? "");
   if (back.searchParams.get("state") !== state) throw new Error("state not returned");
   return {

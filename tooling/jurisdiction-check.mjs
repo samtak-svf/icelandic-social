@@ -2,7 +2,7 @@
 // EU residency of the Worker's storage (decision 0001, plan §4).
 //
 // A jurisdiction can only be set when a D1 database or R2 bucket is created,
-// and wrangler auto-provisions a missing one on deploy WITHOUT it. So two
+// and a deploy that provisions a missing one creates it WITHOUT it. So two
 // checks, because neither can see what the other can:
 //
 // `node tooling/jurisdiction-check.mjs`         offline, in `pnpm check`:
@@ -11,13 +11,14 @@
 //     vars match the Apple ids.
 // `node tooling/jurisdiction-check.mjs --live`  CI and deploy, read-only token:
 //     asks the Cloudflare REST API whether the D1 database the config
-//     binds (by its database_id) and every R2 bucket it binds exist IN the EU
+//     binds (by its id) and every R2 bucket it binds exist IN the EU
 //     jurisdiction. Needs CLOUDFLARE_JURISDICTION_TOKEN (D1 Read, Workers R2
 //     Storage Read).
-// `node tooling/jurisdiction-check.mjs --deploy`  before `wrangler deploy`:
-//     the config could be deployed without wrangler provisioning anything:
-//     D1 has its database_id, the Worker answers only on the frozen API host
-//     as a custom domain, and workers.dev is off.
+// `node tooling/jurisdiction-check.mjs --deploy`  before `cf deploy`:
+//     the config could be deployed without anything being provisioned: D1
+//     has its id, the entry is src/index.ts, the Worker answers only on the
+//     frozen API host as a custom domain, and workers.dev is off. The deploy
+//     also runs with --no-provision (backend/package.json).
 //
 // Durable Objects are not checked here: a namespace has no jurisdiction the
 // API can report. Each object id is pinned in code instead
@@ -74,12 +75,13 @@ export function checkConfig(config, cloudflare) {
     "DO classes",
   );
 
-  // Every live class is declared in `exports` as sqlite, and the legacy
-  // `migrations` array is gone for good (decision 0032): a deploy that
-  // dropped a class from `exports` would delete its namespace.
-  if (config.legacyMigrations) {
-    problems.push("Durable Object `migrations` are replaced by `exports` (decision 0032)");
+  // Each DO binding is to a class of this Worker.
+  for (const b of config.durableObjects) {
+    expect(b.worker, cloudflare.worker, `DO ${b.binding} Worker`);
   }
+
+  // Every live class is declared in `exports` as sqlite (decision 0032): a
+  // deploy that dropped a class from `exports` would delete its namespace.
   const live = config.classes.filter((c) => c.state === "created");
   expect(
     live
@@ -132,8 +134,9 @@ export function checkApns(config, ids) {
  */
 
 /**
- * What `wrangler deploy` needs so it creates nothing by itself: a missing
- * database_id makes it provision a D1 without a jurisdiction (decision 0001).
+ * What `cf deploy` needs so it creates nothing by itself: a missing D1 id
+ * would provision a database without a jurisdiction (decision 0001), and
+ * dev/worker.ts, with its fake Kenni, must never be the deployed entry.
  *
  * @param {WorkerConfig} config
  * @param {any} ids identifiers/ids.json
@@ -144,14 +147,15 @@ export function checkDeployable(config, ids) {
   const problems = [];
   const id = config.d1[0]?.id;
   if (typeof id !== "string" || !/^[0-9a-f-]{36}$/.test(id)) {
-    problems.push(
-      `D1 ${ids.cloudflare.d1} has no database_id; create it with --jurisdiction eu first`,
-    );
+    problems.push(`D1 ${ids.cloudflare.d1} has no id; create it with --jurisdiction eu first`);
+  }
+  if (config.main !== "src/index.ts") {
+    problems.push(`entrypoint is ${JSON.stringify(config.main)}, expected "src/index.ts"`);
   }
   const routes = JSON.stringify(config.routes);
   const wanted = JSON.stringify([{ pattern: ids.hosts.api, customDomain: true }]);
   if (routes !== wanted) problems.push(`routes is ${routes}, expected ${wanted}`);
-  if (config.workersDev !== false) problems.push("workers_dev must be false");
+  if (config.workersDev !== false) problems.push("workersDev must be false");
   return problems;
 }
 
@@ -210,7 +214,7 @@ export async function checkLive({ accountId, token, config, cloudflare, fetch })
 }
 
 async function main() {
-  const config = readWorkerConfig();
+  const config = await readWorkerConfig();
   const ids = readJson("identifiers/ids.json");
   const { cloudflare } = ids;
   const problems = [...checkConfig(config, cloudflare), ...checkApns(config, ids)];

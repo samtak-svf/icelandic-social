@@ -1,10 +1,11 @@
-import { env, exports } from "cloudflare:workers";
+import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../src/api/common.ts";
 import { conversation } from "../src/env/index.ts";
 import { deleteAccount } from "../src/accounts.ts";
 import { expireMedia, MAX_CIPHERTEXT, MEDIA_RETENTION_MS } from "../src/media.ts";
 import { device, euEnv } from "./support.ts";
+import { worker } from "./main.ts";
 
 // Photos and files (decision 0023): ciphertext in R2, bound to one
 // conversation, readable by its roster only, gone after 30 days or with the
@@ -37,14 +38,14 @@ const path = (conversationId: string, mediaId: string) =>
   `${BASE}/v1/conversations/${conversationId}/media/${mediaId}`;
 
 const put = (by: Device, conversationId: string, mediaId: string, body: Uint8Array) =>
-  exports.default.fetch(path(conversationId, mediaId), {
+  worker.fetch(path(conversationId, mediaId), {
     method: "PUT",
     headers: { ...by.auth, "content-type": "application/octet-stream" },
     body,
   });
 
 const get = (by: Device, conversationId: string, mediaId: string) =>
-  exports.default.fetch(path(conversationId, mediaId), { headers: by.auth });
+  worker.fetch(path(conversationId, mediaId), { headers: by.auth });
 
 /** Random bytes; getRandomValues fills at most 64 KiB at a time. */
 function bytes(n: number) {
@@ -109,7 +110,7 @@ describe("media", () => {
   it("refuses more than 25 MB before reading the body", async () => {
     const alice = await device();
     const { id } = await together(alice);
-    const response = await exports.default.fetch(path(id, newId()), {
+    const response = await worker.fetch(path(id, newId()), {
       method: "PUT",
       headers: {
         ...alice.auth,

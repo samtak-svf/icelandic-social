@@ -1,4 +1,4 @@
-import { env, exports } from "cloudflare:workers";
+import { env } from "cloudflare:workers";
 import { runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { base64url } from "../src/bytes.ts";
@@ -6,6 +6,7 @@ import { inbox } from "../src/env/index.ts";
 import { hexBytes, mls } from "./mls.ts";
 import { connect } from "./socket.ts";
 import { device, euEnv } from "./support.ts";
+import { worker } from "./main.ts";
 
 // Delivery end to end (decisions 0015, 0017), over HTTP and the socket only,
 // with the real OpenMLS messages of the fixture: B stocks KeyPackages, A
@@ -13,7 +14,7 @@ import { device, euEnv } from "./support.ts";
 // fetch, ack and answer, and once B is offline its device is owed a push.
 
 const BASE = "https://spjall.test";
-const fetch = (path: string, init?: RequestInit) => exports.default.fetch(`${BASE}${path}`, init);
+const fetch = (path: string, init?: RequestInit) => worker.fetch(`${BASE}${path}`, init);
 const post = (path: string, body: unknown, auth: Record<string, string>) =>
   fetch(path, {
     method: "POST",

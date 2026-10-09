@@ -5,7 +5,7 @@ name: deploy
 # `production` environment until the maintainer approves the run; the
 # Cloudflare API token lives in that environment and nowhere else.
 #
-# The checks before it refuse a config that would make wrangler provision
+# The checks before it refuse a config that would make `cf deploy` provision
 # storage by itself (decision 0001): `--deploy` wants the D1 id and the custom
 # domain, `--live` asks Cloudflare whether D1 and R2 really are in the EU.
 #
@@ -32,6 +32,7 @@ jobs:
       url: https://spjall.samtak.is/health
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_SEND_TELEMETRY: "false"
       CLOUDFLARE_JURISDICTION_TOKEN: ${{ secrets.CLOUDFLARE_JURISDICTION_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
