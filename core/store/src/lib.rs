@@ -380,6 +380,16 @@ const MIGRATIONS: &[(u32, &str)] = &[
          -- When this device last counted its KeyPackages on the server (0029).
          ALTER TABLE account ADD COLUMN key_packages_stocked_at INTEGER;",
     ),
+    (
+        10,
+        // Decision 0033: Google or Kenni, and a sign-in or a link.
+        "-- Who the pending sign-in went to, and whether it signs this device
+         -- in or links Kenni to the account it is signed in as.
+         ALTER TABLE sign_in ADD COLUMN provider TEXT NOT NULL DEFAULT 'kenni'
+             CHECK (provider IN ('kenni', 'google'));
+         ALTER TABLE sign_in ADD COLUMN purpose TEXT NOT NULL DEFAULT 'sign_in'
+             CHECK (purpose IN ('sign_in', 'link'));",
+    ),
 ];
 
 pub struct Store {
@@ -578,7 +588,19 @@ mod tests {
         // One pending sign-in.
         assert!(refused(
             &mut store,
-            "INSERT INTO sign_in VALUES (2, 'v', 's', 'n', 'r', 0)"
+            "INSERT INTO sign_in (id, verifier, state, nonce, redirect_uri, created_at)
+                 VALUES (2, 'v', 's', 'n', 'r', 0)"
+        ));
+        // It went to Google or Kenni, to sign in or to link (0033).
+        assert!(refused(
+            &mut store,
+            "INSERT INTO sign_in (id, verifier, state, nonce, redirect_uri, created_at, provider)
+                 VALUES (1, 'v', 's', 'n', 'r', 0, 'apple')"
+        ));
+        assert!(refused(
+            &mut store,
+            "INSERT INTO sign_in (id, verifier, state, nonce, redirect_uri, created_at, purpose)
+                 VALUES (1, 'v', 's', 'n', 'r', 0, 'merge')"
         ));
 
         // One account per store.

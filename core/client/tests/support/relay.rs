@@ -7,9 +7,14 @@
 //! KeyPackages consumed once but the last resort kept. It can lose a request
 //! or its answer.
 //!
-//! Sign-in (0019) is the Worker's half of it: a device registers with any
-//! Kenni code as the account and device its `Link` names, gets a token, and
-//! every other call but the two made before sign-in needs that token.
+//! Sign-in (0019, 0033) is the Worker's half of it: a device registers with
+//! any Kenni or Google code as the account and device its `Link` names, gets
+//! a token, and every other call but the two made before sign-in needs that
+//! token. A signed-in account links another provider's identity, unless the
+//! code is `taken`.
+//!
+//! Fljótið (0034) is a list of posts newest first, paged by the last post's
+//! id, with replies and one reaction per account, and blocks hidden.
 //!
 //! Media (0023) is kept per conversation for its roster, and blocks (0024)
 //! refuse the blocked account the blocker's KeyPackages.
@@ -93,6 +98,22 @@ struct State {
     /// (blocker, blocked) → when, in a counter for order.
     blocks: BTreeMap<(String, String), u64>,
     blocked_at: u64,
+    /// account → the providers it holds an identity of (0033).
+    identities: BTreeMap<String, BTreeSet<String>>,
+    /// Fljótið, oldest first (0034).
+    posts: Vec<Post>,
+    /// Ids handed out to posts and replies.
+    minted_posts: usize,
+}
+
+struct Post {
+    id: String,
+    author: String,
+    body: String,
+    /// account → its reaction.
+    reactions: BTreeMap<String, String>,
+    /// `(reply id, author, body)`, oldest first.
+    replies: Vec<(String, String, String)>,
 }
 
 pub struct Relay(Mutex<State>);
@@ -297,6 +318,28 @@ impl Relay {
 /// The redirect `getSignInConfig` names.
 pub const REDIRECT: &str = "is.samtak.spjall:/kenni";
 
+/// The redirect `getSignInConfig` names for Google: the link host's page.
+pub const GOOGLE_REDIRECT: &str = "https://spjall.samtak.is/oauth/google";
+
+/// Where that page sends the browser on to: the app.
+pub const GOOGLE_CALLBACK: &str = "is.samtak.spjall:/google";
+
+/// What the browser, Google and the link host's page do with an authorize
+/// URL: the app is handed the callback with a code and the same `state`.
+pub fn google(authorize: &str) -> String {
+    google_with(authorize, "code")
+}
+
+/// The same, with a code the fake server reads: `refused` is refused, and a
+/// link with `taken` finds the identity on another account.
+pub fn google_with(authorize: &str, code: &str) -> String {
+    let state = authorize
+        .split(['?', '&'])
+        .find_map(|p| p.strip_prefix("state="))
+        .unwrap();
+    format!("{GOOGLE_CALLBACK}?code={code}-{state}&state={state}")
+}
+
 /// What the browser and Kenni do with an authorize URL: the person signs
 /// in, and the app is handed the callback with a code and the same `state`.
 pub fn kenni(authorize: &str) -> String {
@@ -347,7 +390,184 @@ fn strings(value: &Value) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// Whether a sign-in's redirect is the one its provider's code is for.
+fn redirect_fits(body: &Value) -> bool {
+    let redirect = match body["provider"].as_str() {
+        Some("google") => GOOGLE_REDIRECT,
+        Some("kenni") => REDIRECT,
+        _ => return false,
+    };
+    body["redirectUri"] == redirect
+}
+
+fn query_param<'a>(query: &'a str, name: &str) -> Option<&'a str> {
+    query
+        .split('&')
+        .find_map(|p| p.strip_prefix(name)?.strip_prefix('='))
+}
+
 impl State {
+    fn hides(&self, reader: &str, author: &str) -> bool {
+        self.blocks
+            .contains_key(&(reader.to_owned(), author.to_owned()))
+    }
+
+    fn post_json(&self, reader: &str, post: &Post) -> Value {
+        let mut reactions: BTreeMap<&str, u32> = ["heart", "thumbs_up", "laugh", "wow", "sad"]
+            .map(|r| (r, 0))
+            .into();
+        for reaction in post.reactions.values() {
+            *reactions.get_mut(reaction.as_str()).unwrap() += 1;
+        }
+        let replies = post
+            .replies
+            .iter()
+            .filter(|(_, author, _)| !self.hides(reader, author))
+            .count();
+        json!({
+            "postId": post.id,
+            "author": { "accountId": post.author, "name": format!("Name of {}", post.author), "verified": false },
+            "body": post.body,
+            "createdAt": 0,
+            "replyCount": replies,
+            "reactions": reactions,
+            "myReaction": post.reactions.get(reader),
+        })
+    }
+
+    fn mint(&mut self, kind: &str) -> String {
+        self.minted_posts += 1;
+        format!("{kind}_{:04}", self.minted_posts)
+    }
+
+    /// Fljótið and the walls (0034).
+    fn posts(
+        &mut self,
+        account: &str,
+        method: Method,
+        parts: &[&str],
+        query: &str,
+        body: &Value,
+    ) -> Response {
+        let limit: usize = query_param(query, "limit").map_or(20, |l| l.parse().unwrap());
+        let visible = |state: &State, post: &Post| !state.hides(account, &post.author);
+        let find = |state: &State, id: &str| {
+            state
+                .posts
+                .iter()
+                .position(|p| p.id == id && visible(state, p))
+        };
+        match (method, parts) {
+            (Method::Get, ["feed"] | ["accounts", _, "posts"]) => {
+                let author = parts.get(1).filter(|_| parts.len() == 3);
+                let before = query_param(query, "before");
+                let mut posts = self
+                    .posts
+                    .iter()
+                    .rev()
+                    .filter(|p| visible(self, p) && author.is_none_or(|a| p.author == *a))
+                    .skip_while(|p| before.is_some_and(|b| p.id.as_str() >= b));
+                let page: Vec<&Post> = posts.by_ref().take(limit).collect();
+                let more = posts.next().is_some();
+                let next = more.then(|| page.last().unwrap().id.clone());
+                let page: Vec<Value> = page.iter().map(|p| self.post_json(account, p)).collect();
+                answer(200, json!({ "posts": page, "next": next }))
+            }
+            (Method::Post, ["posts"]) => {
+                let id = self.mint("post");
+                self.posts.push(Post {
+                    id,
+                    author: account.into(),
+                    body: body["body"].as_str().unwrap().into(),
+                    reactions: BTreeMap::new(),
+                    replies: Vec::new(),
+                });
+                answer(201, self.post_json(account, self.posts.last().unwrap()))
+            }
+            (Method::Get, ["posts", id]) => match find(self, id) {
+                Some(i) => answer(200, self.post_json(account, &self.posts[i])),
+                None => refuse(404, "not_found"),
+            },
+            (Method::Delete, ["posts", id]) => match self.posts.iter().position(|p| p.id == *id) {
+                Some(i) if self.posts[i].author == account => {
+                    self.posts.remove(i);
+                    answer(204, Value::Null)
+                }
+                Some(_) => refuse(403, "not_author"),
+                None => refuse(404, "not_found"),
+            },
+            (Method::Put, ["posts", id, "reaction"]) => match find(self, id) {
+                Some(i) if self.hides(&self.posts[i].author, account) => refuse(403, "blocked"),
+                Some(i) => {
+                    let reaction = body["reaction"].as_str().unwrap().to_owned();
+                    self.posts[i].reactions.insert(account.into(), reaction);
+                    answer(204, Value::Null)
+                }
+                None => refuse(404, "not_found"),
+            },
+            (Method::Delete, ["posts", id, "reaction"]) => {
+                if let Some(post) = self.posts.iter_mut().find(|p| p.id == *id) {
+                    post.reactions.remove(account);
+                }
+                answer(204, Value::Null)
+            }
+            (Method::Get, ["posts", id, "replies"]) => match find(self, id) {
+                Some(i) => {
+                    let after = query_param(query, "after");
+                    let mut replies = self.posts[i]
+                        .replies
+                        .iter()
+                        .filter(|(_, author, _)| !self.hides(account, author))
+                        .skip_while(|(r, _, _)| after.is_some_and(|a| r.as_str() <= a));
+                    let page: Vec<_> = replies.by_ref().take(limit).collect();
+                    let next = replies.next().map(|_| page.last().unwrap().0.clone());
+                    let page: Vec<Value> = page
+                        .into_iter()
+                        .map(|(r, author, text)| {
+                            json!({
+                                "replyId": r, "postId": id, "body": text, "createdAt": 0,
+                                "author": { "accountId": author, "name": null, "verified": false },
+                            })
+                        })
+                        .collect();
+                    answer(200, json!({ "replies": page, "next": next }))
+                }
+                None => refuse(404, "not_found"),
+            },
+            (Method::Post, ["posts", id, "replies"]) => match find(self, id) {
+                Some(i) if self.hides(&self.posts[i].author, account) => refuse(403, "blocked"),
+                Some(i) => {
+                    let reply = self.mint("reply");
+                    let text = body["body"].as_str().unwrap().to_owned();
+                    self.posts[i]
+                        .replies
+                        .push((reply.clone(), account.into(), text.clone()));
+                    answer(
+                        201,
+                        json!({
+                            "replyId": reply, "postId": id, "body": text, "createdAt": 0,
+                            "author": { "accountId": account, "name": null, "verified": false },
+                        }),
+                    )
+                }
+                None => refuse(404, "not_found"),
+            },
+            (Method::Delete, ["replies", id]) => {
+                for post in &mut self.posts {
+                    if let Some(i) = post.replies.iter().position(|(r, _, _)| r == id) {
+                        if post.replies[i].1 != account {
+                            return refuse(403, "not_author");
+                        }
+                        post.replies.remove(i);
+                        return answer(204, Value::Null);
+                    }
+                }
+                refuse(404, "not_found")
+            }
+            _ => refuse(404, "not_found"),
+        }
+    }
+
     fn notify(&mut self, accounts: &BTreeSet<String>, conversation: &str, seq: u64) {
         let frame = json!({ "type": "notify", "conversationId": conversation, "seq": seq });
         let to: Vec<String> = self
@@ -393,6 +613,15 @@ impl State {
             );
         }
         match (request.method, parts.as_slice()) {
+            (Method::Get, ["sign-in"]) if query == "provider=google" => answer(
+                200,
+                json!({
+                    "authorizationEndpoint": "https://accounts.test/o/oauth2/v2/auth",
+                    "clientId": "google-client.test",
+                    "redirectUri": GOOGLE_REDIRECT,
+                    "scope": "openid email profile",
+                }),
+            ),
             (Method::Get, ["sign-in"]) => answer(
                 200,
                 json!({
@@ -403,7 +632,7 @@ impl State {
                 }),
             ),
             (Method::Post, ["devices"]) => {
-                if body["kenniCode"] == "refused" {
+                if body["code"] == "refused" || !redirect_fits(&body) {
                     return refuse(403, "sign_in_failed");
                 }
                 if let Some(invite) = body["inviteToken"].as_str()
@@ -412,12 +641,29 @@ impl State {
                     return refuse(403, "invite_invalid");
                 }
                 let token = format!("token-{device}");
+                self.identities
+                    .entry(account.into())
+                    .or_default()
+                    .insert(body["provider"].as_str().unwrap().into());
                 self.devices.insert(device.into(), account.into());
                 self.tokens.insert(device.into(), token.clone());
                 answer(
                     200,
                     json!({ "accountId": account, "deviceId": device, "token": token }),
                 )
+            }
+            (Method::Post, ["me", "identities"]) => {
+                if !redirect_fits(&body) {
+                    return refuse(403, "sign_in_failed");
+                }
+                if body["code"].as_str().unwrap().starts_with("taken-") {
+                    return refuse(409, "identity_taken");
+                }
+                self.identities
+                    .entry(account.into())
+                    .or_default()
+                    .insert(body["provider"].as_str().unwrap().into());
+                answer(204, Value::Null)
             }
             (Method::Get, ["me"]) => {
                 let devices: Vec<Value> = self
@@ -428,9 +674,13 @@ impl State {
                         json!({ "deviceId": d, "platform": "android", "createdAt": 0, "current": d == device })
                     })
                     .collect();
+                let verified = self
+                    .identities
+                    .get(account)
+                    .is_some_and(|i| i.contains("kenni"));
                 answer(
                     200,
-                    json!({ "accountId": account, "name": format!("Name of {account}"), "verified": true, "devices": devices }),
+                    json!({ "accountId": account, "name": format!("Name of {account}"), "verified": verified, "devices": devices }),
                 )
             }
             (Method::Delete, ["me"]) => {
@@ -473,13 +723,9 @@ impl State {
                 ),
                 None => refuse(404, "not_found"),
             },
-            // Named only to an account it shares a conversation with.
+            // Named to any account (0034).
             (Method::Get, ["accounts", id]) => {
-                let shared = self
-                    .conversations
-                    .values()
-                    .any(|c| c.roster.contains(account) && c.roster.contains(*id));
-                if shared {
+                if self.devices.values().any(|a| a == id) {
                     answer(
                         200,
                         json!({ "accountId": id, "name": format!("Name of {id}"), "verified": true }),
@@ -704,6 +950,9 @@ impl State {
                     }
                 }
                 answer(200, json!({ "keyPackages": claimed }))
+            }
+            (_, ["feed"] | ["posts", ..] | ["replies", _] | ["accounts", _, "posts"]) => {
+                self.posts(account, request.method, &parts, query, &body)
             }
             _ => refuse(404, "not_found"),
         }

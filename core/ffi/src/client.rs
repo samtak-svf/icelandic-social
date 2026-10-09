@@ -106,7 +106,7 @@ fn path_string(path: &Path) -> String {
     path.to_string_lossy().into_owned()
 }
 
-struct Foreign(Arc<dyn Transport>);
+pub(crate) struct Foreign(Arc<dyn Transport>);
 
 impl api::Transport for Foreign {
     fn request(&self, request: api::Request) -> Result<api::Response, api::Unreachable> {
@@ -189,6 +189,22 @@ impl From<api::Platform> for Platform {
         match platform {
             api::Platform::Android => Self::Android,
             api::Platform::Ios => Self::Ios,
+        }
+    }
+}
+
+/// Who a person signs in with (0033): Google first, Kenni for the mark.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum SignInProvider {
+    Google,
+    Kenni,
+}
+
+impl From<SignInProvider> for api::Provider {
+    fn from(provider: SignInProvider) -> Self {
+        match provider {
+            SignInProvider::Google => Self::Google,
+            SignInProvider::Kenni => Self::Kenni,
         }
     }
 }
@@ -754,16 +770,17 @@ impl CoreClient {
         Ok(self.client()?.device_key()?)
     }
 
-    /// Starts a sign-in and returns the Kenni URL to open in Custom Tabs
-    /// or `ASWebAuthenticationSession`. The sign-in waits in the store, so
-    /// it survives the process ending while the browser is open; a new one
-    /// replaces it.
-    pub fn begin_sign_in(&self) -> Result<String, CoreError> {
-        Ok(self.client()?.begin_sign_in()?)
+    /// Starts a sign-in with `provider` and returns the URL to open in
+    /// Custom Tabs or `ASWebAuthenticationSession`. The sign-in waits in the
+    /// store, so it survives the process ending while the browser is open;
+    /// a new one replaces it. Kenni comes back at `is.samtak.spjall:/kenni`,
+    /// Google at `is.samtak.spjall:/google`.
+    pub fn begin_sign_in(&self, provider: SignInProvider) -> Result<String, CoreError> {
+        Ok(self.client()?.begin_sign_in(provider.into())?)
     }
 
-    /// Finishes the sign-in with the URL Kenni redirected to, and the
-    /// invite token when the person has no account yet. `Unreachable`
+    /// Finishes the sign-in with the URL the provider redirected to, and
+    /// the invite token that brought the person, if one did. `Unreachable`
     /// leaves the sign-in pending, so the same call can be made again; any
     /// other error ends it.
     pub fn complete_sign_in(
@@ -776,6 +793,21 @@ impl CoreClient {
             .client()?
             .complete_sign_in(&callback, invite_token.as_deref(), platform.into())?
             .into())
+    }
+
+    /// Starts linking `provider` to this account (0033): Kenni's adds the
+    /// mark and the registry's name. The URL is opened as a sign-in's is,
+    /// and the callback, which a signed-in app gets only from a link, goes
+    /// to `complete_link`.
+    pub fn begin_link(&self, provider: SignInProvider) -> Result<String, CoreError> {
+        Ok(self.client()?.begin_link(provider.into())?)
+    }
+
+    /// Finishes a link with the URL the provider redirected to; `me` then
+    /// shows the mark. Another account holding the identity is `Refused`
+    /// with 409 `identity_taken`. It ends as `complete_sign_in` does.
+    pub fn complete_link(&self, callback: String) -> Result<(), CoreError> {
+        Ok(self.client()?.complete_link(&callback)?)
     }
 
     /// The account and device this store is signed in as, if it is.
@@ -940,6 +972,14 @@ impl CoreClient {
         Ok(self.client()?.open_invite(&token)?)
     }
 
+    /// The 1:1 with an account met in Fljótið (0034), no link needed: the
+    /// one this account already has with it alone, or a new one that adds
+    /// it on the next `sync`. `Invalid` for this account itself or one it
+    /// blocked.
+    pub fn open_direct(&self, account: String) -> Result<String, CoreError> {
+        Ok(self.client()?.open_direct(&account)?)
+    }
+
     /// Seals the file at `path` with a new key, uploads it and sends it as
     /// one message (0023). The app keeps nothing: the core copies the file
     /// into its own folder first. Returns the envelope id.
@@ -1024,7 +1064,7 @@ impl CoreClient {
 }
 
 impl CoreClient {
-    fn client(&self) -> Result<MutexGuard<'_, core::Client<Foreign>>, CoreError> {
+    pub(crate) fn client(&self) -> Result<MutexGuard<'_, core::Client<Foreign>>, CoreError> {
         self.client.lock().map_err(|_| CoreError::Store {
             detail: "the client lock is poisoned".into(),
         })

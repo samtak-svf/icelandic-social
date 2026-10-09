@@ -1,11 +1,14 @@
-//! Signing in with Kenni and the calls about the account (decision 0019).
+//! Signing in with Google or Kenni, and the calls about the account
+//! (decisions 0019 and 0033).
 //!
 //! `begin_sign_in` makes the PKCE verifier, the `state` and the `nonce`,
 //! keeps them in the store and returns the authorize URL for the app to open
 //! in Custom Tabs or `ASWebAuthenticationSession`. `complete_sign_in` takes
-//! the URL Kenni redirected to, checks its `state`, and registers this
-//! device with the code; the Worker redeems the code with Kenni itself. The
-//! verifier leaves the device only in that one request.
+//! the URL the provider redirected to, checks its `state`, and registers
+//! this device with the code; the Worker redeems the code itself. The
+//! verifier leaves the device only in that one request. `begin_link` and
+//! `complete_link` do the same for an account already signed in, to add
+//! Kenni's mark to it (or Google to a Kenni account).
 
 use base64::Engine as _;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -14,7 +17,10 @@ use spjall_mls::group::Device;
 use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 
 use crate::api::conversation_id;
-use crate::api::{Api, ApiError, Inviter, Me, Platform, Registration, Transport};
+use crate::api::{
+    Api, ApiError, Authorization, Inviter, Me, Platform, Provider, Registration, Transport,
+};
+use crate::block::is_blocked;
 use crate::members::members;
 use crate::{Client, ClientError, authed, enqueue, is_id, now, this_device};
 
@@ -23,6 +29,11 @@ use crate::{Client, ClientError, authed, enqueue, is_id, now, this_device};
 /// name them; a test holds them equal.
 const LINK_PREFIX: &str = "https://spjall.samtak.is/l/";
 const APP_PREFIX: &str = "is.samtak.spjall://invite/";
+
+/// Where the link host sends Google's callback on to (0033): Google takes
+/// only an https redirect for a web client, so `getSignInConfig` names the
+/// link host's page and the app is opened here, at `store.urlScheme`.
+const GOOGLE_CALLBACK: &str = "is.samtak.spjall:/google";
 
 /// This device as the server registered it.
 pub type SignedIn = Device;
@@ -41,7 +52,7 @@ fn challenge(verifier: &str) -> String {
 }
 
 /// Percent-encodes everything but RFC 3986's unreserved characters.
-fn encode(text: &str) -> String {
+pub(crate) fn encode(text: &str) -> String {
     text.bytes()
         .map(|b| match b {
             b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
@@ -133,29 +144,90 @@ pub fn invite_token(link: &str) -> Option<String> {
     is_token(token).then(|| token.to_owned())
 }
 
+/// What a pending sign-in is for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Purpose {
+    /// Registering this device.
+    SignIn,
+    /// Linking the identity to the account this device is signed in as.
+    Link,
+}
+
+impl Purpose {
+    fn name(self) -> &'static str {
+        match self {
+            Self::SignIn => "sign_in",
+            Self::Link => "link",
+        }
+    }
+}
+
 /// The sign-in waiting for its callback.
 struct Pending {
+    provider: Provider,
+    purpose: Purpose,
     verifier: String,
     state: String,
     nonce: String,
     redirect_uri: String,
 }
 
+impl Pending {
+    /// The URL the app is opened at: Kenni redirects to the app itself,
+    /// Google to the link host, which passes the query on.
+    fn callback(&self) -> &str {
+        match self.provider {
+            Provider::Kenni => &self.redirect_uri,
+            Provider::Google => GOOGLE_CALLBACK,
+        }
+    }
+
+    fn authorization<'a>(&'a self, code: &'a str) -> Authorization<'a> {
+        Authorization {
+            provider: self.provider,
+            code,
+            verifier: &self.verifier,
+            redirect_uri: &self.redirect_uri,
+            nonce: &self.nonce,
+        }
+    }
+}
+
 fn pending(tx: &Transaction) -> Result<Option<Pending>, ClientError> {
-    Ok(tx
+    let row = tx
         .query_row(
-            "SELECT verifier, state, nonce, redirect_uri FROM sign_in",
+            "SELECT provider, purpose, verifier, state, nonce, redirect_uri FROM sign_in",
             [],
             |r| {
-                Ok(Pending {
-                    verifier: r.get(0)?,
-                    state: r.get(1)?,
-                    nonce: r.get(2)?,
-                    redirect_uri: r.get(3)?,
-                })
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    Pending {
+                        provider: Provider::Kenni,
+                        purpose: Purpose::SignIn,
+                        verifier: r.get(2)?,
+                        state: r.get(3)?,
+                        nonce: r.get(4)?,
+                        redirect_uri: r.get(5)?,
+                    },
+                ))
             },
         )
-        .optional()?)
+        .optional()?;
+    Ok(row.map(|(provider, purpose, pending)| Pending {
+        // The store's CHECKs allow only these.
+        provider: if provider == "google" {
+            Provider::Google
+        } else {
+            Provider::Kenni
+        },
+        purpose: if purpose == "link" {
+            Purpose::Link
+        } else {
+            Purpose::SignIn
+        },
+        ..pending
+    }))
 }
 
 fn signed_in(tx: &Transaction) -> Result<Option<Device>, ClientError> {
@@ -170,32 +242,53 @@ fn signed_in(tx: &Transaction) -> Result<Option<Device>, ClientError> {
     }
 }
 
-/// Kenni's `error` code when it is one (RFC 6749 § 4.1.2.1); anything else
-/// is not repeated.
-fn kenni_error(error: &str) -> String {
+/// The provider's `error` code when it is one (RFC 6749 § 4.1.2.1);
+/// anything else is not repeated.
+fn provider_error(provider: Provider, error: &str) -> String {
+    let who = match provider {
+        Provider::Google => "Google",
+        Provider::Kenni => "Kenni",
+    };
     if !error.is_empty()
         && error.len() <= 64
         && error.bytes().all(|b| b.is_ascii_lowercase() || b == b'_')
     {
-        format!("Kenni answered {error}")
+        format!("{who} answered {error}")
     } else {
-        "Kenni answered with an error".into()
+        format!("{who} answered with an error")
     }
 }
 
 impl<T: Transport> Client<T> {
-    /// Starts a sign-in: fetches the configuration, keeps a new verifier,
-    /// `state` and `nonce` in the store in place of any earlier sign-in, and
-    /// returns the URL to open. It makes the device key if there is none.
-    pub fn begin_sign_in(&mut self) -> Result<String, ClientError> {
+    /// Starts a sign-in with `provider`: fetches its configuration, keeps a
+    /// new verifier, `state` and `nonce` in the store in place of any
+    /// earlier sign-in, and returns the URL to open. It makes the device key
+    /// if there is none.
+    pub fn begin_sign_in(&mut self, provider: Provider) -> Result<String, ClientError> {
         if self.signed_in()?.is_some() {
             return Err(ClientError::Invalid("already signed in"));
         }
         self.device_key()?;
+        self.begin(provider, Purpose::SignIn)
+    }
+
+    /// Starts linking `provider` to the account this device is signed in
+    /// as (0033); Kenni's adds the mark and the registry's name. The URL is
+    /// opened as a sign-in's is, and its callback goes to `complete_link`.
+    pub fn begin_link(&mut self, provider: Provider) -> Result<String, ClientError> {
+        if self.signed_in()?.is_none() {
+            return Err(ClientError::NotRegistered);
+        }
+        self.begin(provider, Purpose::Link)
+    }
+
+    fn begin(&mut self, provider: Provider, purpose: Purpose) -> Result<String, ClientError> {
         let config = Api::new(&self.transport, None)
             .client(self.client.as_deref())
-            .sign_in_config()?;
+            .sign_in_config(provider)?;
         let pending = Pending {
+            provider,
+            purpose,
             verifier: random(32),
             state: random(16),
             nonce: random(16),
@@ -204,14 +297,16 @@ impl<T: Transport> Client<T> {
         self.store.write(|tx| {
             tx.execute(
                 "INSERT OR REPLACE INTO sign_in
-                     (id, verifier, state, nonce, redirect_uri, created_at)
-                 VALUES (1, ?1, ?2, ?3, ?4, ?5)",
+                     (id, verifier, state, nonce, redirect_uri, created_at, provider, purpose)
+                 VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7)",
                 params![
                     pending.verifier,
                     pending.state,
                     pending.nonce,
                     pending.redirect_uri,
-                    now()
+                    now(),
+                    provider.name(),
+                    purpose.name(),
                 ],
             )
         })?;
@@ -224,29 +319,23 @@ impl<T: Transport> Client<T> {
         ))
     }
 
-    /// Finishes the sign-in with the URL Kenni redirected to, and an invite
-    /// token when the person has no account yet.
+    /// The pending sign-in a callback answers, and its code or the
+    /// provider's refusal.
     ///
-    /// A callback whose `state` is not the pending one is refused and the
-    /// sign-in stays pending, so a forged callback cannot end it. Once the
-    /// state matches, any answer from the server ends it; no answer keeps it,
-    /// so the same call can be made again.
-    pub fn complete_sign_in(
+    /// A callback for no pending sign-in of this purpose, or whose `state`
+    /// is not the pending one, is refused and the sign-in stays pending, so
+    /// a forged callback cannot end it. Past that the inner result ends it.
+    fn callback(
         &mut self,
         callback: &str,
-        invite: Option<&str>,
-        platform: Platform,
-    ) -> Result<SignedIn, ClientError> {
-        if invite.is_some_and(|t| !is_token(t)) {
-            return Err(ClientError::Invalid("invite token"));
-        }
-        let (pending, device_key) = self.store.try_write(|tx| {
-            let pending =
-                pending(tx)?.ok_or_else(|| ClientError::SignIn("no sign-in is pending".into()))?;
-            let key: Vec<u8> = tx.query_row("SELECT device_key FROM account", [], |r| r.get(0))?;
-            Ok::<_, ClientError>((pending, key))
-        })?;
-        let query = callback_query(callback, &pending.redirect_uri)
+        purpose: Purpose,
+    ) -> Result<(Pending, Result<String, ClientError>), ClientError> {
+        let pending = self
+            .store
+            .try_write(pending)?
+            .filter(|p| p.purpose == purpose)
+            .ok_or_else(|| ClientError::SignIn("no sign-in is pending".into()))?;
+        let query = callback_query(callback, pending.callback())
             .ok_or_else(|| ClientError::SignIn("not the sign-in callback".into()))?;
         let param = |name: &str| {
             query
@@ -259,25 +348,46 @@ impl<T: Transport> Client<T> {
                 "the callback's state does not match".into(),
             ));
         }
-
-        let answer = match (param("error"), param("code")) {
-            (Some(error), _) => Err(ClientError::SignIn(kenni_error(error))),
+        let code = match (param("error"), param("code")) {
+            (Some(error), _) => Err(ClientError::SignIn(provider_error(pending.provider, error))),
             (None, None) | (None, Some("")) => {
                 Err(ClientError::SignIn("the callback has no code".into()))
             }
-            (None, Some(code)) => Api::new(&self.transport, None)
+            (None, Some(code)) => Ok(code.to_owned()),
+        };
+        Ok((pending, code))
+    }
+
+    /// Finishes the sign-in with the URL the provider redirected to, and
+    /// the invite token that brought the person, if one did.
+    ///
+    /// Once the callback's state matches, any answer from the server ends
+    /// the sign-in; no answer keeps it, so the same call can be made again.
+    pub fn complete_sign_in(
+        &mut self,
+        callback: &str,
+        invite: Option<&str>,
+        platform: Platform,
+    ) -> Result<SignedIn, ClientError> {
+        if invite.is_some_and(|t| !is_token(t)) {
+            return Err(ClientError::Invalid("invite token"));
+        }
+        let (pending, code) = self.callback(callback, Purpose::SignIn)?;
+        let device_key: Vec<u8> = self.store.try_write(|tx| {
+            tx.query_row("SELECT device_key FROM account", [], |r| r.get(0))
+                .map_err(ClientError::from)
+        })?;
+        let answer = code.and_then(|code| {
+            Api::new(&self.transport, None)
                 .client(self.client.as_deref())
                 .register_device(&Registration {
-                    code,
-                    verifier: &pending.verifier,
-                    redirect_uri: &pending.redirect_uri,
-                    nonce: &pending.nonce,
+                    authorization: pending.authorization(&code),
                     platform,
                     device_key: &device_key,
                     invite,
                 })
-                .map_err(ClientError::from),
-        };
+                .map_err(ClientError::from)
+        });
         let registered = match answer {
             Ok(registered) => Device::new(&registered.account_id, &registered.device_id)
                 .map(|device| (device, registered.token))
@@ -285,7 +395,7 @@ impl<T: Transport> Client<T> {
             Err(error @ ClientError::Transport(ApiError::Unreachable(_))) => return Err(error),
             Err(error) => Err(error),
         };
-        // Any answer ends the sign-in: Kenni's code is spent either way.
+        // Any answer ends the sign-in: the provider's code is spent either way.
         self.store.try_write(|tx| {
             tx.execute("DELETE FROM sign_in", [])?;
             if let Ok((device, token)) = &registered {
@@ -299,6 +409,23 @@ impl<T: Transport> Client<T> {
         let (device, token) = registered?;
         self.token = Some(token);
         Ok(device)
+    }
+
+    /// Finishes a link with the URL the provider redirected to. Another
+    /// account holding the identity is `Refused` with 409 `identity_taken`.
+    /// It ends the link as `complete_sign_in` ends a sign-in.
+    pub fn complete_link(&mut self, callback: &str) -> Result<(), ClientError> {
+        let (pending, code) = self.callback(callback, Purpose::Link)?;
+        let answer = code.and_then(|code| {
+            Ok(authed(&self.transport, &self.token, &self.client)?
+                .link_identity(&pending.authorization(&code))?)
+        });
+        if let Err(ClientError::Transport(ApiError::Unreachable(_))) = &answer {
+            return answer;
+        }
+        self.store
+            .write(|tx| tx.execute("DELETE FROM sign_in", []).map(drop))?;
+        answer
     }
 
     /// The account and device this store is signed in as.
@@ -327,10 +454,8 @@ impl<T: Transport> Client<T> {
             .resolve_invite(token)?)
     }
 
-    /// The 1:1 an invite link opens (0022): the conversation this account
-    /// already has with the inviter alone, or a new one that adds them on
-    /// the next `sync`. The operator's link and this account's own open
-    /// none.
+    /// The 1:1 an invite link opens (0022): as `open_direct` opens it with
+    /// the inviter. The operator's link and this account's own open none.
     pub fn open_invite(&mut self, token: &str) -> Result<String, ClientError> {
         let inviter = self.resolve_invite(token)?.ok_or(ClientError::Invalid(
             "the operator's invite opens no conversation",
@@ -338,12 +463,28 @@ impl<T: Transport> Client<T> {
         if !is_id(&inviter.account_id) {
             return Err(ClientError::Protocol("an inviter's account id"));
         }
+        self.open_direct(&inviter.account_id)
+    }
+
+    /// The 1:1 with `account`, as anyone in Fljótið may open it without a
+    /// link (0034): the conversation this account already has with it
+    /// alone, or a new one that adds it on the next `sync`. Not with this
+    /// account itself, nor with one it blocked.
+    pub fn open_direct(&mut self, account: &str) -> Result<String, ClientError> {
+        if !is_id(account) {
+            return Err(ClientError::Invalid("account id"));
+        }
         let found = self.store.try_write(|tx| {
             let (_, me) = this_device(tx)?;
-            if inviter.account_id == me.account {
-                return Err(ClientError::Invalid("this account's own invite"));
+            if account == me.account {
+                return Err(ClientError::Invalid("a 1:1 with this account itself"));
             }
-            let mut pair = vec![me.account, inviter.account_id.clone()];
+            if is_blocked(tx, account)? {
+                return Err(ClientError::Invalid(
+                    "a 1:1 with an account this one blocked",
+                ));
+            }
+            let mut pair = vec![me.account, account.to_owned()];
             pair.sort();
             let mut statement = tx.prepare(
                 "SELECT group_id FROM conversations WHERE state != 'removed'
@@ -361,7 +502,7 @@ impl<T: Transport> Client<T> {
         })?;
         match found {
             Some(group) => Ok(conversation_id(&group)),
-            None => self.create_conversation(&[inviter.account_id]),
+            None => self.create_conversation(&[account.to_owned()]),
         }
     }
 
@@ -475,6 +616,7 @@ mod tests {
         assert_eq!(LINK_PREFIX, link);
         let scheme = ids["store"]["urlScheme"].as_str().unwrap();
         assert_eq!(APP_PREFIX, format!("{scheme}://invite/"));
+        assert_eq!(GOOGLE_CALLBACK, format!("{scheme}:/google"));
     }
 
     #[test]
@@ -513,6 +655,8 @@ mod tests {
     #[test]
     fn the_authorize_url_carries_every_parameter_encoded() {
         let pending = Pending {
+            provider: Provider::Kenni,
+            purpose: Purpose::SignIn,
             verifier: "v".repeat(43),
             state: "st".into(),
             nonce: "no".into(),
@@ -568,7 +712,13 @@ mod tests {
 
     #[test]
     fn only_an_oauth_error_code_is_repeated() {
-        assert_eq!(kenni_error("access_denied"), "Kenni answered access_denied");
-        assert_eq!(kenni_error("<b>x</b>"), "Kenni answered with an error");
+        assert_eq!(
+            provider_error(Provider::Kenni, "access_denied"),
+            "Kenni answered access_denied"
+        );
+        assert_eq!(
+            provider_error(Provider::Google, "<b>x</b>"),
+            "Google answered with an error"
+        );
     }
 }

@@ -8,7 +8,7 @@ mod relay;
 use std::sync::Arc;
 
 use relay::{Link, Relay};
-use spjall_client::api::{ApiError, Platform};
+use spjall_client::api::{ApiError, Platform, Provider};
 use spjall_client::{
     Client, ClientError, Content, Event, Item, MediaError, NoticeKind, Settings, State, Status,
 };
@@ -37,7 +37,7 @@ impl Phone {
     fn unstocked(relay: &Arc<Relay>, account: &str, device: &str) -> Self {
         let dir = tempfile::tempdir().unwrap();
         let mut client = Client::open(dir.path(), &KEY, relay.link(account, device)).unwrap();
-        let url = client.begin_sign_in().unwrap();
+        let url = client.begin_sign_in(Provider::Kenni).unwrap();
         client
             .complete_sign_in(&relay::kenni(&url), None, Platform::Android)
             .unwrap();
@@ -1049,14 +1049,17 @@ fn a_send_without_an_answer_shows_failed_until_retried() {
 }
 
 #[test]
-fn people_are_named_by_the_server_once_they_share_a_conversation() {
+fn people_are_named_by_the_server() {
     let relay = Relay::new();
     let mut a1 = Phone::new(&relay, "a", "a1");
     let mut b1 = Phone::new(&relay, "b", "b1");
     let mut c1 = Phone::new(&relay, "c", "c1");
     assert!(a1.client.people().unwrap().is_empty());
-    // Not yet: c shares nothing with a.
-    assert_eq!(a1.client.profile("c").unwrap().name, None);
+    // Every account is in Fljótið, so c is named without sharing anything (0034).
+    assert_eq!(
+        a1.client.profile("c").unwrap().name.as_deref(),
+        Some("Name of c")
+    );
 
     let conversation = a1.client.create_conversation(&strings(&["b"])).unwrap();
     let events = a1.sync();
@@ -1134,6 +1137,143 @@ fn an_invite_opens_a_one_to_one_with_its_maker() {
     a1.sync();
     b1.deliver();
     assert_eq!(b1.client.open_invite(&token).unwrap(), one);
+}
+
+#[test]
+fn anyone_in_fljotid_opens_a_one_to_one_without_a_link() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let mut c1 = Phone::new(&relay, "c", "c1");
+
+    assert!(matches!(
+        a1.client.open_direct("a"),
+        Err(ClientError::Invalid(_))
+    ));
+    assert!(matches!(
+        a1.client.open_direct("not an id"),
+        Err(ClientError::Invalid(_))
+    ));
+    // b met a in Fljótið: no invite, no shared conversation before.
+    let one = b1.client.open_direct("a").unwrap();
+    b1.sync();
+    assert_eq!(joined(&a1.deliver()), vec![one.clone()]);
+    assert_eq!(b1.client.open_direct("a").unwrap(), one);
+    // From the other side it is the same 1:1, not a second one.
+    assert_eq!(a1.client.open_direct("b").unwrap(), one);
+    a1.send(&one, "hæ");
+    a1.sync();
+    assert_eq!(texts(&b1.deliver()), vec!["hæ"]);
+
+    // A group with both is not the 1:1.
+    let group = conversation(&mut a1, &mut c1);
+    a1.client.add_accounts(&group, &strings(&["b"])).unwrap();
+    a1.sync();
+    b1.deliver();
+    assert_eq!(b1.client.open_direct("a").unwrap(), one);
+
+    // Nor with an account this one blocked.
+    c1.client.block("b").unwrap();
+    assert!(matches!(
+        c1.client.open_direct("b"),
+        Err(ClientError::Invalid(_))
+    ));
+}
+
+#[test]
+fn fljotid_posts_replies_and_reactions_go_through_the_server() {
+    use spjall_client::api::PostReaction;
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+
+    assert!(a1.client.feed(None, 20).unwrap().posts.is_empty());
+    assert!(matches!(
+        a1.client.create_post("  \n "),
+        Err(ClientError::Invalid(_))
+    ));
+    assert!(matches!(
+        a1.client
+            .create_post(&"þ".repeat(spjall_client::MAX_POST + 1)),
+        Err(ClientError::Invalid(_))
+    ));
+    assert!(!relay.requests("a1").iter().any(|r| r.path == "/v1/posts"));
+
+    let first = a1.client.create_post("Fyrsta færslan").unwrap();
+    assert_eq!(first.author.account_id, "a");
+    let second = b1.client.create_post("Önnur").unwrap();
+    let third = a1.client.create_post("Þriðja").unwrap();
+
+    // Newest first, paged by the cursor the server gives.
+    let page = b1.client.feed(None, 2).unwrap();
+    let ids: Vec<&str> = page.posts.iter().map(|p| p.post_id.as_str()).collect();
+    assert_eq!(ids, vec![third.post_id.as_str(), second.post_id.as_str()]);
+    let rest = b1.client.feed(page.next.as_deref(), 2).unwrap();
+    assert_eq!(rest.posts.len(), 1);
+    assert_eq!(rest.posts[0].post_id, first.post_id);
+    assert_eq!(rest.next, None);
+    // A page is never larger than 50.
+    b1.client.feed(None, 500).unwrap();
+    assert!(
+        relay
+            .requests("b1")
+            .iter()
+            .any(|r| r.path == "/v1/feed?limit=50")
+    );
+
+    // a's wall holds a's posts alone.
+    let wall = b1.client.wall("a", None, 20).unwrap();
+    assert_eq!(wall.posts.len(), 2);
+    assert!(wall.posts.iter().all(|p| p.author.account_id == "a"));
+
+    // One reaction per account, changed or taken back.
+    b1.client
+        .react_to_post(&first.post_id, Some(PostReaction::Heart))
+        .unwrap();
+    b1.client
+        .react_to_post(&first.post_id, Some(PostReaction::Laugh))
+        .unwrap();
+    let seen = b1.client.post(&first.post_id).unwrap();
+    assert_eq!(seen.my_reaction, Some(PostReaction::Laugh));
+    assert_eq!((seen.reactions.heart, seen.reactions.laugh), (0, 1));
+    assert_eq!(a1.client.post(&first.post_id).unwrap().my_reaction, None);
+    b1.client.react_to_post(&first.post_id, None).unwrap();
+    assert_eq!(b1.client.post(&first.post_id).unwrap().reactions.laugh, 0);
+
+    let reply = b1.client.create_reply(&first.post_id, "Svar").unwrap();
+    assert_eq!(a1.client.post(&first.post_id).unwrap().reply_count, 1);
+    let replies = a1.client.replies(&first.post_id, None, 20).unwrap();
+    assert_eq!(replies.replies[0].body, "Svar");
+    assert!(matches!(
+        a1.client.delete_reply(&reply.reply_id),
+        Err(ClientError::Transport(ApiError::Refused {
+            status: 403,
+            ..
+        }))
+    ));
+    b1.client.delete_reply(&reply.reply_id).unwrap();
+
+    // Only the author deletes a post.
+    assert!(matches!(
+        b1.client.delete_post(&first.post_id),
+        Err(ClientError::Transport(ApiError::Refused {
+            status: 403,
+            ..
+        }))
+    ));
+    a1.client.delete_post(&first.post_id).unwrap();
+    assert!(matches!(
+        b1.client.post(&first.post_id),
+        Err(ClientError::Transport(ApiError::Refused {
+            status: 404,
+            ..
+        }))
+    ));
+
+    // A blocked account's posts are gone from the blocker's Fljótið.
+    a1.client.block("b").unwrap();
+    let page = a1.client.feed(None, 20).unwrap();
+    assert!(page.posts.iter().all(|p| p.author.account_id == "a"));
 }
 
 #[test]

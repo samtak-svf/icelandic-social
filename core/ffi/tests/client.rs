@@ -13,8 +13,8 @@ use relay::{Link, Relay};
 use spjall_client::api::{self, Transport as _};
 use spjall_core::client::{
     Content, ConversationState, CoreClient, Event, HttpMethod, HttpRequest, HttpResponse,
-    ItemStatus, Notice, NoticeKind, Platform, Settings, SignedIn, Transport, TransportError,
-    invite_token,
+    ItemStatus, Notice, NoticeKind, Platform, Settings, SignInProvider, SignedIn, Transport,
+    TransportError, invite_token,
 };
 use spjall_core::{Body, CoreError};
 
@@ -102,7 +102,7 @@ fn phone(relay: &Arc<Relay>, account: &str, device: &str) -> Phone {
     )
     .unwrap();
     assert_eq!(client.device_key().unwrap().len(), 32);
-    let url = client.begin_sign_in().unwrap();
+    let url = client.begin_sign_in(SignInProvider::Kenni).unwrap();
     let signed_in = client
         .complete_sign_in(relay::kenni(&url), None, Platform::Android)
         .unwrap();
@@ -244,7 +244,7 @@ fn two_clients_talk_through_the_exported_api() {
             "{request:?}"
         );
         assert_eq!(request.body.is_some(), request.method == HttpMethod::Post);
-        let before = request.path == "/v1/sign-in" || request.path == "/v1/devices";
+        let before = request.path.starts_with("/v1/sign-in?") || request.path == "/v1/devices";
         assert_eq!(request.bearer.is_none(), before, "{request:?}");
     }
 }
@@ -286,7 +286,7 @@ fn an_account_is_run_through_the_exported_api() {
     let inviter = b1.resolve_invite(token.clone()).unwrap().unwrap();
     assert_eq!(inviter.account_id, "a");
     assert!(inviter.verified);
-    let url = b1.begin_sign_in().unwrap();
+    let url = b1.begin_sign_in(SignInProvider::Kenni).unwrap();
     assert!(matches!(
         b1.complete_sign_in(
             "is.samtak.spjall:/kenni?code=x&state=forged".into(),
@@ -433,4 +433,71 @@ fn files_and_blocks_cross_by_path_and_record() {
     a1.client.unblock("b".into()).unwrap();
     assert!(a1.client.blocked().unwrap().is_empty());
     assert!(a1.client.expire().unwrap().events.is_empty());
+}
+
+#[test]
+fn google_links_fljotid_and_one_to_ones_cross_the_exported_api() {
+    use spjall_core::feed::PostReaction;
+    let relay = Relay::new();
+    let a1 = phone(&relay, "a", "a1");
+    let b1 = phone(&relay, "b", "b1");
+
+    // A Google sign-in on a fresh device.
+    let dir = tempfile::tempdir().unwrap();
+    let app = Arc::new(App {
+        link: relay.link("c", "c1"),
+        seen: Mutex::new(Vec::new()),
+        offline: Mutex::new(false),
+    });
+    let c1 = CoreClient::open(
+        dir.path().to_string_lossy().into_owned(),
+        vec![7; 32],
+        app,
+        Platform::Ios,
+        "0.2.0".into(),
+    )
+    .unwrap();
+    let url = c1.begin_sign_in(SignInProvider::Google).unwrap();
+    c1.complete_sign_in(relay::google(&url), None, Platform::Ios)
+        .unwrap();
+    assert!(!c1.me().unwrap().verified);
+    let url = c1.begin_link(SignInProvider::Kenni).unwrap();
+    c1.complete_link(relay::kenni(&url)).unwrap();
+    assert!(c1.me().unwrap().verified);
+
+    let post = a1.client.create_post("Halló Fljót".into()).unwrap();
+    assert_eq!(post.author.account, "a");
+    assert!(matches!(
+        a1.client.create_post(" ".into()),
+        Err(CoreError::Invalid { .. })
+    ));
+    let page = b1.client.feed(None, 20).unwrap();
+    assert_eq!(page.posts, vec![post.clone()]);
+    assert_eq!(page.next, None);
+    b1.client
+        .react_to_post(post.post_id.clone(), Some(PostReaction::ThumbsUp))
+        .unwrap();
+    let seen = b1.client.post(post.post_id.clone()).unwrap();
+    assert_eq!(seen.my_reaction, Some(PostReaction::ThumbsUp));
+    assert_eq!(seen.reactions.thumbs_up, 1);
+    let reply = b1
+        .client
+        .create_reply(post.post_id.clone(), "Svar".into())
+        .unwrap();
+    let replies = a1.client.replies(post.post_id.clone(), None, 20).unwrap();
+    assert_eq!(replies.replies, vec![reply.clone()]);
+    b1.client.delete_reply(reply.reply_id).unwrap();
+    assert_eq!(b1.client.wall("a".into(), None, 20).unwrap().posts.len(), 1);
+    a1.client.delete_post(post.post_id).unwrap();
+    assert!(b1.client.feed(None, 20).unwrap().posts.is_empty());
+
+    // From a post's author to an encrypted 1:1, no link.
+    let one = b1.client.open_direct("a".into()).unwrap();
+    b1.client.sync().unwrap();
+    deliver(&relay, &a1, "a", "a1");
+    assert_eq!(b1.client.open_direct("a".into()).unwrap(), one);
+    assert!(matches!(
+        b1.client.open_direct("b".into()),
+        Err(CoreError::Invalid { .. })
+    ));
 }

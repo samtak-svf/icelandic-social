@@ -1,7 +1,7 @@
 //! The sync engine against the real Worker under `cf dev`, over HTTP
 //! and the WebSocket. Ignored by `cargo test`; interop.yml runs it with
-//! the Worker started from `backend/dev/worker.ts`, its fake Kenni as the
-//! issuer, and an operator invite to let the first account in:
+//! the Worker started from `backend/dev/worker.ts`, its fake Kenni and
+//! Google as the issuers, and an operator invite for the first account:
 //!
 //! ```text
 //! SPJALL_DEV_URL=http://127.0.0.1:8787 SPJALL_INVITE=<link> \
@@ -13,7 +13,9 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 
-use spjall_client::api::{ApiError, Method, Platform, Request, Response, Transport, Unreachable};
+use spjall_client::api::{
+    ApiError, Method, Platform, Provider, Request, Response, Transport, Unreachable,
+};
 use spjall_client::{Client, ClientError, Content, Event, invite_token};
 use spjall_envelope::Body;
 use tempfile::TempDir;
@@ -179,6 +181,28 @@ fn kennitala(run: u64, n: u64) -> String {
         .unwrap()
 }
 
+/// Who a phone signs in as: a Kenni kennitala, or a Google subject.
+enum Person<'a> {
+    Kenni(&'a str),
+    Google(&'a str),
+}
+
+/// What the browser does with an authorize URL: the fake issuer answers at
+/// once with a redirect, and Google's link host page hands the app its
+/// scheme, which is drawn here.
+fn browse(url: &str, hint: &str) -> String {
+    let answer = agent()
+        .get(format!("{url}&login_hint={hint}"))
+        .call()
+        .expect("is `cf dev --mode interop` running, with its fake issuers?");
+    assert_eq!(answer.status(), 302);
+    let location = answer.headers()["location"].to_str().unwrap().to_owned();
+    match location.split_once("/oauth/google?") {
+        Some((_, query)) => format!("is.samtak.spjall:/google?{query}"),
+        None => location,
+    }
+}
+
 struct Phone {
     account: String,
     device: String,
@@ -192,6 +216,10 @@ impl Phone {
     /// Signs a new device in as an app does, with the fake Kenni standing
     /// in for the browser, and opens its socket.
     fn new(kennitala: &str, invite: Option<&str>) -> Self {
+        Self::signed_in(Person::Kenni(kennitala), invite)
+    }
+
+    fn signed_in(person: Person, invite: Option<&str>) -> Self {
         let dir = tempfile::tempdir().unwrap();
         let pushes = Arc::new(Mutex::new(Vec::new()));
         let transport = Http {
@@ -203,13 +231,12 @@ impl Phone {
         client
             .set_client_version(Platform::Android, env!("CARGO_PKG_VERSION"))
             .unwrap();
-        let url = client.begin_sign_in().unwrap();
-        let answer = agent()
-            .get(format!("{url}&login_hint={kennitala}"))
-            .call()
-            .expect("is `cf dev --mode interop` running, with its fake Kenni?");
-        assert_eq!(answer.status(), 302);
-        let callback = answer.headers()["location"].to_str().unwrap().to_owned();
+        let (provider, hint) = match person {
+            Person::Kenni(kennitala) => (Provider::Kenni, kennitala),
+            Person::Google(subject) => (Provider::Google, subject),
+        };
+        let url = client.begin_sign_in(provider).unwrap();
+        let callback = browse(&url, hint);
         let device = client
             .complete_sign_in(&callback, invite, Platform::Android)
             .unwrap();
@@ -623,4 +650,45 @@ fn devices_talk_through_the_worker() {
             ..
         }))
     ));
+    // Google lets a person in with no invite (0033); Kenni linked adds the
+    // mark, and a kennitala on another account is refused.
+    let mut g1 = Phone::signed_in(Person::Google(&format!("interop-{run}-g")), None);
+    let mut h1 = Phone::signed_in(Person::Google(&format!("interop-{run}-h")), None);
+    assert!(!g1.client.me().unwrap().verified);
+    let url = g1.client.begin_link(Provider::Kenni).unwrap();
+    g1.client
+        .complete_link(&browse(&url, &kennitala(run, 5)))
+        .unwrap();
+    assert!(g1.client.me().unwrap().verified);
+    let url = h1.client.begin_link(Provider::Kenni).unwrap();
+    assert!(matches!(
+        h1.client.complete_link(&browse(&url, &kennitala(run, 5))),
+        Err(ClientError::Transport(ApiError::Refused { status: 409, ref code })) if code == "identity_taken"
+    ));
+
+    // Fljótið: g posts, h reacts and replies, g's wall holds it (0034).
+    let post = g1.client.create_post(&format!("Fljótið {run}")).unwrap();
+    let feed = h1.client.feed(None, 50).unwrap();
+    assert!(feed.posts.iter().any(|p| p.post_id == post.post_id));
+    h1.client
+        .react_to_post(&post.post_id, Some(spjall_client::api::PostReaction::Heart))
+        .unwrap();
+    h1.client.create_reply(&post.post_id, "Svar").unwrap();
+    let seen = g1.client.post(&post.post_id).unwrap();
+    assert_eq!((seen.reactions.heart, seen.reply_count), (1, 1));
+    let wall = h1.client.wall(&g1.account, None, 50).unwrap();
+    assert_eq!(wall.posts[0].post_id, post.post_id);
+
+    // From the post's author to an encrypted 1:1, no link and nothing
+    // shared before.
+    assert!(h1.client.profile(&g1.account).unwrap().verified);
+    let one = h1.client.open_direct(&g1.account).unwrap();
+    h1.sync();
+    g1.deliver_until(has(Event::Joined {
+        conversation: one.clone(),
+    }));
+    h1.send(&one, "hæ");
+    h1.sync();
+    assert_eq!(texts(&g1.deliver_until(count(1))), strings(&["hæ"]));
+    g1.client.delete_post(&post.post_id).unwrap();
 }

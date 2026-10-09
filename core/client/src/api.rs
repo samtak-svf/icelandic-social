@@ -8,6 +8,10 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
+mod posts;
+
+pub use posts::{Author, Post, PostPage, PostReaction, ReactionCounts, Reply, ReplyPage};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Method {
     Get,
@@ -234,6 +238,23 @@ pub struct SignInConfig {
     pub scope: String,
 }
 
+/// Who a person signs in with (0033): Google first, Kenni for the mark.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Provider {
+    Google,
+    Kenni,
+}
+
+impl Provider {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Google => "google",
+            Self::Kenni => "kenni",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Platform {
@@ -241,13 +262,23 @@ pub enum Platform {
     Ios,
 }
 
-/// `registerDevice`'s body. Its verifier goes to `/v1/devices` and nowhere
-/// else.
-pub struct Registration<'a> {
+/// What a browser sign-in hands back: the provider's code and the PKCE
+/// verifier, redirect and nonce that bind it. The verifier goes to the
+/// server in this one request and nowhere else.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Authorization<'a> {
+    pub provider: Provider,
     pub code: &'a str,
+    #[serde(rename = "codeVerifier")]
     pub verifier: &'a str,
     pub redirect_uri: &'a str,
     pub nonce: &'a str,
+}
+
+/// `registerDevice`'s body.
+pub struct Registration<'a> {
+    pub authorization: Authorization<'a>,
     pub platform: Platform,
     pub device_key: &'a [u8],
     pub invite: Option<&'a str>,
@@ -256,10 +287,8 @@ pub struct Registration<'a> {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct RegisterBody<'a> {
-    kenni_code: &'a str,
-    code_verifier: &'a str,
-    redirect_uri: &'a str,
-    nonce: &'a str,
+    #[serde(flatten)]
+    authorization: &'a Authorization<'a>,
     platform: Platform,
     device_key: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -312,8 +341,7 @@ pub struct Inviter {
     pub verified: bool,
 }
 
-/// Another account's name and mark, as `getAccount` shows it to an account
-/// it shares a conversation with.
+/// Another account's name and mark, as `getAccount` shows it (0034).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Profile {
     pub name: Option<String>,
@@ -364,7 +392,7 @@ impl<'a, T: Transport + ?Sized> Api<'a, T> {
         self
     }
 
-    /// The answer on 200 or 204, or the `ApiError` code it was refused with.
+    /// The answer on 200, 201 or 204, or the `ApiError` code it was refused with.
     fn send(
         &self,
         method: Method,
@@ -386,7 +414,7 @@ impl<'a, T: Transport + ?Sized> Api<'a, T> {
     }
 
     fn checked(response: Response) -> Result<Response, ApiError> {
-        if response.status == 200 || response.status == 204 {
+        if matches!(response.status, 200 | 201 | 204) {
             return Ok(response);
         }
         let body = serde_json::from_str::<ErrorBody>(&response.body).ok();
@@ -551,18 +579,20 @@ impl<'a, T: Transport + ?Sized> Api<'a, T> {
 
 /// The calls about the person and the device (0019).
 impl<T: Transport + ?Sized> Api<'_, T> {
-    /// `getSignInConfig`.
-    pub fn sign_in_config(&self) -> Result<SignInConfig, ApiError> {
-        self.call(Method::Get, "/v1/sign-in".into(), None, "getSignInConfig")
+    /// `getSignInConfig` for one provider.
+    pub fn sign_in_config(&self, provider: Provider) -> Result<SignInConfig, ApiError> {
+        self.call(
+            Method::Get,
+            format!("/v1/sign-in?provider={}", provider.name()),
+            None,
+            "getSignInConfig",
+        )
     }
 
-    /// `registerDevice`: the server redeems the code with Kenni itself.
+    /// `registerDevice`: the server redeems the code with the provider itself.
     pub fn register_device(&self, registration: &Registration) -> Result<Registered, ApiError> {
         let body = RegisterBody {
-            kenni_code: registration.code,
-            code_verifier: registration.verifier,
-            redirect_uri: registration.redirect_uri,
-            nonce: registration.nonce,
+            authorization: &registration.authorization,
             platform: registration.platform,
             device_key: base64(registration.device_key),
             invite_token: registration.invite,
@@ -573,6 +603,16 @@ impl<T: Transport + ?Sized> Api<'_, T> {
             Self::json(&body),
             "registerDevice",
         )
+    }
+
+    /// `linkIdentity` (0033): this account holds the identity too.
+    pub fn link_identity(&self, authorization: &Authorization) -> Result<(), ApiError> {
+        self.send(
+            Method::Post,
+            "/v1/me/identities".into(),
+            Self::json(authorization),
+        )
+        .map(drop)
     }
 
     /// `getMe`.
@@ -608,8 +648,7 @@ impl<T: Transport + ?Sized> Api<'_, T> {
         Ok(resolved.inviter)
     }
 
-    /// `getAccount`: refused with 404 unless the two accounts share a
-    /// conversation.
+    /// `getAccount`: any account's name and mark (0034); 404 for none.
     pub fn profile(&self, account: &str) -> Result<Profile, ApiError> {
         self.call(
             Method::Get,

@@ -12,6 +12,7 @@ use std::sync::{Arc, Mutex};
 use spjall_envelope as envelope;
 
 pub mod client;
+pub mod feed;
 
 uniffi::setup_scaffolding!();
 
@@ -376,7 +377,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().to_string_lossy().into_owned();
         let store = CoreStore::open(path.clone(), vec![1; 32]).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 9);
+        assert_eq!(store.schema_version().unwrap(), 10);
         drop(store);
         assert!(matches!(
             CoreStore::open(path.clone(), vec![2; 32]),
