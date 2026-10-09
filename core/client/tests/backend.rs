@@ -560,4 +560,58 @@ fn devices_talk_through_the_worker() {
             "no card for a sibling device"
         );
     }
+
+    // e deletes its account while in a group. a's next commit names e in
+    // its claim, the server refuses it, a's device check removes e's
+    // leaves, and the add goes through on the epoch after (0014, 0028).
+    let mut e1 = Phone::new(&kennitala(run, 4), Some(&invite));
+    let e = e1.account.clone();
+    let group = a1
+        .client
+        .create_conversation(&[c.clone(), e.clone()])
+        .unwrap();
+    a1.sync();
+    let joined = Event::Joined {
+        conversation: group.clone(),
+    };
+    c1.deliver_until(has(joined.clone()));
+    e1.deliver_until(has(joined.clone()));
+    e1.client.delete_account().unwrap();
+    a1.client
+        .add_accounts(&group, std::slice::from_ref(&b))
+        .unwrap();
+    a1.sync();
+    a1.sync();
+    b1.deliver_until(has(joined.clone()));
+    let members: Vec<String> = a1
+        .client
+        .conversations()
+        .unwrap()
+        .into_iter()
+        .find(|listed| listed.id == group)
+        .unwrap()
+        .members
+        .into_iter()
+        .map(|p| p.account)
+        .collect();
+    assert!(!members.contains(&e), "{members:?}");
+    a1.send(&group, "án e");
+    a1.sync();
+    for phone in [&mut b1, &mut c1] {
+        phone.deliver_until(|events| texts(events).contains(&"án e".to_owned()));
+    }
+
+    // d blocks b: b cannot claim d's KeyPackages to add d to a group they
+    // share no conversation in (0024).
+    d1.client.block(&b).unwrap();
+    b1.client
+        .add_accounts(&group, std::slice::from_ref(&d))
+        .unwrap();
+    assert!(matches!(
+        b1.client.sync(),
+        Err(ClientError::Transport(ApiError::Refused {
+            status: 403,
+            ..
+        }))
+    ));
 }
