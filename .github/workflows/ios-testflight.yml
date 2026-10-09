@@ -79,26 +79,21 @@ jobs:
           fi
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Published core pinned?
+      - name: Published core pinned
         id: lock
-        run: echo "version=$(jq -r '.version // empty' core/artifact.lock.json)" >> "$GITHUB_OUTPUT"
+        run: |
+          version=$(jq -r '.version // empty' core/artifact.lock.json)
+          if [ -z "$version" ]; then
+            echo "::error::core/artifact.lock.json pins no published core; a TestFlight build never builds its own"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Toolchain
         working-directory: core
         run: rustup toolchain install
 
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-        if: steps.lock.outputs.version == ''
-        with:
-          workspaces: core
-
-      - name: Core (local build, nothing published yet)
-        if: steps.lock.outputs.version == ''
-        working-directory: core
-        run: cargo xtask core ios
-
       - name: Core (pinned ${{ steps.lock.outputs.version }})
-        if: steps.lock.outputs.version != ''
         working-directory: core
         run: cargo xtask fetch ios
 

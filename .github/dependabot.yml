@@ -1,5 +1,7 @@
 # Keeps the SHA-pinned actions current; the tag comment beside each SHA is
-# what Dependabot reads and rewrites (tooling/workflow-guard.mjs).
+# what Dependabot reads and rewrites (tooling/workflow-guard.mjs). The
+# dependency trees (the one pnpm workspace, the core's Cargo workspace and
+# the Android build) are checked monthly, one grouped PR each.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -8,4 +10,25 @@ updates:
       interval: weekly
     groups:
       actions:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      npm:
+        patterns: ["*"]
+  - package-ecosystem: cargo
+    directory: /core
+    schedule:
+      interval: monthly
+    groups:
+      cargo:
+        patterns: ["*"]
+  - package-ecosystem: gradle
+    directory: /android
+    schedule:
+      interval: monthly
+    groups:
+      gradle:
         patterns: ["*"]
