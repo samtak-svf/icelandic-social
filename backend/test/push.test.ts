@@ -159,6 +159,45 @@ describe("the push outbox", () => {
     expect(pushed()).toEqual([me.deviceId]);
     expect((await outbox(me.accountId)).map((r) => r.pushed)).toEqual([1, 1, 1]);
   });
+
+  it("owes a push again when its send fails, and the alarm retries it", async () => {
+    const me = await device();
+    const box = inbox(testEnv, me.accountId);
+    // The send fails where the credential-less sender records it.
+    logs.mockImplementationOnce(() => {
+      throw new Error("push service down");
+    });
+    await box.notify(me.accountId, "conv_retry", 1, 1);
+    expect(await outbox(me.accountId)).toEqual([
+      { device_id: me.deviceId, conversation_id: "conv_retry", seq: 1, pushed: 0 },
+    ]);
+    const alarm = await runInDurableObject(box, (_, state) => state.storage.getAlarm());
+    expect(alarm).not.toBeNull();
+    logs.mockClear();
+    await runInDurableObject(box, (instance) => instance.alarm());
+    expect(pushed()).toEqual([me.deviceId]);
+    expect((await outbox(me.accountId)).map((r) => r.pushed)).toEqual([1]);
+  });
+
+  it("never sends what another round already sent, when two rounds overlap", async () => {
+    const me = await device();
+    await runInDurableObject(inbox(testEnv, me.accountId), (_, state) => {
+      for (const id of ["conv_overlap_a", "conv_overlap_b"]) {
+        state.storage.sql.exec(
+          "INSERT INTO push_outbox (device_id, conversation_id, seq) VALUES (?, ?, 1)",
+          me.deviceId,
+          id,
+        );
+      }
+    });
+    // The second round starts while the first waits on the push service.
+    await runInDurableObject(inbox(testEnv, me.accountId), async (instance) => {
+      const box = instance as unknown as { push(): Promise<void> };
+      await Promise.all([box.push(), box.push()]);
+    });
+    expect(pushed()).toEqual([me.deviceId]);
+    expect((await outbox(me.accountId)).map((r) => r.pushed)).toEqual([1, 1]);
+  });
 });
 
 describe("urgency", () => {

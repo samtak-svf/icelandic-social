@@ -253,6 +253,24 @@ export class Inbox extends DurableObject<Env> {
         .toArray(),
       (row) => row.device_id,
     );
+    // Claimed before the first await, so a round that starts while this one
+    // waits on a push service finds nothing of it to send again.
+    const mark = (
+      pushed: 0 | 1,
+      deviceId: string,
+      rows: { conversation_id: string; seq: number }[],
+    ) => {
+      for (const row of rows) {
+        this.sql.exec(
+          "UPDATE push_outbox SET pushed = ? WHERE device_id = ? AND conversation_id = ? AND seq = ?",
+          pushed,
+          deviceId,
+          row.conversation_id,
+          row.seq,
+        );
+      }
+    };
+    for (const [deviceId, rows] of due) mark(1, deviceId, rows);
     // Devices are pushed at once, not one after another, so one slow push
     // service holds the round up by one call, not by one call per device.
     const sent = await Promise.allSettled(
@@ -261,15 +279,8 @@ export class Inbox extends DurableObject<Env> {
           await sender.send({ deviceId });
         } catch (error) {
           log("push.failed", { deviceId, count: rows.length });
+          mark(0, deviceId, rows);
           throw error;
-        }
-        for (const row of rows) {
-          this.sql.exec(
-            "UPDATE push_outbox SET pushed = 1 WHERE device_id = ? AND conversation_id = ? AND seq = ?",
-            deviceId,
-            row.conversation_id,
-            row.seq,
-          );
         }
       }),
     );
