@@ -8,6 +8,7 @@ import {
 } from "./api/accounts.ts";
 import type { AppEnv } from "./app.ts";
 import { block, blockList, unblock } from "./blocks.ts";
+import { fail } from "./errors.ts";
 import { log } from "./log.ts";
 import { decodeDirectoryCursor, directory, profile } from "./profiles.ts";
 
@@ -17,14 +18,14 @@ import { decodeDirectoryCursor, directory, profile } from "./profiles.ts";
 export function accountRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(getAccountRoute, async (c) => {
     const found = await profile(c.env, c.req.valid("param").accountId);
-    return found ? c.json(found, 200) : c.json({ error: "not_found" }, 404);
+    return found ? c.json(found, 200) : fail(c, 404, "not_found");
   });
 
   // The directory (decision 0036). The query is a name: it is never logged (0008).
   app.openapi(listPeopleRoute, async (c) => {
     const { q, after, limit } = c.req.valid("query");
     const cursor = after === undefined ? undefined : decodeDirectoryCursor(after);
-    if (cursor === null) return c.json({ error: "invalid_request" }, 400);
+    if (cursor === null) return fail(c, 400, "invalid_request");
     const found = await directory(c.env, c.var.device.accountId, {
       query: q,
       after: cursor,
@@ -40,8 +41,8 @@ export function accountRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(blockRoute, async (c) => {
     const { accountId } = c.var.device;
     const target = c.req.valid("param").accountId;
-    if (target === accountId) return c.json({ error: "invalid_request" }, 400);
-    if (!(await block(c.env, accountId, target))) return c.json({ error: "not_found" }, 404);
+    if (target === accountId) return fail(c, 400, "invalid_request");
+    if (!(await block(c.env, accountId, target))) return fail(c, 404, "not_found");
     log("account.blocked", { accountId });
     return c.body(null, 204);
   });

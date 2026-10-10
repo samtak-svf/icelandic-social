@@ -12,6 +12,8 @@
 // 3. No `jurisdiction(…)` other than "eu", anywhere.
 // 4. No `console.*` outside `backend/src/log.ts`, the one helper that writes
 //    allow-listed fields only (decision 0008).
+// 5. No error body (`.json({ error …`) outside `backend/src/errors.ts`, whose
+//    `fail` adds the request id every error names (decision 0037).
 //
 // Matching runs on source with comments and strings blanked, so a comment or
 // a log line naming a binding is not a violation (tooling/lib/source.mjs).
@@ -27,6 +29,8 @@ import { SECRETS } from "./worker-secrets.mjs";
 const SRC = "backend/src/";
 const SEAM = "backend/src/env/";
 const LOG_HELPER = "backend/src/log.ts";
+const ERROR_HELPER = "backend/src/errors.ts";
+const ERROR_BODY = /\.\s*json\s*\(\s*\{\s*error\b/g;
 const CONSOLE = /\bconsole\s*\.\s*[A-Za-z_$]/g;
 const ID_METHODS = /\b(idFromName|idFromString|newUniqueId|getByName)\s*\(/g;
 const PINNED_EU = /\.\s*jurisdiction\s*\(\s*(["'`])eu\1\s*\)\s*\.\s*$/;
@@ -96,6 +100,16 @@ export function findInSource(file, source, bindings) {
       add(match.index, "console", `console outside ${LOG_HELPER}; log through it (decision 0008)`);
     }
   }
+
+  if (file !== ERROR_HELPER) {
+    for (const match of code.matchAll(ERROR_BODY)) {
+      add(
+        match.index,
+        "error-body",
+        `error body outside ${ERROR_HELPER}; answer with fail() (decision 0037)`,
+      );
+    }
+  }
   return found;
 }
 
@@ -125,7 +139,8 @@ async function main() {
 ${violations.length} seam violation(s). Bindings, secrets and Durable Object
 stubs go through ${SEAM} only, and every stub is pinned with
 .jurisdiction("eu") (AGENTS.md § Infrastructure, docs/decisions/0001). Logging
-goes through ${LOG_HELPER} only (docs/decisions/0008).`);
+goes through ${LOG_HELPER} only (docs/decisions/0008), and every error answer
+through fail() in ${ERROR_HELPER} (docs/decisions/0037).`);
   process.exit(1);
 }
 

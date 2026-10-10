@@ -83,6 +83,27 @@ describe("seam-guard", () => {
     );
   });
 
+  it("fails on an error body built outside the error helper", () => {
+    expect(rules("backend/src/app.ts", 'return c.json({ error: "not_found" }, 404);')).toEqual([
+      "error-body:1",
+    ]);
+    expect(
+      rules("backend/src/feed.ts", "\nreturn c.json(\n  { error: code },\n  403,\n);"),
+    ).toEqual(["error-body:2"]);
+    expect(rules("backend/src/link.ts", 'return Response.json({ error: "x" });')).toEqual([
+      "error-body:1",
+    ]);
+  });
+
+  it("allows an error body in the error helper, and a success body anywhere", () => {
+    const helper = "return c.json({ error, ...extra, requestId: c.var.requestId }, status);";
+    expect(rules("backend/src/errors.ts", helper)).toEqual([]);
+    expect(rules("backend/src/app.ts", "return c.json({ errors: [] }, 200);")).toEqual([]);
+    expect(rules("backend/src/app.ts", '// c.json({ error: "x" })\nfail(c, 404, "x");')).toEqual(
+      [],
+    );
+  });
+
   it("fails on a bare idFromName, even inside the seam", () => {
     expect(rules("backend/src/env/index.ts", "ns.idFromName(id);")).toEqual(["do-jurisdiction:1"]);
     expect(rules("backend/src/env/index.ts", "ns.newUniqueId();")).toEqual(["do-jurisdiction:1"]);

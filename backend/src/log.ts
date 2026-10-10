@@ -16,6 +16,8 @@ type Fields = {
   status: number;
   durationMs: number;
   code: string;
+  /** The request's opaque id (decision 0037): its cf-ray, or a random UUID. */
+  requestId: string;
   /** Which way a person signed in (decision 0033), never who. */
   provider: "kenni" | "google";
 };
@@ -32,6 +34,7 @@ const ALLOWED: ReadonlySet<string> = new Set<keyof Fields>([
   "durationMs",
   "code",
   "provider",
+  "requestId",
 ]);
 const EVENT = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/;
 const OPAQUE = /^[A-Za-z0-9_:-]{1,128}$/;

@@ -83,7 +83,7 @@ describe("a conversation's devices", () => {
     const id = await together(friend);
     expect(await devicesOf(id, stranger)).toEqual({
       status: 403,
-      body: { error: "not_a_member" },
+      body: { error: "not_a_member", requestId: expect.any(String) },
     });
     expect((await devicesOf("devices_conv_never", friend)).status).toBe(404);
   });

@@ -50,7 +50,7 @@ describe("the client version floor", () => {
 
   it("answers 426 on a /v1 route, before the token is looked at, and leaves /health open", async () => {
     const owner = await device();
-    const tooOld = { error: "client_too_old", minVersion: "0.2.0" };
+    const tooOld = { error: "client_too_old", minVersion: "0.2.0", requestId: expect.any(String) };
     const old = await fetch("/v1/me", { ...owner.auth, "spjall-client": "android/0.1.0" });
     expect(old.status).toBe(426);
     expect(await old.json()).toEqual(tooOld);

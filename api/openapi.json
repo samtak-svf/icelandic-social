@@ -259,8 +259,13 @@
         "properties": {
           "error": {
             "type": "string",
-            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author",
+            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, internal_error",
             "example": "unauthorized"
+          },
+          "requestId": {
+            "type": "string",
+            "description": "The request's id, also in the x-request-id header: opaque, for support to find the request by (decision 0037)",
+            "example": "8c1f2e3d4a5b6c7d-KEF"
           },
           "minVersion": {
             "type": "string",
@@ -269,7 +274,8 @@
           }
         },
         "required": [
-          "error"
+          "error",
+          "requestId"
         ]
       },
       "IdentityProviderName": {
