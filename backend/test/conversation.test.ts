@@ -214,12 +214,17 @@ describe("a conversation", () => {
     );
     await stub.send(message("a", "new"));
     await runDurableObjectAlarm(stub);
-    await runInDurableObject(stub, (_, state) => {
+    // An alarm a send set off may still be notifying; it is done once the
+    // next alarm waits for retention.
+    await expect
+      .poll(() => runInDurableObject(stub, (_, state) => state.storage.getAlarm()))
+      .toBeGreaterThan(Date.now() + 60_000);
+    await runInDurableObject(stub, async (instance, state) => {
       const old = Date.now() - RETENTION_MS - 1;
       state.storage.sql.exec("UPDATE messages SET stored_at = ? WHERE seq = 1", old);
       state.storage.sql.exec("UPDATE welcomes SET stored_at = ?", old);
+      await instance.alarm();
     });
-    expect(await runDurableObjectAlarm(stub)).toBe(true);
     const page = await stub.list("a", 0, 10);
     expect("ok" in page && page.ok.messages.map((m) => m.seq)).toEqual([2]);
     expect(await stub.welcome("b")).toEqual({ error: "not_found" });
