@@ -139,6 +139,8 @@ next try is from an Apple device. Until the team exists:
 
 **Google**, once the identity check is approved. `.github/workflows/android-play.yml` builds,
 signs and uploads to internal testing; it fails at its first step until these exist.
+All five steps were done on 2026-10-10: the identity check was approved on 2026-10-06, both
+phone numbers are verified, and build 101 (0.2.0) went to internal testing by hand.
 
 1. Create the app `is.samtak.spjall` (default language Icelandic) and set up the internal
    testing track with a tester list. Turn on Play App Signing (the default): Google holds the
