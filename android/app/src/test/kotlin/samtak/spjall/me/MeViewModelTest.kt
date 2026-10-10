@@ -20,6 +20,8 @@ import samtak.spjall.account.Problem
 import samtak.spjall.account.unreachable
 import samtak.spjall.core.Person
 import samtak.spjall.core.Settings
+import java.io.File
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MeViewModelTest {
@@ -158,5 +160,88 @@ class MeViewModelTest {
                     .map { it.account },
             )
             assertTrue("unblock a3" in account.calls)
+        }
+
+    private fun picked(bytes: ByteArray): File = File.createTempFile("photo", ".jpg").apply { writeBytes(bytes) }
+
+    @Test
+    fun aChosenPhotoIsUploadedShownAndItsFileDeleted() =
+        runTest(dispatcher) {
+            val model = model()
+            assertNull(
+                model.state.value.me
+                    ?.photo,
+            )
+            val file = picked(byteArrayOf(1, 2, 3))
+            model.setPhoto { file }
+            advanceUntilIdle()
+            assertEquals(listOf(listOf<Byte>(1, 2, 3)), account.uploaded.map { it.toList() })
+            assertEquals(
+                "v1",
+                model.state.value.me
+                    ?.photo,
+            )
+            assertFalse("the small copy is not kept (decision 0039)", file.exists())
+        }
+
+    @Test
+    fun aFailedUploadDeletesTheFileAndCanBeTriedAgain() =
+        runTest(dispatcher) {
+            val model = model()
+            account.failOn = "setPhoto"
+            val first = picked(byteArrayOf(1))
+            var made = 0
+            model.setPhoto {
+                made += 1
+                if (made == 1) first else picked(byteArrayOf(2))
+            }
+            advanceUntilIdle()
+            assertEquals(Problem.Unreachable, model.state.value.problem)
+            assertFalse(first.exists())
+            assertNull(
+                model.state.value.me
+                    ?.photo,
+            )
+
+            account.failOn = null
+            model.retry()
+            advanceUntilIdle()
+            assertNull(model.state.value.problem)
+            assertEquals("the photo is made again from the pick", 2, made)
+            assertEquals(
+                "v1",
+                model.state.value.me
+                    ?.photo,
+            )
+        }
+
+    @Test
+    fun aPickThatIsNotAPhotoIsAProblemNotACrash() =
+        runTest(dispatcher) {
+            val model = model()
+            model.setPhoto { throw IOException("not an image") }
+            advanceUntilIdle()
+            assertTrue(model.state.value.problem is Problem.Generic)
+            assertFalse(model.state.value.busy)
+            assertFalse("setPhoto" in account.calls)
+        }
+
+    @Test
+    fun removingThePhotoClearsIt() =
+        runTest(dispatcher) {
+            account.myPhoto = "v7"
+            val model = model()
+            assertEquals(
+                "v7",
+                model.state.value.me
+                    ?.photo,
+            )
+            model.removePhoto()
+            advanceUntilIdle()
+            assertTrue("removePhoto" in account.calls)
+            assertNull(
+                model.state.value.me
+                    ?.photo,
+            )
         }
 }

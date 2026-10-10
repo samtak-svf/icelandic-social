@@ -1,7 +1,10 @@
 package samtak.spjall.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.InlineTextContent
@@ -9,15 +12,20 @@ import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.TextStyle
@@ -62,13 +70,18 @@ fun initials(name: String?): String {
 /** How an avatar is filled: who it stands for, and whether Kenni vouched for them. */
 enum class AvatarKind { Verified, Unverified, Group, Me }
 
-/** A circle with the initials of whom a row is about; the row's text says who, so this says nothing. */
+/**
+ * A circle with the [photo] of whom a row is about (decision 0039), or their initials while it loads, when there
+ * is none, or when it cannot be had. A verified name keeps its gold as a ring around a photo. The row's text says
+ * who, so this says nothing.
+ */
 @Composable
 fun Avatar(
     name: String?,
     modifier: Modifier = Modifier,
     kind: AvatarKind = AvatarKind.Verified,
-    size: Dp = AVATAR.dp,
+    size: Dp = AVATAR_SIZE.dp,
+    photo: PhotoOf? = null,
 ) {
     val (fill, ink) =
         when (kind) {
@@ -77,23 +90,42 @@ fun Avatar(
             AvatarKind.Group -> Palette.secondarySubtle to Palette.fg
             AvatarKind.Me -> Palette.fg to Palette.surface
         }
+    val photos = LocalPhotos.current
+    val image by produceState(photo?.let { photos?.kept(it) }, photos, photo) {
+        value = if (photos == null || photo == null) null else photos.load(photo)
+    }
     Box(
         modifier =
             modifier
                 .size(size)
                 .background(fill, CircleShape)
-                .clearAndSetSemantics {},
+                .clearAndSetSemantics { testTag = if (image == null) AVATAR_INITIALS else AVATAR_PHOTO },
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = initials(name),
-            color = ink,
-            fontFamily = SansFamily,
-            fontWeight = FontWeight.Black,
-            fontSize = (size.value * INITIALS).sp,
-        )
+        val shown = image
+        if (shown == null) {
+            Text(
+                text = initials(name),
+                color = ink,
+                fontFamily = SansFamily,
+                fontWeight = FontWeight.Black,
+                fontSize = (size.value * INITIALS).sp,
+            )
+        } else {
+            val ring = if (kind == AvatarKind.Verified) Modifier.border(RING.dp, fill, CircleShape) else Modifier
+            Image(
+                bitmap = shown,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().clip(CircleShape).then(ring),
+            )
+        }
     }
 }
+
+/** What a screen test finds an [Avatar] by: drawn with its photo, or with initials. */
+const val AVATAR_PHOTO = "avatar_photo"
+const val AVATAR_INITIALS = "avatar_initials"
 
 /** The avatar's fill for a conversation: a group, or its one member verified or not. */
 fun Conversation.avatarKind(): AvatarKind =
@@ -196,9 +228,13 @@ fun duration(seconds: UInt): String {
     }
 }
 
-private const val AVATAR = 46
+/** An avatar's side in dp, unless a screen asks for another. */
+internal const val AVATAR_SIZE = 46
 private const val MARK = 14
 private const val MARK_ID = "mark"
+
+/** The gold ring around a verified person's photo. */
+private const val RING = 2
 
 /** The grey of an unverified person's avatar: fg at 9 %. */
 private const val GREY = 0.09f

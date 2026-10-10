@@ -260,6 +260,16 @@
     <string name="verify_later">Seinna</string>
     <!-- On Ég and in settings for an account Kenni has not verified: opens the verify screen. -->
     <string name="verify_cta">Fá staðfestingarmerki</string>
+    <!-- On Ég for an account with no profile photo: opens the photo picker to set one (docs/decisions/0039). -->
+    <string name="photo_choose">Setja inn mynd</string>
+    <!-- On Ég for an account with a profile photo: opens the photo picker to put another in its place (docs/decisions/0039). -->
+    <string name="photo_change">Skipta um mynd</string>
+    <!-- On Ég: removes the profile photo, after a confirmation; also that confirmation's button (docs/decisions/0039). -->
+    <string name="photo_remove">Fjarlægja mynd</string>
+    <!-- Asks before the profile photo is removed: it goes for everyone (docs/decisions/0039). -->
+    <string name="photo_remove_confirm">Fjarlægja myndina þína? Hún hverfur hjá öllum.</string>
+    <!-- The one line beside the photo buttons on Ég: every signed-in account sees the profile photo, which is not end-to-end encrypted (docs/decisions/0039). -->
+    <string name="photo_seen_by_all">Allir sem eru skráðir inn sjá myndina þína.</string>
     <!-- One line on the feed's header: posts are public and not end-to-end encrypted (0034). -->
     <string name="feed_public_notice">Allir sem nota Hjal sjá það sem skrifað er hér. Það er ekki dulkóðað eins og samtölin.</string>
     <!-- The feed's way to write a post, and the composer's placeholder. -->

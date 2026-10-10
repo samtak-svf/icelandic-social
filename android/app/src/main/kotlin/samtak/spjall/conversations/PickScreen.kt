@@ -39,6 +39,7 @@ import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.VerifiedMark
 import samtak.spjall.ui.avatarKind
+import samtak.spjall.ui.photoOf
 import samtak.spjall.ui.title
 
 /**
@@ -116,7 +117,7 @@ private fun PickRow(
     ) {
         // As in the list: a group's circle carries the group's initials, a 1:1's the other person's.
         val initialsOf = if (conversation.members.size > 1) title else conversation.members.firstOrNull()?.name
-        Avatar(initialsOf, kind = conversation.avatarKind())
+        Avatar(initialsOf, kind = conversation.avatarKind(), photo = conversation.photoOf())
         Row(
             modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,

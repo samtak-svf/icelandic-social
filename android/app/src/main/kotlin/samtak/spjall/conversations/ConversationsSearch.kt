@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.sp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Person
 import samtak.spjall.ui.Avatar
-import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.SansFamily
 import samtak.spjall.ui.VerifiedMark
@@ -90,7 +89,7 @@ private fun PersonRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Avatar(person.name, kind = if (person.verified) AvatarKind.Verified else AvatarKind.Unverified)
+        Avatar(person)
         Text(
             text = person.shownName(),
             style = PERSON_NAME,

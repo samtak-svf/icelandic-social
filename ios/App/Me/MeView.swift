@@ -1,3 +1,4 @@
+import PhotosUI
 import SpjallCore
 import SwiftUI
 
@@ -60,7 +61,7 @@ struct MeView: View {
             }
             if let me = model.me {
                 HStack(alignment: .top) {
-                    Who(name: me.name, verified: me.verified)
+                    Who(name: me.name, verified: me.verified, photo: me.photoOf)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Button(action: onSettings) {
                         Image(systemName: "gearshape")
@@ -72,6 +73,7 @@ struct MeView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel(Text("settings_title"))
                 }
+                PhotoControls(model: model, hasPhoto: me.photo != nil)
                 if !me.verified { VerifyLink(onVerify: onVerify) }
                 CardLabel(key: "invite_link_title")
                 InviteCard(model: model)
@@ -83,14 +85,15 @@ struct MeView: View {
     }
 }
 
-/// The dark circle with the initials, the name in capitals, and whether Kenni vouched for it.
+/// The photo, or the dark circle with the initials; the name in capitals, and whether Kenni vouched for it.
 private struct Who: View {
     let name: String?
     let verified: Bool
+    let photo: PhotoOf?
 
     var body: some View {
         HStack(spacing: 14) {
-            Avatar(name: name, kind: .me, size: 56)
+            Avatar(name: name, kind: .me, size: 56, photo: photo)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     if let name {
@@ -105,6 +108,70 @@ private struct Who: View {
             }
         }
         .padding(.vertical, 8)
+    }
+}
+
+/// Set, replace or remove the photo (decision 0039), and the one line that says who sees it: everyone
+/// signed in, since it is not end-to-end encrypted. Removing asks first.
+private struct PhotoControls: View {
+    let model: MeModel
+    let hasPhoto: Bool
+
+    @State private var picked: PhotosPickerItem?
+    @State private var removing = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
+                PhotosPicker(selection: $picked, matching: .images) {
+                    PhotoAction(text: hasPhoto ? "photo_change" : "photo_choose")
+                }
+                if hasPhoto {
+                    Button {
+                        removing = true
+                    } label: {
+                        PhotoAction(text: "photo_remove")
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(model.busy)
+            Text("photo_seen_by_all")
+                .font(.sans(12.5, relativeTo: .subheadline))
+                .foregroundStyle(BrandTokens.Colors.fg)
+                .padding(.horizontal, 4)
+        }
+        .onChange(of: picked) { _, item in
+            guard let item else { return }
+            picked = nil
+            let photo = Picked(photo: item)
+            Task { await model.setPhoto { try await profilePhoto(photo) } }
+        }
+        .confirmationDialog("photo_remove_confirm", isPresented: $removing, titleVisibility: .visible) {
+            Button("photo_remove", role: .destructive) { Task { await model.removePhoto() } }
+            Button("cancel", role: .cancel) {}
+        }
+    }
+}
+
+/// The pick made small and square off the main thread; the copy of the original is deleted.
+private func profilePhoto(_ photo: Picked) async throws -> URL {
+    let copy = try await photo.read()
+    defer { try? FileManager.default.removeItem(at: copy) }
+    return try await offMain { try squarePhoto(copy, side: 1024) }
+}
+
+/// One of the photo's actions: words in the text colour, as tall as a finger.
+private struct PhotoAction: View {
+    let text: LocalizedStringKey
+
+    var body: some View {
+        Text(text)
+            .font(.sans(14, black: true))
+            .foregroundStyle(BrandTokens.Colors.fg)
+            .padding(.horizontal, 4)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
     }
 }
 

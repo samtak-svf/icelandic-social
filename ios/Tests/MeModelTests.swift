@@ -92,4 +92,52 @@ final class MeModelTests: XCTestCase {
         XCTAssertEqual(model.blocked.map(\.account), ["a2"])
         XCTAssertTrue(account.calls.contains("unblock a3"))
     }
+
+    func testAChosenPhotoIsUploadedShownAndItsFileDeleted() async {
+        let model = await model()
+        let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+        await model.setPhoto { try pick(file) }
+        XCTAssertEqual(account.uploaded, [Data("jpeg".utf8)])
+        XCTAssertEqual(model.me?.photo, "v1")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path), "the small copy must not stay behind")
+    }
+
+    func testAFailedUploadDeletesTheFileAndCanBeTriedAgain() async {
+        let model = await model()
+        let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+        account.failNext = unreachable
+        await model.setPhoto { try pick(file) }
+        XCTAssertEqual(model.problem, .unreachable)
+        XCTAssertNil(model.me?.photo)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+
+        await model.retry()
+        XCTAssertNil(model.problem)
+        XCTAssertEqual(model.me?.photo, "v1")
+        XCTAssertEqual(account.uploaded, [Data("jpeg".utf8)], "trying again makes the file again from the pick")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+    }
+
+    func testAPickThatIsNotAPhotoIsAProblemNotACrash() async {
+        let model = await model()
+        await model.setPhoto { throw CocoaError(.fileReadCorruptFile) }
+        XCTAssertEqual(model.problem, .generic())
+        XCTAssertFalse(account.calls.contains("setPhoto"))
+    }
+
+    func testRemovingThePhotoClearsIt() async {
+        account.myPhoto = "v7"
+        let model = await model()
+        XCTAssertEqual(model.me?.photo, "v7")
+        await model.removePhoto()
+        XCTAssertNil(model.me?.photo)
+        XCTAssertEqual(account.calls.last, "me")
+        XCTAssertTrue(account.calls.contains("removePhoto"))
+    }
+}
+
+/// Stands in for the picked photo made small and square: writes it to `file`.
+private func pick(_ file: URL) throws -> URL {
+    try Data("jpeg".utf8).write(to: file)
+    return file
 }

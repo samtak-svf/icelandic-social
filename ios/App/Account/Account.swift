@@ -104,6 +104,12 @@ protocol Account: Sendable {
     func profile(_ account: String) throws -> Person
     /// The 1:1 with `account`, made if there is none, without an invite; its id.
     func openDirect(_ account: String) throws -> String
+    /// Sets this account's photo from the image at `path` (decision 0039); its new version.
+    func setPhoto(path: String) throws -> String
+    /// Removes this account's photo, for everyone.
+    func removePhoto() throws
+    /// The core's file for `account`'s photo at `version`; nil when it has none or a block stands between.
+    func photo(account: String, version: String) throws -> String?
 }
 
 /// The core's client, opened on first use so a launch never waits for the
@@ -271,6 +277,14 @@ final class CoreAccount: Account, @unchecked Sendable {
     func profile(_ account: String) throws -> Person { try core().profile(account: account) }
 
     func openDirect(_ account: String) throws -> String { try core().openDirect(account: account) }
+
+    func setPhoto(path: String) throws -> String { try core().setPhoto(path: path) }
+
+    func removePhoto() throws { try core().removePhoto() }
+
+    func photo(account: String, version: String) throws -> String? {
+        try core().photo(account: account, version: version)
+    }
 }
 
 /// Runs a blocking core call off the main actor.

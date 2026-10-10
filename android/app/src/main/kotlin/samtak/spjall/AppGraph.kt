@@ -17,6 +17,7 @@ import samtak.spjall.push.Push
 import samtak.spjall.push.SystemNotifier
 import samtak.spjall.socket.OkHttpWire
 import samtak.spjall.socket.Socket
+import samtak.spjall.ui.CorePhotos
 import java.io.File
 
 /** The objects the whole app shares, made once per process. */
@@ -50,6 +51,9 @@ class AppGraph(
         }
 
     val files = Files(context)
+
+    /** Profile photos for [samtak.spjall.ui.Avatar], decoded from the core's files and held in memory only. */
+    val photos = CorePhotos(account)
 
     /** Open while the app is in the foreground (SpjallApplication). */
     val socket =

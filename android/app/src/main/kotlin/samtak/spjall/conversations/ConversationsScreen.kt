@@ -65,6 +65,7 @@ import samtak.spjall.ui.capitals
 import samtak.spjall.ui.firstName
 import samtak.spjall.ui.lastLine
 import samtak.spjall.ui.listStamp
+import samtak.spjall.ui.photoOf
 import samtak.spjall.ui.title
 
 /**
@@ -189,7 +190,7 @@ private fun ConversationRow(
     ) {
         // A group's circle carries the group's initials, a 1:1's the other person's.
         val initialsOf = if (conversation.members.size > 1) title else conversation.members.firstOrNull()?.name
-        Avatar(initialsOf, kind = conversation.avatarKind())
+        Avatar(initialsOf, kind = conversation.avatarKind(), photo = conversation.photoOf())
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(

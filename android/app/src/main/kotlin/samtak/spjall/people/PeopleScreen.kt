@@ -40,7 +40,6 @@ import samtak.spjall.brand.R
 import samtak.spjall.conversations.InviteHint
 import samtak.spjall.core.Person
 import samtak.spjall.ui.Avatar
-import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.VerifiedMark
 import samtak.spjall.ui.shownName
@@ -156,7 +155,7 @@ private fun PersonRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Avatar(person.name, kind = if (person.verified) AvatarKind.Verified else AvatarKind.Unverified)
+        Avatar(person)
         Row(
             modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,

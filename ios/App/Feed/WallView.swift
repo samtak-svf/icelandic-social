@@ -50,7 +50,7 @@ private struct WallHead: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            Avatar(name: person.name, kind: avatarKind(person), size: 88)
+            Avatar(person: person, size: 88)
             HStack(spacing: 6) {
                 Text(verbatim: shownName(person).capitals)
                     .font(TypeStyle.accountName)

@@ -183,7 +183,7 @@ private struct TopBar: View {
                 let group = conversation.members.count > 1
                 Avatar(
                     name: group ? title(conversation) : conversation.members.first?.name,
-                    kind: avatarKind(conversation), size: 38)
+                    kind: avatarKind(conversation), size: 38, photo: photoOf(conversation))
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 5) {
                         Text(verbatim: title(conversation))

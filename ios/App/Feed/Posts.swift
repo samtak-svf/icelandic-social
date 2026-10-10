@@ -61,7 +61,7 @@ struct PostRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Button(action: onAuthor) {
-                Avatar(name: post.author.name, kind: avatarKind(post.author), size: 40)
+                Avatar(person: post.author, size: 40)
             }
             .buttonStyle(.plain)
             .accessibilityHidden(true)

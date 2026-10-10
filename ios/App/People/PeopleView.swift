@@ -93,7 +93,7 @@ private struct PersonRow: View {
     var body: some View {
         Button(action: onToggle) {
             HStack(spacing: 12) {
-                Avatar(name: person.name, kind: avatarKind(person))
+                Avatar(person: person)
                 Text(verbatim: shownName(person)).font(.sans(14.5, black: true))
                 if person.verified { VerifiedMark() }
                 Spacer()

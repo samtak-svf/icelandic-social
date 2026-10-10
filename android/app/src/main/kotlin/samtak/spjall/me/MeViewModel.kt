@@ -17,6 +17,8 @@ import samtak.spjall.core.CoreException
 import samtak.spjall.core.Me
 import samtak.spjall.core.Person
 import samtak.spjall.core.Settings
+import java.io.File
+import java.io.IOException
 
 /**
  * "Ég" (decisions 0009, 0019, 0022, 0024): who the person is, their invite
@@ -26,7 +28,10 @@ import samtak.spjall.core.Settings
  * The link is made only when the person asks for one. Making one ends the
  * link before it, so doing it on its own would silently kill a link another
  * device of the account has already shared.
+ *
+ * One function per thing [MeActions] offers, which is why it is long.
  */
+@Suppress("TooManyFunctions")
 class MeViewModel(
     private val account: Account,
     private val io: CoroutineDispatcher = Dispatchers.IO,
@@ -103,6 +108,32 @@ class MeViewModel(
         }
     }
 
+    /**
+     * Sets the photo from the file [read] makes, already a small square (decision 0039), and deletes that file
+     * once the core has sent it, whether or not the server took it: the server keeps the only copy.
+     */
+    fun setPhoto(read: () -> File) {
+        perform({ setPhoto(read) }) {
+            val file = read()
+            try {
+                account.setPhoto(file.path)
+            } finally {
+                file.delete()
+            }
+            val me = account.me()
+            _state.update { it.copy(me = me) }
+        }
+    }
+
+    /** Removes the photo, for everyone. */
+    fun removePhoto() {
+        perform(::removePhoto) {
+            account.removePhoto()
+            val me = account.me()
+            _state.update { it.copy(me = me) }
+        }
+    }
+
     fun deleteAccount() {
         perform(::deleteAccount) {
             account.deleteAccount()
@@ -138,6 +169,10 @@ class MeViewModel(
             } catch (e: CoreException) {
                 failed = again
                 _state.update { it.copy(busy = false, problem = e.problem()) }
+            } catch (_: IOException) {
+                // The picked photo could not be read or made smaller.
+                failed = again
+                _state.update { it.copy(busy = false, problem = Problem.Generic()) }
             }
         }
     }

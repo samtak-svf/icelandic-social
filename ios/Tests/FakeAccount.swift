@@ -136,7 +136,47 @@ final class FakeAccount: Account, @unchecked Sendable {
 
     func me() throws -> Me {
         try call("me")
-        return lock.withLock { Me(accountId: "a1", name: "Jón Jónsson", verified: _verified, devices: devices) }
+        return lock.withLock {
+            Me(accountId: "a1", name: "Jón Jónsson", verified: _verified, devices: devices, photo: _myPhoto)
+        }
+    }
+
+    /// The version of this account's photo, as `me` gives it; `setPhoto` and `removePhoto` change it.
+    var myPhoto: String? {
+        get { lock.withLock { _myPhoto } }
+        set { lock.withLock { _myPhoto = newValue } }
+    }
+    private var _myPhoto: String?
+    private var photoVersions = 0
+    /// The bytes of each photo `setPhoto` was given, read while the file was there.
+    var uploaded: [Data] { lock.withLock { _uploaded } }
+    private var _uploaded: [Data] = []
+    /// The core's file for each account's photo, by "account/version"; one not here has none.
+    var photoFiles: [String: String] {
+        get { lock.withLock { _photoFiles } }
+        set { lock.withLock { _photoFiles = newValue } }
+    }
+    private var _photoFiles: [String: String] = [:]
+
+    func setPhoto(path: String) throws -> String {
+        try call("setPhoto")
+        let bytes = try Data(contentsOf: URL(filePath: path))
+        return lock.withLock {
+            _uploaded.append(bytes)
+            photoVersions += 1
+            _myPhoto = "v\(photoVersions)"
+            return "v\(photoVersions)"
+        }
+    }
+
+    func removePhoto() throws {
+        try call("removePhoto")
+        lock.withLock { _myPhoto = nil }
+    }
+
+    func photo(account: String, version: String) throws -> String? {
+        try call("photo \(account) \(version)")
+        return lock.withLock { _photoFiles["\(account)/\(version)"] }
     }
 
     func inviteLink() throws -> String? {

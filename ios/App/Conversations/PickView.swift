@@ -63,7 +63,7 @@ private struct PickRow: View {
         let initialsOf = group ? title(conversation) : conversation.members.first?.name
         Button(action: onToggle) {
             HStack(spacing: 12) {
-                Avatar(name: initialsOf, kind: avatarKind(conversation))
+                Avatar(name: initialsOf, kind: avatarKind(conversation), photo: photoOf(conversation))
                 Text(verbatim: title(conversation)).font(.sans(14.5, black: true)).lineLimit(1)
                 if !group, conversation.members.first?.verified == true { VerifiedMark() }
                 Spacer()

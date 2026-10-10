@@ -3,6 +3,8 @@ package samtak.spjall.me
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -66,6 +68,14 @@ class MeScreenTest {
                 calls += "deleteAccount"
             }
 
+            override fun choosePhoto() {
+                calls += "choosePhoto"
+            }
+
+            override fun removePhoto() {
+                calls += "removePhoto"
+            }
+
             override fun retry() {
                 calls += "retry"
             }
@@ -86,6 +96,7 @@ class MeScreenTest {
         name: String = "Jón Jónsson",
         verified: Boolean = true,
         wall: List<Post> = emptyList(),
+        photo: String? = null,
     ) {
         val me =
             Me(
@@ -96,6 +107,7 @@ class MeScreenTest {
                     AccountDevice("d1", Platform.ANDROID, 1_700_000_000_000u, current = true),
                     AccountDevice("d2", Platform.IOS, 1_710_000_000_000u, current = false),
                 ),
+                photo,
             )
         compose.setContent {
             SpjallTheme {
@@ -144,6 +156,27 @@ class MeScreenTest {
         show()
         compose.onNodeWithContentDescription(text(R.string.settings_title)).performClick()
         assertEquals(listOf("settings"), calls)
+    }
+
+    @Test
+    fun withNoPhotoOneCanBeSetAndTheScreenSaysWhoSeesIt() {
+        show()
+        compose.onNodeWithText(text(R.string.photo_seen_by_all)).assertExists()
+        compose.onNodeWithText(text(R.string.photo_remove)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.photo_choose)).performClick()
+        assertEquals(listOf("choosePhoto"), calls)
+    }
+
+    @Test
+    fun aPhotoCanBeReplacedOrRemovedAndRemovingAsksFirst() {
+        show(photo = "v1")
+        compose.onNodeWithText(text(R.string.photo_change)).performClick()
+        assertEquals(listOf("choosePhoto"), calls)
+        compose.onNodeWithText(text(R.string.photo_remove)).performClick()
+        compose.onNodeWithText(text(R.string.photo_remove_confirm)).assertExists()
+        assertEquals("nothing is removed on one tap", listOf("choosePhoto"), calls)
+        compose.onAllNodesWithText(text(R.string.photo_remove)).onLast().performClick()
+        assertEquals(listOf("choosePhoto", "removePhoto"), calls)
     }
 
     @Test

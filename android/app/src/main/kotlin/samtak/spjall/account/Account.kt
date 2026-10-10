@@ -269,6 +269,24 @@ interface Account {
 
     /** The 1:1 with [account], made when there is none; `Invalid` for this account or a blocked one. */
     fun openDirect(account: String): String
+
+    /**
+     * Sets this account's photo from the image at [path], in place of any it had (decision 0039). The server
+     * re-encodes it and keeps only that. Returns the new version, which [me] then gives.
+     */
+    fun setPhoto(path: String): String
+
+    /** Removes this account's photo, for everyone. */
+    fun removePhoto()
+
+    /**
+     * The file of [account]'s photo at [version], the `photo` of its [Person] or [Me]: fetched once per version
+     * and kept by the core. Null when the server has none for it, as across a block.
+     */
+    fun photo(
+        account: String,
+        version: String,
+    ): String?
 }
 
 /** [Account] over the core's client, opened on the first call. */
@@ -449,6 +467,15 @@ class CoreAccount(
     override fun profile(account: String) = client.profile(account)
 
     override fun openDirect(account: String) = client.openDirect(account)
+
+    override fun setPhoto(path: String) = client.setPhoto(path)
+
+    override fun removePhoto() = client.removePhoto()
+
+    override fun photo(
+        account: String,
+        version: String,
+    ) = client.photo(account, version)
 
     private companion object {
         // Each account that starts a conversation with this one claims one.

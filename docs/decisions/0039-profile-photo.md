@@ -1,6 +1,6 @@
 # 0039. One profile photo per account, seen by every signed-in account, not end-to-end encrypted
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the backend (#176), the core (#177) and the apps (#184)
 - Date: 2026-10-10
 - Decided by: the maintainer, choosing it from a comparison with an established messenger
 - Builds on: [0001](0001-eu-storage-and-residency-wording.md), [0004](0004-frozen-identifiers-vs-brand.md),

@@ -37,7 +37,6 @@ import samtak.spjall.core.Post
 import samtak.spjall.me.Confirm
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
-import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.SansFamily
 import samtak.spjall.ui.Type
@@ -65,8 +64,7 @@ fun PostRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Avatar(
-            post.author.name,
-            kind = if (post.author.verified) AvatarKind.Verified else AvatarKind.Unverified,
+            post.author,
             size = AVATAR.dp,
             modifier = Modifier.clickable(role = Role.Button) { actions.author(post.author) },
         )

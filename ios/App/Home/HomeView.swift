@@ -49,6 +49,9 @@ struct HomeView: View {
     /// Kenni's offer after a sign-in, over the tabs (decision 0035).
     @State private var offering = false
 
+    /// Profile photos for every `Avatar` under this view, decoded from the core's files and kept in memory only.
+    @State private var photos: PhotoCache<UIImage>
+
     @Environment(\.scenePhase) private var scenePhase
 
     init(
@@ -67,6 +70,7 @@ struct HomeView: View {
         _list = State(initialValue: ConversationsModel(account: signIn.account, live: socket))
         _me = State(initialValue: MeModel(account: signIn.account))
         _feed = State(initialValue: PostsModel(account: signIn.account, source: .feed))
+        _photos = State(initialValue: PhotoCache(account: signIn.account, decode: avatarPhoto))
     }
 
     var body: some View {
@@ -89,6 +93,7 @@ struct HomeView: View {
         }
         .tint(BrandTokens.Colors.primary)
         .sharingPosts(account: signIn.account, live: socket)
+        .environment(\.photos, photos)
         .task {
             push.live = socket
             socket.start()

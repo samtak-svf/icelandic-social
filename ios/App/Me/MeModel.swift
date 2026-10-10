@@ -81,6 +81,31 @@ final class MeModel {
         }
     }
 
+    /// Sets the photo `make` gives, already small and square (decision 0039); its file is deleted once the
+    /// core has sent it, or failed to. Trying again makes it again from the pick.
+    func setPhoto(_ make: @escaping @Sendable () async throws -> URL) async {
+        let account = account
+        await perform(again: { await self.setPhoto(make) }) {
+            let file = try await make()
+            defer { try? FileManager.default.removeItem(at: file) }
+            self.me = try await offMain {
+                _ = try account.setPhoto(path: file.path)
+                return try account.me()
+            }
+        }
+    }
+
+    /// Removes the photo, for everyone; the screen has asked first.
+    func removePhoto() async {
+        let account = account
+        await perform(again: { await self.removePhoto() }) {
+            self.me = try await offMain {
+                try account.removePhoto()
+                return try account.me()
+            }
+        }
+    }
+
     func deleteAccount() async {
         let account = account
         await perform(again: { await self.deleteAccount() }) {

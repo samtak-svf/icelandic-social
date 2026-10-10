@@ -54,6 +54,7 @@ import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.NameWithMark
 import samtak.spjall.ui.Palette
+import samtak.spjall.ui.PhotoOf
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.SansFamily
 import samtak.spjall.ui.SectionLabel
@@ -87,7 +88,9 @@ fun MeScreen(
                     state.problem?.let { ProblemCard(it, actions::retry) }
                     state.me?.let { me ->
                         Row(verticalAlignment = Alignment.Top) {
-                            Box(modifier = Modifier.weight(1f)) { Who(me.name, me.verified) }
+                            Box(modifier = Modifier.weight(1f)) {
+                                Who(me.name, me.verified, me.photo?.let { PhotoOf(me.accountId, it) })
+                            }
                             IconButton(onClick = onSettings) {
                                 Icon(
                                     AppIcons.Settings,
@@ -96,6 +99,7 @@ fun MeScreen(
                                 )
                             }
                         }
+                        PhotoControls(me.photo != null, state.busy, actions)
                         if (!me.verified) VerifyLink(actions::verify)
                         Label(R.string.invite_link_title)
                         InviteCard(state.link, state.busy, actions)
@@ -135,18 +139,19 @@ private fun LazyListScope.wallPosts(
     posts(wall, actions, empty = R.string.wall_empty)
 }
 
-/** The dark circle with the initials, the name in capitals, and whether Kenni vouched for it. */
+/** The photo, or the dark circle with the initials; the name in capitals, and whether Kenni vouched for it. */
 @Composable
 private fun Who(
     name: String?,
     verified: Boolean,
+    photo: PhotoOf?,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Avatar(name, kind = AvatarKind.Me, size = AVATAR.dp)
+        Avatar(name, kind = AvatarKind.Me, size = AVATAR.dp, photo = photo)
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             name?.let {
                 NameWithMark(
@@ -160,6 +165,52 @@ private fun Who(
             }
             if (verified) SectionLabel(stringResource(R.string.verified_with_kennitala))
         }
+    }
+}
+
+/**
+ * Set, replace or remove the photo (decision 0039), and the one line that says who sees it: everyone signed in,
+ * since it is not end-to-end encrypted. Removing asks first.
+ */
+@Composable
+private fun PhotoControls(
+    hasPhoto: Boolean,
+    busy: Boolean,
+    actions: MeActions,
+) {
+    var removing by rememberSaveable { mutableStateOf(false) }
+    Column {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            TextButton(onClick = actions::choosePhoto, enabled = !busy) {
+                Text(
+                    text = stringResource(if (hasPhoto) R.string.photo_change else R.string.photo_choose),
+                    style = ACTION,
+                    color = Palette.fg,
+                )
+            }
+            if (hasPhoto) {
+                TextButton(onClick = { removing = true }, enabled = !busy) {
+                    Text(text = stringResource(R.string.photo_remove), style = ACTION, color = Palette.fg)
+                }
+            }
+        }
+        Text(
+            text = stringResource(R.string.photo_seen_by_all),
+            style = HINT,
+            color = Palette.fg,
+            modifier = Modifier.padding(horizontal = 12.dp),
+        )
+    }
+    if (removing) {
+        Confirm(
+            text = stringResource(R.string.photo_remove_confirm),
+            confirm = stringResource(R.string.photo_remove),
+            onConfirm = {
+                removing = false
+                actions.removePhoto()
+            },
+            onDismiss = { removing = false },
+        )
     }
 }
 

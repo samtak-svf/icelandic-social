@@ -61,6 +61,14 @@ class SettingsScreenTest {
                 calls += "deleteAccount"
             }
 
+            override fun choosePhoto() {
+                calls += "choosePhoto"
+            }
+
+            override fun removePhoto() {
+                calls += "removePhoto"
+            }
+
             override fun retry() {
                 calls += "retry"
             }

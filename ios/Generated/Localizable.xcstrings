@@ -1477,6 +1477,66 @@
         }
       }
     },
+    "photo_choose": {
+      "comment": "On Ég for an account with no profile photo: opens the photo picker to set one (docs/decisions/0039).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Setja inn mynd"
+          }
+        }
+      }
+    },
+    "photo_change": {
+      "comment": "On Ég for an account with a profile photo: opens the photo picker to put another in its place (docs/decisions/0039).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skipta um mynd"
+          }
+        }
+      }
+    },
+    "photo_remove": {
+      "comment": "On Ég: removes the profile photo, after a confirmation; also that confirmation's button (docs/decisions/0039).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjarlægja mynd"
+          }
+        }
+      }
+    },
+    "photo_remove_confirm": {
+      "comment": "Asks before the profile photo is removed: it goes for everyone (docs/decisions/0039).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjarlægja myndina þína? Hún hverfur hjá öllum."
+          }
+        }
+      }
+    },
+    "photo_seen_by_all": {
+      "comment": "The one line beside the photo buttons on Ég: every signed-in account sees the profile photo, which is not end-to-end encrypted (docs/decisions/0039).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allir sem eru skráðir inn sjá myndina þína."
+          }
+        }
+      }
+    },
     "feed_public_notice": {
       "comment": "One line on the feed's header: posts are public and not end-to-end encrypted (0034).",
       "extractionState": "manual",

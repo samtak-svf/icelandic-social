@@ -43,7 +43,6 @@ import samtak.spjall.core.Reply
 import samtak.spjall.me.Confirm
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
-import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.RoundButton
@@ -164,11 +163,7 @@ private fun ReplyRow(
                 .padding(start = 32.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Avatar(
-            reply.author.name,
-            kind = if (reply.author.verified) AvatarKind.Verified else AvatarKind.Unverified,
-            size = AVATAR.dp,
-        )
+        Avatar(reply.author, size = AVATAR.dp)
         Column(modifier = Modifier.weight(1f)) {
             Byline(reply.author, reply.createdAt, onAuthor = { actions.author(reply.author) })
             Text(text = reply.body, style = Type.bubble, color = Palette.fg)

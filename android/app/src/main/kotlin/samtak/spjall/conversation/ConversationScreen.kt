@@ -79,6 +79,7 @@ import samtak.spjall.ui.VerifiedMark
 import samtak.spjall.ui.avatarKind
 import samtak.spjall.ui.dayHeading
 import samtak.spjall.ui.lastLine
+import samtak.spjall.ui.photoOf
 import samtak.spjall.ui.shownName
 import samtak.spjall.ui.title
 import java.time.LocalDate
@@ -168,6 +169,7 @@ private fun TopBar(
                     name = if (one == null) title else one.name,
                     kind = it.avatarKind(),
                     size = HEADER_AVATAR.dp,
+                    photo = it.photoOf(),
                 )
                 // The title has all the room the menu leaves; the mark sits right after it.
                 Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {

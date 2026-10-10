@@ -555,6 +555,26 @@
       "surfaces": ["android", "ios"],
       "description": "On Ég and in settings for an account Kenni has not verified: opens the verify screen."
     },
+    "photo_choose": {
+      "surfaces": ["android", "ios"],
+      "description": "On Ég for an account with no profile photo: opens the photo picker to set one (docs/decisions/0039)."
+    },
+    "photo_change": {
+      "surfaces": ["android", "ios"],
+      "description": "On Ég for an account with a profile photo: opens the photo picker to put another in its place (docs/decisions/0039)."
+    },
+    "photo_remove": {
+      "surfaces": ["android", "ios"],
+      "description": "On Ég: removes the profile photo, after a confirmation; also that confirmation's button (docs/decisions/0039)."
+    },
+    "photo_remove_confirm": {
+      "surfaces": ["android", "ios"],
+      "description": "Asks before the profile photo is removed: it goes for everyone (docs/decisions/0039)."
+    },
+    "photo_seen_by_all": {
+      "surfaces": ["android", "ios"],
+      "description": "The one line beside the photo buttons on Ég: every signed-in account sees the profile photo, which is not end-to-end encrypted (docs/decisions/0039)."
+    },
     "feed_public_notice": {
       "surfaces": ["android", "ios"],
       "description": "One line on the feed's header: posts are public and not end-to-end encrypted (0034)."

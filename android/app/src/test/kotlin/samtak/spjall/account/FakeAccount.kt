@@ -26,6 +26,7 @@ import samtak.spjall.core.ReplyPage
 import samtak.spjall.core.Settings
 import samtak.spjall.core.SharedPost
 import samtak.spjall.core.SignInProvider
+import java.io.File
 
 /**
  * The core as the view models see it, in memory. [failNext] makes the next
@@ -119,7 +120,7 @@ class FakeAccount(
 
     override fun me(): Me {
         call("me")
-        return Me("a1", "Jón Jónsson", verified, devices)
+        return Me("a1", "Jón Jónsson", verified, devices, myPhoto)
     }
 
     override fun inviteLink(): String? {
@@ -489,6 +490,36 @@ class FakeAccount(
             throw CoreException.Invalid("no 1:1 with this account")
         }
         return "c-$account"
+    }
+
+    /** The version of this account's photo, as [me] gives it; [setPhoto] and [removePhoto] change it. */
+    var myPhoto: String? = null
+    private var photoVersions = 0
+
+    /** The bytes of each photo [setPhoto] was given, read while the file was there. */
+    val uploaded = mutableListOf<ByteArray>()
+
+    /** The core's file for each account's photo, by "account/version"; one not here has none. */
+    var photoFiles = mapOf<String, String>()
+
+    override fun setPhoto(path: String): String {
+        call("setPhoto")
+        uploaded += File(path).readBytes()
+        photoVersions += 1
+        return "v$photoVersions".also { myPhoto = it }
+    }
+
+    override fun removePhoto() {
+        call("removePhoto")
+        myPhoto = null
+    }
+
+    override fun photo(
+        account: String,
+        version: String,
+    ): String? {
+        call("photo $account $version")
+        return photoFiles["$account/$version"]
     }
 
     companion object {

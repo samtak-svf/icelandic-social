@@ -35,7 +35,6 @@ import samtak.spjall.brand.R
 import samtak.spjall.core.Person
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
-import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.NameWithMark
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
@@ -111,11 +110,7 @@ private fun Header(
             modifier = Modifier.padding(start = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Avatar(
-                person.name,
-                kind = if (person.verified) AvatarKind.Verified else AvatarKind.Unverified,
-                size = AVATAR.dp,
-            )
+            Avatar(person, size = AVATAR.dp)
             NameWithMark(
                 person.shownName().capitals(),
                 person.verified,

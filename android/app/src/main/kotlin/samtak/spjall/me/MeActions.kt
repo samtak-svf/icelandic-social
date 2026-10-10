@@ -1,6 +1,7 @@
 package samtak.spjall.me
 
-/** What [MeScreen] can ask for. */
+/** What [MeScreen] and [SettingsScreen] can ask for: one function per thing they offer, so it is long. */
+@Suppress("TooManyFunctions")
 interface MeActions {
     fun newLink()
 
@@ -15,6 +16,12 @@ interface MeActions {
     fun revoke(deviceId: String)
 
     fun deleteAccount()
+
+    /** Opens the photo picker; the photo it gives becomes this account's (decision 0039). */
+    fun choosePhoto()
+
+    /** Removes the photo, for everyone; the screen has asked first. */
+    fun removePhoto()
 
     fun retry()
 

@@ -40,6 +40,24 @@ class Files(
     }
 
     /**
+     * The picked photo at [uri] as a small square JPEG for a profile photo (decision 0039), in a file the caller
+     * deletes once it is sent. The copy read from the picker goes at once.
+     */
+    fun profilePhoto(uri: Uri): File {
+        val copy = picked(uri).read()
+        try {
+            val square = File.createTempFile("photo", ".jpg", outgoing)
+            if (!squarePhoto(copy.path, square, PROFILE_SIDE)) {
+                square.delete()
+                throw IOException("the picked file is not an image")
+            }
+            return square
+        } finally {
+            copy.delete()
+        }
+    }
+
+    /**
      * Opens the file at [path] in another app, read-only, as a copy under the
      * sender's [name] when there is one. With no app for its type, starting
      * it throws [android.content.ActivityNotFoundException].
@@ -71,5 +89,8 @@ class Files(
         const val SHARED = "shared"
         const val AUTHORITY = ".files"
         const val OCTET_STREAM = "application/octet-stream"
+
+        // Twice the server's 512 px, so its re-encode still has detail to scale down from.
+        const val PROFILE_SIDE = 1024
     }
 }

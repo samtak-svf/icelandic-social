@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -87,6 +88,7 @@ import samtak.spjall.signin.SignInViewModel.Session
 import samtak.spjall.signin.UpdateScreen
 import samtak.spjall.signin.VerifyScreen
 import samtak.spjall.ui.AppIcons
+import samtak.spjall.ui.LocalPhotos
 import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.Tab
 import samtak.spjall.ui.TabBar
@@ -176,7 +178,10 @@ class MainActivity : ComponentActivity() {
             Session.Checking -> Unit
             Session.SignedOut -> SignInScreen(state, onSignIn = signIn::signIn, onRetry = signIn::retry)
             // Each sign-in starts over: new view models, and the list as the first screen.
-            Session.SignedIn -> key(state.signIns) { Home(state.signIns) }
+            Session.SignedIn ->
+                key(state.signIns) {
+                    CompositionLocalProvider(LocalPhotos provides graph.photos) { Home(state.signIns) }
+                }
         }
     }
 
@@ -586,6 +591,11 @@ class MainActivity : ComponentActivity() {
             viewModel(viewModelStoreOwner = this, key = "me-$signIns") { MeViewModel(graph.account) }
         val state by me.state.collectAsStateWithLifecycle()
         val notificationsOff = notificationsOff()
+        // Made small and square off the main thread, in the view model (decision 0039).
+        val photo =
+            rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+                uri?.let { me.setPhoto { graph.files.profilePhoto(it) } }
+            }
         // A block from a conversation menu changes the list here, and the settings the row opens may change.
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { me.load() }
         LaunchedEffect(state.signedOut) {
@@ -609,6 +619,11 @@ class MainActivity : ComponentActivity() {
                 override fun revoke(deviceId: String) = me.revoke(deviceId)
 
                 override fun deleteAccount() = me.deleteAccount()
+
+                override fun choosePhoto() =
+                    photo.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+
+                override fun removePhoto() = me.removePhoto()
 
                 override fun retry() = me.retry()
 

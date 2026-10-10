@@ -136,7 +136,7 @@ private struct PersonRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Avatar(name: person.name, kind: person.verified ? .verified : .unverified)
+            Avatar(person: person)
             Text(verbatim: shownName(person))
                 .font(.sans(14.5, black: true))
                 .foregroundStyle(BrandTokens.Colors.fg)
@@ -226,7 +226,8 @@ private struct ConversationRow: View {
         HStack(spacing: 12) {
             // A group's circle carries the group's initials, a 1:1's the other person's.
             Avatar(
-                name: group ? title(conversation) : conversation.members.first?.name, kind: avatarKind(conversation))
+                name: group ? title(conversation) : conversation.members.first?.name, kind: avatarKind(conversation),
+                photo: photoOf(conversation))
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
                     Text(verbatim: title(conversation))

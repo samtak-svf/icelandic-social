@@ -84,7 +84,7 @@ private struct ReplyRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Button(action: onAuthor) {
-                Avatar(name: reply.author.name, kind: avatarKind(reply.author), size: 32)
+                Avatar(person: reply.author, size: 32)
             }
             .buttonStyle(.plain)
             .accessibilityHidden(true)

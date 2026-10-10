@@ -39,19 +39,51 @@ func avatarKind(_ person: Person) -> AvatarKind {
     person.verified ? .verified : .unverified
 }
 
-/// A circle with the initials of whom a row is about; the row's text says who, so this says nothing.
+/// A circle with the photo of whom a row is about (decision 0039), or their initials while it loads, when
+/// there is none and when it cannot be had; a verified person's photo keeps the gold as a ring. The row's
+/// text says who, so this says nothing.
 struct Avatar: View {
     let name: String?
     var kind = AvatarKind.unverified
     var size: CGFloat = 46
+    var photo: PhotoOf?
+
+    @Environment(\.photos) private var photos
+    @State private var loaded: UIImage?
 
     var body: some View {
-        Text(verbatim: initials(name))
-            .font(.sans(size * 0.33, black: true))
-            .foregroundStyle(kind.ink)
-            .frame(width: size, height: size)
-            .background(kind.fill, in: Circle())
-            .accessibilityHidden(true)
+        let image = photo.flatMap { photo in loaded ?? photos?.kept(photo) }
+        ZStack {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .clipShape(Circle())
+                    .overlay {
+                        if kind == .verified { Circle().strokeBorder(kind.fill, lineWidth: 2) }
+                    }
+            } else {
+                Text(verbatim: initials(name))
+                    .font(.sans(size * 0.33, black: true))
+                    .foregroundStyle(kind.ink)
+            }
+        }
+        .frame(width: size, height: size)
+        .background(kind.fill, in: Circle())
+        .accessibilityHidden(true)
+        .task(id: photo) {
+            loaded = nil
+            guard let photo, let photos else { return }
+            loaded = await photos.load(photo)
+        }
+    }
+}
+
+extension Avatar {
+    /// One person: their photo, or their initials in the fill their mark sets.
+    init(person: Person, size: CGFloat = 46) {
+        self.init(name: person.name, kind: avatarKind(person), size: size, photo: person.photoOf)
     }
 }
 
