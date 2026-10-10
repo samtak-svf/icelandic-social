@@ -2,8 +2,8 @@ import SpjallCore
 import SwiftUI
 
 /// The way in, on cream: the name in capitals, who invited the person (if
-/// anyone) in a card, Google as a white pill and Kenni as a text button under
-/// it (decision 0033).
+/// anyone) in a card, and Google as a white pill (decisions 0033, 0035). Kenni
+/// comes after, as the offer to verify.
 struct SignInView: View {
     let model: SignInModel
     let onSignIn: (SignInProvider) -> Void
@@ -46,16 +46,6 @@ struct SignInView: View {
                     .background(BrandTokens.Colors.surface, in: Capsule())
                     .overlay(Capsule().stroke(BrandTokens.Colors.border))
                     .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                Button {
-                    onSignIn(.kenni)
-                } label: {
-                    Text("sign_in_kenni")
-                        .font(.sans(14, black: true))
-                        .foregroundStyle(BrandTokens.Colors.primary)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }

@@ -186,12 +186,10 @@
     <string name="delete_account">Eyða aðgangi</string>
     <!-- Confirmation before deleting the account; says what the server deletes and what it cannot. -->
     <string name="delete_account_confirm">Öllu sem tengist aðganginum þínum verður eytt af þjóninum. Skilaboð sem eru þegar á tækjum annarra eyðast ekki.</string>
-    <!-- Under the sign-in buttons: what Google is asked for, and that Kenni can verify later. -->
+    <!-- Under the sign-in button: what Google is asked for, and that Kenni can verify later. -->
     <string name="sign_in_hint">Við biðjum Google aðeins um nafn og netfang. Þú getur síðar staðfest auðkenni með rafrænum skilríkjum.</string>
     <!-- Primary sign-in button: signs in with Google (docs/decisions/0033). -->
     <string name="sign_in_google">Halda áfram með Google</string>
-    <!-- Secondary sign-in button: signs in with Kenni, as accounts made before Google sign-in do. -->
-    <string name="sign_in_kenni">Skrá inn með rafrænum skilríkjum</string>
     <!-- Heading of the screen that links Kenni to the account (docs/decisions/0033). -->
     <string name="verify_title">Fáðu staðfestingarmerki</string>
     <!-- What verifying with Kenni gives the person. -->
@@ -202,6 +200,8 @@
     <string name="verify_point_kennitala">Kennitalan er aldrei sýnd öðrum. Þjónninn geymir hana ekki, aðeins óafturkræft fingrafar hennar.</string>
     <!-- Verify screen: verifying is optional. -->
     <string name="verify_point_optional">Valfrjálst. Þú getur notað Hjal áfram án þess.</string>
+    <!-- Point on the verify screen: a kennitala that already holds an older account takes this sign-in to it, with its conversations (docs/decisions/0035). -->
+    <string name="verify_point_older">Ef þú skráðir þig áður inn með rafrænum skilríkjum færðu gamla aðganginn aftur, með samtölunum hans.</string>
     <!-- Verify screen: opens Kenni to link it to the account. -->
     <string name="verify_action">Staðfesta með rafrænum skilríkjum</string>
     <!-- Verify screen: leaves without verifying. -->

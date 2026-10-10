@@ -10,7 +10,9 @@ protocol Account: Sendable {
     func completeSignIn(callback: String, inviteToken: String?) throws
     /// The authorize URL that links the provider to the signed-in account.
     func beginLink(provider: SignInProvider) throws -> String
-    func completeLink(callback: String) throws
+    /// True when Kenni joined this device to the older account holding the
+    /// kennitala (decision 0035).
+    func completeLink(callback: String) throws -> Bool
     func stockKeyPackages() throws
     /// Who sent the invite; nil when the operator did or the inviter has no name.
     func resolveInvite(token: String) throws -> Inviter?
@@ -116,7 +118,7 @@ final class CoreAccount: Account, @unchecked Sendable {
 
     func beginLink(provider: SignInProvider) throws -> String { try core().beginLink(provider: provider) }
 
-    func completeLink(callback: String) throws { try core().completeLink(callback: callback) }
+    func completeLink(callback: String) throws -> Bool { try core().completeLink(callback: callback) }
 
     func stockKeyPackages() throws { _ = try core().stockKeyPackages(target: Self.keyPackages) }
 

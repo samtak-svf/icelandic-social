@@ -140,6 +140,36 @@ final class SignInModelTests: XCTestCase {
         XCTAssertTrue(account.verified)
     }
 
+    func testASignInToAnAccountWithoutTheMarkOffersKenniOnce() async {
+        account.verified = false
+        let model = await model()
+        await model.signIn(provider: .google, browser: browser("cb:1"))
+        XCTAssertEqual(model.session, .signedIn)
+        XCTAssertTrue(model.offerVerify)
+        model.verifyOffered()
+        XCTAssertFalse(model.offerVerify)
+    }
+
+    func testASignInToAVerifiedAccountOffersNothing() async {
+        let model = await model()
+        await model.signIn(provider: .google, browser: browser("cb:1"))
+        XCTAssertEqual(model.session, .signedIn)
+        XCTAssertFalse(model.offerVerify)
+    }
+
+    func testALinkThatJoinsTheOlderAccountStartsTheSessionAgain() async {
+        let account = FakeAccount(signedIn: true)
+        account.verified = false
+        account.joins = true
+        let model = SignInModel(account: account, defaults: defaults)
+        await model.check()
+        await model.verify(browser: browser("cb:k"))
+        XCTAssertEqual(model.session, .signedIn)
+        XCTAssertEqual(model.signIns, 2, "a join starts the session again")
+        XCTAssertEqual(model.links, 0)
+        XCTAssertFalse(model.busy)
+    }
+
     func testAKennitalaOnAnotherAccountIsSaidAndEndsTheLink() async {
         let account = FakeAccount(signedIn: true)
         let model = SignInModel(account: account, defaults: defaults)

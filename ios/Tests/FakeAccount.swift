@@ -99,9 +99,13 @@ final class FakeAccount: Account, @unchecked Sendable {
         return Self.url(provider)
     }
 
-    func completeLink(callback: String) throws {
+    /// Whether the next link joins this device to the older account holding the kennitala (decision 0035).
+    var joins = false
+
+    func completeLink(callback: String) throws -> Bool {
         try call("completeLink \(callback)")
         lock.withLock { _verified = true }
+        return joins
     }
 
     func completeSignIn(callback: String, inviteToken: String?) throws {

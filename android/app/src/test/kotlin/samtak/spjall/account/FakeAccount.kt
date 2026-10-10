@@ -88,9 +88,13 @@ class FakeAccount(
         return url(provider)
     }
 
-    override fun completeLink(callback: String) {
+    /** Whether the next link joins this device to the older account holding the kennitala (decision 0035). */
+    var joins = false
+
+    override fun completeLink(callback: String): Boolean {
         call("completeLink $callback")
         verified = true
+        return joins
     }
 
     override fun stockKeyPackages() = call("stockKeyPackages")

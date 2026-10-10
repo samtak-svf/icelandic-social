@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Kenni's offer (decision 0033), opened from "Ég" and the settings: what
-/// linking gives and keeps, then Kenni in the browser, or later.
+/// Kenni's offer (decisions 0033, 0035), once after a sign-in and from "Ég"
+/// and the settings: what linking gives and keeps, then Kenni in the browser,
+/// or later.
 struct VerifyView: View {
     let model: SignInModel
     let onVerify: () -> Void
@@ -30,6 +31,7 @@ struct VerifyView: View {
                 .foregroundStyle(BrandTokens.Colors.fg)
             Point(key: "verify_point_name")
             Point(key: "verify_point_kennitala")
+            Point(key: "verify_point_older")
             Point(key: "verify_point_optional")
             Spacer()
             if let problem = model.problem {

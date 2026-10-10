@@ -41,8 +41,11 @@ interface Account {
     /** The provider's URL that links it to this account (decision 0033): Kenni verifies the name. */
     fun beginLink(provider: SignInProvider): String
 
-    /** Finishes a link with the redirect; `Refused(409, "identity_taken")` when another account holds it. */
-    fun completeLink(callback: String)
+    /**
+     * Finishes a link with the redirect; `Refused(409, "identity_taken")` when another account holds it.
+     * True when Kenni joined this device to the older account holding the kennitala (decision 0035).
+     */
+    fun completeLink(callback: String): Boolean
 
     /** Tops up this device's KeyPackages, so other accounts can add it to a conversation. */
     fun stockKeyPackages()

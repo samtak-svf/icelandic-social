@@ -184,6 +184,8 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(Unit) { graph.socket.start() }
         LaunchedEffect(list) { signIn.invites.collect { list.openInvite(it.token, it.signedUp) } }
         LaunchedEffect(list) { list.opened.collect { nav.navigate(conversation(it)) } }
+        // Kenni is offered once after a sign-in, and "Seinna" goes on to Fljótið (decision 0035).
+        LaunchedEffect(Unit) { signIn.offers.collect { nav.navigate(VERIFY) } }
         LaunchedEffect(Unit) {
             opens.receiveAsFlow().collect {
                 nav.navigate(LIST) { tab() }

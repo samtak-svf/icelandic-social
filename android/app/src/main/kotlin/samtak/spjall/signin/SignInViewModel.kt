@@ -22,11 +22,13 @@ import samtak.spjall.core.CoreException
 import samtak.spjall.core.SignInProvider
 
 /**
- * Whether this device is signed in, and the way there (decisions 0019, 0033):
- * an invite link names who invited the person, a sign-in button opens Google
- * or Kenni in a Custom Tab, and the provider's redirect comes back to
- * [complete]. Signed in, the same browser links Kenni to the account
- * ([verify]), and its redirect comes back to [complete] too.
+ * Whether this device is signed in, and the way there (decisions 0019, 0033,
+ * 0035): an invite link names who invited the person, the sign-in button opens
+ * Google in a Custom Tab, and its redirect comes back to [complete]. Signed in,
+ * the same browser links Kenni to the account ([verify]), offered once after a
+ * sign-in to an account without the mark, and its redirect comes back to
+ * [complete] too. A link that joins this device to the older account holding
+ * the kennitala starts the signed-in session again.
  *
  * The invite token, the provider and an unfinished callback live in [saved],
  * so they survive the process ending while the browser is open; the core
@@ -85,6 +87,11 @@ class SignInViewModel(
 
     /** Kenni is linked to the account: its name and mark are now the registry's. */
     val linked: Flow<Unit> = _linked.receiveAsFlow()
+
+    private val _offers = Channel<Unit>(Channel.BUFFERED)
+
+    /** A sign-in just landed on an account without the mark: offer Kenni, once (decision 0035). */
+    val offers: Flow<Unit> = _offers.receiveAsFlow()
 
     init {
         viewModelScope.launch {
@@ -186,16 +193,28 @@ class SignInViewModel(
         viewModelScope.launch {
             try {
                 if (linking) {
-                    withContext(io) { account.completeLink(callback) }
+                    val moved = withContext(io) { account.completeLink(callback) }
                     saved.remove<String>(CALLBACK)
-                    _state.update { it.copy(busy = false) }
-                    _linked.trySend(Unit)
+                    if (moved) {
+                        // Joined to the older account (decision 0035): its
+                        // conversations, from a fresh start.
+                        signedIn()
+                    } else {
+                        _state.update { it.copy(busy = false) }
+                        _linked.trySend(Unit)
+                    }
                 } else {
                     val invite = saved.get<String>(INVITE)
                     withContext(io) { account.completeSignIn(callback, invite) }
                     saved.remove<String>(INVITE)
                     saved.remove<String>(CALLBACK)
                     signedIn()
+                    // Kenni is optional; the offer comes once, with "Seinna".
+                    if (invite == null &&
+                        !runCatching { withContext(io) { account.me().verified } }.getOrDefault(true)
+                    ) {
+                        _offers.trySend(Unit)
+                    }
                     // The link that let the person in also opens its 1:1.
                     invite?.let { _invites.trySend(Link(it, signedUp = true)) }
                 }

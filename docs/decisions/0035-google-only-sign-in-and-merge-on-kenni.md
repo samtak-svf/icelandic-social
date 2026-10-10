@@ -1,6 +1,6 @@
 # 0035. Everyone signs in with Google; Kenni joins a Google sign-in to the account it verifies
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the backend (#141), the core (#142, 0.12.0) and the apps (#144)
 - Date: 2026-10-10
 - Decided by: the maintainer, reviewing the sign-in flow on a phone
 - Builds on: [0021](0021-group-info-and-external-join.md) (a device joins by external commit),

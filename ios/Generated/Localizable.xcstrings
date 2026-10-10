@@ -1046,7 +1046,7 @@
       }
     },
     "sign_in_hint": {
-      "comment": "Under the sign-in buttons: what Google is asked for, and that Kenni can verify later.",
+      "comment": "Under the sign-in button: what Google is asked for, and that Kenni can verify later.",
       "extractionState": "manual",
       "localizations": {
         "is": {
@@ -1065,18 +1065,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Halda áfram með Google"
-          }
-        }
-      }
-    },
-    "sign_in_kenni": {
-      "comment": "Secondary sign-in button: signs in with Kenni, as accounts made before Google sign-in do.",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Skrá inn með rafrænum skilríkjum"
           }
         }
       }
@@ -1137,6 +1125,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Valfrjálst. Þú getur notað Hjal áfram án þess."
+          }
+        }
+      }
+    },
+    "verify_point_older": {
+      "comment": "Point on the verify screen: a kennitala that already holds an older account takes this sign-in to it, with its conversations (docs/decisions/0035).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ef þú skráðir þig áður inn með rafrænum skilríkjum færðu gamla aðganginn aftur, með samtölunum hans."
           }
         }
       }

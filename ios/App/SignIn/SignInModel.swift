@@ -6,7 +6,10 @@ import SpjallCore
 /// 0033): an invite link names who invited the person, each sign-in button
 /// opens its provider in an ASWebAuthenticationSession, and the redirect comes
 /// back to `signIn(provider:browser:)`. Signed in, `verify(browser:)` links
-/// Kenni the same way, which puts the shield on the account.
+/// Kenni the same way, which puts the shield on the account; it is offered
+/// once after a sign-in to an account without it. A link that joins this
+/// device to the older account holding the kennitala starts the signed-in
+/// session again (decision 0035).
 ///
 /// The invite token is kept in `defaults` until the sign-in it belongs to
 /// ends: iOS may end the app while the person approves in their
@@ -35,6 +38,8 @@ final class SignInModel {
     private(set) var signIns = 0
     /// Counts finished Kenni links, so the verify screen closes and "Ég" reloads.
     private(set) var links = 0
+    /// A sign-in just landed on an account without the mark: offer Kenni once.
+    private(set) var offerVerify = false
     /// Topping up this device's KeyPackages after the last sign-in.
     @ObservationIgnored private(set) var stocking: Task<Void, Never>?
 
@@ -167,15 +172,25 @@ final class SignInModel {
         let linking = session == .signedIn
         do {
             if linking {
-                try await offMain { try account.completeLink(callback: callback) }
+                let moved = try await offMain { try account.completeLink(callback: callback) }
                 pendingCallback = nil
-                busy = false
-                links += 1
+                if moved {
+                    // Joined to the older account: its conversations, from a fresh start.
+                    didSignIn()
+                } else {
+                    busy = false
+                    links += 1
+                }
             } else {
                 try await offMain { try account.completeSignIn(callback: callback, inviteToken: token) }
                 inviteToken = nil
                 pendingCallback = nil
                 didSignIn()
+                // Kenni is optional; the offer comes once, with "Seinna".
+                if token == nil {
+                    let verified = (try? await offMain { try account.me().verified }) ?? true
+                    offerVerify = !verified
+                }
             }
         } catch {
             // Unreachable keeps the sign-in or link pending in the core, so the
@@ -187,7 +202,13 @@ final class SignInModel {
         }
     }
 
+    /// The offer to verify was shown; it is not shown again until the next sign-in.
+    func verifyOffered() {
+        offerVerify = false
+    }
+
     private func didSignIn() {
+        offerVerify = false
         invite = .none
         problem = nil
         busy = false

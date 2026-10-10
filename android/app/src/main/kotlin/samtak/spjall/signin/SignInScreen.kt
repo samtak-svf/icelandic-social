@@ -19,7 +19,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,8 +36,8 @@ import samtak.spjall.ui.Type
 import samtak.spjall.ui.capitals
 
 /**
- * The way in (decision 0033): who invited the person, if anyone, Google as the
- * main button, and Kenni under it for the accounts it made.
+ * The way in (decisions 0033, 0035): who invited the person, if anyone, and
+ * Google. Kenni comes after, as the offer to verify.
  */
 @Composable
 fun SignInScreen(
@@ -79,12 +78,6 @@ fun SignInScreen(
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
             } else {
                 GoogleButton { onSignIn(SignInProvider.GOOGLE) }
-                TextButton(
-                    onClick = { onSignIn(SignInProvider.KENNI) },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = TOUCH.dp),
-                ) {
-                    Text(stringResource(R.string.sign_in_kenni), color = Palette.fg)
-                }
             }
             Text(text = stringResource(R.string.sign_in_hint), style = MaterialTheme.typography.bodyMedium)
             Text(
@@ -115,5 +108,4 @@ private fun GoogleButton(onClick: () -> Unit) {
 /** The design's pill: as tall as a thumb, fully rounded. */
 internal const val PILL = 52
 internal const val PILL_RADIUS = 26
-private const val TOUCH = 48
 private const val G = 20

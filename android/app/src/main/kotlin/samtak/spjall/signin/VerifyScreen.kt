@@ -64,6 +64,7 @@ fun VerifyScreen(
                 Text(stringResource(R.string.verify_body), style = MaterialTheme.typography.bodyLarge)
                 Point(R.string.verify_point_name)
                 Point(R.string.verify_point_kennitala)
+                Point(R.string.verify_point_older)
                 Point(R.string.verify_point_optional)
             }
             Column(

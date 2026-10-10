@@ -409,15 +409,11 @@
     },
     "sign_in_hint": {
       "surfaces": ["android", "ios"],
-      "description": "Under the sign-in buttons: what Google is asked for, and that Kenni can verify later."
+      "description": "Under the sign-in button: what Google is asked for, and that Kenni can verify later."
     },
     "sign_in_google": {
       "surfaces": ["android", "ios"],
       "description": "Primary sign-in button: signs in with Google (docs/decisions/0033)."
-    },
-    "sign_in_kenni": {
-      "surfaces": ["android", "ios"],
-      "description": "Secondary sign-in button: signs in with Kenni, as accounts made before Google sign-in do."
     },
     "verify_title": {
       "surfaces": ["android", "ios"],
@@ -438,6 +434,10 @@
     "verify_point_optional": {
       "surfaces": ["android", "ios"],
       "description": "Verify screen: verifying is optional."
+    },
+    "verify_point_older": {
+      "surfaces": ["android", "ios"],
+      "description": "Point on the verify screen: a kennitala that already holds an older account takes this sign-in to it, with its conversations (docs/decisions/0035)."
     },
     "verify_action": {
       "surfaces": ["android", "ios"],

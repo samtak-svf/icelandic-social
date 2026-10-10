@@ -43,6 +43,8 @@ struct HomeView: View {
     @State private var feedPath: [FeedRoute] = []
     @State private var path: [Route] = []
     @State private var mePath: [MeRoute] = []
+    /// Kenni's offer after a sign-in, over the tabs (decision 0035).
+    @State private var offering = false
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -119,8 +121,22 @@ struct HomeView: View {
         .onChange(of: push.opened) { _, conversation in
             if conversation != nil { openTapped() }
         }
+        .onChange(of: signIn.offerVerify, initial: true) { _, offer in
+            guard offer else { return }
+            offering = true
+            signIn.verifyOffered()
+        }
+        .fullScreenCover(isPresented: $offering) {
+            VerifyView(
+                model: signIn,
+                onVerify: { Task { await signIn.verify(browser: browser) } },
+                onLater: { offering = false },
+                onRetry: { Task { await signIn.retry(browser: browser) } }
+            )
+        }
         .onChange(of: signIn.links) {
             // Linked: back to where the offer was opened, with the shield and the registry name.
+            offering = false
             mePath.removeAll { $0 == .verify }
             Task { await me.load() }
         }

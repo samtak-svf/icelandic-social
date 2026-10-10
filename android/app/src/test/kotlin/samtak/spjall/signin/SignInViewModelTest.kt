@@ -10,8 +10,10 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
@@ -164,6 +166,47 @@ class SignInViewModelTest {
             assertEquals(listOf("beginLink KENNI", "completeLink cb1"), account.calls.drop(2))
             assertEquals(Session.SignedIn, model.state.value.session)
             assertNull(model.state.value.problem)
+        }
+
+    @Test
+    fun aSignInToAnAccountWithoutTheMarkOffersKenniOnce() =
+        runTest(dispatcher) {
+            account.verified = false
+            val model = model()
+            model.signIn(SignInProvider.GOOGLE)
+            model.complete("cb1")
+            advanceUntilIdle()
+            model.offers.first()
+            assertNull(withTimeoutOrNull(1_000) { model.offers.first() })
+        }
+
+    @Test
+    fun aSignInToAVerifiedAccountOffersNothing() =
+        runTest(dispatcher) {
+            val model = model()
+            model.signIn(SignInProvider.GOOGLE)
+            model.complete("cb1")
+            advanceUntilIdle()
+            assertEquals(Session.SignedIn, model.state.value.session)
+            assertNull(withTimeoutOrNull(1_000) { model.offers.first() })
+        }
+
+    @Test
+    fun aLinkThatJoinsTheOlderAccountStartsTheSessionAgain() =
+        runTest(dispatcher) {
+            account.signedIn = true
+            account.verified = false
+            account.joins = true
+            val model = model()
+            val before = model.state.value.signIns
+            model.verify()
+            model.browser.first()
+            model.complete("cb1")
+            advanceUntilIdle()
+            assertEquals(Session.SignedIn, model.state.value.session)
+            assertEquals(before + 1, model.state.value.signIns)
+            assertFalse(model.state.value.busy)
+            assertNull(saved.get<String>("callback"))
         }
 
     @Test
