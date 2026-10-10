@@ -25,6 +25,8 @@ import samtak.spjall.core.Conversation
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.Event
 import samtak.spjall.core.Item
+import samtak.spjall.core.Post
+import samtak.spjall.core.SharedPost
 import samtak.spjall.socket.Live
 import java.io.IOException
 
@@ -66,6 +68,20 @@ class ConversationViewModel(
         data object Failed : Media
     }
 
+    /** A Fljótið post shared here, as its card shows it; held for the screen only (decision 0040). */
+    sealed interface Shared {
+        data object Loading : Shared
+
+        data class Found(
+            val post: Post,
+        ) : Shared
+
+        /** Deleted, its author's account deleted, or its author blocked: the card does not say which. */
+        data object Gone : Shared
+
+        data object Failed : Shared
+    }
+
     /** A file to open in another app. */
     data class Opened(
         val path: String,
@@ -84,6 +100,8 @@ class ConversationViewModel(
         val draft: String = "",
         val mode: Mode = Mode.New,
         val media: Map<ULong, Media> = emptyMap(),
+        /** Shared posts by id, fetched when their card is on screen. */
+        val posts: Map<String, Shared> = emptyMap(),
         val problem: Problem? = null,
     )
 
@@ -223,6 +241,24 @@ class ConversationViewModel(
         val seq = item.seq ?: return
         if (_state.value.media[seq].let { it is Media.Loading || it is Media.Ready }) return
         viewModelScope.launch { download(seq) }
+    }
+
+    /** Fetches the shared post [postId] for its card, once; a failed one can be asked for again. */
+    fun showPost(postId: String) {
+        if (_state.value.posts[postId].let { it != null && it != Shared.Failed }) return
+        _state.update { it.copy(posts = it.posts + (postId to Shared.Loading)) }
+        viewModelScope.launch {
+            val shared =
+                try {
+                    when (val found = withContext(io) { account.sharedPost(postId) }) {
+                        is SharedPost.Found -> Shared.Found(found.post)
+                        SharedPost.Gone -> Shared.Gone
+                    }
+                } catch (_: CoreException) {
+                    Shared.Failed
+                }
+            _state.update { it.copy(posts = it.posts + (postId to shared)) }
+        }
     }
 
     /** Fetches the file of [item] and hands it on to be opened. */

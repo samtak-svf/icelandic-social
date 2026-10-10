@@ -22,6 +22,7 @@ import samtak.spjall.core.Conversation
 import samtak.spjall.core.ConversationState
 import samtak.spjall.core.Item
 import samtak.spjall.core.ItemStatus
+import samtak.spjall.core.Mute
 import samtak.spjall.core.Person
 import samtak.spjall.socket.Connection
 import samtak.spjall.ui.Dates
@@ -87,10 +88,14 @@ class ConversationsScreenTest {
                 emptyList(),
                 0u,
                 null,
+                false,
             )
         show(
             ConversationsViewModel.State(
-                conversations = listOf(Conversation("c1", ConversationState.ACTIVE, listOf(anna), last, 3u, null)),
+                conversations =
+                    listOf(
+                        Conversation("c1", ConversationState.ACTIVE, listOf(anna), last, 3u, null, Mute.Off),
+                    ),
                 loaded = true,
                 connection = Connection.Online,
             ),
@@ -116,13 +121,47 @@ class ConversationsScreenTest {
     }
 
     @Test
+    fun aSharedPostIsListedInFixedWordsAsSaidByItsSender() {
+        val last =
+            Item(6uL, "e6", anna, true, 0uL, ItemStatus.SENT, Content.Post("p1"), false, emptyList(), 0u, null, false)
+        show(
+            ConversationsViewModel.State(
+                conversations =
+                    listOf(
+                        Conversation("c1", ConversationState.ACTIVE, listOf(anna), last, 0u, null, Mute.Off),
+                    ),
+                loaded = true,
+            ),
+        )
+        compose
+            .onNodeWithText(context.getString(R.string.last_line_own, context.getString(R.string.post_shared)))
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun theReadersOwnLastMessageStartsWithYou() {
         val now = System.currentTimeMillis().toULong()
         val last =
-            Item(6uL, "e6", anna, true, now, ItemStatus.SENT, Content.Text("Takk", null), false, emptyList(), 0u, null)
+            Item(
+                6uL,
+                "e6",
+                anna,
+                true,
+                now,
+                ItemStatus.SENT,
+                Content.Text("Takk", null),
+                false,
+                emptyList(),
+                0u,
+                null,
+                false,
+            )
         show(
             ConversationsViewModel.State(
-                conversations = listOf(Conversation("c1", ConversationState.ACTIVE, listOf(anna), last, 0u, null)),
+                conversations =
+                    listOf(
+                        Conversation("c1", ConversationState.ACTIVE, listOf(anna), last, 0u, null, Mute.Off),
+                    ),
                 loaded = true,
             ),
         )
@@ -135,11 +174,26 @@ class ConversationsScreenTest {
     fun aGroupsLastMessageStartsWithTheSendersFirstName() {
         val bjarni = Person("a3", "Bjarni Pálsson", false)
         val last =
-            Item(7uL, "e7", anna, false, 0uL, ItemStatus.SENT, Content.Text("Sæl", null), false, emptyList(), 0u, null)
+            Item(
+                7uL,
+                "e7",
+                anna,
+                false,
+                0uL,
+                ItemStatus.SENT,
+                Content.Text("Sæl", null),
+                false,
+                emptyList(),
+                0u,
+                null,
+                false,
+            )
         show(
             ConversationsViewModel.State(
                 conversations =
-                    listOf(Conversation("c1", ConversationState.ACTIVE, listOf(anna, bjarni), last, 0u, null)),
+                    listOf(
+                        Conversation("c1", ConversationState.ACTIVE, listOf(anna, bjarni), last, 0u, null, Mute.Off),
+                    ),
                 loaded = true,
             ),
         )
@@ -182,13 +236,16 @@ class ConversationsScreenTest {
         val thordis = Person("a4", "Þórdís Ýr", false)
         show(
             ConversationsViewModel.State(
-                conversations = listOf(Conversation("c9", ConversationState.ACTIVE, listOf(anna), null, 0u, null)),
+                conversations =
+                    listOf(
+                        Conversation("c9", ConversationState.ACTIVE, listOf(anna), null, 0u, null, Mute.Off),
+                    ),
                 loaded = true,
                 query = "Þór",
                 found =
                     ConversationsViewModel.Found(
                         "Þór",
-                        listOf(Conversation("c1", ConversationState.ACTIVE, listOf(thordis), null, 0u, null)),
+                        listOf(Conversation("c1", ConversationState.ACTIVE, listOf(thordis), null, 0u, null, Mute.Off)),
                         listOf(thordis, Person("a5", "Þórunn Halla", true)),
                     ),
             ),

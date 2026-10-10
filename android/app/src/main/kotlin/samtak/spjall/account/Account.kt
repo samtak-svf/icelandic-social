@@ -17,6 +17,7 @@ import samtak.spjall.core.PostReaction
 import samtak.spjall.core.Reply
 import samtak.spjall.core.ReplyPage
 import samtak.spjall.core.Settings
+import samtak.spjall.core.SharedPost
 import samtak.spjall.core.SignInProvider
 
 /**
@@ -193,6 +194,9 @@ interface Account {
     /** `Refused` 404 when the post is gone. */
     fun post(postId: String): Post
 
+    /** A shared post for its card, fetched now and kept nowhere (decision 0040); `Gone` for a 404. */
+    fun sharedPost(postId: String): SharedPost
+
     fun createPost(body: String): Post
 
     fun deletePost(postId: String)
@@ -351,6 +355,8 @@ class CoreAccount(
     ) = client.wall(account, before, limit)
 
     override fun post(postId: String) = client.post(postId)
+
+    override fun sharedPost(postId: String) = client.sharedPost(postId)
 
     override fun createPost(body: String) = client.createPost(body)
 

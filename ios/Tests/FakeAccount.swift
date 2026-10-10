@@ -359,6 +359,11 @@ final class FakeAccount: Account, @unchecked Sendable {
         return post
     }
 
+    func sharedPost(_ postId: String) throws -> SharedPost {
+        try call("sharedPost \(postId)")
+        return posts.first(where: { $0.postId == postId }).map { .found(post: $0) } ?? .gone
+    }
+
     func createPost(body: String) throws -> Post {
         try call("createPost \(body)")
         let post = lock.withLock {
@@ -430,7 +435,7 @@ func conversation(
     state: ConversationState = .active,
     unread: UInt32 = 0
 ) -> Conversation {
-    Conversation(id: id, state: state, members: members, last: nil, unread: unread, timer: nil)
+    Conversation(id: id, state: state, members: members, last: nil, unread: unread, timer: nil, mute: .off)
 }
 
 func person(_ account: String, _ name: String? = nil) -> Person {
@@ -450,7 +455,8 @@ func item(
     content: Content? = nil,
     reactions: [Reaction] = [],
     readBy: UInt32 = 0,
-    expiresAt: UInt64? = nil
+    expiresAt: UInt64? = nil,
+    forwarded: Bool = false
 ) -> Item {
     Item(
         seq: seq,
@@ -463,7 +469,8 @@ func item(
         edited: false,
         reactions: reactions,
         readBy: readBy,
-        expiresAt: expiresAt
+        expiresAt: expiresAt,
+        forwarded: forwarded
     )
 }
 

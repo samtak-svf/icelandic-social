@@ -147,6 +147,14 @@
     <string name="delete_confirm">Taka skilaboðin til baka? Þau hverfa úr tækjum allra í samtalinu.</string>
     <!-- Tombstone left where a deleted message was. -->
     <string name="message_deleted">Skilaboðin voru tekin til baka.</string>
+    <!-- Mark above a forwarded message or a re-shared post, in place of its original sender (docs/decisions/0041). -->
+    <string name="forwarded_marker">Áframsent</string>
+    <!-- A shared Fljótið post in the conversation list and in a notification: fixed, never the post's text or author (docs/decisions/0040). -->
+    <string name="post_shared">Deild færsla</string>
+    <!-- The card of a shared post the server no longer shows: deleted, its author's account deleted, or its author blocked. It does not say which (docs/decisions/0040). -->
+    <string name="post_gone">Færslan er ekki lengur til</string>
+    <!-- The card of a shared post that could not be fetched; a tap tries again. -->
+    <string name="post_load_failed">Ekki tókst að sækja færsluna. Reyndu aftur.</string>
     <!-- Add a reaction to a message. -->
     <string name="react">Bregðast við</string>
     <!-- Per-conversation setting: messages delete themselves after a set time. -->

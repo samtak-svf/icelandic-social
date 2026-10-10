@@ -7,7 +7,8 @@ import XCTest
 final class NoticesTests: XCTestCase {
     private let anna = person("a2", "Anna Sigurðardóttir")
     private let unnamed = person("a3")
-    private let labels = NoticeLabels(unnamed: "Ónefnd", alone: "Bara þú", photo: "Mynd", file: "Skrá")
+    private let labels = NoticeLabels(
+        unnamed: "Ónefnd", alone: "Bara þú", photo: "Mynd", file: "Skrá", post: "Deild færsla")
 
     private func notice(
         _ conversation: String,
@@ -62,6 +63,16 @@ final class NoticesTests: XCTestCase {
             "Anna Sigurðardóttir: Mynd\nÓnefnd: Skrá\nAnna Sigurðardóttir: útsýnið"
         )
         XCTAssertEqual(shown.last, Announcement(conversation: "alone", title: "Bara þú", body: "hæ"))
+    }
+
+    func testASharedPostIsAnnouncedInAFixedSentenceAndNeverByItsText() {
+        // The core gives no text for a share; one that did come is still not shown (decision 0040).
+        let shown = announcements(
+            [notice("c1", 1, kind: .post, text: nil), notice("c1", 2, kind: .post, text: "leyndó")],
+            labels: labels
+        )
+
+        XCTAssertEqual(shown.map(\.body), ["Deild færsla\nDeild færsla"])
     }
 
     func testNothingNewIsNoAnnouncement() {

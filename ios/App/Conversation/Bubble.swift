@@ -33,6 +33,8 @@ struct Bubble: View {
     let model: ConversationModel
     let onDelete: () -> Void
     let onReact: () -> Void
+    /// Opens a shared post's replies.
+    var onPost: (String) -> Void = { _ in }
 
     private var offer: Offer { Offer(item) }
     private var background: Color { item.own ? BrandTokens.Colors.bubbleOwnBg : BrandTokens.Colors.bubbleOtherBg }
@@ -87,7 +89,8 @@ struct Bubble: View {
 
     private var bubble: some View {
         VStack(alignment: .leading, spacing: 4) {
-            BodyText(item: item, foreground: foreground, model: model)
+            if item.forwarded { ForwardedMark(foreground: foreground) }
+            BodyText(item: item, foreground: foreground, model: model, onPost: onPost)
         }
         .fixedSize(horizontal: false, vertical: true)
         .padding(.horizontal, 14)
@@ -145,6 +148,7 @@ private struct BodyText: View {
     let item: Item
     let foreground: Color
     let model: ConversationModel
+    let onPost: (String) -> Void
 
     var body: some View {
         switch item.content {
@@ -152,7 +156,12 @@ private struct BodyText: View {
             if let quote {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: quote.sender.map(shownName) ?? "").font(.caption.weight(.semibold))
-                    Text(verbatim: quote.text ?? localized("message_deleted")).font(.caption).italic().lineLimit(2)
+                    if let postId = quote.postId {
+                        // A reply to a share quotes the post as its card: the store holds no text of it.
+                        SharedCard(postId: postId, foreground: foreground, model: model, lineLimit: 2)
+                    } else {
+                        Text(verbatim: quote.text ?? localized("message_deleted")).font(.caption).italic().lineLimit(2)
+                    }
                     Divider().overlay(foreground)
                 }
                 .foregroundStyle(foreground)
@@ -165,6 +174,8 @@ private struct BodyText: View {
             Attachment(
                 item: item, mime: mime, size: size, caption: caption, name: name, foreground: foreground,
                 model: model)
+        case .post(let postId):
+            SharedCard(postId: postId, foreground: foreground, model: model, onPost: onPost)
         case .members, .timer:
             Text(verbatim: lastLine(item)).font(TypeStyle.bubble).foregroundStyle(foreground)
         }

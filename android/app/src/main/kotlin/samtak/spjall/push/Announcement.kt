@@ -10,6 +10,8 @@ data class Labels(
     val alone: String,
     val photo: String,
     val file: String,
+    /** A shared Fljótið post: fixed, never its text or author (decision 0040). */
+    val post: String,
 )
 
 /** One conversation's notification: its title, and the messages to add to it, oldest first. */
@@ -47,10 +49,11 @@ fun announcements(
 
 private fun Person.named(labels: Labels) = name ?: labels.unnamed
 
-/** A photo or file says what it is unless it has a caption. */
+/** A photo or file says what it is unless it has a caption; a shared post only that it is one. */
 private fun Notice.words(labels: Labels) =
     when (kind) {
         NoticeKind.TEXT -> text.orEmpty()
         NoticeKind.PHOTO -> text ?: labels.photo
         NoticeKind.FILE -> text ?: labels.file
+        NoticeKind.POST -> labels.post
     }

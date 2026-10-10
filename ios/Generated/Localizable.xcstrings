@@ -829,6 +829,54 @@
         }
       }
     },
+    "forwarded_marker": {
+      "comment": "Mark above a forwarded message or a re-shared post, in place of its original sender (docs/decisions/0041).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Áframsent"
+          }
+        }
+      }
+    },
+    "post_shared": {
+      "comment": "A shared Fljótið post in the conversation list and in a notification: fixed, never the post's text or author (docs/decisions/0040).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deild færsla"
+          }
+        }
+      }
+    },
+    "post_gone": {
+      "comment": "The card of a shared post the server no longer shows: deleted, its author's account deleted, or its author blocked. It does not say which (docs/decisions/0040).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Færslan er ekki lengur til"
+          }
+        }
+      }
+    },
+    "post_load_failed": {
+      "comment": "The card of a shared post that could not be fetched; a tap tries again.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekki tókst að sækja færsluna. Reyndu aftur."
+          }
+        }
+      }
+    },
     "react": {
       "comment": "Add a reaction to a message.",
       "extractionState": "manual",

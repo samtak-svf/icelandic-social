@@ -37,6 +37,9 @@ func lastLine(_ item: Item, group: Bool = true) -> String {
         caption ?? localized(mime.hasPrefix("image/") ? "photo" : "file")
     case .deleted:
         localized("message_deleted")
+    case .post:
+        // Never the post's text or author: the list shows what the store holds (decision 0040).
+        localized("post_shared")
     case .members(let added, let removed, let devices):
         if !added.isEmpty {
             localized("member_added_card", names(added))
@@ -67,7 +70,7 @@ func duration(_ seconds: UInt32) -> String {
 func previewLine(_ item: Item, group: Bool) -> String {
     let line = lastLine(item, group: group)
     switch item.content {
-    case .text, .media:
+    case .text, .media, .post:
         if item.own { return localized("last_line_own", line) }
         return group ? localized("last_line_sender", firstName(item.sender), line) : line
     case .deleted, .members, .timer: return line

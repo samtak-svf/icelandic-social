@@ -10,6 +10,7 @@ import samtak.spjall.core.ConversationState
 import samtak.spjall.core.Event
 import samtak.spjall.core.Item
 import samtak.spjall.core.ItemStatus
+import samtak.spjall.core.Mute
 import samtak.spjall.core.Outcome
 import samtak.spjall.core.Person
 import samtak.spjall.core.Reaction
@@ -51,7 +52,7 @@ fun conversation(
     id: String,
     vararg members: Person,
     state: ConversationState = ConversationState.ACTIVE,
-) = Conversation(id, state, members.toList(), null, 0u, null)
+) = Conversation(id, state, members.toList(), null, 0u, null, Mute.Off)
 
 /** A sent text from [sender] at [ts], its envelope id taken from [seq]. */
 fun item(
@@ -65,4 +66,5 @@ fun item(
     reactions: List<Reaction> = emptyList(),
     readBy: UInt = 0u,
     expiresAt: ULong? = null,
-) = Item(seq, seq?.let { "e$it" }, sender, own, ts, status, content, false, reactions, readBy, expiresAt)
+    forwarded: Boolean = false,
+) = Item(seq, seq?.let { "e$it" }, sender, own, ts, status, content, false, reactions, readBy, expiresAt, forwarded)

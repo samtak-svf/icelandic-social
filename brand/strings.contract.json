@@ -320,6 +320,22 @@
       "surfaces": ["android", "ios"],
       "description": "Tombstone left where a deleted message was."
     },
+    "forwarded_marker": {
+      "surfaces": ["android", "ios"],
+      "description": "Mark above a forwarded message or a re-shared post, in place of its original sender (docs/decisions/0041)."
+    },
+    "post_shared": {
+      "surfaces": ["android", "ios"],
+      "description": "A shared Fljótið post in the conversation list and in a notification: fixed, never the post's text or author (docs/decisions/0040)."
+    },
+    "post_gone": {
+      "surfaces": ["android", "ios"],
+      "description": "The card of a shared post the server no longer shows: deleted, its author's account deleted, or its author blocked. It does not say which (docs/decisions/0040)."
+    },
+    "post_load_failed": {
+      "surfaces": ["android", "ios"],
+      "description": "The card of a shared post that could not be fetched; a tap tries again."
+    },
     "react": {
       "surfaces": ["android", "ios"],
       "description": "Add a reaction to a message."

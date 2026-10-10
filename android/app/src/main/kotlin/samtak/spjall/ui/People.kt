@@ -154,6 +154,7 @@ fun NameWithMark(
 }
 
 /** An item as one line of the list; [group] words a member card for a group rather than a 1:1. */
+@Suppress("CyclomaticComplexMethod") // One branch per kind of item, each a sentence of its own.
 @Composable
 fun lastLine(
     item: Item,
@@ -165,6 +166,8 @@ fun lastLine(
             content.caption
                 ?: stringResource(if (content.mime.startsWith("image/")) R.string.photo else R.string.file)
         Content.Deleted -> stringResource(R.string.message_deleted)
+        // Never the post's text or author: the list shows what the store holds (decision 0040).
+        is Content.Post -> stringResource(R.string.post_shared)
         is Content.Members ->
             when {
                 content.added.isNotEmpty() -> stringResource(R.string.member_added_card, names(content.added))

@@ -75,6 +75,8 @@ protocol Account: Sendable {
     func wall(account: String, before: String?, limit: UInt32) throws -> PostPage
     /// One post; `Refused` with 404 when it is gone.
     func post(_ postId: String) throws -> Post
+    /// A shared post for its card, fetched now and kept nowhere (decision 0040); `gone` for a 404.
+    func sharedPost(_ postId: String) throws -> SharedPost
     /// Posts to Fljótið and this account's wall.
     func createPost(body: String) throws -> Post
     func deletePost(_ postId: String) throws
@@ -213,6 +215,8 @@ final class CoreAccount: Account, @unchecked Sendable {
     }
 
     func post(_ postId: String) throws -> Post { try core().post(postId: postId) }
+
+    func sharedPost(_ postId: String) throws -> SharedPost { try core().sharedPost(postId: postId) }
 
     func createPost(body: String) throws -> Post { try core().createPost(body: body) }
 

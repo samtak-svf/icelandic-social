@@ -12,7 +12,8 @@ import samtak.spjall.core.Person
 class PushTest {
     private val anna = Person("a2", "Anna Sigurðardóttir", true)
     private val unnamed = Person("a3", null, false)
-    private val labels = Labels(unnamed = "Ónefnd", alone = "Bara þú", photo = "Mynd", file = "Skrá")
+    private val labels =
+        Labels(unnamed = "Ónefnd", alone = "Bara þú", photo = "Mynd", file = "Skrá", post = "Deild færsla")
 
     private val account = FakeAccount(signedIn = true)
     private val notifier = ListNotifier()
@@ -60,6 +61,29 @@ class PushTest {
                 ),
             ),
             notifier.shown,
+        )
+    }
+
+    @Test
+    fun aSharedPostIsAnnouncedInAFixedSentenceAndNeverByItsText() {
+        account.notices =
+            Notices(
+                listOf(
+                    notice("c1", 1u, kind = NoticeKind.POST, text = null),
+                    // The core gives none; a text that did come is still not shown (decision 0040).
+                    notice("c1", 2u, kind = NoticeKind.POST, text = "leyndó"),
+                ),
+                cleared = emptyList(),
+            )
+
+        push.wake()
+
+        assertEquals(
+            listOf("Deild færsla", "Deild færsla"),
+            notifier.shown
+                .single()
+                .lines
+                .map { it.text },
         )
     }
 

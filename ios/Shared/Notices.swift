@@ -9,6 +9,8 @@ struct NoticeLabels: Sendable {
     /// A photo or a file with no caption.
     let photo: String
     let file: String
+    /// A shared Fljótið post: fixed, never its text or author (decision 0040).
+    let post: String
 }
 
 /// One conversation's new items, as one notification (decision 0025).
@@ -51,5 +53,6 @@ private func line(_ notice: Notice, labels: NoticeLabels) -> String {
     case .text: notice.text ?? ""
     case .photo: notice.text ?? labels.photo
     case .file: notice.text ?? labels.file
+    case .post: labels.post
     }
 }

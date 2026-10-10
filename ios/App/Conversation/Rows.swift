@@ -62,7 +62,7 @@ func rows(_ items: [Item], calendar: Calendar = .current) -> [Row] {
 func isCard(_ item: Item) -> Bool {
     switch item.content {
     case .members, .timer: true
-    case .text, .media, .deleted: false
+    case .text, .media, .deleted, .post: false
     }
 }
 

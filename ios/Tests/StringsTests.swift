@@ -29,4 +29,10 @@ final class StringsTests: XCTestCase {
         XCTAssertEqual(previewLine(deleted, group: true), lastLine(deleted))
         XCTAssertEqual(firstName(person("a4")), localized("person_unnamed"))
     }
+
+    func testASharedPostIsListedInFixedWordsAsSaidByItsSender() {
+        let share = item(1, own: true, ts: 0, content: .post(postId: "p1"))
+        XCTAssertEqual(lastLine(share), localized("post_shared"))
+        XCTAssertEqual(previewLine(share, group: false), "Þú: Deild færsla")
+    }
 }

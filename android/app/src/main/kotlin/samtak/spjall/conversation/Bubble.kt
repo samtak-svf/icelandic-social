@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -31,9 +30,9 @@ import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
+import samtak.spjall.conversation.ConversationViewModel.Shared
 import samtak.spjall.core.Content
 import samtak.spjall.core.Item
 import samtak.spjall.core.ItemStatus
@@ -79,11 +78,12 @@ internal fun Bubble(
     row: Row.Bubble,
     group: Boolean,
     media: ConversationViewModel.Media?,
+    posts: Map<String, Shared>,
     actions: ConversationActions,
     onDelete: (Item) -> Unit,
 ) {
     val item = row.item
-    val attached = item.content is Content.Media
+    val tap = item.tap(posts, actions)
     val offer = Offer(item)
     var menu by remember { mutableStateOf(false) }
     val background = if (item.own) Palette.bubbleOwnBg else Palette.bubbleOtherBg
@@ -117,16 +117,16 @@ internal fun Bubble(
                         Modifier
                             .semantics(mergeDescendants = true) { customActions = custom }
                             .combinedClickable(
-                                enabled = offer.any || attached,
+                                enabled = offer.any || tap != null,
                                 onClickLabel = null,
-                                // A photo or file opens on a tap.
-                                onClick = { if (attached) actions.open(item) },
+                                onClick = { tap?.invoke() },
                                 onLongClickLabel = stringResource(R.string.react),
                                 onLongClick = { menu = true },
                             ),
                 ) {
                     Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp)) {
-                        Body(item, media, foreground, actions)
+                        if (item.forwarded) ForwardedMark(foreground)
+                        Body(item, media, posts, foreground, actions)
                     }
                 }
                 Menu(menu, offer, actions, onDelete) { menu = false }
@@ -183,34 +183,19 @@ private fun accessibilityActions(
 private fun Body(
     item: Item,
     media: ConversationViewModel.Media?,
+    posts: Map<String, Shared>,
     foreground: Color,
     actions: ConversationActions,
 ) {
     when (val content = item.content) {
         is Content.Text -> {
-            content.replyTo?.let { quote ->
-                Column(modifier = Modifier.padding(bottom = 4.dp)) {
-                    Text(
-                        text = quote.sender?.shownName() ?: "",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = foreground,
-                    )
-                    Text(
-                        text = quote.text ?: stringResource(R.string.message_deleted),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontStyle = FontStyle.Italic,
-                        color = foreground,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    HorizontalDivider(color = foreground, modifier = Modifier.padding(top = 4.dp))
-                }
-            }
+            content.replyTo?.let { Quoted(it, posts, foreground, actions) }
             Text(text = content.text, style = Type.bubble, color = foreground)
         }
         // Drawn by Bubble as a line of its own.
         Content.Deleted -> Unit
         is Content.Media -> Attachment(item, content, media, foreground, actions)
+        is Content.Post -> SharedCard(content.postId, posts[content.postId], foreground, actions)
         is Content.Members, is Content.Timer ->
             Text(text = lastLine(item), style = Type.bubble, color = foreground)
     }

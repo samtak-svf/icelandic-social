@@ -11,6 +11,9 @@ struct HomeView: View {
     enum Route: Hashable {
         case people
         case conversation(String)
+        /// A post shared into a conversation (decision 0040), and from it an author's wall.
+        case replies(String)
+        case wall(String)
     }
 
     /// Where a post leads: its replies, an author's wall, and from there a 1:1.
@@ -175,7 +178,7 @@ struct HomeView: View {
                         onReplies: { feedPath.append(.replies($0)) },
                         onOpened: { feedPath.append(.conversation($0)) })
                 case .conversation(let id):
-                    ConversationRoute(id: id, account: signIn.account, live: socket)
+                    ConversationRoute(id: id, account: signIn.account, live: socket) { feedPath.append(.replies($0)) }
                         .task(id: id) { await push.dismiss(id) }
                 }
             }
@@ -198,8 +201,17 @@ struct HomeView: View {
                         path = [.conversation($0)]
                     }
                 case .conversation(let id):
-                    ConversationRoute(id: id, account: signIn.account, live: socket)
+                    ConversationRoute(id: id, account: signIn.account, live: socket) { path.append(.replies($0)) }
                         .task(id: id) { await push.dismiss(id) }
+                case .replies(let id):
+                    RepliesRoute(id: id, account: signIn.account) {
+                        openWall($0) { path.append(.wall($0)) }
+                    }
+                case .wall(let account):
+                    WallRoute(
+                        owner: account, account: signIn.account,
+                        onReplies: { path.append(.replies($0)) },
+                        onOpened: { path.append(.conversation($0)) })
                 }
             }
         }
@@ -232,7 +244,7 @@ struct HomeView: View {
                         onReplies: { mePath.append(.replies($0)) },
                         onOpened: { mePath.append(.conversation($0)) })
                 case .conversation(let id):
-                    ConversationRoute(id: id, account: signIn.account, live: socket)
+                    ConversationRoute(id: id, account: signIn.account, live: socket) { mePath.append(.replies($0)) }
                         .task(id: id) { await push.dismiss(id) }
                 }
             }
@@ -332,12 +344,14 @@ private struct WallRoute: View {
 /// A conversation, with a model of its own each time it opens.
 private struct ConversationRoute: View {
     @State private var model: ConversationModel
+    private let onPost: (String) -> Void
 
-    init(id: String, account: Account, live: Live) {
+    init(id: String, account: Account, live: Live, onPost: @escaping (String) -> Void) {
         _model = State(initialValue: ConversationModel(id: id, account: account, live: live))
+        self.onPost = onPost
     }
 
     var body: some View {
-        ConversationView(model: model)
+        ConversationView(model: model, onPost: onPost)
     }
 }

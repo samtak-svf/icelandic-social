@@ -474,6 +474,10 @@ class MainActivity : ComponentActivity() {
 
                 override fun open(item: Item) = model.open(item)
 
+                override fun showPost(postId: String) = model.showPost(postId)
+
+                override fun openPost(postId: String) = nav.navigate("$REPLIES/$postId")
+
                 override fun timer(seconds: UInt?) = model.timer(seconds)
 
                 override fun block() = model.block()

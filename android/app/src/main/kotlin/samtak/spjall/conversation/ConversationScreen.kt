@@ -262,7 +262,15 @@ private fun Timeline(
             when (row) {
                 is Row.Day -> DayLine(row.date)
                 is Row.Card -> CardLine(row.item, group)
-                is Row.Bubble -> Bubble(row, group, row.item.seq?.let { state.media[it] }, actions, onDelete)
+                is Row.Bubble ->
+                    Bubble(
+                        row,
+                        group,
+                        row.item.seq?.let { state.media[it] },
+                        state.posts,
+                        actions,
+                        onDelete,
+                    )
             }
         }
     }

@@ -21,6 +21,7 @@ import samtak.spjall.core.ReactionCounts
 import samtak.spjall.core.Reply
 import samtak.spjall.core.ReplyPage
 import samtak.spjall.core.Settings
+import samtak.spjall.core.SharedPost
 import samtak.spjall.core.SignInProvider
 
 /**
@@ -227,6 +228,7 @@ class FakeAccount(
                 emptyList(),
                 0u,
                 null,
+                false,
             )
         return id
     }
@@ -364,6 +366,11 @@ class FakeAccount(
     override fun post(postId: String): Post {
         call("post $postId")
         return posts.firstOrNull { it.postId == postId } ?: throw CoreException.Refused(404u, "not_found", null)
+    }
+
+    override fun sharedPost(postId: String): SharedPost {
+        call("sharedPost $postId")
+        return posts.firstOrNull { it.postId == postId }?.let { SharedPost.Found(it) } ?: SharedPost.Gone
     }
 
     override fun createPost(body: String): Post {
