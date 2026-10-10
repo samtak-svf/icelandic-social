@@ -706,6 +706,78 @@
         "build": "string",
         "core": "string"
       }
+    },
+    "onboarding_photo_title": {
+      "surfaces": ["android", "ios"],
+      "description": "Title of the first-launch photo step (docs/decisions/0043)."
+    },
+    "onboarding_photo_body": {
+      "surfaces": ["android", "ios"],
+      "description": "Body of the first-launch photo step; the photo is seen by every signed-in account and is not end-to-end encrypted (0039, 0043)."
+    },
+    "onboarding_continue": {
+      "surfaces": ["android", "ios"],
+      "description": "Moves to the next first-launch step once a photo is set (0043)."
+    },
+    "onboarding_skip": {
+      "surfaces": ["android", "ios"],
+      "description": "Skips the first-launch photo step (0043)."
+    },
+    "notifications_priming_title": {
+      "surfaces": ["android", "ios"],
+      "description": "Title of the first-launch step shown before the system notification prompt (0043)."
+    },
+    "notifications_priming_body": {
+      "surfaces": ["android", "ios"],
+      "description": "Body of the notification priming step; why notifications are asked for (0043)."
+    },
+    "notifications_enable": {
+      "surfaces": ["android", "ios"],
+      "description": "On the priming step: shows the system notification prompt (0043)."
+    },
+    "not_now": {
+      "surfaces": ["android", "ios"],
+      "description": "Skips the notification priming step without asking (0043)."
+    },
+    "find_people": {
+      "surfaces": ["android", "ios"],
+      "description": "On the empty conversation list: opens the new-conversation picker, where everyone signed in is listed (0036, 0043)."
+    },
+    "typing_in_row": {
+      "surfaces": ["android", "ios"],
+      "description": "Replaces a conversation row's preview while someone in it is typing; names no one (0022, 0043)."
+    },
+    "conversation_info": {
+      "surfaces": ["android", "ios"],
+      "description": "Screen-reader label of the conversation title, which opens its members, mute and timer (0043)."
+    },
+    "post_from_feed": {
+      "surfaces": ["android", "ios"],
+      "description": "Label above a post shared into a conversation, so it is not read as the sender's own message (0040, 0043)."
+    },
+    "feed_public_short": {
+      "surfaces": ["android", "ios"],
+      "description": "The feed header's one short line: posts are public and not end-to-end encrypted; the information button opens feed_public_notice (0034, 0043)."
+    },
+    "feed_public_more": {
+      "surfaces": ["android", "ios"],
+      "description": "Screen-reader label of the information button beside feed_public_short (0043)."
+    },
+    "feed_new_posts": {
+      "surfaces": ["android", "ios"],
+      "description": "Pill shown when a refresh brings newer posts while scrolled down; scrolls to the top (0043)."
+    },
+    "pick_search": {
+      "surfaces": ["android", "ios"],
+      "description": "Placeholder of the search field on the forward and share picker (0038, 0043)."
+    },
+    "pick_none_found": {
+      "surfaces": ["android", "ios"],
+      "description": "The forward and share picker when its search finds nothing (0043)."
+    },
+    "loading": {
+      "surfaces": ["android", "ios"],
+      "description": "Screen-reader text of the placeholder rows shown on a first load (0043)."
     }
   }
 }

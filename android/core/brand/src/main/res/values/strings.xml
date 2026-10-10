@@ -330,4 +330,40 @@
     <string name="residency_claim">Gögnin eru geymd varanlega innan ESB; unnin á netkerfi Cloudflare.</string>
     <!-- The app's and the core's version, at the foot of the settings, for a bug report. -->
     <string name="app_version">Útgáfa %1$s (%2$s), kjarni %3$s</string>
+    <!-- Title of the first-launch photo step (docs/decisions/0043). -->
+    <string name="onboarding_photo_title">Settu inn mynd</string>
+    <!-- Body of the first-launch photo step; the photo is seen by every signed-in account and is not end-to-end encrypted (0039, 0043). -->
+    <string name="onboarding_photo_body">Myndin hjálpar fólki að þekkja þig. Allir sem eru skráðir inn sjá hana.</string>
+    <!-- Moves to the next first-launch step once a photo is set (0043). -->
+    <string name="onboarding_continue">Áfram</string>
+    <!-- Skips the first-launch photo step (0043). -->
+    <string name="onboarding_skip">Sleppa</string>
+    <!-- Title of the first-launch step shown before the system notification prompt (0043). -->
+    <string name="notifications_priming_title">Viltu fá tilkynningar?</string>
+    <!-- Body of the notification priming step; why notifications are asked for (0043). -->
+    <string name="notifications_priming_body">Við látum þig vita þegar þér berast ný skilaboð. Þú getur þaggað einstök samtöl hvenær sem er.</string>
+    <!-- On the priming step: shows the system notification prompt (0043). -->
+    <string name="notifications_enable">Kveikja á tilkynningum</string>
+    <!-- Skips the notification priming step without asking (0043). -->
+    <string name="not_now">Ekki núna</string>
+    <!-- On the empty conversation list: opens the new-conversation picker, where everyone signed in is listed (0036, 0043). -->
+    <string name="find_people">Finna fólk</string>
+    <!-- Replaces a conversation row's preview while someone in it is typing; names no one (0022, 0043). -->
+    <string name="typing_in_row">er að skrifa…</string>
+    <!-- Screen-reader label of the conversation title, which opens its members, mute and timer (0043). -->
+    <string name="conversation_info">Um samtalið</string>
+    <!-- Label above a post shared into a conversation, so it is not read as the sender's own message (0040, 0043). -->
+    <string name="post_from_feed">Úr Fljótinu</string>
+    <!-- The feed header's one short line: posts are public and not end-to-end encrypted; the information button opens feed_public_notice (0034, 0043). -->
+    <string name="feed_public_short">Opið öllum og ekki dulkóðað.</string>
+    <!-- Screen-reader label of the information button beside feed_public_short (0043). -->
+    <string name="feed_public_more">Nánar um Fljótið</string>
+    <!-- Pill shown when a refresh brings newer posts while scrolled down; scrolls to the top (0043). -->
+    <string name="feed_new_posts">Nýjar færslur</string>
+    <!-- Placeholder of the search field on the forward and share picker (0038, 0043). -->
+    <string name="pick_search">Leita að samtali</string>
+    <!-- The forward and share picker when its search finds nothing (0043). -->
+    <string name="pick_none_found">Ekkert samtal fannst með þessu nafni.</string>
+    <!-- Screen-reader text of the placeholder rows shown on a first load (0043). -->
+    <string name="loading">Hleður…</string>
 </resources>
