@@ -78,7 +78,10 @@ jobs:
         if: failure()
         with:
           name: android-reports
-          path: android/**/build/reports/
+          # outputs/roborazzi holds a failed screenshot's actual and compare images.
+          path: |
+            android/**/build/reports/
+            android/**/build/outputs/roborazzi/
           retention-days: 7
 
   device:

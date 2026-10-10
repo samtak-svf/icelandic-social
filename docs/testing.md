@@ -37,7 +37,27 @@ Rules for a new test:
 - Name the bug it catches, in its name or a comment.
 - One rule per test, with table rows for its cases.
 - Use the real store (workerd D1, SQLCipher), never a mock of our own code.
-- No test of layout or shape. A rule about shape becomes a guard or a lint rule.
+- No test of layout or shape. A rule about shape becomes a guard or a lint rule. The
+  one exception is the screenshot tests below, which hold how a screen looks.
+
+## Screenshot tests (Android)
+
+Roborazzi renders Compose screens on the JVM (Robolectric, native graphics) and compares
+them pixel by pixel with committed images. The tests live next to the unit tests, named
+`<Screen>ScreenshotTest.kt` (e.g. `app/src/test/kotlin/.../conversations/ConversationsScreenshotTest.kt`),
+and their images in `android/app/src/test/screenshots/<Class>.<method>.png`, one per test.
+Each test fixes Android 36, the Icelandic locale, a Pixel 5 screen and font scale 1
+(`SCREENSHOT_SDK`, `SCREENSHOT_DEVICE`); the fonts are the brand's bundled files, and a
+timestamp comes from a past year so the row stamp never moves.
+
+- **Verify**: every unit test run compares (`roborazzi.test.verify=true` in
+  `android/gradle.properties`), so `./gradlew check` and CI fail on any changed pixel. A
+  failure's actual and diff images are in `app/build/outputs/roborazzi/` (uploaded by CI).
+- **Record**: `./gradlew :app:recordRoborazziDebug`, then look at every changed image before
+  committing it. A brand switch or a new Robolectric SDK is a re-record.
+- **Every new visual state in the UI pass gets an image**: a new screen, row kind, banner or
+  empty state adds a test method in that screen's `ScreenshotTest`, with fake data built the
+  way its instrumented test builds it.
 
 ## Known sources of noise, and what to do
 

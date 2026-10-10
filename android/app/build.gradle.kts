@@ -5,6 +5,7 @@ plugins {
     id("spjall.android.application")
     id("spjall.compose")
     id("spjall.brand")
+    alias(libs.plugins.roborazzi)
 }
 
 // A debug build can point at a local `cf dev` instead of the deployed
@@ -96,6 +97,20 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+
+    // The screenshot tests (Roborazzi on Robolectric) render the real
+    // resources: the brand's fonts, strings and icons.
+    testOptions.unitTests.isIncludeAndroidResources = true
+    // Robolectric's Android 16 sandbox reaches into the JDK's file
+    // descriptors, which a JDK newer than 21 no longer exports by default.
+    testOptions.unitTests.all { it.jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED") }
+}
+
+// The baselines are committed next to the tests. Every unit test run, and so
+// `./gradlew check`, compares against them (roborazzi.test.verify in
+// gradle.properties); `./gradlew recordRoborazziDebug` rewrites them.
+roborazzi {
+    outputDir.set(layout.projectDirectory.dir("src/test/screenshots"))
 }
 
 dependencies {
@@ -120,6 +135,11 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.ui.test.junit4)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     androidTestImplementation(libs.androidx.test.runner)
