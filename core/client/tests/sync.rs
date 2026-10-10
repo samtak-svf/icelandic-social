@@ -1180,6 +1180,38 @@ fn conversations_are_found_by_the_start_of_a_name() {
     );
 }
 
+/// The list's search shows a person once (0038): someone whose 1:1 the
+/// conversations found is left out of the people from the directory, and
+/// someone met only in a group is not.
+#[test]
+fn the_list_search_shows_no_one_twice() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let mut c1 = Phone::new(&relay, "c", "c1");
+    let _d1 = Phone::new(&relay, "d", "d1");
+    let with_b = conversation(&mut a1, &mut b1);
+    let group = a1
+        .client
+        .create_conversation(&strings(&["c", "d"]))
+        .unwrap();
+    a1.sync();
+    c1.deliver();
+
+    let found = a1.client.search_list("name", 20).unwrap();
+    let ids: Vec<&str> = found.conversations.iter().map(|c| c.id.as_str()).collect();
+    assert_eq!(ids, vec![group.as_str(), with_b.as_str()]);
+    let people: Vec<&str> = found.people.iter().map(|p| p.account.as_str()).collect();
+    assert_eq!(people, vec!["c", "d"], "b is reached through the 1:1 above");
+
+    // A blank search is the list itself and asks the directory nothing.
+    let asked = relay.requests("a1").len();
+    let blank = a1.client.search_list("  ", 20).unwrap();
+    assert_eq!(blank.conversations.len(), 2);
+    assert!(blank.people.is_empty());
+    assert_eq!(relay.requests("a1").len(), asked);
+}
+
 #[test]
 fn an_invite_opens_a_one_to_one_with_its_maker() {
     let relay = Relay::new();

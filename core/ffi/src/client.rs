@@ -352,6 +352,23 @@ impl From<core::Directory> for PersonPage {
     }
 }
 
+/// What the conversation list's search found (0038): the conversations,
+/// then the people from the directory with no 1:1 among them.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ListSearch {
+    pub conversations: Vec<Conversation>,
+    pub people: Vec<Person>,
+}
+
+impl From<core::ListSearch> for ListSearch {
+    fn from(found: core::ListSearch) -> Self {
+        Self {
+            conversations: found.conversations.into_iter().map(Into::into).collect(),
+            people: people(found.people),
+        }
+    }
+}
+
 fn people(people: Vec<core::Person>) -> Vec<Person> {
     people.into_iter().map(Into::into).collect()
 }
@@ -1012,6 +1029,14 @@ impl CoreClient {
             .into_iter()
             .map(Into::into)
             .collect())
+    }
+
+    /// The conversation list's search (0038): the conversations matching
+    /// `query`, then up to `limit` people from the directory, leaving out
+    /// anyone whose 1:1 is already among those conversations so no one
+    /// shows twice. A blank query asks the directory nothing.
+    pub fn search_list(&self, query: String, limit: u32) -> Result<ListSearch, CoreError> {
+        Ok(self.client()?.search_list(&query, limit)?.into())
     }
 
     /// Up to `limit` items before `before` (a seq), oldest first. The

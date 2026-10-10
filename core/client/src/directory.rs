@@ -23,6 +23,15 @@ pub struct Directory {
     pub next: Option<String>,
 }
 
+/// What the conversation list's search found (0038): the conversations
+/// first, then the people from the directory who have no 1:1 among them,
+/// so no one shows twice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ListSearch {
+    pub conversations: Vec<Conversation>,
+    pub people: Vec<Person>,
+}
+
 /// A name as a search compares it (0036): lower case, with the Icelandic
 /// letters folded to the plain ones a keyboard without them types (ð d,
 /// þ th, æ ae, ö o, accents dropped). The server folds a search and its
@@ -127,6 +136,38 @@ impl<T: Transport> Client<T> {
                 })
             })
             .collect())
+    }
+}
+
+impl<T: Transport> Client<T> {
+    /// The conversation list's search: the conversations matching `search`
+    /// (from this device), then up to `size` people from the directory
+    /// (from the server), less anyone whose 1:1 is among those
+    /// conversations. A blank search keeps every conversation and asks the
+    /// directory nothing.
+    pub fn search_list(&mut self, search: &str, size: u32) -> Result<ListSearch, ClientError> {
+        let conversations = self.search_conversations(search)?;
+        if query(Some(search))?.is_none() {
+            return Ok(ListSearch {
+                conversations,
+                people: Vec::new(),
+            });
+        }
+        let shown: Vec<&str> = conversations
+            .iter()
+            .filter(|c| c.members.len() == 1)
+            .map(|c| c.members[0].account.as_str())
+            .collect();
+        let people = self
+            .directory(Some(search), None, size)?
+            .people
+            .into_iter()
+            .filter(|p| !shown.contains(&p.account.as_str()))
+            .collect();
+        Ok(ListSearch {
+            conversations,
+            people,
+        })
     }
 }
 
