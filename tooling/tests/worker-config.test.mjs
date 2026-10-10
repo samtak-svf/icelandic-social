@@ -22,6 +22,7 @@ describe("worker-config", () => {
           L: { type: "rate-limit", namespace: "1", simple: { limit: 1, period: 60 } },
           KV: { type: "kv", id: "k" },
           SVC: { type: "worker", worker: "s" },
+          IMG: { type: "images" },
         },
         exports: {
           C: { type: "durable-object", storage: "sqlite" },
@@ -44,7 +45,7 @@ describe("worker-config", () => {
     ]);
     expect(config.crons).toEqual(["0 0 * * *"]);
     expect(config.queues).toBe(false);
-    expect(configuredNames(config).sort()).toEqual(["DB", "KV", "L", "NS", "R", "SVC", "V"]);
+    expect(configuredNames(config).sort()).toEqual(["DB", "IMG", "KV", "L", "NS", "R", "SVC", "V"]);
   });
 
   it("refuses a key or a binding type it does not know, so no binding goes unseen", () => {
@@ -69,11 +70,14 @@ describe("worker-config", () => {
     for (const name of [
       "DB",
       "MEDIA",
+      "PROFILES",
+      "IMAGES",
       "CONVERSATION",
       "INBOX",
       "PUBLIC_LIMIT",
       "CLAIM_LIMIT",
       "POST_LIMIT",
+      "PHOTO_LIMIT",
     ]) {
       expect(names).toContain(name);
     }

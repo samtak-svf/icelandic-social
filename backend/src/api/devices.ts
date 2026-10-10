@@ -7,6 +7,7 @@ import {
   errorResponse,
   INVALID,
   OpaqueId,
+  PhotoVersion,
   RATE_LIMITED,
 } from "./common.ts";
 
@@ -268,6 +269,7 @@ const Me = z
       description: "The registry name once Kenni is linked, else the name Google gave",
     }),
     verified: z.boolean().openapi({ description: "Kenni vouched for the name (decision 0009)" }),
+    photo: PhotoVersion,
     devices: z.array(
       z.object({
         deviceId: OpaqueId,

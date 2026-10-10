@@ -3,6 +3,15 @@ import { db } from "./env/index.ts";
 // Block (decision 0024): one account blocking another. The server refuses
 // new contact from the blocked account; the blocker's core does the rest.
 
+/**
+ * SQL: neither of two accounts, each a column or a parameter, has blocked the
+ * other. A photo is withheld both ways (decision 0039).
+ */
+export const UNBLOCKED = (one: string, other: string) =>
+  `NOT EXISTS (SELECT 1 FROM blocks
+     WHERE (blocker_account_id = ${one} AND blocked_account_id = ${other})
+        OR (blocker_account_id = ${other} AND blocked_account_id = ${one}))`;
+
 /** Blocks `target` for `blocker`; false when there is no such account. */
 export async function block(env: Env, blocker: string, target: string): Promise<boolean> {
   const result = await db(env)

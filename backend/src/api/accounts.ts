@@ -1,8 +1,16 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import { AUTHED, DEVICE_TOKEN, errorResponse, INVALID, OpaqueId } from "./common.ts";
+import {
+  AUTHED,
+  DEVICE_TOKEN,
+  errorResponse,
+  INVALID,
+  OpaqueId,
+  PhotoVersion,
+  RATE_LIMITED,
+} from "./common.ts";
 
 // Other accounts' names (decisions 0022, 0034), the directory of people
-// (decision 0036) and block (decision 0024).
+// (decision 0036), block (decision 0024) and the profile photo (decision 0039).
 
 const Profile = z
   .object({
@@ -12,6 +20,7 @@ const Profile = z
         "The name shown: the registry's once Kenni verified it, else the one the sign-in gave",
     }),
     verified: z.boolean(),
+    photo: PhotoVersion,
   })
   .openapi("Profile");
 
@@ -45,7 +54,7 @@ export const getAccountRoute = createRoute({
   path: "/v1/accounts/{accountId}",
   operationId: "getAccount",
   tags: ["accounts"],
-  summary: "The name and mark of any account (decision 0034)",
+  summary: "The name, mark and photo version of any account (decisions 0034, 0039)",
   security: DEVICE_TOKEN,
   request: { params: account },
   responses: {
@@ -128,6 +137,73 @@ export const unblockRoute = createRoute({
   responses: {
     204: { description: "Not blocked, whether it was or not" },
     ...INVALID,
+    ...AUTHED,
+  },
+});
+
+/** The largest upload of a profile photo (decision 0039), before it is re-encoded. */
+export const MAX_PHOTO_UPLOAD = 10 * 1024 * 1024;
+
+const Binary = z.string().openapi({ type: "string", format: "binary" });
+
+const PhotoSet = z
+  .object({ photo: OpaqueId.openapi({ description: "The new photo's version" }) })
+  .openapi("PhotoSet");
+
+export const putPhotoRoute = createRoute({
+  method: "put",
+  path: "/v1/me/photo",
+  operationId: "setPhoto",
+  tags: ["accounts"],
+  summary: "Set or replace this account's profile photo (decision 0039)",
+  description:
+    "The body is an image (JPEG, PNG, WebP, GIF or AVIF) of at most 10 MB, with a " +
+    "Content-Length. The server re-encodes it to a 512 by 512 WebP without metadata and keeps " +
+    "only that; the photo it replaces is gone. Every signed-in account sees it, less those " +
+    "a block keeps it from. It is not end-to-end encrypted.",
+  security: DEVICE_TOKEN,
+  request: {
+    body: { required: true, content: { "application/octet-stream": { schema: Binary } } },
+  },
+  responses: {
+    200: { description: "Stored", content: { "application/json": { schema: PhotoSet } } },
+    400: errorResponse(
+      "invalid_request: no Content-Length, or a body of another length; " +
+        "invalid_image: not an image the server can decode",
+    ),
+    413: errorResponse("too_large: more than 10 MB"),
+    ...RATE_LIMITED,
+    ...AUTHED,
+  },
+});
+
+export const deletePhotoRoute = createRoute({
+  method: "delete",
+  path: "/v1/me/photo",
+  operationId: "removePhoto",
+  tags: ["accounts"],
+  summary: "Remove this account's profile photo (decision 0039)",
+  security: DEVICE_TOKEN,
+  responses: {
+    204: { description: "No photo, whether there was one or not" },
+    ...AUTHED,
+  },
+});
+
+export const getPhotoRoute = createRoute({
+  method: "get",
+  path: "/v1/accounts/{accountId}/photo",
+  operationId: "getPhoto",
+  tags: ["accounts"],
+  summary: "An account's profile photo, a 512 by 512 WebP (decision 0039)",
+  security: DEVICE_TOKEN,
+  request: { params: account },
+  responses: {
+    200: { description: "The photo", content: { "image/webp": { schema: Binary } } },
+    ...INVALID,
+    404: errorResponse(
+      "not_found: no such account, no photo, or a block between the two accounts withholds it",
+    ),
     ...AUTHED,
   },
 });

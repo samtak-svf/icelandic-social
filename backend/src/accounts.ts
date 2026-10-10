@@ -2,6 +2,7 @@ import { base64url } from "./bytes.ts";
 import { conversation, db, inbox, kennitalaKeys, type ProviderName } from "./env/index.ts";
 import type { Person } from "./identity.ts";
 import { deleteAccountMedia } from "./media.ts";
+import { deleteAccountPhoto } from "./photos.ts";
 
 // Accounts and devices in D1 (decision 0014).
 
@@ -380,11 +381,13 @@ export async function deleteOrphans(env: Env): Promise<number> {
   return results.length;
 }
 
-/** The account as its owner sees it: name, mark and active devices. */
+/** The account as its owner sees it: name, mark, photo version and active devices. */
 export async function me(env: Env, accountId: string) {
   const [account, devices] = await db(env).batch<Record<string, unknown>>([
     db(env)
-      .prepare("SELECT display_name AS name, verified FROM accounts WHERE account_id = ?")
+      .prepare(
+        "SELECT display_name AS name, verified, photo_version AS photo FROM accounts WHERE account_id = ?",
+      )
       .bind(accountId),
     db(env)
       .prepare(
@@ -393,10 +396,13 @@ export async function me(env: Env, accountId: string) {
       )
       .bind(accountId),
   ]);
-  const row = account?.results[0] as { name: string | null; verified: number } | undefined;
+  const row = account?.results[0] as
+    | { name: string | null; verified: number; photo: string | null }
+    | undefined;
   return {
     name: row?.name ?? null,
     verified: row?.verified === 1,
+    photo: row?.photo ?? null,
     devices: (devices?.results ?? []) as {
       deviceId: string;
       platform: "android" | "ios";
@@ -456,6 +462,7 @@ export async function deleteAccount(env: Env, accountId: string): Promise<void> 
   await Promise.all([...conversations].map((id) => conversation(env, id).removeAccount(accountId)));
   await box.wipe();
   await deleteAccountMedia(env, accountId);
+  await deleteAccountPhoto(env, accountId);
   // Devices, KeyPackages, invites, roster copies and blocks cascade;
   // invited_by elsewhere goes null.
   await db(env).prepare("DELETE FROM accounts WHERE account_id = ?").bind(accountId).run();

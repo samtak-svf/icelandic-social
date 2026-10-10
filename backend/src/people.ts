@@ -17,7 +17,7 @@ import { decodeDirectoryCursor, directory, profile } from "./profiles.ts";
 
 export function accountRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(getAccountRoute, async (c) => {
-    const found = await profile(c.env, c.req.valid("param").accountId);
+    const found = await profile(c.env, c.var.device.accountId, c.req.valid("param").accountId);
     return found ? c.json(found, 200) : fail(c, 404, "not_found");
   });
 

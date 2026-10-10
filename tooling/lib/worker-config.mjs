@@ -95,6 +95,7 @@ function addBinding(config, binding, b) {
       return true;
     case "kv":
     case "worker":
+    case "images":
       config.services.push({ binding });
       return true;
     default:

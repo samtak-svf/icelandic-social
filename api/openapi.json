@@ -294,7 +294,7 @@
         "properties": {
           "error": {
             "type": "string",
-            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, internal_error",
+            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, internal_error",
             "example": "unauthorized"
           },
           "requestId": {
@@ -489,6 +489,15 @@
             "type": "boolean",
             "description": "Kenni vouched for the name (decision 0009)"
           },
+          "photo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b",
+            "description": "The profile photo's version, changed by each upload; null when there is none to show (decision 0039)"
+          },
           "devices": {
             "type": "array",
             "items": {
@@ -528,6 +537,7 @@
           "accountId",
           "name",
           "verified",
+          "photo",
           "devices"
         ]
       },
@@ -969,12 +979,22 @@
           },
           "verified": {
             "type": "boolean"
+          },
+          "photo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b",
+            "description": "The profile photo's version, changed by each upload; null when there is none to show (decision 0039)"
           }
         },
         "required": [
           "accountId",
           "name",
-          "verified"
+          "verified",
+          "photo"
         ]
       },
       "PeoplePage": {
@@ -1042,6 +1062,20 @@
           "name",
           "verified",
           "blockedAt"
+        ]
+      },
+      "PhotoSet": {
+        "type": "object",
+        "properties": {
+          "photo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b",
+            "description": "The new photo's version"
+          }
+        },
+        "required": [
+          "photo"
         ]
       },
       "PostPage": {
@@ -1147,12 +1181,22 @@
           "verified": {
             "type": "boolean",
             "description": "Kenni vouches for the name (decision 0033)"
+          },
+          "photo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b",
+            "description": "The profile photo's version, changed by each upload; null when there is none to show (decision 0039)"
           }
         },
         "required": [
           "accountId",
           "name",
-          "verified"
+          "verified",
+          "photo"
         ]
       },
       "Reaction": {
@@ -3176,7 +3220,7 @@
         "tags": [
           "accounts"
         ],
-        "summary": "The name and mark of any account (decision 0034)",
+        "summary": "The name, mark and photo version of any account (decisions 0034, 0039)",
         "security": [
           {
             "deviceToken": []
@@ -3497,6 +3541,210 @@
           },
           "401": {
             "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/photo": {
+      "put": {
+        "operationId": "setPhoto",
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Set or replace this account's profile photo (decision 0039)",
+        "description": "The body is an image (JPEG, PNG, WebP, GIF or AVIF) of at most 10 MB, with a Content-Length. The server re-encodes it to a 512 by 512 WebP without metadata and keeps only that; the photo it replaces is gone. Every signed-in account sees it, less those a block keeps it from. It is not end-to-end encrypted.",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoSet"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: no Content-Length, or a body of another length; invalid_image: not an image the server can decode",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "too_large: more than 10 MB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: too many requests in the last minute; try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "removePhoto",
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Remove this account's profile photo (decision 0039)",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No photo, whether there was one or not"
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/photo": {
+      "get": {
+        "operationId": "getPhoto",
+        "tags": [
+          "accounts"
+        ],
+        "summary": "An account's profile photo, a 512 by 512 WebP (decision 0039)",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "accountId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The photo",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such account, no photo, or a block between the two accounts withholds it",
             "content": {
               "application/json": {
                 "schema": {

@@ -1,0 +1,12 @@
+diff --git a/backend/src/photos.ts b/backend/src/photos.ts
+--- a/backend/src/photos.ts
++++ b/backend/src/photos.ts
+@@ -100,7 +100,7 @@ export async function photoFor(
+   const row = await db(env)
+     .prepare(
+       `SELECT 1 FROM accounts WHERE account_id = ?2 AND photo_version IS NOT NULL
+-          AND ${UNBLOCKED("?1", "?2")}`,
++          AND (?1 IS NOT NULL OR ${UNBLOCKED("?1", "?2")})`,
+     )
+     .bind(viewer, owner)
+     .first();

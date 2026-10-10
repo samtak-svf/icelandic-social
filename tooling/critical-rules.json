@@ -492,6 +492,22 @@
           "name": "a_forwarded_share_is_shared_again_by_its_id_and_a_reply_quotes_it"
         }
       ]
+    },
+    {
+      "id": "profile-photo-stripped-and-withheld-across-block",
+      "domain": "privacy",
+      "decision": "0039",
+      "rule": "A profile photo is stored only as the server's re-encoded WebP, without the upload's metadata, and is withheld both ways across a block with the answer an account without a photo gets.",
+      "tests": [
+        {
+          "file": "backend/test/photos.test.ts",
+          "name": "re-encodes an upload to a 512 px WebP without its GPS tag, for any signed-in account"
+        },
+        {
+          "file": "backend/test/photos.test.ts",
+          "name": "is withheld both ways across a block, as if there were none, but the name is not"
+        }
+      ]
     }
   ],
   "retired": []

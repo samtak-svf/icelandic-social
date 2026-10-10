@@ -42,6 +42,7 @@ describe("GET /v1/me", () => {
       accountId: alice.accountId,
       name: "Alísa Prófsdóttir",
       verified: true,
+      photo: null,
       devices: [
         {
           deviceId: alice.deviceId,

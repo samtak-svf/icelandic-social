@@ -13,6 +13,8 @@ type Fields = {
   seq: number;
   epoch: number;
   count: number;
+  /** The bytes of a stored object, such as a re-encoded profile photo (decision 0039). */
+  size: number;
   status: number;
   durationMs: number;
   code: string;
@@ -30,6 +32,7 @@ const ALLOWED: ReadonlySet<string> = new Set<keyof Fields>([
   "seq",
   "epoch",
   "count",
+  "size",
   "status",
   "durationMs",
   "code",

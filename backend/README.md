@@ -19,6 +19,13 @@ create a missing one without it, and a jurisdiction can never be added afterward
 
    The lifecycle rule (31 days) is the backstop behind the Worker's daily media expiry (decision 0023).
 
+   The profile photos (decision 0039) have a bucket of their own, also in the EU, with **no**
+   lifecycle rule: a photo stays until its owner replaces or removes it, or deletes the account.
+
+   ```bash
+   cf r2 buckets create --name spjall-profiles --cf-r2-jurisdiction eu
+   ```
+
 2. Two API tokens, each stored in the vault (`samtak-secrets`, prefix `samtak-spjall-`):
 
    | Token                           | Scopes                                                                                                                      | Where in GitHub                                      |

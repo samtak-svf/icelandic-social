@@ -73,6 +73,12 @@ export default defineConfig(({ mode }) => ({
       // `cf d1 migrations apply <id> --dir migrations` (scripts/d1.ts).
       DB: bindings.d1({ name: "spjall-db", id: "7d38bae5-7ee1-4ff4-af95-49a1afbbdbbb" }),
       MEDIA: bindings.r2({ name: "spjall-media", jurisdiction: "eu" }),
+      // Profile photos (decision 0039): one re-encoded WebP per account, kept
+      // until replaced or deleted, so this bucket has no lifecycle rule.
+      PROFILES: bindings.r2({ name: "spjall-profiles", jurisdiction: "eu" }),
+      // Cloudflare Images re-encodes every profile photo to one size of WebP
+      // without metadata (decision 0039). It transforms and keeps nothing.
+      IMAGES: bindings.images(),
       // A DO namespace has no jurisdiction of its own: each object id is
       // pinned with `.jurisdiction("eu")` in src/env/, the only place stubs
       // are made.
@@ -83,10 +89,12 @@ export default defineConfig(({ mode }) => ({
       // the routes a person reaches before signing in; CLAIM_LIMIT is per
       // account on key-package claims, which spend another account's
       // packages. POST_LIMIT is per account on posts and replies to Fljótið
-      // (decision 0034). A namespace is unique within the Cloudflare account.
+      // (decision 0034); PHOTO_LIMIT is per account on profile photo uploads
+      // (decision 0039). A namespace is unique within the Cloudflare account.
       PUBLIC_LIMIT: bindings.rateLimit({ namespace: "1001", simple: { limit: 30, period: 60 } }),
       CLAIM_LIMIT: bindings.rateLimit({ namespace: "1002", simple: { limit: 120, period: 60 } }),
       POST_LIMIT: bindings.rateLimit({ namespace: "1003", simple: { limit: 20, period: 60 } }),
+      PHOTO_LIMIT: bindings.rateLimit({ namespace: "1004", simple: { limit: 10, period: 60 } }),
       // Secrets, set by `node tooling/worker-secrets.mjs`, never in this file:
       //   KENNITALA_HMAC_KEY   the key of the kennitala HMAC (decisions 0014, 0019)
       //   KENNITALA_HMAC_KEY_PREVIOUS  the key before it, only while a rotation runs

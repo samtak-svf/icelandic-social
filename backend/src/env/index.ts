@@ -41,23 +41,36 @@ export function db(env: Env): D1Database {
 
 /**
  * Whether a request may go on: per address on the routes a person reaches
- * before signing in, per account on key-package claims and on posts and
- * replies (cloudflare.config.ts).
+ * before signing in, per account on key-package claims, on posts and
+ * replies, and on profile photo uploads (cloudflare.config.ts).
  */
 export async function withinLimit(
   env: Env,
-  limit: "public" | "claims" | "posts",
+  limit: "public" | "claims" | "posts" | "photos",
   key: string,
 ): Promise<boolean> {
-  const binding = { public: env.PUBLIC_LIMIT, claims: env.CLAIM_LIMIT, posts: env.POST_LIMIT }[
-    limit
-  ];
+  const binding = {
+    public: env.PUBLIC_LIMIT,
+    claims: env.CLAIM_LIMIT,
+    posts: env.POST_LIMIT,
+    photos: env.PHOTO_LIMIT,
+  }[limit];
   return (await binding.limit({ key })).success;
 }
 
 /** R2: the ciphertext of photos and files (decision 0023), in the EU bucket. */
 export function mediaBucket(env: Env): R2Bucket {
   return env.MEDIA;
+}
+
+/** R2: one re-encoded profile photo per account (decision 0039), in the EU bucket. */
+export function profilesBucket(env: Env): R2Bucket {
+  return env.PROFILES;
+}
+
+/** Cloudflare Images, which re-encodes a profile photo and keeps nothing (decision 0039). */
+export function images(env: Env): ImagesBinding {
+  return env.IMAGES;
 }
 
 /** The `Conversation` DO for one conversation id: its MLS delivery service. */

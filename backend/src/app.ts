@@ -55,6 +55,7 @@ import { linkHost } from "./link.ts";
 import { log } from "./log.ts";
 import { getMedia, MAX_CIPHERTEXT, putMedia } from "./media.ts";
 import { muteRoutes } from "./mutes.ts";
+import { photoRoutes } from "./photos.ts";
 import { activeDevices } from "./profiles.ts";
 
 /** OpenAPI 3.1 document metadata; the routes and schemas come from src/api/. */
@@ -210,7 +211,8 @@ export function createApp() {
     const { accountId, deviceId } = c.var.device;
     const account = await me(c.env, accountId);
     const devices = account.devices.map((d) => ({ ...d, current: d.deviceId === deviceId }));
-    return c.json({ accountId, name: account.name, verified: account.verified, devices }, 200);
+    const { name, verified, photo } = account;
+    return c.json({ accountId, name, verified, photo, devices }, 200);
   });
 
   // Invites (decision 0019).
@@ -444,6 +446,9 @@ export function createApp() {
 
   // Other accounts, the directory and block (decisions 0022, 0024, 0036).
   accountRoutes(app);
+
+  // The profile photo (decision 0039).
+  photoRoutes(app);
 
   // Fljótið and the walls (decision 0034).
   postRoutes(app);

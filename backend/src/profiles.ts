@@ -1,5 +1,6 @@
 import { base64url } from "./bytes.ts";
 import { db } from "./env/index.ts";
+import { UNBLOCKED } from "./blocks.ts";
 
 // Names of other accounts (decisions 0022, 0034), the directory of people
 // (decision 0036), and the copy of each conversation's roster in D1. The
@@ -69,18 +70,33 @@ export async function activeDevices(
   }));
 }
 
-export type Profile = { accountId: string; name: string | null; verified: boolean };
+export type Profile = {
+  accountId: string;
+  name: string | null;
+  verified: boolean;
+  photo: string | null;
+};
 
 /**
- * An account's name and mark. Every signed-in account may read any account's:
- * everyone is in Fljótið, where the name is shown anyway (decision 0034).
+ * An account's name, mark and photo version as `viewer` sees them. Every
+ * signed-in account may read any account's: everyone is in Fljótið, where the
+ * name is shown anyway (decision 0034). A block either way withholds the
+ * photo, not the name (decision 0039).
  */
-export async function profile(env: Env, accountId: string): Promise<Profile | null> {
+export async function profile(
+  env: Env,
+  viewer: string,
+  accountId: string,
+): Promise<Profile | null> {
   const row = await db(env)
-    .prepare("SELECT display_name AS name, verified FROM accounts WHERE account_id = ?")
-    .bind(accountId)
-    .first<{ name: string | null; verified: number }>();
-  return row ? { accountId, name: row.name, verified: row.verified === 1 } : null;
+    .prepare(
+      `SELECT display_name AS name, verified,
+              CASE WHEN ${UNBLOCKED("?1", "?2")} THEN photo_version END AS photo
+         FROM accounts WHERE account_id = ?2`,
+    )
+    .bind(viewer, accountId)
+    .first<{ name: string | null; verified: number; photo: string | null }>();
+  return row ? { accountId, name: row.name, verified: row.verified === 1, photo: row.photo } : null;
 }
 
 /** The Icelandic letters a search folds, as migrations/0010_directory.sql folds `name_key`. */
@@ -157,7 +173,8 @@ export async function directory(
   const { query, after, limit } = options;
   const { results } = await db(env)
     .prepare(
-      `SELECT a.account_id AS accountId, a.display_name AS name, a.verified, a.name_key AS key
+      `SELECT a.account_id AS accountId, a.display_name AS name, a.verified, a.name_key AS key,
+              a.photo_version AS photo
          FROM accounts a
         WHERE a.display_name IS NOT NULL
           AND a.account_id != ?1
@@ -183,11 +200,23 @@ export async function directory(
       after?.id ?? null,
       limit + 1,
     )
-    .all<{ accountId: string; name: string; verified: number; key: string }>();
+    .all<{
+      accountId: string;
+      name: string;
+      verified: number;
+      key: string;
+      photo: string | null;
+    }>();
   const page = results.slice(0, limit);
   const last = page.at(-1);
   return {
-    items: page.map((r) => ({ accountId: r.accountId, name: r.name, verified: r.verified === 1 })),
+    // Blocked accounts are left out above, so every photo here may be shown.
+    items: page.map((r) => ({
+      accountId: r.accountId,
+      name: r.name,
+      verified: r.verified === 1,
+      photo: r.photo,
+    })),
     next:
       results.length > limit && last
         ? encodeDirectoryCursor({

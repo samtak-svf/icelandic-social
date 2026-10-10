@@ -41,11 +41,13 @@ describe("the delivery contract", () => {
       "delete /v1/devices/{deviceId}/push clearPushToken",
       "delete /v1/me deleteAccount",
       "delete /v1/me/invite revokeInvite",
+      "delete /v1/me/photo removePhoto",
       "delete /v1/posts/{postId} deletePost",
       "delete /v1/posts/{postId}/reaction unreactToPost",
       "delete /v1/replies/{replyId} deleteReply",
       "get /health getHealth",
       "get /v1/accounts/{accountId} getAccount",
+      "get /v1/accounts/{accountId}/photo getPhoto",
       "get /v1/accounts/{accountId}/posts getWall",
       "get /v1/blocks listBlocks",
       "get /v1/conversations/{conversationId}/devices getConversationDevices",
@@ -75,6 +77,7 @@ describe("the delivery contract", () => {
       "put /v1/conversations/{conversationId}/media/{mediaId} putMedia",
       "put /v1/conversations/{conversationId}/mute muteConversation",
       "put /v1/devices/{deviceId}/push setPushToken",
+      "put /v1/me/photo setPhoto",
       "put /v1/posts/{postId}/reaction reactToPost",
     ]);
   });

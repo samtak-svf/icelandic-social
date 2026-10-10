@@ -2,15 +2,17 @@ import { randomToken } from "./accounts.ts";
 import { REACTIONS } from "./api/posts.ts";
 import { base64url } from "./bytes.ts";
 import { db } from "./env/index.ts";
+import { UNBLOCKED } from "./blocks.ts";
 
 // Fljótið and the walls (decision 0034): posts, replies and reactions in D1,
 // public to every signed-in account. The server filters blocks (0024): a
 // reader never sees what an account they blocked wrote, and an account
-// cannot reply or react to a post by an account that blocked it.
+// cannot reply or react to a post by an account that blocked it, nor see its
+// photo (0039).
 
 export type Reaction = (typeof REACTIONS)[number];
 
-type Author = { accountId: string; name: string | null; verified: boolean };
+type Author = { accountId: string; name: string | null; verified: boolean; photo: string | null };
 
 export type Post = {
   postId: string;
@@ -65,6 +67,7 @@ type PostRow = {
   accountId: string;
   name: string | null;
   verified: number;
+  photo: string | null;
   body: string;
   createdAt: number;
   replyCount: number;
@@ -72,10 +75,14 @@ type PostRow = {
   myReaction: Reaction | null;
 };
 
+/** The author's photo version as `?1` may see it: none across a block either way (0039). */
+const AUTHOR_PHOTO = (author: string) =>
+  `CASE WHEN ${UNBLOCKED("?1", author)} THEN a.photo_version END AS photo`;
+
 /** The columns of a post as `?1` reads it. */
 const POST_COLUMNS = `
   p.post_id AS postId, p.author_account_id AS accountId, a.display_name AS name,
-  a.verified, p.body, p.created_at AS createdAt,
+  a.verified, ${AUTHOR_PHOTO("p.author_account_id")}, p.body, p.created_at AS createdAt,
   (SELECT count(*) FROM post_replies r
     WHERE r.post_id = p.post_id AND ${NOT_BLOCKED("r.author_account_id")}) AS replyCount,
   (SELECT json_group_object(reaction, n) FROM
@@ -88,7 +95,12 @@ function toPost(row: PostRow): Post {
   const counted = JSON.parse(row.reactions) as Partial<Record<Reaction, number>>;
   return {
     postId: row.postId,
-    author: { accountId: row.accountId, name: row.name, verified: row.verified === 1 },
+    author: {
+      accountId: row.accountId,
+      name: row.name,
+      verified: row.verified === 1,
+      photo: row.photo,
+    },
     body: row.body,
     createdAt: row.createdAt,
     replyCount: row.replyCount,
@@ -239,6 +251,7 @@ type ReplyRow = {
   accountId: string;
   name: string | null;
   verified: number;
+  photo: string | null;
   body: string;
   createdAt: number;
 };
@@ -246,14 +259,20 @@ type ReplyRow = {
 const toReply = (row: ReplyRow): Reply => ({
   replyId: row.replyId,
   postId: row.postId,
-  author: { accountId: row.accountId, name: row.name, verified: row.verified === 1 },
+  author: {
+    accountId: row.accountId,
+    name: row.name,
+    verified: row.verified === 1,
+    photo: row.photo,
+  },
   body: row.body,
   createdAt: row.createdAt,
 });
 
 const REPLY_COLUMNS = `
   r.reply_id AS replyId, r.post_id AS postId, r.author_account_id AS accountId,
-  a.display_name AS name, a.verified, r.body, r.created_at AS createdAt`;
+  a.display_name AS name, a.verified, ${AUTHOR_PHOTO("r.author_account_id")}, r.body,
+  r.created_at AS createdAt`;
 
 /** A page of a post's replies, oldest first, or null when `reader` cannot see the post. */
 export async function replies(
@@ -300,9 +319,9 @@ export async function createReply(
     .prepare(
       `SELECT ${REPLY_COLUMNS}
          FROM post_replies r JOIN accounts a ON a.account_id = r.author_account_id
-        WHERE r.reply_id = ?`,
+        WHERE r.reply_id = ?2`,
     )
-    .bind(replyId)
+    .bind(author, replyId)
     .first<ReplyRow>();
   return toReply(row!);
 }

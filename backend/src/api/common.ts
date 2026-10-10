@@ -24,7 +24,7 @@ export const ApiError = z
   .object({
     error: z.string().openapi({
       description:
-        "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, internal_error",
+        "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, internal_error",
       example: "unauthorized",
     }),
     requestId: z.string().openapi({
@@ -77,6 +77,16 @@ export const ConversationId = OpaqueId.openapi({
 });
 
 export const errorResponse = error;
+
+/**
+ * An account's profile photo (decision 0039): an opaque token that changes
+ * with each upload, or null when there is none or a block withholds it. The
+ * photo itself is GET /v1/accounts/{accountId}/photo.
+ */
+export const PhotoVersion = OpaqueId.nullable().openapi({
+  description:
+    "The profile photo's version, changed by each upload; null when there is none to show (decision 0039)",
+});
 
 /** The security requirement for a route that needs a device token (decision 0014). */
 export const DEVICE_TOKEN = [{ deviceToken: [] }];

@@ -1,5 +1,13 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import { AUTHED, DEVICE_TOKEN, errorResponse, INVALID, OpaqueId, RATE_LIMITED } from "./common.ts";
+import {
+  AUTHED,
+  DEVICE_TOKEN,
+  errorResponse,
+  INVALID,
+  OpaqueId,
+  PhotoVersion,
+  RATE_LIMITED,
+} from "./common.ts";
 
 // Fljótið and the walls (decision 0034): public to every signed-in account,
 // not end-to-end encrypted. Block (0024) is applied by the server.
@@ -15,6 +23,7 @@ const Author = z
     accountId: OpaqueId,
     name: z.string().nullable(),
     verified: z.boolean().openapi({ description: "Kenni vouches for the name (decision 0033)" }),
+    photo: PhotoVersion,
   })
   .openapi("Author");
 

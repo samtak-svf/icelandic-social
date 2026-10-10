@@ -159,7 +159,7 @@ describe("jurisdiction-check, live", () => {
       `D1 ${cloudflare.d1}: backend/cloudflare.config.ts has no database id`,
     ]);
     const result = await live({ d1: null, r2: [] });
-    expect(result.problems).toHaveLength(2);
+    expect(result.problems).toHaveLength(1 + bound.length);
     expect(result.problems[1]).toMatch(/not found in jurisdiction "eu" \(status 404\)/);
   });
 
