@@ -7,6 +7,8 @@
 - Amends: [0002](0002-mls-end-to-end-encryption.md) (the fetch hint),
   [0015](0015-delivery-protocol.md) (when a push is sent),
   [0017](0017-conversations-on-the-server.md) (the push outbox)
+- Amended by: [0042](0042-mute-a-conversation.md) (muting a conversation, checked before a
+  push is owed)
 
 ## Decision
 
@@ -104,7 +106,8 @@ once, and the Android service and the iOS extension stay thin.
 Message content, a conversation id, a sender or a count in a push payload; the server
 deciding urgency by reading anything inside the ciphertext; a push for one's own messages;
 notification SDKs in the Worker; muting per conversation, replying from a notification and
-a preview-off setting in v1 (the lock-screen settings of each OS cover previews).
+a preview-off setting in v1 (the lock-screen settings of each OS cover previews). (Muting
+per conversation is allowed by 0042.)
 
 ## Known limits
 
