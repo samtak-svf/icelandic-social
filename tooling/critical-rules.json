@@ -506,6 +506,10 @@
         {
           "file": "backend/test/photos.test.ts",
           "name": "is withheld both ways across a block, as if there were none, but the name is not"
+        },
+        {
+          "file": "core/client/tests/sync.rs",
+          "name": "a_block_withholds_the_photo_both_ways_and_the_kept_one_goes"
         }
       ]
     }

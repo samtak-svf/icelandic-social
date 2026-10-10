@@ -8,13 +8,15 @@ use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 use crate::api::Profile;
 use crate::{ClientError, accounts, now};
 
-/// An account as the screens show it: the name and mark the server gave,
-/// none until the core has fetched them.
+/// An account as the screens show it: the name, mark and photo version the
+/// server gave, none until the core has fetched them. `photo` goes to
+/// `Client::photo` for the file (0039).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Person {
     pub account: String,
     pub name: Option<String>,
     pub verified: bool,
+    pub photo: Option<String>,
 }
 
 /// How long a fetched profile is shown before it is fetched again.
@@ -63,18 +65,19 @@ pub(crate) fn members(tx: &Transaction, group: &[u8]) -> rusqlite::Result<Vec<St
 }
 
 pub(crate) fn person(tx: &Transaction, account: &str) -> rusqlite::Result<Person> {
-    let profile: Option<(Option<String>, bool)> = tx
+    let profile: Option<(Option<String>, bool, Option<String>)> = tx
         .query_row(
-            "SELECT name, verified FROM profiles WHERE account = ?1",
+            "SELECT name, verified, photo FROM profiles WHERE account = ?1",
             [account],
-            |r| Ok((r.get(0)?, r.get(1)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
         )
         .optional()?;
-    let (name, verified) = profile.unwrap_or((None, false));
+    let (name, verified, photo) = profile.unwrap_or((None, false, None));
     Ok(Person {
         account: account.to_owned(),
         name,
         verified,
+        photo,
     })
 }
 
@@ -107,6 +110,20 @@ pub(crate) fn unfetched(tx: &Transaction) -> rusqlite::Result<Vec<String>> {
     rows.collect()
 }
 
+/// A new photo version for an account whose name the server already gave,
+/// or none: this account's own, after it sets or removes its photo (0039).
+pub(crate) fn store_photo(
+    tx: &Transaction,
+    account: &str,
+    photo: Option<&str>,
+) -> rusqlite::Result<()> {
+    tx.execute(
+        "UPDATE profiles SET photo = ?2 WHERE account = ?1",
+        params![account, photo],
+    )
+    .map(drop)
+}
+
 /// What the server answered; `None` for an account it would not name.
 pub(crate) fn store_profile(
     tx: &Transaction,
@@ -114,14 +131,17 @@ pub(crate) fn store_profile(
     profile: Option<&Profile>,
 ) -> rusqlite::Result<()> {
     tx.execute(
-        "INSERT INTO profiles (account, name, verified, fetched_at) VALUES (?1, ?2, ?3, ?4)
+        "INSERT INTO profiles (account, name, verified, fetched_at, photo)
+         VALUES (?1, ?2, ?3, ?4, ?5)
          ON CONFLICT (account) DO UPDATE SET
-             name = excluded.name, verified = excluded.verified, fetched_at = excluded.fetched_at",
+             name = excluded.name, verified = excluded.verified,
+             fetched_at = excluded.fetched_at, photo = excluded.photo",
         params![
             account,
             profile.and_then(|p| p.name.as_deref()),
             profile.is_some_and(|p| p.verified),
-            now()
+            now(),
+            profile.and_then(|p| p.photo.as_deref()),
         ],
     )
     .map(drop)

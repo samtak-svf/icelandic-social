@@ -6,7 +6,7 @@
 use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 
 use crate::api::{ApiError, Profile, Transport};
-use crate::members::{Person, people_of, store_profile};
+use crate::members::{Person, people_of, store_photo, store_profile};
 use crate::{Client, ClientError, Outcome, STATE, authed, enqueue, is_id, now, this_device};
 
 pub(crate) fn is_blocked(tx: &Transaction, account: &str) -> rusqlite::Result<bool> {
@@ -46,7 +46,11 @@ impl<T: Transport> Client<T> {
             return Err(ClientError::Invalid("an account cannot block itself"));
         }
         authed(&self.transport, &self.token, &self.client)?.block(account)?;
+        // The server withholds its photo from now on (0039): so does this
+        // device.
+        self.forget_photo(account);
         let ended = self.store.try_write(|tx| {
+            store_photo(tx, account, None)?;
             let new = tx.execute(
                 "INSERT INTO blocks (account, blocked_at) VALUES (?1, ?2)
                  ON CONFLICT (account) DO NOTHING",
@@ -110,9 +114,11 @@ impl<T: Transport> Client<T> {
                     "INSERT OR REPLACE INTO blocks (account, blocked_at) VALUES (?1, ?2)",
                     params![b.account_id, b.blocked_at as i64],
                 )?;
+                // A block withholds the photo both ways (0039).
                 let profile = Profile {
                     name: b.name.clone(),
                     verified: b.verified,
+                    photo: None,
                 };
                 store_profile(tx, &b.account_id, Some(&profile))?;
             }

@@ -345,6 +345,9 @@ pub struct Me {
     /// The registry name, if Kenni gave one.
     pub name: Option<String>,
     pub verified: bool,
+    /// The version of this account's photo (0039), none when it has none.
+    #[serde(default)]
+    pub photo: Option<String>,
     pub devices: Vec<AccountDevice>,
 }
 
@@ -374,11 +377,16 @@ pub struct Inviter {
     pub verified: bool,
 }
 
-/// Another account's name and mark, as `getAccount` shows it (0034).
+/// Another account's name, mark and photo version, as `getAccount` shows
+/// them (0034, 0039).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Profile {
     pub name: Option<String>,
     pub verified: bool,
+    /// The version of the account's photo (0039), none when it has none or
+    /// a block stands between the two.
+    #[serde(default)]
+    pub photo: Option<String>,
 }
 
 /// An account this account blocked, as `listBlocks` shows it.
@@ -399,6 +407,10 @@ pub struct DirectoryEntry {
     pub account_id: String,
     pub name: Option<String>,
     pub verified: bool,
+    /// The version of the account's photo (0039), none when it has none or
+    /// a block stands between the two.
+    #[serde(default)]
+    pub photo: Option<String>,
 }
 
 /// A page of the directory, verified first, then by name, and the cursor
@@ -407,6 +419,12 @@ pub struct DirectoryEntry {
 pub struct PeoplePage {
     pub people: Vec<DirectoryEntry>,
     pub next: Option<String>,
+}
+
+/// `setPhoto`'s answer: the new version (0039).
+#[derive(Deserialize)]
+struct PhotoSet {
+    photo: String,
 }
 
 #[derive(Deserialize)]
@@ -770,6 +788,29 @@ impl<T: Transport + ?Sized> Api<'_, T> {
             format!("/v1/conversations/{conversation}/media/{id}"),
             None,
         );
+        Self::checked(self.transport.download(request, to)?).map(drop)
+    }
+
+    /// `setPhoto` (0039): the image at `file`, which the server re-encodes
+    /// and keeps in place of any earlier photo. The new version.
+    pub fn set_photo(&self, file: &Path) -> Result<String, ApiError> {
+        let request = self.request(Method::Put, "/v1/me/photo".into(), None);
+        let response = Self::checked(self.transport.upload(request, file)?)?;
+        let set: PhotoSet =
+            serde_json::from_str(&response.body).map_err(|_| ApiError::Malformed("setPhoto"))?;
+        Ok(set.photo)
+    }
+
+    /// `removePhoto`: no error when there was none.
+    pub fn remove_photo(&self) -> Result<(), ApiError> {
+        self.send(Method::Delete, "/v1/me/photo".into(), None)
+            .map(drop)
+    }
+
+    /// `getPhoto`: the account's photo, a WebP, written to `to`. 404 when it
+    /// has none, or a block stands between the two.
+    pub fn get_photo(&self, account: &str, to: &Path) -> Result<(), ApiError> {
+        let request = self.request(Method::Get, format!("/v1/accounts/{account}/photo"), None);
         Self::checked(self.transport.download(request, to)?).map(drop)
     }
 

@@ -26,6 +26,15 @@ use tungstenite::{Message, WebSocket};
 const KEY: [u8; 32] = [7; 32];
 const PATIENCE: Duration = Duration::from_secs(20);
 
+/// One orange pixel, a PNG: an image the Worker's Images binding takes.
+const PIXEL: [u8; 69] = [
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+    0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0xf8, 0xdf, 0xc0, 0x00,
+    0x00, 0x04, 0x01, 0x01, 0x80, 0xc5, 0x2a, 0x18, 0x5d, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e,
+    0x44, 0xae, 0x42, 0x60, 0x82,
+];
+
 fn base() -> String {
     std::env::var("SPJALL_DEV_URL").unwrap_or_else(|_| "http://127.0.0.1:8787".into())
 }
@@ -696,6 +705,22 @@ fn devices_talk_through_the_worker() {
             .iter()
             .any(|p| p.account == g1.account && p.verified)
     );
+
+    // g sets a photo; h sees its version and fetches the WebP the Worker
+    // made of it, once (0039). Removed, it shows none.
+    let gallery = tempfile::tempdir().unwrap();
+    let picked = gallery.path().join("picked.png");
+    std::fs::write(&picked, PIXEL).unwrap();
+    let version = g1.client.set_photo(&picked).unwrap();
+    assert_eq!(g1.client.me().unwrap().photo.as_ref(), Some(&version));
+    let shown = h1.client.profile(&g1.account).unwrap().photo.unwrap();
+    assert_eq!(shown, version);
+    let file = h1.client.photo(&g1.account, &shown).unwrap().unwrap();
+    let webp = std::fs::read(&file).unwrap();
+    assert_eq!((&webp[..4], &webp[8..12]), (&b"RIFF"[..], &b"WEBP"[..]));
+    g1.client.remove_photo().unwrap();
+    assert_eq!(h1.client.profile(&g1.account).unwrap().photo, None);
+    assert!(!file.exists());
 
     // From the post's author to an encrypted 1:1, no link and nothing
     // shared before.

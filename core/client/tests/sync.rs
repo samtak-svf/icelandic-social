@@ -2593,3 +2593,146 @@ fn a_forwarded_text_names_no_sender_or_conversation_and_drops_the_quote() {
         );
     }
 }
+
+/// How many times `device` fetched `account`'s photo.
+fn photo_fetches(relay: &Relay, device: &str, account: &str) -> usize {
+    let path = format!("/v1/accounts/{account}/photo");
+    relay
+        .requests(device)
+        .iter()
+        .filter(|r| r.path == path)
+        .count()
+}
+
+#[test]
+fn a_photo_is_fetched_once_per_version_and_goes_when_removed() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let image = a1.dir.path().join("picked.jpg");
+
+    // Refused here before a request: nothing, or over 10 MB; and by the
+    // server, what is not an image.
+    std::fs::write(&image, b"").unwrap();
+    assert!(matches!(
+        a1.client.set_photo(&image),
+        Err(ClientError::Invalid(_))
+    ));
+    std::fs::File::create(&image)
+        .unwrap()
+        .set_len(spjall_client::MAX_PHOTO + 1)
+        .unwrap();
+    assert!(matches!(
+        a1.client.set_photo(&image),
+        Err(ClientError::Invalid(_))
+    ));
+    assert!(
+        !relay
+            .requests("a1")
+            .iter()
+            .any(|r| r.path == "/v1/me/photo")
+    );
+    std::fs::write(&image, b"not one").unwrap();
+    assert!(matches!(
+        a1.client.set_photo(&image),
+        Err(ClientError::Transport(ApiError::Refused {
+            status: 400,
+            ..
+        }))
+    ));
+
+    std::fs::write(&image, b"image:first").unwrap();
+    let first = a1.client.set_photo(&image).unwrap();
+    assert_eq!(
+        a1.client.me().unwrap().photo.as_deref(),
+        Some(first.as_str())
+    );
+    assert_eq!(
+        b1.client.profile("a").unwrap().photo.as_deref(),
+        Some(first.as_str())
+    );
+
+    // Fetched once, then kept for as long as the version stands.
+    let kept = b1.client.photo("a", &first).unwrap().unwrap();
+    assert_eq!(std::fs::read(&kept).unwrap(), b"webp:image:first");
+    assert_eq!(b1.client.photo("a", &first).unwrap(), Some(kept.clone()));
+    b1.reopen();
+    assert_eq!(b1.client.photo("a", &first).unwrap(), Some(kept.clone()));
+    assert_eq!(photo_fetches(&relay, "b1", "a"), 1);
+
+    // A new version is fetched in place of the old one.
+    std::fs::write(&image, b"image:second").unwrap();
+    let second = a1.client.set_photo(&image).unwrap();
+    assert_ne!(second, first);
+    assert_eq!(
+        b1.client.profile("a").unwrap().photo.as_deref(),
+        Some(second.as_str())
+    );
+    let newer = b1.client.photo("a", &second).unwrap().unwrap();
+    assert_eq!(std::fs::read(&newer).unwrap(), b"webp:image:second");
+    assert!(!kept.exists());
+    assert_eq!(photo_fetches(&relay, "b1", "a"), 2);
+
+    // Removed: the profile shows none, and the kept file goes.
+    a1.client.remove_photo().unwrap();
+    assert_eq!(a1.client.me().unwrap().photo, None);
+    assert_eq!(b1.client.profile("a").unwrap().photo, None);
+    assert!(!newer.exists());
+    assert_eq!(b1.client.photo("a", &second).unwrap(), None);
+
+    // Ids never name a path outside the media folder.
+    assert!(matches!(
+        b1.client.photo("../a", &second),
+        Err(ClientError::Invalid(_))
+    ));
+    assert!(matches!(
+        b1.client.photo("a", "../../x"),
+        Err(ClientError::Invalid(_))
+    ));
+}
+
+#[test]
+fn a_block_withholds_the_photo_both_ways_and_the_kept_one_goes() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let mut c1 = Phone::new(&relay, "c", "c1");
+    let image = a1.dir.path().join("picked.jpg");
+    std::fs::write(&image, b"image:a").unwrap();
+    let of_a = a1.client.set_photo(&image).unwrap();
+    std::fs::write(&image, b"image:b").unwrap();
+    let of_b = b1.client.set_photo(&image).unwrap();
+    a1.client.create_post("Halló").unwrap();
+
+    // Seen by every signed-in account: as a profile, in the list and on a
+    // post.
+    let kept = b1.client.photo("a", &of_a).unwrap().unwrap();
+    let listed = c1.client.directory(None, None, 20).unwrap().people;
+    assert_eq!(listed[0].photo.as_deref(), Some(of_a.as_str()));
+    assert_eq!(listed[1].photo.as_deref(), Some(of_b.as_str()));
+    let feed = c1.client.feed(None, 20).unwrap();
+    assert_eq!(feed.posts[0].author.photo.as_deref(), Some(of_a.as_str()));
+
+    // b blocks a: neither sees the other's photo, the name stays, and the
+    // photo b kept is gone.
+    b1.client.block("a").unwrap();
+    assert!(!kept.exists());
+    let a_to_b = b1.client.profile("a").unwrap();
+    assert_eq!(a_to_b.name.as_deref(), Some("Name of a"));
+    assert_eq!(a_to_b.photo, None);
+    assert_eq!(b1.client.photo("a", &of_a).unwrap(), None);
+    assert_eq!(a1.client.profile("b").unwrap().photo, None);
+    assert_eq!(a1.client.photo("b", &of_b).unwrap(), None);
+
+    // c, outside the block, still sees both.
+    assert!(c1.client.photo("a", &of_a).unwrap().is_some());
+    assert!(c1.client.photo("b", &of_b).unwrap().is_some());
+
+    // Unblocked, it shows again.
+    b1.client.unblock("a").unwrap();
+    assert_eq!(
+        b1.client.profile("a").unwrap().photo.as_deref(),
+        Some(of_a.as_str())
+    );
+    assert!(b1.client.photo("a", &of_a).unwrap().is_some());
+}

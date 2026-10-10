@@ -111,6 +111,10 @@ struct State {
     posts: Vec<Post>,
     /// Ids handed out to posts and replies.
     minted_posts: usize,
+    /// account → its photo's version and the "re-encoded" image (0039).
+    photos: BTreeMap<String, (String, Vec<u8>)>,
+    /// Photo versions handed out.
+    minted_photos: usize,
 }
 
 struct Post {
@@ -423,6 +427,15 @@ impl State {
             .contains_key(&(reader.to_owned(), author.to_owned()))
     }
 
+    /// The version of `of`'s photo as `reader` may see it: none across a
+    /// block either way (0039).
+    fn photo_for(&self, reader: &str, of: &str) -> Option<String> {
+        if reader != of && (self.hides(reader, of) || self.hides(of, reader)) {
+            return None;
+        }
+        self.photos.get(of).map(|(version, _)| version.clone())
+    }
+
     fn post_json(&self, reader: &str, post: &Post) -> Value {
         let mut reactions: BTreeMap<&str, u32> = ["heart", "thumbs_up", "laugh", "wow", "sad"]
             .map(|r| (r, 0))
@@ -437,7 +450,10 @@ impl State {
             .count();
         json!({
             "postId": post.id,
-            "author": { "accountId": post.author, "name": format!("Name of {}", post.author), "verified": false },
+            "author": {
+                "accountId": post.author, "name": format!("Name of {}", post.author), "verified": false,
+                "photo": self.photo_for(reader, &post.author),
+            },
             "body": post.body,
             "createdAt": 0,
             "replyCount": replies,
@@ -742,7 +758,10 @@ impl State {
                     .is_some_and(|i| i.contains("kenni"));
                 answer(
                     200,
-                    json!({ "accountId": account, "name": format!("Name of {account}"), "verified": verified, "devices": devices }),
+                    json!({
+                        "accountId": account, "name": format!("Name of {account}"), "verified": verified,
+                        "photo": self.photo_for(account, account), "devices": devices,
+                    }),
                 )
             }
             (Method::Delete, ["me"]) => {
@@ -758,6 +777,7 @@ impl State {
                 }
                 self.invites.retain(|_, a| a != account);
                 self.mutes.retain(|(a, _), _| a != account);
+                self.photos.remove(account);
                 for conversation in self.conversations.values_mut() {
                     if conversation.roster.remove(account) {
                         conversation.departed.insert(account.to_owned());
@@ -775,6 +795,10 @@ impl State {
                     json!({ "token": token, "link": format!("https://spjall.samtak.is/l/{token}") }),
                 )
             }
+            (Method::Delete, ["me", "photo"]) => {
+                self.photos.remove(account);
+                answer(204, Value::Null)
+            }
             (Method::Delete, ["me", "invite"]) => {
                 self.invites.retain(|_, a| a != account);
                 answer(204, Value::Null)
@@ -791,7 +815,10 @@ impl State {
                 if self.devices.values().any(|a| a == id) {
                     answer(
                         200,
-                        json!({ "accountId": id, "name": format!("Name of {id}"), "verified": true }),
+                        json!({
+                            "accountId": id, "name": format!("Name of {id}"), "verified": true,
+                            "photo": self.photo_for(account, id),
+                        }),
                     )
                 } else {
                     refuse(404, "not_found")
@@ -817,7 +844,12 @@ impl State {
                 let next = listed.next().map(|_| page.last().unwrap().to_string());
                 let people: Vec<Value> = page
                     .iter()
-                    .map(|a| json!({ "accountId": a, "name": format!("Name of {a}"), "verified": false }))
+                    .map(|a| {
+                        json!({
+                            "accountId": a, "name": format!("Name of {a}"), "verified": false,
+                            "photo": self.photo_for(account, a),
+                        })
+                    })
                     .collect();
                 answer(200, json!({ "people": people, "next": next }))
             }
@@ -1131,6 +1163,31 @@ impl State {
         answer(204, Value::Null)
     }
 
+    /// `setPhoto`: an image of at most 10 MB, "re-encoded" by a prefix.
+    fn put_photo(&mut self, account: &str, blob: &[u8]) -> Response {
+        if blob.len() > 10 * 1024 * 1024 {
+            return refuse(413, "too_large");
+        }
+        if !blob.starts_with(b"image:") {
+            return refuse(400, "invalid_image");
+        }
+        self.minted_photos += 1;
+        let version = format!("ph_{:08}", self.minted_photos);
+        let webp = [b"webp:".as_slice(), blob].concat();
+        self.photos
+            .insert(account.to_owned(), (version.clone(), webp));
+        answer(200, json!({ "photo": version }))
+    }
+
+    /// `getPhoto`: 404 when it has none, or across a block either way.
+    fn get_photo(&self, account: &str, id: &str) -> (Response, Option<Vec<u8>>) {
+        if self.photo_for(account, id).is_none() {
+            return (refuse(404, "not_found"), None);
+        }
+        let (_, webp) = &self.photos[id];
+        (answer(200, Value::Null), Some(webp.clone()))
+    }
+
     fn get_media(
         &self,
         account: &str,
@@ -1311,6 +1368,9 @@ impl Transport for Link {
         assert_eq!(request.method, Method::Put);
         let blob = std::fs::read(file).unwrap();
         self.through(request, |state, account, device, request| {
+            if request.path == "/v1/me/photo" {
+                return state.put_photo(account, &blob);
+            }
             state.put_media(account, device, &request, blob)
         })
     }
@@ -1318,7 +1378,14 @@ impl Transport for Link {
     fn download(&self, request: Request, to: &Path) -> Result<Response, Unreachable> {
         assert_eq!(request.method, Method::Get);
         self.through(request, |state, account, device, request| {
-            let (response, blob) = state.get_media(account, device, &request);
+            let photo = request
+                .path
+                .strip_prefix("/v1/accounts/")
+                .and_then(|p| p.strip_suffix("/photo"));
+            let (response, blob) = match photo {
+                Some(id) => state.get_photo(account, id),
+                None => state.get_media(account, device, &request),
+            };
             if let Some(blob) = blob {
                 std::fs::write(to, blob).unwrap();
                 return Response {

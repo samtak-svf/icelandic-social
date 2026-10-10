@@ -97,6 +97,7 @@ impl<T: Transport> Client<T> {
                 account: p.account_id,
                 name: p.name,
                 verified: p.verified,
+                photo: p.photo,
             })
             .collect();
         self.store.try_write(|tx| {
@@ -104,6 +105,7 @@ impl<T: Transport> Client<T> {
                 let profile = Profile {
                     name: person.name.clone(),
                     verified: person.verified,
+                    photo: person.photo.clone(),
                 };
                 store_profile(tx, &person.account, Some(&profile))?;
             }

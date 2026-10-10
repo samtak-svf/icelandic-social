@@ -24,6 +24,10 @@ pub struct Author {
     pub account_id: String,
     pub name: Option<String>,
     pub verified: bool,
+    /// The version of the account's photo (0039), none when it has none or
+    /// a block stands between the author and this account.
+    #[serde(default)]
+    pub photo: Option<String>,
 }
 
 /// How many of each reaction a post has.

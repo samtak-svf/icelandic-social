@@ -93,6 +93,7 @@ fn person(author: api::Author) -> Person {
         account: author.account_id,
         name: author.name,
         verified: author.verified,
+        photo: author.photo,
     }
 }
 

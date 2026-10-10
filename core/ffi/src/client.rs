@@ -251,6 +251,10 @@ pub struct Me {
     pub name: Option<String>,
     pub verified: bool,
     pub devices: Vec<AccountDevice>,
+    /// The version of this account's photo (0039), for `photo`; none when
+    /// it has none.
+    #[uniffi(default = None)]
+    pub photo: Option<String>,
 }
 
 impl From<api::Me> for Me {
@@ -259,6 +263,7 @@ impl From<api::Me> for Me {
             account_id: me.account_id,
             name: me.name,
             verified: me.verified,
+            photo: me.photo,
             devices: me
                 .devices
                 .into_iter()
@@ -323,6 +328,10 @@ pub struct Person {
     pub account: String,
     pub name: Option<String>,
     pub verified: bool,
+    /// The version of its photo (0039), for `photo`; none when it has none,
+    /// a block stands between the two, or the core has not fetched it.
+    #[uniffi(default = None)]
+    pub photo: Option<String>,
 }
 
 impl From<core::Person> for Person {
@@ -331,6 +340,7 @@ impl From<core::Person> for Person {
             account: person.account,
             name: person.name,
             verified: person.verified,
+            photo: person.photo,
         }
     }
 }
@@ -1092,6 +1102,31 @@ impl CoreClient {
     /// is no answer.
     pub fn profile(&self, account: String) -> Result<Person, CoreError> {
         Ok(self.client()?.profile(&account)?.into())
+    }
+
+    /// Sets this account's photo from the image at `path` (0039), in place
+    /// of any it had: at most 10 MB. The server re-encodes it to a 512 px
+    /// WebP without the image's metadata and keeps only that. Returns the
+    /// new version, which `photo` fetches like anyone else's.
+    pub fn set_photo(&self, path: String) -> Result<String, CoreError> {
+        Ok(self.client()?.set_photo(Path::new(&path))?)
+    }
+
+    /// Removes this account's photo.
+    pub fn remove_photo(&self) -> Result<(), CoreError> {
+        Ok(self.client()?.remove_photo()?)
+    }
+
+    /// The path of `account`'s photo at `version`, the `photo` of its
+    /// `Person`, post author or `Me`: fetched once per version and kept by
+    /// the core. None when the server has none for this account, as across
+    /// a block; draw the initials then, and while this runs.
+    pub fn photo(&self, account: String, version: String) -> Result<Option<String>, CoreError> {
+        Ok(self
+            .client()?
+            .photo(&account, &version)?
+            .as_deref()
+            .map(path_string))
     }
 
     pub fn settings(&self) -> Result<Settings, CoreError> {

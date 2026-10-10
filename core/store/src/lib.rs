@@ -447,6 +447,14 @@ const MIGRATIONS: &[(u32, &str)] = &[
              SELECT group_id, seq, account, emoji FROM reactions_0040;
          DROP TABLE reactions_0040;",
     ),
+    (
+        13,
+        // Decision 0039.
+        "-- The version of each account's photo, as the server last gave it,
+         -- NULL when it has none or a block stands between the two. The
+         -- files are in the media folder's `photos/`, by account and version.
+         ALTER TABLE profiles ADD COLUMN photo TEXT;",
+    ),
 ];
 
 pub struct Store {

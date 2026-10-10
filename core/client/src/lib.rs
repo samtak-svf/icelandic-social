@@ -27,6 +27,7 @@ mod media;
 mod members;
 mod mute;
 mod notice;
+mod photo;
 mod read;
 mod timeline;
 
@@ -42,6 +43,7 @@ pub use media::{MAX_SIZE, MediaError};
 pub use members::Person;
 pub use mute::{Mute, MuteFor};
 pub use notice::{Notice, NoticeKind, Notices};
+pub use photo::MAX_PHOTO;
 pub use read::Settings;
 use serde::Deserialize;
 use spjall_envelope::{Body, Envelope, EnvelopeError};
@@ -1086,6 +1088,12 @@ impl<T: Transport> Client<T> {
             Err(ApiError::Unreachable(_)) => None,
             Err(error) => return Err(error.into()),
         };
+        if fetched
+            .as_ref()
+            .is_some_and(|p| p.as_ref().is_none_or(|p| p.photo.is_none()))
+        {
+            self.forget_photo(account);
+        }
         self.store.try_write(|tx| {
             if let Some(profile) = &fetched {
                 members::store_profile(tx, account, profile.as_ref())?;
@@ -1216,6 +1224,7 @@ impl<T: Transport> Client<T> {
                 api.me().map(|me| Profile {
                     name: me.name,
                     verified: me.verified,
+                    photo: me.photo,
                 })
             } else {
                 api.profile(&account)
@@ -1235,6 +1244,11 @@ impl<T: Transport> Client<T> {
                 members::store_profile(tx, account, profile.as_ref())
             })
         })?;
+        for (account, profile) in &fetched {
+            if profile.as_ref().is_none_or(|p| p.photo.is_none()) {
+                self.forget_photo(account);
+            }
+        }
         self.outcome.events.push(Event::Profiles {
             accounts: fetched.into_iter().map(|(account, _)| account).collect(),
         });
