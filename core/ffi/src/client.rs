@@ -170,6 +170,9 @@ impl From<ClientError> for CoreError {
             ClientError::Media(MediaError::File(error)) => Self::File {
                 detail: error.to_string(),
             },
+            ClientError::CannotForward(reason) => Self::CannotForward {
+                reason: reason.into(),
+            },
         }
     }
 }
@@ -558,6 +561,9 @@ pub struct Item {
     pub read_by: u32,
     /// When it disappears, in milliseconds.
     pub expires_at: Option<u64>,
+    /// A copy of a message from another conversation, shown with its mark
+    /// (0041). `sender` is who forwarded it; the author is not known.
+    pub forwarded: bool,
 }
 
 impl From<core::Item> for Item {
@@ -582,6 +588,7 @@ impl From<core::Item> for Item {
                 .collect(),
             read_by: item.read_by,
             expires_at: item.expires_at,
+            forwarded: item.forwarded,
         }
     }
 }
@@ -1049,6 +1056,16 @@ impl CoreClient {
         Ok(self
             .client()?
             .send_media(&conversation, Path::new(&path), &mime, caption, name)?)
+    }
+
+    /// Copies the text or file at `seq` of `from` into `to` as a new
+    /// message from this account, marked forwarded, and queues it (0041). A
+    /// file is downloaded if needed and uploaded again under a new key.
+    /// Refused with `CannotForward` for a message under a disappearing
+    /// timer, a deleted one, or anything else that is not a message. Returns
+    /// the new envelope id.
+    pub fn forward(&self, from: String, seq: u64, to: String) -> Result<String, CoreError> {
+        Ok(self.client()?.forward(&from, seq, &to)?)
     }
 
     /// The path of the media item at `seq`, downloaded, checked and opened

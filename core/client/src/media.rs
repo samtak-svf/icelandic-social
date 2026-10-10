@@ -244,6 +244,21 @@ impl<T: Transport> Client<T> {
         caption: Option<String>,
         name: Option<String>,
     ) -> Result<String, ClientError> {
+        self.upload_and_send(conversation, path, mime, caption, name, false)
+    }
+
+    /// `send_media`, and a forwarded file (0041): always a new object id
+    /// and a new key, uploaded into `conversation`, so an object and its
+    /// key never serve two conversations (0023).
+    pub(crate) fn upload_and_send(
+        &mut self,
+        conversation: &str,
+        path: &Path,
+        mime: &str,
+        caption: Option<String>,
+        name: Option<String>,
+        forwarded: bool,
+    ) -> Result<String, ClientError> {
         let group = group_id(conversation).ok_or(ClientError::UnknownConversation)?;
         self.store.try_write(|tx| open_conversation(tx, &group))?;
         let outgoing = self.media.join("out");
@@ -268,6 +283,7 @@ impl<T: Transport> Client<T> {
                 sha256,
                 caption,
                 name,
+                forwarded,
             })
         })();
         remove(&sealed);

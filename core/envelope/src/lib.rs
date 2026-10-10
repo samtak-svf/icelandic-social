@@ -43,6 +43,11 @@ pub struct Envelope {
 pub enum Body {
     Text {
         text: String,
+        /// A copy of another conversation's message, sent by `forward` (0041).
+        /// Absent means false, so a reader older than the field shows it as
+        /// ordinary text.
+        #[serde(default, skip_serializing_if = "is_false")]
+        forwarded: bool,
     },
     /// An attachment. The bytes are encrypted with `key` and uploaded to the
     /// media bucket under `object`; the server sees only ciphertext.
@@ -60,6 +65,10 @@ pub enum Body {
         /// viewer; never a path to trust.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         name: Option<String>,
+        /// A copy of another conversation's file, sealed under a fresh key
+        /// and uploaded here (0041). Absent means false.
+        #[serde(default, skip_serializing_if = "is_false")]
+        forwarded: bool,
     },
     Reply {
         to: String,
@@ -98,6 +107,10 @@ pub enum Body {
     Unknown {
         kind: String,
     },
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 const KNOWN_KINDS: &[&str] = &[
@@ -184,6 +197,7 @@ mod tests {
         let samples = [
             Body::Text {
                 text: String::new(),
+                forwarded: false,
             },
             Body::Media {
                 object: String::new(),
@@ -193,6 +207,7 @@ mod tests {
                 sha256: String::new(),
                 caption: None,
                 name: None,
+                forwarded: false,
             },
             Body::Reply {
                 to: String::new(),
@@ -256,7 +271,62 @@ mod tests {
     #[test]
     fn unknown_fields_are_ignored() {
         let decoded = decode_str(r#"{"v":1,"id":"m","ts":1,"kind":"text","text":"hæ","font":"x"}"#);
-        assert_eq!(decoded.unwrap().body, Body::Text { text: "hæ".into() });
+        assert_eq!(
+            decoded.unwrap().body,
+            Body::Text {
+                text: "hæ".into(),
+                forwarded: false
+            }
+        );
+    }
+
+    /// An envelope from before 0041 has no `forwarded`: it reads as not
+    /// forwarded, and one that is not forwarded is written without it, so
+    /// its bytes are what an older client wrote.
+    #[test]
+    fn forwarded_is_absent_unless_set() {
+        let old = r#"{"v":1,"id":"m","ts":1,"kind":"text","text":"hæ"}"#;
+        let decoded = decode_str(old).unwrap();
+        assert_eq!(
+            decoded.body,
+            Body::Text {
+                text: "hæ".into(),
+                forwarded: false
+            }
+        );
+        let value: Value = serde_json::from_slice(&decoded.encode().unwrap()).unwrap();
+        assert_eq!(value.get("forwarded"), None);
+
+        let forwarded = Envelope {
+            body: Body::Text {
+                text: "hæ".into(),
+                forwarded: true,
+            },
+            ..decoded
+        };
+        let value: Value = serde_json::from_slice(&forwarded.encode().unwrap()).unwrap();
+        assert_eq!(value["forwarded"], true);
+    }
+
+    /// A reader from before 0041 skips the field it does not know and shows
+    /// the text: a forward is never lost on an older client (0041).
+    #[test]
+    fn a_reader_without_the_field_still_reads_a_forward() {
+        #[derive(Deserialize, PartialEq, Debug)]
+        #[serde(tag = "kind", rename_all = "snake_case")]
+        enum OldBody {
+            Text { text: String },
+        }
+        let forwarded = Envelope {
+            id: "m".into(),
+            ts: 1,
+            body: Body::Text {
+                text: "hæ".into(),
+                forwarded: true,
+            },
+        };
+        let old: OldBody = serde_json::from_slice(&forwarded.encode().unwrap()).unwrap();
+        assert_eq!(old, OldBody::Text { text: "hæ".into() });
     }
 
     #[test]
@@ -299,27 +369,27 @@ mod tests {
     fn body() -> impl Strategy<Value = Body> {
         let s = || any::<String>();
         prop_oneof![
-            s().prop_map(|text| Body::Text { text }),
+            (s(), any::<bool>()).prop_map(|(text, forwarded)| Body::Text { text, forwarded }),
             (
-                s(),
-                s(),
-                any::<u64>(),
-                s(),
-                s(),
+                (s(), s(), any::<u64>(), s(), s()),
                 proptest::option::of(s()),
-                proptest::option::of(s())
+                proptest::option::of(s()),
+                any::<bool>(),
             )
-                .prop_map(|(object, mime, size, key, sha256, caption, name)| {
-                    Body::Media {
-                        object,
-                        mime,
-                        size,
-                        key,
-                        sha256,
-                        caption,
-                        name,
+                .prop_map(
+                    |((object, mime, size, key, sha256), caption, name, forwarded)| {
+                        Body::Media {
+                            object,
+                            mime,
+                            size,
+                            key,
+                            sha256,
+                            caption,
+                            name,
+                            forwarded,
+                        }
                     }
-                }),
+                ),
             (s(), s()).prop_map(|(to, text)| Body::Reply { to, text }),
             (s(), s()).prop_map(|(target, text)| Body::Edit { target, text }),
             s().prop_map(|target| Body::Delete { target }),

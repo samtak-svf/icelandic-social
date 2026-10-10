@@ -93,6 +93,38 @@ pub struct Item {
     pub read_by: u32,
     /// When it disappears, in milliseconds.
     pub expires_at: Option<u64>,
+    /// A copy of a message from another conversation (0041). Its author
+    /// is not known here: `sender` is who forwarded it.
+    pub forwarded: bool,
+}
+
+/// What a text row keeps besides its text: only the forward mark, so far.
+#[derive(Default, Serialize, Deserialize)]
+struct TextMarks {
+    #[serde(default)]
+    forwarded: bool,
+}
+
+/// Why a message cannot be forwarded (0041).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Unforwardable {
+    /// It is under a disappearing timer.
+    Disappearing,
+    /// It was deleted for everyone.
+    Deleted,
+    /// No text or file at that seq on this device: a card, a hidden
+    /// message, one not fetched yet, or nothing.
+    NotAMessage,
+}
+
+/// The content a forward copies, as it reads now.
+pub(crate) enum Forwardable {
+    Text(String),
+    Media {
+        mime: String,
+        caption: Option<String>,
+        name: Option<String>,
+    },
 }
 
 #[derive(Serialize, Deserialize)]
@@ -211,8 +243,9 @@ pub(crate) fn fold(
         detail,
     };
     let changed = match &envelope.body {
-        Body::Text { text } => {
-            insert(tx, group, seq, message("text", Some(text), None, None))?;
+        Body::Text { text, forwarded } => {
+            let marks = forwarded.then(|| json(&TextMarks { forwarded: true }));
+            insert(tx, group, seq, message("text", Some(text), None, marks))?;
             vec![seq]
         }
         Body::Reply { to, text } => {
@@ -500,6 +533,21 @@ pub(crate) fn items(
         rows.into_iter().rev()
     {
         let own = sender == me;
+        let forwarded = match (kind.as_str(), detail.as_deref()) {
+            ("text", Some(d)) => {
+                serde_json::from_str::<TextMarks>(d)
+                    .map_err(|_| ClientError::Protocol("a stored text row"))?
+                    .forwarded
+            }
+            ("media", Some(d)) => matches!(
+                serde_json::from_str(d),
+                Ok(Body::Media {
+                    forwarded: true,
+                    ..
+                })
+            ),
+            _ => false,
+        };
         let content = if deleted {
             Content::Deleted
         } else {
@@ -564,6 +612,7 @@ pub(crate) fn items(
             edited,
             reactions,
             expires_at: expires.map(|e| e as u64),
+            forwarded,
         });
     }
     if before.is_none() {
@@ -648,8 +697,18 @@ fn pending(
     let mut items = Vec::new();
     for (intent, seq, failed) in rows {
         let envelope = Envelope::decode(&intent)?;
+        let forwarded = matches!(
+            envelope.body,
+            Body::Text {
+                forwarded: true,
+                ..
+            } | Body::Media {
+                forwarded: true,
+                ..
+            }
+        );
         let content = match envelope.body {
-            Body::Text { text } => Content::Text {
+            Body::Text { text, .. } => Content::Text {
                 text,
                 reply_to: None,
             },
@@ -688,9 +747,53 @@ fn pending(
             reactions: Vec::new(),
             read_by: 0,
             expires_at: None,
+            forwarded,
         });
     }
     Ok(items)
+}
+
+/// kind, text, detail, deleted, expires_at of the row a forward reads.
+type ForwardRow = (String, Option<String>, Option<String>, bool, Option<i64>);
+
+/// The content of the message at `seq` a forward copies: its text as it
+/// reads now (the last edit, a reply without its quote), or its file.
+/// Refused under a timer, deleted, or for anything but a message (0041).
+pub(crate) fn forwardable(
+    tx: &Transaction,
+    group: &[u8],
+    seq: u64,
+) -> Result<Forwardable, ClientError> {
+    let row: Option<ForwardRow> = tx
+        .query_row(
+            "SELECT kind, text, detail, deleted, expires_at FROM timeline
+             WHERE group_id = ?1 AND seq = ?2",
+            params![group, seq as i64],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
+        )
+        .optional()?;
+    let Some((kind, text, detail, deleted, expires_at)) = row else {
+        return Err(ClientError::CannotForward(Unforwardable::NotAMessage));
+    };
+    if expires_at.is_some() {
+        return Err(ClientError::CannotForward(Unforwardable::Disappearing));
+    }
+    if deleted {
+        return Err(ClientError::CannotForward(Unforwardable::Deleted));
+    }
+    match kind.as_str() {
+        "text" => Ok(Forwardable::Text(text.unwrap_or_default())),
+        "media" => match detail.as_deref().map(serde_json::from_str::<Body>) {
+            Some(Ok(Body::Media { mime, name, .. })) => Ok(Forwardable::Media {
+                mime,
+                caption: text,
+                // The name as this device shows it, never a path.
+                name: name.as_deref().and_then(file_name),
+            }),
+            _ => Err(ClientError::Protocol("a stored media row")),
+        },
+        _ => Err(ClientError::CannotForward(Unforwardable::NotAMessage)),
+    }
 }
 
 /// The envelope id to put in a receipt for everything up to `seq`.
@@ -778,7 +881,10 @@ mod tests {
     }
 
     fn text(text: &str) -> Body {
-        Body::Text { text: text.into() }
+        Body::Text {
+            text: text.into(),
+            forwarded: false,
+        }
     }
 
     fn react(target: &str, remove: bool) -> Body {

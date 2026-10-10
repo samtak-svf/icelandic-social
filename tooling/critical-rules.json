@@ -106,6 +106,18 @@
       ]
     },
     {
+      "id": "forward-fresh-media-object-and-key",
+      "domain": "crypto",
+      "decision": "0041",
+      "rule": "A forward never reuses the original media object or key: the file is sealed under a fresh key and uploaded into the target conversation.",
+      "tests": [
+        {
+          "file": "core/client/tests/sync.rs",
+          "name": "a_forward_never_reuses_the_original_media_object_or_key"
+        }
+      ]
+    },
+    {
       "id": "store-encrypted-at-rest",
       "domain": "crypto",
       "decision": "0016",
@@ -438,6 +450,18 @@
         {
           "file": "backend/test/push.test.ts",
           "name": "never sends what another round already sent, when two rounds overlap"
+        }
+      ]
+    },
+    {
+      "id": "forward-not-under-a-timer",
+      "domain": "delivery",
+      "decision": "0041",
+      "rule": "A message under a disappearing timer is never forwarded, so no copy outlives the timer its conversation agreed to.",
+      "tests": [
+        {
+          "file": "core/client/tests/sync.rs",
+          "name": "a_message_under_a_timer_deleted_or_not_a_message_is_not_forwarded"
         }
       ]
     }

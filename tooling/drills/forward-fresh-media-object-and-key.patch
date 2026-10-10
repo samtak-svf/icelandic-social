@@ -1,0 +1,17 @@
+diff --git a/core/client/src/forward.rs b/core/client/src/forward.rs
+index 6b9ed24..e07a614 100644
+--- a/core/client/src/forward.rs
++++ b/core/client/src/forward.rs
+@@ -41,8 +41,10 @@ impl<T: Transport> Client<T> {
+                 caption,
+                 name,
+             } => {
+-                let file = self.media(from, seq)?;
+-                self.upload_and_send(to, &file, &mime, caption, name, true)
++                let _file = self.media(from, seq)?;
++                let _ = (mime, caption, name);
++                let original = self.history(from, Some(seq + 1), 1)?.remove(0);
++                self.send(to, original.envelope.body)
+             }
+         }
+     }

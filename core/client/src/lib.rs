@@ -22,6 +22,7 @@ pub mod api;
 mod block;
 mod directory;
 mod feed;
+mod forward;
 mod media;
 mod members;
 mod notice;
@@ -48,7 +49,7 @@ use spjall_mls::group::{
 use spjall_mls::storage::Provider;
 use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 use spjall_store::{Key, Store};
-pub use timeline::{Content, Item, Quote, Reaction, Status};
+pub use timeline::{Content, Item, Quote, Reaction, Status, Unforwardable};
 
 use members::{refresh_members, set_members};
 use timeline::{fold, fold_members};
@@ -80,6 +81,9 @@ pub enum ClientError {
     Protocol(&'static str),
     #[error(transparent)]
     Media(#[from] MediaError),
+    /// The message cannot be forwarded (0041).
+    #[error("this message cannot be forwarded: {0:?}")]
+    CannotForward(Unforwardable),
 }
 
 /// Where a conversation stands for this device.
@@ -152,6 +156,10 @@ pub struct Message {
 
 /// What changed, for the app to show.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[expect(
+    clippy::large_enum_variant,
+    reason = "an event lives for one sync round; boxing the message would only move the bytes"
+)]
 pub enum Event {
     Message(Message),
     Membership {

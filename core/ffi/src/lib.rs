@@ -65,6 +65,32 @@ pub enum CoreError {
     /// update to at least `min_version` (0030).
     #[error("this build is too old; the server needs {min_version}")]
     ClientTooOld { min_version: String },
+    /// The message cannot be forwarded (0041); the app offers forwarding
+    /// only where it can, so this is a race with a delete or a timer.
+    #[error("this message cannot be forwarded")]
+    CannotForward { reason: Unforwardable },
+}
+
+/// Why a message cannot be forwarded (0041).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum Unforwardable {
+    /// It is under a disappearing timer.
+    Disappearing,
+    /// It was deleted for everyone.
+    Deleted,
+    /// Not a text or a file this device has: a card, or nothing.
+    NotAMessage,
+}
+
+impl From<spjall_client::Unforwardable> for Unforwardable {
+    fn from(reason: spjall_client::Unforwardable) -> Self {
+        use spjall_client::Unforwardable as U;
+        match reason {
+            U::Disappearing => Self::Disappearing,
+            U::Deleted => Self::Deleted,
+            U::NotAMessage => Self::NotAMessage,
+        }
+    }
 }
 
 impl From<envelope::EnvelopeError> for CoreError {
@@ -136,7 +162,8 @@ impl From<envelope::Body> for Body {
     fn from(body: envelope::Body) -> Self {
         use envelope::Body as B;
         match body {
-            B::Text { text } => Self::Text { text },
+            // The forward mark reaches the apps on `Item`, not here.
+            B::Text { text, .. } => Self::Text { text },
             B::Media {
                 object,
                 mime,
@@ -145,6 +172,7 @@ impl From<envelope::Body> for Body {
                 sha256,
                 caption,
                 name,
+                ..
             } => Self::Media {
                 object,
                 mime,
@@ -178,7 +206,11 @@ impl From<Body> for envelope::Body {
     fn from(body: Body) -> Self {
         use Body as B;
         match body {
-            B::Text { text } => Self::Text { text },
+            // Only `forward` marks a message forwarded (0041).
+            B::Text { text } => Self::Text {
+                text,
+                forwarded: false,
+            },
             B::Media {
                 object,
                 mime,
@@ -195,6 +227,7 @@ impl From<Body> for envelope::Body {
                 sha256,
                 caption,
                 name,
+                forwarded: false,
             },
             B::Reply { to, text } => Self::Reply { to, text },
             B::Edit { target, text } => Self::Edit { target, text },

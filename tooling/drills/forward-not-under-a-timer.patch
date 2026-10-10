@@ -1,0 +1,13 @@
+diff --git a/core/client/src/timeline.rs b/core/client/src/timeline.rs
+index b2dceca..a43764a 100644
+--- a/core/client/src/timeline.rs
++++ b/core/client/src/timeline.rs
+@@ -775,7 +775,7 @@ pub(crate) fn forwardable(
+     let Some((kind, text, detail, deleted, expires_at)) = row else {
+         return Err(ClientError::CannotForward(Unforwardable::NotAMessage));
+     };
+-    if expires_at.is_some() {
++    if expires_at.is_some() && false {
+         return Err(ClientError::CannotForward(Unforwardable::Disappearing));
+     }
+     if deleted {

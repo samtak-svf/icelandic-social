@@ -317,7 +317,13 @@ impl Phone {
 
     fn send(&mut self, conversation: &str, text: &str) {
         self.client
-            .send(conversation, Body::Text { text: text.into() })
+            .send(
+                conversation,
+                Body::Text {
+                    text: text.into(),
+                    forwarded: false,
+                },
+            )
             .unwrap();
     }
 
@@ -327,7 +333,7 @@ impl Phone {
             .unwrap()
             .into_iter()
             .filter_map(|m| match m.envelope.body {
-                Body::Text { text } => Some(text),
+                Body::Text { text, .. } => Some(text),
                 _ => None,
             })
             .collect()
@@ -339,7 +345,7 @@ fn texts(events: &[Event]) -> Vec<String> {
         .iter()
         .filter_map(|e| match e {
             Event::Message(m) => match &m.envelope.body {
-                Body::Text { text } => Some(text.clone()),
+                Body::Text { text, .. } => Some(text.clone()),
                 _ => None,
             },
             _ => None,
