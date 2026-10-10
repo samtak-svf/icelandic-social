@@ -472,6 +472,26 @@
           "name": "a_message_under_a_timer_deleted_or_not_a_message_is_not_forwarded"
         }
       ]
+    },
+    {
+      "id": "shared-post-carries-only-its-id",
+      "domain": "privacy",
+      "decision": "0040",
+      "rule": "A shared post carries only its id: no copy of its text or its author's name, in the message, the list's last line or a notice, so a deleted or blocked post shows nothing.",
+      "tests": [
+        {
+          "file": "core/envelope/src/lib.rs",
+          "name": "a_shared_post_carries_only_its_id"
+        },
+        {
+          "file": "core/client/tests/sync.rs",
+          "name": "a_shared_post_carries_only_its_id_and_shows_what_the_server_holds_now"
+        },
+        {
+          "file": "core/client/tests/sync.rs",
+          "name": "a_forwarded_share_is_shared_again_by_its_id_and_a_reply_quotes_it"
+        }
+      ]
     }
   ],
   "retired": []

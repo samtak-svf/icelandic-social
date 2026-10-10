@@ -35,6 +35,9 @@ pub struct Quote {
     pub envelope_id: String,
     pub sender: Option<Person>,
     pub text: Option<String>,
+    /// The post, when the quoted message is a shared post (0040); its
+    /// `text` is then none, and the app draws the share's card.
+    pub post_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -62,6 +65,9 @@ pub enum Content {
     },
     /// The disappearing timer was set, or turned off.
     Timer { seconds: Option<u32> },
+    /// A Fljótið post shared here (0040): only its id. The app fetches the
+    /// post with `shared_post` when it shows it.
+    Post { post_id: String },
 }
 
 /// One emoji on an item: who put it there, and whether this account did.
@@ -112,7 +118,7 @@ pub enum Unforwardable {
     Disappearing,
     /// It was deleted for everyone.
     Deleted,
-    /// No text or file at that seq on this device: a card, a hidden
+    /// No text, file or shared post at that seq on this device: a card, a hidden
     /// message, one not fetched yet, or nothing.
     NotAMessage,
 }
@@ -125,6 +131,8 @@ pub(crate) enum Forwardable {
         caption: Option<String>,
         name: Option<String>,
     },
+    /// A shared post: shared again by its id (0040).
+    Post(String),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -262,10 +270,24 @@ pub(crate) fn fold(
             )?;
             vec![seq]
         }
+        body @ Body::Post { .. } => {
+            let detail = serde_json::to_string(body).expect("a body serializes");
+            insert(tx, group, seq, message("post", None, None, Some(detail)))?;
+            vec![seq]
+        }
         Body::Edit { target, text } => {
             let Some(t) = own_target(tx, group, &sender.account, target)? else {
                 return Ok(None);
             };
+            // A share has no text of its own to edit (0040).
+            let kind: String = tx.query_row(
+                "SELECT kind FROM timeline WHERE group_id = ?1 AND seq = ?2",
+                params![group, t as i64],
+                |r| r.get(0),
+            )?;
+            if kind == "post" {
+                return Ok(None);
+            }
             tx.execute(
                 "UPDATE timeline SET text = ?3, edited = 1 WHERE group_id = ?1 AND seq = ?2",
                 params![group, t as i64, text],
@@ -365,7 +387,7 @@ pub(crate) fn fold(
     if sender.account == me
         && matches!(
             envelope.body,
-            Body::Text { .. } | Body::Reply { .. } | Body::Media { .. }
+            Body::Text { .. } | Body::Reply { .. } | Body::Media { .. } | Body::Post { .. }
         )
     {
         advance(tx, group, me, seq)?;
@@ -539,9 +561,12 @@ pub(crate) fn items(
                     .map_err(|_| ClientError::Protocol("a stored text row"))?
                     .forwarded
             }
-            ("media", Some(d)) => matches!(
+            ("media" | "post", Some(d)) => matches!(
                 serde_json::from_str(d),
                 Ok(Body::Media {
+                    forwarded: true,
+                    ..
+                } | Body::Post {
                     forwarded: true,
                     ..
                 })
@@ -562,6 +587,10 @@ pub(crate) fn items(
                         name: name.as_deref().and_then(file_name),
                     },
                     _ => return Err(ClientError::Protocol("a stored media row")),
+                },
+                "post" => match detail.as_deref().map(serde_json::from_str::<Body>) {
+                    Some(Ok(Body::Post { post_id, .. })) => Content::Post { post_id },
+                    _ => return Err(ClientError::Protocol("a stored post row")),
                 },
                 "members" => {
                     let card: MembersCard = detail
@@ -627,23 +656,32 @@ fn quote(
     people: &mut People,
     envelope_id: String,
 ) -> rusqlite::Result<Quote> {
-    let found: Option<(String, Option<String>)> = tx
+    let found: Option<(String, String, Option<String>, Option<String>)> = tx
         .query_row(
-            "SELECT sender_account, text FROM timeline
+            "SELECT sender_account, kind, text, detail FROM timeline
              WHERE group_id = ?1 AND envelope_id = ?2 AND deleted = 0
              ORDER BY seq LIMIT 1",
             params![group, envelope_id],
-            |r| Ok((r.get(0)?, r.get(1)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
         )
         .optional()?;
-    let (sender, text) = match found {
-        Some((sender, text)) => (Some(people.get(&sender)?), text),
-        None => (None, None),
+    let Some((sender, kind, text, detail)) = found else {
+        return Ok(Quote {
+            envelope_id,
+            sender: None,
+            text: None,
+            post_id: None,
+        });
+    };
+    let post_id = match (kind.as_str(), detail.as_deref().map(serde_json::from_str)) {
+        ("post", Some(Ok(Body::Post { post_id, .. }))) => Some(post_id),
+        _ => None,
     };
     Ok(Quote {
         envelope_id,
-        sender,
+        sender: Some(people.get(&sender)?),
         text,
+        post_id,
     })
 }
 
@@ -705,6 +743,9 @@ fn pending(
             } | Body::Media {
                 forwarded: true,
                 ..
+            } | Body::Post {
+                forwarded: true,
+                ..
             }
         );
         let content = match envelope.body {
@@ -728,6 +769,7 @@ fn pending(
                 caption,
                 name: name.as_deref().and_then(file_name),
             },
+            Body::Post { post_id, .. } => Content::Post { post_id },
             // Edits, deletes, reactions and receipts show once they are back.
             _ => continue,
         };
@@ -791,6 +833,10 @@ pub(crate) fn forwardable(
                 name: name.as_deref().and_then(file_name),
             }),
             _ => Err(ClientError::Protocol("a stored media row")),
+        },
+        "post" => match detail.as_deref().map(serde_json::from_str::<Body>) {
+            Some(Ok(Body::Post { post_id, .. })) => Ok(Forwardable::Post(post_id)),
+            _ => Err(ClientError::Protocol("a stored post row")),
         },
         _ => Err(ClientError::CannotForward(Unforwardable::NotAMessage)),
     }
@@ -997,6 +1043,34 @@ mod tests {
             .try_write(|tx| crate::read::unread(tx, GROUP, "a"))
             .unwrap();
         assert_eq!(unread, 0);
+    }
+
+    /// A share is a row of its own with only the post's id; an edit has no
+    /// text to change on it, and a delete for everyone takes it away (0040).
+    #[test]
+    fn a_shared_post_is_its_id_and_cannot_be_edited() {
+        let mut fold = Fold::new();
+        let share = Body::Post {
+            post_id: "p_1".into(),
+            forwarded: false,
+        };
+        assert_eq!(fold.apply(("b", "b1"), "s", share), Some(vec![1]));
+        let shown = |fold: &mut Fold| fold.items()[0].content.clone();
+        assert_eq!(
+            shown(&mut fold),
+            Content::Post {
+                post_id: "p_1".into()
+            }
+        );
+        let edit = Body::Edit {
+            target: "s".into(),
+            text: "annað".into(),
+        };
+        assert_eq!(fold.apply(("b", "b1"), "e", edit), None);
+        assert!(!fold.items()[0].edited);
+        let delete = Body::Delete { target: "s".into() };
+        assert_eq!(fold.apply(("b", "b1"), "d", delete), Some(vec![1]));
+        assert_eq!(shown(&mut fold), Content::Deleted);
     }
 
     #[test]

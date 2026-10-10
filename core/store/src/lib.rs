@@ -402,6 +402,51 @@ const MIGRATIONS: &[(u32, &str)] = &[
              until    INTEGER
          ) STRICT, WITHOUT ROWID;",
     ),
+    (
+        12,
+        // Decision 0040: a shared Fljótið post.
+        "-- The timeline again, with `post`: a shared post, whose `detail`
+         -- holds the post's id and nothing of the post itself. Dropping the
+         -- old table cascades into `reactions`, so they are kept aside.
+         CREATE TEMP TABLE reactions_0040 AS SELECT * FROM reactions;
+         CREATE TABLE timeline_0040 (
+             group_id       BLOB NOT NULL
+                            REFERENCES conversations (group_id) ON DELETE CASCADE,
+             seq            INTEGER NOT NULL,
+             kind           TEXT NOT NULL
+                            CHECK (kind IN ('text', 'media', 'members', 'timer', 'post')),
+             sender_account TEXT NOT NULL,
+             sender_device  TEXT NOT NULL,
+             envelope_id    TEXT,
+             ts             INTEGER NOT NULL,
+             stored_at      INTEGER NOT NULL,
+             text           TEXT,
+             reply_to       TEXT,
+             detail         TEXT,
+             edited         INTEGER NOT NULL DEFAULT 0 CHECK (edited IN (0, 1)),
+             deleted        INTEGER NOT NULL DEFAULT 0 CHECK (deleted IN (0, 1)),
+             expires_at     INTEGER,
+             PRIMARY KEY (group_id, seq),
+             CHECK ((envelope_id IS NULL) = (kind IN ('members', 'timer'))),
+             CHECK (deleted = 0 OR (text IS NULL AND reply_to IS NULL AND detail IS NULL)),
+             CHECK (kind != 'post' OR text IS NULL)
+         ) STRICT, WITHOUT ROWID;
+         INSERT INTO timeline_0040 (group_id, seq, kind, sender_account, sender_device,
+                                    envelope_id, ts, stored_at, text, reply_to, detail,
+                                    edited, deleted, expires_at)
+             SELECT group_id, seq, kind, sender_account, sender_device,
+                    envelope_id, ts, stored_at, text, reply_to, detail,
+                    edited, deleted, expires_at
+             FROM timeline;
+         DROP TABLE timeline;
+         ALTER TABLE timeline_0040 RENAME TO timeline;
+         CREATE INDEX timeline_by_envelope ON timeline (group_id, envelope_id);
+         CREATE INDEX timeline_by_expiry ON timeline (expires_at)
+             WHERE expires_at IS NOT NULL;
+         INSERT INTO reactions (group_id, seq, account, emoji)
+             SELECT group_id, seq, account, emoji FROM reactions_0040;
+         DROP TABLE reactions_0040;",
+    ),
 ];
 
 pub struct Store {
@@ -560,6 +605,57 @@ mod tests {
             })
             .unwrap();
         assert_eq!(value, [2]);
+    }
+
+    /// Migration 12 rebuilds the timeline (0040); the rows and the
+    /// reactions on them survive it, though dropping the old table
+    /// cascades into `reactions`.
+    #[test]
+    fn the_timeline_rebuild_keeps_its_rows_and_reactions() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(FILE_NAME);
+        let mut old = connect(&path, &KEY).unwrap();
+        migrate(&mut old, &MIGRATIONS[..11]).unwrap();
+        old.execute_batch(
+            "INSERT INTO conversations (group_id, cursor, created_at) VALUES (x'01', 2, 0);
+             INSERT INTO timeline (group_id, seq, kind, sender_account, sender_device,
+                                   envelope_id, ts, stored_at, text, expires_at)
+                 VALUES (x'01', 1, 'text', 'a', 'a1', 'm1', 1, 1, 'hæ', 9);
+             INSERT INTO reactions VALUES (x'01', 1, 'b', '👍');",
+        )
+        .unwrap();
+        drop(old);
+
+        let mut store = Store::open(dir.path(), &KEY).unwrap();
+        let kept: (String, u32, String) = store
+            .connection
+            .query_row(
+                "SELECT t.text, t.expires_at, r.emoji
+                 FROM timeline t JOIN reactions r USING (group_id, seq)",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(kept, ("hæ".into(), 9, "👍".into()));
+        // A share is its own kind, and holds no text of the post.
+        let post = |text: &str| {
+            format!(
+                "INSERT INTO timeline (group_id, seq, kind, sender_account, sender_device,
+                                       envelope_id, ts, stored_at, text, detail)
+                     VALUES (x'01', 2, 'post', 'a', 'a1', 'm2', 1, 1, {text}, '{{}}')"
+            )
+        };
+        assert!(refused(&mut store, &post("'færslan'")));
+        assert!(!refused(&mut store, &post("NULL")));
+        // The cascade still holds after the rename.
+        store
+            .write(|tx| tx.execute("DELETE FROM timeline WHERE seq = 1", []))
+            .unwrap();
+        let left: u32 = store
+            .connection
+            .query_row("SELECT COUNT(*) FROM reactions", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(left, 0);
     }
 
     fn refused(store: &mut Store, sql: &str) -> bool {

@@ -423,12 +423,13 @@ fn enqueue(tx: &Transaction, group: &[u8], kind: &str, intent: &[u8]) -> Result<
 }
 
 /// Whether a message wakes the other members' devices (0025): a new text,
-/// reply or file does; a receipt, reaction, edit, delete or timer does not.
+/// reply, file or shared post does; a receipt, reaction, edit, delete or
+/// timer does not.
 fn urgent(intent: &[u8]) -> bool {
     Envelope::decode(intent).is_ok_and(|e| {
         matches!(
             e.body,
-            Body::Text { .. } | Body::Reply { .. } | Body::Media { .. }
+            Body::Text { .. } | Body::Reply { .. } | Body::Media { .. } | Body::Post { .. }
         )
     })
 }
@@ -897,6 +898,9 @@ impl<T: Transport> Client<T> {
             return Err(ClientError::Invalid(
                 "typing goes by typing(), never stored",
             ));
+        }
+        if matches!(&body, Body::Post { post_id, .. } if !is_id(post_id)) {
+            return Err(ClientError::Invalid("post id"));
         }
         let group = group_id(conversation).ok_or(ClientError::UnknownConversation)?;
         let envelope = Envelope {

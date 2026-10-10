@@ -2,7 +2,9 @@
 //! call goes to the server and nothing is kept, since the posts are public
 //! and a stale copy would show deleted ones.
 
-use crate::api::{Post, PostPage, PostReaction, Reply, ReplyPage, Transport};
+use spjall_envelope::Body;
+
+use crate::api::{ApiError, Post, PostPage, PostReaction, Reply, ReplyPage, Transport};
 use crate::{Client, ClientError, authed, is_id};
 
 /// The most characters a post or a reply holds, counted as the server
@@ -60,6 +62,37 @@ impl<T: Transport> Client<T> {
     pub fn post(&mut self, post: &str) -> Result<Post, ClientError> {
         id(post, "post id")?;
         Ok(authed(&self.transport, &self.token, &self.client)?.post(post)?)
+    }
+
+    /// Shares a post into a conversation (0040). The message carries the
+    /// post's id and nothing else: no copy of its text or its author's
+    /// name, which would outlive a deletion. Returns the envelope id.
+    pub fn share_post(&mut self, conversation: &str, post: &str) -> Result<String, ClientError> {
+        id(post, "post id")?;
+        self.send(
+            conversation,
+            Body::Post {
+                post_id: post.into(),
+                forwarded: false,
+            },
+        )
+    }
+
+    /// A shared post as the server holds it now, for its card; none when
+    /// the server no longer shows it to this account (0040). That is a
+    /// `404`, whether the author deleted it, the author's account was
+    /// deleted, or this account blocked the author, and the answer does
+    /// not say which. An id no post could have is none too. Nothing is
+    /// kept on the device.
+    pub fn shared_post(&mut self, post: &str) -> Result<Option<Post>, ClientError> {
+        if !is_id(post) {
+            return Ok(None);
+        }
+        match authed(&self.transport, &self.token, &self.client)?.post(post) {
+            Ok(post) => Ok(Some(post)),
+            Err(ApiError::Refused { status: 404, .. }) => Ok(None),
+            Err(error) => Err(error.into()),
+        }
     }
 
     /// Posts to Fljótið and this account's wall.

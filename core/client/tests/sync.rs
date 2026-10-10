@@ -1347,6 +1347,98 @@ fn fljotid_posts_replies_and_reactions_go_through_the_server() {
     assert!(page.posts.iter().all(|p| p.author.account_id == "a"));
 }
 
+/// 0040: a share is the post's id. The item, the list's last line and the
+/// notice name neither the post's text nor its author, and the card asks
+/// the server, which after a deletion or a block has nothing to show.
+#[test]
+fn a_shared_post_carries_only_its_id_and_shows_what_the_server_holds_now() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    // The author is in no conversation with them.
+    let mut c1 = Phone::new(&relay, "c", "c1");
+    let conversation = conversation(&mut b1, &mut a1);
+    b1.client.notices().unwrap();
+    let post = c1.client.create_post("Orð höfundarins").unwrap();
+    let (text, author) = (post.body.clone(), post.author.name.clone().unwrap());
+
+    for bad in ["", "../posts", "a b"] {
+        assert!(matches!(
+            b1.client.share_post(&conversation, bad),
+            Err(ClientError::Invalid(_))
+        ));
+        assert!(matches!(
+            b1.client.send(
+                &conversation,
+                Body::Post {
+                    post_id: bad.into(),
+                    forwarded: false,
+                }
+            ),
+            Err(ClientError::Invalid(_))
+        ));
+    }
+    let shared = Content::Post {
+        post_id: post.post_id.clone(),
+    };
+    b1.client.share_post(&conversation, &post.post_id).unwrap();
+    assert_eq!(
+        items(&mut b1, &conversation).last().unwrap().content,
+        shared
+    );
+    b1.sync();
+    // Urgent, like a text (0025).
+    assert_eq!(urgency(&relay, "b1").last(), Some(&true));
+    a1.deliver();
+
+    let item = items(&mut a1, &conversation).pop().unwrap();
+    assert_eq!(item.content, shared);
+    let listed = a1.client.conversations().unwrap().pop().unwrap();
+    assert_eq!(listed.last.as_ref().map(|i| &i.content), Some(&shared));
+    assert_eq!(listed.unread, 1);
+    let shown = a1.client.notices().unwrap().shown;
+    assert_eq!(
+        notices_of(&shown),
+        vec![(conversation.clone(), "b".into(), NoticeKind::Post, None)]
+    );
+    let everything = format!("{item:?} {listed:?} {shown:?}");
+    assert!(!everything.contains(&text) && !everything.contains(&author));
+
+    // The card: what the server holds now.
+    let found = a1.client.shared_post(&post.post_id).unwrap().unwrap();
+    assert_eq!(found.body, text);
+    // No answer is no verdict: the card tries again later.
+    relay.fail_next("a1", 1);
+    assert!(matches!(
+        a1.client.shared_post(&post.post_id),
+        Err(ClientError::Transport(ApiError::Unreachable(_)))
+    ));
+    // Blocked by the reader, or deleted by its author: gone, alike.
+    a1.client.block("c").unwrap();
+    assert_eq!(a1.client.shared_post(&post.post_id).unwrap(), None);
+    assert!(b1.client.shared_post(&post.post_id).unwrap().is_some());
+    c1.client.delete_post(&post.post_id).unwrap();
+    assert_eq!(b1.client.shared_post(&post.post_id).unwrap(), None);
+    // An id no post could have is gone, and asks the server nothing.
+    let asked = relay.requests("b1").len();
+    assert_eq!(b1.client.shared_post("../feed").unwrap(), None);
+    assert_eq!(relay.requests("b1").len(), asked);
+}
+
+fn notices_of(shown: &[spjall_client::Notice]) -> Shown {
+    shown
+        .iter()
+        .map(|n| {
+            (
+                n.conversation.clone(),
+                n.sender.account.clone(),
+                n.kind,
+                n.text.clone(),
+            )
+        })
+        .collect()
+}
+
 #[test]
 fn typing_is_sent_at_most_every_three_seconds_and_follows_the_toggle() {
     let relay = Relay::new();
@@ -2306,6 +2398,91 @@ fn a_message_under_a_timer_deleted_or_not_a_message_is_not_forwarded() {
     a1.sync();
     assert_eq!(relay.sends("a1").len(), sent);
     assert!(items(&mut a1, &with_c).is_empty());
+}
+
+/// 0040 with 0041: forwarding a shared post shares it again, by its id and
+/// the forward mark, rather than refusing it as no message; under a timer it
+/// is refused like any message. A reply to a share quotes the post's id,
+/// so the app draws the quote as the share's card.
+#[test]
+fn a_forwarded_share_is_shared_again_by_its_id_and_a_reply_quotes_it() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let mut c1 = Phone::new(&relay, "c", "c1");
+    let mut d1 = Phone::new(&relay, "d", "d1");
+    let (with_b, with_c) = two_conversations(&mut a1, &mut b1, &mut c1);
+    let post = d1.client.create_post("Orð höfundarins").unwrap();
+    let author = post.author.name.clone().unwrap();
+    b1.client.share_post(&with_b, &post.post_id).unwrap();
+    b1.sync();
+    a1.deliver();
+    let share = newest(&mut a1, &with_b);
+    let reply = a1
+        .client
+        .send(
+            &with_b,
+            Body::Reply {
+                to: share.envelope.id.clone(),
+                text: "Góð færsla".into(),
+            },
+        )
+        .unwrap();
+    assert!(!reply.is_empty());
+    let quoted = items(&mut a1, &with_b).pop().unwrap().content;
+    let Content::Text {
+        reply_to: Some(quote),
+        ..
+    } = quoted
+    else {
+        panic!("{quoted:?}");
+    };
+    assert_eq!(
+        (quote.text, quote.post_id),
+        (None, Some(post.post_id.clone()))
+    );
+
+    a1.client.forward(&with_b, share.seq, &with_c).unwrap();
+    a1.sync();
+    c1.deliver();
+    let forwarded = newest(&mut c1, &with_c);
+    assert_eq!(
+        forwarded.envelope.body,
+        Body::Post {
+            post_id: post.post_id.clone(),
+            forwarded: true,
+        }
+    );
+    let item = items(&mut c1, &with_c).pop().unwrap();
+    assert!(item.forwarded);
+    assert_eq!(
+        item.content,
+        Content::Post {
+            post_id: post.post_id.clone()
+        }
+    );
+    let everything = format!("{forwarded:?} {item:?}");
+    assert!(!everything.contains(&post.body) && !everything.contains(&author));
+
+    // Under a timer, a share is no more forwarded than a text.
+    a1.client
+        .send(
+            &with_b,
+            Body::Disappearing {
+                seconds: Some(3600),
+            },
+        )
+        .unwrap();
+    a1.sync();
+    b1.deliver();
+    b1.client.share_post(&with_b, &post.post_id).unwrap();
+    b1.sync();
+    a1.deliver();
+    let timed = newest(&mut a1, &with_b);
+    assert!(matches!(
+        a1.client.forward(&with_b, timed.seq, &with_c),
+        Err(ClientError::CannotForward(Unforwardable::Disappearing))
+    ));
 }
 
 /// The bug: a forward that carries its author, its conversation, or the

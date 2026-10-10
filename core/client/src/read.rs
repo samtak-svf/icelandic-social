@@ -81,7 +81,7 @@ pub(crate) fn unread(tx: &Transaction, group: &[u8], me: &str) -> rusqlite::Resu
     tx.query_row(
         "SELECT COUNT(*) FROM timeline
          WHERE group_id = ?1 AND seq > ?3 AND sender_account != ?2
-               AND kind IN ('text', 'media') AND deleted = 0",
+               AND kind IN ('text', 'media', 'post') AND deleted = 0",
         params![group, me, mark(tx, group, me)? as i64],
         |r| r.get(0),
     )

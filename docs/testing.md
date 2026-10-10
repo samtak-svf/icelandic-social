@@ -28,6 +28,7 @@ Where a wrong answer harms a person:
 - **Crypto and membership**: MLS commits, device add and removal, key packages.
 - **Sign-in and identity**: Google and Kenni, the merge on link (0035), device tokens.
 - **PII**: no kennitala, phone number or message in a log line or in git (0008).
+- **Privacy**: what a person deleted or hid stays gone, with no copy on another device (0040).
 - **Residency**: D1, R2 and Durable Objects in the EU jurisdiction (0001).
 - **Delivery**: ordering, retention, read and typing state.
 

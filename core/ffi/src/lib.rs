@@ -78,7 +78,8 @@ pub enum Unforwardable {
     Disappearing,
     /// It was deleted for everyone.
     Deleted,
-    /// Not a text or a file this device has: a card, or nothing.
+    /// Not a text, a file or a shared post this device has: a card, or
+    /// nothing.
     NotAMessage,
 }
 
@@ -152,6 +153,10 @@ pub enum Body {
     Typing {
         active: bool,
     },
+    /// A shared Fljótið post: its id and nothing else (0040).
+    Post {
+        post_id: String,
+    },
     /// A kind this client does not know; the app skips it.
     Unknown {
         kind: String,
@@ -197,6 +202,8 @@ impl From<envelope::Body> for Body {
             B::Disappearing { seconds } => Self::Disappearing { seconds },
             B::Receipt { up_to } => Self::Receipt { up_to },
             B::Typing { active } => Self::Typing { active },
+            // The forward mark reaches the apps on `Item`, as for text.
+            B::Post { post_id, .. } => Self::Post { post_id },
             B::Unknown { kind } => Self::Unknown { kind },
         }
     }
@@ -244,6 +251,10 @@ impl From<Body> for envelope::Body {
             B::Disappearing { seconds } => Self::Disappearing { seconds },
             B::Receipt { up_to } => Self::Receipt { up_to },
             B::Typing { active } => Self::Typing { active },
+            B::Post { post_id } => Self::Post {
+                post_id,
+                forwarded: false,
+            },
             B::Unknown { kind } => Self::Unknown { kind },
         }
     }
@@ -370,6 +381,9 @@ mod tests {
             },
             Body::Receipt { up_to: "m0".into() },
             Body::Typing { active: true },
+            Body::Post {
+                post_id: "p_1".into(),
+            },
         ]
     }
 
@@ -416,7 +430,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().to_string_lossy().into_owned();
         let store = CoreStore::open(path.clone(), vec![1; 32]).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 11);
+        assert_eq!(store.schema_version().unwrap(), 12);
         drop(store);
         assert!(matches!(
             CoreStore::open(path.clone(), vec![2; 32]),

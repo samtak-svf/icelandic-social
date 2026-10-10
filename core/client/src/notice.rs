@@ -17,6 +17,9 @@ pub enum NoticeKind {
     Text,
     Photo,
     File,
+    /// A shared Fljótið post (0040). Its notice is a fixed sentence: it
+    /// carries no text, and the post is not fetched for it.
+    Post,
 }
 
 /// A new message to show: from another account, not blocked, not expired,
@@ -30,7 +33,7 @@ pub struct Notice {
     pub seq: u64,
     pub sender: Person,
     pub kind: NoticeKind,
-    /// The text, or a file's caption.
+    /// The text, or a file's caption; none for a shared post.
     pub text: Option<String>,
     /// The sender's clock, in milliseconds.
     pub ts: u64,
@@ -59,8 +62,10 @@ pub(crate) fn others(tx: &Transaction, group: &[u8], me: &str) -> rusqlite::Resu
 }
 
 fn kind(kind: &str, detail: Option<&str>) -> NoticeKind {
-    if kind == "text" {
-        return NoticeKind::Text;
+    match kind {
+        "text" => return NoticeKind::Text,
+        "post" => return NoticeKind::Post,
+        _ => {}
     }
     let mime = detail
         .and_then(|d| serde_json::from_str::<serde_json::Value>(d).ok())
@@ -98,7 +103,7 @@ fn take_notices(tx: &Transaction) -> Result<Notices, ClientError> {
             let mut statement = tx.prepare(
                 "SELECT seq, kind, sender_account, text, detail, ts FROM timeline
                  WHERE group_id = ?1 AND seq > MAX(?2, ?3) AND sender_account != ?4
-                       AND kind IN ('text', 'media') AND deleted = 0
+                       AND kind IN ('text', 'media', 'post') AND deleted = 0
                        AND (expires_at IS NULL OR expires_at > ?5)
                        AND sender_account NOT IN (SELECT account FROM blocks)
                  ORDER BY seq",

@@ -15,7 +15,7 @@
         "additionalProperties": false,
         "properties": {
           "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
-          "domain": { "enum": ["crypto", "sign-in", "pii", "residency", "delivery"] },
+          "domain": { "enum": ["crypto", "sign-in", "pii", "privacy", "residency", "delivery"] },
           "decision": { "type": "string", "pattern": "^[0-9]{4}$" },
           "rule": { "type": "string", "minLength": 10 },
           "tests": { "type": "array", "items": { "$ref": "#/$defs/test" } },

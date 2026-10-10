@@ -3,7 +3,8 @@
 //! and nothing from where it came: not the author, not the conversation,
 //! not the message a reply answered. A file is sealed again under a fresh
 //! key and uploaded into the target, because an object and its key belong
-//! to one conversation (0023).
+//! to one conversation (0023). A shared post is shared again: its id and
+//! nothing else, as the first share (0040).
 
 use spjall_envelope::Body;
 
@@ -17,7 +18,8 @@ impl<T: Transport> Client<T> {
     /// have it yet, and uploaded again. Returns the new envelope id.
     ///
     /// Refused with `CannotForward` for a message under a disappearing
-    /// timer, a deleted one, or anything that is not a text or a file.
+    /// timer, a deleted one, or anything that is not a text, a file or a
+    /// shared post.
     pub fn forward(&mut self, from: &str, seq: u64, to: &str) -> Result<String, ClientError> {
         let source = group_id(from).ok_or(ClientError::UnknownConversation)?;
         let target = group_id(to).ok_or(ClientError::UnknownConversation)?;
@@ -44,6 +46,13 @@ impl<T: Transport> Client<T> {
                 let file = self.media(from, seq)?;
                 self.upload_and_send(to, &file, &mime, caption, name, true)
             }
+            Forwardable::Post(post_id) => self.send(
+                to,
+                Body::Post {
+                    post_id,
+                    forwarded: true,
+                },
+            ),
         }
     }
 }

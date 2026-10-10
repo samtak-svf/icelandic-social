@@ -147,8 +147,36 @@ impl From<api::ReplyPage> for ReplyPage {
     }
 }
 
+/// A shared post as the server holds it now (0040).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum SharedPost {
+    Found {
+        post: Post,
+    },
+    /// The server no longer shows it: deleted, its author's account
+    /// deleted, or its author blocked. The card says only that it is gone.
+    Gone,
+}
+
 #[uniffi::export]
 impl CoreClient {
+    /// Shares a post into a conversation, sent on the next `sync`: the
+    /// message carries the post's id and nothing else (0040). Returns the
+    /// envelope id.
+    pub fn share_post(&self, conversation: String, post_id: String) -> Result<String, CoreError> {
+        Ok(self.client()?.share_post(&conversation, &post_id)?)
+    }
+
+    /// A shared post for its card, fetched now and kept nowhere; call it
+    /// only while the card is on screen. `Gone` for a `404`; any other
+    /// failure is an error, and the card may try again.
+    pub fn shared_post(&self, post_id: String) -> Result<SharedPost, CoreError> {
+        Ok(match self.client()?.shared_post(&post_id)? {
+            Some(post) => SharedPost::Found { post: post.into() },
+            None => SharedPost::Gone,
+        })
+    }
+
     /// A page of Fljótið, newest first; `before` is the `next` of the page
     /// before it, none for the newest. At most 50 a page.
     pub fn feed(&self, before: Option<String>, limit: u32) -> Result<PostPage, CoreError> {
