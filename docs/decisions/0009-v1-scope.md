@@ -1,11 +1,12 @@
 # 0009. The first release is chat only, for a closed test group
 
-- Status: accepted
+- Status: accepted; amended by 0033, 0034, 0036 and 0039
 - Date: 2026-10-05
 - Decided by: Guðröður (the scope questions); the implementation choices below follow from them
 - Amended by: [0033](0033-google-sign-in-and-kenni-verification.md) (the invite is no longer the beta gate),
   [0034](0034-fljotid-and-the-wall.md) (Fljótið and the wall: three tabs, finding people),
-  [0036](0036-everyone-signed-in-is-in-the-picker.md) (everyone signed in is in the picker, found by name)
+  [0036](0036-everyone-signed-in-is-in-the-picker.md) (everyone signed in is in the picker, found by name),
+  [0039](0039-profile-photo.md) (a profile photo, seen by every signed-in account)
 - Built on by: [0022](0022-the-conversation-surfaces.md) (the list, the conversation, the
   toggles), [0023](0023-media-as-encrypted-blobs.md) (photos and files),
   [0024](0024-block.md) (block)
@@ -20,7 +21,7 @@ scope. The first release (v1) contains:
 | Messaging         | 1:1 and small MLS groups, text, photos and files, read markers, typing indicators |
 | Message actions   | Reply, edit, delete for everyone, reactions, disappearing messages                |
 | Surfaces          | Conversation list, conversation, and "Ég" (profile and settings). No other tab    |
-| Identity shown    | Name from Kenni and a verified mark. No place and no domicile                     |
+| Identity shown    | Name, verified mark, a profile photo (0039). No place and no domicile             |
 | Finding people    | A personal invite link and QR code                                                |
 | Safety and rights | Block, and account deletion (`DELETE /me`)                                        |
 | Audience          | A closed test group via TestFlight and Play internal testing                      |

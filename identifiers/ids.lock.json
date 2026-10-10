@@ -21,7 +21,8 @@
     "d1": "spjall-db",
     "r2": {
       "media": "spjall-media",
-      "artifacts": "spjall-artifacts"
+      "artifacts": "spjall-artifacts",
+      "profiles": "spjall-profiles"
     },
     "durableObjects": {
       "conversation": "Conversation",

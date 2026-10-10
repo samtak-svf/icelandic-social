@@ -68,10 +68,11 @@
         "r2": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["media", "artifacts"],
+          "required": ["media", "artifacts", "profiles"],
           "properties": {
             "media": { "$ref": "#/$defs/slug" },
-            "artifacts": { "$ref": "#/$defs/slug" }
+            "artifacts": { "$ref": "#/$defs/slug" },
+            "profiles": { "$ref": "#/$defs/slug" }
           }
         },
         "durableObjects": {

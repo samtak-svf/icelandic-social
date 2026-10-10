@@ -7,7 +7,8 @@
 - Builds on: [0009](0009-v1-scope.md) (block is in v1),
   [0018](0018-the-client-engine-in-the-core.md) (membership by commit),
   [0020](0020-membership-bound-to-commits.md)
-- Amended by: [0034](0034-fljotid-and-the-wall.md) (block extends to posts in Fljótið)
+- Amended by: [0034](0034-fljotid-and-the-wall.md) (block extends to posts in Fljótið),
+  [0039](0039-profile-photo.md) (block withholds the profile photo, both ways)
 
 ## Decision
 
