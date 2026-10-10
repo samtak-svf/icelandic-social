@@ -58,6 +58,21 @@ const PongFrame = z
   .object({ type: z.literal("pong"), nonce: z.string().optional() })
   .openapi("PongFrame", { description: "The answer to `ping`, echoing its nonce" });
 
+const MuteFrame = z
+  .object({
+    type: z.literal("mute"),
+    conversationId: ConversationId,
+    muted: z.boolean().openapi({ description: "Whether the conversation is muted now" }),
+    until: z.int().min(0).optional().openapi({
+      description:
+        "When the mute ends, Unix milliseconds by the server's clock; absent while muted means until turned back on",
+    }),
+  })
+  .openapi("MuteFrame", {
+    description:
+      "Server to client: this account muted or unmuted a conversation, on this device or another (decision 0042)",
+  });
+
 export const WsFrame = z
   .discriminatedUnion("type", [
     HelloFrame,
@@ -66,6 +81,7 @@ export const WsFrame = z
     TypingFrame,
     PingFrame,
     PongFrame,
+    MuteFrame,
   ])
   .openapi("WsFrame", { description: "Every frame on the WebSocket, tagged by `type`" });
 

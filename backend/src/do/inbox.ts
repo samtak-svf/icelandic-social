@@ -30,10 +30,19 @@ const REVOKED = 4401;
 
 type Attachment = { accountId: string; deviceId: string };
 
+/** How long each mute the app offers lasts (decision 0042); null is until turned back on. */
+const MUTE_FOR = { "1h": 60 * 60 * 1000, "8h": 8 * 60 * 60 * 1000, always: null } as const;
+
+export type MuteFor = keyof typeof MUTE_FOR;
+
+/** A mute in force: when it ends, Unix milliseconds, or null for until turned back on. */
+export type Mute = { conversationId: string; until: number | null };
+
 /**
  * One account's devices (decisions 0015, 0017): a hibernating WebSocket per
- * device, the latest `seq` of each conversation, each device's cursor, and a
- * push outbox for devices that are behind with no socket open.
+ * device, the latest `seq` of each conversation, each device's cursor, a
+ * push outbox for devices that are behind with no socket open, and the
+ * conversations the account has muted (decision 0042).
  */
 export class Inbox extends DurableObject<Env> {
   private readonly sql: SqlStorage;
@@ -64,6 +73,10 @@ export class Inbox extends DurableObject<Env> {
         seq INTEGER NOT NULL,
         pushed INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (device_id, conversation_id)
+      );
+      CREATE TABLE IF NOT EXISTS mutes (
+        conversation_id TEXT PRIMARY KEY,
+        until INTEGER
       );
     `);
   }
@@ -152,13 +165,16 @@ export class Inbox extends DurableObject<Env> {
    * urgent message for this account is `urgentSeq`, 0 for none (decisions
    * 0017, 0025). Moves maxima, so a retry repeats nothing. Open sockets get
    * `notify`; a device with no socket that is behind the urgent seq owes a
-   * push, and a newer urgent seq owes it again, until it acks.
+   * push, and a newer urgent seq owes it again, until it acks. A muted
+   * conversation owes no push (decision 0042); one the account is no longer
+   * a member of (`member` false) loses its mute.
    */
   async notify(
     accountId: string,
     conversationId: string,
     seq: number,
     urgentSeq: number,
+    member = true,
   ): Promise<void> {
     this.sql.exec(
       `INSERT INTO conversations (conversation_id, latest_seq) VALUES (?, ?)
@@ -174,8 +190,12 @@ export class Inbox extends DurableObject<Env> {
         send(ws, { type: "notify", conversationId, seq });
       }
     }
+    if (!member) this.unmuteRow(conversationId);
+    const muted = this.muted(conversationId);
     for (const deviceId of await activeDevices(this.env, accountId)) {
-      if (online.has(deviceId) || this.cursor(deviceId, conversationId) >= urgentSeq) continue;
+      if (muted || online.has(deviceId) || this.cursor(deviceId, conversationId) >= urgentSeq) {
+        continue;
+      }
       this.sql.exec(
         `INSERT INTO push_outbox (device_id, conversation_id, seq) VALUES (?, ?, ?)
          ON CONFLICT DO UPDATE SET
@@ -187,6 +207,50 @@ export class Inbox extends DurableObject<Env> {
       );
     }
     await this.push();
+  }
+
+  /**
+   * Mutes a conversation for one of the offered durations, measured by this
+   * server's clock (decision 0042). Its pushes not yet sent are dropped, and
+   * every open socket of the account hears of it.
+   */
+  async mute(conversationId: string, duration: MuteFor): Promise<Mute> {
+    const length = MUTE_FOR[duration];
+    const until = length === null ? null : Date.now() + length;
+    this.sql.exec(
+      `INSERT INTO mutes (conversation_id, until) VALUES (?, ?)
+       ON CONFLICT DO UPDATE SET until = excluded.until`,
+      conversationId,
+      until,
+    );
+    this.sql.exec(
+      "DELETE FROM push_outbox WHERE conversation_id = ? AND pushed = 0",
+      conversationId,
+    );
+    this.broadcast({
+      type: "mute",
+      conversationId,
+      muted: true,
+      ...(until !== null && { until }),
+    });
+    return { conversationId, until };
+  }
+
+  /** Turns a conversation's pushes back on, and tells every open socket of the account. */
+  async unmute(conversationId: string): Promise<void> {
+    this.unmuteRow(conversationId);
+    this.broadcast({ type: "mute", conversationId, muted: false });
+  }
+
+  /** The mutes in force; one that has ended is deleted, not listed. */
+  async mutes(): Promise<Mute[]> {
+    this.sql.exec("DELETE FROM mutes WHERE until <= ?", Date.now());
+    return this.sql
+      .exec<{ conversation_id: string; until: number | null }>(
+        "SELECT conversation_id, until FROM mutes ORDER BY conversation_id",
+      )
+      .toArray()
+      .map((row) => ({ conversationId: row.conversation_id, until: row.until }));
   }
 
   /** Relays a typing indicator to this account's open sockets; nothing is stored. */
@@ -225,6 +289,23 @@ export class Inbox extends DurableObject<Env> {
 
   override async alarm(): Promise<void> {
     await this.push();
+  }
+
+  /** Whether a mute is in force for the conversation; an ended one is deleted. */
+  private muted(conversationId: string): boolean {
+    this.sql.exec("DELETE FROM mutes WHERE until <= ?", Date.now());
+    return (
+      this.sql.exec("SELECT 1 FROM mutes WHERE conversation_id = ?", conversationId).toArray()
+        .length > 0
+    );
+  }
+
+  private unmuteRow(conversationId: string): void {
+    this.sql.exec("DELETE FROM mutes WHERE conversation_id = ?", conversationId);
+  }
+
+  private broadcast(frame: WsFrame): void {
+    for (const ws of this.ctx.getWebSockets()) send(ws, frame);
   }
 
   private cursor(deviceId: string, conversationId: string): number {

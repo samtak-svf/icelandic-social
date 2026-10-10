@@ -1,0 +1,12 @@
+diff --git a/backend/src/do/inbox.ts b/backend/src/do/inbox.ts
+--- a/backend/src/do/inbox.ts
++++ b/backend/src/do/inbox.ts
+@@ -193,7 +193,7 @@
+     if (!member) this.unmuteRow(conversationId);
+     const muted = this.muted(conversationId);
+     for (const deviceId of await activeDevices(this.env, accountId)) {
+-      if (muted || online.has(deviceId) || this.cursor(deviceId, conversationId) >= urgentSeq) {
++      if (online.has(deviceId) || this.cursor(deviceId, conversationId) >= urgentSeq) {
+         continue;
+       }
+       this.sql.exec(

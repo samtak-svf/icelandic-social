@@ -59,3 +59,14 @@ data class PingFrame(
 data class PongFrame(
     val nonce: String? = null,
 ) : WsFrame
+
+/** Server to client: this account muted or unmuted a conversation, on this device or another (decision 0042) */
+@Serializable
+@SerialName("mute")
+data class MuteFrame(
+    val conversationId: String,
+    /** Whether the conversation is muted now */
+    val muted: Boolean,
+    /** When the mute ends, Unix milliseconds by the server's clock; absent while muted means until turned back on */
+    val until: Long? = null,
+) : WsFrame

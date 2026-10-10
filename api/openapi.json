@@ -32,6 +32,9 @@
           },
           {
             "$ref": "#/components/schemas/PongFrame"
+          },
+          {
+            "$ref": "#/components/schemas/MuteFrame"
           }
         ],
         "discriminator": {
@@ -42,7 +45,8 @@
             "ack": "#/components/schemas/AckFrame",
             "typing": "#/components/schemas/TypingFrame",
             "ping": "#/components/schemas/PingFrame",
-            "pong": "#/components/schemas/PongFrame"
+            "pong": "#/components/schemas/PongFrame",
+            "mute": "#/components/schemas/MuteFrame"
           }
         },
         "description": "Every frame on the WebSocket, tagged by `type`"
@@ -191,6 +195,37 @@
           "type"
         ],
         "description": "The answer to `ping`, echoing its nonce"
+      },
+      "MuteFrame": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "mute"
+            ]
+          },
+          "conversationId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "muted": {
+            "type": "boolean",
+            "description": "Whether the conversation is muted now"
+          },
+          "until": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "When the mute ends, Unix milliseconds by the server's clock; absent while muted means until turned back on"
+          }
+        },
+        "required": [
+          "type",
+          "conversationId",
+          "muted"
+        ],
+        "description": "Server to client: this account muted or unmuted a conversation, on this device or another (decision 0042)"
       },
       "Health": {
         "type": "object",
@@ -778,6 +813,63 @@
         },
         "required": [
           "accounts"
+        ]
+      },
+      "Mute": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "q1w2e3r4t5y6u7i8o9p0aA",
+            "description": "The MLS group id, unpadded base64url"
+          },
+          "until": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "When the mute ends, Unix milliseconds by the server's clock; null until turned back on"
+          }
+        },
+        "required": [
+          "conversationId",
+          "until"
+        ]
+      },
+      "MuteRequest": {
+        "type": "object",
+        "properties": {
+          "for": {
+            "$ref": "#/components/schemas/MuteFor"
+          }
+        },
+        "required": [
+          "for"
+        ]
+      },
+      "MuteFor": {
+        "type": "string",
+        "enum": [
+          "1h",
+          "8h",
+          "always"
+        ],
+        "description": "1 hour, 8 hours, or until turned back on"
+      },
+      "Mutes": {
+        "type": "object",
+        "properties": {
+          "mutes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Mute"
+            },
+            "description": "Only mutes still in force"
+          }
+        },
+        "required": [
+          "mutes"
         ]
       },
       "KeyPackageStock": {
@@ -2441,6 +2533,234 @@
           },
           "404": {
             "description": "not_found: no such conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/conversations/{conversationId}/mute": {
+      "put": {
+        "operationId": "muteConversation",
+        "tags": [
+          "conversations"
+        ],
+        "summary": "Mute a conversation: its messages still arrive, but no push wakes a device",
+        "description": "The server sets the end by its own clock. Every open socket of the account gets a mute frame.",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "q1w2e3r4t5y6u7i8o9p0aA",
+              "description": "The MLS group id, unpadded base64url"
+            },
+            "required": true,
+            "description": "The MLS group id, unpadded base64url",
+            "name": "conversationId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MuteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The mute",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mute"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_a_member: this account is not in the conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "unmuteConversation",
+        "tags": [
+          "conversations"
+        ],
+        "summary": "Turn a conversation's notifications back on",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "q1w2e3r4t5y6u7i8o9p0aA",
+              "description": "The MLS group id, unpadded base64url"
+            },
+            "required": true,
+            "description": "The MLS group id, unpadded base64url",
+            "name": "conversationId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The conversation is not muted"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_a_member: this account is not in the conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mutes": {
+      "get": {
+        "operationId": "listMutes",
+        "tags": [
+          "conversations"
+        ],
+        "summary": "The conversations this account has muted (decision 0042)",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The mutes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mutes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
             "content": {
               "application/json": {
                 "schema": {

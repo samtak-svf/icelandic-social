@@ -54,6 +54,7 @@ import { accountRoutes } from "./people.ts";
 import { linkHost } from "./link.ts";
 import { log } from "./log.ts";
 import { getMedia, MAX_CIPHERTEXT, putMedia } from "./media.ts";
+import { muteRoutes } from "./mutes.ts";
 import { activeDevices } from "./profiles.ts";
 
 /** OpenAPI 3.1 document metadata; the routes and schemas come from src/api/. */
@@ -362,6 +363,9 @@ export function createApp() {
     }
     return c.json({ accounts: await activeDevices(c.env, result.ok) }, 200);
   });
+
+  // Muting (decision 0042).
+  muteRoutes(app);
 
   // Media (decision 0023): the roster check is the Conversation DO's, as for messages.
   app.openapi(putMediaRoute, async (c) => {

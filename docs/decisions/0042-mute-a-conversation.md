@@ -1,6 +1,6 @@
 # 0042. Muting a conversation is server state in the account's Inbox, checked before a push
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the backend (#169); the core and the apps follow
 - Date: 2026-10-10
 - Decided by: the maintainer, choosing it from a comparison with an established messenger
 - Builds on: [0008](0008-no-pii-in-logs.md), [0015](0015-delivery-protocol.md),

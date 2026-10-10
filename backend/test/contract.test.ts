@@ -36,6 +36,7 @@ describe("the delivery contract", () => {
     );
     expect(operations.sort()).toEqual([
       "delete /v1/blocks/{accountId} unblockAccount",
+      "delete /v1/conversations/{conversationId}/mute unmuteConversation",
       "delete /v1/devices/{deviceId} revokeDevice",
       "delete /v1/devices/{deviceId}/push clearPushToken",
       "delete /v1/me deleteAccount",
@@ -55,6 +56,7 @@ describe("the delivery contract", () => {
       "get /v1/feed getFeed",
       "get /v1/invites/{token} resolveInvite",
       "get /v1/me getMe",
+      "get /v1/mutes listMutes",
       "get /v1/people listPeople",
       "get /v1/posts/{postId} getPost",
       "get /v1/posts/{postId}/replies listReplies",
@@ -71,6 +73,7 @@ describe("the delivery contract", () => {
       "post /v1/posts/{postId}/replies createReply",
       "put /v1/blocks/{accountId} blockAccount",
       "put /v1/conversations/{conversationId}/media/{mediaId} putMedia",
+      "put /v1/conversations/{conversationId}/mute muteConversation",
       "put /v1/devices/{deviceId}/push setPushToken",
       "put /v1/posts/{postId}/reaction reactToPost",
     ]);

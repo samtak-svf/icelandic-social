@@ -346,6 +346,26 @@
       ]
     },
     {
+      "id": "muted-conversation-sends-no-push",
+      "domain": "delivery",
+      "decision": "0042",
+      "rule": "A muted conversation sends no push until its mute ends or is turned off, and a mute is the account's and goes when the account leaves.",
+      "tests": [
+        {
+          "file": "backend/test/push.test.ts",
+          "name": "owes no push for a muted conversation, and drops what it owed"
+        },
+        {
+          "file": "backend/test/push.test.ts",
+          "name": "owes a push again once a mute has ended, and deletes the ended mute"
+        },
+        {
+          "file": "backend/test/push.test.ts",
+          "name": "is cleared when the account leaves the conversation, or is deleted"
+        }
+      ]
+    },
+    {
       "id": "members-only",
       "domain": "delivery",
       "decision": "0017",

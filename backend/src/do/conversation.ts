@@ -463,7 +463,14 @@ export class Conversation extends DurableObject<Env> {
         try {
           await within(
             NOTIFY_TIMEOUT_MS,
-            inbox(this.env, account).notify(account, meta.conversationId, seq, urgent),
+            // An account a commit left out is told so, and its mute goes (0042).
+            inbox(this.env, account).notify(
+              account,
+              meta.conversationId,
+              seq,
+              urgent,
+              this.isMember(account),
+            ),
           );
         } catch (error) {
           log("conversation.notify_failed", { conversationId: meta.conversationId, seq });

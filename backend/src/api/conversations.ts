@@ -120,3 +120,75 @@ export const getConversationDevicesRoute = createRoute({
     ...AUTHED,
   },
 });
+
+// Muting (decision 0042): a row in the account's Inbox, checked before a push.
+
+const MuteFor = z.enum(["1h", "8h", "always"]).openapi("MuteFor", {
+  description: "1 hour, 8 hours, or until turned back on",
+});
+
+const MuteRequest = z.object({ for: MuteFor }).openapi("MuteRequest");
+
+const Mute = z
+  .object({
+    conversationId: ConversationId,
+    until: z.int().nullable().openapi({
+      description:
+        "When the mute ends, Unix milliseconds by the server's clock; null until turned back on",
+    }),
+  })
+  .openapi("Mute");
+
+export const muteConversationRoute = createRoute({
+  method: "put",
+  path: "/v1/conversations/{conversationId}/mute",
+  operationId: "muteConversation",
+  tags: ["conversations"],
+  summary: "Mute a conversation: its messages still arrive, but no push wakes a device",
+  description:
+    "The server sets the end by its own clock. Every open socket of the account gets a mute frame.",
+  security: DEVICE_TOKEN,
+  request: {
+    params,
+    body: { required: true, content: { "application/json": { schema: MuteRequest } } },
+  },
+  responses: {
+    200: { description: "The mute", content: { "application/json": { schema: Mute } } },
+    ...INVALID,
+    ...MEMBER,
+    ...AUTHED,
+  },
+});
+
+export const unmuteConversationRoute = createRoute({
+  method: "delete",
+  path: "/v1/conversations/{conversationId}/mute",
+  operationId: "unmuteConversation",
+  tags: ["conversations"],
+  summary: "Turn a conversation's notifications back on",
+  security: DEVICE_TOKEN,
+  request: { params },
+  responses: {
+    204: { description: "The conversation is not muted" },
+    ...INVALID,
+    ...MEMBER,
+    ...AUTHED,
+  },
+});
+
+const Mutes = z
+  .object({ mutes: z.array(Mute).openapi({ description: "Only mutes still in force" }) })
+  .openapi("Mutes");
+
+export const listMutesRoute = createRoute({
+  method: "get",
+  path: "/v1/mutes",
+  operationId: "listMutes",
+  tags: ["conversations"],
+  summary: "The conversations this account has muted (decision 0042)",
+  security: DEVICE_TOKEN,
+  responses: {
+    200: { description: "The mutes", content: { "application/json": { schema: Mutes } } },
+    ...AUTHED,
+  },
+});
