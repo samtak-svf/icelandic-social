@@ -28,7 +28,7 @@ configFiles:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    MARKETING_VERSION: "0.2.0"
+    MARKETING_VERSION: "0.3.0"
     CURRENT_PROJECT_VERSION: 1
     # Unsigned until Samtak svf.'s Apple team exists (decision 0010); the
     # release workflow that signs arrives with it. Only Interim signs.
