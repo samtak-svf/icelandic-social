@@ -65,6 +65,13 @@ pre-push:
         git fetch -q origin main 2>/dev/null || true
         node tooling/ids-freeze.mjs --base origin/main
 
+    # A test that once caught a real bug stays, or is retired with a reason
+    # (docs/testing.md § Critical rules).
+    critical-rules:
+      run: |
+        git fetch -q origin main 2>/dev/null || true
+        node tooling/critical-rules.mjs --base origin/main
+
     # Every brand passes its contract, and the committed platform outputs
     # match the active brand byte for byte.
     brand:

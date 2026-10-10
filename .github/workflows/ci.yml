@@ -48,6 +48,10 @@ jobs:
         if: github.event_name == 'pull_request'
         run: node tooling/ids-freeze.mjs --base origin/${{ github.base_ref }}
 
+      - name: A test that caught a bug is kept or retired with a reason
+        if: github.event_name == 'pull_request'
+        run: node tooling/critical-rules.mjs --base origin/${{ github.base_ref }}
+
       - name: Guard tests
         run: pnpm test
 

@@ -1,0 +1,426 @@
+{
+  "$comment": "The rules where a wrong answer harms a person (docs/testing.md § Critical rules), each with the tests that hold it. tooling/critical-rules.mjs checks that every test named here exists. A test marked `caught` once caught a real bug: it may leave only through `retired`, with the reason.",
+  "rules": [
+    {
+      "id": "mls-roster-by-winning-commit",
+      "domain": "crypto",
+      "decision": "0017",
+      "rule": "The server's roster moves only by the commit that wins its epoch.",
+      "tests": [
+        {
+          "file": "backend/test/conversation.test.ts",
+          "name": "sets the roster to the claim of the commit that wins its epoch"
+        },
+        {
+          "file": "backend/test/conversation.test.ts",
+          "name": "stores one commit per epoch, and older application messages too"
+        },
+        {
+          "file": "core/client/tests/sync.rs",
+          "name": "a_claim_that_leaves_a_member_out_is_corrected"
+        }
+      ]
+    },
+    {
+      "id": "mls-claim-matches-commit",
+      "domain": "crypto",
+      "decision": "0017",
+      "rule": "A commit whose claim leaves out its sender or does not match its Welcome is refused.",
+      "tests": [
+        {
+          "file": "backend/test/messages.test.ts",
+          "name": "refuses a commit whose claim leaves out its sender or does not match its Welcome"
+        },
+        {
+          "file": "core/mls/tests/group.rs",
+          "name": "a_claim_the_commit_does_not_back_is_seen_and_corrected"
+        }
+      ]
+    },
+    {
+      "id": "mls-removed-member-reads-nothing-new",
+      "domain": "crypto",
+      "decision": "0017",
+      "rule": "An account a commit removes cannot read past that commit, nor fetch earlier media.",
+      "tests": [
+        {
+          "file": "backend/test/conversation.test.ts",
+          "name": "lets an account a commit left out read up to that commit"
+        },
+        {
+          "file": "backend/test/media.test.ts",
+          "name": "stops a removed member fetching what was sent before"
+        },
+        {
+          "file": "core/client/tests/sync.rs",
+          "name": "a_revoked_device_cannot_read_after_its_removal"
+        }
+      ]
+    },
+    {
+      "id": "mls-pinned-suite",
+      "domain": "crypto",
+      "decision": "0002",
+      "rule": "Groups use the ciphersuite decision 0002 pins.",
+      "tests": [
+        {
+          "file": "core/mls/src/lib.rs",
+          "name": "pinned_suite_is_the_one_in_decision_0002"
+        }
+      ]
+    },
+    {
+      "id": "mls-foreign-credential-refused",
+      "domain": "crypto",
+      "decision": "0002",
+      "rule": "A Welcome or KeyPackage whose credential does not name the device it was claimed for is refused.",
+      "tests": [
+        {
+          "file": "core/mls/tests/group.rs",
+          "name": "a_welcome_with_a_foreign_credential_is_refused"
+        },
+        {
+          "file": "core/mls/tests/group.rs",
+          "name": "a_key_package_must_name_the_device_it_was_claimed_for"
+        }
+      ]
+    },
+    {
+      "id": "media-sealed-and-bound",
+      "domain": "crypto",
+      "decision": "0023",
+      "rule": "Media leaves the device sealed, a tampered blob does not open, and an object is bound to one conversation.",
+      "tests": [
+        {
+          "file": "core/client/src/media.rs",
+          "name": "a_blob_changed_cut_or_reordered_does_not_open"
+        },
+        {
+          "file": "backend/test/media.test.ts",
+          "name": "binds an object to its conversation"
+        },
+        {
+          "file": "backend/test/media.test.ts",
+          "name": "refuses a stranger both ways and a used id"
+        }
+      ]
+    },
+    {
+      "id": "store-encrypted-at-rest",
+      "domain": "crypto",
+      "decision": "0016",
+      "rule": "The device store is SQLCipher: not plaintext, and a wrong key does not open it.",
+      "tests": [
+        {
+          "file": "core/store/src/lib.rs",
+          "name": "the_file_is_not_plaintext_sqlite"
+        },
+        {
+          "file": "core/store/src/lib.rs",
+          "name": "a_wrong_key_cannot_open_it"
+        }
+      ]
+    },
+    {
+      "id": "device-revoke-is-immediate",
+      "domain": "sign-in",
+      "decision": "0014",
+      "rule": "A revoked device's token stops working at once and it leaves every group.",
+      "tests": [
+        {
+          "file": "backend/test/revoke.test.ts",
+          "name": "kills its token at once, deletes its KeyPackages and closes its socket"
+        },
+        {
+          "file": "core/client/tests/sync.rs",
+          "name": "revoking_a_device_removes_it_from_every_group"
+        }
+      ]
+    },
+    {
+      "id": "sign-in-pkce-and-single-use-code",
+      "domain": "sign-in",
+      "decision": "0019",
+      "rule": "Sign-in refuses the wrong PKCE verifier, a reused code and a foreign redirect.",
+      "tests": [
+        {
+          "file": "backend/test/sign-in.test.ts",
+          "name": "refuses the wrong PKCE verifier"
+        },
+        {
+          "file": "backend/test/sign-in.test.ts",
+          "name": "refuses a code used twice"
+        },
+        {
+          "file": "backend/test/sign-in.test.ts",
+          "name": "refuses a redirect that is not the app's"
+        }
+      ]
+    },
+    {
+      "id": "identity-held-once",
+      "domain": "sign-in",
+      "decision": "0035",
+      "rule": "An identity belongs to one account; linking one another account holds is refused.",
+      "tests": [
+        {
+          "file": "backend/test/google-sign-in.test.ts",
+          "name": "refuses an identity another account holds"
+        },
+        {
+          "file": "backend/test/google-sign-in.test.ts",
+          "name": "does not take a Google subject for a kennitala that happens to be equal"
+        },
+        {
+          "file": "backend/test/google-sign-in.test.ts",
+          "name": "refuses an ID token that does not verify, and changes nothing"
+        }
+      ]
+    },
+    {
+      "id": "merge-on-kenni-moves-only-the-joined-account",
+      "domain": "sign-in",
+      "decision": "0035",
+      "rule": "Joining a Google account into the Kenni account moves its device and data, revokes its other devices, and deletes only the account left without an identity.",
+      "tests": [
+        {
+          "file": "backend/test/google-sign-in.test.ts",
+          "name": "joins a Google account into the Kenni account: the device, its token and Google move"
+        },
+        {
+          "file": "backend/test/google-sign-in.test.ts",
+          "name": "revokes the joined account's other devices"
+        },
+        {
+          "file": "backend/test/google-sign-in.test.ts",
+          "name": "deletes an account left without an identity, and no other"
+        }
+      ]
+    },
+    {
+      "id": "client-floor",
+      "domain": "sign-in",
+      "decision": "0030",
+      "rule": "A build below its platform's floor gets 426 before its token is looked at.",
+      "tests": [
+        {
+          "file": "backend/test/client-version.test.ts",
+          "name": "answers 426 on a /v1 route, before the token is looked at, and leaves /health open"
+        },
+        {
+          "file": "core/client/tests/sync.rs",
+          "name": "a_build_below_the_floor_is_told_to_update"
+        }
+      ]
+    },
+    {
+      "id": "kennitala-only-as-hmac",
+      "domain": "pii",
+      "decision": "0008",
+      "rule": "The server keeps a kennitala only as an HMAC, and a Google subject or address not at all.",
+      "tests": [
+        {
+          "file": "backend/test/sign-in.test.ts",
+          "name": "keeps the kennitala only as an HMAC"
+        },
+        {
+          "file": "backend/test/google-sign-in.test.ts",
+          "name": "keeps neither the subject nor the address, not even in the HMAC's place"
+        }
+      ]
+    },
+    {
+      "id": "log-redaction",
+      "domain": "pii",
+      "decision": "0008",
+      "rule": "A log line carries only allow-listed fields, and redacts anything that could be a name, kennitala or phone number.",
+      "tests": [
+        {
+          "file": "backend/test/log.test.ts",
+          "name": "drops a field that is not on the allow list"
+        },
+        {
+          "file": "backend/test/log.test.ts",
+          "name": "redacts a string that is not an opaque id"
+        },
+        {
+          "file": "backend/test/log.test.ts",
+          "name": "redacts a run of digits that could be a phone number or a kennitala"
+        },
+        {
+          "file": "backend/test/sign-in.test.ts",
+          "name": "carry neither the kennitala nor the name, nor the token"
+        }
+      ]
+    },
+    {
+      "id": "pii-guard-finds-kennitala-and-phone",
+      "domain": "pii",
+      "decision": "0008",
+      "rule": "The PII guard finds a person's kennitala by its check digit and an Icelandic phone number.",
+      "tests": [
+        {
+          "file": "tooling/tests/pii-guard.test.mjs",
+          "name": "finds a person's kennitala with or without a hyphen, redacted"
+        },
+        {
+          "file": "tooling/tests/pii-guard.test.mjs",
+          "name": "finds an Icelandic phone number with its country code"
+        }
+      ]
+    },
+    {
+      "id": "do-pinned-to-eu",
+      "domain": "residency",
+      "decision": "0001",
+      "rule": "Every Durable Object stub is pinned to the EU jurisdiction, through the seam only.",
+      "tests": [
+        {
+          "file": "backend/test/env.test.ts",
+          "name": "refuses a jurisdiction other than the EU"
+        },
+        {
+          "file": "backend/test/env.test.ts",
+          "name": "fails when a stub skips the jurisdiction"
+        },
+        {
+          "file": "tooling/tests/seam-guard.test.mjs",
+          "name": "fails on a bare idFromName, even inside the seam"
+        },
+        {
+          "file": "tooling/tests/seam-guard.test.mjs",
+          "name": "fails on a jurisdiction other than eu"
+        }
+      ]
+    },
+    {
+      "id": "d1-r2-in-eu",
+      "domain": "residency",
+      "decision": "0001",
+      "rule": "D1 and every R2 bucket are created in the EU jurisdiction, and no Queue exists.",
+      "tests": [
+        {
+          "file": "tooling/tests/jurisdiction-check.test.mjs",
+          "name": "fails on an R2 binding without the EU jurisdiction"
+        },
+        {
+          "file": "tooling/tests/jurisdiction-check.test.mjs",
+          "name": "fails on a D1 created without --jurisdiction eu"
+        },
+        {
+          "file": "tooling/tests/jurisdiction-check.test.mjs",
+          "name": "fails on a renamed D1 database, a stray bucket and a queue"
+        }
+      ]
+    },
+    {
+      "id": "retention-30-days",
+      "domain": "delivery",
+      "decision": "0015",
+      "rule": "The server deletes messages, Welcomes and media 30 days after they were stored.",
+      "tests": [
+        {
+          "file": "backend/test/conversation.test.ts",
+          "name": "deletes messages and Welcomes 30 days after they were stored, not the GroupInfo"
+        },
+        {
+          "file": "backend/test/media.test.ts",
+          "name": "expires objects after 30 days"
+        }
+      ]
+    },
+    {
+      "id": "delivery-order-and-idempotence",
+      "domain": "delivery",
+      "decision": "0015",
+      "rule": "Messages are numbered in order, a resend gets the first seq, and a lost answer loses and doubles nothing.",
+      "tests": [
+        {
+          "file": "backend/test/conversation.test.ts",
+          "name": "numbers messages in order and answers a resend with the first seq"
+        },
+        {
+          "file": "core/client/tests/sync.rs",
+          "name": "a_restart_between_sealing_and_the_answer_loses_and_doubles_nothing"
+        }
+      ]
+    },
+    {
+      "id": "members-only",
+      "domain": "delivery",
+      "decision": "0017",
+      "rule": "Only a member reads or writes a conversation, its roster and its devices.",
+      "tests": [
+        {
+          "file": "backend/test/conversation.test.ts",
+          "name": "refuses an account that is not a member"
+        },
+        {
+          "file": "backend/test/conversation.test.ts",
+          "name": "answers its roster to members only"
+        },
+        {
+          "file": "backend/test/conversation-devices.test.ts",
+          "name": "answers 403 to an account outside the conversation and 404 to none"
+        }
+      ]
+    },
+    {
+      "id": "block-refuses-contact",
+      "domain": "delivery",
+      "decision": "0024",
+      "rule": "A blocked account cannot claim the blocker's KeyPackages or be brought into a conversation, and cannot reach the blocker again.",
+      "tests": [
+        {
+          "file": "backend/test/accounts.test.ts",
+          "name": "stops the blocked account claiming the blocker's KeyPackages, until lifted"
+        },
+        {
+          "file": "backend/test/accounts.test.ts",
+          "name": "refuses a commit that brings in an account that has blocked its sender"
+        },
+        {
+          "file": "core/client/tests/sync.rs",
+          "name": "a_blocked_account_cannot_reach_the_blocker_again"
+        }
+      ]
+    },
+    {
+      "id": "account-deletion-erases",
+      "domain": "delivery",
+      "decision": "0019",
+      "rule": "Deleting an account revokes every token, leaves the rosters, wipes the inbox and deletes its uploads.",
+      "tests": [
+        {
+          "file": "backend/test/revoke.test.ts",
+          "name": "revokes every token, leaves the rosters, wipes the inbox and deletes the rows"
+        },
+        {
+          "file": "backend/test/media.test.ts",
+          "name": "deletes an account's uploads with the account"
+        },
+        {
+          "file": "backend/test/conversation.test.ts",
+          "name": "keeps a deleted account out of every later claim (0028)"
+        }
+      ]
+    },
+    {
+      "id": "push-says-only-sync",
+      "domain": "delivery",
+      "decision": "0025",
+      "rule": "A push goes to the other accounts only, for an urgent message, and carries nothing but a wake-up.",
+      "tests": [
+        {
+          "file": "backend/test/push.test.ts",
+          "name": "pushes a message to the other accounts only, and a commit or an urgent: false to no one"
+        },
+        {
+          "file": "backend/test/push.test.ts",
+          "name": "never sends what another round already sent, when two rounds overlap"
+        }
+      ]
+    }
+  ],
+  "retired": []
+}

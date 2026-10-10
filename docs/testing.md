@@ -58,3 +58,16 @@ Rules for a new test:
 
 Before trusting a test, break the rule it guards and watch it fail. The guards already do
 this (`pnpm test`). Do the same, by hand, for a new test in a domain above.
+
+## Critical rules
+
+`tooling/critical-rules.json` lists the rules where a wrong answer harms a person, one
+domain above each, with the decision record and the tests that hold it. `pnpm check`
+(`check:critical-rules`) fails when a named test is renamed or removed, when a rule has
+no test and no `gap` issue saying so, or when a decision it cites has no record. Add a
+rule here when a decision creates one, and name its test in the same PR.
+
+A test that catches a real bug gets `caught` (the PR or commit). On a PR, and before a
+push, `critical-rules.mjs --base` refuses to drop such a test: it stays listed, or moves
+to `retired` with the reason. A pruning pass that cuts tests by count loses exactly the
+ones that mattered unless they are named.
