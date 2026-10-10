@@ -137,10 +137,28 @@ next try is from an Apple device. Until the team exists:
 4. Store the secrets in `samtak-secrets` as `samtak-spjall-apns-key`,
    `samtak-spjall-ios-signing-p12`, `samtak-spjall-asc-api-key` (raw PEM, not base64).
 
-**Google:**
+**Google**, once the identity check is approved. `.github/workflows/android-play.yml` builds,
+signs and uploads to internal testing; it fails at its first step until these exist.
 
-1. Create the app `is.samtak.spjall`, set up internal testing.
-2. Generate the upload keystore; store it as `samtak-spjall-android-upload-keystore`.
+1. Create the app `is.samtak.spjall` (default language Icelandic) and set up the internal
+   testing track with a tester list. Turn on Play App Signing (the default): Google holds the
+   app signing key, and the workflow signs with an upload key only.
+2. Generate the upload keystore:
+   `keytool -genkeypair -keystore upload.jks -alias upload -keyalg RSA -keysize 4096 -validity 10000`.
+   Store it (base64), its passwords and the alias in `samtak-secrets` as
+   `samtak-spjall-android-upload-keystore`, `-android-upload-store-password`,
+   `-android-upload-key-alias` and `-android-upload-key-password`.
+3. In Google Cloud project `samtak-spjall`, enable the Google Play Android Developer API and
+   create the service account `spjall-play` with one JSON key, stored as
+   `samtak-spjall-play-service-account`. In Play Console, Users and permissions, invite its
+   email with the app's "Release to testing tracks" permission only.
+4. In GitHub, create the environment `play` with the maintainer as required reviewer and
+   these secrets: `ANDROID_UPLOAD_KEYSTORE_BASE64`, `ANDROID_UPLOAD_STORE_PASSWORD`,
+   `ANDROID_UPLOAD_KEY_ALIAS`, `ANDROID_UPLOAD_KEY_PASSWORD`, `ANDROID_GOOGLE_SERVICES_JSON`
+   (from `samtak-spjall-android-google-services`) and `PLAY_SERVICE_ACCOUNT_JSON`.
+5. The API refuses the first bundle of a new app, so the first one goes up by hand: run
+   `android-play` with `upload: false`, download its `app-release` artifact and upload it to
+   internal testing in Play Console. Every later run uploads by itself.
 
 ## Push credentials (decision 0025)
 

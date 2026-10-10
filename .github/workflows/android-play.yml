@@ -1,0 +1,127 @@
+name: android-play
+
+# A signed release bundle uploaded to Google Play's internal testing track,
+# on Samtak svf.'s own Play account (decision 0010). Manual only: each run
+# signs a build and can upload it.
+#
+# The upload key and the Play service account are the organisation's, so they
+# live in the environment `play` (required reviewers), never in repo secrets.
+# Setting them up is the maintainer's step: docs/store-accounts/ § Google.
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: Upload to the internal testing track after the build
+        type: boolean
+        default: true
+
+concurrency:
+  group: android-play
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: play
+    steps:
+      - name: Signing secrets present
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+          GOOGLE_SERVICES: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON }}
+          PLAY_ACCOUNT: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          missing=()
+          [ -n "$KEYSTORE" ] || missing+=(ANDROID_UPLOAD_KEYSTORE_BASE64)
+          [ -n "$STORE_PASSWORD" ] || missing+=(ANDROID_UPLOAD_STORE_PASSWORD)
+          [ -n "$KEY_ALIAS" ] || missing+=(ANDROID_UPLOAD_KEY_ALIAS)
+          [ -n "$KEY_PASSWORD" ] || missing+=(ANDROID_UPLOAD_KEY_PASSWORD)
+          [ -n "$GOOGLE_SERVICES" ] || missing+=(ANDROID_GOOGLE_SERVICES_JSON)
+          [ -n "$PLAY_ACCOUNT" ] || missing+=(PLAY_SERVICE_ACCOUNT_JSON)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::missing secrets: ${missing[*]} (environment play, docs/store-accounts/)"
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Published core pinned
+        id: lock
+        run: |
+          version=$(jq -r '.version // empty' core/artifact.lock.json)
+          if [ -z "$version" ]; then
+            echo "::error::core/artifact.lock.json pins no published core; a Play build never builds its own"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Toolchain
+        working-directory: core
+        run: rustup toolchain install
+
+      - name: Core (pinned ${{ steps.lock.outputs.version }})
+        working-directory: core
+        run: cargo xtask fetch android
+
+      # Push needs the Firebase client values (decision 0025); the build checks
+      # the file's project against identifiers/ids.json.
+      - name: Signing material and Firebase config
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          GOOGLE_SERVICES: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON }}
+        run: |
+          echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          printf '%s' "$GOOGLE_SERVICES" > android/app/google-services.json
+
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      # The run number gives the version code (plus an offset, app/build.gradle.kts):
+      # Play refuses a repeated one.
+      - name: Bundle (release)
+        working-directory: android
+        env:
+          SPJALL_VERSION_CODE: ${{ github.run_number }}
+          SPJALL_UPLOAD_STORE_FILE: ${{ runner.temp }}/upload.jks
+          SPJALL_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
+          SPJALL_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          SPJALL_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: ./gradlew --console=plain :app:bundleRelease
+
+      # Play's API refuses a new app's first bundle; that one goes up by hand.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ !inputs.upload }}
+        with:
+          name: app-release
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 3
+
+      - name: Application id
+        id: ids
+        run: echo "app=$(jq -r .store.androidApplicationId identifiers/ids.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload to internal testing
+        if: inputs.upload
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ steps.ids.outputs.app }}
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed
+
+      - name: Remove signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks" android/app/google-services.json

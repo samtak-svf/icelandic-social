@@ -51,18 +51,38 @@ val firebase: FirebaseApp? =
         )
     }
 
+// A Play build (android-play.yml) signs with the organisation's upload key
+// and numbers itself from the run; a local release build stays unsigned.
+fun env(name: String): String? = providers.environmentVariable(name).orNull?.takeIf { it.isNotEmpty() }
+
+val uploadStoreFile: String? = env("SPJALL_UPLOAD_STORE_FILE")
+
+// Above the hand-set codes of the builds before the Play lane.
+val playVersionCodeOffset = 100
+
 android {
     // Not the application id: `is` is a Kotlin keyword (decision 0004).
     namespace = "samtak.spjall"
 
     defaultConfig {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        versionCode = 2
+        versionCode = env("SPJALL_VERSION_CODE")?.toInt()?.plus(playVersionCodeOffset) ?: 2
         versionName = "0.2.0"
         buildConfigField("String", "FIREBASE_APP_ID", "\"${firebase?.appId.orEmpty()}\"")
         buildConfigField("String", "FIREBASE_API_KEY", "\"${firebase?.apiKey.orEmpty()}\"")
         buildConfigField("String", "FIREBASE_SENDER_ID", "\"${firebase?.senderId.orEmpty()}\"")
         buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${firebase?.projectId.orEmpty()}\"")
+    }
+
+    signingConfigs {
+        if (uploadStoreFile != null) {
+            create("upload") {
+                storeFile = file(uploadStoreFile)
+                storePassword = env("SPJALL_UPLOAD_STORE_PASSWORD")
+                keyAlias = env("SPJALL_UPLOAD_KEY_ALIAS")
+                keyPassword = env("SPJALL_UPLOAD_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -72,6 +92,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfigs.findByName("upload")?.let { signingConfig = it }
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
