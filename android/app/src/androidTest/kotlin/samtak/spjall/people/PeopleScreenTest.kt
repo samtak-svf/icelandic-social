@@ -2,8 +2,10 @@ package samtak.spjall.people
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -57,6 +59,12 @@ class PeopleScreenTest {
     private val people = listOf(Person("a2", "Anna", true), Person("a3", null, false))
 
     private fun show(state: PeopleViewModel.State) = compose.setContent { SpjallTheme { PeopleScreen(state, actions) } }
+
+    @Test
+    fun theSearchFieldHasFocusWhenThePickerOpens() {
+        show(PeopleViewModel.State(people = people, loaded = true))
+        compose.onNode(hasSetTextAction()).assertIsFocused()
+    }
 
     @Test
     fun aRowIsACheckboxAndNothingStartsUntilSomeoneIsPicked() {

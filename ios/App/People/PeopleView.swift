@@ -5,6 +5,8 @@ import SwiftUI
 struct PeopleView: View {
     let model: PeopleModel
     let onInvite: () -> Void
+    /// The picker is opened to find someone, so the search field has focus at once.
+    @State private var searching = false
 
     var body: some View {
         List {
@@ -44,6 +46,7 @@ struct PeopleView: View {
         .listStyle(.plain)
         .searchable(
             text: Binding(get: { model.query }, set: { model.query = $0 }),
+            isPresented: $searching,
             placement: .navigationBarDrawer(displayMode: .always),
             prompt: Text("people_search")
         )
@@ -67,6 +70,8 @@ struct PeopleView: View {
             }
         }
         .task { await model.load() }
+        // Asked for once the push has settled; asked for in onAppear it can be lost mid-transition.
+        .task { searching = true }
     }
 }
 
