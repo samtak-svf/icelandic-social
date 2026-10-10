@@ -48,13 +48,17 @@ export default defineConfig(({ mode }) => ({
       ),
       // Google, the first way to sign in (decision 0033): its issuer, and the
       // web client the consent screen belongs to. The client id is not a
-      // frozen id; the apps get it from /v1/sign-in. Empty until the client
-      // exists: Google sign-in then answers 503 and Kenni still works. The
-      // interop run signs in with dev/worker.ts's fake Google.
+      // frozen id; the apps get it from /v1/sign-in. Left empty, Google sign-in
+      // answers 503 and Kenni still works. The interop run signs in with
+      // dev/worker.ts's fake Google.
       GOOGLE_ISSUER: bindings.text(
         mode === "interop" ? "http://127.0.0.1:8787/dev/google" : "https://accounts.google.com",
       ),
-      GOOGLE_CLIENT_ID: bindings.text(mode === "interop" ? "fake-google-client" : ""),
+      GOOGLE_CLIENT_ID: bindings.text(
+        mode === "interop"
+          ? "fake-google-client"
+          : "654764079866-26282k1r7oltsqt2gv71hl92jmbd8pjv.apps.googleusercontent.com",
+      ),
       // The link host's association files (decision 0019). Empty until the
       // store accounts exist: the Play app-signing certificate's SHA-256
       // fingerprints, comma-separated, and the Apple team of is.samtak.spjall.

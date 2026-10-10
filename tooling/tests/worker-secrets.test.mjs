@@ -32,6 +32,7 @@ describe("worker-secrets", () => {
   it("sends the `now` rows by default", () => {
     expect(select(SECRETS, null).map((s) => s.name)).toEqual([
       "KENNITALA_HMAC_KEY",
+      "GOOGLE_CLIENT_SECRET",
       "FCM_SERVICE_ACCOUNT",
       "APNS_KEY_P8",
       "APNS_KEY_ID",

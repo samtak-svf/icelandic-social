@@ -1,6 +1,6 @@
 # 0033. Google signs a person in; Kenni verifies who they are
 
-- Status: accepted; implemented in the backend (#130), the core (#132, 0.11.0) and the apps (#134); Google sign-in in production waits on the OAuth client and its secret
+- Status: accepted; implemented in the backend (#130), the core (#132, 0.11.0) and the apps (#134); the production OAuth client is set
 - Date: 2026-10-09
 - Decided by: the maintainer, approving the plan for Google sign-in, Kenni verification and
   the feed

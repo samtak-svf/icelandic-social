@@ -1,14 +1,16 @@
 // @ts-check
 // Copies the Worker's secrets from the vault (decision 0026) into the deployed
-// Worker spjall-api, without writing a value to disk or to the terminal.
+// Worker spjall-api, without printing a value to the terminal.
 //
 //   node tooling/worker-secrets.mjs --dry-run
 //   node tooling/worker-secrets.mjs [--only=NAME,NAME] [--gcloud-account=ADDRESS]
 //
 // Each value is read with `gcloud secrets versions access` and the set goes as
-// a JSON Merge Patch on stdin to `cf workers secrets bulk` (one new version
-// with every change); `cf workers secrets list` then has to show every name
-// sent. Neither the values nor the API's answer are printed. Run it after the Worker's first deploy (a secret needs
+// a JSON Merge Patch to `cf workers secrets bulk` (one new version with every
+// change). cf reads the body only from a regular file (a pipe on /dev/stdin is
+// refused as empty), so it goes through a private 0600 temporary file that is
+// removed when the call returns; `cf workers secrets list` then has to show
+// every name sent. Neither the values nor the API's answer are printed. Run it after the Worker's first deploy (a secret needs
 // a Worker to belong to) and again whenever a vault value changes.
 //
 // SECRETS below has one row per name in the `Secrets` type of
@@ -16,6 +18,8 @@
 // added to the Worker and forgotten here.
 
 import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readJson, ROOT } from "./lib/repo.mjs";
 
@@ -45,12 +49,9 @@ export const SECRETS = [
     when: "never",
     reason: "the Kenni client is public (decision 0019)",
   },
-  {
-    name: "GOOGLE_CLIENT_SECRET",
-    vault: "google-client-secret",
-    when: "later",
-    reason: "set once the Google web client exists (decision 0033)",
-  },
+  // The Google web client's secret (decision 0033); the Worker redeems the
+  // code with it.
+  { name: "GOOGLE_CLIENT_SECRET", vault: "google-client-secret", when: "now" },
   { name: "FCM_SERVICE_ACCOUNT", vault: "fcm-service-account", when: "now" },
   {
     name: "APNS_KEY_P8",
@@ -139,15 +140,17 @@ function main() {
 
   const backend = join(ROOT, "backend");
   const worker = ["--worker", "spjall-api"];
-  execFileSync(
-    "pnpm",
-    ["exec", "cf", "workers", "secrets", "bulk", ...worker, "--file", "/dev/stdin"],
-    {
+  const dir = mkdtempSync(join(tmpdir(), "worker-secrets-"));
+  try {
+    const body = join(dir, "body.json");
+    writeFileSync(body, JSON.stringify(mergePatch(values)), { mode: 0o600 });
+    execFileSync("pnpm", ["exec", "cf", "workers", "secrets", "bulk", ...worker, "--file", body], {
       cwd: backend,
-      input: JSON.stringify(mergePatch(values)),
-      stdio: ["pipe", "ignore", "inherit"],
-    },
-  );
+      stdio: ["ignore", "ignore", "inherit"],
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 
   const listed = JSON.parse(
     execFileSync("pnpm", ["exec", "cf", "workers", "secrets", "list", ...worker], {
