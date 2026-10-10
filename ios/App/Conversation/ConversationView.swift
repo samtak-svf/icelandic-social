@@ -14,6 +14,10 @@ struct ConversationView: View {
     @State private var deleting: Item?
     @State private var reacting: Item?
     @State private var preview: URL?
+    /// The picker a forward opened (decision 0041).
+    @State private var forwarding: PickModel?
+    /// Into how many conversations the last forward went, shown for a moment.
+    @State private var forwarded: String?
     /// The bottom of the timeline is in view.
     @State private var atBottom = true
     @Environment(\.scenePhase) private var scenePhase
@@ -53,6 +57,31 @@ struct ConversationView: View {
             guard old != nil, new == nil else { return }
             PreviewCopy.clear()
             model.didOpen()
+        }
+        .sheet(isPresented: Binding(get: { forwarding != nil }, set: { if !$0 { forwarding = nil } })) {
+            if let picker = forwarding {
+                PickView(model: picker, title: "forward") { forwarding = nil }
+                    .onChange(of: picker.done) { _, done in
+                        guard let done else { return }
+                        forwarding = nil
+                        forwarded = plural("forward_done", done)
+                    }
+            }
+        }
+        .overlay(alignment: .top) {
+            if let forwarded {
+                Text(verbatim: forwarded)
+                    .font(.footnote)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.top, 56)
+                    .task {
+                        AccessibilityNotification.Announcement(forwarded).post()
+                        try? await Task.sleep(for: .seconds(2))
+                        self.forwarded = nil
+                    }
+            }
         }
         .task { await model.follow() }
         .onChange(of: scenePhase) { _, phase in
@@ -96,7 +125,8 @@ struct ConversationView: View {
                         case .bubble(let item, let first, let last, let readBy):
                             Bubble(
                                 item: item, first: first, last: last, readBy: readBy, group: group, model: model,
-                                onDelete: { deleting = item }, onReact: { reacting = item }, onPost: onPost)
+                                onDelete: { deleting = item }, onReact: { reacting = item },
+                                onForward: { forwarding = model.forwarding(item) }, onPost: onPost)
                         }
                     }
                     Color.clear.frame(height: 1).id(Self.bottom)

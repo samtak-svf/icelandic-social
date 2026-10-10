@@ -841,6 +841,54 @@
         }
       }
     },
+    "forward": {
+      "comment": "Message menu entry that copies a message into other conversations; also the title of the conversation picker it opens (docs/decisions/0041).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Áframsenda"
+          }
+        }
+      }
+    },
+    "forward_done": {
+      "comment": "Brief confirmation after a forward: into how many conversations it was sent (docs/decisions/0041).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Áframsent í %1$lld samtal"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Áframsent í %1$lld samtöl"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "pick_empty": {
+      "comment": "The conversation picker when there is no conversation to send into.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekkert samtal til að senda í."
+          }
+        }
+      }
+    },
     "post_shared": {
       "comment": "A shared Fljótið post in the conversation list and in a notification: fixed, never the post's text or author (docs/decisions/0040).",
       "extractionState": "manual",

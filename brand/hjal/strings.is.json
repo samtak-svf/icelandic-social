@@ -78,6 +78,12 @@
   "delete_confirm": "Taka skilaboðin til baka? Þau hverfa úr tækjum allra í samtalinu.",
   "message_deleted": "Skilaboðin voru tekin til baka.",
   "forwarded_marker": "Áframsent",
+  "forward": "Áframsenda",
+  "forward_done": {
+    "one": "Áframsent í {count} samtal",
+    "other": "Áframsent í {count} samtöl"
+  },
+  "pick_empty": "Ekkert samtal til að senda í.",
   "post_shared": "Deild færsla",
   "post_gone": "Færslan er ekki lengur til",
   "post_load_failed": "Ekki tókst að sækja færsluna. Reyndu aftur.",

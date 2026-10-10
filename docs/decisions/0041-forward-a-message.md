@@ -1,6 +1,6 @@
 # 0041. A message is forwarded as a fresh copy, marked "Áframsent", without its original sender
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the core (#170) and the apps (#181)
 - Date: 2026-10-10
 - Decided by: the maintainer, choosing it from a comparison with an established messenger
 - Builds on: [0002](0002-mls-end-to-end-encryption.md), [0022](0022-the-conversation-surfaces.md)

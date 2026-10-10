@@ -71,6 +71,13 @@ final class FakeAccount: Account, @unchecked Sendable {
         set { lock.withLock { _failNext = newValue } }
     }
 
+    /// A call that fails each time it is made, unlike `failNext`, while this is set.
+    var failOn: String? {
+        get { lock.withLock { _failOn } }
+        set { lock.withLock { _failOn = newValue } }
+    }
+    private var _failOn: String?
+
     var link: String? {
         get { lock.withLock { _link } }
         set { lock.withLock { _link = newValue } }
@@ -83,6 +90,7 @@ final class FakeAccount: Account, @unchecked Sendable {
                 _failNext = nil
                 throw failure
             }
+            if name == _failOn { throw unreachable }
         }
     }
 
@@ -284,6 +292,11 @@ final class FakeAccount: Account, @unchecked Sendable {
         try call("media \(conversation) \(seq)")
         guard let path = files["\(conversation) \(seq)"] else { throw CoreError.Invalid(detail: "checksum") }
         return path
+    }
+
+    func forward(_ from: String, seq: UInt64, to: String) throws -> String {
+        try call("forward \(from) \(seq) \(to)")
+        return "e-forward\(calls.count)"
     }
 
     func block(_ account: String) throws -> Outcome {

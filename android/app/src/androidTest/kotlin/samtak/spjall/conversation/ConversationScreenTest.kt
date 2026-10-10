@@ -58,6 +58,10 @@ class ConversationScreenTest {
                 calls += "reply ${item.seq}"
             }
 
+            override fun forward(item: Item) {
+                calls += "forward ${item.seq}"
+            }
+
             override fun edit(item: Item) {
                 calls += "edit ${item.seq}"
             }
@@ -138,6 +142,7 @@ class ConversationScreenTest {
         reactions: List<Reaction> = emptyList(),
         readBy: UInt = 0u,
         forwarded: Boolean = false,
+        expiresAt: ULong? = null,
     ) = Item(
         seq,
         seq?.let { "e$it" },
@@ -149,7 +154,7 @@ class ConversationScreenTest {
         edited,
         reactions,
         readBy,
-        null,
+        expiresAt,
         forwarded,
     )
 
@@ -235,6 +240,21 @@ class ConversationScreenTest {
     }
 
     @Test
+    fun aMessageCanBeForwardedButNotOneUnderATimer() {
+        show(
+            item(1u, Content.Text("Sæl", null)),
+            item(2u, Content.Text("Hverfur", null), expiresAt = 1_800_000_000_000uL),
+        )
+        compose.onNodeWithText("Sæl", substring = true).performTouchInput { longClick() }
+        compose.onNodeWithText(text(R.string.forward)).performClick()
+        assertEquals(listOf("forward 1"), calls)
+        // Under a timer a copy would outlive the original (decision 0041).
+        compose.onNodeWithText("Hverfur", substring = true).performTouchInput { longClick() }
+        compose.onNodeWithText(text(R.string.reply)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.forward)).assertDoesNotExist()
+    }
+
+    @Test
     fun deletingOwnMessageAsksFirst() {
         show(item(2u, Content.Text("Úps", null), own = true))
         compose.onNodeWithText("Úps", substring = true).performTouchInput { longClick() }
@@ -257,7 +277,8 @@ class ConversationScreenTest {
                 .getOrNull(SemanticsActions.CustomActions)
                 ?.map { it.label }
         assertEquals(
-            listOf(R.string.reply, R.string.edit, R.string.delete_for_everyone, R.string.react).map(::text),
+            listOf(R.string.reply, R.string.forward, R.string.edit, R.string.delete_for_everyone, R.string.react)
+                .map(::text),
             labels,
         )
     }

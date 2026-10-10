@@ -33,6 +33,9 @@ class FakeAccount(
 ) : Account {
     val calls = mutableListOf<String>()
     var failNext: CoreException? = null
+
+    /** A call, as [calls] records it, that fails as unreachable each time it is made. */
+    var failOn: String? = null
     var inviters = mapOf<String, Inviter?>()
     var devices =
         listOf(
@@ -61,6 +64,7 @@ class FakeAccount(
 
     private fun call(name: String) {
         calls += name
+        if (name == failOn) throw unreachable()
         failNext?.let {
             failNext = null
             throw it
@@ -288,6 +292,15 @@ class FakeAccount(
     ): String {
         call("media $conversation $seq")
         return files[conversation to seq] ?: throw CoreException.Invalid("checksum")
+    }
+
+    override fun forward(
+        from: String,
+        seq: ULong,
+        to: String,
+    ): String {
+        call("forward $from $seq $to")
+        return "e-forward${calls.size}"
     }
 
     override fun block(account: String): Outcome {

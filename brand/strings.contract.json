@@ -324,6 +324,22 @@
       "surfaces": ["android", "ios"],
       "description": "Mark above a forwarded message or a re-shared post, in place of its original sender (docs/decisions/0041)."
     },
+    "forward": {
+      "surfaces": ["android", "ios"],
+      "description": "Message menu entry that copies a message into other conversations; also the title of the conversation picker it opens (docs/decisions/0041)."
+    },
+    "forward_done": {
+      "surfaces": ["android", "ios"],
+      "description": "Brief confirmation after a forward: into how many conversations it was sent (docs/decisions/0041).",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "pick_empty": {
+      "surfaces": ["android", "ios"],
+      "description": "The conversation picker when there is no conversation to send into."
+    },
     "post_shared": {
       "surfaces": ["android", "ios"],
       "description": "A shared Fljótið post in the conversation list and in a notification: fixed, never the post's text or author (docs/decisions/0040)."

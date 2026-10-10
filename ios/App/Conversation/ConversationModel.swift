@@ -142,6 +142,15 @@ final class ConversationModel {
         mode = .reply(item)
     }
 
+    /// The picker that copies `item` into other conversations (decision 0041); nil for what is not forwarded.
+    func forwarding(_ item: Item) -> PickModel? {
+        guard Offer(item).forward, let seq = item.seq else { return nil }
+        let from = id
+        return PickModel(account: account, live: live, except: from) { account, to in
+            _ = try account.forward(from, seq: seq, to: to)
+        }
+    }
+
     func edit(_ item: Item) {
         guard case .text(let text, _) = item.content else { return }
         mode = .edit(item)

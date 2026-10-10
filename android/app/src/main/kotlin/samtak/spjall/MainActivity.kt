@@ -58,6 +58,9 @@ import samtak.spjall.conversation.ConversationViewModel
 import samtak.spjall.conversations.ConversationsActions
 import samtak.spjall.conversations.ConversationsScreen
 import samtak.spjall.conversations.ConversationsViewModel
+import samtak.spjall.conversations.PickActions
+import samtak.spjall.conversations.PickScreen
+import samtak.spjall.conversations.PickViewModel
 import samtak.spjall.core.Item
 import samtak.spjall.core.Person
 import samtak.spjall.core.Post
@@ -225,6 +228,11 @@ class MainActivity : ComponentActivity() {
                 }
                 composable("$CONVERSATION/{id}") { entry ->
                     entry.arguments?.getString("id")?.let { Conversation(it, nav) }
+                }
+                composable("$FORWARD/{from}/{seq}") { entry ->
+                    val from = entry.arguments?.getString("from")
+                    val seq = entry.arguments?.getString("seq")?.toULongOrNull()
+                    if (from != null && seq != null) Forward(from, seq, nav)
                 }
             }
         }
@@ -450,6 +458,10 @@ class MainActivity : ComponentActivity() {
 
                 override fun reply(item: Item) = model.reply(item)
 
+                override fun forward(item: Item) {
+                    item.seq?.let { nav.navigate("$FORWARD/$id/$it") }
+                }
+
                 override fun edit(item: Item) = model.edit(item)
 
                 override fun cancelMode() = model.cancelMode()
@@ -485,6 +497,56 @@ class MainActivity : ComponentActivity() {
                 override fun retry() = model.retry()
 
                 override fun paused() = model.paused()
+            },
+        )
+    }
+
+    /** Copies one message into the conversations picked (decision 0041), then back to where it came from. */
+    @Composable
+    private fun Forward(
+        from: String,
+        seq: ULong,
+        nav: NavController,
+    ) {
+        val model: PickViewModel =
+            viewModel(key = "forward-$from-$seq") {
+                PickViewModel(graph.account, graph.socket, except = from) { to -> forward(from, seq, to) }
+            }
+        Pick(stringResource(R.string.forward), R.plurals.forward_done, model, nav)
+    }
+
+    /** The conversation picker; once every picked conversation has its copy, says how many and goes back. */
+    @Composable
+    private fun Pick(
+        title: String,
+        done: Int,
+        model: PickViewModel,
+        nav: NavController,
+    ) {
+        val state by model.state.collectAsStateWithLifecycle()
+        val pop = rememberBack(nav)
+        LaunchedEffect(model) {
+            model.done.collect { count ->
+                Toast
+                    .makeText(
+                        this@MainActivity,
+                        resources.getQuantityString(done, count, count),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                nav.popBackStack()
+            }
+        }
+        PickScreen(
+            title,
+            state,
+            object : PickActions {
+                override fun toggle(conversation: String) = model.toggle(conversation)
+
+                override fun send() = model.send()
+
+                override fun back() = pop()
+
+                override fun retry() = model.retry()
             },
         )
     }
@@ -586,6 +648,7 @@ class MainActivity : ComponentActivity() {
         private const val VERIFY = "verify"
         private const val PEOPLE = "people"
         private const val CONVERSATION = "conversation"
+        private const val FORWARD = "forward"
         private const val WALL = "wall"
         private const val REPLIES = "replies"
         private val TABS = setOf(FEED, LIST, ME)

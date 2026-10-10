@@ -149,6 +149,15 @@
     <string name="message_deleted">Skilaboðin voru tekin til baka.</string>
     <!-- Mark above a forwarded message or a re-shared post, in place of its original sender (docs/decisions/0041). -->
     <string name="forwarded_marker">Áframsent</string>
+    <!-- Message menu entry that copies a message into other conversations; also the title of the conversation picker it opens (docs/decisions/0041). -->
+    <string name="forward">Áframsenda</string>
+    <!-- Brief confirmation after a forward: into how many conversations it was sent (docs/decisions/0041). -->
+    <plurals name="forward_done">
+        <item quantity="one">Áframsent í %1$d samtal</item>
+        <item quantity="other">Áframsent í %1$d samtöl</item>
+    </plurals>
+    <!-- The conversation picker when there is no conversation to send into. -->
+    <string name="pick_empty">Ekkert samtal til að senda í.</string>
     <!-- A shared Fljótið post in the conversation list and in a notification: fixed, never the post's text or author (docs/decisions/0040). -->
     <string name="post_shared">Deild færsla</string>
     <!-- The card of a shared post the server no longer shows: deleted, its author's account deleted, or its author blocked. It does not say which (docs/decisions/0040). -->

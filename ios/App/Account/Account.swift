@@ -58,6 +58,9 @@ protocol Account: Sendable {
     func sendMedia(_ conversation: String, path: String, mime: String, caption: String?, name: String?) throws -> String
     /// The path of the photo or file at `seq`, downloaded and checked the first time.
     func media(_ conversation: String, seq: UInt64) throws -> String
+    /// Copies the message at `seq` of `from` into `to` as a new message there, marked forwarded (decision 0041).
+    /// Refused under a timer, for a deleted message and for a card.
+    func forward(_ from: String, seq: UInt64, to: String) throws -> String
     /// Blocks `account` (decision 0024): it can no longer reach this one, and the 1:1 with it ends.
     func block(_ account: String) throws -> Outcome
     func unblock(_ account: String) throws
@@ -192,6 +195,10 @@ final class CoreAccount: Account, @unchecked Sendable {
 
     func media(_ conversation: String, seq: UInt64) throws -> String {
         try core().media(conversation: conversation, seq: seq)
+    }
+
+    func forward(_ from: String, seq: UInt64, to: String) throws -> String {
+        try core().forward(from: from, seq: seq, to: to)
     }
 
     func block(_ account: String) throws -> Outcome { try core().block(account: account) }

@@ -166,6 +166,16 @@ interface Account {
         seq: ULong,
     ): String
 
+    /**
+     * Copies the message at [seq] of [from] into [to] as a new message from this account, marked
+     * forwarded (decision 0041); a file is sealed again and uploaded into [to]. Returns its envelope id.
+     */
+    fun forward(
+        from: String,
+        seq: ULong,
+        to: String,
+    ): String
+
     /** Blocks [account] (0024): it can no longer reach this one, and the 1:1 with it ends. */
     fun block(account: String): Outcome
 
@@ -332,6 +342,12 @@ class CoreAccount(
         conversation: String,
         seq: ULong,
     ) = client.media(conversation, seq)
+
+    override fun forward(
+        from: String,
+        seq: ULong,
+        to: String,
+    ) = client.forward(from, seq, to)
 
     override fun block(account: String) = client.block(account)
 

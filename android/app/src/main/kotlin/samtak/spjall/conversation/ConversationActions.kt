@@ -16,6 +16,9 @@ interface ConversationActions {
 
     fun reply(item: Item)
 
+    /** Opens the picker that copies [item] into other conversations (decision 0041). */
+    fun forward(item: Item)
+
     fun edit(item: Item)
 
     fun cancelMode()

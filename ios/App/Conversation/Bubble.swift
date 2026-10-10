@@ -4,6 +4,8 @@ import SwiftUI
 /// What a long press offers on an item.
 struct Offer {
     let reply: Bool
+    /// Not under a timer, where a copy would outlive the original (decision 0041).
+    let forward: Bool
     let react: Bool
     let edit: Bool
     let delete: Bool
@@ -11,8 +13,18 @@ struct Offer {
     init(_ item: Item) {
         let live = item.seq != nil && item.envelopeId != nil && item.content != .deleted
         var text = false
-        if case .text = item.content { text = true }
+        var copyable = false
+        switch item.content {
+        case .text:
+            text = true
+            copyable = true
+        case .media, .post:
+            copyable = true
+        case .deleted, .members, .timer:
+            break
+        }
         reply = live
+        forward = live && item.expiresAt == nil && copyable
         react = live
         edit = live && item.own && text
         delete = live && item.own
@@ -33,6 +45,8 @@ struct Bubble: View {
     let model: ConversationModel
     let onDelete: () -> Void
     let onReact: () -> Void
+    /// Opens the picker that copies this message into other conversations.
+    var onForward: () -> Void = {}
     /// Opens a shared post's replies.
     var onPost: (String) -> Void = { _ in }
 
@@ -103,6 +117,7 @@ struct Bubble: View {
         .accessibilityElement(children: .combine)
         .accessibilityActions {
             if offer.reply { Button("reply") { model.reply(item) } }
+            if offer.forward { Button("forward") { onForward() } }
             if offer.edit { Button("edit") { model.edit(item) } }
             if offer.delete { Button("delete_for_everyone", action: onDelete) }
             if offer.react { Button("react", action: onReact) }
@@ -118,6 +133,7 @@ struct Bubble: View {
             }
         }
         if offer.reply { Button("reply", systemImage: "arrowshape.turn.up.left") { model.reply(item) } }
+        if offer.forward { Button("forward", systemImage: "arrowshape.turn.up.right") { onForward() } }
         if offer.edit { Button("edit", systemImage: "pencil") { model.edit(item) } }
         if offer.delete { Button("delete_for_everyone", systemImage: "trash", role: .destructive, action: onDelete) }
     }

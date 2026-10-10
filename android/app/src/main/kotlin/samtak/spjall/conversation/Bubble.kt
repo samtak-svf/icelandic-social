@@ -49,6 +49,12 @@ private class Offer(
     private val sent = item.seq != null && item.envelopeId != null
     private val live = sent && item.content != Content.Deleted
     val reply = live
+
+    /** Not under a timer, where a copy would outlive the original (decision 0041). */
+    val forward =
+        live &&
+            item.expiresAt == null &&
+            (item.content is Content.Text || item.content is Content.Media || item.content is Content.Post)
     val react = live
     val edit = live && item.own && item.content is Content.Text
     val delete = live && item.own
@@ -168,6 +174,7 @@ private fun accessibilityActions(
     val item = offer.item
     return listOfNotNull(
         if (offer.reply) stringResource(R.string.reply) to { actions.reply(item) } else null,
+        if (offer.forward) stringResource(R.string.forward) to { actions.forward(item) } else null,
         if (offer.edit) stringResource(R.string.edit) to { actions.edit(item) } else null,
         if (offer.delete) stringResource(R.string.delete_for_everyone) to { onDelete(item) } else null,
         if (offer.react) stringResource(R.string.react) to onReact else null,
@@ -252,6 +259,7 @@ private fun Menu(
         }
         listOfNotNull(
             if (offer.reply) R.string.reply to { actions.reply(offer.item) } else null,
+            if (offer.forward) R.string.forward to { actions.forward(offer.item) } else null,
             if (offer.edit) R.string.edit to { actions.edit(offer.item) } else null,
             if (offer.delete) R.string.delete_for_everyone to { onDelete(offer.item) } else null,
         ).forEach { (label, act) ->
