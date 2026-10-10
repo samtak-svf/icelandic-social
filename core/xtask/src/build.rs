@@ -98,8 +98,8 @@ fn bindgen(core: &Path, language: &str, out: &Path) -> Result<()> {
     } else {
         "so"
     };
-    let library = core
-        .join("target/debug")
+    let library = cargo_target(core)
+        .join("debug")
         .join(format!("lib{LIB}.{extension}"));
     exec(
         command("cargo", core)
@@ -116,6 +116,22 @@ fn bindgen(core: &Path, language: &str, out: &Path) -> Result<()> {
             .args(["--language", language, "--out-dir"])
             .arg(out),
     )
+}
+
+/// Where cargo puts what it builds in `core`: `CARGO_TARGET_DIR` when set
+/// (AGENTS.md shares one across worktrees), else `core/target`. xtask's own
+/// staging and artifacts stay under `core/target` either way, for core.yml.
+fn cargo_target(core: &Path) -> PathBuf {
+    target_dir(core, std::env::var_os("CARGO_TARGET_DIR"))
+}
+
+/// cargo's rule: an empty value is unset, a relative one is relative to the
+/// directory cargo runs in, which for xtask's builds is `core`.
+fn target_dir(core: &Path, env: Option<std::ffi::OsString>) -> PathBuf {
+    match env.filter(|value| !value.is_empty()) {
+        Some(dir) => core.join(dir),
+        None => core.join("target"),
+    }
 }
 
 fn android_sdk() -> Result<PathBuf> {
@@ -214,7 +230,7 @@ fn ios(core: &Path, staging: &Path, out: &Path) -> Result<()> {
 
     let archive = format!("lib{LIB}.a");
     let release = |target: &str| {
-        core.join("target")
+        cargo_target(core)
             .join(target)
             .join("release")
             .join(&archive)
@@ -297,5 +313,22 @@ mod tests {
             fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../ios/project.yml"))
                 .unwrap();
         assert!(project.contains(&format!("iOS: \"{IOS_DEPLOYMENT_TARGET}\"")));
+    }
+
+    /// bindgen and the iOS link read cargo's output, which follows
+    /// `CARGO_TARGET_DIR`; a hard-coded `core/target` broke a shared one.
+    #[test]
+    fn the_cargo_target_follows_cargo_target_dir() {
+        let core = Path::new("/repo/core");
+        assert_eq!(target_dir(core, None), core.join("target"));
+        assert_eq!(target_dir(core, Some("".into())), core.join("target"));
+        assert_eq!(
+            target_dir(core, Some("/cache/spjall-target".into())),
+            PathBuf::from("/cache/spjall-target")
+        );
+        assert_eq!(
+            target_dir(core, Some("../shared".into())),
+            core.join("../shared")
+        );
     }
 }
