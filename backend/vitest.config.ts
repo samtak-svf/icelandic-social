@@ -26,7 +26,18 @@ export default defineConfig({
       },
     })),
   ],
-  test: { include: ["test/**/*.test.ts"], setupFiles: ["./test/setup.ts"] },
+  test: {
+    include: ["test/**/*.test.ts"],
+    setupFiles: ["./test/setup.ts"],
+    // `pnpm coverage` turns this on; the workers pool supports istanbul, not v8.
+    // tooling/coverage-floor.mjs reads the summary (docs/testing.md).
+    coverage: {
+      provider: "istanbul",
+      include: ["src/**"],
+      reporter: ["json-summary", "text-summary"],
+      reportsDirectory: "../coverage/backend",
+    },
+  },
 });
 
 /**

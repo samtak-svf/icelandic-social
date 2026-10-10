@@ -10,6 +10,7 @@
     "typecheck": "cf workers types >/dev/null && tsc --noEmit",
     "check": "pnpm run typecheck && node scripts/openapi.ts --check",
     "test": "cf workers types >/dev/null && vitest run",
+    "coverage": "cf workers types >/dev/null && vitest run --coverage",
     "invite:operator": "node scripts/invite-operator.ts",
     "migrate:remote": "node ../tooling/jurisdiction-check.mjs --deploy && node scripts/d1.ts migrate",
     "deploy": "node ../tooling/jurisdiction-check.mjs --deploy && cf deploy --no-provision"
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@cloudflare/vitest-plugin": "1.4.0",
     "@types/node": "^26.6.4",
+    "@vitest/coverage-istanbul": "5.0.3",
     "cf": "1.0.0-beta.13",
     "typescript": "^7.0.2",
     "vitest": "^5",

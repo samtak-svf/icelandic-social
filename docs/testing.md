@@ -86,3 +86,16 @@ reverts, and fails on a drill no test caught. `rule-drill.yml` runs every drill 
 and opens an issue when one survives; `check:drills` in `pnpm check` keeps every patch
 applying. The first run found one: the retention tests aged rows by the constant they
 were checking, so 300 days passed as 30. Add a drill with each new critical rule.
+
+## Coverage floor
+
+Coverage is not a goal here, but a drop in a module that holds a critical rule is a test
+that went missing. `tooling/coverage-floor.json` lists those modules (backend and core)
+with the line and branch coverage each keeps, and `tooling/coverage-floor.mjs` fails
+`backend.yml` or `core.yml` below it. It fails closed: no summary, or a listed module the
+summary does not mention, fails too. `pnpm --filter spjall-backend coverage` (istanbul; the
+workers pool does not support v8) and `cargo llvm-cov --workspace --json --summary-only
+--output-path ../coverage/core-summary.json` in `core/` produce the summaries. A floor sits one
+point under what `--record` measured, because a Durable Object alarm racing a test moves a
+branch between runs. Raise a floor with `--record` in a PR of its own; lowering one says why in that PR. The apps are left
+out: their critical logic is in the core (0022), and UI coverage measures layout.

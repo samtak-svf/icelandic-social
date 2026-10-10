@@ -17,6 +17,7 @@ on:
       - "api/**"
       - "identifiers/**"
       - "tooling/jurisdiction-check.mjs"
+      - "tooling/coverage-floor.*"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - ".github/workflows/backend.yml"
@@ -25,6 +26,7 @@ on:
     paths:
       - "backend/**"
       - "identifiers/**"
+      - "tooling/coverage-floor.*"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - ".github/workflows/backend.yml"
@@ -51,8 +53,11 @@ jobs:
       - name: Types and OpenAPI drift
         run: pnpm --filter spjall-backend run check
 
-      - name: Tests in workerd
-        run: pnpm --filter spjall-backend test
+      - name: Tests in workerd, with coverage
+        run: pnpm --filter spjall-backend coverage
+
+      - name: Critical modules keep their coverage floor
+        run: node tooling/coverage-floor.mjs backend
 
   # Asks Cloudflare whether the D1 database and the R2 bucket cloudflare.config.ts
   # binds exist in the EU jurisdiction. Skipped until the read-only token is set, which happens when

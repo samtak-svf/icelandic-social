@@ -1,0 +1,115 @@
+{
+  "$comment": "The modules that hold a critical rule (tooling/critical-rules.json), with the line and branch coverage each keeps. Checked by tooling/coverage-floor.mjs in backend.yml and core.yml; --record moves a floor, in a PR of its own. For core, branches are llvm-cov regions.",
+  "backend": {
+    "summary": "coverage/backend/coverage-summary.json",
+    "format": "istanbul",
+    "modules": {
+      "backend/src/accounts.ts": {
+        "lines": 89,
+        "branches": 79
+      },
+      "backend/src/app.ts": {
+        "lines": 96,
+        "branches": 93
+      },
+      "backend/src/blocks.ts": {
+        "lines": 99,
+        "branches": 99
+      },
+      "backend/src/client-version.ts": {
+        "lines": 99,
+        "branches": 84
+      },
+      "backend/src/conversations.ts": {
+        "lines": 96,
+        "branches": 97
+      },
+      "backend/src/do/conversation.ts": {
+        "lines": 96,
+        "branches": 95
+      },
+      "backend/src/do/inbox.ts": {
+        "lines": 97,
+        "branches": 86
+      },
+      "backend/src/env/index.ts": {
+        "lines": 81,
+        "branches": 56
+      },
+      "backend/src/identity.ts": {
+        "lines": 93,
+        "branches": 81
+      },
+      "backend/src/key-packages.ts": {
+        "lines": 97,
+        "branches": 86
+      },
+      "backend/src/log.ts": {
+        "lines": 99,
+        "branches": 91
+      },
+      "backend/src/media.ts": {
+        "lines": 91,
+        "branches": 99
+      },
+      "backend/src/push/index.ts": {
+        "lines": 94,
+        "branches": 93
+      }
+    }
+  },
+  "core": {
+    "summary": "coverage/core-summary.json",
+    "format": "llvm-cov",
+    "modules": {
+      "core/client/src/account.rs": {
+        "lines": 96,
+        "branches": 90
+      },
+      "core/client/src/api.rs": {
+        "lines": 95,
+        "branches": 94
+      },
+      "core/client/src/block.rs": {
+        "lines": 93,
+        "branches": 83
+      },
+      "core/client/src/lib.rs": {
+        "lines": 91,
+        "branches": 83
+      },
+      "core/client/src/media.rs": {
+        "lines": 93,
+        "branches": 89
+      },
+      "core/client/src/members.rs": {
+        "lines": 99,
+        "branches": 87
+      },
+      "core/client/src/timeline.rs": {
+        "lines": 93,
+        "branches": 89
+      },
+      "core/envelope/src/lib.rs": {
+        "lines": 97,
+        "branches": 95
+      },
+      "core/mls/src/group.rs": {
+        "lines": 94,
+        "branches": 88
+      },
+      "core/mls/src/lib.rs": {
+        "lines": 89,
+        "branches": 82
+      },
+      "core/mls/src/storage.rs": {
+        "lines": 86,
+        "branches": 78
+      },
+      "core/store/src/lib.rs": {
+        "lines": 98,
+        "branches": 96
+      }
+    }
+  }
+}
