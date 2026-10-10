@@ -115,7 +115,10 @@ final class FakeAccount: Account, @unchecked Sendable {
         lock.withLock { _signedIn = true }
     }
 
-    func stockKeyPackages() throws { try call("stockKeyPackages") }
+    /// Recorded, but never the call `failNext` hits: the model runs it detached
+    /// after a sign-in and ignores its failure, so it would take a failure meant
+    /// for the call under test whenever it ran first.
+    func stockKeyPackages() throws { lock.withLock { _calls.append("stockKeyPackages") } }
 
     func resolveInvite(token: String) throws -> Inviter? {
         try call("resolveInvite \(token)")
