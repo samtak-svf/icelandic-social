@@ -1441,6 +1441,18 @@
         }
       }
     },
+    "problem_request_id": {
+      "comment": "Small secondary line under a refusal naming the server's request id (decision 0037), so a tester can quote it.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Villunúmer: %1$@"
+          }
+        }
+      }
+    },
     "try_again": {
       "comment": "Button that repeats the action that failed.",
       "extractionState": "manual",

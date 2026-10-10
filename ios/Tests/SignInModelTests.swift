@@ -115,7 +115,7 @@ final class SignInModelTests: XCTestCase {
             account.failNext = CoreError.SignIn(detail: "state mismatch")
             return URL(string: "cb:1")
         }
-        XCTAssertEqual(model.problem, .generic)
+        XCTAssertEqual(model.problem, .generic())
 
         await model.retry(browser: browser("cb:2"))
         XCTAssertEqual(
@@ -175,10 +175,10 @@ final class SignInModelTests: XCTestCase {
         let model = SignInModel(account: account, defaults: defaults)
         await model.check()
         await model.verify { _ in
-            account.failNext = CoreError.Refused(status: 409, code: "identity_taken")
+            account.failNext = CoreError.Refused(status: 409, code: "identity_taken", requestId: nil)
             return URL(string: "cb:k")
         }
-        XCTAssertEqual(model.problem, .identityTaken)
+        XCTAssertEqual(model.problem, .identityTaken())
         XCTAssertEqual(model.links, 0)
 
         // The link ended, so trying again opens Kenni again.

@@ -141,7 +141,7 @@ class SignInViewModel(
 
     /** No app on the device can open the provider's URL. */
     fun browserMissing() {
-        _state.update { it.copy(problem = Problem.Generic) }
+        _state.update { it.copy(problem = Problem.Generic()) }
     }
 
     /**

@@ -144,7 +144,7 @@ class SignInViewModelTest {
             account.failNext = CoreException.SignIn("state mismatch")
             model.complete("cb1")
             advanceUntilIdle()
-            assertEquals(Problem.Generic, model.state.value.problem)
+            assertEquals(Problem.Generic(), model.state.value.problem)
 
             model.retry()
             advanceUntilIdle()
@@ -214,10 +214,10 @@ class SignInViewModelTest {
         runTest(dispatcher) {
             account.signedIn = true
             val model = model()
-            account.failNext = CoreException.Refused(409u, "identity_taken")
+            account.failNext = CoreException.Refused(409u, "identity_taken", null)
             model.complete("cb1")
             advanceUntilIdle()
-            assertEquals(Problem.IdentityTaken, model.state.value.problem)
+            assertEquals(Problem.IdentityTaken(), model.state.value.problem)
 
             // The callback is spent: trying again opens Kenni anew.
             model.retry()

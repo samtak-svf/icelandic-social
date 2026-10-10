@@ -119,7 +119,7 @@ final class FakeAccount: Account, @unchecked Sendable {
 
     func resolveInvite(token: String) throws -> Inviter? {
         try call("resolveInvite \(token)")
-        guard let inviter = inviters[token] else { throw CoreError.Refused(status: 404, code: "not_found") }
+        guard let inviter = inviters[token] else { throw notFound }
         return inviter
     }
 
@@ -201,7 +201,7 @@ final class FakeAccount: Account, @unchecked Sendable {
 
     func openInvite(token: String) throws -> String {
         try call("openInvite \(token)")
-        guard let inviter = invites[token] else { throw CoreError.Refused(status: 404, code: "not_found") }
+        guard let inviter = invites[token] else { throw notFound }
         if let open = list.first(where: { $0.members.map(\.account) == [inviter] }) { return open.id }
         return try createConversation(with: [inviter])
     }
@@ -339,7 +339,7 @@ final class FakeAccount: Account, @unchecked Sendable {
     func post(_ postId: String) throws -> Post {
         try call("post \(postId)")
         guard let post = posts.first(where: { $0.postId == postId }) else {
-            throw CoreError.Refused(status: 404, code: "not_found")
+            throw notFound
         }
         return post
     }
@@ -423,6 +423,7 @@ func person(_ account: String, _ name: String? = nil) -> Person {
 }
 
 let unreachable = CoreError.Unreachable(detail: "URLError -1001")
+let notFound = CoreError.Refused(status: 404, code: "not_found", requestId: nil)
 
 func item(
     _ seq: UInt64?,

@@ -105,7 +105,7 @@ class FakeAccount(
 
     override fun resolveInvite(token: String): Inviter? {
         call("resolveInvite $token")
-        if (token !in inviters) throw CoreException.Refused(404u, "not_found")
+        if (token !in inviters) throw CoreException.Refused(404u, "not_found", null)
         return inviters[token]
     }
 
@@ -180,7 +180,7 @@ class FakeAccount(
 
     override fun openInvite(token: String): String {
         call("openInvite $token")
-        if (token !in inviters) throw CoreException.Refused(404u, "not_found")
+        if (token !in inviters) throw CoreException.Refused(404u, "not_found", null)
         if (inviters[token] == null) throw CoreException.Invalid("the operator's invite opens no conversation")
         return "c-${inviters.getValue(token)?.accountId}"
     }
@@ -351,7 +351,7 @@ class FakeAccount(
 
     override fun post(postId: String): Post {
         call("post $postId")
-        return posts.firstOrNull { it.postId == postId } ?: throw CoreException.Refused(404u, "not_found")
+        return posts.firstOrNull { it.postId == postId } ?: throw CoreException.Refused(404u, "not_found", null)
     }
 
     override fun createPost(body: String): Post {
@@ -377,7 +377,7 @@ class FakeAccount(
         limit: UInt,
     ): ReplyPage {
         call("replies $postId ${after ?: "-"}")
-        if (posts.none { it.postId == postId }) throw CoreException.Refused(404u, "not_found")
+        if (posts.none { it.postId == postId }) throw CoreException.Refused(404u, "not_found", null)
         val (page, next) = page(replies[postId].orEmpty(), after, limit)
         return ReplyPage(page, next)
     }
@@ -387,7 +387,7 @@ class FakeAccount(
         body: String,
     ): Reply {
         call("createReply $postId $body")
-        if (posts.none { it.postId == postId }) throw CoreException.Refused(404u, "not_found")
+        if (posts.none { it.postId == postId }) throw CoreException.Refused(404u, "not_found", null)
         return Reply("r-new${calls.size}", postId, ME, body, NOW).also {
             replies.getOrPut(postId) { mutableListOf() } += it
         }
@@ -400,7 +400,7 @@ class FakeAccount(
 
     override fun profile(account: String): Person {
         call("profile $account")
-        return people.firstOrNull { it.account == account } ?: throw CoreException.Refused(404u, "not_found")
+        return people.firstOrNull { it.account == account } ?: throw CoreException.Refused(404u, "not_found", null)
     }
 
     override fun openDirect(account: String): String {

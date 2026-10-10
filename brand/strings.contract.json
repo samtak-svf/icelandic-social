@@ -543,6 +543,13 @@
       "surfaces": ["android", "ios"],
       "description": "Something failed that the person cannot fix but may retry."
     },
+    "problem_request_id": {
+      "surfaces": ["android", "ios"],
+      "description": "Small secondary line under a refusal naming the server's request id (decision 0037), so a tester can quote it.",
+      "placeholders": {
+        "id": "string"
+      }
+    },
     "try_again": {
       "surfaces": ["android", "ios"],
       "description": "Button that repeats the action that failed."

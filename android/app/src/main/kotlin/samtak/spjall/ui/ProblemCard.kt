@@ -4,8 +4,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,14 +34,23 @@ fun ProblemCard(
                     stringResource(
                         when (problem) {
                             Problem.Unreachable -> R.string.error_unreachable
-                            Problem.IdentityTaken -> R.string.identity_taken
+                            is Problem.IdentityTaken -> R.string.identity_taken
                             Problem.TooLarge -> R.string.media_too_large
-                            Problem.Generic -> R.string.error_generic
+                            is Problem.Generic -> R.string.error_generic
                         },
                     ),
             )
+            // A refusal names the server's request id (decision 0037), selectable so a tester can quote it.
+            problem.requestId?.let { id ->
+                SelectionContainer(modifier = Modifier.padding(top = 4.dp)) {
+                    Text(
+                        text = stringResource(R.string.problem_request_id, id),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
             // The same kennitala stays on the other account, and the same file stays too large.
-            if (problem != Problem.IdentityTaken && problem != Problem.TooLarge) {
+            if (problem !is Problem.IdentityTaken && problem != Problem.TooLarge) {
                 TextButton(onClick = onRetry) { Text(stringResource(R.string.try_again)) }
             }
         }

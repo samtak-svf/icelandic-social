@@ -393,7 +393,7 @@ class ConversationViewModel(
             } catch (_: IOException) {
                 // The picked file could not be read.
                 failed = again
-                _state.update { it.copy(problem = Problem.Generic) }
+                _state.update { it.copy(problem = Problem.Generic()) }
             }
         }
     }

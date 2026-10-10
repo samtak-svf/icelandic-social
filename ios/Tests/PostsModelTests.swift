@@ -79,11 +79,11 @@ final class PostsModelTests: XCTestCase {
     func testAHeartTheServerRefusesIsPutBack() async {
         account.posts = [samplePost("p1", hearts: 1)]
         let model = await model()
-        account.failNext = CoreError.Refused(status: 403, code: "blocked")
+        account.failNext = CoreError.Refused(status: 403, code: "blocked", requestId: nil)
         await model.toggleHeart(model.posts[0])
         XCTAssertNil(model.posts[0].myReaction)
         XCTAssertEqual(model.posts[0].reactions.heart, 1)
-        XCTAssertEqual(model.problem, .generic)
+        XCTAssertEqual(model.problem, .generic())
     }
 
     func testDeletingAPostTakesItOffTheList() async {
