@@ -28,10 +28,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
@@ -116,8 +119,8 @@ fun ComposePill(
 }
 
 /**
- * A sheet to write a post: the field, then cancel and post. It closes on
- * [posted], so a refused post keeps its text.
+ * A sheet to write a post: the field, focused with the keyboard up, then
+ * cancel and post. It closes on [posted], so a refused post keeps its text.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -129,6 +132,10 @@ fun ComposerSheet(
     onDismiss: () -> Unit,
 ) {
     var text by rememberSaveable { mutableStateOf("") }
+    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val focus = remember { FocusRequester() }
+    // The sheet is its own window; focus asked for before it shows is lost.
+    LaunchedEffect(sheet.isVisible) { if (sheet.isVisible) focus.requestFocus() }
     LaunchedEffect(posted) {
         posted.collect {
             text = ""
@@ -137,7 +144,7 @@ fun ComposerSheet(
     }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetState = sheet,
         containerColor = Palette.surface,
     ) {
         Column(
@@ -150,7 +157,7 @@ fun ComposerSheet(
                 placeholder = { Text(placeholder) },
                 textStyle = Type.bubble,
                 minLines = 4,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus),
                 colors =
                     OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Palette.fg,

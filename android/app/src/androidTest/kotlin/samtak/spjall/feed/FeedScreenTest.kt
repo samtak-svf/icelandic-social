@@ -1,6 +1,7 @@
 package samtak.spjall.feed
 
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -66,6 +67,13 @@ class FeedScreenTest {
         compose.onNode(hasSetTextAction()).performTextInput("Góðan daginn")
         compose.onNodeWithText(text(R.string.post_action)).performClick()
         assertEquals(listOf("post Góðan daginn"), calls)
+    }
+
+    @Test
+    fun theSheetOpensWithTheFieldFocused() {
+        show()
+        compose.onNodeWithText(text(R.string.feed_composer_placeholder)).performClick()
+        compose.onNode(hasSetTextAction()).assertIsFocused()
     }
 
     @Test
