@@ -450,3 +450,56 @@ fn a_kennitala_on_another_account_ends_the_link() {
     // Still signed in.
     assert!(a1.client.signed_in().unwrap().is_some());
 }
+
+#[test]
+fn kenni_joins_a_google_sign_in_into_the_account_holding_the_kennitala() {
+    let relay = Relay::new();
+    let mut k1 = Phone::new(&relay, "k", "k1");
+    k1.sign_in();
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    b1.sign_in();
+    b1.client.stock_key_packages(3).unwrap();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let url = a1.client.begin_sign_in(Provider::Google).unwrap();
+    a1.complete(&relay::google(&url)).unwrap();
+    a1.client.stock_key_packages(3).unwrap();
+    // A conversation of the account that is about to go.
+    a1.client.create_conversation(&["b".into()]).unwrap();
+    a1.client.sync().unwrap();
+    assert_eq!(a1.client.conversations().unwrap().len(), 1);
+
+    let url = a1.client.begin_link(Provider::Kenni).unwrap();
+    let held = format!("{REDIRECT}?code=held-k&state={}", state_of(&url));
+    let linked = a1.client.complete_link(&held).unwrap();
+    assert!(linked.moved);
+    let link = relay
+        .requests("a1")
+        .into_iter()
+        .rfind(|r| r.path == "/v1/me/identities")
+        .unwrap();
+    let body: serde_json::Value = serde_json::from_str(link.body.as_deref().unwrap()).unwrap();
+    assert_eq!(body["merge"], true);
+    // The same device and token, now of k, with nothing of a's left.
+    let now = a1.client.signed_in().unwrap().unwrap();
+    assert_eq!((now.account.as_str(), now.device.as_str()), ("k", "a1"));
+    assert!(a1.client.conversations().unwrap().is_empty());
+    assert!(a1.client.me().unwrap().verified);
+    // The next sync stocks KeyPackages for k, which the server dropped.
+    assert_eq!(relay.packages("a1"), 0);
+    a1.client.sync().unwrap();
+    assert!(relay.packages("a1") > 0);
+    // Reopened, it is still k's.
+    a1.reopen();
+    assert_eq!(a1.client.signed_in().unwrap().unwrap().account, "k");
+}
+
+#[test]
+fn a_link_that_moves_nothing_keeps_the_account() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let url = a1.client.begin_sign_in(Provider::Google).unwrap();
+    a1.complete(&relay::google(&url)).unwrap();
+    let url = a1.client.begin_link(Provider::Kenni).unwrap();
+    assert!(!a1.client.complete_link(&relay::kenni(&url)).unwrap().moved);
+    assert_eq!(a1.client.signed_in().unwrap().unwrap().account, "a");
+}

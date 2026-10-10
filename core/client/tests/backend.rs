@@ -691,4 +691,24 @@ fn devices_talk_through_the_worker() {
     h1.sync();
     assert_eq!(texts(&g1.deliver_until(count(1))), strings(&["hæ"]));
     g1.client.delete_post(&post.post_id).unwrap();
+
+    // A Google sign-in whose Kenni names an older Kenni account joins it
+    // (0035): the device is that account's afterwards, and its posts went
+    // with it.
+    let mut k1 = Phone::new(&kennitala(run, 6), None);
+    let mut m1 = Phone::signed_in(Person::Google(&format!("interop-{run}-m")), None);
+    let post = m1.client.create_post(&format!("Áður {run}")).unwrap();
+    let url = m1.client.begin_link(Provider::Kenni).unwrap();
+    assert!(
+        m1.client
+            .complete_link(&browse(&url, &kennitala(run, 6)))
+            .unwrap()
+            .moved
+    );
+    assert_eq!(m1.client.signed_in().unwrap().unwrap().account, k1.account);
+    assert!(m1.client.me().unwrap().verified);
+    let wall = k1.client.wall(&k1.account, None, 50).unwrap();
+    assert_eq!(wall.posts[0].post_id, post.post_id);
+    // It stocks KeyPackages for k on its next sync.
+    m1.client.sync().unwrap();
 }

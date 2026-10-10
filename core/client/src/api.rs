@@ -276,6 +276,22 @@ pub struct Authorization<'a> {
     pub nonce: &'a str,
 }
 
+/// `linkIdentity`'s body: the authorization, and that this client follows
+/// a move (0035).
+#[derive(Serialize)]
+struct LinkIdentity<'a> {
+    #[serde(flatten)]
+    authorization: &'a Authorization<'a>,
+    merge: bool,
+}
+
+/// `linkIdentity`'s answer to a client that follows a move.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Linked {
+    account_id: String,
+}
+
 /// `registerDevice`'s body.
 pub struct Registration<'a> {
     pub authorization: Authorization<'a>,
@@ -605,14 +621,22 @@ impl<T: Transport + ?Sized> Api<'_, T> {
         )
     }
 
-    /// `linkIdentity` (0033): this account holds the identity too.
-    pub fn link_identity(&self, authorization: &Authorization) -> Result<(), ApiError> {
-        self.send(
-            Method::Post,
-            "/v1/me/identities".into(),
-            Self::json(authorization),
-        )
-        .map(drop)
+    /// `linkIdentity` (0033), as a client that follows a move (0035): the
+    /// account this device belongs to afterwards, which differs from its own
+    /// when Kenni joined it into the account holding the kennitala. `None`
+    /// from a server before 0035, which answers 204 and never moves it.
+    pub fn link_identity(&self, authorization: &Authorization) -> Result<Option<String>, ApiError> {
+        let body = LinkIdentity {
+            authorization,
+            merge: true,
+        };
+        let response = self.send(Method::Post, "/v1/me/identities".into(), Self::json(&body))?;
+        if response.status == 204 {
+            return Ok(None);
+        }
+        let linked: Linked = serde_json::from_str(&response.body)
+            .map_err(|_| ApiError::Malformed("linkIdentity"))?;
+        Ok(Some(linked.account_id))
     }
 
     /// `getMe`.

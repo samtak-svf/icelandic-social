@@ -656,14 +656,49 @@ impl State {
                 if !redirect_fits(&body) {
                     return refuse(403, "sign_in_failed");
                 }
-                if body["code"].as_str().unwrap().starts_with("taken-") {
+                let code = body["code"].as_str().unwrap();
+                if code.starts_with("taken-") {
                     return refuse(409, "identity_taken");
+                }
+                // `held-<account>`: that account holds the kennitala and no
+                // Google identity, so a client that follows a move is joined
+                // into it (0035).
+                if let Some(into) = code.strip_prefix("held-") {
+                    if body["merge"] != true {
+                        return refuse(409, "identity_taken");
+                    }
+                    let held = self.identities.remove(account).unwrap_or_default();
+                    self.identities.entry(into.into()).or_default().extend(held);
+                    let gone: Vec<String> = self
+                        .devices
+                        .iter()
+                        .filter(|(d, a)| *a == account && *d != device)
+                        .map(|(d, _)| d.clone())
+                        .collect();
+                    for d in gone {
+                        self.devices.remove(&d);
+                        self.tokens.remove(&d);
+                    }
+                    self.devices.insert(device.into(), into.into());
+                    self.packages.remove(device);
+                    self.last_resort.remove(device);
+                    self.last_resort_not_after.remove(device);
+                    for conversation in self.conversations.values_mut() {
+                        if conversation.roster.remove(account) {
+                            conversation.departed.insert(account.to_owned());
+                        }
+                    }
+                    return answer(200, json!({ "accountId": into }));
                 }
                 self.identities
                     .entry(account.into())
                     .or_default()
                     .insert(body["provider"].as_str().unwrap().into());
-                answer(204, Value::Null)
+                if body["merge"] == true {
+                    answer(200, json!({ "accountId": account }))
+                } else {
+                    answer(204, Value::Null)
+                }
             }
             (Method::Get, ["me"]) => {
                 let devices: Vec<Value> = self
@@ -1149,7 +1184,14 @@ impl Link {
             .entry(self.device.clone())
             .or_default()
             .push(request.clone());
-        let response = act(&mut state, &self.account, &self.device, request);
+        // The account the server holds the device under, which a join
+        // changes (0035).
+        let account = state
+            .devices
+            .get(&self.device)
+            .cloned()
+            .unwrap_or_else(|| self.account.clone());
+        let response = act(&mut state, &account, &self.device, request);
         if let Some(n) = state.lose.get_mut(&self.device).filter(|n| **n > 0) {
             *n -= 1;
             return Err(Unreachable("the answer was lost".into()));

@@ -805,9 +805,12 @@ impl CoreClient {
 
     /// Finishes a link with the URL the provider redirected to; `me` then
     /// shows the mark. Another account holding the identity is `Refused`
-    /// with 409 `identity_taken`. It ends as `complete_sign_in` does.
-    pub fn complete_link(&self, callback: String) -> Result<(), CoreError> {
-        Ok(self.client()?.complete_link(&callback)?)
+    /// with 409 `identity_taken`. True when Kenni joined this account into
+    /// the older one holding the kennitala (0035): this device now belongs
+    /// to it, its conversations are gone, and the app starts its signed-in
+    /// session again. It ends as `complete_sign_in` does.
+    pub fn complete_link(&self, callback: String) -> Result<bool, CoreError> {
+        Ok(self.client()?.complete_link(&callback)?.moved)
     }
 
     /// The account and device this store is signed in as, if it is.

@@ -13,7 +13,8 @@
 use base64::Engine as _;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use sha2::{Digest as _, Sha256};
-use spjall_mls::group::Device;
+use spjall_mls::group::{Device, Group};
+use spjall_mls::storage::Provider as Mls;
 use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 
 use crate::api::conversation_id;
@@ -412,20 +413,48 @@ impl<T: Transport> Client<T> {
     }
 
     /// Finishes a link with the URL the provider redirected to. Another
-    /// account holding the identity is `Refused` with 409 `identity_taken`.
-    /// It ends the link as `complete_sign_in` ends a sign-in.
-    pub fn complete_link(&mut self, callback: &str) -> Result<(), ClientError> {
+    /// account holding the identity is `Refused` with 409 `identity_taken`,
+    /// unless Kenni joined this one into it (0035): this device then belongs
+    /// to that account, keeps its key, id and token, and forgets the
+    /// conversations, names and blocks of the account that is gone, as
+    /// `Linked::moved` says. It ends the link as `complete_sign_in` ends a
+    /// sign-in.
+    pub fn complete_link(&mut self, callback: &str) -> Result<Linked, ClientError> {
         let (pending, code) = self.callback(callback, Purpose::Link)?;
+        let this = self.signed_in()?.ok_or(ClientError::NotRegistered)?;
         let answer = code.and_then(|code| {
             Ok(authed(&self.transport, &self.token, &self.client)?
                 .link_identity(&pending.authorization(&code))?)
         });
         if let Err(ClientError::Transport(ApiError::Unreachable(_))) = &answer {
-            return answer;
+            return Err(answer.unwrap_err());
         }
-        self.store
-            .write(|tx| tx.execute("DELETE FROM sign_in", []).map(drop))?;
-        answer
+        let into = match answer {
+            Ok(Some(account)) if account != this.account => {
+                if !is_id(&account) {
+                    self.store
+                        .write(|tx| tx.execute("DELETE FROM sign_in", []).map(drop))?;
+                    return Err(ClientError::Protocol("linkIdentity answered a bad id"));
+                }
+                Some(account)
+            }
+            Ok(_) => None,
+            Err(error) => {
+                self.store
+                    .write(|tx| tx.execute("DELETE FROM sign_in", []).map(drop))?;
+                return Err(error);
+            }
+        };
+        self.store.try_write(|tx| {
+            tx.execute("DELETE FROM sign_in", [])?;
+            if let Some(into) = &into {
+                moved(tx, into)?;
+            }
+            Ok::<_, ClientError>(())
+        })?;
+        Ok(Linked {
+            moved: into.is_some(),
+        })
     }
 
     /// The account and device this store is signed in as.
@@ -598,6 +627,47 @@ impl<T: Transport> Client<T> {
             _ => Ok(()),
         }
     }
+}
+
+/// What a link did (0035).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Linked {
+    /// Kenni joined this account into the one holding the kennitala, and
+    /// this device now belongs to it: the app starts its session again.
+    pub moved: bool,
+}
+
+/// This device now belongs to `into` (0035). The groups, history, outbox,
+/// names and blocks were the account's that is gone; the device key, the
+/// toggles and the push token belong to the install and stay. The groups'
+/// MLS state goes with them. The other account's conversations take this
+/// device in by external commit (0021) on the next sync.
+fn moved(tx: &Transaction, into: &str) -> Result<(), ClientError> {
+    let provider = Mls::new(tx);
+    let groups: Vec<Vec<u8>> = tx
+        .prepare("SELECT group_id FROM conversations")?
+        .query_map([], |r| r.get(0))?
+        .collect::<rusqlite::Result<_>>()?;
+    for group in groups {
+        // A `new` group has no MLS state yet.
+        if let Ok(mls) = Group::load(&provider, &group) {
+            mls.delete(&provider)?;
+        }
+    }
+    tx.execute_batch(
+        "DELETE FROM outbox;
+         DELETE FROM messages;
+         DELETE FROM conversations;
+         DELETE FROM profiles;
+         DELETE FROM blocks;",
+    )?;
+    // The server deleted this device's KeyPackages, whose credentials named
+    // the account that is gone: the next sync stocks new ones.
+    tx.execute(
+        "UPDATE account SET account_id = ?1, key_packages_stocked_at = NULL",
+        [into],
+    )?;
+    Ok(())
 }
 
 #[cfg(test)]
