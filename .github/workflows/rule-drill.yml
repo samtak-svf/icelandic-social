@@ -1,0 +1,61 @@
+name: rule-drill
+
+# The rule drill (docs/testing.md § Critical rules): each patch in
+# tooling/drills/ breaks one critical rule, and the tests the registry names
+# for it must fail. A drill that survives means a rule no test holds; this
+# opens an issue for it. Monthly, not on PRs: `check:drills` in ci.yml already
+# proves every patch still applies, and a full drill costs a test run per rule.
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: "17 6 3 * *"
+  workflow_dispatch:
+
+concurrency:
+  group: rule-drill
+  cancel-in-progress: false
+
+jobs:
+  drill:
+    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter spjall-backend types
+
+      - name: Break each rule and expect its tests to fail
+        id: drill
+        # bash, so pipefail keeps the drill's exit code through tee.
+        shell: bash
+        run: node tooling/rule-drill.mjs 2>&1 | tee drill.log
+
+      - name: Open an issue for a rule no test held
+        if: failure() && steps.drill.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "A rule drill broke a critical rule and no test failed."
+            echo
+            echo '```'
+            grep -E '^(drill|  )' drill.log
+            echo '```'
+            echo
+            echo "Run: $RUN_URL. Add a test that fails on the patch, or record a \`gap\` in tooling/critical-rules.json."
+          } > body.md
+          gh issue create --title "test: a rule drill survived" --body-file body.md

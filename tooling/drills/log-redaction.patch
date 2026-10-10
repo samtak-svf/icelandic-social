@@ -1,0 +1,13 @@
+diff --git a/backend/src/log.ts b/backend/src/log.ts
+index 739484e..8da01fc 100644
+--- a/backend/src/log.ts
++++ b/backend/src/log.ts
+@@ -37,7 +37,7 @@ const EVENT = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/;
+ const OPAQUE = /^[A-Za-z0-9_:-]{1,128}$/;
+ // Ids carry letters; seven or more digits alone look like a phone number or a
+ // kennitala, and are redacted even under an allowed name.
+-const DIGITS = /^\d{7,}$/;
++const DIGITS = /^\d{11,}$/;
+ 
+ export function log(event: `${string}.${string}`, fields: Partial<Fields>): void {
+   if (!EVENT.test(event)) throw new Error(`log event must be dotted.snake_case: ${event}`);

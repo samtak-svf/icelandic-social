@@ -206,6 +206,8 @@ describe("a conversation", () => {
   });
 
   it("deletes messages and Welcomes 30 days after they were stored, not the GroupInfo", async () => {
+    // The test below ages rows by RETENTION_MS; this holds the number itself.
+    expect(RETENTION_MS).toBe(30 * 24 * 60 * 60 * 1000);
     const { stub } = await created("a");
     const welcome = { to: ["b"], message: bytes(9) };
     const groupInfo = bytes(4);

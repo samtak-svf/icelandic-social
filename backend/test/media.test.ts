@@ -131,6 +131,8 @@ describe("media", () => {
   });
 
   it("expires objects after 30 days", async () => {
+    // The test below ages rows by MEDIA_RETENTION_MS; this holds the number itself.
+    expect(MEDIA_RETENTION_MS).toBe(30 * 24 * 60 * 60 * 1000);
     const alice = await device();
     const { id } = await together(alice);
     const [old, fresh] = [newId(), newId()];

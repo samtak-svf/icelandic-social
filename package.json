@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "prepare": "lefthook install",
-    "check": "pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run check:ids && pnpm run check:critical-rules && pnpm run check:quarantine && pnpm run check:brand && pnpm run check:brand-gen && pnpm run check:brand-leak && pnpm run check:thankastrik && pnpm run check:pii && pnpm run check:seams && pnpm run check:jurisdiction && pnpm run check:core && pnpm run check:ws-kotlin && pnpm run check:workflows && pnpm run knip",
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run check:ids && pnpm run check:critical-rules && pnpm run check:drills && pnpm run check:quarantine && pnpm run check:brand && pnpm run check:brand-gen && pnpm run check:brand-leak && pnpm run check:thankastrik && pnpm run check:pii && pnpm run check:seams && pnpm run check:jurisdiction && pnpm run check:core && pnpm run check:ws-kotlin && pnpm run check:workflows && pnpm run knip",
     "lint": "oxlint",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "format": "oxfmt --write .",
@@ -14,6 +14,7 @@
     "check:ids": "node tooling/ids-freeze.mjs",
     "check:critical-rules": "node tooling/critical-rules.mjs",
     "check:quarantine": "node tooling/quarantine.mjs",
+    "check:drills": "node tooling/rule-drill.mjs --check",
     "check:brand": "node tooling/brand-check.mjs",
     "brand:gen": "node tooling/brand-gen.mjs",
     "check:brand-gen": "node tooling/brand-gen.mjs --check",

@@ -1,0 +1,13 @@
+diff --git a/backend/src/env/index.ts b/backend/src/env/index.ts
+index 566c28b..69d9faf 100644
+--- a/backend/src/env/index.ts
++++ b/backend/src/env/index.ts
+@@ -62,7 +62,7 @@ export function mediaBucket(env: Env): R2Bucket {
+ 
+ /** The `Conversation` DO for one conversation id: its MLS delivery service. */
+ export function conversation(env: Env, conversationId: string) {
+-  return env.CONVERSATION.jurisdiction("eu").getByName(conversationId);
++  return env.CONVERSATION.getByName(conversationId);
+ }
+ 
+ /** The `Inbox` DO for one account id: its devices' WebSockets and push. */

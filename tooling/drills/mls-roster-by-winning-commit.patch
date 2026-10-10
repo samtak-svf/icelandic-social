@@ -1,0 +1,12 @@
+diff --git a/backend/src/do/conversation.ts b/backend/src/do/conversation.ts
+index 7a10b88..719ca88 100644
+--- a/backend/src/do/conversation.ts
++++ b/backend/src/do/conversation.ts
+@@ -273,7 +273,6 @@ export class Conversation extends DurableObject<Env> {
+       );
+     }
+     for (const account of before.filter((a) => !after.has(a))) {
+-      this.sql.exec("DELETE FROM roster WHERE account = ?", account);
+       this.sql.exec(
+         `INSERT INTO removed (account, seq) VALUES (?, ?)
+          ON CONFLICT (account) DO UPDATE SET seq = excluded.seq`,

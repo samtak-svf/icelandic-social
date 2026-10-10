@@ -1,0 +1,11 @@
+diff --git a/backend/src/client-version.ts b/backend/src/client-version.ts
+index a7fcb6b..2c70c06 100644
+--- a/backend/src/client-version.ts
++++ b/backend/src/client-version.ts
+@@ -40,5 +40,5 @@ export function belowFloor(env: Env, header: string | undefined): FloorRefusal |
+     version = named[2]!;
+     floor = floors[platform];
+   }
+-  return compare(version, floor) < 0 ? { error: "client_too_old", minVersion: floor } : null;
++  return compare(version, floor) < -1000 ? { error: "client_too_old", minVersion: floor } : null;
+ }

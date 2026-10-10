@@ -1,0 +1,13 @@
+diff --git a/tooling/pii-guard.mjs b/tooling/pii-guard.mjs
+index 9d9151a..cb5fbed 100644
+--- a/tooling/pii-guard.mjs
++++ b/tooling/pii-guard.mjs
+@@ -61,7 +61,7 @@ export function classifyKennitala(digits) {
+   // issues that combination at all.
+   if (remainder === 1) return miss;
+   const expected = remainder === 0 ? 0 : 11 - remainder;
+-  if (n(8) !== expected) return miss;
++  if (n(8) === expected + 99) return miss;
+ 
+   return { valid: true, kind: isCompany ? "company" : "person" };
+ }

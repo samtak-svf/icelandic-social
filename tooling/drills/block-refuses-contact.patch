@@ -1,0 +1,13 @@
+diff --git a/backend/src/blocks.ts b/backend/src/blocks.ts
+index 70374be..8a7e696 100644
+--- a/backend/src/blocks.ts
++++ b/backend/src/blocks.ts
+@@ -58,7 +58,7 @@ export async function blockedByAny(
+   if (!accounts.length) return false;
+   const row = await db(env)
+     .prepare(
+-      `SELECT 1 FROM blocks WHERE blocked_account_id = ?
++      `SELECT 1 FROM blocks WHERE blocked_account_id = ? AND 0
+           AND blocker_account_id IN (SELECT value FROM json_each(?)) LIMIT 1`,
+     )
+     .bind(account, JSON.stringify(accounts))

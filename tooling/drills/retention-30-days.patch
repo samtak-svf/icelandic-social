@@ -1,0 +1,26 @@
+diff --git a/backend/src/do/conversation.ts b/backend/src/do/conversation.ts
+index 7a10b88..1a196cf 100644
+--- a/backend/src/do/conversation.ts
++++ b/backend/src/do/conversation.ts
+@@ -5,7 +5,7 @@ import { within } from "../within.ts";
+ import { copyRoster, dropRoster } from "../profiles.ts";
+ 
+ /** Stored ciphertext and Welcomes are deleted this long after they were stored (decision 0015). */
+-export const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
++export const RETENTION_MS = 300 * 24 * 60 * 60 * 1000;
+ 
+ /** How soon a failed fan-out is tried again. */
+ const RETRY_MS = 10_000;
+diff --git a/backend/src/media.ts b/backend/src/media.ts
+index 13b6303..1d3435c 100644
+--- a/backend/src/media.ts
++++ b/backend/src/media.ts
+@@ -14,7 +14,7 @@ const SEGMENT = 64 * 1024;
+ export const MAX_CIPHERTEXT = MAX_PLAINTEXT + 16 * Math.ceil(MAX_PLAINTEXT / SEGMENT);
+ 
+ /** Objects are deleted this long after upload, the retention of messages (decision 0015). */
+-export const MEDIA_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
++export const MEDIA_RETENTION_MS = 300 * 24 * 60 * 60 * 1000;
+ 
+ /** R2 deletes at most this many keys in one call. */
+ const DELETE_BATCH = 1000;

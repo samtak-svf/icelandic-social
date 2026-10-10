@@ -1,0 +1,13 @@
+diff --git a/backend/src/accounts.ts b/backend/src/accounts.ts
+index 7a14be3..6606c13 100644
+--- a/backend/src/accounts.ts
++++ b/backend/src/accounts.ts
+@@ -19,7 +19,7 @@ export async function deviceForToken(env: Env, token: string): Promise<Device |
+   return db(env)
+     .prepare(
+       `SELECT account_id AS accountId, device_id AS deviceId
+-         FROM devices WHERE token_hash = ? AND revoked_at IS NULL`,
++         FROM devices WHERE token_hash = ?`,
+     )
+     .bind(await tokenHash(token))
+     .first<Device>();

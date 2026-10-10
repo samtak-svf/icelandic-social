@@ -76,3 +76,13 @@ A test that catches a real bug gets `caught` (the PR or commit). On a PR, and be
 push, `critical-rules.mjs --base` refuses to drop such a test: it stays listed, or moves
 to `retired` with the reason. A pruning pass that cuts tests by count loses exactly the
 ones that mattered unless they are named.
+
+### The rule drill
+
+The registry says which tests hold a rule; the drill checks that they do. Each
+`tooling/drills/<rule-id>.patch` is the smallest change that breaks that rule.
+`node tooling/rule-drill.mjs [<rule-id>...]` applies each patch, runs the rule's tests,
+reverts, and fails on a drill no test caught. `rule-drill.yml` runs every drill monthly
+and opens an issue when one survives; `check:drills` in `pnpm check` keeps every patch
+applying. The first run found one: the retention tests aged rows by the constant they
+were checking, so 300 days passed as 30. Add a drill with each new critical rule.
