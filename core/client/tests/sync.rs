@@ -1908,3 +1908,61 @@ fn no_notice_for_a_blocked_account_an_expired_message_or_one_read_already() {
     std::thread::sleep(std::time::Duration::from_millis(1100));
     assert_eq!(notices(&mut a1), (Vec::new(), Vec::new()));
 }
+
+#[test]
+fn the_directory_lists_every_other_account_without_blocks() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let _c1 = Phone::new(&relay, "c", "c1");
+    let _d1 = Phone::new(&relay, "d", "d1");
+
+    // Everyone but the reader, a page at a time (0036).
+    let page = a1.client.directory(None, None, 2).unwrap();
+    let ids: Vec<&str> = page.people.iter().map(|p| p.account.as_str()).collect();
+    assert_eq!(ids, vec!["b", "c"]);
+    assert_eq!(page.people[0].name.as_deref(), Some("Name of b"));
+    let rest = a1.client.directory(None, page.next.as_deref(), 2).unwrap();
+    assert_eq!(rest.people.len(), 1);
+    assert_eq!(rest.people[0].account, "d");
+    assert_eq!(rest.next, None);
+
+    // A search goes trimmed, a blank one not at all, and a page is never
+    // larger than 50.
+    let found = a1.client.directory(Some("  B "), None, 500).unwrap();
+    assert_eq!(found.people.len(), 1);
+    a1.client.directory(Some("   "), None, 0).unwrap();
+    let paths: Vec<String> = relay
+        .requests("a1")
+        .iter()
+        .map(|r| r.path.clone())
+        .collect();
+    assert!(paths.contains(&"/v1/people?q=B&limit=50".to_owned()));
+    assert!(paths.contains(&"/v1/people?limit=1".to_owned()));
+    assert!(matches!(
+        a1.client
+            .directory(Some(&"þ".repeat(spjall_client::MAX_QUERY + 1)), None, 20),
+        Err(ClientError::Invalid(_))
+    ));
+
+    // Blocks hold both ways.
+    a1.client.block("c").unwrap();
+    let ids: Vec<String> = a1
+        .client
+        .directory(None, None, 20)
+        .unwrap()
+        .people
+        .into_iter()
+        .map(|p| p.account)
+        .collect();
+    assert_eq!(ids, vec!["b", "d"]);
+    let seen_by_b: Vec<String> = b1
+        .client
+        .directory(None, None, 20)
+        .unwrap()
+        .people
+        .into_iter()
+        .map(|p| p.account)
+        .collect();
+    assert_eq!(seen_by_b, vec!["a", "c", "d"]);
+}

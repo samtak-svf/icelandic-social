@@ -20,6 +20,7 @@
 mod account;
 pub mod api;
 mod block;
+mod directory;
 mod feed;
 mod media;
 mod members;
@@ -33,6 +34,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 pub use account::{Linked, SignedIn, invite_token};
 use api::{Api, ApiError, Outgoing, Platform, Profile, Transport, conversation_id, group_id};
+pub use directory::{Directory, MAX_QUERY};
 pub use feed::MAX_POST;
 pub use media::{MAX_SIZE, MediaError};
 pub use members::Person;

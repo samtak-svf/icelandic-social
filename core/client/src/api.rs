@@ -375,6 +375,23 @@ pub struct Blocked {
     pub blocked_at: u64,
 }
 
+/// An account in the directory (0036), as `listPeople` shows it.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DirectoryEntry {
+    pub account_id: String,
+    pub name: Option<String>,
+    pub verified: bool,
+}
+
+/// A page of the directory, verified first, then by name, and the cursor
+/// of the next page, none on the last.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct PeoplePage {
+    pub people: Vec<DirectoryEntry>,
+    pub next: Option<String>,
+}
+
 #[derive(Deserialize)]
 struct Blocks {
     blocked: Vec<Blocked>,
@@ -734,6 +751,25 @@ impl<T: Transport + ?Sized> Api<'_, T> {
     pub fn unblock(&self, account: &str) -> Result<(), ApiError> {
         self.send(Method::Delete, format!("/v1/blocks/{account}"), None)
             .map(drop)
+    }
+
+    /// `listPeople` (0036): every other signed-in account, those whose name
+    /// contains `query` when there is one.
+    pub fn people(
+        &self,
+        query: Option<&str>,
+        after: Option<&str>,
+        limit: u32,
+    ) -> Result<PeoplePage, ApiError> {
+        let mut path = String::from("/v1/people?");
+        if let Some(query) = query {
+            path.push_str(&format!("q={}&", crate::account::encode(query)));
+        }
+        if let Some(after) = after {
+            path.push_str(&format!("after={}&", crate::account::encode(after)));
+        }
+        path.push_str(&format!("limit={limit}"));
+        self.call(Method::Get, path, None, "listPeople")
     }
 
     /// `listBlocks`: newest first.

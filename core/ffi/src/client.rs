@@ -326,6 +326,23 @@ impl From<core::Person> for Person {
     }
 }
 
+/// A page of the directory (0036), verified first, then by name.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PersonPage {
+    pub people: Vec<Person>,
+    /// The `after` of the next page, none on the last.
+    pub next: Option<String>,
+}
+
+impl From<core::Directory> for PersonPage {
+    fn from(page: core::Directory) -> Self {
+        Self {
+            people: people(page.people),
+            next: page.next,
+        }
+    }
+}
+
 fn people(people: Vec<core::Person>) -> Vec<Person> {
     people.into_iter().map(Into::into).collect()
 }
@@ -946,6 +963,22 @@ impl CoreClient {
     /// the people picker.
     pub fn people(&self) -> Result<Vec<Person>, CoreError> {
         Ok(people(self.client()?.people()?))
+    }
+
+    /// A page of everyone else signed in (0036), for the people picker:
+    /// verified first, then by name. `query` keeps the names that contain
+    /// it, compared without case or the Icelandic letters; `after` is the
+    /// `next` of the page before. At most 50 a page.
+    pub fn directory(
+        &self,
+        query: Option<String>,
+        after: Option<String>,
+        limit: u32,
+    ) -> Result<PersonPage, CoreError> {
+        Ok(self
+            .client()?
+            .directory(query.as_deref(), after.as_deref(), limit)?
+            .into())
     }
 
     /// An account's name and mark, fetched now; the stored one when there

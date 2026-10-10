@@ -656,9 +656,9 @@ fn devices_talk_through_the_worker() {
     let mut h1 = Phone::signed_in(Person::Google(&format!("interop-{run}-h")), None);
     assert!(!g1.client.me().unwrap().verified);
     let url = g1.client.begin_link(Provider::Kenni).unwrap();
-    g1.client
-        .complete_link(&browse(&url, &kennitala(run, 5)))
-        .unwrap();
+    // The registry name comes with it, as Kenni gives one.
+    let named = format!("{}&x_name=Gestur%20{run}", kennitala(run, 5));
+    g1.client.complete_link(&browse(&url, &named)).unwrap();
     assert!(g1.client.me().unwrap().verified);
     let url = h1.client.begin_link(Provider::Kenni).unwrap();
     assert!(matches!(
@@ -678,6 +678,16 @@ fn devices_talk_through_the_worker() {
     assert_eq!((seen.reactions.heart, seen.reply_count), (1, 1));
     let wall = h1.client.wall(&g1.account, None, 50).unwrap();
     assert_eq!(wall.posts[0].post_id, post.post_id);
+
+    // g is in h's directory by name, without posting first (0036).
+    let name = g1.client.me().unwrap().name.unwrap();
+    let found = h1.client.directory(Some(&name), None, 50).unwrap();
+    assert!(
+        found
+            .people
+            .iter()
+            .any(|p| p.account == g1.account && p.verified)
+    );
 
     // From the post's author to an encrypted 1:1, no link and nothing
     // shared before.

@@ -769,6 +769,30 @@ impl State {
                     refuse(404, "not_found")
                 }
             }
+            // Every other account with a device, less blocks either way
+            // (0036), by id; a page's cursor is its last account.
+            (Method::Get, ["people"]) => {
+                let limit: usize = query_param(query, "limit").map_or(30, |l| l.parse().unwrap());
+                let search = query_param(query, "q").map(|q| q.to_lowercase());
+                let after = query_param(query, "after");
+                let accounts: BTreeSet<&String> = self.devices.values().collect();
+                let mut listed = accounts
+                    .into_iter()
+                    .filter(|a| *a != account && !self.hides(account, a) && !self.hides(a, account))
+                    .filter(|a| {
+                        search
+                            .as_ref()
+                            .is_none_or(|q| format!("name of {a}").contains(q.as_str()))
+                    })
+                    .filter(|a| after.is_none_or(|after| a.as_str() > after));
+                let page: Vec<&String> = listed.by_ref().take(limit).collect();
+                let next = listed.next().map(|_| page.last().unwrap().to_string());
+                let people: Vec<Value> = page
+                    .iter()
+                    .map(|a| json!({ "accountId": a, "name": format!("Name of {a}"), "verified": false }))
+                    .collect();
+                answer(200, json!({ "people": people, "next": next }))
+            }
             (Method::Put, ["blocks", id]) => {
                 if *id == account {
                     return refuse(400, "invalid_request");
