@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,7 +23,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -38,11 +36,11 @@ import samtak.spjall.core.Person
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
+import samtak.spjall.ui.NameWithMark
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.SansFamily
 import samtak.spjall.ui.Type
-import samtak.spjall.ui.VerifiedMark
 import samtak.spjall.ui.capitals
 import samtak.spjall.ui.shownName
 
@@ -118,15 +116,14 @@ private fun Header(
                 kind = if (person.verified) AvatarKind.Verified else AvatarKind.Unverified,
                 size = AVATAR.dp,
             )
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = person.shownName().capitals(),
-                    style = Type.accountName,
-                    color = Palette.fg,
-                    modifier = Modifier.weight(1f, fill = false).semantics { heading() },
-                )
-                if (person.verified) VerifiedMark(size = MARK.dp)
-            }
+            NameWithMark(
+                person.shownName().capitals(),
+                person.verified,
+                style = Type.accountName,
+                color = Palette.fg,
+                markSize = MARK.dp,
+                modifier = Modifier.semantics { heading() },
+            )
             if (contact) {
                 Button(
                     onClick = onContact,

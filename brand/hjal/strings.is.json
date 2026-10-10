@@ -22,8 +22,8 @@
   "message_failed": "Ekki send.",
   "day_today": "Í dag",
   "day_yesterday": "Í gær",
-  "verified_with_kennitala": "Staðfest með kennitölu",
-  "verified_short": "Staðfest",
+  "verified_with_kennitala": "Vottað",
+  "verified_short": "Vottað",
   "last_line_own": "Þú: {text}",
   "unread_count": {
     "one": "{count} ólesin",

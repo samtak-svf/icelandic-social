@@ -284,7 +284,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Staðfest með kennitölu"
+            "value": "Vottað"
           }
         }
       }
@@ -296,7 +296,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Staðfest"
+            "value": "Vottað"
           }
         }
       }

@@ -1,5 +1,6 @@
 package samtak.spjall.me
 
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -7,9 +8,13 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.height
+import androidx.compose.ui.unit.width
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -78,13 +83,14 @@ class MeScreenTest {
 
     private fun show(
         link: String? = null,
+        name: String = "Jón Jónsson",
         verified: Boolean = true,
         wall: List<Post> = emptyList(),
     ) {
         val me =
             Me(
                 "a1",
-                "Jón Jónsson",
+                name,
                 verified,
                 listOf(
                     AccountDevice("d1", Platform.ANDROID, 1_700_000_000_000u, current = true),
@@ -145,6 +151,20 @@ class MeScreenTest {
         show(verified = false)
         compose.onNodeWithText(text(R.string.verify_cta)).performClick()
         assertEquals(listOf("verify"), calls)
+    }
+
+    @Test
+    fun theShieldFollowsANameThatWraps() {
+        val name = "Jónína Guðrún Sigurbjörg Aðalsteinsdóttir"
+        show(name = name)
+        val heading = compose.onNodeWithText(name.capitals(), substring = true).getBoundsInRoot()
+        val mark = compose.onNodeWithContentDescription(text(R.string.verified_with_kennitala)).getBoundsInRoot()
+        assertTrue("the name wraps", heading.height > mark.height * 2)
+        assertTrue(
+            "the shield sits inside the name's lines",
+            mark.right <= heading.right && mark.bottom <= heading.bottom,
+        )
+        assertTrue("the shield is full size", mark.width >= 20.dp)
     }
 
     @Test

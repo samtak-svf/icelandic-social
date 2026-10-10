@@ -48,9 +48,9 @@
     <!-- Day separator for yesterday's messages. -->
     <string name="day_yesterday">Í gær</string>
     <!-- Badge on a person verified through Kenni. -->
-    <string name="verified_with_kennitala">Staðfest með kennitölu</string>
+    <string name="verified_with_kennitala">Vottað</string>
     <!-- Short form of verified_with_kennitala, under the other person's name at the top of a conversation. -->
-    <string name="verified_short">Staðfest</string>
+    <string name="verified_short">Vottað</string>
     <!-- The conversation list's preview line when the newest message is the reader's own. -->
     <string name="last_line_own">Þú: %1$s</string>
     <!-- Unread messages in a conversation. -->

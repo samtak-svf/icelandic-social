@@ -52,6 +52,7 @@ import samtak.spjall.feed.posts
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
+import samtak.spjall.ui.NameWithMark
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.SansFamily
@@ -147,16 +148,15 @@ private fun Who(
     ) {
         Avatar(name, kind = AvatarKind.Me, size = AVATAR.dp)
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                name?.let {
-                    Text(
-                        text = it.capitals(),
-                        style = Type.accountName,
-                        color = Palette.fg,
-                        modifier = Modifier.weight(1f, fill = false).semantics { heading() },
-                    )
-                }
-                if (verified) VerifiedMark(size = MARK.dp)
+            name?.let {
+                NameWithMark(
+                    it.capitals(),
+                    verified,
+                    style = Type.accountName,
+                    color = Palette.fg,
+                    markSize = MARK.dp,
+                    modifier = Modifier.semantics { heading() },
+                )
             }
             if (verified) SectionLabel(stringResource(R.string.verified_with_kennitala))
         }
@@ -295,7 +295,7 @@ internal fun Confirm(
 }
 
 private const val AVATAR = 56
-private const val MARK = 8
+private const val MARK = 22
 private const val MARK_LINK = 18
 private const val CARD_RADIUS = 18
 private const val QR = 104

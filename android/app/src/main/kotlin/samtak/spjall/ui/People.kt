@@ -4,16 +4,24 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -101,6 +109,43 @@ fun VerifiedMark(
     }
 }
 
+/**
+ * A name that may wrap, with [VerifiedMark] after its last word when
+ * [verified]: inline in the text, so a second line takes the mark with it.
+ */
+@Composable
+fun NameWithMark(
+    name: String,
+    verified: Boolean,
+    style: TextStyle,
+    color: Color,
+    markSize: Dp,
+    modifier: Modifier = Modifier,
+) {
+    val mark = with(LocalDensity.current) { markSize.toSp() }
+    val description = stringResource(R.string.verified_with_kennitala)
+    Text(
+        text =
+            buildAnnotatedString {
+                append(name)
+                if (verified) {
+                    append(" ")
+                    appendInlineContent(MARK_ID, description)
+                }
+            },
+        style = style,
+        color = color,
+        modifier = modifier,
+        inlineContent =
+            mapOf(
+                MARK_ID to
+                    InlineTextContent(Placeholder(mark, mark, PlaceholderVerticalAlign.TextCenter)) {
+                        VerifiedMark(size = markSize)
+                    },
+            ),
+    )
+}
+
 /** An item as one line of the list; [group] words a member card for a group rather than a 1:1. */
 @Composable
 fun lastLine(
@@ -143,6 +188,7 @@ fun duration(seconds: UInt): String {
 
 private const val AVATAR = 46
 private const val MARK = 14
+private const val MARK_ID = "mark"
 
 /** The grey of an unverified person's avatar: fg at 9 %. */
 private const val GREY = 0.09f
