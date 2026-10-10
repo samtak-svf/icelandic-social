@@ -29,6 +29,7 @@
   "verified_with_kennitala": "Vottað",
   "verified_short": "Vottað",
   "last_line_own": "Þú: {text}",
+  "last_line_sender": "{name}: {text}",
   "unread_count": {
     "one": "{count} ólesin",
     "other": "{count} ólesin"

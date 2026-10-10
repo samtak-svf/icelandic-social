@@ -36,6 +36,13 @@ import samtak.spjall.core.Person
 @Composable
 fun Person.shownName(): String = name ?: stringResource(R.string.person_unnamed)
 
+/** The first word of the name, for where a whole name does not fit; Icelanders go by their first names. */
+@Composable
+fun Person.firstName(): String {
+    val first = name?.split(' ')?.firstOrNull { it.isNotEmpty() }
+    return first ?: stringResource(R.string.person_unnamed)
+}
+
 /** A group has no name in v1: it is titled by its members (decision 0022), or says no one else is there. */
 @Composable
 fun Conversation.title(): String =

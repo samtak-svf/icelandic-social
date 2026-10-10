@@ -361,6 +361,18 @@
         }
       }
     },
+    "last_line_sender": {
+      "comment": "The conversation list's preview line in a group when the newest message is someone else's; name is the sender's first name.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@: %2$@"
+          }
+        }
+      }
+    },
     "unread_count": {
       "comment": "Unread messages in a conversation.",
       "extractionState": "manual",

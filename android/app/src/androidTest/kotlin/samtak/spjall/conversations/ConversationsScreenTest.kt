@@ -115,6 +115,21 @@ class ConversationsScreenTest {
     }
 
     @Test
+    fun aGroupsLastMessageStartsWithTheSendersFirstName() {
+        val bjarni = Person("a3", "Bjarni Pálsson", false)
+        val last =
+            Item(7uL, "e7", anna, false, 0uL, ItemStatus.SENT, Content.Text("Sæl", null), false, emptyList(), 0u, null)
+        show(
+            ConversationsViewModel.State(
+                conversations =
+                    listOf(Conversation("c1", ConversationState.ACTIVE, listOf(anna, bjarni), last, 0u, null)),
+                loaded = true,
+            ),
+        )
+        compose.onNodeWithText(context.getString(R.string.last_line_sender, "Anna", "Sæl")).assertIsDisplayed()
+    }
+
+    @Test
     fun nothingIsSaidAboutAnEmptyListBeforeItIsRead() {
         show(ConversationsViewModel.State())
         compose.onNodeWithText(text(R.string.conversations_empty)).assertDoesNotExist()

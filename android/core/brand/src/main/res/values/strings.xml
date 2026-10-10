@@ -61,6 +61,8 @@
     <string name="verified_short">Vottað</string>
     <!-- The conversation list's preview line when the newest message is the reader's own. -->
     <string name="last_line_own">Þú: %1$s</string>
+    <!-- The conversation list's preview line in a group when the newest message is someone else's; name is the sender's first name. -->
+    <string name="last_line_sender">%1$s: %2$s</string>
     <!-- Unread messages in a conversation. -->
     <plurals name="unread_count">
         <item quantity="one">%1$d ólesin</item>

@@ -125,6 +125,14 @@
         "text": "string"
       }
     },
+    "last_line_sender": {
+      "surfaces": ["android", "ios"],
+      "description": "The conversation list's preview line in a group when the newest message is someone else's; name is the sender's first name.",
+      "placeholders": {
+        "name": "string",
+        "text": "string"
+      }
+    },
     "unread_count": {
       "surfaces": ["android", "ios"],
       "description": "Unread messages in a conversation.",

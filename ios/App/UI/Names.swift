@@ -6,6 +6,11 @@ func shownName(_ person: Person) -> String {
     person.name ?? localized("person_unnamed")
 }
 
+/// The first word of the name, for where a whole name does not fit; Icelanders go by their first names.
+func firstName(_ person: Person) -> String {
+    person.name?.split(separator: " ").first.map(String.init) ?? localized("person_unnamed")
+}
+
 /// A group has no name in v1: it is titled by its members (decision 0022), or says no one else is there.
 func title(_ conversation: Conversation) -> String {
     conversation.members.isEmpty ? localized("conversation_alone_title") : names(conversation.members)
@@ -57,11 +62,14 @@ func duration(_ seconds: UInt32) -> String {
     return plural("duration_hours", Int(max(1, seconds / hour)))
 }
 
-/// A conversation row's preview: the newest item, the reader's own words marked as theirs (`last_line_own`).
+/// A conversation row's preview: the newest item, said by whom. The reader's own words are marked as theirs
+/// (`last_line_own`); in a group, someone else's start with their first name (`last_line_sender`).
 func previewLine(_ item: Item, group: Bool) -> String {
     let line = lastLine(item, group: group)
     switch item.content {
-    case .text, .media: return item.own ? localized("last_line_own", line) : line
+    case .text, .media:
+        if item.own { return localized("last_line_own", line) }
+        return group ? localized("last_line_sender", firstName(item.sender), line) : line
     case .deleted, .members, .timer: return line
     }
 }

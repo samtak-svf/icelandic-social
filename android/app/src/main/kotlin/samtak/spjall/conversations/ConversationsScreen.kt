@@ -56,6 +56,7 @@ import samtak.spjall.ui.Type
 import samtak.spjall.ui.VerifiedMark
 import samtak.spjall.ui.avatarKind
 import samtak.spjall.ui.capitals
+import samtak.spjall.ui.firstName
 import samtak.spjall.ui.lastLine
 import samtak.spjall.ui.listStamp
 import samtak.spjall.ui.title
@@ -199,7 +200,10 @@ private fun ConversationRow(
     }
 }
 
-/** The newest item as the row's second line; the reader's own words start "Þú:". */
+/**
+ * The newest item as the row's second line, said by whom: the reader ("Þú:"), or in a group the sender's
+ * first name.
+ */
 @Composable
 private fun previewLine(
     item: Item,
@@ -207,7 +211,12 @@ private fun previewLine(
 ): String {
     val line = lastLine(item, group)
     val said = item.content is Content.Text || item.content is Content.Media
-    return if (item.own && said) stringResource(R.string.last_line_own, line) else line
+    return when {
+        !said -> line
+        item.own -> stringResource(R.string.last_line_own, line)
+        group -> stringResource(R.string.last_line_sender, item.sender.firstName(), line)
+        else -> line
+    }
 }
 
 /** The count of unread messages in a red pill; TalkBack reads the words. */

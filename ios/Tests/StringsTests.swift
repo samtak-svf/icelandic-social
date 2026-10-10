@@ -17,4 +17,16 @@ final class StringsTests: XCTestCase {
         XCTAssertEqual(duration(3_600), "1 klukkustund")
         XCTAssertEqual(duration(90_000), "25 klukkustundir")
     }
+
+    func testAGroupsPreviewStartsWithTheSendersFirstName() {
+        let sender = person("a3", "Bjarni Jónsson")
+        let said = item(1, text: "Sæl", sender: sender, ts: 0)
+        XCTAssertEqual(previewLine(said, group: true), "Bjarni: Sæl")
+        XCTAssertEqual(previewLine(said, group: false), "Sæl")
+        let own = item(2, text: "Takk", sender: sender, own: true, ts: 0)
+        XCTAssertEqual(previewLine(own, group: true), "Þú: Takk")
+        let deleted = item(3, sender: sender, ts: 0, content: .deleted)
+        XCTAssertEqual(previewLine(deleted, group: true), lastLine(deleted))
+        XCTAssertEqual(firstName(person("a4")), localized("person_unnamed"))
+    }
 }
