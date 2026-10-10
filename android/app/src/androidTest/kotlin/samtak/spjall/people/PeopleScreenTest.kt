@@ -6,8 +6,10 @@ import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
@@ -31,6 +33,14 @@ class PeopleScreenTest {
 
             override fun start() {
                 calls += "start"
+            }
+
+            override fun search(text: String) {
+                calls += "search $text"
+            }
+
+            override fun more() {
+                calls += "more"
             }
 
             override fun invite() {
@@ -80,5 +90,33 @@ class PeopleScreenTest {
         compose.onNodeWithText(text(R.string.people_empty)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.invite)).performClick()
         assertEquals(listOf("invite"), calls)
+    }
+
+    @Test
+    fun everyoneElseComesUnderTheirOwnHeadingAndTypingSearches() {
+        val others = listOf(Person("a4", "Bára", true), Person("a2", "Anna", true))
+        show(PeopleViewModel.State(people = people, directory = others, loaded = true))
+        compose.onNodeWithText(text(R.string.people_met)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.people_everyone)).assertIsDisplayed()
+        // Anna was met: she is not listed twice.
+        compose.onAllNodesWithText("Anna").assertCountEquals(1)
+        compose.onNodeWithText("Bára").performClick()
+        compose.onNodeWithText(text(R.string.people_search)).performTextInput("Bá")
+        assertEquals(listOf("toggle a4", "search Bá"), calls)
+    }
+
+    @Test
+    fun aSearchThatFindsNobodySaysSo() {
+        show(PeopleViewModel.State(people = people, query = "zz", loaded = true))
+        compose.onNodeWithText(text(R.string.people_none_found)).assertIsDisplayed()
+        compose.onNodeWithText("Anna").assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.people_empty)).assertDoesNotExist()
+    }
+
+    @Test
+    fun theLastRowAsksForTheNextPage() {
+        show(PeopleViewModel.State(directory = listOf(Person("a4", "Bára", true)), next = "1", loaded = true))
+        compose.waitForIdle()
+        assertEquals(listOf("more"), calls)
     }
 }

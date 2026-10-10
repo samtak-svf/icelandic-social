@@ -9,6 +9,7 @@ import samtak.spjall.core.Me
 import samtak.spjall.core.Notices
 import samtak.spjall.core.Outcome
 import samtak.spjall.core.Person
+import samtak.spjall.core.PersonPage
 import samtak.spjall.core.Platform
 import samtak.spjall.core.Post
 import samtak.spjall.core.PostPage
@@ -92,6 +93,16 @@ interface Account {
 
     /** Everyone met through a shared conversation: the new-conversation picker. */
     fun people(): List<Person>
+
+    /**
+     * A page of everyone else signed in (decision 0036), verified first, then by name; [query] keeps the names
+     * that contain it, [after] is the `next` of the page before.
+     */
+    fun directory(
+        query: String?,
+        after: String?,
+        limit: UInt,
+    ): PersonPage
 
     /** A new conversation with these accounts; it reaches the server on the next [sync]. Returns its id. */
     fun createConversation(with: List<String>): String
@@ -261,6 +272,12 @@ class CoreAccount(
     override fun conversations() = client.conversations()
 
     override fun people() = client.people()
+
+    override fun directory(
+        query: String?,
+        after: String?,
+        limit: UInt,
+    ) = client.directory(query, after, limit)
 
     override fun createConversation(with: List<String>) = client.createConversation(with)
 

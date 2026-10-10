@@ -42,9 +42,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import samtak.spjall.BuildConfig
 import samtak.spjall.brand.R
 import samtak.spjall.core.AccountDevice
 import samtak.spjall.core.Platform
+import samtak.spjall.core.coreVersion
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
@@ -99,6 +101,7 @@ fun SettingsScreen(
                         Text(text = stringResource(R.string.delete_account), style = ACTION, color = Palette.danger)
                     }
                 }
+                VersionLine(Modifier.align(Alignment.CenterHorizontally))
             }
         }
     }
@@ -124,6 +127,23 @@ fun SettingsScreen(
             onDismiss = { deleting = false },
         )
     }
+}
+
+/** The app's and the core's version, for a bug report. */
+@Composable
+private fun VersionLine(modifier: Modifier) {
+    Text(
+        text =
+            stringResource(
+                R.string.app_version,
+                BuildConfig.VERSION_NAME,
+                "${BuildConfig.VERSION_CODE}",
+                coreVersion(),
+            ),
+        style = MaterialTheme.typography.bodySmall,
+        color = Palette.mutedFg,
+        modifier = modifier,
+    )
 }
 
 /** Every device signed in to the account, one card. */

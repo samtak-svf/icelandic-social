@@ -8,23 +8,49 @@ struct PeopleView: View {
 
     var body: some View {
         List {
-            if model.busy {
+            if model.busy || model.searching {
                 ProgressView().progressViewStyle(.linear).listRowSeparator(.hidden)
             }
             if let problem = model.problem {
                 ProblemCard(problem: problem) { Task { await model.retry() } }
                     .listRowSeparator(.hidden)
             }
-            if model.loaded && model.people.isEmpty && model.problem == nil {
-                InviteHint(text: "people_empty", onInvite: onInvite).listRowSeparator(.hidden)
-            }
-            ForEach(model.people, id: \.account) { person in
-                PersonRow(person: person, picked: model.picked.contains(person.account)) {
-                    model.toggle(person.account)
+            let searched = !model.query.trimmingCharacters(in: .whitespaces).isEmpty
+            let met = searched ? [] : model.people
+            let everyone = model.everyone
+            let idle = model.loaded && !model.busy && !model.searching && model.problem == nil
+            if idle && met.isEmpty && everyone.isEmpty {
+                if searched {
+                    Text("people_none_found").listRowSeparator(.hidden)
+                } else {
+                    InviteHint(text: "people_empty", onInvite: onInvite).listRowSeparator(.hidden)
                 }
+            }
+            Section {
+                rows(met)
+            } header: {
+                if !met.isEmpty && !everyone.isEmpty { Text("people_met") }
+            }
+            Section {
+                rows(everyone)
+                if model.next != nil {
+                    Color.clear.frame(height: 1).listRowSeparator(.hidden)
+                        .task(id: model.next) { await model.more() }
+                }
+            } header: {
+                if !met.isEmpty && !everyone.isEmpty { Text("people_everyone") }
             }
         }
         .listStyle(.plain)
+        .searchable(
+            text: Binding(get: { model.query }, set: { model.query = $0 }),
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: Text("people_search")
+        )
+        .task(id: model.query) {
+            guard model.loaded else { return }
+            await model.search()
+        }
         .navigationTitle(Text(model.picked.count > 1 ? "new_group" : "new_conversation"))
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
@@ -41,6 +67,16 @@ struct PeopleView: View {
             }
         }
         .task { await model.load() }
+    }
+}
+
+extension PeopleView {
+    private func rows(_ people: [Person]) -> some View {
+        ForEach(people, id: \.account) { person in
+            PersonRow(person: person, picked: model.picked.contains(person.account)) {
+                model.toggle(person.account)
+            }
+        }
     }
 }
 

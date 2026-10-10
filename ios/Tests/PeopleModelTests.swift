@@ -10,7 +10,7 @@ final class PeopleModelTests: XCTestCase {
 
     private func model() async -> PeopleModel {
         account.met = [person("a2", "Anna"), person("a3", "Bjarni"), person("a4")]
-        let model = PeopleModel(account: account, live: live)
+        let model = PeopleModel(account: account, live: live, sleep: { _ in })
         await model.load()
         return model
     }
@@ -78,11 +78,47 @@ final class PeopleModelTests: XCTestCase {
     func testAFailedLoadCanBeTriedAgain() async {
         account.met = [person("a2")]
         account.failNext = unreachable
-        let model = PeopleModel(account: account, live: live)
+        let model = PeopleModel(account: account, live: live, sleep: { _ in })
         await model.load()
         XCTAssertTrue(model.loaded)
         XCTAssertTrue(model.people.isEmpty)
         await model.retry()
         XCTAssertEqual(model.people.map(\.account), ["a2"])
+    }
+
+    func testListsEveryoneElseSignedInAfterThePeopleMet() async {
+        account.everyone = [person("a5", "Bára"), person("a2", "Anna")]
+        let model = await model()
+        XCTAssertEqual(model.everyone.map(\.account), ["a5"])
+    }
+
+    func testASearchAsksTheWholeDirectory() async {
+        account.everyone = [person("a5", "Bára"), person("a2", "Anna")]
+        let model = await model()
+        model.query = "Anna"
+        await model.search()
+        XCTAssertEqual(account.calls.filter { $0.hasPrefix("directory") }, ["directory - -", "directory Anna -"])
+        // A search finds the people met too.
+        XCTAssertEqual(model.everyone.map(\.account), ["a2"])
+    }
+
+    func testTheNextPageIsAdded() async {
+        account.everyone = (1...45).map { person("p\($0)", "Manneskja \($0)") }
+        let model = await model()
+        XCTAssertEqual(model.directory.count, 30)
+        await model.more()
+        XCTAssertEqual(model.directory.count, 45)
+        XCTAssertNil(model.next)
+        await model.more()
+        XCTAssertEqual(account.calls.filter { $0.hasPrefix("directory") }.count, 2)
+    }
+
+    func testAPickSurvivesANewSearch() async {
+        account.everyone = [person("a5", "Bára")]
+        let model = await model()
+        model.toggle("a5")
+        model.query = "Anna"
+        await model.search()
+        XCTAssertEqual(model.picked, ["a5"])
     }
 }

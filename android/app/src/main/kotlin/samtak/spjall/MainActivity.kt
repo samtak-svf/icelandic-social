@@ -390,6 +390,10 @@ class MainActivity : ComponentActivity() {
 
                 override fun start() = people.start()
 
+                override fun search(text: String) = people.search(text)
+
+                override fun more() = people.more()
+
                 override fun invite() = nav.navigate(ME) { tab() }
 
                 override fun retry() = people.retry()

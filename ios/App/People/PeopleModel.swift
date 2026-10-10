@@ -2,12 +2,22 @@ import Foundation
 import Observation
 import SpjallCore
 
-/// The new-conversation picker (decision 0022): the people met through a
-/// shared conversation, and no search. One person opens the 1:1 there already
-/// is with them; more start a group.
+/// The new-conversation picker (decisions 0022, 0036): the people met through
+/// a shared conversation, then everyone else signed in, a page at a time, and
+/// a name search over the whole directory. One person opens the 1:1 there
+/// already is with them; more start a group.
 @MainActor @Observable
 final class PeopleModel {
+    /// The people met through a shared conversation.
     private(set) var people: [Person] = []
+    /// The search as typed; `search()` asks the directory for it.
+    var query = ""
+    /// The directory's pages so far, for `query`.
+    private(set) var directory: [Person] = []
+    /// The cursor of the directory's next page, nil on the last.
+    private(set) var next: String?
+    /// A search or a further page is on its way.
+    private(set) var searching = false
     private(set) var loaded = false
     /// Account ids, in the order they were picked.
     private(set) var picked: [String] = []
@@ -19,16 +29,34 @@ final class PeopleModel {
     private let account: Account
     private let live: Live
     private var failed: (() async -> Void)?
+    private let sleep: @Sendable (Duration) async throws -> Void
 
-    init(account: Account, live: Live) {
+    init(
+        account: Account,
+        live: Live,
+        sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
+    ) {
         self.account = account
         self.live = live
+        self.sleep = sleep
+    }
+
+    /// Whom the list shows below `people`: without a search, the people met are not shown twice.
+    var everyone: [Person] {
+        guard query.trimmingCharacters(in: .whitespaces).isEmpty else { return directory }
+        let met = Set(people.map(\.account))
+        return directory.filter { !met.contains($0.account) }
     }
 
     func load() async {
         let account = account
         await perform(again: { await self.load() }) {
-            self.people = try await offMain { try account.people() }
+            let (people, page) = try await offMain {
+                (try account.people(), try account.directory(query: nil, after: nil, limit: Self.page))
+            }
+            self.people = people
+            self.directory = page.people
+            self.next = page.next
             self.loaded = true
         }
     }
@@ -55,6 +83,45 @@ final class PeopleModel {
             self.opened = id
         }
     }
+
+    /// Asks the directory for `query` once the typing pauses; a newer search cancels the task.
+    func search() async {
+        do { try await sleep(.milliseconds(300)) } catch { return }
+        await page(after: nil)
+    }
+
+    /// The directory's next page, if there is one and none is on its way.
+    func more() async {
+        guard let next, !searching else { return }
+        await page(after: next)
+    }
+
+    /// A page of the directory for `query`: the first replaces what was shown, a later one adds to it.
+    private func page(after: String?) async {
+        let account = account
+        let query = query.trimmingCharacters(in: .whitespaces)
+        searching = true
+        problem = nil
+        do {
+            let page = try await offMain {
+                try account.directory(query: query.isEmpty ? nil : query, after: after, limit: Self.page)
+            }
+            guard query == self.query.trimmingCharacters(in: .whitespaces) else {
+                searching = false
+                return
+            }
+            directory = after == nil ? page.people : directory + page.people
+            next = page.next
+            failed = nil
+        } catch {
+            failed = { await self.page(after: nil) }
+            problem = Problem(error)
+        }
+        searching = false
+    }
+
+    /// A directory page: a screenful and some.
+    private nonisolated static let page: UInt32 = 30
 
     /// Tries the action that failed again.
     func retry() async {

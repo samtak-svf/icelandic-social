@@ -15,8 +15,16 @@
     <string name="new_conversation">Nýtt hjal</string>
     <!-- The conversation list when there is none yet; points at the invite link (docs/decisions/0022). -->
     <string name="conversations_empty">Engin samtöl enn. Deildu hlekknum þínum til að hefja samtal.</string>
-    <!-- The new-conversation picker when the person has met nobody yet; points at the invite link (docs/decisions/0022). -->
-    <string name="people_empty">Hér birtist fólk sem þú hefur spjallað við. Deildu hlekknum þínum til að hefja fyrsta samtalið.</string>
+    <!-- The new-conversation picker when nobody else has signed in yet; points at the invite link (docs/decisions/0022, 0036). -->
+    <string name="people_empty">Enginn annar er kominn inn enn. Deildu hlekknum þínum til að bjóða fólki.</string>
+    <!-- Placeholder of the name search at the top of the new-conversation picker (docs/decisions/0036). -->
+    <string name="people_search">Leita að nafni</string>
+    <!-- The new-conversation picker when no signed-in account's name matches the search (docs/decisions/0036). -->
+    <string name="people_none_found">Enginn fannst með þessu nafni.</string>
+    <!-- Heading over the people met through shared conversations in the new-conversation picker. -->
+    <string name="people_met">Fólk sem þú hefur spjallað við</string>
+    <!-- Heading over everyone else signed in, in the new-conversation picker (docs/decisions/0036). -->
+    <string name="people_everyone">Allir aðrir</string>
     <!-- Line on the conversation list while the app has no connection to the server (docs/decisions/0022). -->
     <string name="connection_offline">Ekkert samband. Skilaboð berast þegar sambandið kemst aftur á.</string>
     <!-- Line on the conversation list while the app reconnects. -->
@@ -264,4 +272,6 @@
     <string name="device_revoke_confirm">Aftengja tækið? Þá getur það hvorki sent né tekið við skilaboðum.</string>
     <!-- The only permitted statement about where data lives (docs/decisions/0001). -->
     <string name="residency_claim">Gögnin eru geymd varanlega innan ESB; unnin á netkerfi Cloudflare.</string>
+    <!-- The app's and the core's version, at the foot of the settings, for a bug report. -->
+    <string name="app_version">Útgáfa %1$s (%2$s), kjarni %3$s</string>
 </resources>

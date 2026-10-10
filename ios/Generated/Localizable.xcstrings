@@ -86,13 +86,61 @@
       }
     },
     "people_empty": {
-      "comment": "The new-conversation picker when the person has met nobody yet; points at the invite link (docs/decisions/0022).",
+      "comment": "The new-conversation picker when nobody else has signed in yet; points at the invite link (docs/decisions/0022, 0036).",
       "extractionState": "manual",
       "localizations": {
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hér birtist fólk sem þú hefur spjallað við. Deildu hlekknum þínum til að hefja fyrsta samtalið."
+            "value": "Enginn annar er kominn inn enn. Deildu hlekknum þínum til að bjóða fólki."
+          }
+        }
+      }
+    },
+    "people_search": {
+      "comment": "Placeholder of the name search at the top of the new-conversation picker (docs/decisions/0036).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leita að nafni"
+          }
+        }
+      }
+    },
+    "people_none_found": {
+      "comment": "The new-conversation picker when no signed-in account's name matches the search (docs/decisions/0036).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enginn fannst með þessu nafni."
+          }
+        }
+      }
+    },
+    "people_met": {
+      "comment": "Heading over the people met through shared conversations in the new-conversation picker.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fólk sem þú hefur spjallað við"
+          }
+        }
+      }
+    },
+    "people_everyone": {
+      "comment": "Heading over everyone else signed in, in the new-conversation picker (docs/decisions/0036).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allir aðrir"
           }
         }
       }
@@ -1509,6 +1557,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gögnin eru geymd varanlega innan ESB; unnin á netkerfi Cloudflare."
+          }
+        }
+      }
+    },
+    "app_version": {
+      "comment": "The app's and the core's version, at the foot of the settings, for a bug report.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Útgáfa %1$@ (%2$@), kjarni %3$@"
           }
         }
       }

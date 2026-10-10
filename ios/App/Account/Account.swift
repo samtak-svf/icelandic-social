@@ -33,6 +33,8 @@ protocol Account: Sendable {
     func conversations() throws -> [Conversation]
     /// The people met through a shared conversation.
     func people() throws -> [Person]
+    /// Everyone else signed in, verified first, a page after the cursor `after`, found by name (decision 0036).
+    func directory(query: String?, after: String?, limit: UInt32) throws -> PersonPage
     /// A new conversation with these accounts; its id.
     func createConversation(with accounts: [String]) throws -> String
     /// The 1:1 with whoever made this invite, made if there is none; its id.
@@ -143,6 +145,10 @@ final class CoreAccount: Account, @unchecked Sendable {
     func conversations() throws -> [Conversation] { try core().conversations() }
 
     func people() throws -> [Person] { try core().people() }
+
+    func directory(query: String?, after: String?, limit: UInt32) throws -> PersonPage {
+        try core().directory(query: query, after: after, limit: limit)
+    }
 
     func createConversation(with accounts: [String]) throws -> String {
         try core().createConversation(with: accounts)

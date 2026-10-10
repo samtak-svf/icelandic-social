@@ -31,6 +31,8 @@ final class FakeAccount: Account, @unchecked Sendable {
     }
     private var _list: [Conversation] = []
     var met: [Person] = []
+    /// Everyone else signed in, as the directory lists them.
+    var everyone: [Person] = []
     /// Invite tokens and the account each one opens a 1:1 with.
     var invites: [String: String] = [:]
     /// What `sync` and `onFrame` return.
@@ -176,6 +178,14 @@ final class FakeAccount: Account, @unchecked Sendable {
     func people() throws -> [Person] {
         try call("people")
         return met
+    }
+
+    func directory(query: String?, after: String?, limit: UInt32) throws -> PersonPage {
+        try call("directory \(query ?? "-") \(after ?? "-")")
+        let found = everyone.filter { query == nil || ($0.name ?? "").localizedCaseInsensitiveContains(query!) }
+        let start = after.flatMap(Int.init) ?? 0
+        let end = min(start + Int(limit), found.count)
+        return PersonPage(people: Array(found[start..<end]), next: end < found.count ? String(end) : nil)
     }
 
     func createConversation(with accounts: [String]) throws -> String {

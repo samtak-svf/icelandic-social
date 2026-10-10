@@ -12,6 +12,7 @@ import samtak.spjall.core.Me
 import samtak.spjall.core.Notices
 import samtak.spjall.core.Outcome
 import samtak.spjall.core.Person
+import samtak.spjall.core.PersonPage
 import samtak.spjall.core.Platform
 import samtak.spjall.core.Post
 import samtak.spjall.core.PostPage
@@ -42,6 +43,9 @@ class FakeAccount(
     var token: String? = "t1"
     var conversations = listOf<Conversation>()
     var people = listOf<Person>()
+
+    /** The directory (decision 0036): everyone else signed in. */
+    var everyone = listOf<Person>()
 
     /** Each conversation's items, oldest first; [send] adds a pending one. */
     val timelines = mutableMapOf<String, MutableList<Item>>()
@@ -313,6 +317,17 @@ class FakeAccount(
         val from = cursor?.toInt() ?: 0
         val to = minOf(all.size, from + limit.toInt())
         return all.subList(from, to).toList() to to.takeIf { it < all.size }?.toString()
+    }
+
+    override fun directory(
+        query: String?,
+        after: String?,
+        limit: UInt,
+    ): PersonPage {
+        call("directory ${query ?: "-"} ${after ?: "-"}")
+        val found = everyone.filter { query == null || it.name.orEmpty().contains(query, ignoreCase = true) }
+        val (page, next) = page(found, after, limit)
+        return PersonPage(page, next)
     }
 
     override fun feed(

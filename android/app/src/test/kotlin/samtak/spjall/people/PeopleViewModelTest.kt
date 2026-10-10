@@ -98,4 +98,65 @@ class PeopleViewModelTest {
             advanceUntilIdle()
             assertEquals(listOf("c-new1"), opened)
         }
+
+    @Test
+    fun listsEveryoneElseSignedInAfterThePeopleMet() =
+        runTest(dispatcher) {
+            account.people = listOf(anna)
+            account.everyone = listOf(bjorn, anna)
+            val state = model().state.value
+            assertEquals(listOf("a2"), state.people.map { it.account })
+            assertEquals(listOf("a3"), state.everyone.map { it.account })
+        }
+
+    @Test
+    fun aSearchWaitsForTheTypingToPauseAndAsksTheDirectory() =
+        runTest(dispatcher) {
+            account.people = listOf(anna)
+            account.everyone = listOf(anna, bjorn)
+            val model = model()
+            model.search("B")
+            model.search("Bj")
+            advanceUntilIdle()
+            assertEquals(listOf("directory - -", "directory Bj -"), account.calls.filter { it.startsWith("directory") })
+            assertEquals(
+                listOf("a3"),
+                model.state.value.everyone
+                    .map { it.account },
+            )
+            // A search over the whole directory finds the people met too.
+            model.search("Anna")
+            advanceUntilIdle()
+            assertEquals(
+                listOf("a2"),
+                model.state.value.everyone
+                    .map { it.account },
+            )
+        }
+
+    @Test
+    fun theNextPageIsAddedOnce() =
+        runTest(dispatcher) {
+            account.everyone = (1..45).map { person("p$it", "Manneskja $it") }
+            val model = model()
+            assertEquals(30, model.state.value.directory.size)
+            model.more()
+            model.more()
+            advanceUntilIdle()
+            assertEquals(45, model.state.value.directory.size)
+            assertEquals(null, model.state.value.next)
+            assertEquals(2, account.calls.count { it.startsWith("directory") })
+        }
+
+    @Test
+    fun aPickSurvivesANewSearch() =
+        runTest(dispatcher) {
+            account.everyone = listOf(anna, bjorn)
+            val model = model()
+            model.toggle("a3")
+            model.search("Anna")
+            advanceUntilIdle()
+            model.toggle("a2")
+            assertEquals(listOf("a3", "a2"), model.state.value.picked)
+        }
 }

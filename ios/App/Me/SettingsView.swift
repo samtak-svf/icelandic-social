@@ -55,6 +55,10 @@ struct SettingsView: View {
                         .disabled(model.busy)
                         .frame(maxWidth: .infinity)
                     }
+                    Text(verbatim: localized("app_version", Self.version, Self.build, coreVersion()))
+                        .font(.caption)
+                        .foregroundStyle(BrandTokens.Colors.mutedFg)
+                        .frame(maxWidth: .infinity)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
@@ -82,6 +86,15 @@ struct SettingsView: View {
             Button("delete_account", role: .destructive) { Task { await model.deleteAccount() } }
             Button("cancel", role: .cancel) {}
         }
+    }
+}
+
+extension SettingsView {
+    private static let version = info("CFBundleShortVersionString")
+    private static let build = info("CFBundleVersion")
+
+    private static func info(_ key: String) -> String {
+        Bundle.main.object(forInfoDictionaryKey: key) as? String ?? "-"
     }
 }
 
