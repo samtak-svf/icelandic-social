@@ -938,6 +938,19 @@ impl CoreClient {
             .collect())
     }
 
+    /// The conversations with someone whose name matches `query` at the
+    /// start of a word, compared without case or the Icelandic letters
+    /// (0038), newest activity first. Searched on this device alone; a
+    /// blank query keeps every conversation.
+    pub fn search_conversations(&self, query: String) -> Result<Vec<Conversation>, CoreError> {
+        Ok(self
+            .client()?
+            .search_conversations(&query)?
+            .into_iter()
+            .map(Into::into)
+            .collect())
+    }
+
     /// Up to `limit` items before `before` (a seq), oldest first. The
     /// newest page ends with the pending and failed sends.
     pub fn timeline(

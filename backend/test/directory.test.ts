@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
+import fold from "../../api/fold-vectors.json";
 import { ApiError } from "../src/api/common.ts";
 import { nameKey } from "../src/profiles.ts";
 import { device, revoke } from "./support.ts";
@@ -159,13 +160,16 @@ describe("GET /v1/people", () => {
 });
 
 describe("nameKey", () => {
-  it("folds a search as the migration folds name_key", async () => {
-    const names = ["ÁÐÉÍÓÚÝÞÆÖ áðéíóúýþæö", "Guðröður Atli", "Ægir Þór Ýmisson", "Plain Name"];
-    for (const name of names) {
+  // api/fold-vectors.json is read by the core's fold_name test too, so the
+  // search the server folds, the column it compares and the core's own
+  // conversation search (0038) cannot fold a name three different ways.
+  it("folds each shared vector, as the migration folds name_key", async () => {
+    for (const { input, folded } of fold.vectors) {
+      expect(nameKey(input)).toBe(folded);
       const row = await env.DB.prepare("SELECT name_key AS key FROM accounts WHERE account_id = ?")
-        .bind((await named(name)).accountId)
+        .bind((await named(input)).accountId)
         .first<{ key: string }>();
-      expect(row?.key).toBe(nameKey(name));
+      expect(row?.key).toBe(folded);
     }
   });
 });

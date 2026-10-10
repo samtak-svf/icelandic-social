@@ -1,0 +1,14 @@
+{
+  "about": "A name as a search compares it (decisions 0036, 0038): lower case, with the Icelandic letters folded to plain ones. Read by backend/test/directory.test.ts (nameKey and the name_key column) and core/client/tests/fold.rs (fold_name), so the folds cannot drift apart.",
+  "vectors": [
+    { "input": "ÁÐÉÍÓÚÝÞÆÖ áðéíóúýþæö", "folded": "adeiouythaeo adeiouythaeo" },
+    { "input": "Þórdís Ýr Ævarsdóttir", "folded": "thordis yr aevarsdottir" },
+    { "input": "Sóley Bergs-Guðnadóttir", "folded": "soley bergs-gudnadottir" },
+    { "input": "Örn Héðinsson", "folded": "orn hedinsson" },
+    { "input": "ÆGIR ÞÓR", "folded": "aegir thor" },
+    { "input": "Plain Name", "folded": "plain name" },
+    { "input": "already folded", "folded": "already folded" },
+    { "input": "Ráðhildur 2", "folded": "radhildur 2" },
+    { "input": "50%_off", "folded": "50%_off" }
+  ]
+}

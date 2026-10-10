@@ -21,6 +21,7 @@ on:
   pull_request:
     paths:
       - "core/**"
+      - "api/fold-vectors.json"
       - "identifiers/**"
       - "tooling/coverage-floor.*"
       - ".github/workflows/core.yml"
@@ -28,6 +29,7 @@ on:
     branches: [main]
     paths:
       - "core/**"
+      - "api/fold-vectors.json"
       - "identifiers/**"
       - "tooling/coverage-floor.*"
       - ".github/workflows/core.yml"

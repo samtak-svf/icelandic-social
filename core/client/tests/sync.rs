@@ -1109,6 +1109,63 @@ fn people_are_named_by_the_server() {
     );
 }
 
+/// The conversation list is searched by the names in each title, at the
+/// start of a word and without the Icelandic letters (0038), on this device
+/// alone.
+#[test]
+fn conversations_are_found_by_the_start_of_a_name() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let mut c1 = Phone::new(&relay, "c", "c1");
+    let with_b = conversation(&mut a1, &mut b1);
+    let with_c = conversation(&mut a1, &mut c1);
+    let mut store = spjall_store::Store::open(a1.dir.path(), &KEY).unwrap();
+    store
+        .write(|tx| {
+            tx.execute(
+                "UPDATE profiles SET name = 'Þórdís Ýr Ævarsdóttir' WHERE account = 'b'",
+                [],
+            )?;
+            tx.execute(
+                "UPDATE profiles SET name = 'Sóley Bergs-Guðnadóttir' WHERE account = 'c'",
+                [],
+            )
+        })
+        .unwrap();
+    drop(store);
+    let asked = relay.requests("a1").len();
+
+    let found = |phone: &mut Phone, search: &str| -> Vec<String> {
+        phone
+            .client
+            .search_conversations(search)
+            .unwrap()
+            .into_iter()
+            .map(|c| c.id)
+            .collect()
+    };
+    for (search, expected) in [
+        ("thor", vec![with_b.clone()]),
+        ("Þór", vec![with_b.clone()]),
+        ("aevars", vec![with_b.clone()]),
+        ("gudna", vec![with_c.clone()]),
+        ("dottir", vec![]),
+        ("  ", vec![with_c.clone(), with_b.clone()]),
+    ] {
+        assert_eq!(found(&mut a1, search), expected, "{search:?}");
+    }
+    assert!(matches!(
+        a1.client.search_conversations(&"þ".repeat(101)),
+        Err(ClientError::Invalid(_))
+    ));
+    assert_eq!(
+        relay.requests("a1").len(),
+        asked,
+        "searched on the phone alone"
+    );
+}
+
 #[test]
 fn an_invite_opens_a_one_to_one_with_its_maker() {
     let relay = Relay::new();

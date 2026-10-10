@@ -184,6 +184,16 @@ fn two_clients_talk_through_the_exported_api() {
     assert_eq!(listed[0].members[0].account, "a");
     assert_eq!(listed[0].members[0].name.as_deref(), Some("Name of a"));
     assert_eq!(b1.client.people().unwrap(), listed[0].members);
+    assert_eq!(
+        b1.client.search_conversations("NAME".into()).unwrap(),
+        listed
+    );
+    assert!(
+        b1.client
+            .search_conversations("ame".into())
+            .unwrap()
+            .is_empty()
+    );
 
     let items = b1.client.timeline(conversation.clone(), None, 10).unwrap();
     let item = items.last().unwrap();
