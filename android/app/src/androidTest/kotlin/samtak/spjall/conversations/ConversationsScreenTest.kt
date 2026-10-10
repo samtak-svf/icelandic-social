@@ -1,5 +1,8 @@
 package samtak.spjall.conversations
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -43,6 +46,10 @@ class ConversationsScreenTest {
 
             override fun retry() {
                 calls += "retry"
+            }
+
+            override fun notificationSettings() {
+                calls += "notificationSettings"
             }
         }
 
@@ -127,6 +134,18 @@ class ConversationsScreenTest {
             ),
         )
         compose.onNodeWithText(context.getString(R.string.last_line_sender, "Anna", "Sæl")).assertIsDisplayed()
+    }
+
+    @Test
+    fun theListSaysWhenNotificationsAreOffAndLeadsToTheirSettings() {
+        val state = ConversationsViewModel.State(loaded = true)
+        var off by mutableStateOf(true)
+        compose.setContent { SpjallTheme { ConversationsScreen(state, actions, notificationsOff = off) } }
+        compose.onNodeWithText(text(R.string.notifications_off)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.notifications_settings)).performClick()
+        assertEquals(listOf("notificationSettings"), calls)
+        off = false
+        compose.onNodeWithText(text(R.string.notifications_off)).assertDoesNotExist()
     }
 
     @Test

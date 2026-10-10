@@ -48,6 +48,7 @@ import samtak.spjall.core.ItemStatus
 import samtak.spjall.socket.Connection
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
+import samtak.spjall.ui.NotificationsOff
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.RoundButton
@@ -61,23 +62,28 @@ import samtak.spjall.ui.lastLine
 import samtak.spjall.ui.listStamp
 import samtak.spjall.ui.title
 
-/** The conversation list (1a): dense rows, newest first, as the core orders them. */
+/**
+ * The conversation list (1a): dense rows, newest first, as the core orders them. While the system blocks
+ * the app's notifications, a notice above the rows says so, since nothing else would.
+ */
 @Composable
 fun ConversationsScreen(
     state: ConversationsViewModel.State,
     actions: ConversationsActions,
+    notificationsOff: Boolean = false,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.surface) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
             Header(actions::newConversation)
             ConnectionLine(state.connection)
-            if (state.problem != null || state.inviteExpired) {
+            if (state.problem != null || state.inviteExpired || notificationsOff) {
                 Column(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     state.problem?.let { ProblemCard(it, actions::retry) }
                     if (state.inviteExpired) Notice(stringResource(R.string.link_expired))
+                    if (notificationsOff) NotificationsOff(actions::notificationSettings)
                 }
             }
             if (state.loaded && state.conversations.isEmpty()) {

@@ -269,6 +269,7 @@ class MainActivity : ComponentActivity() {
         nav: NavController,
     ) {
         val state by list.state.collectAsStateWithLifecycle()
+        val notificationsOff = notificationsOff()
         ConversationsScreen(
             state,
             object : ConversationsActions {
@@ -279,8 +280,20 @@ class MainActivity : ComponentActivity() {
                 override fun invite() = nav.navigate(ME) { tab() }
 
                 override fun retry() = list.load()
+
+                override fun notificationSettings() = this@MainActivity.notificationSettings()
             },
+            notificationsOff = notificationsOff,
         )
+    }
+
+    /** Whether the system blocks the app's notifications, asked again each time the app comes back. */
+    @Composable
+    private fun notificationsOff(): Boolean {
+        val notifications = remember { NotificationManagerCompat.from(this) }
+        var off by remember { mutableStateOf(false) }
+        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { off = !notifications.areNotificationsEnabled() }
+        return off
     }
 
     /** Fljótið; read again whenever it shows, since nothing is pushed (decision 0034). */
@@ -478,13 +491,9 @@ class MainActivity : ComponentActivity() {
         val me: MeViewModel =
             viewModel(viewModelStoreOwner = this, key = "me-$signIns") { MeViewModel(graph.account) }
         val state by me.state.collectAsStateWithLifecycle()
-        val notifications = remember { NotificationManagerCompat.from(this) }
-        var notificationsOff by remember { mutableStateOf(false) }
+        val notificationsOff = notificationsOff()
         // A block from a conversation menu changes the list here, and the settings the row opens may change.
-        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-            me.load()
-            notificationsOff = !notifications.areNotificationsEnabled()
-        }
+        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { me.load() }
         LaunchedEffect(state.signedOut) {
             if (state.signedOut) {
                 graph.socket.stop()

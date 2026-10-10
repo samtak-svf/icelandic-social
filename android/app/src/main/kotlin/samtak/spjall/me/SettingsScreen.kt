@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,6 +47,7 @@ import samtak.spjall.core.AccountDevice
 import samtak.spjall.core.Platform
 import samtak.spjall.core.coreVersion
 import samtak.spjall.ui.AppIcons
+import samtak.spjall.ui.NotificationsOff
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.SansFamily
@@ -162,30 +162,6 @@ private fun Devices(
 }
 
 @Composable
-private fun NotificationsOff(onSettings: () -> Unit) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(Palette.secondarySubtle, RoundedCornerShape(NOTICE_RADIUS.dp))
-                .padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Icon(AppIcons.BellOff, contentDescription = null, tint = Palette.fg, modifier = Modifier.size(ICON.dp))
-        Column {
-            Text(text = stringResource(R.string.notifications_off), style = HINT)
-            TextButton(
-                onClick = onSettings,
-                contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
-                modifier = Modifier.padding(start = 0.dp),
-            ) {
-                Text(stringResource(R.string.notifications_settings), style = ACTION, color = Palette.primary)
-            }
-        }
-    }
-}
-
-@Composable
 private fun DeviceRow(
     device: AccountDevice,
     enabled: Boolean,
@@ -237,11 +213,9 @@ private fun DeviceRow(
     }
 }
 
-private const val NOTICE_RADIUS = 14
 private const val PILL_RADIUS = 22
 private const val WELL = 30
 private const val WELL_RADIUS = 8
-private const val ICON = 18
 private const val ICON_SMALL = 16
 
 private val NAME = TextStyle(fontFamily = SansFamily, fontWeight = FontWeight.Black, fontSize = 14.5.sp)

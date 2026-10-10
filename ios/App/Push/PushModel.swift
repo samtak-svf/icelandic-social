@@ -23,7 +23,7 @@ protocol Notifier: Sendable {
 final class PushModel {
     /// The conversation a tapped notification opens, until the screens take it.
     private(set) var opened: String?
-    /// The person turned notifications off; "Ég" says where to turn them on.
+    /// The person turned notifications off; the conversation list and the settings say where to turn them on.
     private(set) var off = false
 
     @ObservationIgnored private let account: Account
@@ -50,7 +50,7 @@ final class PushModel {
         await check()
     }
 
-    /// Reads whether notifications are off, as when "Ég" comes back on screen.
+    /// Reads whether notifications are off, as when the app comes back on screen.
     func check() async {
         off = await notifier.blocked()
     }

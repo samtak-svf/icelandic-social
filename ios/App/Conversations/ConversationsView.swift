@@ -1,9 +1,11 @@
 import SpjallCore
 import SwiftUI
 
-/// The conversation list (1a): dense rows, newest first, as the core orders them.
+/// The conversation list (1a): dense rows, newest first, as the core orders them. While the system
+/// blocks the app's notifications, a notice above the rows says so, since nothing else would.
 struct ConversationsView: View {
     let model: ConversationsModel
+    let notificationsOff: Bool
     let onOpen: (String) -> Void
     let onNew: () -> Void
     let onInvite: () -> Void
@@ -12,12 +14,13 @@ struct ConversationsView: View {
         VStack(spacing: 0) {
             Header(onNew: onNew)
             ConnectionLine(connection: model.connection)
-            if model.problem != nil || model.inviteExpired {
+            if model.problem != nil || model.inviteExpired || notificationsOff {
                 VStack(spacing: 8) {
                     if let problem = model.problem {
                         ProblemCard(problem: problem) { Task { await model.load() } }
                     }
                     if model.inviteExpired { Notice(text: "link_expired") }
+                    if notificationsOff { NotificationsOff() }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)

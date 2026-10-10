@@ -99,6 +99,8 @@ struct HomeView: View {
             switch phase {
             case .active:
                 socket.start()
+                // Back from the system settings the notifications notice sends to.
+                Task { await push.check() }
                 if tab == .feed && feedPath.isEmpty { Task { await feed.refresh() } }
             case .background: socket.stop()
             default: break
@@ -184,6 +186,7 @@ struct HomeView: View {
         NavigationStack(path: $path) {
             ConversationsView(
                 model: list,
+                notificationsOff: push.off,
                 onOpen: { path.append(.conversation($0)) },
                 onNew: { path.append(.people) },
                 onInvite: { tab = .me }

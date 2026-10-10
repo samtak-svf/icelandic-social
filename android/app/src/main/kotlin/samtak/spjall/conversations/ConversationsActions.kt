@@ -10,4 +10,7 @@ interface ConversationsActions {
     fun invite()
 
     fun retry()
+
+    /** The system's notification settings for the app. */
+    fun notificationSettings()
 }
