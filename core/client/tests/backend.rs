@@ -583,13 +583,17 @@ fn devices_talk_through_the_worker() {
     let blocked = a1.client.blocked().unwrap();
     assert_eq!(blocked.len(), 1);
     assert_eq!(blocked[0].account, c);
-    c1.client
+    let refused = c1
+        .client
         .create_conversation(std::slice::from_ref(&a1.account))
         .unwrap();
+    // sync goes on past it; a retry is told why (0037).
+    c1.sync();
     assert!(matches!(
-        c1.client.sync(),
+        c1.client.retry(&refused),
         Err(ClientError::Transport(ApiError::Refused {
             status: 403,
+            request_id: Some(_),
             ..
         }))
     ));
@@ -658,9 +662,11 @@ fn devices_talk_through_the_worker() {
     b1.client
         .add_accounts(&group, std::slice::from_ref(&d))
         .unwrap();
-    // The Worker names the refused request (0037).
+    // sync goes on past it; a retry is told why, and the Worker names the
+    // refused request (0037).
+    b1.sync();
     assert!(matches!(
-        b1.client.sync(),
+        b1.client.retry(&group),
         Err(ClientError::Transport(ApiError::Refused {
             status: 403,
             request_id: Some(ref id),
