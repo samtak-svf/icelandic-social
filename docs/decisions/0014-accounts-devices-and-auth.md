@@ -8,7 +8,8 @@
 - Date: 2026-10-06
 - Decided by: Guðröður, approving the plan that acted on the phase-0 review
 - Amended by: [0028](0028-removing-a-device-from-its-groups.md) (who removes a deleted account's leaves),
-  [0033](0033-google-sign-in-and-kenni-verification.md) (an account is created by Google or Kenni, without an invite)
+  [0033](0033-google-sign-in-and-kenni-verification.md) (an account is created by Google or Kenni, without an invite),
+  [0035](0035-google-only-sign-in-and-merge-on-kenni.md) (a device moves with its token when linking Kenni joins two accounts)
 
 ## Decision
 
@@ -26,7 +27,8 @@
   `Authorization: Bearer <device token>`.** There is no account-level session and no refresh
   token. A token lives until its
   device is revoked (`DELETE /v1/devices/{deviceId}`, from that device or another device of
-  the same account) or the account is deleted.
+  the same account) or the account is deleted. (Amended by 0035: a device moved to the account
+  Kenni joins it to keeps its token.)
 - **One `Inbox` Durable Object per account** (`inbox(env, accountId)` in `backend/src/env/`).
   It holds the device list and routes Welcome messages to each device. Each device has its
   own socket (hibernating) and its own delivery cursor (decision 0015).

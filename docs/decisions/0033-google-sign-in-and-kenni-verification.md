@@ -9,6 +9,8 @@
 - Amends: 0009 (the invite as the beta gate, the name shown), 0014 (an account is created by
   a Kenni sign-in), 0019 (Kenni as the only way in, `verified` set for every account, the
   invite required for a new account)
+- Amended by: [0035](0035-google-only-sign-in-and-merge-on-kenni.md) (the apps sign in with
+  Google only; linking Kenni joins a Google sign-in to the account the kennitala holds)
 
 ## Decision
 
@@ -58,10 +60,12 @@ that verifies the name. The invite stays as a way to reach someone, not as a gat
   sets `display_name` to the registry's `audkenni_name`, when Kenni gives one. The mark keeps
   the meaning 0019 gave it: the registry vouches for the name. A Google account without a
   Kenni identity has no mark.
-- **Signing in with Kenni stays**, as a secondary choice on the sign-in screen. Every account
+- **Signing in with Kenni stays**, as a secondary choice on the sign-in screen (amended by
+  0035: the apps offer only Google, and an older Kenni account is reached by linking Kenni). Every account
   made before this record is a Kenni account, and it must stay reachable on a new device.
 - **Linking is `POST /v1/me/identities`** with a provider and a code, made through the same
-  browser flow. An identity already held by another account gets `409 identity_taken`. The
+  browser flow. An identity already held by another account gets `409 identity_taken` (amended by 0035:
+  a Kenni identity on an account without Google joins the two when the client asks). The
   route takes either provider, so a Kenni account can add Google the same way.
 
 ### Invites
@@ -92,5 +96,5 @@ discipline of 0008 and 0019 for every provider.
 - Storing or logging an email address, a Google `sub` or a kennitala in clear.
 - A Google SDK or a client secret in an app.
 - The mark on a name the registry did not vouch for.
-- Merging two existing accounts, or removing an account's last identity.
+- Merging two existing accounts (amended by 0035), or removing an account's last identity.
 - A frozen id for the Google client.

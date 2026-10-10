@@ -130,8 +130,24 @@ export const signInConfigRoute = createRoute({
 });
 
 const LinkIdentity = z
-  .object({ provider: Provider, code: Code, ...authorization })
+  .object({
+    provider: Provider,
+    code: Code,
+    ...authorization,
+    merge: z.boolean().optional().openapi({
+      description:
+        "This client follows a move: a Kenni identity held by an account without Google joins this account into it, and the answer is 200 (decision 0035)",
+    }),
+  })
   .openapi("LinkIdentity");
+
+const Linked = z
+  .object({
+    accountId: OpaqueId.openapi({
+      description: "The account this device now belongs to: this one, or the one it joined",
+    }),
+  })
+  .openapi("Linked");
 
 export const linkIdentityRoute = createRoute({
   method: "post",
@@ -140,18 +156,23 @@ export const linkIdentityRoute = createRoute({
   tags: ["devices"],
   summary: "Link another way to sign in to this account (decision 0033)",
   description:
-    "Linking Kenni marks the account verified and gives it the registry's name. Linking the identity this account already holds succeeds again.",
+    "Linking Kenni marks the account verified and gives it the registry's name. Linking the identity this account already holds succeeds again. With merge, a Kenni identity held by an account without Google joins this account into that one: the Google identity, this device with its token, the posts, replies, reactions and blocks move, and this account is deleted (decision 0035).",
   security: DEVICE_TOKEN,
   request: {
     body: { required: true, content: { "application/json": { schema: LinkIdentity } } },
   },
   responses: {
-    204: { description: "The account holds the identity" },
+    200: {
+      description:
+        "With merge: the account holds the identity, and this device belongs to accountId",
+      content: { "application/json": { schema: Linked } },
+    },
+    204: { description: "Without merge: the account holds the identity" },
     ...INVALID,
     ...AUTHED,
     403: errorResponse("sign_in_failed: as registerDevice"),
     409: errorResponse(
-      "identity_taken: another account holds this identity; already_linked: this account holds another identity of this provider",
+      "identity_taken: another account holds this identity, and they cannot be joined; already_linked: this account holds another identity of this provider",
     ),
     503: UNAVAILABLE,
   },

@@ -242,20 +242,34 @@ export async function registerDevice(
   return { ok: { accountId, deviceId, token } };
 }
 
+/** What linking did: the account the calling device now belongs to. */
+export type Linked = { accountId: string; merged: boolean };
+
 /**
  * Links an identity to this account (decision 0033). Linking Kenni makes the
  * account verified and gives it the registry's name, when Kenni gave one.
  * Linking the identity the account already holds succeeds again. Refuses an
- * identity another account holds, and a second identity of one provider.
+ * identity another account holds, and a second identity of one provider,
+ * except that with `merge` a Kenni identity held by an account without
+ * Google joins this one into it (decision 0035).
  */
 export async function linkIdentity(
   env: Env,
-  accountId: string,
+  device: Device,
   person: Person,
-): Promise<{ ok: true } | { error: "identity_taken" | "already_linked" }> {
+  { merge = false } = {},
+): Promise<{ ok: Linked } | { error: "identity_taken" | "already_linked" }> {
+  const { accountId } = device;
   const hmacs = await subjectHmacs(env, person);
   const owner = await holder(env, person.provider, hmacs);
-  if (owner && owner.accountId !== accountId) return { error: "identity_taken" };
+  if (owner && owner.accountId !== accountId) {
+    if (merge && (await mergeable(env, accountId, owner.accountId, person.provider))) {
+      await mergeInto(env, device, owner.accountId, person, hmacs);
+      return { ok: { accountId: owner.accountId, merged: true } };
+    }
+    return { error: "identity_taken" };
+  }
+  const linked = { ok: { accountId, merged: false } };
   if (!owner) {
     const other = await db(env)
       .prepare("SELECT 1 FROM identities WHERE account_id = ? AND provider = ?")
@@ -263,31 +277,107 @@ export async function linkIdentity(
       .first();
     if (other) return { error: "already_linked" };
   }
-  const verify =
-    person.provider === "kenni"
-      ? [
-          db(env)
-            .prepare(
-              "UPDATE accounts SET verified = 1, display_name = COALESCE(?, display_name) WHERE account_id = ?",
-            )
-            .bind(person.name, accountId),
-        ]
-      : [];
   try {
     await db(env).batch([
       ...holdIdentity(env, accountId, person.provider, hmacs, Date.now(), owner ? "OR IGNORE" : ""),
-      ...verify,
+      ...verify(env, accountId, person),
     ]);
   } catch (error) {
     // Another request linked this identity, or another of this provider,
     // between the read and the write.
     const raced = await holder(env, person.provider, hmacs);
-    if (raced?.accountId === accountId) return { ok: true };
+    if (raced?.accountId === accountId) return linked;
     if (raced) return { error: "identity_taken" };
     if (String(error).includes("UNIQUE")) return { error: "already_linked" };
     throw error;
   }
-  return { ok: true };
+  return linked;
+}
+
+/** Linking Kenni marks the account verified and gives it the registry's name. */
+function verify(env: Env, accountId: string, person: Person) {
+  if (person.provider !== "kenni") return [];
+  return [
+    db(env)
+      .prepare(
+        "UPDATE accounts SET verified = 1, display_name = COALESCE(?, display_name) WHERE account_id = ?",
+      )
+      .bind(person.name, accountId),
+  ];
+}
+
+/**
+ * Whether Kenni may join `from` into `into` (decision 0035): `from` holds
+ * Google and no Kenni, and `into` holds no Google. Each then ends with one
+ * identity per provider.
+ */
+async function mergeable(env: Env, from: string, into: string, provider: ProviderName) {
+  if (provider !== "kenni") return false;
+  const rows = await db(env)
+    .prepare("SELECT account_id AS accountId, provider FROM identities WHERE account_id IN (?, ?)")
+    .bind(from, into)
+    .all<{ accountId: string; provider: ProviderName }>();
+  const holds = (account: string, p: ProviderName) =>
+    rows.results.some((r) => r.accountId === account && r.provider === p);
+  return holds(from, "google") && !holds(from, "kenni") && !holds(into, "google");
+}
+
+/**
+ * Joins the calling account into `into` (decision 0035). One transaction
+ * moves the Google identity, the calling device with its token, and the
+ * posts, replies, reactions and blocks; then the calling account is deleted
+ * as DELETE /v1/me deletes one. If that fails part way, the account is left
+ * without an identity, and the daily cron finishes it (`deleteOrphans`).
+ */
+async function mergeInto(
+  env: Env,
+  { accountId: from, deviceId }: Device,
+  into: string,
+  person: Person,
+  hmacs: Hmacs,
+) {
+  const move = (sql: string) => db(env).prepare(sql).bind(into, from);
+  await db(env).batch([
+    move("UPDATE identities SET account_id = ? WHERE account_id = ? AND provider = 'google'"),
+    db(env)
+      .prepare("UPDATE devices SET account_id = ? WHERE device_id = ? AND account_id = ?")
+      .bind(into, deviceId, from),
+    // Their credentials name the account the device leaves.
+    db(env).prepare("DELETE FROM key_packages WHERE device_id = ?").bind(deviceId),
+    move("UPDATE posts SET author_account_id = ? WHERE author_account_id = ?"),
+    move("UPDATE post_replies SET author_account_id = ? WHERE author_account_id = ?"),
+    move("UPDATE OR IGNORE post_reactions SET account_id = ? WHERE account_id = ?"),
+    db(env)
+      .prepare(
+        "UPDATE OR IGNORE blocks SET blocker_account_id = ?1 WHERE blocker_account_id = ?2 AND blocked_account_id != ?1",
+      )
+      .bind(into, from),
+    db(env)
+      .prepare(
+        "UPDATE OR IGNORE blocks SET blocked_account_id = ?1 WHERE blocked_account_id = ?2 AND blocker_account_id != ?1",
+      )
+      .bind(into, from),
+    ...holdIdentity(env, into, person.provider, hmacs, Date.now()),
+    ...verify(env, into, person),
+  ]);
+  await deleteAccount(env, from);
+}
+
+/**
+ * Deletes the accounts that hold no identity, which no sign-in can reach: a
+ * join whose deletion failed part way (decision 0035). Every account is made
+ * with an identity in one transaction, and none loses its last otherwise.
+ */
+export async function deleteOrphans(env: Env): Promise<number> {
+  const { results } = await db(env)
+    .prepare(
+      `SELECT account_id AS accountId FROM accounts a
+        WHERE NOT EXISTS (SELECT 1 FROM identities i WHERE i.account_id = a.account_id)
+          AND a.kennitala_hmac IS NULL`,
+    )
+    .all<{ accountId: string }>();
+  for (const { accountId } of results) await deleteAccount(env, accountId);
+  return results.length;
 }
 
 /** The account as its owner sees it: name, mark and active devices. */

@@ -172,13 +172,19 @@ export function createApp() {
         ? c.json({ error: person.error }, 403)
         : c.json({ error: person.error }, 503);
     }
-    const linked = await linkIdentity(c.env, accountId, person.ok);
+    const linked = await linkIdentity(c.env, c.var.device, person.ok, { merge: body.merge });
     if ("error" in linked) {
       log("identity.link_refused", { accountId, code: linked.error, provider: body.provider });
       return c.json({ error: linked.error }, 409);
     }
-    log("identity.linked", { accountId, provider: body.provider });
-    return c.body(null, 204);
+    const into = { accountId: linked.ok.accountId, deviceId: c.var.device.deviceId };
+    if (linked.ok.merged) log("account.merged_away", { accountId });
+    log(linked.ok.merged ? "identity.merged" : "identity.linked", {
+      ...into,
+      provider: body.provider,
+    });
+    // A client that may be moved hears where it now is (decision 0035).
+    return body.merge ? c.json({ accountId: linked.ok.accountId }, 200) : c.body(null, 204);
   });
 
   app.openapi(getMeRoute, async (c) => {

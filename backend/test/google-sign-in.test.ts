@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import ids from "../../identifiers/ids.json" with { type: "json" };
 import { ApiError } from "../src/api/common.ts";
+import { deleteOrphans } from "../src/accounts.ts";
 import { createApp } from "../src/app.ts";
 import { CLIENT_HEADER } from "../src/client-version.ts";
 import { google } from "../src/env/index.ts";
@@ -220,6 +221,165 @@ describe("POST /v1/me/identities", () => {
 
   it("needs a device token", async () => {
     expect((await link({})).status).toBe(401);
+  });
+});
+
+describe("POST /v1/me/identities with merge", () => {
+  // Linking Kenni joins a Google sign-in to the account the kennitala holds
+  // (decision 0035): the older account is kept, and this device moves to it.
+  const merge = (me: Registered, options: Parameters<typeof link>[1] = {}) =>
+    link(auth(me), { ...options, register: { merge: true } });
+  const send = (method: string, path: string, me: Registered, body?: unknown) =>
+    fetch(path, {
+      method,
+      headers: { "content-type": "application/json", ...auth(me) },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  const exists = async (accountId: string) =>
+    (await env.DB.prepare("SELECT 1 FROM accounts WHERE account_id = ?")
+      .bind(accountId)
+      .first()) !== null;
+
+  it("joins a Google account into the Kenni account: the device, its token and Google move", async () => {
+    const kennitala = newKennitala();
+    const older = await registered(await signIn({ kennitala, name: "Prófun Prófsdóttir" }));
+    const sub = newSubject();
+    const me = await registered(await withGoogle({ sub, name: "Gúgli" }));
+    const response = await merge(me, { kennitala, name: "Prófun Prófsdóttir" });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ accountId: older.accountId });
+    expect(await exists(me.accountId)).toBe(false);
+    expect((await identities(older.accountId)).map((i) => i.provider)).toEqual(["google", "kenni"]);
+    const now = (await (await fetch("/v1/me", { headers: auth(me) })).json()) as {
+      accountId: string;
+      devices: { deviceId: string }[];
+    };
+    expect(now.accountId).toBe(older.accountId);
+    expect(now.devices.map((d) => d.deviceId).sort()).toEqual([older.deviceId, me.deviceId].sort());
+    expect((await registered(await withGoogle({ sub }))).accountId).toBe(older.accountId);
+    expect(await account(older.accountId)).toMatchObject({
+      name: "Prófun Prófsdóttir",
+      verified: 1,
+    });
+  });
+
+  it("carries posts, replies, reactions and blocks over, and drops a block of the older account", async () => {
+    const kennitala = newKennitala();
+    const older = await registered(await signIn({ kennitala }));
+    const other = await registered(await withGoogle());
+    const me = await registered(await withGoogle());
+    const post = (await (await send("POST", "/v1/posts", me, { body: "Halló" })).json()) as {
+      postId: string;
+    };
+    const theirs = (await (await send("POST", "/v1/posts", other, { body: "Hæ" })).json()) as {
+      postId: string;
+    };
+    expect(
+      (await send("POST", `/v1/posts/${theirs.postId}/replies`, me, { body: "Já" })).status,
+    ).toBe(201);
+    expect(
+      (await send("PUT", `/v1/posts/${theirs.postId}/reaction`, me, { reaction: "heart" })).status,
+    ).toBe(204);
+    expect((await send("PUT", `/v1/blocks/${other.accountId}`, me)).status).toBe(204);
+    expect((await send("PUT", `/v1/blocks/${older.accountId}`, me)).status).toBe(204);
+    expect((await merge(me, { kennitala })).status).toBe(200);
+    const rows = (sql: string) => env.DB.prepare(sql).bind(older.accountId).first<{ n: number }>();
+    expect(await rows("SELECT count(*) AS n FROM posts WHERE author_account_id = ?")).toEqual({
+      n: 1,
+    });
+    expect(
+      await rows("SELECT count(*) AS n FROM post_replies WHERE author_account_id = ?"),
+    ).toEqual({ n: 1 });
+    expect(await rows("SELECT count(*) AS n FROM post_reactions WHERE account_id = ?")).toEqual({
+      n: 1,
+    });
+    expect(await rows("SELECT count(*) AS n FROM blocks WHERE blocker_account_id = ?")).toEqual({
+      n: 1,
+    });
+    expect(
+      await env.DB.prepare("SELECT author_account_id AS a FROM posts WHERE post_id = ?")
+        .bind(post.postId)
+        .first(),
+    ).toEqual({ a: older.accountId });
+  });
+
+  it("revokes the joined account's other devices", async () => {
+    const kennitala = newKennitala();
+    await registered(await signIn({ kennitala }));
+    const sub = newSubject();
+    const me = await registered(await withGoogle({ sub }));
+    const second = await registered(await withGoogle({ sub }));
+    expect((await merge(me, { kennitala })).status).toBe(200);
+    expect((await fetch("/v1/me", { headers: auth(second) })).status).toBe(401);
+  });
+
+  it("drops the moved device's KeyPackages, whose credentials name the account it left", async () => {
+    const kennitala = newKennitala();
+    await registered(await signIn({ kennitala }));
+    const me = await registered(await withGoogle());
+    await env.DB.prepare(
+      "INSERT INTO key_packages (device_id, key_package, created_at) VALUES (?, x'00', ?)",
+    )
+      .bind(me.deviceId, Date.now())
+      .run();
+    expect((await merge(me, { kennitala })).status).toBe(200);
+    expect(
+      await env.DB.prepare("SELECT count(*) AS n FROM key_packages WHERE device_id = ?")
+        .bind(me.deviceId)
+        .first(),
+    ).toEqual({ n: 0 });
+  });
+
+  it("refuses when the older account already holds a Google identity", async () => {
+    const kennitala = newKennitala();
+    const older = await registered(await withGoogle());
+    expect((await link(auth(older), { kennitala })).status).toBe(204);
+    const me = await registered(await withGoogle());
+    const response = await merge(me, { kennitala });
+    expect(response.status).toBe(409);
+    expect(await errorOf(response)).toBe("identity_taken");
+    expect(await exists(me.accountId)).toBe(true);
+  });
+
+  it("refuses to join a Kenni account into another", async () => {
+    const kennitala = newKennitala();
+    await registered(await signIn({ kennitala }));
+    const me = await registered(await signIn());
+    const response = await merge(me, { kennitala });
+    expect(response.status).toBe(409);
+    expect(await errorOf(response)).toBe("identity_taken");
+  });
+
+  it("answers 200 with this account when nothing is joined", async () => {
+    const me = await registered(await withGoogle());
+    const response = await merge(me);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ accountId: me.accountId });
+  });
+
+  it("leaves a client that did not ask on 409, unmoved", async () => {
+    const kennitala = newKennitala();
+    await registered(await signIn({ kennitala }));
+    const me = await registered(await withGoogle());
+    expect((await link(auth(me), { kennitala })).status).toBe(409);
+    expect(await exists(me.accountId)).toBe(true);
+  });
+});
+
+describe("the daily cron", () => {
+  it("deletes an account left without an identity, and no other", async () => {
+    const kept = await registered(await withGoogle());
+    const orphan = await registered(await withGoogle());
+    await env.DB.prepare("DELETE FROM identities WHERE account_id = ?")
+      .bind(orphan.accountId)
+      .run();
+    expect(await deleteOrphans(euEnv(env))).toBe(1);
+    const left = await env.DB.prepare(
+      "SELECT account_id AS id FROM accounts WHERE account_id IN (?, ?)",
+    )
+      .bind(kept.accountId, orphan.accountId)
+      .all<{ id: string }>();
+    expect(left.results.map((r) => r.id)).toEqual([kept.accountId]);
   });
 });
 
