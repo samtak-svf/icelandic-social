@@ -85,7 +85,7 @@ fun RepliesScreen(
                         PostRow(
                             post,
                             mine = post.author.account == state.me,
-                            actions = PostActions(actions::author, actions::heart, replies = null, actions::deletePost),
+                            actions = actions.forPost(),
                         )
                         HorizontalDivider(color = Palette.border)
                     }
@@ -115,6 +115,10 @@ fun RepliesScreen(
         )
     }
 }
+
+/** The post at the top acts on itself; it has no replies button, being on its replies already. */
+private fun RepliesActions.forPost() =
+    PostActions(::author, ::heart, replies = null, delete = ::deletePost, share = ::share)
 
 @Composable
 private fun Header(onBack: () -> Unit) {

@@ -69,6 +69,7 @@ fun LazyListScope.posts(
                     heart = { actions.heart(post) },
                     replies = { actions.replies(post.postId) },
                     delete = { actions.delete(post.postId) },
+                    share = { actions.share(post.postId) },
                 ),
         )
         HorizontalDivider(color = Palette.border)

@@ -158,6 +158,13 @@
     </plurals>
     <!-- The conversation picker when there is no conversation to send into. -->
     <string name="pick_empty">Ekkert samtal til að senda í.</string>
+    <!-- A Fljótið post's menu entry that shares it into conversations; also the title of the conversation picker it opens (docs/decisions/0040). -->
+    <string name="share_post">Senda í samtal</string>
+    <!-- Brief confirmation after a post was shared: into how many conversations (docs/decisions/0040). -->
+    <plurals name="share_post_done">
+        <item quantity="one">Sent í %1$d samtal</item>
+        <item quantity="other">Sent í %1$d samtöl</item>
+    </plurals>
     <!-- A shared Fljótið post in the conversation list and in a notification: fixed, never the post's text or author (docs/decisions/0040). -->
     <string name="post_shared">Deild færsla</string>
     <!-- The card of a shared post the server no longer shows: deleted, its author's account deleted, or its author blocked. It does not say which (docs/decisions/0040). -->

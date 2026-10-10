@@ -84,6 +84,11 @@
     "other": "Áframsent í {count} samtöl"
   },
   "pick_empty": "Ekkert samtal til að senda í.",
+  "share_post": "Senda í samtal",
+  "share_post_done": {
+    "one": "Sent í {count} samtal",
+    "other": "Sent í {count} samtöl"
+  },
   "post_shared": "Deild færsla",
   "post_gone": "Færslan er ekki lengur til",
   "post_load_failed": "Ekki tókst að sækja færsluna. Reyndu aftur.",

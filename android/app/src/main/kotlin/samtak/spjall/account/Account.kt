@@ -188,6 +188,15 @@ interface Account {
         to: String,
     ): String
 
+    /**
+     * Shares the Fljótið post [postId] into [conversation]: a message that carries the post's id and
+     * nothing else (decision 0040), sent on the next sync. Returns its envelope id.
+     */
+    fun sharePost(
+        conversation: String,
+        postId: String,
+    ): String
+
     /** Blocks [account] (0024): it can no longer reach this one, and the 1:1 with it ends. */
     fun block(account: String): Outcome
 
@@ -377,6 +386,11 @@ class CoreAccount(
         seq: ULong,
         to: String,
     ) = client.forward(from, seq, to)
+
+    override fun sharePost(
+        conversation: String,
+        postId: String,
+    ) = client.sharePost(conversation, postId)
 
     override fun block(account: String) = client.block(account)
 

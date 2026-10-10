@@ -8,6 +8,7 @@ struct RepliesView: View {
     let onAuthor: (Person) -> Void
 
     @State private var deleting: Reply?
+    @Environment(\.postSharing) private var sharing
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -24,7 +25,8 @@ struct RepliesView: View {
                         PostRow(
                             post: post,
                             onAuthor: { onAuthor(post.author) },
-                            onHeart: { Task { await model.toggleHeart() } })
+                            onHeart: { Task { await model.toggleHeart() } },
+                            onShare: sharing.map { sharing in { sharing.open(post.postId) } })
                         Hairline()
                     }
                     if model.loaded && model.replies.isEmpty && model.post != nil {

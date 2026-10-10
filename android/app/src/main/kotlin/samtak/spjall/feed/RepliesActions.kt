@@ -12,6 +12,9 @@ interface RepliesActions {
 
     fun deletePost()
 
+    /** Opens the conversation picker to send the post into conversations (decision 0040). */
+    fun share()
+
     fun send(body: String)
 
     fun delete(replyId: String)

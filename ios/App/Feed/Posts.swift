@@ -9,6 +9,8 @@ struct PostList: View {
     let onAuthor: (Person) -> Void
     let onReplies: (String) -> Void
 
+    @Environment(\.postSharing) private var sharing
+
     var body: some View {
         LazyVStack(spacing: 0) {
             if model.loaded && model.posts.isEmpty && model.problem == nil {
@@ -25,7 +27,8 @@ struct PostList: View {
                     onAuthor: { onAuthor(post.author) },
                     onHeart: { Task { await model.toggleHeart(post) } },
                     onReplies: { onReplies(post.postId) },
-                    onDelete: post.author.account == model.me ? { Task { await model.delete(post.postId) } } : nil
+                    onDelete: post.author.account == model.me ? { Task { await model.delete(post.postId) } } : nil,
+                    onShare: sharing.map { sharing in { sharing.open(post.postId) } }
                 )
                 .onAppear {
                     if post.postId == model.posts.last?.postId { Task { await model.loadMore() } }
@@ -40,7 +43,8 @@ struct PostList: View {
 }
 
 /// One post (Fljótið, a wall): who wrote it and when, the text, a heart and
-/// the replies. Its author can delete it, after a question.
+/// the replies. Its menu sends it into conversations (decision 0040), and its
+/// author can delete it there, after a question.
 struct PostRow: View {
     let post: Post
     let onAuthor: () -> Void
@@ -49,6 +53,8 @@ struct PostRow: View {
     var onReplies: (() -> Void)?
     /// Nil unless the post is this account's own.
     var onDelete: (() -> Void)?
+    /// Opens the picker that sends the post into conversations.
+    var onShare: (() -> Void)?
 
     @State private var deleting = false
 
@@ -63,9 +69,14 @@ struct PostRow: View {
                 HStack(spacing: 6) {
                     Byline(person: post.author, at: post.createdAt, onAuthor: onAuthor)
                     Spacer(minLength: 0)
-                    if onDelete != nil {
+                    if onShare != nil || onDelete != nil {
                         Menu {
-                            Button("delete", role: .destructive) { deleting = true }
+                            if let onShare {
+                                Button("share_post", action: onShare)
+                            }
+                            if onDelete != nil {
+                                Button("delete", role: .destructive) { deleting = true }
+                            }
                         } label: {
                             Image(systemName: "ellipsis")
                                 .font(.system(size: 15, weight: .semibold))

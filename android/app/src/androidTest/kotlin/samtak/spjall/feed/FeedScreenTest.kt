@@ -87,10 +87,20 @@ class FeedScreenTest {
     }
 
     @Test
-    fun onlyOwnPostsCanBeDeletedAndOnlyAfterAsking() {
+    fun anyPostCanBeSentIntoAConversationButOnlyOwnDeleted() {
+        show(post("p1", anna))
+        compose.onNodeWithContentDescription(text(R.string.more_options)).performClick()
+        compose.onNodeWithText(text(R.string.delete)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.share_post)).performClick()
+        assertEquals(listOf("share p1"), calls)
+    }
+
+    @Test
+    fun ownPostsAreDeletedOnlyAfterAsking() {
         show(post("p1", anna), post("p2", me))
-        compose.onAllNodesWithContentDescription(text(R.string.delete)).assertCountEquals(1)
-        compose.onNodeWithContentDescription(text(R.string.delete)).performClick()
+        compose.onAllNodesWithContentDescription(text(R.string.more_options)).assertCountEquals(2)
+        compose.onAllNodesWithContentDescription(text(R.string.more_options))[1].performClick()
+        compose.onNodeWithText(text(R.string.share_post)).assertExists()
         compose.onNodeWithText(text(R.string.delete)).performClick()
         assertEquals(emptyList<String>(), calls)
         compose.onNodeWithText(text(R.string.post_delete_confirm)).assertExists()
@@ -117,6 +127,10 @@ class RecordingPostsActions(
 
     override fun delete(postId: String) {
         calls += "delete $postId"
+    }
+
+    override fun share(postId: String) {
+        calls += "share $postId"
     }
 
     override fun post(body: String) {

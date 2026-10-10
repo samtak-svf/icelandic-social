@@ -314,6 +314,11 @@ final class FakeAccount: Account, @unchecked Sendable {
         return "e-forward\(calls.count)"
     }
 
+    func sharePost(_ conversation: String, postId: String) throws -> String {
+        try call("sharePost \(conversation) \(postId)")
+        return "e-share\(calls.count)"
+    }
+
     func block(_ account: String) throws -> Outcome {
         try call("block \(account)")
         let person = met.first { $0.account == account } ?? Person(account: account, name: nil, verified: false)

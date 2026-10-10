@@ -64,6 +64,9 @@ protocol Account: Sendable {
     /// Copies the message at `seq` of `from` into `to` as a new message there, marked forwarded (decision 0041).
     /// Refused under a timer, for a deleted message and for a card.
     func forward(_ from: String, seq: UInt64, to: String) throws -> String
+    /// Shares the Fljótið post `postId` into `conversation`: a message that carries the post's id and nothing
+    /// else (decision 0040), sent on the next sync. Returns its envelope id.
+    func sharePost(_ conversation: String, postId: String) throws -> String
     /// Blocks `account` (decision 0024): it can no longer reach this one, and the 1:1 with it ends.
     func block(_ account: String) throws -> Outcome
     func unblock(_ account: String) throws
@@ -211,6 +214,10 @@ final class CoreAccount: Account, @unchecked Sendable {
 
     func forward(_ from: String, seq: UInt64, to: String) throws -> String {
         try core().forward(from: from, seq: seq, to: to)
+    }
+
+    func sharePost(_ conversation: String, postId: String) throws -> String {
+        try core().sharePost(conversation: conversation, postId: postId)
     }
 
     func block(_ account: String) throws -> Outcome { try core().block(account: account) }

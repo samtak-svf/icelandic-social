@@ -1,6 +1,6 @@
 # 0040. A Fljótið post is shared into a conversation by its id, never by a copy of its text
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the core (#173) and the apps (#178, #183)
 - Date: 2026-10-10
 - Decided by: the maintainer, choosing it from a comparison with an established messenger
 - Builds on: [0002](0002-mls-end-to-end-encryption.md), [0024](0024-block.md),

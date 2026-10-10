@@ -14,6 +14,9 @@ interface PostsActions {
 
     fun delete(postId: String)
 
+    /** Opens the conversation picker to send the post into conversations (decision 0040). */
+    fun share(postId: String)
+
     fun post(body: String)
 
     fun loadMore()

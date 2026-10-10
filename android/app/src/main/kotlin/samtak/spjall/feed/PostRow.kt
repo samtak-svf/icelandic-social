@@ -47,9 +47,10 @@ import samtak.spjall.ui.shownName
 
 /**
  * One post (the Fljotid artboard): the author's initials, name and mark, how
- * long ago, the text, then the heart and the replies. The author's own post
- * has a menu that deletes it, after asking. [PostActions.replies] is null
- * on the replies screen itself.
+ * long ago, the text, then the heart and the replies. Every post has a menu
+ * that sends it into conversations (decision 0040); the author's own also
+ * deletes it, after asking. [PostActions.replies] is null on the replies
+ * screen itself.
  */
 @Composable
 fun PostRow(
@@ -71,7 +72,7 @@ fun PostRow(
         )
         Column(modifier = Modifier.weight(1f)) {
             Byline(post.author, post.createdAt, onAuthor = { actions.author(post.author) }) {
-                if (mine) Menu(onDelete = { deleting = true })
+                Menu(onShare = actions.share, onDelete = if (mine) ({ deleting = true }) else null)
             }
             Text(
                 text = post.body,
@@ -119,6 +120,7 @@ class PostActions(
     val heart: () -> Unit,
     val replies: (() -> Unit)?,
     val delete: () -> Unit,
+    val share: () -> Unit,
 )
 
 /** The name, its mark and the time, the name opening the author's wall; [end] sits at the far side. */
@@ -144,20 +146,32 @@ internal fun Byline(
 }
 
 @Composable
-private fun Menu(onDelete: () -> Unit) {
+private fun Menu(
+    onShare: () -> Unit,
+    onDelete: (() -> Unit)?,
+) {
     var open by rememberSaveable { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }, modifier = Modifier.size(MENU.dp)) {
-            Icon(AppIcons.More, contentDescription = stringResource(R.string.delete), tint = Palette.mutedFg)
+            Icon(AppIcons.More, contentDescription = stringResource(R.string.more_options), tint = Palette.mutedFg)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = Palette.surface) {
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.delete), color = Palette.danger) },
+                text = { Text(stringResource(R.string.share_post), color = Palette.fg) },
                 onClick = {
                     open = false
-                    onDelete()
+                    onShare()
                 },
             )
+            onDelete?.let {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.delete), color = Palette.danger) },
+                    onClick = {
+                        open = false
+                        it()
+                    },
+                )
+            }
         }
     }
 }

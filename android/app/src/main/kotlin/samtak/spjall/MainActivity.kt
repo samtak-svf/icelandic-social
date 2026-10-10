@@ -73,6 +73,7 @@ import samtak.spjall.feed.RepliesActions
 import samtak.spjall.feed.RepliesScreen
 import samtak.spjall.feed.RepliesViewModel
 import samtak.spjall.feed.WallScreen
+import samtak.spjall.feed.sharing
 import samtak.spjall.me.MeActions
 import samtak.spjall.me.MeScreen
 import samtak.spjall.me.MeViewModel
@@ -235,6 +236,9 @@ class MainActivity : ComponentActivity() {
                     val seq = entry.arguments?.getString("seq")?.toULongOrNull()
                     if (from != null && seq != null) Forward(from, seq, nav)
                 }
+                composable("$SHARE/{postId}") { entry ->
+                    entry.arguments?.getString("postId")?.let { SharePost(it, nav) }
+                }
             }
         }
     }
@@ -361,6 +365,8 @@ class MainActivity : ComponentActivity() {
 
                 override fun deletePost() = model.deletePost()
 
+                override fun share() = nav.navigate("$SHARE/$postId")
+
                 override fun send(body: String) = model.send(body)
 
                 override fun delete(replyId: String) = model.delete(replyId)
@@ -385,6 +391,8 @@ class MainActivity : ComponentActivity() {
         override fun replies(postId: String) = nav.navigate("$REPLIES/$postId")
 
         override fun delete(postId: String) = model.delete(postId)
+
+        override fun share(postId: String) = nav.navigate("$SHARE/$postId")
 
         override fun post(body: String) = model.post(body)
 
@@ -518,6 +526,17 @@ class MainActivity : ComponentActivity() {
                 PickViewModel(graph.account, graph.socket, except = from) { to -> forward(from, seq, to) }
             }
         Pick(stringResource(R.string.forward), R.plurals.forward_done, model, nav)
+    }
+
+    /** Sends a Fljótið post into the conversations picked (decision 0040), then back to the post. */
+    @Composable
+    private fun SharePost(
+        postId: String,
+        nav: NavController,
+    ) {
+        val model: PickViewModel =
+            viewModel(key = "share-$postId") { PickViewModel(graph.account, graph.socket, deliver = sharing(postId)) }
+        Pick(stringResource(R.string.share_post), R.plurals.share_post_done, model, nav)
     }
 
     /** The conversation picker; once every picked conversation has its copy, says how many and goes back. */
@@ -654,6 +673,7 @@ class MainActivity : ComponentActivity() {
         private const val PEOPLE = "people"
         private const val CONVERSATION = "conversation"
         private const val FORWARD = "forward"
+        private const val SHARE = "share"
         private const val WALL = "wall"
         private const val REPLIES = "replies"
         private val TABS = setOf(FEED, LIST, ME)

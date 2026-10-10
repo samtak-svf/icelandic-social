@@ -322,6 +322,14 @@ class FakeAccount(
         return "e-forward${calls.size}"
     }
 
+    override fun sharePost(
+        conversation: String,
+        postId: String,
+    ): String {
+        call("sharePost $conversation $postId")
+        return "e-share${calls.size}"
+    }
+
     override fun block(account: String): Outcome {
         call("block $account")
         blockedPeople.add(0, people.firstOrNull { it.account == account } ?: Person(account, null, false))

@@ -88,6 +88,7 @@ struct HomeView: View {
             }
         }
         .tint(BrandTokens.Colors.primary)
+        .sharingPosts(account: signIn.account, live: socket)
         .task {
             push.live = socket
             socket.start()
