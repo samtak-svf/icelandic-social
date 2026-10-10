@@ -1,0 +1,15 @@
+{
+  "$comment": "Every skipped test, and why (tooling/quarantine.mjs, docs/testing.md § Known sources of noise). A flaky test gets an issue and an until at most 14 days ahead; a test not meant to run in the suite gets a reason.",
+  "tests": [
+    {
+      "file": "core/mls/tests/framing_fixture.rs",
+      "name": "write_the_fixture",
+      "reason": "Writes api/fixtures/mls-framing.json when the framing changes; run by hand with --ignored."
+    },
+    {
+      "file": "core/client/tests/backend.rs",
+      "name": "devices_talk_through_the_worker",
+      "reason": "Needs cf dev --mode interop; interop.yml runs it with --ignored."
+    }
+  ]
+}

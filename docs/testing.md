@@ -41,7 +41,12 @@ Rules for a new test:
 ## Known sources of noise, and what to do
 
 1. **Durable Object timing.** Fake the clock and wait on alarm state, never on a sleep. Fix a
-   flaky test within a day, or quarantine it with an issue.
+   flaky test within a day, or quarantine it: skip it, open an issue labelled
+   `test: quarantined`, and add `{file, name, issue, until}` to `tooling/quarantine.json`
+   with `until` at most 14 days ahead. `check:quarantine` fails on a skip with no entry and
+   on an entry past its `until`, so a quarantine ends in a fix or a deliberate deletion. A
+   test that is not meant to run in the suite (a fixture writer, the interop job) gets a
+   `reason` instead.
 2. **Interop fixture drift.** Build interop accounts and headers with the apps' own helpers,
    and update the fixture in the PR that changes the behaviour.
 3. **A new core breaks the apps.** Compile both apps against a local core build
