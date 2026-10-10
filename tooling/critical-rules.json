@@ -361,7 +361,7 @@
       "id": "muted-conversation-sends-no-push",
       "domain": "delivery",
       "decision": "0042",
-      "rule": "A muted conversation sends no push until its mute ends or is turned off, and a mute is the account's and goes when the account leaves.",
+      "rule": "A muted conversation sends no push and shows no notice until its mute ends or is turned off, and a mute is the account's and goes when the account leaves.",
       "tests": [
         {
           "file": "backend/test/push.test.ts",
@@ -374,6 +374,14 @@
         {
           "file": "backend/test/push.test.ts",
           "name": "is cleared when the account leaves the conversation, or is deleted"
+        },
+        {
+          "file": "core/client/tests/sync.rs",
+          "name": "a_muted_conversation_shows_no_notice_then_or_after_it_is_unmuted"
+        },
+        {
+          "file": "core/client/tests/sync.rs",
+          "name": "a_mute_set_while_a_device_was_away_reaches_it_at_sync_and_ends_on_time"
         }
       ]
     },

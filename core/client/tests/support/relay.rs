@@ -17,7 +17,9 @@
 //! id, with replies and one reaction per account, and blocks hidden.
 //!
 //! Media (0023) is kept per conversation for its roster, and blocks (0024)
-//! refuse the blocked account the blocker's KeyPackages.
+//! refuse the blocked account the blocker's KeyPackages. A member mutes a
+//! conversation for its account (0042), and every device of that account
+//! gets a `mute` frame.
 //!
 //! It serves a conversation's devices and refuses a claim naming a deleted
 //! account (0028), says when each last resort expires (0029), and refuses a
@@ -100,6 +102,9 @@ struct State {
     /// (blocker, blocked) → when, in a counter for order.
     blocks: BTreeMap<(String, String), u64>,
     blocked_at: u64,
+    /// (account, conversation) → when its mute ends, none until turned
+    /// back on (0042).
+    mutes: BTreeMap<(String, String), Option<u64>>,
     /// account → the providers it holds an identity of (0033).
     identities: BTreeMap<String, BTreeSet<String>>,
     /// Fljótið, oldest first (0034).
@@ -574,6 +579,22 @@ impl State {
         }
     }
 
+    /// A frame to every device of `account`, as the Inbox broadcasts it.
+    fn tell_account(&mut self, account: &str, frame: Value) {
+        let to: Vec<String> = self
+            .devices
+            .iter()
+            .filter(|(_, a)| *a == account)
+            .map(|(d, _)| d.clone())
+            .collect();
+        for device in to {
+            self.frames
+                .entry(device)
+                .or_default()
+                .push(frame.to_string());
+        }
+    }
+
     fn notify(&mut self, accounts: &BTreeSet<String>, conversation: &str, seq: u64) {
         let frame = json!({ "type": "notify", "conversationId": conversation, "seq": seq });
         let to: Vec<String> = self
@@ -736,6 +757,7 @@ impl State {
                     self.tokens.remove(&d);
                 }
                 self.invites.retain(|_, a| a != account);
+                self.mutes.retain(|(a, _), _| a != account);
                 for conversation in self.conversations.values_mut() {
                     if conversation.roster.remove(account) {
                         conversation.departed.insert(account.to_owned());
@@ -833,6 +855,46 @@ impl State {
                     })
                     .collect();
                 answer(200, json!({ "blocked": blocked }))
+            }
+            (Method::Put | Method::Delete, ["conversations", id, "mute"]) => {
+                let Some(conversation) = self.conversations.get(*id) else {
+                    return refuse(404, "not_found");
+                };
+                if !conversation.roster.contains(account) {
+                    return refuse(403, "not_a_member");
+                }
+                let key = (account.to_owned(), (*id).to_owned());
+                if request.method == Method::Delete {
+                    self.mutes.remove(&key);
+                    self.tell_account(
+                        account,
+                        json!({ "type": "mute", "conversationId": id, "muted": false }),
+                    );
+                    return answer(204, Value::Null);
+                }
+                let until = match body["for"].as_str() {
+                    Some("1h") => Some(now() + 60 * 60 * 1000),
+                    Some("8h") => Some(now() + 8 * 60 * 60 * 1000),
+                    Some("always") => None,
+                    _ => return refuse(400, "invalid_request"),
+                };
+                self.mutes.insert(key, until);
+                let mut frame = json!({ "type": "mute", "conversationId": id, "muted": true });
+                if let Some(until) = until {
+                    frame["until"] = json!(until);
+                }
+                self.tell_account(account, frame);
+                answer(200, json!({ "conversationId": id, "until": until }))
+            }
+            (Method::Get, ["mutes"]) => {
+                let at = now();
+                let mutes: Vec<Value> = self
+                    .mutes
+                    .iter()
+                    .filter(|((by, _), until)| by == account && until.is_none_or(|u| u > at))
+                    .map(|((_, id), until)| json!({ "conversationId": id, "until": until }))
+                    .collect();
+                answer(200, json!({ "mutes": mutes }))
             }
             (Method::Delete, ["devices", id]) => {
                 if self.devices.get(*id).map(String::as_str) != Some(account) {

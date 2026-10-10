@@ -10,8 +10,8 @@ use std::sync::Arc;
 use relay::{Link, Relay};
 use spjall_client::api::{ApiError, Platform, Provider};
 use spjall_client::{
-    Client, ClientError, Content, Event, Item, MediaError, NoticeKind, Settings, State, Status,
-    Unforwardable,
+    Client, ClientError, Content, Event, Item, MediaError, Mute, MuteFor, NoticeKind, Settings,
+    State, Status, Unforwardable,
 };
 use spjall_envelope::Body;
 use spjall_mls::group::{GroupError, forge};
@@ -1813,8 +1813,9 @@ fn a_push_token_reaches_the_server_once_and_again_when_it_changes() {
 
     a1.client.set_push_token("fcm-1", false).unwrap();
     assert_eq!(relay.push_token("a1"), None);
-    // The blocks list, then the token, never reach the server.
-    relay.fail_next("a1", 2);
+    // The blocks list, the mutes list, then the token, never reach the
+    // server.
+    relay.fail_next("a1", 3);
     a1.sync();
     assert_eq!(relay.push_token("a1"), None);
     a1.sync();
@@ -1987,6 +1988,132 @@ fn no_notice_for_a_blocked_account_an_expired_message_or_one_read_already() {
     a1.deliver();
     std::thread::sleep(std::time::Duration::from_millis(1100));
     assert_eq!(notices(&mut a1), (Vec::new(), Vec::new()));
+}
+
+/// `(mute, unread)` of a conversation as the list shows it.
+fn muted(phone: &mut Phone, conversation: &str) -> (Mute, u32) {
+    let row = phone
+        .client
+        .conversations()
+        .unwrap()
+        .into_iter()
+        .find(|c| c.id == conversation)
+        .unwrap();
+    (row.mute, row.unread)
+}
+
+fn redrawn(events: &[Event], conversation: &str) -> bool {
+    events.iter().any(|e| {
+        matches!(e, Event::Timeline { conversation: c, changed } if c == conversation && changed.is_empty())
+    })
+}
+
+#[test]
+fn a_muted_conversation_shows_no_notice_then_or_after_it_is_unmuted() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut a2 = Phone::new(&relay, "a", "a2");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut b1, &mut a1);
+    a2.deliver();
+    a1.deliver();
+
+    // Muted on one device: the other hears of it on its socket.
+    assert_eq!(
+        a1.client.mute(&conversation, MuteFor::Always).unwrap(),
+        Mute::Always
+    );
+    assert!(redrawn(&a2.deliver(), &conversation));
+    assert_eq!(muted(&mut a2, &conversation), (Mute::Always, 0));
+
+    // Nothing shown on either device, and the unread count still rises.
+    b1.send(&conversation, "í þögn");
+    b1.sync();
+    a1.deliver();
+    a2.deliver();
+    assert_eq!(notices(&mut a1), (Vec::new(), Vec::new()));
+    assert_eq!(notices(&mut a2), (Vec::new(), Vec::new()));
+    assert_eq!(muted(&mut a1, &conversation), (Mute::Always, 1));
+
+    // Unmuted: what came while muted is never shown, what follows is.
+    a1.client.unmute(&conversation).unwrap();
+    assert!(redrawn(&a2.deliver(), &conversation));
+    assert_eq!(muted(&mut a2, &conversation), (Mute::Off, 1));
+    assert_eq!(notices(&mut a1), (Vec::new(), Vec::new()));
+    b1.send(&conversation, "aftur");
+    b1.sync();
+    a1.deliver();
+    let (shown, _) = notices(&mut a1);
+    assert_eq!(
+        shown,
+        vec![(
+            conversation.clone(),
+            "b".into(),
+            NoticeKind::Text,
+            Some("aftur".into())
+        )]
+    );
+}
+
+#[test]
+fn a_mute_set_while_a_device_was_away_reaches_it_at_sync_and_ends_on_time() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut a2 = Phone::new(&relay, "a", "a2");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut b1, &mut a1);
+    a2.deliver();
+
+    let Mute::Until(until) = a1.client.mute(&conversation, MuteFor::Hour).unwrap() else {
+        panic!("an hour's mute has an end");
+    };
+    // a2's socket was closed: the frame never reached it.
+    relay.frames("a2");
+    assert_eq!(muted(&mut a2, &conversation).0, Mute::Off);
+    assert!(redrawn(&a2.sync(), &conversation));
+    assert_eq!(muted(&mut a2, &conversation).0, Mute::Until(until));
+    // An unchanged list redraws nothing.
+    assert!(!redrawn(&a2.sync(), &conversation));
+
+    b1.send(&conversation, "í þögn");
+    b1.sync();
+    a2.deliver();
+    assert_eq!(notices(&mut a2), (Vec::new(), Vec::new()));
+
+    // The hour passes: the mute counts as none, and new messages show.
+    let mut store = spjall_store::Store::open(a2.dir.path(), &KEY).unwrap();
+    store
+        .write(|tx| tx.execute("UPDATE mutes SET until = until - 3600001", []))
+        .unwrap();
+    drop(store);
+    assert_eq!(muted(&mut a2, &conversation).0, Mute::Off);
+    b1.send(&conversation, "aftur");
+    b1.sync();
+    a2.deliver();
+    let (shown, _) = notices(&mut a2);
+    assert_eq!(
+        shown,
+        vec![(
+            conversation.clone(),
+            "b".into(),
+            NoticeKind::Text,
+            Some("aftur".into())
+        )]
+    );
+
+    // Only a member mutes, and a malformed id is refused before a request.
+    let mut c1 = Phone::new(&relay, "c", "c1");
+    assert!(matches!(
+        c1.client.mute(&conversation, MuteFor::EightHours),
+        Err(ClientError::Transport(ApiError::Refused {
+            status: 403,
+            ..
+        }))
+    ));
+    assert!(matches!(
+        c1.client.unmute("not/an/id"),
+        Err(ClientError::UnknownConversation)
+    ));
 }
 
 #[test]

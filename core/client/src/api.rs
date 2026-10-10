@@ -414,6 +414,20 @@ struct Blocks {
     blocked: Vec<Blocked>,
 }
 
+/// A muted conversation, as `muteConversation` and `listMutes` show it (0042).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Muted {
+    pub conversation_id: String,
+    /// Unix milliseconds by the server's clock; none until turned back on.
+    pub until: Option<u64>,
+}
+
+#[derive(Deserialize)]
+struct Mutes {
+    mutes: Vec<Muted>,
+}
+
 #[derive(Deserialize)]
 struct Resolved {
     inviter: Option<Inviter>,
@@ -794,6 +808,34 @@ impl<T: Transport + ?Sized> Api<'_, T> {
     pub fn blocks(&self) -> Result<Vec<Blocked>, ApiError> {
         let blocks: Blocks = self.call(Method::Get, "/v1/blocks".into(), None, "listBlocks")?;
         Ok(blocks.blocked)
+    }
+
+    /// `muteConversation` (0042): `duration` is `1h`, `8h` or `always`, and
+    /// the server sets the end by its own clock.
+    pub fn mute(&self, conversation: &str, duration: &str) -> Result<Muted, ApiError> {
+        let body = serde_json::json!({ "for": duration });
+        self.call(
+            Method::Put,
+            format!("/v1/conversations/{conversation}/mute"),
+            Self::json(&body),
+            "muteConversation",
+        )
+    }
+
+    /// `unmuteConversation`: 204 also when not muted.
+    pub fn unmute(&self, conversation: &str) -> Result<(), ApiError> {
+        self.send(
+            Method::Delete,
+            format!("/v1/conversations/{conversation}/mute"),
+            None,
+        )
+        .map(drop)
+    }
+
+    /// `listMutes`: the mutes in force, by conversation.
+    pub fn mutes(&self) -> Result<Vec<Muted>, ApiError> {
+        let mutes: Mutes = self.call(Method::Get, "/v1/mutes".into(), None, "listMutes")?;
+        Ok(mutes.mutes)
     }
 }
 

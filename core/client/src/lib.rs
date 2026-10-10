@@ -25,6 +25,7 @@ mod feed;
 mod forward;
 mod media;
 mod members;
+mod mute;
 mod notice;
 mod read;
 mod timeline;
@@ -39,6 +40,7 @@ pub use directory::{Directory, MAX_QUERY, fold_name};
 pub use feed::MAX_POST;
 pub use media::{MAX_SIZE, MediaError};
 pub use members::Person;
+pub use mute::{Mute, MuteFor};
 pub use notice::{Notice, NoticeKind, Notices};
 pub use read::Settings;
 use serde::Deserialize;
@@ -141,6 +143,8 @@ pub struct Conversation {
     pub unread: u32,
     /// The disappearing timer, in seconds.
     pub timer: Option<u32>,
+    /// Whether this account muted it (0042). `unread` still counts.
+    pub mute: Mute,
 }
 
 /// A message in history.
@@ -187,7 +191,8 @@ pub enum Event {
         conversation: String,
         active: bool,
     },
-    /// Timeline items changed, by seq. Empty when only read state moved.
+    /// Timeline items changed, by seq. Empty when only read state or the
+    /// mute moved.
     Timeline {
         conversation: String,
         changed: Vec<u64>,
@@ -227,6 +232,13 @@ enum Incoming {
     },
     Ping {
         nonce: Option<String>,
+    },
+    /// This account's mute changed on one of its devices (0042).
+    Mute {
+        #[serde(rename = "conversationId")]
+        conversation: String,
+        muted: bool,
+        until: Option<u64>,
     },
     #[serde(other)]
     Other,
@@ -986,6 +998,7 @@ impl<T: Transport> Client<T> {
                     last: timeline::items(tx, &group, &me.account, None, 1)?.pop(),
                     unread: read::unread(tx, &group, &me.account)?,
                     timer,
+                    mute: mute::mute_of(tx, &group)?,
                 });
             }
             Ok(conversations)
@@ -1143,12 +1156,13 @@ impl<T: Transport> Client<T> {
         for group in groups {
             self.sync_one(&group)?;
         }
-        // KeyPackages, blocks set on another device of this account and
-        // the push token: the next sync tries each again, unless this
-        // build is too old to be served at all (0030).
+        // KeyPackages, blocks and mutes set on another device of this
+        // account and the push token: the next sync tries each again,
+        // unless this build is too old to be served at all (0030).
         too_old(self.restock())?;
         self.refresh_profiles()?;
         too_old(self.refresh_blocks())?;
+        too_old(self.refresh_mutes())?;
         too_old(self.send_push_token())?;
         self.purge()?;
         self.sweep_media()?;
@@ -1281,6 +1295,11 @@ impl<T: Transport> Client<T> {
                     });
                 }
             }
+            Incoming::Mute {
+                conversation,
+                muted,
+                until,
+            } => self.on_mute(&conversation, muted, until)?,
             Incoming::Hello {} | Incoming::Other => {}
         }
         self.purge()?;

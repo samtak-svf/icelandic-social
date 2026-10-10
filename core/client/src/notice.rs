@@ -8,6 +8,7 @@ use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 
 use crate::api::{Transport, conversation_id};
 use crate::members::{Person, person};
+use crate::mute::{Mute, mute_of};
 use crate::read::mark;
 use crate::{Client, ClientError, authed, members, now, this_device};
 
@@ -19,7 +20,7 @@ pub enum NoticeKind {
 }
 
 /// A new message to show: from another account, not blocked, not expired,
-/// and not read up to.
+/// not in a muted conversation, and not read up to.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Notice {
     pub conversation: String,
@@ -114,7 +115,10 @@ fn take_notices(tx: &Transaction) -> Result<Notices, ClientError> {
             })?;
             rows.collect::<rusqlite::Result<_>>()?
         };
-        if let Some((last, ..)) = new.last() {
+        // A muted conversation shows nothing, and what it held now is
+        // looked at: it is not shown when the mute ends (0042).
+        let muted = mute_of(tx, &group)? != Mute::Off;
+        if let Some((last, ..)) = new.last().filter(|_| !muted) {
             shown = Some(*last);
             let members = others(tx, &group, &me.account)?;
             for (seq, k, sender, text, detail, ts) in new {

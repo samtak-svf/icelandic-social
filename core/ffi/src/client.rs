@@ -422,6 +422,48 @@ pub struct Conversation {
     pub unread: u32,
     /// The disappearing timer, in seconds.
     pub timer: Option<u32>,
+    /// Whether this account muted it (0042); `unread` still counts.
+    pub mute: Mute,
+}
+
+/// Whether a conversation is muted, and until when (0042).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum Mute {
+    Off,
+    /// Until `at`, in Unix milliseconds by the server's clock.
+    Until {
+        at: u64,
+    },
+    /// Until turned back on.
+    Always,
+}
+
+impl From<core::Mute> for Mute {
+    fn from(mute: core::Mute) -> Self {
+        match mute {
+            core::Mute::Off => Self::Off,
+            core::Mute::Until(at) => Self::Until { at },
+            core::Mute::Always => Self::Always,
+        }
+    }
+}
+
+/// How long a mute lasts, from when the server takes it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum MuteFor {
+    Hour,
+    EightHours,
+    Always,
+}
+
+impl From<MuteFor> for core::MuteFor {
+    fn from(duration: MuteFor) -> Self {
+        match duration {
+            MuteFor::Hour => Self::Hour,
+            MuteFor::EightHours => Self::EightHours,
+            MuteFor::Always => Self::Always,
+        }
+    }
 }
 
 impl From<core::Conversation> for Conversation {
@@ -433,6 +475,7 @@ impl From<core::Conversation> for Conversation {
             last: conversation.last.map(Into::into),
             unread: conversation.unread,
             timer: conversation.timer,
+            mute: conversation.mute.into(),
         }
     }
 }
@@ -1089,6 +1132,17 @@ impl CoreClient {
 
     pub fn unblock(&self, account: String) -> Result<(), CoreError> {
         Ok(self.client()?.unblock(&account)?)
+    }
+
+    /// Mutes a conversation on every device of this account (0042): no
+    /// push for it until the mute ends, and `notices()` shows none.
+    pub fn mute(&self, conversation: String, duration: MuteFor) -> Result<Mute, CoreError> {
+        Ok(self.client()?.mute(&conversation, duration.into())?.into())
+    }
+
+    /// Turns notifications back on for a conversation.
+    pub fn unmute(&self, conversation: String) -> Result<(), CoreError> {
+        Ok(self.client()?.unmute(&conversation)?)
     }
 
     /// Keeps this device's push token; the next `sync` sends it. `sandbox`

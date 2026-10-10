@@ -390,6 +390,18 @@ const MIGRATIONS: &[(u32, &str)] = &[
          ALTER TABLE sign_in ADD COLUMN purpose TEXT NOT NULL DEFAULT 'sign_in'
              CHECK (purpose IN ('sign_in', 'link'));",
     ),
+    (
+        11,
+        // Decision 0042.
+        "-- The account's muted conversations, as the server last listed them
+         -- or a `mute` frame said since: until when, in Unix milliseconds,
+         -- or NULL until turned back on. A conversation this device has not
+         -- joined yet may be here already.
+         CREATE TABLE mutes (
+             group_id BLOB PRIMARY KEY,
+             until    INTEGER
+         ) STRICT, WITHOUT ROWID;",
+    ),
 ];
 
 pub struct Store {

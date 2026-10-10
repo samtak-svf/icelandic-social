@@ -601,9 +601,9 @@ impl<T: Transport> Client<T> {
     }
 
     /// Empties the store: the device key, the groups, history and the
-    /// timeline, the outbox, the names fetched, the toggles, the blocks and
-    /// the media files. The next sign-in starts as a new device, and the
-    /// push token, which belongs to the install, is sent for it.
+    /// timeline, the outbox, the names fetched, the toggles, the blocks, the
+    /// mutes and the media files. The next sign-in starts as a new device,
+    /// and the push token, which belongs to the install, is sent for it.
     fn forget(&mut self) -> Result<(), ClientError> {
         self.store.write(|tx| {
             tx.execute_batch(
@@ -613,6 +613,7 @@ impl<T: Transport> Client<T> {
                  DELETE FROM profiles;
                  DELETE FROM settings;
                  DELETE FROM blocks;
+                 DELETE FROM mutes;
                  DELETE FROM sign_in;
                  DELETE FROM account;
                  DELETE FROM kv;
@@ -638,8 +639,8 @@ pub struct Linked {
 }
 
 /// This device now belongs to `into` (0035). The groups, history, outbox,
-/// names and blocks were the account's that is gone; the device key, the
-/// toggles and the push token belong to the install and stay. The groups'
+/// names, blocks and mutes were the account's that is gone; the device key,
+/// the toggles and the push token belong to the install and stay. The groups'
 /// MLS state goes with them. The other account's conversations take this
 /// device in by external commit (0021) on the next sync.
 fn moved(tx: &Transaction, into: &str) -> Result<(), ClientError> {
@@ -659,7 +660,8 @@ fn moved(tx: &Transaction, into: &str) -> Result<(), ClientError> {
          DELETE FROM messages;
          DELETE FROM conversations;
          DELETE FROM profiles;
-         DELETE FROM blocks;",
+         DELETE FROM blocks;
+         DELETE FROM mutes;",
     )?;
     // The server deleted this device's KeyPackages, whose credentials named
     // the account that is gone: the next sync stocks new ones.

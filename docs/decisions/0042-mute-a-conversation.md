@@ -1,6 +1,6 @@
 # 0042. Muting a conversation is server state in the account's Inbox, checked before a push
 
-- Status: accepted; implemented in the backend (#169); the core and the apps follow
+- Status: accepted; implemented in the backend (#169) and the core (#172); the apps follow
 - Date: 2026-10-10
 - Decided by: the maintainer, choosing it from a comparison with an established messenger
 - Builds on: [0008](0008-no-pii-in-logs.md), [0015](0015-delivery-protocol.md),
@@ -32,7 +32,8 @@
   (`403 not_a_member`).
 - **It follows the account, not the device.** `GET /v1/mutes` lists the account's mutes,
   read by the core at each sync, and a change sends a new `mute` frame
-  (`{conversationId, until}`) to the account's open sockets, so every device shows the same
+  (`{conversationId, muted, until?}`, `until` absent while unmuted or muted until turned back
+  on) to the account's open sockets, so every device shows the same
   state at once. The frame is added in `backend/src/api/frames.ts` and generated into
   `WsFrame.kt` (0005).
 - **What the screens show.** The unread count still rises: a mute silences, it does not hide.
@@ -41,7 +42,7 @@
   `android/app/src/main/kotlin/samtak/spjall/conversations/ConversationsScreen.kt` and
   `ios/App/Conversations/ConversationsView.swift`). The conversation's menu offers "Þagga"
   with the three durations, and "Kveikja á tilkynningum" while muted. `Conversation` in
-  `core/ffi/src/client.rs` gains `muted_until`.
+  `core/ffi/src/client.rs` gains `mute`: `Off`, `Until { at }` or `Always`.
 
 ## Why
 
