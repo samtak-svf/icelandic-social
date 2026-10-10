@@ -879,6 +879,29 @@
           "verified"
         ]
       },
+      "PeoplePage": {
+        "type": "object",
+        "properties": {
+          "people": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Profile"
+            },
+            "description": "Verified first, then by name"
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The cursor of the next page, null on the last"
+          }
+        },
+        "required": [
+          "people",
+          "next"
+        ]
+      },
       "BlockList": {
         "type": "object",
         "properties": {
@@ -2878,6 +2901,100 @@
           },
           "404": {
             "description": "not_found: no such account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/people": {
+      "get": {
+        "operationId": "listPeople",
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Every other signed-in account, for the new-conversation picker (decision 0036)",
+        "description": "Accounts with a name and a device the server still serves, less the caller, those it blocked and those that blocked it. `q` keeps the names that contain it, compared without case or the Icelandic letters (ð as d, þ as th, æ as ae, ö as o, no accents).",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "description": "Part of a name"
+            },
+            "required": false,
+            "description": "Part of a name",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 600,
+              "description": "From `next`"
+            },
+            "required": false,
+            "description": "From `next`",
+            "name": "after",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 30
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeoplePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: the query, or a cursor not from `next`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token, or one that is not valid",
             "content": {
               "application/json": {
                 "schema": {

@@ -11,7 +11,6 @@ import {
   revokeDevice,
   setPushToken,
 } from "./accounts.ts";
-import { blockRoute, getAccountRoute, listBlocksRoute, unblockRoute } from "./api/accounts.ts";
 import {
   createConversationRoute,
   getConversationDevicesRoute,
@@ -35,7 +34,7 @@ import { claimKeyPackagesRoute, uploadKeyPackagesRoute } from "./api/key-package
 import { getMediaRoute, putMediaRoute } from "./api/media.ts";
 import { listMessagesRoute, sendMessageRoute } from "./api/messages.ts";
 import { SOCKET_ACCOUNT, SOCKET_DEVICE, socketRoute } from "./api/socket.ts";
-import { block, blockedByAny, blockList, unblock } from "./blocks.ts";
+import { blockedByAny } from "./blocks.ts";
 import { fromBase64, toBase64 } from "./bytes.ts";
 import { belowFloor, CLIENT_HEADER } from "./client-version.ts";
 import { checkSend } from "./conversations.ts";
@@ -50,10 +49,11 @@ import { authorized, signInConfig, unavailable } from "./identity.ts";
 import { inviteLink, resolveInvite, revokeInvite, rotateInvite } from "./invites.ts";
 import { claim, ownsLeaf, upload } from "./key-packages.ts";
 import { postRoutes } from "./feed.ts";
+import { accountRoutes } from "./people.ts";
 import { linkHost } from "./link.ts";
 import { log } from "./log.ts";
 import { getMedia, MAX_CIPHERTEXT, putMedia } from "./media.ts";
-import { activeDevices, profile } from "./profiles.ts";
+import { activeDevices } from "./profiles.ts";
 
 /** OpenAPI 3.1 document metadata; the routes and schemas come from src/api/. */
 export const DOCUMENT_INFO = {
@@ -422,31 +422,8 @@ export function createApp() {
     return c.json({ keyPackages }, 200);
   });
 
-  // Other accounts (decisions 0022, 0024).
-  app.openapi(getAccountRoute, async (c) => {
-    const found = await profile(c.env, c.req.valid("param").accountId);
-    return found ? c.json(found, 200) : c.json({ error: "not_found" }, 404);
-  });
-
-  app.openapi(listBlocksRoute, async (c) =>
-    c.json({ blocked: await blockList(c.env, c.var.device.accountId) }, 200),
-  );
-
-  app.openapi(blockRoute, async (c) => {
-    const { accountId } = c.var.device;
-    const target = c.req.valid("param").accountId;
-    if (target === accountId) return c.json({ error: "invalid_request" }, 400);
-    if (!(await block(c.env, accountId, target))) return c.json({ error: "not_found" }, 404);
-    log("account.blocked", { accountId });
-    return c.body(null, 204);
-  });
-
-  app.openapi(unblockRoute, async (c) => {
-    const { accountId } = c.var.device;
-    await unblock(c.env, accountId, c.req.valid("param").accountId);
-    log("account.unblocked", { accountId });
-    return c.body(null, 204);
-  });
+  // Other accounts, the directory and block (decisions 0022, 0024, 0036).
+  accountRoutes(app);
 
   // Fljótið and the walls (decision 0034).
   postRoutes(app);

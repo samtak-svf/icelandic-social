@@ -1,8 +1,9 @@
 # 0003. The directory lists only people who opt in, and organisations
 
-- Status: accepted; deferred beyond v1 (0009)
+- Status: accepted; amended by 0036 (in v1, everyone signed in is listed, with no opt-in)
 - Date: 2026-10-05
 - Decided by: Guðröður
+- Amended by: [0036](0036-everyone-signed-in-is-in-the-picker.md)
 
 ## Decision
 

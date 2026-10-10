@@ -4,7 +4,8 @@
 - Date: 2026-10-05
 - Decided by: Guðröður (the scope questions); the implementation choices below follow from them
 - Amended by: [0033](0033-google-sign-in-and-kenni-verification.md) (the invite is no longer the beta gate),
-  [0034](0034-fljotid-and-the-wall.md) (Fljótið and the wall: three tabs, finding people)
+  [0034](0034-fljotid-and-the-wall.md) (Fljótið and the wall: three tabs, finding people),
+  [0036](0036-everyone-signed-in-is-in-the-picker.md) (everyone signed in is in the picker, found by name)
 - Built on by: [0022](0022-the-conversation-surfaces.md) (the list, the conversation, the
   toggles), [0023](0023-media-as-encrypted-blobs.md) (photos and files),
   [0024](0024-block.md) (block)
@@ -51,6 +52,7 @@ How each item is built:
 - The directory (0003), the alerts feed with system cards, and postcode channels (0007).
 - Place or domicile next to a name. If it comes back, it is opt-in and off by default.
 - Contact matching and name search. The server learns nothing about whom a user knows.
+  (Name search among signed-in accounts is allowed by 0036.)
 - Report, which needs a moderator and a process. A closed group of invited people does not.
 
 Their brand strings left `strings.contract.json` with this record and return with their

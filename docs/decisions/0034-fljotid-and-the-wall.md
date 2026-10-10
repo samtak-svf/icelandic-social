@@ -10,6 +10,8 @@
   [0033](0033-google-sign-in-and-kenni-verification.md)
 - Amends: 0009 (the surfaces, finding people), 0022 (who sees a name), 0024 (block extends to
   posts)
+- Amended by: [0036](0036-everyone-signed-in-is-in-the-picker.md) (the picker lists everyone
+  signed in, with name search)
 
 ## Decision
 
@@ -47,7 +49,8 @@
 - **Anyone in Fljótið can open a private conversation with anyone else, without a link.** The
   core's `open_direct(account)` reuses an existing 1:1 or creates one, as `open_invite` does
   (0022). The server already allows it: a KeyPackage claim is refused only on a block.
-- **The new-conversation picker stays as it is.** `people()` lists accounts met in
+- **The new-conversation picker stays as it is** (superseded by 0036: it lists everyone
+  signed in). `people()` lists accounts met in
   conversations. The way to someone new is through Fljótið.
 
 ### Block
@@ -75,5 +78,6 @@ moderate. Keeping posts in D1 keeps them inside the residency claim.
 - Posts outside D1, or outside the EU.
 - Photos or files in a post before a record for them.
 - A post's body, or a name, in a log line.
-- Contact matching or name search. The feed is the way to find people.
+- Contact matching or name search. The feed is the way to find people. (Name search is
+  allowed by 0036; contact matching stays ruled out.)
 - An audience beyond the closed test group before report and moderation exist.

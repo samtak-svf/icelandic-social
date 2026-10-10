@@ -55,6 +55,7 @@ describe("the delivery contract", () => {
       "get /v1/feed getFeed",
       "get /v1/invites/{token} resolveInvite",
       "get /v1/me getMe",
+      "get /v1/people listPeople",
       "get /v1/posts/{postId} getPost",
       "get /v1/posts/{postId}/replies listReplies",
       "get /v1/sign-in getSignInConfig",
