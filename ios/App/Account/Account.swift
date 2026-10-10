@@ -31,6 +31,9 @@ protocol Account: Sendable {
     func onFrame(_ frame: String) throws -> Outcome
     /// The list, newest first, as the core orders it.
     func conversations() throws -> [Conversation]
+    /// The conversations with someone whose name, or a word in it, starts with `query` (decision 0038),
+    /// compared without case or the Icelandic letters; read on this device alone.
+    func searchConversations(_ query: String) throws -> [Conversation]
     /// The people met through a shared conversation.
     func people() throws -> [Person]
     /// Everyone else signed in, verified first, a page after the cursor `after`, found by name (decision 0036).
@@ -143,6 +146,10 @@ final class CoreAccount: Account, @unchecked Sendable {
     func onFrame(_ frame: String) throws -> Outcome { try core().onFrame(frame: frame) }
 
     func conversations() throws -> [Conversation] { try core().conversations() }
+
+    func searchConversations(_ query: String) throws -> [Conversation] {
+        try core().searchConversations(query: query)
+    }
 
     func people() throws -> [Person] { try core().people() }
 

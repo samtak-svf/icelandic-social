@@ -175,6 +175,18 @@ final class FakeAccount: Account, @unchecked Sendable {
         return list
     }
 
+    /// As the core matches: the start of a name, or of a word in it after a space or a hyphen (decision 0038).
+    func searchConversations(_ query: String) throws -> [Conversation] {
+        try call("searchConversations \(query)")
+        let search = query.trimmingCharacters(in: .whitespaces).lowercased()
+        return list.filter { conversation in
+            conversation.members.contains { person in
+                let name = (person.name ?? "").lowercased()
+                return name.hasPrefix(search) || name.contains(" \(search)") || name.contains("-\(search)")
+            }
+        }
+    }
+
     func people() throws -> [Person] {
         try call("people")
         return met

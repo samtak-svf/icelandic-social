@@ -5,9 +5,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
@@ -38,6 +40,14 @@ class ConversationsScreenTest {
 
             override fun newConversation() {
                 calls += "newConversation"
+            }
+
+            override fun search(text: String) {
+                calls += "search $text"
+            }
+
+            override fun openPerson(account: String) {
+                calls += "openPerson $account"
             }
 
             override fun invite() {
@@ -158,5 +168,52 @@ class ConversationsScreenTest {
     fun aDeadInviteLinkIsSaid() {
         show(ConversationsViewModel.State(loaded = true, inviteExpired = true))
         compose.onNodeWithText(text(R.string.link_expired)).assertIsDisplayed()
+    }
+
+    @Test
+    fun typingInTheSearchFieldSearches() {
+        show(ConversationsViewModel.State(loaded = true))
+        compose.onNodeWithText(text(R.string.conversations_search)).performTextInput("Þór")
+        assertEquals(listOf("search Þór"), calls)
+    }
+
+    @Test
+    fun aSearchShowsTheConversationsFoundThenPeopleUnderTheirHeading() {
+        val thordis = Person("a4", "Þórdís Ýr", false)
+        show(
+            ConversationsViewModel.State(
+                conversations = listOf(Conversation("c9", ConversationState.ACTIVE, listOf(anna), null, 0u, null)),
+                loaded = true,
+                query = "Þór",
+                found =
+                    ConversationsViewModel.Found(
+                        "Þór",
+                        listOf(Conversation("c1", ConversationState.ACTIVE, listOf(thordis), null, 0u, null)),
+                        listOf(thordis, Person("a5", "Þórunn Halla", true)),
+                    ),
+            ),
+        )
+        // The list itself gives way to what was found.
+        compose.onNodeWithText("Anna Jónsdóttir").assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.conversations_people)).assertIsDisplayed()
+        val rows = compose.onAllNodesWithText("Þórdís Ýr")
+        rows[0].performClick()
+        rows[1].performClick()
+        compose.onNodeWithText("Þórunn Halla").performClick()
+        assertEquals(listOf("open c1", "openPerson a4", "openPerson a5"), calls)
+    }
+
+    @Test
+    fun aSearchThatFindsNothingSaysSo() {
+        show(
+            ConversationsViewModel.State(
+                loaded = true,
+                query = "Zz",
+                found = ConversationsViewModel.Found("Zz", emptyList(), emptyList()),
+            ),
+        )
+        compose.onNodeWithText(text(R.string.conversations_none_found)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.conversations_empty)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.conversations_people)).assertDoesNotExist()
     }
 }

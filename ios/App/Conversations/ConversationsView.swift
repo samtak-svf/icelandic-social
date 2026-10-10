@@ -2,7 +2,8 @@ import SpjallCore
 import SwiftUI
 
 /// The conversation list (1a): dense rows, newest first, as the core orders them. While the system
-/// blocks the app's notifications, a notice above the rows says so, since nothing else would.
+/// blocks the app's notifications, a notice above the rows says so, since nothing else would. A search
+/// under the header shows the conversations it found, then the people ("Fólk") from the directory.
 struct ConversationsView: View {
     let model: ConversationsModel
     let notificationsOff: Bool
@@ -13,11 +14,15 @@ struct ConversationsView: View {
     var body: some View {
         VStack(spacing: 0) {
             Header(onNew: onNew)
+            SearchField(query: Binding(get: { model.query }, set: { model.query = $0 }))
+            if model.searching {
+                ProgressView().progressViewStyle(.linear)
+            }
             ConnectionLine(connection: model.connection)
             if model.problem != nil || model.inviteExpired || notificationsOff {
                 VStack(spacing: 8) {
                     if let problem = model.problem {
-                        ProblemCard(problem: problem) { Task { await model.load() } }
+                        ProblemCard(problem: problem) { Task { await model.retry() } }
                     }
                     if model.inviteExpired { Notice(text: "link_expired") }
                     if notificationsOff { NotificationsOff() }
@@ -27,17 +32,15 @@ struct ConversationsView: View {
             }
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    if model.loaded && model.conversations.isEmpty {
-                        InviteHint(text: "conversations_empty", onInvite: onInvite)
-                    }
-                    ForEach(model.conversations, id: \.id) { conversation in
-                        Button {
-                            onOpen(conversation.id)
-                        } label: {
-                            ConversationRow(conversation: conversation)
+                    if model.searched {
+                        if let found = model.found {
+                            results(found)
                         }
-                        .buttonStyle(.plain)
-                        Rectangle().fill(BrandTokens.Colors.border).frame(height: 1)
+                    } else {
+                        if model.loaded && model.conversations.isEmpty {
+                            InviteHint(text: "conversations_empty", onInvite: onInvite)
+                        }
+                        rows(model.conversations)
                     }
                 }
             }
@@ -47,6 +50,104 @@ struct ConversationsView: View {
         .navigationTitle(Text("tab_conversations"))
         .toolbar(.hidden, for: .navigationBar)
         .task { await model.follow() }
+        .task(id: model.query) { await model.search() }
+    }
+
+    private func rows(_ conversations: [Conversation]) -> some View {
+        ForEach(conversations, id: \.id) { conversation in
+            Button {
+                onOpen(conversation.id)
+            } label: {
+                ConversationRow(conversation: conversation)
+            }
+            .buttonStyle(.plain)
+            Rectangle().fill(BrandTokens.Colors.border).frame(height: 1)
+        }
+    }
+
+    /// What a search found: the conversations first, then the people under their own heading.
+    @ViewBuilder
+    private func results(_ found: ConversationsModel.Found) -> some View {
+        if found.conversations.isEmpty && found.people.isEmpty && !model.searching {
+            Text("conversations_none_found")
+                .font(.sans(15, relativeTo: .body))
+                .foregroundStyle(BrandTokens.Colors.fg)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+        }
+        rows(found.conversations)
+        if !found.people.isEmpty {
+            Text("conversations_people")
+                .font(.sans(13, black: true, relativeTo: .subheadline))
+                .foregroundStyle(BrandTokens.Colors.fg)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 4)
+                .accessibilityAddTraits(.isHeader)
+            ForEach(found.people, id: \.account) { person in
+                Button {
+                    Task {
+                        if let id = await model.openPerson(person.account) { onOpen(id) }
+                    }
+                } label: {
+                    PersonRow(person: person)
+                }
+                .buttonStyle(.plain)
+                Rectangle().fill(BrandTokens.Colors.border).frame(height: 1)
+            }
+        }
+    }
+}
+
+/// The name search under the header (decision 0038).
+private struct SearchField: View {
+    @Binding var query: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(BrandTokens.Colors.mutedFg)
+                .accessibilityHidden(true)
+            TextField(text: $query, prompt: Text("conversations_search")) {
+                Text("conversations_search")
+            }
+            .textInputAutocapitalization(.words)
+            .autocorrectionDisabled()
+            .submitLabel(.search)
+            .onChange(of: query) { _, text in
+                // The longest search the server and the core take (decision 0036).
+                if text.count > 100 { query = String(text.prefix(100)) }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(BrandTokens.Colors.bg, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(BrandTokens.Colors.border))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
+}
+
+/// Someone the search found in the directory: a tap opens the 1:1.
+private struct PersonRow: View {
+    let person: Person
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Avatar(name: person.name, kind: person.verified ? .verified : .unverified)
+            Text(verbatim: shownName(person))
+                .font(.sans(14.5, black: true))
+                .foregroundStyle(BrandTokens.Colors.fg)
+                .lineLimit(1)
+            if person.verified { VerifiedMark() }
+            Spacer(minLength: 8)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 13)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 }
 

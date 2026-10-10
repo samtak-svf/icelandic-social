@@ -17,11 +17,13 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -64,7 +66,8 @@ import samtak.spjall.ui.title
 
 /**
  * The conversation list (1a): dense rows, newest first, as the core orders them. While the system blocks
- * the app's notifications, a notice above the rows says so, since nothing else would.
+ * the app's notifications, a notice above the rows says so, since nothing else would. A search under the
+ * header shows the conversations it found, then the people ("Fólk") from the directory.
  */
 @Composable
 fun ConversationsScreen(
@@ -75,6 +78,8 @@ fun ConversationsScreen(
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.surface) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
             Header(actions::newConversation)
+            SearchField(state.query, actions::search)
+            if (state.searching) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             ConnectionLine(state.connection)
             if (state.problem != null || state.inviteExpired || notificationsOff) {
                 Column(
@@ -86,16 +91,29 @@ fun ConversationsScreen(
                     if (notificationsOff) NotificationsOff(actions::notificationSettings)
                 }
             }
-            if (state.loaded && state.conversations.isEmpty()) {
+            if (state.nothingFound) {
+                NoneFound()
+            } else if (!state.searched && state.loaded && state.conversations.isEmpty()) {
                 InviteHint(stringResource(R.string.conversations_empty), actions::invite)
             }
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(state.conversations, key = { it.id }) { conversation ->
-                    ConversationRow(conversation, onOpen = { actions.open(conversation.id) })
-                    HorizontalDivider(color = Palette.border)
+                if (state.searched) {
+                    state.found?.let { results(it, actions) }
+                } else {
+                    conversationRows(state.conversations, actions)
                 }
             }
         }
+    }
+}
+
+internal fun LazyListScope.conversationRows(
+    conversations: List<Conversation>,
+    actions: ConversationsActions,
+) {
+    items(conversations, key = { it.id }) { conversation ->
+        ConversationRow(conversation, onOpen = { actions.open(conversation.id) })
+        HorizontalDivider(color = Palette.border)
     }
 }
 

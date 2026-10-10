@@ -167,6 +167,18 @@ class FakeAccount(
         return conversations
     }
 
+    /** As the core matches: the start of a name, or of a word in it after a space or a hyphen (decision 0038). */
+    override fun searchConversations(query: String): List<Conversation> {
+        call("searchConversations $query")
+        val search = query.trim().lowercase()
+        return conversations.filter { c ->
+            c.members.any { p ->
+                val name = p.name.orEmpty().lowercase()
+                name.startsWith(search) || name.contains(" $search") || name.contains("-$search")
+            }
+        }
+    }
+
     override fun people(): List<Person> {
         call("people")
         return people

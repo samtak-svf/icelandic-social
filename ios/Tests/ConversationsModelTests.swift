@@ -96,4 +96,59 @@ final class ConversationsModelTests: XCTestCase {
         _ = await model.openInvite(token: "t1")
         XCTAssertEqual(model.problem, .unreachable)
     }
+
+    func testASearchWaitsForTheTypingToPauseThenFindsConversationsAndPeople() async {
+        let thordis = person("a2", "Þórdís Ýr")
+        account.list = [
+            conversation("c1", members: [thordis]),
+            conversation("c2", members: [person("a3", "Sóley Bergs-Þórsdóttir")]),
+        ]
+        account.everyone = [thordis, person("a4", "Þórunn Halla")]
+        let sleep = FakeSleep()
+        let model = ConversationsModel(account: account, live: live, sleep: sleep.sleep)
+        model.query = "Þ"
+        let first = Task { await model.search() }
+        await eventually { sleep.waiting.count == 1 }
+        first.cancel()
+        await first.value
+        model.query = "Þór"
+        let second = Task { await model.search() }
+        await eventually { sleep.waiting == [.milliseconds(300)] }
+        XCTAssertTrue(model.searching)
+        sleep.pass(.milliseconds(300))
+        await second.value
+
+        // One search, for what was typed last; the hyphenated surname counts as a word.
+        XCTAssertEqual(account.calls.filter { $0.hasPrefix("search") }, ["searchConversations Þór"])
+        XCTAssertEqual(account.calls.filter { $0.hasPrefix("directory") }, ["directory Þór -"])
+        XCTAssertEqual(model.found?.conversations.map(\.id), ["c1", "c2"])
+        XCTAssertEqual(model.found?.people.map(\.account), ["a2", "a4"])
+        XCTAssertFalse(model.searching)
+
+        model.query = " "
+        await model.search()
+        XCTAssertNil(model.found)
+        XCTAssertFalse(model.searched)
+    }
+
+    func testAPersonFoundOpensTheirOneToOneAndSyncs() async {
+        let model = ConversationsModel(account: account, live: live)
+        let opened = await model.openPerson("a4")
+        XCTAssertNotNil(opened)
+        XCTAssertEqual(account.calls.filter { $0.hasPrefix("openDirect") }, ["openDirect a4"])
+        XCTAssertEqual(live.performed, 1)
+    }
+
+    func testAFailedSearchShowsTheProblemAndRetrySearchesAgain() async {
+        let model = ConversationsModel(account: account, live: live, sleep: { _ in })
+        model.query = "Anna"
+        account.failNext = unreachable
+        await model.search()
+        XCTAssertEqual(model.problem, .unreachable)
+        XCTAssertFalse(model.searching)
+        await model.retry()
+        XCTAssertNil(model.problem)
+        XCTAssertEqual(account.calls.filter { $0.hasPrefix("searchConversations") }.count, 2)
+        XCTAssertEqual(model.found?.query, "Anna")
+    }
 }

@@ -85,6 +85,42 @@
         }
       }
     },
+    "conversations_search": {
+      "comment": "Placeholder of the name search under the conversation list header; it finds conversations and people by the start of a name (docs/decisions/0038).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leita að nafni"
+          }
+        }
+      }
+    },
+    "conversations_people": {
+      "comment": "Heading over the people the conversation list's search found in the directory, below the conversations it found (docs/decisions/0036).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fólk"
+          }
+        }
+      }
+    },
+    "conversations_none_found": {
+      "comment": "The conversation list's search when neither a conversation nor a person matches it.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekkert samtal og enginn fannst með þessu nafni."
+          }
+        }
+      }
+    },
     "people_empty": {
       "comment": "The new-conversation picker when nobody else has signed in yet; points at the invite link (docs/decisions/0022, 0036).",
       "extractionState": "manual",

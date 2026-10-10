@@ -118,4 +118,57 @@ class ConversationsViewModelTest {
             assertFalse(model.state.value.inviteExpired)
             assertNull(model.state.value.problem)
         }
+
+    @Test
+    fun aSearchWaitsForTheTypingToPauseThenFindsConversationsAndPeople() =
+        runTest(dispatcher) {
+            val thordis = person("a2", "Þórdís Ýr")
+            val soley = person("a3", "Sóley Bergs-Þórsdóttir")
+            account.conversations = listOf(conversation("c1", thordis), conversation("c2", soley))
+            account.everyone = listOf(thordis, person("a4", "Þórunn Halla"))
+            val model = model()
+            model.search("Þ")
+            model.search("Þór")
+            assertTrue(model.state.value.searching)
+            advanceUntilIdle()
+            // One search, for what was typed last; the hyphenated surname counts as a word.
+            assertEquals(listOf("searchConversations Þór"), account.calls.filter { it.startsWith("search") })
+            assertEquals(listOf("directory Þór -"), account.calls.filter { it.startsWith("directory") })
+            val found = model.state.value.found!!
+            assertEquals(listOf("c1", "c2"), found.conversations.map { it.id })
+            assertEquals(listOf("a2", "a4"), found.people.map { it.account })
+            assertFalse(model.state.value.searching)
+
+            // Cleared, the list is back and nothing more is asked.
+            model.search(" ")
+            advanceUntilIdle()
+            assertNull(model.state.value.found)
+            assertEquals(1, account.calls.count { it.startsWith("directory") })
+        }
+
+    @Test
+    fun aPersonFoundOpensTheirOneToOne() =
+        runTest(dispatcher) {
+            val model = model()
+            val opened = mutableListOf<String>()
+            backgroundScope.launch { model.opened.collect(opened::add) }
+            model.openPerson("a4")
+            advanceUntilIdle()
+            assertEquals(listOf("c-a4"), opened)
+            assertEquals(1, live.syncs)
+        }
+
+    @Test
+    fun aFailedSearchIsAProblemThatRetrySearchesAgain() =
+        runTest(dispatcher) {
+            val model = model()
+            account.failNext = unreachable()
+            model.search("Anna")
+            advanceUntilIdle()
+            assertEquals(Problem.Unreachable, model.state.value.problem)
+            model.retry()
+            advanceUntilIdle()
+            assertNull(model.state.value.problem)
+            assertEquals(2, account.calls.count { it.startsWith("searchConversations") })
+        }
 }

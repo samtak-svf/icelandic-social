@@ -91,6 +91,12 @@ interface Account {
     /** The conversation list, as summaries. */
     fun conversations(): List<Conversation>
 
+    /**
+     * The conversations with someone whose name starts with [query], or has a word that does (decision 0038),
+     * compared without case or the Icelandic letters; read on this device alone.
+     */
+    fun searchConversations(query: String): List<Conversation>
+
     /** Everyone met through a shared conversation: the new-conversation picker. */
     fun people(): List<Person>
 
@@ -270,6 +276,8 @@ class CoreAccount(
     override fun onFrame(frame: String) = client.onFrame(frame)
 
     override fun conversations() = client.conversations()
+
+    override fun searchConversations(query: String) = client.searchConversations(query)
 
     override fun people() = client.people()
 

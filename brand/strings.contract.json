@@ -30,6 +30,18 @@
       "surfaces": ["android", "ios"],
       "description": "The conversation list when there is none yet; points at the invite link (docs/decisions/0022)."
     },
+    "conversations_search": {
+      "surfaces": ["android", "ios"],
+      "description": "Placeholder of the name search under the conversation list header; it finds conversations and people by the start of a name (docs/decisions/0038)."
+    },
+    "conversations_people": {
+      "surfaces": ["android", "ios"],
+      "description": "Heading over the people the conversation list's search found in the directory, below the conversations it found (docs/decisions/0036)."
+    },
+    "conversations_none_found": {
+      "surfaces": ["android", "ios"],
+      "description": "The conversation list's search when neither a conversation nor a person matches it."
+    },
     "people_empty": {
       "surfaces": ["android", "ios"],
       "description": "The new-conversation picker when nobody else has signed in yet; points at the invite link (docs/decisions/0022, 0036)."

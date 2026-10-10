@@ -277,9 +277,13 @@ class MainActivity : ComponentActivity() {
 
                 override fun newConversation() = nav.navigate(PEOPLE)
 
+                override fun search(text: String) = list.search(text)
+
+                override fun openPerson(account: String) = list.openPerson(account)
+
                 override fun invite() = nav.navigate(ME) { tab() }
 
-                override fun retry() = list.load()
+                override fun retry() = list.retry()
 
                 override fun notificationSettings() = this@MainActivity.notificationSettings()
             },
