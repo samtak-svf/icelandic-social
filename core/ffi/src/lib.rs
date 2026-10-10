@@ -29,9 +29,15 @@ pub enum CoreError {
     /// No answer came from the server; everything sent is safe to retry.
     #[error("{detail}")]
     Unreachable { detail: String },
-    /// The server answered with an `ApiError` code.
+    /// The server answered with an `ApiError` code. `request_id` is the
+    /// server's id for the request (0037), for the person to quote to
+    /// support; none from an older server.
     #[error("{status} {code}")]
-    Refused { status: u16, code: String },
+    Refused {
+        status: u16,
+        code: String,
+        request_id: Option<String>,
+    },
     #[error("this device is not registered")]
     NotRegistered,
     #[error("no such conversation, or not one this device is in")]

@@ -336,6 +336,12 @@ fn errors_cross_as_records() {
         a1.client.send(conversation, Body::Typing { active: true }),
         Err(CoreError::Invalid { .. })
     ));
+    // A refusal crosses with the server's id for the request (0037).
+    assert!(matches!(
+        a1.client.post("nope".into()),
+        Err(CoreError::Refused { status: 404, code, request_id: Some(id) })
+            if code == "not_found" && id.starts_with("relay-")
+    ));
     assert!(matches!(
         CoreClient::open(String::new(), vec![7; 31], a1.app.clone(), Platform::Android, "0.2.0".into()),
         Err(CoreError::Store { detail }) if detail.contains("32 bytes")

@@ -80,9 +80,16 @@ pub trait Transport {
 pub enum ApiError {
     #[error(transparent)]
     Unreachable(#[from] Unreachable),
-    /// The server answered with an `ApiError` code.
+    /// The server answered with an `ApiError` code. `request_id` is the
+    /// id the server gave the request (0037), for the person to quote to
+    /// support; none from a server older than that, or a body that is not
+    /// an `ApiError`.
     #[error("{status} {code}")]
-    Refused { status: u16, code: String },
+    Refused {
+        status: u16,
+        code: String,
+        request_id: Option<String>,
+    },
     /// The server answered with something the contract does not allow.
     #[error("malformed answer to {0}")]
     Malformed(&'static str),
@@ -96,6 +103,14 @@ impl ApiError {
     pub fn code(&self) -> Option<&str> {
         match self {
             Self::Refused { code, .. } => Some(code),
+            _ => None,
+        }
+    }
+
+    /// The server's id for a refused request (0037), when it named one.
+    pub fn request_id(&self) -> Option<&str> {
+        match self {
+            Self::Refused { request_id, .. } => request_id.as_deref(),
             _ => None,
         }
     }
@@ -226,6 +241,8 @@ struct ClaimedPackage {
 struct ErrorBody {
     error: String,
     min_version: Option<String>,
+    /// Every error body names its request since 0037.
+    request_id: Option<String>,
 }
 
 /// `getSignInConfig`: where the app sends the person to sign in.
@@ -455,10 +472,11 @@ impl<'a, T: Transport + ?Sized> Api<'a, T> {
             let min = body.and_then(|b| b.min_version).unwrap_or_default();
             return Err(ApiError::ClientTooOld { min });
         }
-        let code = body.map(|b| b.error).unwrap_or_default();
+        let (code, request_id) = body.map(|b| (b.error, b.request_id)).unwrap_or_default();
         Err(ApiError::Refused {
             status: response.status,
             code,
+            request_id,
         })
     }
 
@@ -776,5 +794,67 @@ impl<T: Transport + ?Sized> Api<'_, T> {
     pub fn blocks(&self) -> Result<Vec<Blocked>, ApiError> {
         let blocks: Blocks = self.call(Method::Get, "/v1/blocks".into(), None, "listBlocks")?;
         Ok(blocks.blocked)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn refusal(status: u16, body: &str) -> ApiError {
+        Api::<dyn Transport>::checked(Response {
+            status,
+            body: body.into(),
+        })
+        .unwrap_err()
+    }
+
+    #[test]
+    fn a_refusal_keeps_the_request_id_the_server_named() {
+        let error = refusal(
+            401,
+            r#"{"error":"unauthorized","requestId":"8c1f2e3d4a5b6c7d-KEF"}"#,
+        );
+        assert_eq!(
+            error,
+            ApiError::Refused {
+                status: 401,
+                code: "unauthorized".into(),
+                request_id: Some("8c1f2e3d4a5b6c7d-KEF".into()),
+            }
+        );
+        assert_eq!(error.code(), Some("unauthorized"));
+        assert_eq!(error.request_id(), Some("8c1f2e3d4a5b6c7d-KEF"));
+    }
+
+    #[test]
+    fn a_refusal_from_an_older_server_or_outside_the_contract_has_none() {
+        let older = refusal(404, r#"{"error":"not_found"}"#);
+        assert_eq!(older.code(), Some("not_found"));
+        assert_eq!(older.request_id(), None);
+        let text = refusal(502, "Bad Gateway");
+        assert_eq!(
+            text,
+            ApiError::Refused {
+                status: 502,
+                code: String::new(),
+                request_id: None,
+            }
+        );
+    }
+
+    #[test]
+    fn too_old_still_names_the_floor() {
+        let error = refusal(
+            426,
+            r#"{"error":"client_too_old","minVersion":"0.3.0","requestId":"r"}"#,
+        );
+        assert_eq!(
+            error,
+            ApiError::ClientTooOld {
+                min: "0.3.0".into()
+            }
+        );
+        assert_eq!(error.request_id(), None);
     }
 }

@@ -1426,7 +1426,9 @@ impl<T: Transport> Client<T> {
                     )
                     .map(drop)
                 })?,
-                Err(ApiError::Refused { status: 409, code }) => {
+                Err(ApiError::Refused {
+                    status: 409, code, ..
+                }) => {
                     // Another commit took this epoch. Forget ours, keep its
                     // intent, and seal it again once the fetch has caught up.
                     // A claim naming a departed account waits for the leaves
@@ -1502,7 +1504,9 @@ impl<T: Transport> Client<T> {
                     // The account has no device left, or none with a
                     // KeyPackage still valid (0029): there is nothing to add.
                     Err(ApiError::Refused { status: 404, .. }) => {}
-                    Err(ApiError::Refused { status: 409, code }) if code == "no_key_packages" => {}
+                    Err(ApiError::Refused {
+                        status: 409, code, ..
+                    }) if code == "no_key_packages" => {}
                     Err(error) => return Err(error.into()),
                 }
             }
@@ -1757,7 +1761,9 @@ impl<T: Transport> Client<T> {
                 }
                 // The tree still holds a departed account's leaves, which a
                 // member's device check removes (0028); a later sync joins.
-                Err(ApiError::Refused { status: 409, code }) if code == "claim_names_departed" => {
+                Err(ApiError::Refused {
+                    status: 409, code, ..
+                }) if code == "claim_names_departed" => {
                     self.store.try_write(|tx| drop_join(tx, group, id))?;
                     return Ok(false);
                 }

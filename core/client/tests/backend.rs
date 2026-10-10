@@ -643,12 +643,14 @@ fn devices_talk_through_the_worker() {
     b1.client
         .add_accounts(&group, std::slice::from_ref(&d))
         .unwrap();
+    // The Worker names the refused request (0037).
     assert!(matches!(
         b1.client.sync(),
         Err(ClientError::Transport(ApiError::Refused {
             status: 403,
+            request_id: Some(ref id),
             ..
-        }))
+        })) if !id.is_empty()
     ));
     // Google lets a person in with no invite (0033); Kenni linked adds the
     // mark, and a kennitala on another account is refused.
@@ -663,7 +665,7 @@ fn devices_talk_through_the_worker() {
     let url = h1.client.begin_link(Provider::Kenni).unwrap();
     assert!(matches!(
         h1.client.complete_link(&browse(&url, &kennitala(run, 5))),
-        Err(ClientError::Transport(ApiError::Refused { status: 409, ref code })) if code == "identity_taken"
+        Err(ClientError::Transport(ApiError::Refused { status: 409, ref code, .. })) if code == "identity_taken"
     ));
 
     // Fljótið: g posts, h reacts and replies, g's wall holds it (0034).

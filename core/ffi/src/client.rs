@@ -140,9 +140,15 @@ impl From<ClientError> for CoreError {
             ClientError::Transport(api::ApiError::Unreachable(api::Unreachable(detail))) => {
                 Self::Unreachable { detail }
             }
-            ClientError::Transport(api::ApiError::Refused { status, code }) => {
-                Self::Refused { status, code }
-            }
+            ClientError::Transport(api::ApiError::Refused {
+                status,
+                code,
+                request_id,
+            }) => Self::Refused {
+                status,
+                code,
+                request_id,
+            },
             ClientError::Transport(api::ApiError::ClientTooOld { min }) => {
                 Self::ClientTooOld { min_version: min }
             }

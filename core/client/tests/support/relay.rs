@@ -21,10 +21,12 @@
 //!
 //! It serves a conversation's devices and refuses a claim naming a deleted
 //! account (0028), says when each last resort expires (0029), and refuses a
-//! client below its floor (0030).
+//! client below its floor (0030). Every refusal names a request id, as the
+//! Worker's do (0037); a floor refusal names none, which the client ignores.
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use base64::Engine as _;
@@ -150,8 +152,12 @@ fn answer(status: u16, body: Value) -> Response {
     }
 }
 
+/// The next request id a refusal names, as the Worker's `x-request-id`.
+static REQUEST: AtomicU64 = AtomicU64::new(1);
+
 fn refuse(status: u16, code: &str) -> Response {
-    answer(status, json!({ "error": code }))
+    let request_id = format!("relay-{}", REQUEST.fetch_add(1, Ordering::Relaxed));
+    answer(status, json!({ "error": code, "requestId": request_id }))
 }
 
 impl Relay {

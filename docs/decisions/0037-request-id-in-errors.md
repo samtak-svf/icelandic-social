@@ -1,6 +1,6 @@
 # 0037. Every response carries a request id, and every error names it
 
-- Status: accepted; implemented in the backend; the core keeps it in a refusal next
+- Status: accepted; implemented in the backend (#151) and the core (0.14.0)
 - Date: 2026-10-10
 - Decided by: the maintainer, choosing it from a comparison with an established API's error
   trace id
@@ -27,6 +27,9 @@ support can find.
 - **It is logged with the error line**: an exception is logged as `request.failed` with the
   id, the status and the code, never the exception's message; the refusals that already had a
   line (sign-in, linking, rate limits) carry the id as well.
+- **The core keeps it**: a refused request is `ApiError::Refused` with `request_id`, and
+  `CoreError::Refused` carries it across the FFI, so the apps can show it next to the error.
+  An older server's refusal has none.
 
 The id is opaque and random: it names a request, never a person, so decision 0008 allows it in
 a log line and `log.ts` lets it through its allow list and redaction like any other opaque id.

@@ -1643,12 +1643,14 @@ fn a_blocked_account_cannot_reach_the_blocker_again() {
     a1.client.block("b").unwrap();
     b1.deliver();
     b1.client.create_conversation(&strings(&["a"])).unwrap();
+    // The refusal keeps the id the server gave the request (0037).
     assert!(matches!(
         b1.client.sync(),
         Err(ClientError::Transport(ApiError::Refused {
             status: 403,
+            request_id: Some(ref id),
             ..
-        }))
+        })) if id.starts_with("relay-")
     ));
     // A block set on another device of the same account is taken up by sync.
     let mut a2 = Phone::new(&relay, "a", "a2");

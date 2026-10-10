@@ -443,7 +443,7 @@ fn a_kennitala_on_another_account_ends_the_link() {
     let taken = format!("{REDIRECT}?code=taken-1&state={}", state_of(&url));
     assert!(matches!(
         a1.client.complete_link(&taken),
-        Err(ClientError::Transport(ApiError::Refused { status: 409, ref code })) if code == "identity_taken"
+        Err(ClientError::Transport(ApiError::Refused { status: 409, ref code, .. })) if code == "identity_taken"
     ));
     assert!(sign_in_error(a1.client.complete_link(&relay::kenni(&url))).contains("no sign-in"));
     assert!(!a1.client.me().unwrap().verified);
