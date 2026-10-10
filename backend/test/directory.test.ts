@@ -66,11 +66,36 @@ describe("GET /v1/people", () => {
     expect(namesOf(await people(me, "?q=gudmundur"), [target])).toEqual([]);
   });
 
+  it("matches the start of the name or of a word in it, never the middle of a word", async () => {
+    const me = await named("Ég Prófsson");
+    const first = await named("Guðný Orðadóttir");
+    const later = await named("Ari Guðnason");
+    const hyphen = await named("Ása Bergs-Guðnadóttir");
+    const middle = await named("Ingudís Orðadóttir");
+    const among = [first, later, hyphen, middle];
+    const cases: [string, string[]][] = [
+      ["gud", ["Ari Guðnason", "Ása Bergs-Guðnadóttir", "Guðný Orðadóttir"]],
+      ["Guðn", ["Ari Guðnason", "Ása Bergs-Guðnadóttir", "Guðný Orðadóttir"]],
+      ["ordad", ["Guðný Orðadóttir", "Ingudís Orðadóttir"]],
+      ["bergs-gud", ["Ása Bergs-Guðnadóttir"]],
+      ["ingud", ["Ingudís Orðadóttir"]],
+      ["udis", []],
+      ["nason", []],
+      ["adottir", []],
+    ];
+    for (const [q, expected] of cases) {
+      const found = namesOf(await people(me, `?q=${encodeURIComponent(q)}`), among);
+      expect([q, found.toSorted()]).toEqual([q, expected.toSorted()]);
+    }
+  });
+
   it("takes % and _ in a search as themselves", async () => {
     const me = await named("Ég Prófsson");
     const plain = await named("Prósentulaus Jónsson");
     expect(namesOf(await people(me, `?q=${encodeURIComponent("%")}`), [plain])).toEqual([]);
     expect(namesOf(await people(me, "?q=_"), [plain])).toEqual([]);
+    expect(namesOf(await people(me, `?q=${encodeURIComponent("pró%")}`), [plain])).toEqual([]);
+    expect(namesOf(await people(me, "?q=j_nsson"), [plain])).toEqual([]);
   });
 
   it("leaves out the caller, the nameless and accounts with no device left", async () => {

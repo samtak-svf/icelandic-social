@@ -144,8 +144,10 @@ const likeLiteral = (text: string) => text.replace(/[\\%_]/g, (c) => `\\${c}`);
 /**
  * A page of the directory as `viewer` sees it (decision 0036): every account
  * with a name and a device the server serves, verified ones first, then by
- * name key. Leaves out the viewer, the accounts it blocked and those that
- * blocked it, since neither side could start a conversation.
+ * name key. A search matches the start of the name key or of a word in it,
+ * after a space or a hyphen (decision 0038). Leaves out the viewer, the
+ * accounts it blocked and those that blocked it, since neither side could
+ * start a conversation.
  */
 export async function directory(
   env: Env,
@@ -164,7 +166,10 @@ export async function directory(
           AND NOT EXISTS (SELECT 1 FROM blocks b
                            WHERE (b.blocker_account_id = ?1 AND b.blocked_account_id = a.account_id)
                               OR (b.blocker_account_id = a.account_id AND b.blocked_account_id = ?1))
-          AND (?2 IS NULL OR a.name_key LIKE '%' || ?2 || '%' ESCAPE '\\')
+          AND (?2 IS NULL
+               OR a.name_key LIKE ?2 || '%' ESCAPE '\\'
+               OR a.name_key LIKE '% ' || ?2 || '%' ESCAPE '\\'
+               OR a.name_key LIKE '%-' || ?2 || '%' ESCAPE '\\')
           AND (?3 IS NULL OR a.verified < ?3
                OR (a.verified = ?3 AND (a.name_key > ?4 OR (a.name_key = ?4 AND a.account_id > ?5))))
         ORDER BY a.verified DESC, a.name_key, a.account_id

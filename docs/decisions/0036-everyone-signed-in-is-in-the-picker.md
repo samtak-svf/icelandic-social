@@ -1,6 +1,7 @@
 # 0036. Everyone signed in is in the new-conversation picker, found by name
 
-- Status: accepted; implemented in the backend (#145), the core (#146, 0.13.0) and the apps
+- Status: accepted; implemented in the backend (#145), the core (#146, 0.13.0) and the apps;
+  search amended by 0038
 - Date: 2026-10-10
 - Decided by: the maintainer, after finding on a phone that a new account could not be
   reached without posting in Fljótið first

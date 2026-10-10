@@ -64,12 +64,19 @@ export const listPeopleRoute = createRoute({
   summary: "Every other signed-in account, for the new-conversation picker (decision 0036)",
   description:
     "Accounts with a name and a device the server still serves, less the caller, those it " +
-    "blocked and those that blocked it. `q` keeps the names that contain it, compared " +
-    "without case or the Icelandic letters (ð as d, þ as th, æ as ae, ö as o, no accents).",
+    "blocked and those that blocked it. `q` keeps the names it starts, or a word in which it " +
+    "starts after a space or a hyphen (decision 0038), compared without case or the " +
+    "Icelandic letters (ð as d, þ as th, æ as ae, ö as o, no accents).",
   security: DEVICE_TOKEN,
   request: {
     query: z.object({
-      q: z.string().trim().min(1).max(100).optional().openapi({ description: "Part of a name" }),
+      q: z
+        .string()
+        .trim()
+        .min(1)
+        .max(100)
+        .optional()
+        .openapi({ description: "The start of a name or of a word in it" }),
       after: z.string().min(1).max(600).optional().openapi({ description: "From `next`" }),
       limit: z.coerce.number().int().min(1).max(50).default(30),
     }),
