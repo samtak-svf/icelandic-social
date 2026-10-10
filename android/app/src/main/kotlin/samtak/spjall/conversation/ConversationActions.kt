@@ -1,6 +1,7 @@
 package samtak.spjall.conversation
 
 import samtak.spjall.core.Item
+import samtak.spjall.core.MuteFor
 
 /**
  * What [ConversationScreen] can ask for: one function per thing a bubble or
@@ -55,6 +56,12 @@ interface ConversationActions {
 
     /** Sets the disappearing timer, or turns it off with null. */
     fun timer(seconds: UInt?)
+
+    /** Mutes the conversation for [duration] (0042). */
+    fun mute(duration: MuteFor)
+
+    /** Turns the conversation's notifications back on. */
+    fun unmute()
 
     /** Blocks the other person of a 1:1. */
     fun block()

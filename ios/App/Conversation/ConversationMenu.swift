@@ -1,7 +1,8 @@
 import SpjallCore
 import SwiftUI
 
-/// The conversation's menu: the disappearing timer, and block in a 1:1 (decisions 0022, 0024).
+/// The conversation's menu: mute or notifications back on, the disappearing timer, and block in a 1:1
+/// (decisions 0042, 0022, 0024).
 struct ConversationMenu: View {
     let conversation: Conversation
     let model: ConversationModel
@@ -13,6 +14,15 @@ struct ConversationMenu: View {
 
     var body: some View {
         Menu {
+            if conversation.mute == .off {
+                Menu("mute", systemImage: "bell.slash") {
+                    Button("mute_hour") { Task { await model.mute(.hour) } }
+                    Button("mute_eight_hours") { Task { await model.mute(.eightHours) } }
+                    Button("mute_always") { Task { await model.mute(.always) } }
+                }
+            } else {
+                Button("unmute", systemImage: "bell") { Task { await model.unmute() } }
+            }
             Button("disappearing_messages", systemImage: "timer") { timing = true }
             if other != nil {
                 Button("block", systemImage: "hand.raised", role: .destructive) { blocking = true }

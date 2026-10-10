@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -47,6 +49,7 @@ import samtak.spjall.core.Content
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.Item
 import samtak.spjall.core.ItemStatus
+import samtak.spjall.core.Mute
 import samtak.spjall.socket.Connection
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
@@ -171,11 +174,14 @@ private fun ConversationRow(
     val title = conversation.title()
     val last = conversation.last
     val unread = conversation.unread > 0u
+    // A mute silences, it does not hide (0042): the count stays, in the muted colour, and nothing calls out.
+    val muted = conversation.mute != Mute.Off
+    val calling = unread && !muted
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(if (unread) Palette.primarySubtle else Color.Transparent)
+                .background(if (calling) Palette.primarySubtle else Color.Transparent)
                 .clickable(onClick = onOpen)
                 .padding(horizontal = 20.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -207,7 +213,28 @@ private fun ConversationRow(
                 )
             }
         }
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        RowEnd(conversation, muted = muted, calling = calling)
+    }
+}
+
+/** The row's right side: the muted mark (0042) and the time over the unread count. */
+@Composable
+private fun RowEnd(
+    conversation: Conversation,
+    muted: Boolean,
+    calling: Boolean,
+) {
+    val last = conversation.last
+    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (muted) {
+                Icon(
+                    AppIcons.BellOff,
+                    contentDescription = stringResource(R.string.muted),
+                    tint = Palette.mutedFg,
+                    modifier = Modifier.size(MUTED_MARK.dp),
+                )
+            }
             last?.let {
                 if (it.status == ItemStatus.FAILED) {
                     Text(text = stringResource(R.string.message_failed), style = STAMP, color = Palette.danger)
@@ -215,12 +242,12 @@ private fun ConversationRow(
                     Text(
                         text = listStamp(it.ts),
                         style = STAMP,
-                        color = if (unread) Palette.primary else Palette.mutedFg,
+                        color = if (calling) Palette.primary else Palette.mutedFg,
                     )
                 }
             }
-            if (unread) UnreadBadge(conversation.unread.toInt())
         }
+        if (conversation.unread > 0u) UnreadBadge(conversation.unread.toInt(), muted)
     }
 }
 
@@ -243,21 +270,24 @@ private fun previewLine(
     }
 }
 
-/** The count of unread messages in a red pill; TalkBack reads the words. */
+/** The count of unread messages in a red pill, grey when muted; TalkBack reads the words. */
 @Composable
-private fun UnreadBadge(count: Int) {
+private fun UnreadBadge(
+    count: Int,
+    muted: Boolean,
+) {
     val description = pluralStringResource(R.plurals.unread_count, count, count)
     Box(
         modifier =
             Modifier
                 .heightIn(min = PILL.dp)
                 .widthIn(min = PILL.dp)
-                .background(Palette.primary, CircleShape)
+                .background(if (muted) Palette.muted else Palette.primary, CircleShape)
                 .padding(horizontal = 6.dp)
                 .clearAndSetSemantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        Text(text = count.toString(), style = COUNT, color = Palette.primaryFg)
+        Text(text = count.toString(), style = COUNT, color = if (muted) Palette.fg else Palette.primaryFg)
     }
 }
 
@@ -293,6 +323,7 @@ private fun Notice(text: String) {
 
 private const val NEW_BUTTON = 34
 private const val PILL = 20
+private const val MUTED_MARK = 12
 private const val NOTICE_RADIUS = 14
 
 private val NAME = TextStyle(fontFamily = SansFamily, fontWeight = FontWeight.Black, fontSize = 14.5.sp)

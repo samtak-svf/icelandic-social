@@ -997,6 +997,78 @@
         }
       }
     },
+    "mute": {
+      "comment": "Conversation menu item, and the title over its durations: no push and no notification for this conversation (docs/decisions/0042).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þagga"
+          }
+        }
+      }
+    },
+    "mute_hour": {
+      "comment": "Mute duration: one hour.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Í 1 klukkustund"
+          }
+        }
+      }
+    },
+    "mute_eight_hours": {
+      "comment": "Mute duration: eight hours.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Í 8 klukkustundir"
+          }
+        }
+      }
+    },
+    "mute_always": {
+      "comment": "Mute duration: until the person turns notifications back on.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þar til ég kveiki aftur"
+          }
+        }
+      }
+    },
+    "unmute": {
+      "comment": "Conversation menu item while it is muted: notifications come again.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kveikja á tilkynningum"
+          }
+        }
+      }
+    },
+    "muted": {
+      "comment": "What a screen reader says for the muted mark beside the time in a conversation list row.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þaggað"
+          }
+        }
+      }
+    },
     "duration_hours": {
       "comment": "A duration in hours, in the form that follows \"eftir\" in disappearing_set_card and disappearing_option.",
       "extractionState": "manual",

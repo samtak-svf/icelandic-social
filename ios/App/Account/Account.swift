@@ -34,6 +34,9 @@ protocol Account: Sendable {
     /// The conversations with someone whose name, or a word in it, starts with `query` (decision 0038),
     /// compared without case or the Icelandic letters; read on this device alone.
     func searchConversations(_ query: String) throws -> [Conversation]
+    /// The list search (decision 0038): what `searchConversations` finds, then up to `limit` people from the
+    /// directory, leaving out anyone whose 1:1 is among them, so no one shows twice.
+    func searchList(_ query: String, limit: UInt32) throws -> ListSearch
     /// The people met through a shared conversation.
     func people() throws -> [Person]
     /// Everyone else signed in, verified first, a page after the cursor `after`, found by name (decision 0036).
@@ -66,6 +69,11 @@ protocol Account: Sendable {
     func unblock(_ account: String) throws
     /// The accounts this one blocked, newest first.
     func blocked() throws -> [Person]
+    /// Mutes `conversation` for `duration` (decision 0042): no push for it from the server, no notice from the
+    /// core, on every device of the account. The mute as the server set it.
+    func mute(_ conversation: String, for duration: MuteFor) throws -> Mute
+    /// Ends a mute; a conversation not muted stays so.
+    func unmute(_ conversation: String) throws
     func settings() throws -> Settings
     func setSettings(_ settings: Settings) throws
     /// Keeps this device's push token; the next sync sends it if the server lacks it (decision 0025).
@@ -156,6 +164,10 @@ final class CoreAccount: Account, @unchecked Sendable {
         try core().searchConversations(query: query)
     }
 
+    func searchList(_ query: String, limit: UInt32) throws -> ListSearch {
+        try core().searchList(query: query, limit: limit)
+    }
+
     func people() throws -> [Person] { try core().people() }
 
     func directory(query: String?, after: String?, limit: UInt32) throws -> PersonPage {
@@ -206,6 +218,12 @@ final class CoreAccount: Account, @unchecked Sendable {
     func unblock(_ account: String) throws { try core().unblock(account: account) }
 
     func blocked() throws -> [Person] { try core().blocked() }
+
+    func mute(_ conversation: String, for duration: MuteFor) throws -> Mute {
+        try core().mute(conversation: conversation, duration: duration)
+    }
+
+    func unmute(_ conversation: String) throws { try core().unmute(conversation: conversation) }
 
     func settings() throws -> Settings { try core().settings() }
 

@@ -6,8 +6,9 @@ import SpjallCore
 /// whenever an event may have changed one, and the socket's connection line.
 /// An invite link opened while signed in opens its 1:1 from here. A search
 /// finds conversations by the start of a name (decision 0038), on this
-/// device, then people in the directory (decision 0036), once the typing
-/// pauses as it does in the new-conversation picker.
+/// device, then people in the directory (decision 0036) without anyone whose
+/// 1:1 is already among them, once the typing pauses as it does in the
+/// new-conversation picker.
 @MainActor @Observable
 final class ConversationsModel {
     /// What a search found: conversations first, then people from the directory.
@@ -65,12 +66,10 @@ final class ConversationsModel {
         let account = account
         problem = nil
         do {
-            let conversations = try await offMain { try account.searchConversations(query) }
+            // One call: the core leaves out of the people anyone whose 1:1 is among the conversations (0038).
+            let list = try await offMain { try account.searchList(query, limit: Self.page) }
             guard query == trimmed else { return }
-            found = Found(query: query, conversations: conversations, people: found?.people ?? [])
-            let people = try await offMain { try account.directory(query: query, after: nil, limit: Self.page) }.people
-            guard query == trimmed else { return }
-            found = Found(query: query, conversations: conversations, people: people)
+            found = Found(query: query, conversations: list.conversations, people: list.people)
         } catch {
             problem = Problem(error)
         }

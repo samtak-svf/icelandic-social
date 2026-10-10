@@ -62,6 +62,7 @@ import samtak.spjall.conversations.PickActions
 import samtak.spjall.conversations.PickScreen
 import samtak.spjall.conversations.PickViewModel
 import samtak.spjall.core.Item
+import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
 import samtak.spjall.core.Post
 import samtak.spjall.core.inviteToken
@@ -491,6 +492,10 @@ class MainActivity : ComponentActivity() {
                 override fun openPost(postId: String) = nav.navigate("$REPLIES/$postId")
 
                 override fun timer(seconds: UInt?) = model.timer(seconds)
+
+                override fun mute(duration: MuteFor) = model.mute(duration)
+
+                override fun unmute() = model.unmute()
 
                 override fun block() = model.block()
 

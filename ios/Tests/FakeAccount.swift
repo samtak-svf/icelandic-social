@@ -189,6 +189,21 @@ final class FakeAccount: Account, @unchecked Sendable {
     /// As the core matches: the start of a name, or of a word in it after a space or a hyphen (decision 0038).
     func searchConversations(_ query: String) throws -> [Conversation] {
         try call("searchConversations \(query)")
+        return matching(query)
+    }
+
+    /// As the core does: the conversations found, then the directory without anyone whose 1:1 is among them.
+    func searchList(_ query: String, limit: UInt32) throws -> ListSearch {
+        try call("searchList \(query)")
+        let found = matching(query)
+        let shown = Set(found.compactMap { $0.members.count == 1 ? $0.members[0].account : nil })
+        let people = everyone.filter {
+            ($0.name ?? "").localizedCaseInsensitiveContains(query) && !shown.contains($0.account)
+        }
+        return ListSearch(conversations: found, people: Array(people.prefix(Int(limit))))
+    }
+
+    private func matching(_ query: String) -> [Conversation] {
         let search = query.trimmingCharacters(in: .whitespaces).lowercased()
         return list.filter { conversation in
             conversation.members.contains { person in
@@ -314,6 +329,33 @@ final class FakeAccount: Account, @unchecked Sendable {
     func blocked() throws -> [Person] {
         try call("blocked")
         return blockedPeople
+    }
+
+    /// The server sets the end by its clock: here an hour or eight after `now`.
+    func mute(_ conversation: String, for duration: MuteFor) throws -> Mute {
+        try call("mute \(conversation) \(duration)")
+        let hour: UInt64 = 3_600_000
+        let mute: Mute =
+            switch duration {
+            case .hour: .until(at: Self.now + hour)
+            case .eightHours: .until(at: Self.now + 8 * hour)
+            case .always: .always
+            }
+        setMute(conversation, mute)
+        return mute
+    }
+
+    func unmute(_ conversation: String) throws {
+        try call("unmute \(conversation)")
+        setMute(conversation, .off)
+    }
+
+    private func setMute(_ conversation: String, _ mute: Mute) {
+        list = list.map {
+            var changed = $0
+            if changed.id == conversation { changed.mute = mute }
+            return changed
+        }
     }
 
     func settings() throws -> Settings {

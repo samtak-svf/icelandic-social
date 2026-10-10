@@ -31,8 +31,9 @@ import samtak.spjall.socket.Live
  * whenever an event may have changed one, and the socket's connection line.
  * An invite link opened while signed in opens its 1:1 from here. A search
  * finds conversations by the start of a name (decision 0038), on this
- * device, then people in the directory (decision 0036), once the typing
- * pauses as it does in the new-conversation picker.
+ * device, then people in the directory (decision 0036) without anyone whose
+ * 1:1 is already among them, once the typing pauses as it does in the
+ * new-conversation picker.
  */
 class ConversationsViewModel(
     private val account: Account,
@@ -129,10 +130,9 @@ class ConversationsViewModel(
     private suspend fun find(query: String) {
         _state.update { it.copy(searching = true, problem = null) }
         try {
-            val conversations = withContext(io) { account.searchConversations(query) }
-            _state.update { it.copy(found = Found(query, conversations, it.found?.people.orEmpty())) }
-            val people = withContext(io) { account.directory(query, null, PAGE) }.people
-            _state.update { it.copy(found = Found(query, conversations, people), searching = false) }
+            // One call: the core leaves out of the people anyone whose 1:1 is among the conversations (0038).
+            val found = withContext(io) { account.searchList(query, PAGE) }
+            _state.update { it.copy(found = Found(query, found.conversations, found.people), searching = false) }
         } catch (e: CoreException) {
             _state.update { it.copy(searching = false, problem = e.problem()) }
         }

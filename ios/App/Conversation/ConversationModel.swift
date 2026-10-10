@@ -263,6 +263,33 @@ final class ConversationModel {
         await queue(.disappearing(seconds: seconds))
     }
 
+    /// Mutes the conversation for `duration` (decision 0042): no push and no notice for it, on every device of
+    /// the account. A failure is said, so no one believes a mute that did not happen.
+    func mute(_ duration: MuteFor) async {
+        let account = account
+        let id = id
+        await change({ await self.mute(duration) }) { _ = try account.mute(id, for: duration) }
+    }
+
+    /// Turns the conversation's notifications back on.
+    func unmute() async {
+        let account = account
+        let id = id
+        await change({ await self.unmute() }) { try account.unmute(id) }
+    }
+
+    private func change(_ again: @escaping () async -> Void, _ call: @escaping @Sendable () throws -> Void) async {
+        do {
+            try await offMain(call)
+            failed = nil
+            problem = nil
+            await load()
+        } catch {
+            failed = again
+            problem = Problem(error)
+        }
+    }
+
     /// Blocks the other person of a 1:1 (decision 0024); the conversation ends.
     func block() async {
         guard let members = conversation?.members, members.count == 1 else { return }

@@ -120,7 +120,7 @@ class ConversationsViewModelTest {
         }
 
     @Test
-    fun aSearchWaitsForTheTypingToPauseThenFindsConversationsAndPeople() =
+    fun aSearchWaitsForTheTypingToPauseThenFindsConversationsAndPeopleNoneTwice() =
         runTest(dispatcher) {
             val thordis = person("a2", "Þórdís Ýr")
             val soley = person("a3", "Sóley Bergs-Þórsdóttir")
@@ -131,19 +131,20 @@ class ConversationsViewModelTest {
             model.search("Þór")
             assertTrue(model.state.value.searching)
             advanceUntilIdle()
-            // One search, for what was typed last; the hyphenated surname counts as a word.
-            assertEquals(listOf("searchConversations Þór"), account.calls.filter { it.startsWith("search") })
-            assertEquals(listOf("directory Þór -"), account.calls.filter { it.startsWith("directory") })
+            // One search, for what was typed last, in one call; the hyphenated surname counts as a word.
+            val asked = account.calls.filter { it.startsWith("search") || it.startsWith("directory") }
+            assertEquals(listOf("searchList Þór"), asked)
             val found = model.state.value.found!!
             assertEquals(listOf("c1", "c2"), found.conversations.map { it.id })
-            assertEquals(listOf("a2", "a4"), found.people.map { it.account })
+            // Þórdís's 1:1 is among the conversations, so she is not among the people too (0038).
+            assertEquals(listOf("a4"), found.people.map { it.account })
             assertFalse(model.state.value.searching)
 
             // Cleared, the list is back and nothing more is asked.
             model.search(" ")
             advanceUntilIdle()
             assertNull(model.state.value.found)
-            assertEquals(1, account.calls.count { it.startsWith("directory") })
+            assertEquals(1, account.calls.count { it.startsWith("searchList") })
         }
 
     @Test
@@ -169,6 +170,6 @@ class ConversationsViewModelTest {
             model.retry()
             advanceUntilIdle()
             assertNull(model.state.value.problem)
-            assertEquals(2, account.calls.count { it.startsWith("searchConversations") })
+            assertEquals(2, account.calls.count { it.startsWith("searchList") })
         }
 }

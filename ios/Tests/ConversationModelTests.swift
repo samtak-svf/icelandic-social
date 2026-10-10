@@ -136,6 +136,30 @@ final class ConversationModelTests: XCTestCase {
         XCTAssertEqual(account.timelines["c1"]?.count, 1)
     }
 
+    func testMutesForEachDurationAndTurnsNotificationsBackOn() async {
+        let model = await model()
+        await model.mute(.eightHours)
+        await eventually { model.conversation?.mute == .until(at: FakeAccount.now + 8 * 3_600_000) }
+        await model.mute(.always)
+        await eventually { model.conversation?.mute == .always }
+        await model.unmute()
+        await eventually { model.conversation?.mute == .off }
+        let asked = account.calls.filter { $0.hasPrefix("mute") || $0.hasPrefix("unmute") }
+        XCTAssertEqual(asked, ["mute c1 eightHours", "mute c1 always", "unmute c1"])
+    }
+
+    func testAFailedMuteIsAProblemThatRetryMutesAgain() async {
+        let model = await model()
+        account.failNext = unreachable
+        await model.mute(.hour)
+        // Said, not swallowed: the person must not believe a mute that did not happen.
+        XCTAssertEqual(model.problem, .unreachable)
+        XCTAssertEqual(model.conversation?.mute, .off)
+        await model.retry()
+        XCTAssertNil(model.problem)
+        await eventually { model.conversation?.mute == .until(at: FakeAccount.now + 3_600_000) }
+    }
+
     func testResendAsksTheCoreToRetryTheOutbox() async {
         await model().resend()
         XCTAssertTrue(account.calls.contains("retry c1"))

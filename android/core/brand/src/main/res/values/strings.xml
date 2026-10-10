@@ -176,6 +176,18 @@
     <string name="disappearing_off">Slökkt</string>
     <!-- Timer option label; duration is one of the duration keys below (docs/decisions/0022). -->
     <string name="disappearing_option">Eftir %1$s</string>
+    <!-- Conversation menu item, and the title over its durations: no push and no notification for this conversation (docs/decisions/0042). -->
+    <string name="mute">Þagga</string>
+    <!-- Mute duration: one hour. -->
+    <string name="mute_hour">Í 1 klukkustund</string>
+    <!-- Mute duration: eight hours. -->
+    <string name="mute_eight_hours">Í 8 klukkustundir</string>
+    <!-- Mute duration: until the person turns notifications back on. -->
+    <string name="mute_always">Þar til ég kveiki aftur</string>
+    <!-- Conversation menu item while it is muted: notifications come again. -->
+    <string name="unmute">Kveikja á tilkynningum</string>
+    <!-- What a screen reader says for the muted mark beside the time in a conversation list row. -->
+    <string name="muted">Þaggað</string>
     <!-- A duration in hours, in the form that follows "eftir" in disappearing_set_card and disappearing_option. -->
     <plurals name="duration_hours">
         <item quantity="one">%1$d klukkustund</item>

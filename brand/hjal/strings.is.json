@@ -93,6 +93,12 @@
   "disappearing_off_card": "{name} slökkti á tímabundnum skilaboðum.",
   "disappearing_off": "Slökkt",
   "disappearing_option": "Eftir {duration}",
+  "mute": "Þagga",
+  "mute_hour": "Í 1 klukkustund",
+  "mute_eight_hours": "Í 8 klukkustundir",
+  "mute_always": "Þar til ég kveiki aftur",
+  "unmute": "Kveikja á tilkynningum",
+  "muted": "Þaggað",
   "duration_hours": {
     "one": "{count} klukkustund",
     "other": "{count} klukkustundir"

@@ -8,7 +8,10 @@ import samtak.spjall.core.CoreException
 import samtak.spjall.core.Inviter
 import samtak.spjall.core.Item
 import samtak.spjall.core.ItemStatus
+import samtak.spjall.core.ListSearch
 import samtak.spjall.core.Me
+import samtak.spjall.core.Mute
+import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Notices
 import samtak.spjall.core.Outcome
 import samtak.spjall.core.Person
@@ -175,6 +178,10 @@ class FakeAccount(
     /** As the core matches: the start of a name, or of a word in it after a space or a hyphen (decision 0038). */
     override fun searchConversations(query: String): List<Conversation> {
         call("searchConversations $query")
+        return matching(query)
+    }
+
+    private fun matching(query: String): List<Conversation> {
         val search = query.trim().lowercase()
         return conversations.filter { c ->
             c.members.any { p ->
@@ -182,6 +189,18 @@ class FakeAccount(
                 name.startsWith(search) || name.contains(" $search") || name.contains("-$search")
             }
         }
+    }
+
+    /** As the core does: the conversations found, then the directory without anyone whose 1:1 is among them. */
+    override fun searchList(
+        query: String,
+        limit: UInt,
+    ): ListSearch {
+        call("searchList $query")
+        val found = matching(query)
+        val shown = found.mapNotNull { it.members.singleOrNull()?.account }
+        val people = everyone.filter { it.name.orEmpty().contains(query, ignoreCase = true) && it.account !in shown }
+        return ListSearch(found, people.take(limit.toInt()))
     }
 
     override fun people(): List<Person> {
@@ -317,6 +336,27 @@ class FakeAccount(
     override fun blocked(): List<Person> {
         call("blocked")
         return blockedPeople.toList()
+    }
+
+    /** The server sets the end by its clock: here an hour or eight after [NOW]. */
+    override fun mute(
+        conversation: String,
+        duration: MuteFor,
+    ): Mute {
+        call("mute $conversation $duration")
+        val mute =
+            when (duration) {
+                MuteFor.HOUR -> Mute.Until(NOW + HOUR)
+                MuteFor.EIGHT_HOURS -> Mute.Until(NOW + 8uL * HOUR)
+                MuteFor.ALWAYS -> Mute.Always
+            }
+        conversations = conversations.map { if (it.id == conversation) it.copy(mute = mute) else it }
+        return mute
+    }
+
+    override fun unmute(conversation: String) {
+        call("unmute $conversation")
+        conversations = conversations.map { if (it.id == conversation) it.copy(mute = Mute.Off) else it }
     }
 
     override fun settings(): Settings {
@@ -470,3 +510,5 @@ class FakeAccount(
 }
 
 fun unreachable() = CoreException.Unreachable("SocketTimeoutException")
+
+private const val HOUR = 3_600_000uL

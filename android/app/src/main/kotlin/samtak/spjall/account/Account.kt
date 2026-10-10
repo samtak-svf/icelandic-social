@@ -5,7 +5,10 @@ import samtak.spjall.core.Conversation
 import samtak.spjall.core.CoreClient
 import samtak.spjall.core.Inviter
 import samtak.spjall.core.Item
+import samtak.spjall.core.ListSearch
 import samtak.spjall.core.Me
+import samtak.spjall.core.Mute
+import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Notices
 import samtak.spjall.core.Outcome
 import samtak.spjall.core.Person
@@ -98,6 +101,15 @@ interface Account {
      */
     fun searchConversations(query: String): List<Conversation>
 
+    /**
+     * The list search (0038): the conversations [searchConversations] finds, then up to [limit] people from
+     * the directory, leaving out anyone whose 1:1 is among them, so no one shows twice.
+     */
+    fun searchList(
+        query: String,
+        limit: UInt,
+    ): ListSearch
+
     /** Everyone met through a shared conversation: the new-conversation picker. */
     fun people(): List<Person>
 
@@ -183,6 +195,18 @@ interface Account {
 
     /** The accounts this one blocked, newest first. */
     fun blocked(): List<Person>
+
+    /**
+     * Mutes [conversation] for [duration] (0042): the server sends this account no push for it, and the
+     * core no notice. Every device of the account hears of it. Returns the mute as the server set it.
+     */
+    fun mute(
+        conversation: String,
+        duration: MuteFor,
+    ): Mute
+
+    /** Ends a mute; a conversation not muted stays so. */
+    fun unmute(conversation: String)
 
     fun settings(): Settings
 
@@ -293,6 +317,11 @@ class CoreAccount(
 
     override fun searchConversations(query: String) = client.searchConversations(query)
 
+    override fun searchList(
+        query: String,
+        limit: UInt,
+    ) = client.searchList(query, limit)
+
     override fun people() = client.people()
 
     override fun directory(
@@ -354,6 +383,13 @@ class CoreAccount(
     override fun unblock(account: String) = client.unblock(account)
 
     override fun blocked() = client.blocked()
+
+    override fun mute(
+        conversation: String,
+        duration: MuteFor,
+    ) = client.mute(conversation, duration)
+
+    override fun unmute(conversation: String) = client.unmute(conversation)
 
     override fun settings() = client.settings()
 

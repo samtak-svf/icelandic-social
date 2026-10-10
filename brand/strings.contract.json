@@ -386,6 +386,30 @@
         "duration": "string"
       }
     },
+    "mute": {
+      "surfaces": ["android", "ios"],
+      "description": "Conversation menu item, and the title over its durations: no push and no notification for this conversation (docs/decisions/0042)."
+    },
+    "mute_hour": {
+      "surfaces": ["android", "ios"],
+      "description": "Mute duration: one hour."
+    },
+    "mute_eight_hours": {
+      "surfaces": ["android", "ios"],
+      "description": "Mute duration: eight hours."
+    },
+    "mute_always": {
+      "surfaces": ["android", "ios"],
+      "description": "Mute duration: until the person turns notifications back on."
+    },
+    "unmute": {
+      "surfaces": ["android", "ios"],
+      "description": "Conversation menu item while it is muted: notifications come again."
+    },
+    "muted": {
+      "surfaces": ["android", "ios"],
+      "description": "What a screen reader says for the muted mark beside the time in a conversation list row."
+    },
     "duration_hours": {
       "surfaces": ["android", "ios"],
       "description": "A duration in hours, in the form that follows \"eftir\" in disappearing_set_card and disappearing_option.",

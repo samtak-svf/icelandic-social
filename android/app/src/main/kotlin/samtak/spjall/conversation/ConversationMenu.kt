@@ -1,5 +1,6 @@
 package samtak.spjall.conversation
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,44 +29,32 @@ import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.ConversationState
+import samtak.spjall.core.Mute
+import samtak.spjall.core.MuteFor
+import samtak.spjall.core.Person
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.RoundButton
 import samtak.spjall.ui.duration
 import samtak.spjall.ui.shownName
 
-/** The conversation's menu: the disappearing timer, and block in a 1:1 (0022, 0024). */
+/** The conversation's menu: the disappearing timer, mute (0042), and block in a 1:1 (0022, 0024). */
 @Composable
 internal fun ConversationMenu(
     conversation: Conversation,
     actions: ConversationActions,
 ) {
     if (conversation.state != ConversationState.ACTIVE && conversation.state != ConversationState.NEW) return
-    var open by rememberSaveable { mutableStateOf(false) }
     var timing by rememberSaveable { mutableStateOf(false) }
     var blocking by rememberSaveable { mutableStateOf(false) }
+    var muting by rememberSaveable { mutableStateOf(false) }
     val other = conversation.members.singleOrNull()
-    Box {
-        IconButton(onClick = { open = true }) {
-            Icon(AppIcons.Menu, contentDescription = stringResource(R.string.more_options), tint = Palette.fg)
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.disappearing_messages)) },
-                onClick = {
-                    open = false
-                    timing = true
-                },
-            )
-            if (other != null) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.block)) },
-                    onClick = {
-                        open = false
-                        blocking = true
-                    },
-                )
-            }
+    MenuButton(muted = conversation.mute != Mute.Off, canBlock = other != null) { choice ->
+        when (choice) {
+            Choice.TIMER -> timing = true
+            Choice.MUTE -> muting = true
+            Choice.UNMUTE -> actions.unmute()
+            Choice.BLOCK -> blocking = true
         }
     }
     if (timing) {
@@ -78,19 +67,74 @@ internal fun ConversationMenu(
             onDismiss = { timing = false },
         )
     }
-    if (blocking && other != null) {
-        AlertDialog(
-            onDismissRequest = { blocking = false },
-            text = { Text(stringResource(R.string.block_confirm, other.shownName())) },
-            confirmButton = {
-                TextButton(onClick = {
-                    blocking = false
-                    actions.block()
-                }) { Text(stringResource(R.string.block)) }
+    if (muting) {
+        MuteDialog(
+            onPick = {
+                muting = false
+                actions.mute(it)
             },
-            dismissButton = { TextButton(onClick = { blocking = false }) { Text(stringResource(R.string.cancel)) } },
+            onDismiss = { muting = false },
         )
     }
+    if (blocking && other != null) {
+        BlockDialog(
+            other,
+            onConfirm = {
+                blocking = false
+                actions.block()
+            },
+            onDismiss = { blocking = false },
+        )
+    }
+}
+
+private enum class Choice { TIMER, MUTE, UNMUTE, BLOCK }
+
+/** The menu itself; muted, the mute item turns notifications back on instead. */
+@Composable
+private fun MenuButton(
+    muted: Boolean,
+    canBlock: Boolean,
+    onPick: (Choice) -> Unit,
+) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    val items =
+        listOfNotNull(
+            Choice.TIMER to R.string.disappearing_messages,
+            if (muted) Choice.UNMUTE to R.string.unmute else Choice.MUTE to R.string.mute,
+            if (canBlock) Choice.BLOCK to R.string.block else null,
+        )
+    Box {
+        IconButton(onClick = { open = true }) {
+            Icon(AppIcons.Menu, contentDescription = stringResource(R.string.more_options), tint = Palette.fg)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            items.forEach { (choice, label) ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(label)) },
+                    onClick = {
+                        open = false
+                        onPick(choice)
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** Asks before blocking `other` (0024). */
+@Composable
+private fun BlockDialog(
+    other: Person,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        text = { Text(stringResource(R.string.block_confirm, other.shownName())) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.block)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
 }
 
 /** Off, or one of the timers 0022 lists. */
@@ -122,6 +166,34 @@ private fun TimerDialog(
                             modifier = Modifier.padding(start = 16.dp),
                         )
                     }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+/** The three durations 0042 offers; the server sets the end by its own clock. */
+@Composable
+private fun MuteDialog(
+    onPick: (MuteFor) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.mute)) },
+        text = {
+            Column {
+                MUTES.forEach { (duration, label) ->
+                    Text(
+                        text = stringResource(label),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable(role = Role.Button) { onPick(duration) }
+                                .padding(vertical = 12.dp),
+                    )
                 }
             }
         },
@@ -164,5 +236,12 @@ internal fun AttachButton(actions: ConversationActions) {
 
 /** One hour, one day, seven days and thirty days, in seconds. */
 private val TIMERS = listOf(3_600u, 86_400u, 604_800u, 2_592_000u)
+
+private val MUTES =
+    listOf(
+        MuteFor.HOUR to R.string.mute_hour,
+        MuteFor.EIGHT_HOURS to R.string.mute_eight_hours,
+        MuteFor.ALWAYS to R.string.mute_always,
+    )
 
 private const val ATTACH = 38

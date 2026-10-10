@@ -97,7 +97,7 @@ final class ConversationsModelTests: XCTestCase {
         XCTAssertEqual(model.problem, .unreachable)
     }
 
-    func testASearchWaitsForTheTypingToPauseThenFindsConversationsAndPeople() async {
+    func testASearchWaitsForTheTypingToPauseThenFindsConversationsAndPeopleNoneTwice() async {
         let thordis = person("a2", "Þórdís Ýr")
         account.list = [
             conversation("c1", members: [thordis]),
@@ -118,11 +118,12 @@ final class ConversationsModelTests: XCTestCase {
         sleep.pass(.milliseconds(300))
         await second.value
 
-        // One search, for what was typed last; the hyphenated surname counts as a word.
-        XCTAssertEqual(account.calls.filter { $0.hasPrefix("search") }, ["searchConversations Þór"])
-        XCTAssertEqual(account.calls.filter { $0.hasPrefix("directory") }, ["directory Þór -"])
+        // One search, for what was typed last, in one call; the hyphenated surname counts as a word.
+        let asked = account.calls.filter { $0.hasPrefix("search") || $0.hasPrefix("directory") }
+        XCTAssertEqual(asked, ["searchList Þór"])
         XCTAssertEqual(model.found?.conversations.map(\.id), ["c1", "c2"])
-        XCTAssertEqual(model.found?.people.map(\.account), ["a2", "a4"])
+        // Þórdís's 1:1 is among the conversations, so she is not among the people too (decision 0038).
+        XCTAssertEqual(model.found?.people.map(\.account), ["a4"])
         XCTAssertFalse(model.searching)
 
         model.query = " "
@@ -148,7 +149,7 @@ final class ConversationsModelTests: XCTestCase {
         XCTAssertFalse(model.searching)
         await model.retry()
         XCTAssertNil(model.problem)
-        XCTAssertEqual(account.calls.filter { $0.hasPrefix("searchConversations") }.count, 2)
+        XCTAssertEqual(account.calls.filter { $0.hasPrefix("searchList") }.count, 2)
         XCTAssertEqual(model.found?.query, "Anna")
     }
 }

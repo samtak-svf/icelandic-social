@@ -27,6 +27,7 @@ import samtak.spjall.core.ConversationState
 import samtak.spjall.core.Item
 import samtak.spjall.core.ItemStatus
 import samtak.spjall.core.Mute
+import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
 import samtak.spjall.core.Post
 import samtak.spjall.core.Quote
@@ -115,6 +116,14 @@ class ConversationScreenTest {
                 calls += "timer $seconds"
             }
 
+            override fun mute(duration: MuteFor) {
+                calls += "mute $duration"
+            }
+
+            override fun unmute() {
+                calls += "unmute"
+            }
+
             override fun block() {
                 calls += "block"
             }
@@ -167,11 +176,12 @@ class ConversationScreenTest {
         media: Map<ULong, ConversationViewModel.Media> = emptyMap(),
         posts: Map<String, ConversationViewModel.Shared> = emptyMap(),
         timer: UInt? = null,
+        mute: Mute = Mute.Off,
     ) = compose.setContent {
         SpjallTheme {
             ConversationScreen(
                 ConversationViewModel.State(
-                    conversation = Conversation("c1", state, members, null, 0u, timer, Mute.Off),
+                    conversation = Conversation("c1", state, members, null, 0u, timer, mute),
                     items = items.toList(),
                     loaded = true,
                     typing = typing,
@@ -342,6 +352,28 @@ class ConversationScreenTest {
         compose.onNodeWithText(context.getString(R.string.block_confirm, "Anna Jónsdóttir")).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.block)).performClick()
         assertEquals(listOf("block"), calls)
+    }
+
+    @Test
+    fun theMenuMutesForEachDuration() {
+        show(item(1u, Content.Text("Sæl", null)))
+        compose.onNodeWithContentDescription(text(R.string.more_options)).performClick()
+        compose.onNodeWithText(text(R.string.unmute)).assertDoesNotExist()
+        listOf(R.string.mute_hour, R.string.mute_eight_hours, R.string.mute_always).forEachIndexed { i, duration ->
+            if (i > 0) compose.onNodeWithContentDescription(text(R.string.more_options)).performClick()
+            compose.onNodeWithText(text(R.string.mute)).performClick()
+            compose.onNodeWithText(text(duration)).performClick()
+        }
+        assertEquals(listOf("mute HOUR", "mute EIGHT_HOURS", "mute ALWAYS"), calls)
+    }
+
+    @Test
+    fun aMutedConversationOffersNotificationsBackInstead() {
+        show(item(1u, Content.Text("Sæl", null)), mute = Mute.Until(1_700_003_600_000uL))
+        compose.onNodeWithContentDescription(text(R.string.more_options)).performClick()
+        compose.onNodeWithText(text(R.string.mute)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.unmute)).performClick()
+        assertEquals(listOf("unmute"), calls)
     }
 
     @Test

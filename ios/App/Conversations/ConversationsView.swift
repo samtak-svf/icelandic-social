@@ -217,6 +217,9 @@ private struct ConversationRow: View {
     let conversation: Conversation
 
     private var unread: Bool { conversation.unread > 0 }
+    private var muted: Bool { conversation.mute != .off }
+    /// Unread and not muted: only then does the row ask for attention (decision 0042).
+    private var calling: Bool { unread && !muted }
     private var group: Bool { conversation.members.count > 1 }
 
     var body: some View {
@@ -248,19 +251,22 @@ private struct ConversationRow: View {
                     if last.status == .failed {
                         Text("message_failed").font(Self.stamp).foregroundStyle(BrandTokens.Colors.danger)
                     } else {
-                        Text(verbatim: listStamp(last.ts))
-                            .font(Self.stamp)
-                            .foregroundStyle(unread ? BrandTokens.Colors.primary : BrandTokens.Colors.mutedFg)
+                        HStack(spacing: 4) {
+                            if muted { MutedMark() }
+                            Text(verbatim: listStamp(last.ts))
+                                .font(Self.stamp)
+                                .foregroundStyle(calling ? BrandTokens.Colors.primary : BrandTokens.Colors.mutedFg)
+                        }
                     }
                 }
                 if unread {
-                    UnreadBadge(count: Int(conversation.unread))
+                    UnreadBadge(count: Int(conversation.unread), muted: muted)
                 }
             }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 13)
-        .background(unread ? BrandTokens.Colors.primarySubtle : Color.clear)
+        .background(calling ? BrandTokens.Colors.primarySubtle : Color.clear)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
@@ -268,16 +274,28 @@ private struct ConversationRow: View {
     private static let stamp = Font.sans(10.5, black: true, relativeTo: .caption2)
 }
 
+/// A muted conversation: the bell struck through, said by its label.
+private struct MutedMark: View {
+    var body: some View {
+        Image(systemName: "bell.slash.fill")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(BrandTokens.Colors.mutedFg)
+            .accessibilityLabel(Text("muted"))
+    }
+}
+
+/// The unread count; a muted conversation still counts, in the quiet colour.
 private struct UnreadBadge: View {
     let count: Int
+    let muted: Bool
 
     var body: some View {
         Text(verbatim: "\(count)")
             .font(.sans(11, black: true, relativeTo: .caption))
-            .foregroundStyle(BrandTokens.Colors.primaryFg)
+            .foregroundStyle(muted ? BrandTokens.Colors.fg : BrandTokens.Colors.primaryFg)
             .padding(.horizontal, 6)
             .frame(minWidth: 20, minHeight: 20)
-            .background(BrandTokens.Colors.primary, in: Capsule())
+            .background(muted ? BrandTokens.Colors.muted : BrandTokens.Colors.primary, in: Capsule())
             .accessibilityLabel(Text(verbatim: plural("unread_count", count)))
     }
 }

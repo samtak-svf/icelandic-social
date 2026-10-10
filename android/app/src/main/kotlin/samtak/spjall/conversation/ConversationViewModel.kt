@@ -25,6 +25,7 @@ import samtak.spjall.core.Conversation
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.Event
 import samtak.spjall.core.Item
+import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Post
 import samtak.spjall.core.SharedPost
 import samtak.spjall.socket.Live
@@ -274,6 +275,25 @@ class ConversationViewModel(
     /** Sets the disappearing timer, or turns it off with null (0022). */
     fun timer(seconds: UInt?) {
         queue(Body.Disappearing(seconds))
+    }
+
+    /**
+     * Mutes the conversation for [duration] (0042): no push and no notice for it, on every device of the
+     * account. A failure is said, so no one believes a mute that did not happen.
+     */
+    fun mute(duration: MuteFor) {
+        perform({ mute(duration) }) {
+            account.mute(id, duration)
+            load()
+        }
+    }
+
+    /** Turns the conversation's notifications back on. */
+    fun unmute() {
+        perform(::unmute) {
+            account.unmute(id)
+            load()
+        }
     }
 
     /** Blocks the other person of a 1:1 (0024); the conversation ends. */

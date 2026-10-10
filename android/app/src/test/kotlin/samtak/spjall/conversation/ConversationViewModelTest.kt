@@ -22,6 +22,8 @@ import samtak.spjall.account.Problem
 import samtak.spjall.account.unreachable
 import samtak.spjall.core.Body
 import samtak.spjall.core.Event
+import samtak.spjall.core.Mute
+import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Outcome
 import samtak.spjall.core.Reaction
 import samtak.spjall.socket.FakeLive
@@ -183,6 +185,62 @@ class ConversationViewModelTest {
             assertNull(model.state.value.problem)
             assertEquals(List(2) { "send c1 ${Body.Text("Halló")}" }, sends())
             assertEquals(1, account.timelines.getValue("c1").size)
+        }
+
+    @Test
+    fun mutesForEachDurationAndTurnsNotificationsBackOn() =
+        runTest(dispatcher) {
+            val model = model()
+            model.mute(MuteFor.EIGHT_HOURS)
+            advanceUntilIdle()
+            assertEquals(
+                Mute.Until(FakeAccount.NOW + 8uL * 3_600_000uL),
+                model.state.value.conversation
+                    ?.mute,
+            )
+
+            model.mute(MuteFor.ALWAYS)
+            advanceUntilIdle()
+            assertEquals(
+                Mute.Always,
+                model.state.value.conversation
+                    ?.mute,
+            )
+
+            model.unmute()
+            advanceUntilIdle()
+            assertEquals(
+                Mute.Off,
+                model.state.value.conversation
+                    ?.mute,
+            )
+            val asked = account.calls.filter { it.startsWith("mute") || it.startsWith("unmute") }
+            assertEquals(listOf("mute c1 EIGHT_HOURS", "mute c1 ALWAYS", "unmute c1"), asked)
+        }
+
+    @Test
+    fun aFailedMuteIsAProblemThatRetryMutesAgain() =
+        runTest(dispatcher) {
+            val model = model()
+            account.failNext = unreachable()
+            model.mute(MuteFor.HOUR)
+            advanceUntilIdle()
+            // Said, not swallowed: the person must not believe a mute that did not happen.
+            assertEquals(Problem.Unreachable, model.state.value.problem)
+            assertEquals(
+                Mute.Off,
+                model.state.value.conversation
+                    ?.mute,
+            )
+
+            model.retry()
+            advanceUntilIdle()
+            assertNull(model.state.value.problem)
+            assertEquals(
+                Mute.Until(FakeAccount.NOW + 3_600_000uL),
+                model.state.value.conversation
+                    ?.mute,
+            )
         }
 
     @Test

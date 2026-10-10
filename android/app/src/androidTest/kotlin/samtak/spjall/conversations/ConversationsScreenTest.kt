@@ -3,8 +3,10 @@ package samtak.spjall.conversations
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -106,8 +108,31 @@ class ConversationsScreenTest {
             .assertIsDisplayed()
         compose.onNodeWithContentDescription(text(R.string.verified_with_kennitala)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.connection_offline)).assertDoesNotExist()
+        compose.onNodeWithContentDescription(text(R.string.muted)).assertDoesNotExist()
         compose.onNodeWithText("Anna Jónsdóttir").performClick()
         assertEquals(listOf("open c1"), calls)
+    }
+
+    @Test
+    fun aMutedRowSaysSoAndStillCountsTheUnread() {
+        val muted = {
+            id: String,
+            mute: Mute,
+            ->
+            Conversation(id, ConversationState.ACTIVE, listOf(anna), null, 2u, null, mute)
+        }
+        show(
+            ConversationsViewModel.State(
+                conversations = listOf(muted("c1", Mute.Always), muted("c2", Mute.Until(1_700_003_600_000uL))),
+                loaded = true,
+                connection = Connection.Online,
+            ),
+        )
+        // A mute silences, it does not hide (0042): the mark and the count are both there, in each row.
+        compose.onAllNodesWithContentDescription(text(R.string.muted)).assertCountEquals(2)
+        compose
+            .onAllNodesWithContentDescription(context.resources.getQuantityString(R.plurals.unread_count, 2, 2))
+            .assertCountEquals(2)
     }
 
     @Test
