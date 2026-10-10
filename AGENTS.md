@@ -56,6 +56,7 @@ pnpm install           # also installs the lefthook hooks
 pnpm check             # lint, types, format, ids, brand, brand-gen, brand-leak, þankastrik, PII, seams, core lock, workflows, knip
 pnpm brand:gen         # regenerate the platform files from brand/$BRAND
 pnpm test              # guard tests (vitest); each guard is proven to fail when it should
+                       # what deserves a test, and the known sources of noise: docs/testing.md
 pnpm format            # oxfmt --write .
 node tooling/ids-freeze.mjs --base origin/main   # what CI runs on a PR
 
@@ -148,8 +149,9 @@ comments, docs, commits, PRs, issues) is English.
 - Creating Cloudflare, Firebase, Apple, Play or Kenni resources, and DNS, is Guðröður's
   step. Agents prepare the exact commands and values, they do not run them. One standing
   exception, approved 2026-10-08: the first-deploy steps in `backend/README.md` (EU D1/R2, the
-  R2 lifecycle rule, the API tokens, the custom domain). Approving a `production` deploy run
-  stays the maintainer's.
+  R2 lifecycle rule, the API tokens, the custom domain). A second, approved 2026-10-10: an
+  agent may dispatch a `production` deploy of merged `main` and approve its run, then checks
+  `/health`.
 
 ## Decision records
 
