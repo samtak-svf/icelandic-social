@@ -1,6 +1,6 @@
 # 0045. Times go between messages, and reactions are one pill on the bubble
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the apps (#207, #208), released as 0.6.0
 - Date: 2026-10-11
 - Decided by: the maintainer, choosing items 1, 3 and 4 of the 0.5.0 UX review
 - Amends: [0022](0022-the-conversation-surfaces.md) (grouping: "one time"; the reaction
