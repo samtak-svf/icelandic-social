@@ -11,6 +11,8 @@ struct ConversationView: View {
 
     @State private var deleting: Item?
     @State private var reacting: Item?
+    /// The envelope of the message whose reactions sheet is open (decision 0045).
+    @State private var reactionsOf: String?
     @State private var preview: URL?
     /// The picker a forward opened (decision 0041).
     @State private var forwarding: PickModel?
@@ -119,12 +121,13 @@ struct ConversationView: View {
                     }
                     ForEach(shown) { row in
                         switch row {
-                        case .day(let date, _): DayLine(date: date)
+                        case .time(let date, _): TimeLine(date: date)
                         case .card(let item): CardLine(item: item, group: group)
                         case .bubble(let item, let first, let last, let readBy):
                             Bubble(
                                 item: item, first: first, last: last, readBy: readBy, group: group, model: model,
                                 onDelete: { deleting = item }, onReact: { reacting = item },
+                                onReactions: { reactionsOf = item.envelopeId },
                                 onForward: { forwarding = model.forwarding(item) })
                         }
                     }
@@ -135,6 +138,12 @@ struct ConversationView: View {
                 .padding(.vertical, 8)
                 // A message the core's events bring, change or take away moves the others aside (decision 0043).
                 .animation(Motion.rows(reduceMotion: reduceMotion), value: shown.map(\.id))
+            }
+            // Who reacted to a message, read from the newest items while it shows (decision 0045).
+            .sheet(isPresented: Binding(get: { reactionsOf != nil }, set: { if !$0 { reactionsOf = nil } })) {
+                if let item = model.items.first(where: { $0.envelopeId != nil && $0.envelopeId == reactionsOf }) {
+                    ReactionsSheet(item: item, others: model.conversation?.members ?? [], model: model)
+                }
             }
             .defaultScrollAnchor(.bottom)
             .scrollDismissesKeyboard(.interactively)
@@ -267,11 +276,12 @@ private struct Banner: View {
     }
 }
 
-private struct DayLine: View {
+/// The time between messages (decision 0045), in the style the day line had.
+private struct TimeLine: View {
     let date: Date
 
     var body: some View {
-        SectionLabel(text: dayHeading(date))
+        SectionLabel(text: timeLine(date))
             .frame(maxWidth: .infinity)
             .padding(.top, 16)
             .padding(.bottom, 6)

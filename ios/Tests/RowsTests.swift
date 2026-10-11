@@ -5,6 +5,7 @@ import XCTest
 
 final class RowsTests: XCTestCase {
     private let day: UInt64 = 1_700_000_000_000  // 2023-11-14 22:13 UTC
+    private let morning: UInt64 = 1_699_956_800_000  // 2023-11-14 10:13 UTC
     private let minute: UInt64 = 60_000
     private let anna = person("a2", "Anna")
     private let me = person("a1", "Jón")
@@ -15,10 +16,9 @@ final class RowsTests: XCTestCase {
     }
 
     private func shape(_ rows: [Row]) -> [String] {
-        let format = Date.ISO8601FormatStyle(timeZone: TimeZone(identifier: "UTC")!).year().month().day()
-        return rows.map {
+        rows.map {
             switch $0 {
-            case .day(let date, _): "day \(date.formatted(format))"
+            case .time(_, let before): "time \(before.seq.map(String.init) ?? "nil")"
             case .card(let item): "card \(item.seq ?? 0)"
             case .bubble(let item, let first, let last, let readBy):
                 "\(item.seq.map(String.init) ?? "nil")\(first ? " first" : "")\(readBy.map { " read \($0)" } ?? "")"
@@ -35,7 +35,14 @@ final class RowsTests: XCTestCase {
                 item(3, sender: anna, ts: day + 11 * minute),
                 item(4, sender: me, own: true, ts: day + 12 * minute),
             ], calendar: utc)
-        XCTAssertEqual(shape(rows), ["day 2023-11-14", "1 first", "2 last", "3 first last", "4 first last"])
+        XCTAssertEqual(shape(rows), ["time 1", "1 first", "2 last", "3 first last", "4 first last"])
+    }
+
+    func testATimeLineNamesTheTimeOfTheItemItComesBefore() {
+        let rows = rows([item(1, ts: day)], calendar: utc)
+        guard case .time(let date, let before) = rows.first else { return XCTFail("no time line first") }
+        XCTAssertEqual(before.seq, 1)
+        XCTAssertEqual(date, Date(timeIntervalSince1970: 1_700_000_000))
     }
 
     func testANewDayAndACardBreakARun() {
@@ -46,16 +53,49 @@ final class RowsTests: XCTestCase {
                 item(3, ts: day + 2 * minute),
                 item(4, ts: day + 120 * minute),
             ], calendar: utc)
-        XCTAssertEqual(
-            shape(rows),
-            ["day 2023-11-14", "1 first last", "card 2", "3 first last", "day 2023-11-15", "4 first last"])
+        XCTAssertEqual(shape(rows), ["time 1", "1 first last", "card 2", "3 first last", "time 4", "4 first last"])
     }
 
-    func testAnOlderMessageArrivingLateJoinsTheDayShown() {
-        let rows = rows([item(1, ts: day), item(2, ts: day + 120 * minute), item(3, ts: day + minute)], calendar: utc)
+    func testAnHourOrMoreAfterThePreviousItemGetsALine() {
+        let rows = rows(
+            [item(1, ts: morning), item(2, ts: morning + 59 * minute), item(3, ts: morning + 119 * minute)],
+            calendar: utc)
+        XCTAssertEqual(shape(rows), ["time 1", "1 first last", "2 first last", "time 3", "3 first last"])
+    }
+
+    func testAnHourOrMoreBeforeThePreviousItemGetsALine() {
+        let rows = rows([item(1, ts: morning + 60 * minute), item(2, ts: morning)], calendar: utc)
+        XCTAssertEqual(shape(rows), ["time 1", "1 first last", "time 2", "2 first last"])
+    }
+
+    func testWithinAnHourOnTheSameDayThereIsNoLine() {
+        let rows = rows(
+            [item(1, ts: morning), item(2, ts: morning + 30 * minute), item(3, ts: morning + 80 * minute)],
+            calendar: utc)
+        XCTAssertEqual(shape(rows), ["time 1", "1 first last", "2 first last", "3 first last"])
+    }
+
+    func testTheGapIsMeasuredFromThePreviousItemOfAnyKind() {
+        let rows = rows(
+            [
+                item(1, ts: morning),
+                item(2, ts: morning + 70 * minute, content: .timer(seconds: 3_600)),
+                item(3, ts: morning + 75 * minute),
+            ], calendar: utc)
+        XCTAssertEqual(shape(rows), ["time 1", "1 first last", "time 2", "card 2", "3 first last"])
+    }
+
+    func testAMessageArrivingLateGetsItsOwnLineAndTheNextOneToo() {
+        let rows = rows(
+            [
+                item(1, ts: day),
+                item(2, ts: day + 120 * minute),
+                item(3, ts: day + minute),
+                item(4, ts: day + 121 * minute),
+            ], calendar: utc)
         XCTAssertEqual(
             shape(rows),
-            ["day 2023-11-14", "1 first last", "day 2023-11-15", "2 first last", "3 first last"])
+            ["time 1", "1 first last", "time 2", "2 first last", "time 3", "3 first last", "time 4", "4 first last"])
         XCTAssertEqual(Set(rows.map(\.id)).count, rows.count)
     }
 
@@ -67,7 +107,7 @@ final class RowsTests: XCTestCase {
                 item(3, sender: me, own: true, ts: day),
                 item(nil, sender: me, own: true, ts: day),
             ], calendar: utc)
-        XCTAssertEqual(shape(rows), ["day 2023-11-14", "1 first", "2 read 1", "3", "nil last"])
+        XCTAssertEqual(shape(rows), ["time 1", "1 first", "2 read 1", "3", "nil last"])
     }
 
     func testIdsAreUniqueAndStable() {
@@ -77,13 +117,41 @@ final class RowsTests: XCTestCase {
         XCTAssertEqual(ids, rows(items, calendar: utc).map(\.id))
     }
 
-    func testAPendingMessageShowsTheClockInPlaceOfTheTime() {
+    func testTheMetaLineHoldsNoTime() {
         var pending = item(nil, sender: me, own: true, ts: day, status: .pending)
-        XCTAssertEqual(meta(pending, last: true, readBy: nil), [.sending])
+        XCTAssertEqual(meta(pending, readBy: nil), [.sending])
         pending.edited = true
-        XCTAssertEqual(meta(pending, last: false, readBy: nil), [.edited, .sending])
+        XCTAssertEqual(meta(pending, readBy: nil), [.edited, .sending])
         let sent = item(1, sender: me, own: true, ts: day)
-        XCTAssertEqual(meta(sent, last: true, readBy: 1), [.time, .read])
-        XCTAssertEqual(meta(sent, last: false, readBy: nil), [])
+        XCTAssertEqual(meta(sent, readBy: 1), [.read])
+        XCTAssertEqual(meta(sent, readBy: nil), [])
+    }
+
+    func testThePillShowsTheThreeMostUsedEmojiAndTheTotal() {
+        let bjarni = person("a3", "Bjarni")
+        let reactions = [
+            Reaction(emoji: "👍", own: false, people: [anna]),
+            Reaction(emoji: "❤️", own: true, people: [anna, me, bjarni]),
+            Reaction(emoji: "😂", own: false, people: [anna, bjarni]),
+            Reaction(emoji: "😮", own: false, people: [me, bjarni]),
+        ]
+        XCTAssertEqual(pillEmoji(reactions), ["❤️", "😂", "😮"])
+        XCTAssertEqual(reactionCount(reactions), 8)
+        XCTAssertEqual(pillEmoji([]), [])
+    }
+
+    func testTheSheetListsTheReadersOwnReactionsFirst() {
+        let reactions = [
+            Reaction(emoji: "👍", own: false, people: [anna]),
+            Reaction(emoji: "❤️", own: true, people: [anna, me]),
+            Reaction(emoji: "😂", own: true, people: [me]),
+        ]
+        let rows = reacted(reactions, others: [anna])
+        XCTAssertEqual(rows.map(\.person.account), ["a1", "a1", "a2", "a2"])
+        XCTAssertEqual(rows.map(\.emoji), ["❤️", "😂", "👍", "❤️"])
+        XCTAssertEqual(rows.map(\.own), [true, true, false, false])
+        let shared = reacted([Reaction(emoji: "👍", own: true, people: [anna, me])], others: [anna])
+        XCTAssertEqual(shared.map(\.person.account), ["a1", "a2"])
+        XCTAssertEqual(shared.map(\.own), [true, false])
     }
 }

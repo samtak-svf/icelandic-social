@@ -6,6 +6,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.test.platform.app.InstrumentationRegistry
@@ -30,6 +31,7 @@ import samtak.spjall.core.ItemStatus
 import samtak.spjall.core.Mute
 import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
+import samtak.spjall.core.Reaction
 import samtak.spjall.ui.SpjallTheme
 import java.util.TimeZone
 
@@ -109,6 +111,7 @@ class ConversationScreenshotTest {
         content: Content,
         own: Boolean = false,
         status: ItemStatus = ItemStatus.SENT,
+        reactions: List<Reaction> = emptyList(),
     ) = Item(
         seq,
         seq?.let { "e$it" },
@@ -118,7 +121,7 @@ class ConversationScreenshotTest {
         status,
         content,
         false,
-        emptyList(),
+        reactions,
         0u,
         null,
         false,
@@ -168,6 +171,20 @@ class ConversationScreenshotTest {
             item(1u, Content.Text("Sæl", null)),
             item(null, Content.Text("Á leiðinni", null), own = true, status = ItemStatus.PENDING),
         )
+        compose.onRoot().captureRoboImage()
+    }
+
+    @Test
+    fun reactionsAreOnePillAndTapShowsTheTime() {
+        show(
+            item(
+                1u,
+                Content.Text("Sæl", null),
+                reactions = listOf(Reaction("❤️", true, listOf(me, anna)), Reaction("👍", false, listOf(anna))),
+            ),
+            item(2u, Content.Text("Hæ", null), own = true, reactions = listOf(Reaction("😂", false, listOf(anna)))),
+        )
+        compose.onNodeWithText("Hæ").performClick()
         compose.onRoot().captureRoboImage()
     }
 

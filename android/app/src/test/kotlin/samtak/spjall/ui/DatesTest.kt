@@ -59,6 +59,15 @@ class DatesTest {
     }
 
     @Test
+    fun aTimeLineIsTheTimeTodayElseTheDayAndTheTime() {
+        assertEquals("15:16", Dates.timeLine(at(10, 8, 15, 16), now, "Í dag", "Í gær"))
+        assertEquals("Í gær 23:01", Dates.timeLine(at(10, 7, 23, 1), now, "Í dag", "Í gær"))
+        assertEquals("mánudagur 09:12", Dates.timeLine(at(10, 5, 9, 12), now, "Í dag", "Í gær"))
+        assertEquals("30. ágúst 14:00", Dates.timeLine(at(8, 30, 14, 0), now, "Í dag", "Í gær"))
+        assertEquals("2. október 2025 09:38", Dates.timeLine(at(10, 2, year = 2025), now, "Í dag", "Í gær"))
+    }
+
+    @Test
     fun aDeviceDateCarriesItsYear() {
         assertEquals("2. okt. 2026", Dates.date(at(10, 2)))
         assertEquals("5. maí 2026", Dates.date(at(5, 5)))

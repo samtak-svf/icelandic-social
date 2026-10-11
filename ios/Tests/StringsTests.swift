@@ -9,6 +9,8 @@ final class StringsTests: XCTestCase {
         XCTAssertEqual(plural("group_member_count", 21), "21 meðlimur")
         XCTAssertEqual(plural("group_member_count", 2), "2 meðlimir")
         XCTAssertEqual(plural("unread_count", 1), "1 ólesin")
+        XCTAssertEqual(plural("reaction_count", 1), "1 viðbragð")
+        XCTAssertEqual(plural("reaction_count", 3), "3 viðbrögð")
     }
 
     func testATimerIsWholeDaysOrElseHours() {

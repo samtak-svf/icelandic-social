@@ -11,12 +11,12 @@ import java.time.ZoneId
 sealed interface Row {
     val key: String
 
-    /** Where a new day starts, keyed by the item it comes before. */
-    data class Day(
-        val date: LocalDate,
+    /** A centred time between messages (0045), keyed by the item it comes before. */
+    data class Time(
+        val ts: ULong,
         val before: Item,
     ) : Row {
-        override val key = "day-${before.key()}"
+        override val key = "time-${before.key()}"
     }
 
     /** A system card: members or the disappearing timer changed. */
@@ -32,7 +32,7 @@ sealed interface Row {
         val first: Boolean,
         /** Under the newest own message someone has read: how many have. */
         val readBy: UInt?,
-        /** The end of its run: the time goes under it. */
+        /** The end of its run: the next bubble does not continue it. */
         val last: Boolean = true,
     ) : Row {
         override val key = item.key()
@@ -40,10 +40,10 @@ sealed interface Row {
 }
 
 /**
- * The timeline's rows, oldest first: a [Row.Day] before each new day, and
- * messages from one sender within 5 minutes of each other run together
- * (decision 0022), the first of a run marked [Row.Bubble.first] and the
- * last [Row.Bubble.last].
+ * The timeline's rows, oldest first: a [Row.Time] before the first item, a
+ * new day, or a gap of an hour or more (0045), and messages from one sender
+ * within 5 minutes of each other run together (decision 0022), the first of
+ * a run marked [Row.Bubble.first] and the last [Row.Bubble.last].
  */
 fun rows(
     items: List<Item>,
@@ -52,16 +52,16 @@ fun rows(
     val read = items.lastOrNull { it.own && it.seq != null && it.readBy > 0u }
     val rows = mutableListOf<Row>()
     var previous: Item? = null
-    var day: LocalDate? = null
+    var before: Item? = null
     for (item in items) {
-        val date = Instant.ofEpochMilli(item.ts.toLong()).atZone(zone).toLocalDate()
-        // The timeline is in arrival order, and an older message can arrive after
-        // a newer one: it joins the day already shown rather than going back to its own.
-        if (day == null || date > day) {
-            rows += Row.Day(date, item)
-            day = date
+        // The timeline is in arrival order, so a message sent offline yesterday can
+        // come among today's: its day differs from the one before it, and so does
+        // the next one's, so each gets a line and no time shows under the wrong day.
+        if (before == null || apart(before, item, zone)) {
+            rows += Row.Time(item.ts, item)
             previous = null
         }
+        before = item
         if (item.isCard()) {
             rows += Row.Card(item)
             previous = null
@@ -85,15 +85,15 @@ enum class MetaPart { EDITED, SENDING, TIME, READ }
 
 /**
  * The line under a bubble: the edited marker, then a clock while sending
- * (0043) or the time, then who read it. The time shows at the end of a run;
- * the rest always.
+ * (0043) or the time when the bubble was tapped open (0045), then who read it.
+ * The times otherwise go between messages.
  */
-fun Row.Bubble.meta(): List<MetaPart> =
+fun Row.Bubble.meta(open: Boolean = false): List<MetaPart> =
     listOfNotNull(
         MetaPart.EDITED.takeIf { item.edited },
         when {
             item.status == ItemStatus.PENDING -> MetaPart.SENDING
-            last || readBy != null -> MetaPart.TIME
+            open -> MetaPart.TIME
             else -> null
         },
         MetaPart.READ.takeIf { readBy != null },
@@ -103,4 +103,17 @@ fun Item.isCard() = content is Content.Members || content is Content.Timer
 
 private fun Item.key() = seq?.let { "s$it" } ?: envelopeId?.let { "e$it" } ?: "t$ts"
 
+private fun Item.day(zone: ZoneId): LocalDate = Instant.ofEpochMilli(ts.toLong()).atZone(zone).toLocalDate()
+
+/** A new day, or an hour or more either way: a time line goes between them (0045). */
+private fun apart(
+    before: Item,
+    item: Item,
+    zone: ZoneId,
+): Boolean {
+    val gap = if (item.ts >= before.ts) item.ts - before.ts else before.ts - item.ts
+    return item.day(zone) != before.day(zone) || gap >= TIME_GAP_MS
+}
+
 private const val RUN_MS: ULong = 300_000uL
+private const val TIME_GAP_MS: ULong = 3_600_000uL

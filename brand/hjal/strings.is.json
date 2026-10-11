@@ -85,6 +85,13 @@
   "post_shared": "Deild færsla",
   "post_gone": "Færslan er ekki lengur til",
   "react": "Bregðast við",
+  "reactions_title": "Viðbrögð",
+  "reaction_count": {
+    "one": "{count} viðbragð",
+    "other": "{count} viðbrögð"
+  },
+  "reactions_show": "Sjá viðbrögð",
+  "reaction_remove_hint": "Ýttu til að fjarlægja",
   "disappearing_messages": "Tímabundin skilaboð",
   "disappearing_set_card": "{name} stillti á að skilaboð hverfi eftir {duration}.",
   "disappearing_off_card": "{name} slökkti á tímabundnum skilaboðum.",

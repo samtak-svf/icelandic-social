@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -223,11 +224,13 @@ class ConversationScreenTest {
     }
 
     @Test
-    fun theTimeGoesOnceUnderTheEndOfARun() {
+    fun theTimeGoesBetweenMessagesAndATapShowsABubblesOwn() {
         val second = item(2u, Content.Text("Ertu við?", null))
         show(item(1u, Content.Text("Sæl", null)), second)
-        // The two are a second apart: one clock, under the second, on a 24-hour clock.
-        compose.onAllNodesWithText(clockTime(second.ts)).assertCountEquals(1)
+        // The two are a second apart: one time line above both, on a 24-hour clock (0045).
+        compose.onAllNodesWithText(clockTime(second.ts), substring = true).assertCountEquals(1)
+        compose.onNodeWithText("Ertu við?", substring = true).performClick()
+        compose.onAllNodesWithText(clockTime(second.ts), substring = true).assertCountEquals(2)
     }
 
     @Test
@@ -287,12 +290,30 @@ class ConversationScreenTest {
     }
 
     @Test
-    fun reactionChipsToggleAndAFailedMessageCanBeSentAgain() {
+    fun theReactionsSheetTakesOwnAwayAndAFailedMessageCanBeSentAgain() {
         show(
-            item(1u, Content.Text("Sæl", null), reactions = listOf(Reaction("❤️", true, listOf(me)))),
+            item(1u, Content.Text("Sæl", null), reactions = listOf(Reaction("❤️", true, listOf(anna, me)))),
             item(null, Content.Text("Týnt", null), own = true, status = ItemStatus.FAILED),
+            members = listOf(anna),
         )
-        compose.onNodeWithText("❤️ 1").performClick()
+        // The pill speaks through its bubble (0045): the count, and an action that opens the sheet.
+        val bubble = compose.onNodeWithText("Sæl", substring = true)
+        bubble.assert(
+            SemanticsMatcher.expectValue(
+                SemanticsProperties.StateDescription,
+                "${clockTime(
+                    1_700_000_001_000uL,
+                )}, ${context.resources.getQuantityString(R.plurals.reaction_count, 2, 2)}",
+            ),
+        )
+        val show =
+            bubble
+                .fetchSemanticsNode()
+                .config[SemanticsActions.CustomActions]
+                .first { it.label == text(R.string.reactions_show) }
+        compose.runOnUiThread { show.action() }
+        compose.onNodeWithText(text(R.string.reactions_title)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.reaction_remove_hint)).performClick()
         compose.onNodeWithText(text(R.string.message_failed)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.try_again)).performClick()
         assertEquals(listOf("react 1 ❤️", "resend"), calls)

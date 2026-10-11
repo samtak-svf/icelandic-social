@@ -69,6 +69,21 @@ object Dates {
             else -> dayMonthYearLong.format(date)
         }
 
+    /**
+     * A time line between messages (0045): the time alone today ("15:16"),
+     * else the [day] heading and the time ("Í gær 23:01", "mánudagur 09:12").
+     */
+    fun timeLine(
+        at: ZonedDateTime,
+        now: ZonedDateTime,
+        todayWord: String,
+        yesterdayWord: String,
+    ): String {
+        val date = at.toLocalDate()
+        val today = now.toLocalDate()
+        return if (date == today) time(at) else "${day(date, today, todayWord, yesterdayWord)} ${time(at)}"
+    }
+
     /** A calendar date with its year: "2. okt. 2026". */
     fun date(at: ZonedDateTime): String = dayMonthYear.format(at)
 
@@ -96,12 +111,14 @@ fun clockTime(millis: ULong): String = Dates.time(Dates.at(millis))
 /** The date of [millis], with its year. */
 fun calendarDate(millis: ULong): String = Dates.date(Dates.at(millis))
 
-/** The heading of a day in a conversation. */
+/** The time line before [millis] in a conversation (0045). */
 @Composable
-fun dayHeading(date: LocalDate): String =
-    Dates.day(
-        date,
-        LocalDate.now(),
+fun timeHeading(millis: ULong): String {
+    val at = Dates.at(millis)
+    return Dates.timeLine(
+        at,
+        ZonedDateTime.now(at.zone),
         stringResource(R.string.day_today),
         stringResource(R.string.day_yesterday),
     )
+}

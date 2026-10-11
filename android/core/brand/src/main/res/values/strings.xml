@@ -160,6 +160,17 @@
     <string name="post_gone">Færslan er ekki lengur til</string>
     <!-- Add a reaction to a message. -->
     <string name="react">Bregðast við</string>
+    <!-- Title of the sheet listing who reacted to a message (docs/decisions/0045). -->
+    <string name="reactions_title">Viðbrögð</string>
+    <!-- Screen-reader text of a bubble's reaction pill: how many reactions it holds (docs/decisions/0045). -->
+    <plurals name="reaction_count">
+        <item quantity="one">%1$d viðbragð</item>
+        <item quantity="other">%1$d viðbrögð</item>
+    </plurals>
+    <!-- Screen-reader action on a bubble: open the sheet of who reacted (docs/decisions/0045). -->
+    <string name="reactions_show">Sjá viðbrögð</string>
+    <!-- Under the reader's own row in the reactions sheet: tapping it removes the reaction (docs/decisions/0045). -->
+    <string name="reaction_remove_hint">Ýttu til að fjarlægja</string>
     <!-- Per-conversation setting: messages delete themselves after a set time. -->
     <string name="disappearing_messages">Tímabundin skilaboð</string>
     <!-- System card when a member sets the disappearing timer; duration is formatted by the client. -->

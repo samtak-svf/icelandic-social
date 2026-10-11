@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
@@ -80,10 +83,10 @@ private fun Tombstone() {
 
 /**
  * One message (1c): own on the right in red, the other party's on the left
- * in muted, the corner nearest the sender squared off. Under the end of a
- * run, its time, and on the newest own message someone read, "Lesin".
+ * in muted, the corner nearest the sender squared off. Tapping it shows its
+ * time (0045); on the newest own message someone read, "Lesin". Its
+ * reactions are one pill on its bottom edge.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun Bubble(
     row: Row.Bubble,
@@ -91,14 +94,11 @@ internal fun Bubble(
     media: ConversationViewModel.Media?,
     actions: ConversationActions,
     onDelete: (Item) -> Unit,
+    me: String? = null,
 ) {
     val item = row.item
-    val tap = item.tap(actions)
-    val offer = Offer(item)
-    var menu by remember { mutableStateOf(false) }
-    val background = if (item.own) Palette.bubbleOwnBg else Palette.bubbleOtherBg
-    val foreground = if (item.own) Palette.bubbleOwnFg else Palette.bubbleOtherFg
-    val custom = accessibilityActions(offer, actions, onDelete) { menu = true }
+    var open by rememberSaveable { mutableStateOf(false) }
+    var sheet by remember { mutableStateOf(false) }
     Column(
         modifier =
             Modifier
@@ -118,36 +118,88 @@ internal fun Bubble(
         if (item.content == Content.Deleted) {
             Tombstone()
         } else {
-            Box(modifier = Modifier.atMost(BUBBLE_SHARE)) {
-                Surface(
-                    color = background,
-                    contentColor = foreground,
-                    shape = bubbleShape(item.own),
-                    modifier =
-                        Modifier
-                            .semantics(mergeDescendants = true) { customActions = custom }
-                            .combinedClickable(
-                                enabled = offer.any || tap != null,
-                                onClickLabel = null,
-                                onClick = { tap?.invoke() },
-                                onLongClickLabel = stringResource(R.string.react),
-                                // Its haptic (0043) is combinedClickable's own, as the system setting allows.
-                                onLongClick = { menu = true },
-                            ),
-                ) {
-                    Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp)) {
-                        if (item.forwarded) ForwardedMark(foreground)
-                        Body(item, media, foreground, actions)
-                    }
-                }
-                Menu(menu, offer, actions, onDelete) { menu = false }
-            }
+            Message(item, media, actions, onDelete, onTime = { open = !open }) { sheet = true }
         }
-        if (item.reactions.isNotEmpty()) Reactions(item, offer.react, actions)
+        if (sheet) {
+            ReactionsSheet(
+                item.reactionLines(me),
+                onRemove = { emoji -> if (Offer(item).react) actions.react(item, emoji) },
+            ) { sheet = false }
+        }
         when (item.status) {
             ItemStatus.FAILED -> Failed(actions::resend)
-            ItemStatus.PENDING, ItemStatus.SENT -> Meta(row, group)
+            ItemStatus.PENDING, ItemStatus.SENT -> Meta(row, group, open)
         }
+    }
+}
+
+/** The bubble itself, its long-press menu, and the reaction pill on its bottom edge (0045). */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun Message(
+    item: Item,
+    media: ConversationViewModel.Media?,
+    actions: ConversationActions,
+    onDelete: (Item) -> Unit,
+    onTime: () -> Unit,
+    onReactions: () -> Unit,
+) {
+    val tap = item.tap(actions)
+    val offer = Offer(item)
+    var menu by remember { mutableStateOf(false) }
+    val pill = item.pill()
+    val foreground = if (item.own) Palette.bubbleOwnFg else Palette.bubbleOtherFg
+    val custom =
+        accessibilityActions(offer, actions, onDelete) { menu = true } +
+            listOfNotNull(
+                pill?.let {
+                    CustomAccessibilityAction(stringResource(R.string.reactions_show)) {
+                        onReactions()
+                        true
+                    }
+                },
+            )
+    val spoken = spokenWith(item, pill)
+    Box(
+        modifier =
+            Modifier
+                .atMost(BUBBLE_SHARE)
+                .padding(bottom = if (pill != null) (PILL_HEIGHT / 2).dp else 0.dp),
+    ) {
+        Surface(
+            color = if (item.own) Palette.bubbleOwnBg else Palette.bubbleOtherBg,
+            contentColor = foreground,
+            shape = bubbleShape(item.own),
+            modifier =
+                Modifier
+                    .semantics(mergeDescendants = true) {
+                        customActions = custom
+                        stateDescription = spoken
+                    }.combinedClickable(
+                        onClickLabel = null,
+                        // A photo or a file opens; anything else shows or hides its time.
+                        onClick = { tap?.invoke() ?: onTime() },
+                        onLongClickLabel = stringResource(R.string.react),
+                        // Its haptic (0043) is combinedClickable's own, as the system setting allows.
+                        onLongClick = { menu = true },
+                    ),
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp)) {
+                if (item.forwarded) ForwardedMark(foreground)
+                Body(item, media, foreground, actions)
+            }
+        }
+        pill?.let {
+            ReactionPill(
+                it,
+                onClick = onReactions,
+                modifier =
+                    Modifier
+                        .align(if (item.own) Alignment.BottomStart else Alignment.BottomEnd)
+                        .offset(x = if (item.own) -PILL_INSET.dp else PILL_INSET.dp, y = (PILL_HEIGHT / 2).dp),
+            )
+        }
+        Menu(menu, offer, actions, onDelete) { menu = false }
     }
 }
 
@@ -214,14 +266,15 @@ private fun Body(
 
 /**
  * The small line under a message ([meta]): "breytt", then a clock while
- * sending (0043) or the time, then who read it.
+ * sending (0043) or the time once tapped (0045), then who read it.
  */
 @Composable
 private fun Meta(
     row: Row.Bubble,
     group: Boolean,
+    open: Boolean,
 ) {
-    val parts = row.meta()
+    val parts = row.meta(open)
     if (parts.isEmpty()) return
     val item = row.item
     val words =
@@ -286,35 +339,6 @@ private fun Menu(
 }
 
 @Composable
-private fun Reactions(
-    item: Item,
-    enabled: Boolean,
-    actions: ConversationActions,
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.padding(top = 2.dp),
-    ) {
-        item.reactions.forEach { reaction ->
-            // Own reactions take the gold chip pair, the others fg on muted.
-            Surface(
-                onClick = { actions.react(item, reaction.emoji) },
-                enabled = enabled,
-                shape = RoundedCornerShape(CHIP_RADIUS.dp),
-                color = if (reaction.own) Palette.secondary else Palette.muted,
-                contentColor = if (reaction.own) Palette.secondaryFg else Palette.fg,
-            ) {
-                Text(
-                    text = "${reaction.emoji} ${reaction.people.size}",
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun Failed(onResend: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
@@ -342,5 +366,5 @@ private val EMOJI = listOf("👍", "❤️", "😂", "😮", "😢", "🙏")
 private const val BUBBLE_RADIUS = 18
 private const val TAIL_RADIUS = 5
 private const val BUBBLE_SHARE = 0.76f
-private const val CHIP_RADIUS = 12
+private const val PILL_INSET = 4
 private const val CLOCK = 12

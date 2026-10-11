@@ -24,18 +24,17 @@ enum Dates {
         return format("d. MMM yyyy", at, calendar)
     }
 
-    /// The line where a new day starts in a conversation: `todayWord`,
-    /// `yesterdayWord`, the weekday within the week ("mánudagur"), else the
-    /// date ("30. ágúst").
-    static func day(
-        _ date: Date, today: Date, todayWord: String, yesterdayWord: String, calendar: Calendar = .current
-    ) -> String {
-        let ago = days(from: date, to: today, calendar)
-        if ago == 0 { return todayWord }
-        if ago == 1 { return yesterdayWord }
-        if ago > 0 && ago < week { return format("EEEE", date, calendar) }
-        if sameYear(date, today, calendar) { return format("d. MMMM", date, calendar) }
-        return format("d. MMMM yyyy", date, calendar)
+    /// A time line between messages (decision 0045): the time today ("15:16"),
+    /// `yesterdayWord` and the time ("Í gær 23:01"), the weekday within the week
+    /// ("mánudagur 09:12"), else the date ("30. ágúst 14:00"), with the year
+    /// when it is not this one.
+    static func line(_ at: Date, now: Date, yesterdayWord: String, calendar: Calendar = .current) -> String {
+        let ago = days(from: at, to: now, calendar)
+        if ago == 0 { return time(at, calendar: calendar) }
+        if ago == 1 { return "\(yesterdayWord) \(time(at, calendar: calendar))" }
+        if ago > 0 && ago < week { return format("EEEE HH:mm", at, calendar) }
+        if sameYear(at, now, calendar) { return format("d. MMMM HH:mm", at, calendar) }
+        return format("d. MMMM yyyy HH:mm", at, calendar)
     }
 
     /// A calendar date with its year: "2. okt. 2026".
@@ -91,7 +90,7 @@ func calendarDate(_ millis: UInt64) -> String {
     Dates.date(Dates.at(millis))
 }
 
-/// The heading of a day in a conversation.
-func dayHeading(_ date: Date) -> String {
-    Dates.day(date, today: Date(), todayWord: localized("day_today"), yesterdayWord: localized("day_yesterday"))
+/// A time line between messages in a conversation.
+func timeLine(_ date: Date) -> String {
+    Dates.line(date, now: Date(), yesterdayWord: localized("day_yesterday"))
 }

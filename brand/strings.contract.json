@@ -344,6 +344,26 @@
       "surfaces": ["android", "ios"],
       "description": "Add a reaction to a message."
     },
+    "reactions_title": {
+      "surfaces": ["android", "ios"],
+      "description": "Title of the sheet listing who reacted to a message (docs/decisions/0045)."
+    },
+    "reaction_count": {
+      "surfaces": ["android", "ios"],
+      "description": "Screen-reader text of a bubble's reaction pill: how many reactions it holds (docs/decisions/0045).",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "reactions_show": {
+      "surfaces": ["android", "ios"],
+      "description": "Screen-reader action on a bubble: open the sheet of who reacted (docs/decisions/0045)."
+    },
+    "reaction_remove_hint": {
+      "surfaces": ["android", "ios"],
+      "description": "Under the reader's own row in the reactions sheet: tapping it removes the reaction (docs/decisions/0045)."
+    },
     "disappearing_messages": {
       "surfaces": ["android", "ios"],
       "description": "Per-conversation setting: messages delete themselves after a set time."

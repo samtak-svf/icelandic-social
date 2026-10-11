@@ -901,6 +901,66 @@
         }
       }
     },
+    "reactions_title": {
+      "comment": "Title of the sheet listing who reacted to a message (docs/decisions/0045).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viðbrögð"
+          }
+        }
+      }
+    },
+    "reaction_count": {
+      "comment": "Screen-reader text of a bubble's reaction pill: how many reactions it holds (docs/decisions/0045).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld viðbragð"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld viðbrögð"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "reactions_show": {
+      "comment": "Screen-reader action on a bubble: open the sheet of who reacted (docs/decisions/0045).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sjá viðbrögð"
+          }
+        }
+      }
+    },
+    "reaction_remove_hint": {
+      "comment": "Under the reader's own row in the reactions sheet: tapping it removes the reaction (docs/decisions/0045).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ýttu til að fjarlægja"
+          }
+        }
+      }
+    },
     "disappearing_messages": {
       "comment": "Per-conversation setting: messages delete themselves after a set time.",
       "extractionState": "manual",

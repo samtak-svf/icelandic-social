@@ -20,8 +20,8 @@ final class DatesTests: XCTestCase {
         Dates.stamp(date, now: now, yesterday: "Í gær", calendar: calendar)
     }
 
-    private func day(_ date: Date) -> String {
-        Dates.day(date, today: at(10, 8, 0, 0), todayWord: "Í dag", yesterdayWord: "Í gær", calendar: calendar)
+    private func line(_ date: Date) -> String {
+        Dates.line(date, now: now, yesterdayWord: "Í gær", calendar: calendar)
     }
 
     /// The pattern is fixed, so the device's language and 12-hour setting do not reach it.
@@ -43,12 +43,13 @@ final class DatesTests: XCTestCase {
         XCTAssertEqual(stamp(at(10, 8, 15, 10)), "15:10")
     }
 
-    func testADayHeadingNamesTodayYesterdayTheWeekdayOrTheDate() {
-        XCTAssertEqual(day(at(10, 8, 0, 0)), "Í dag")
-        XCTAssertEqual(day(at(10, 7, 0, 0)), "Í gær")
-        XCTAssertEqual(day(at(10, 5, 0, 0)), "mánudagur")
-        XCTAssertEqual(day(at(8, 30, 0, 0)), "30. ágúst")
-        XCTAssertEqual(day(at(12, 30, 0, 0, year: 2025)), "30. desember 2025")
+    func testATimeLineNamesTheTimeThenYesterdayTheWeekdayOrTheDate() {
+        XCTAssertEqual(line(at(10, 8, 15, 16)), "15:16")
+        XCTAssertEqual(line(at(10, 8, 0, 5)), "00:05")
+        XCTAssertEqual(line(at(10, 7, 23, 1)), "Í gær 23:01")
+        XCTAssertEqual(line(at(10, 5, 9, 12)), "mánudagur 09:12")
+        XCTAssertEqual(line(at(8, 30, 14, 0)), "30. ágúst 14:00")
+        XCTAssertEqual(line(at(12, 30, 8, 0, year: 2025)), "30. desember 2025 08:00")
     }
 
     func testADeviceDateCarriesItsYear() {

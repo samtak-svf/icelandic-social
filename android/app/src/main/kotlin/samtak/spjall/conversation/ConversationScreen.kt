@@ -77,12 +77,11 @@ import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.RoundButton
 import samtak.spjall.ui.SansFamily
 import samtak.spjall.ui.SectionLabel
-import samtak.spjall.ui.dayHeading
 import samtak.spjall.ui.lastLine
 import samtak.spjall.ui.rowMotion
 import samtak.spjall.ui.scrollTo
 import samtak.spjall.ui.shownName
-import java.time.LocalDate
+import samtak.spjall.ui.timeHeading
 
 /**
  * One conversation (1c): bubbles, own on the right, the composer below, and
@@ -178,6 +177,8 @@ private fun Timeline(
     modifier: Modifier,
 ) {
     val rows = remember(state.items) { rows(state.items).asReversed() }
+    val me =
+        remember(state.items, state.conversation) { readerAccount(state.items, state.conversation?.members.orEmpty()) }
     val list = rememberLazyListState()
     // A new item at the bottom comes into view when it is own, or when the
     // newest was in view; someone reading further up stays where they are.
@@ -204,7 +205,7 @@ private fun Timeline(
             // A message the core's events bring, change or take away moves the others aside (0043).
             Box(modifier = Modifier.fillMaxWidth().rowMotion(this, reduce)) {
                 when (row) {
-                    is Row.Day -> DayLine(row.date)
+                    is Row.Time -> TimeLine(row.ts)
                     is Row.Card -> CardLine(row.item, group)
                     is Row.Bubble ->
                         Bubble(
@@ -213,6 +214,7 @@ private fun Timeline(
                             row.item.seq?.let { state.media[it] },
                             actions,
                             onDelete,
+                            me,
                         )
                 }
             }
@@ -220,10 +222,11 @@ private fun Timeline(
     }
 }
 
+/** The time between messages (0045), in the style the day line had. */
 @Composable
-private fun DayLine(date: LocalDate) {
+private fun TimeLine(ts: ULong) {
     SectionLabel(
-        text = dayHeading(date),
+        text = timeHeading(ts),
         align = TextAlign.Center,
         modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 6.dp).semantics { heading() },
     )
