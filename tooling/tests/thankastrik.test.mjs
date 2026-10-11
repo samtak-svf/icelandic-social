@@ -1,10 +1,9 @@
 // @ts-check
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import { auditThankastrik, thankastrikIn } from "../thankastrik.mjs";
+import { tempDir } from "./helpers.mjs";
 
 const EM = "—";
 const EN = "–";
@@ -21,7 +20,7 @@ describe("thankastrik", () => {
   });
 
   it("reports the JSON pointer of the offending brand string", () => {
-    const root = mkdtempSync(join(tmpdir(), "spjall-thankastrik-"));
+    const root = tempDir("spjall-thankastrik-");
     mkdirSync(join(root, "brand/x"), { recursive: true });
     writeFileSync(
       join(root, "brand/x/strings.is.json"),

@@ -3,17 +3,37 @@
 // each test can break exactly one thing and watch the guard fail on it.
 
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterAll } from "vitest";
 import { GIT_ENV, ROOT } from "../lib/repo.mjs";
+
+/** Every directory `tempDir` made in this test file, removed once the file's tests end. */
+/** @type {string[]} */
+const made = [];
+afterAll(() => {
+  for (const dir of made.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
+
+/**
+ * A fresh directory under the OS temp dir, removed after the test file. /tmp is a
+ * small tmpfs here, and copies left behind by every run filled it.
+ * @param {string} prefix
+ * @returns {string}
+ */
+export function tempDir(prefix) {
+  const dir = mkdtempSync(join(tmpdir(), prefix));
+  made.push(dir);
+  return dir;
+}
 
 /**
  * @param {string[]} paths repo-relative files or directories to copy
  * @returns {string} the copy's root
  */
 export function copyRepo(paths) {
-  const dir = mkdtempSync(join(tmpdir(), "spjall-guard-"));
+  const dir = tempDir("spjall-guard-");
   for (const path of paths) cpSync(join(ROOT, path), join(dir, path), { recursive: true });
   return dir;
 }
