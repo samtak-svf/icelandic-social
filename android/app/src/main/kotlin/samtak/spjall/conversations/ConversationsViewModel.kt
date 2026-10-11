@@ -19,9 +19,11 @@ import samtak.spjall.account.Account
 import samtak.spjall.account.Problem
 import samtak.spjall.account.isNotFound
 import samtak.spjall.account.problem
+import samtak.spjall.conversation.TYPING_SHOWN_MS
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.Event
+import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
 import samtak.spjall.socket.Connection
 import samtak.spjall.socket.Live
@@ -33,7 +35,9 @@ import samtak.spjall.socket.Live
  * finds conversations by the start of a name (decision 0038), on this
  * device, then people in the directory (decision 0036) without anyone whose
  * 1:1 is already among them, once the typing pauses as it does in the
- * new-conversation picker.
+ * new-conversation picker. A row says when someone is typing in its
+ * conversation, for as long as the conversation itself would (decision 0043),
+ * and a long press mutes it as its own menu does (decision 0042).
  */
 class ConversationsViewModel(
     private val account: Account,
@@ -54,6 +58,8 @@ class ConversationsViewModel(
         val found: Found? = null,
         /** A search is on its way. */
         val searching: Boolean = false,
+        /** The conversations someone is typing in; a row shows no name, only that (0043, 0022). */
+        val typing: Set<String> = emptySet(),
     ) {
         /** A search shows its results in place of the list. */
         val searched: Boolean get() = query.isNotBlank()
@@ -82,10 +88,17 @@ class ConversationsViewModel(
 
     private var searchJob: Job? = null
 
+    // Per conversation, the timer that stops showing a typing frame no other follows.
+    private val typingShown = mutableMapOf<String, Job>()
+
     init {
         viewModelScope.launch { for (read in reads) read() }
         viewModelScope.launch { live.connection.collect { c -> _state.update { it.copy(connection = c) } } }
-        viewModelScope.launch { live.events.collect { if (it !is Event.Typing) load() } }
+        viewModelScope.launch {
+            live.events.collect { event ->
+                if (event is Event.Typing) typing(event.conversation, event.active) else load()
+            }
+        }
         load()
     }
 
@@ -125,6 +138,47 @@ class ConversationsViewModel(
                 _state.update { it.copy(problem = e.problem()) }
             }
         }
+    }
+
+    /** Mutes [conversation] for [duration] (0042), as the conversation's own menu does. */
+    fun mute(
+        conversation: String,
+        duration: MuteFor,
+    ) {
+        change { account.mute(conversation, duration) }
+    }
+
+    /** Turns [conversation]'s notifications back on. */
+    fun unmute(conversation: String) {
+        change { account.unmute(conversation) }
+    }
+
+    /** A change to one conversation, then the list read again; a failure is said, so no one believes it. */
+    private fun change(action: () -> Unit) {
+        _state.update { it.copy(problem = null) }
+        viewModelScope.launch {
+            try {
+                withContext(io) { action() }
+                load()
+            } catch (e: CoreException) {
+                _state.update { it.copy(problem = e.problem()) }
+            }
+        }
+    }
+
+    private fun typing(
+        conversation: String,
+        active: Boolean,
+    ) {
+        typingShown.remove(conversation)?.cancel()
+        _state.update { it.copy(typing = if (active) it.typing + conversation else it.typing - conversation) }
+        if (!active) return
+        typingShown[conversation] =
+            viewModelScope.launch {
+                delay(TYPING_SHOWN_MS)
+                typingShown.remove(conversation)
+                _state.update { it.copy(typing = it.typing - conversation) }
+            }
     }
 
     private suspend fun find(query: String) {

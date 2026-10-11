@@ -174,9 +174,12 @@ private fun TimerDialog(
     )
 }
 
-/** The three durations 0042 offers; the server sets the end by its own clock. */
+/**
+ * The three durations 0042 offers, from this menu and from a long press on the list's row (0043); the
+ * server sets the end by its own clock.
+ */
 @Composable
-private fun MuteDialog(
+internal fun MuteDialog(
     onPick: (MuteFor) -> Unit,
     onDismiss: () -> Unit,
 ) {

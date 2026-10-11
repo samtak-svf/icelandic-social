@@ -8,7 +8,9 @@ import SpjallCore
 /// finds conversations by the start of a name (decision 0038), on this
 /// device, then people in the directory (decision 0036) without anyone whose
 /// 1:1 is already among them, once the typing pauses as it does in the
-/// new-conversation picker.
+/// new-conversation picker. A row says when someone is typing in its
+/// conversation, for as long as the conversation itself would (decision 0043),
+/// and a long press mutes it as its own menu does (decision 0042).
 @MainActor @Observable
 final class ConversationsModel {
     /// What a search found: conversations first, then people from the directory.
@@ -30,6 +32,8 @@ final class ConversationsModel {
     private(set) var found: Found?
     /// A search is on its way.
     private(set) var searching = false
+    /// The conversations someone is typing in; a row shows no name, only that (decisions 0043, 0022).
+    private(set) var typing: Set<String> = []
 
     /// A search shows its results in place of the list.
     var searched: Bool { !trimmed.isEmpty }
@@ -41,6 +45,8 @@ final class ConversationsModel {
     private let live: Live
     private var reading = false
     private var readAgain = false
+    /// Per conversation, the wait that stops showing a typing frame no other follows.
+    @ObservationIgnored private var typingShown: [String: Task<Void, Never>] = [:]
     private let sleep: @Sendable (Duration) async throws -> Void
 
     init(
@@ -104,8 +110,46 @@ final class ConversationsModel {
         let events = live.events()
         await load()
         for await event in events {
-            if case .typing = event { continue }
+            if case .typing(let conversation, let active) = event {
+                showTyping(conversation, active)
+                continue
+            }
             await load()
+        }
+    }
+
+    /// Mutes `conversation` for `duration` (decision 0042), as the conversation's own menu does.
+    func mute(_ conversation: String, for duration: MuteFor) async {
+        let account = account
+        await change { _ = try account.mute(conversation, for: duration) }
+    }
+
+    /// Turns `conversation`'s notifications back on.
+    func unmute(_ conversation: String) async {
+        let account = account
+        await change { try account.unmute(conversation) }
+    }
+
+    /// A change to one conversation, then the list read again; a failure is said, so no one believes it.
+    private func change(_ call: @escaping @Sendable () throws -> Void) async {
+        problem = nil
+        do {
+            try await offMain(call)
+            await load()
+        } catch {
+            problem = Problem(error)
+        }
+    }
+
+    private func showTyping(_ conversation: String, _ active: Bool) {
+        typingShown.removeValue(forKey: conversation)?.cancel()
+        if active { typing.insert(conversation) } else { typing.remove(conversation) }
+        guard active else { return }
+        // As long as the conversation shows it: a frame that never ends stops showing.
+        typingShown[conversation] = Task { [sleep] in
+            guard (try? await sleep(ConversationModel.typingShown)) != nil else { return }
+            self.typingShown[conversation] = nil
+            self.typing.remove(conversation)
         }
     }
 

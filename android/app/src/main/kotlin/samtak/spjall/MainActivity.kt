@@ -351,6 +351,13 @@ class MainActivity : ComponentActivity() {
 
                 override fun retry() = list.retry()
 
+                override fun mute(
+                    conversation: String,
+                    duration: MuteFor,
+                ) = list.mute(conversation, duration)
+
+                override fun unmute(conversation: String) = list.unmute(conversation)
+
                 override fun notificationSettings() = this@MainActivity.notificationSettings()
             },
             notificationsOff = notificationsOff,

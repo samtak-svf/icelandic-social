@@ -457,11 +457,17 @@ class ConversationViewModel(
     private companion object {
         const val PAGE = 50u
 
-        // The core sends at most one active frame each 3 s while one types.
+        // A pause this long in the typing sends the frame that ends it.
         const val TYPING_IDLE_MS = 5_000L
-        const val TYPING_SHOWN_MS = 6_000L
     }
 }
+
+/**
+ * How long an active typing frame shows without another, here and in the list's row: the core sends
+ * at most one active frame each 3 s while one types, so a frame that never ends (the other side went
+ * away) stops showing.
+ */
+internal const val TYPING_SHOWN_MS = 6_000L
 
 /** Whether the timeline of [conversation] may look different after this event. */
 private fun Event.concerns(conversation: String): Boolean =

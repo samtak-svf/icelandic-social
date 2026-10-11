@@ -80,6 +80,9 @@ object AppIcons {
     val BellOff =
         outline("bell-off", 20f, 1.8f, "M10 3a5 5 0 015 5v4l2 3H3l2-3V8a5 5 0 015-5z", "M8 17.5h4", "M3 3l14 14")
 
+    /** A message still on its way: a clock face at ten past. */
+    val Clock = outline("clock", 16f, 1.6f, "M2 8a6 6 0 1 0 12 0a6 6 0 1 0-12 0z", "M8 4.5V8l2.5 1.5")
+
     /** Ég's way to the settings screen: a gear. */
     val Settings =
         outline(

@@ -17,6 +17,7 @@ import samtak.spjall.core.ConversationState
 import samtak.spjall.core.Item
 import samtak.spjall.core.ItemStatus
 import samtak.spjall.core.Mute
+import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
 import samtak.spjall.socket.Connection
 import samtak.spjall.ui.SpjallTheme
@@ -49,6 +50,13 @@ class ConversationsScreenshotTest {
             override fun retry() = Unit
 
             override fun notificationSettings() = Unit
+
+            override fun mute(
+                conversation: String,
+                duration: MuteFor,
+            ) = Unit
+
+            override fun unmute(conversation: String) = Unit
         }
 
     private val anna = Person("a2", "Anna Jónsdóttir", true)
@@ -120,6 +128,62 @@ class ConversationsScreenshotTest {
                     listOf(
                         row("c1", anna, "Sæl", 2u, Mute.Always),
                         row("c2", bjarni, "Takk", 0u),
+                    ),
+                loaded = true,
+                connection = Connection.Online,
+            ),
+        )
+
+    private fun own(
+        id: String,
+        members: List<Person>,
+        status: ItemStatus,
+        readBy: UInt = 0u,
+    ) = Conversation(
+        id,
+        ConversationState.ACTIVE,
+        members,
+        Item(2uL, "e2", anna, true, PAST, status, Content.Text("Takk", null), false, emptyList(), readBy, null, false),
+        0u,
+        null,
+        Mute.Off,
+    )
+
+    /** A 1:1 and a group, each with someone typing: the group's row names no one (0043). */
+    @Test
+    fun typing() =
+        shoot(
+            ConversationsViewModel.State(
+                conversations =
+                    listOf(
+                        row("c1", anna, "Sæl", 0u),
+                        Conversation(
+                            "c2",
+                            ConversationState.ACTIVE,
+                            listOf(anna, bjarni),
+                            last(bjarni, "Já"),
+                            0u,
+                            null,
+                            Mute.Off,
+                        ),
+                    ),
+                loaded = true,
+                connection = Connection.Online,
+                typing = setOf("c1", "c2"),
+            ),
+        )
+
+    /** The reader's own last message: on its way, failed, read in a 1:1, read by two in a group (0043). */
+    @Test
+    fun ownStates() =
+        shoot(
+            ConversationsViewModel.State(
+                conversations =
+                    listOf(
+                        own("c1", listOf(anna), ItemStatus.PENDING),
+                        own("c2", listOf(bjarni), ItemStatus.FAILED),
+                        own("c3", listOf(anna), ItemStatus.SENT, readBy = 1u),
+                        own("c4", listOf(anna, bjarni), ItemStatus.SENT, readBy = 2u),
                     ),
                 loaded = true,
                 connection = Connection.Online,

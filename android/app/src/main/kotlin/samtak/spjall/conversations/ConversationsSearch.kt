@@ -40,9 +40,10 @@ import samtak.spjall.ui.shownName
 /** What a search found: the conversations first, then the people under their own heading. */
 internal fun LazyListScope.results(
     found: ConversationsViewModel.Found,
+    typing: Set<String>,
     actions: ConversationsActions,
 ) {
-    conversationRows(found.conversations, actions)
+    conversationRows(found.conversations, typing, actions)
     if (found.people.isEmpty()) return
     item(key = "people") {
         Text(

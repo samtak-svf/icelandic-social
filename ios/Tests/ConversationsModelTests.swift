@@ -152,4 +152,60 @@ final class ConversationsModelTests: XCTestCase {
         XCTAssertEqual(account.calls.filter { $0.hasPrefix("searchList") }.count, 2)
         XCTAssertEqual(model.found?.query, "Anna")
     }
+
+    func testARowSaysSomeoneIsTypingUntilTheyStopOrTheFrameRunsOut() async {
+        let sleep = FakeSleep()
+        let model = ConversationsModel(account: account, live: live, sleep: sleep.sleep)
+        let following = Task { await model.follow() }
+        await eventually { self.reads == 1 }
+
+        live.emit(.typing(conversation: "c1", active: true))
+        live.emit(.typing(conversation: "c2", active: true))
+        await eventually { model.typing == ["c1", "c2"] }
+        live.emit(.typing(conversation: "c1", active: false))
+        await eventually { model.typing == ["c2"] }
+        // A typing frame is no reason to read the list again.
+        XCTAssertEqual(reads, 1)
+
+        // As long as the conversation shows it, then no longer.
+        await eventually { sleep.waiting == [ConversationModel.typingShown] }
+        sleep.pass(ConversationModel.typingShown)
+        await eventually { model.typing.isEmpty }
+
+        live.finish()
+        await following.value
+    }
+
+    func testALongPressMutesAndUnmutesWithTheCoresCallsAndReadsTheListAgain() async {
+        account.list = [conversation("c1", members: [person("a2")])]
+        let model = ConversationsModel(account: account, live: live)
+        await model.load()
+        await model.mute("c1", for: .hour)
+        XCTAssertEqual(model.conversations.first?.mute, .until(at: FakeAccount.now + 3_600_000))
+        await model.unmute("c1")
+        XCTAssertEqual(model.conversations.first?.mute, .off)
+        let asked = account.calls.filter { $0.hasPrefix("mute") || $0.hasPrefix("unmute") }
+        XCTAssertEqual(asked, ["mute c1 hour", "unmute c1"])
+        XCTAssertEqual(reads, 3)
+    }
+
+    func testAFailedMuteIsAProblem() async {
+        account.list = [conversation("c1", members: [person("a2")])]
+        let model = ConversationsModel(account: account, live: live)
+        await model.load()
+        account.failNext = unreachable
+        await model.mute("c1", for: .always)
+        XCTAssertEqual(model.problem, .unreachable)
+        XCTAssertEqual(model.conversations.first?.mute, .off)
+    }
+
+    func testTheReadersOwnLastMessageSaysWhoReadIt() {
+        let sent = item(1, text: "Takk", own: true, readBy: 2)
+        XCTAssertEqual(readLine(sent, group: false), localized("read_marker"))
+        XCTAssertEqual(readLine(sent, group: true), plural("read_by_count", 2))
+        // Unread, someone else's, or not yet sent: nothing to say.
+        XCTAssertNil(readLine(item(1, own: true), group: false))
+        XCTAssertNil(readLine(item(1, own: false, readBy: 1), group: false))
+        XCTAssertNil(readLine(item(1, own: true, status: .pending, readBy: 1), group: false))
+    }
 }

@@ -53,14 +53,22 @@ struct ConversationsView: View {
         .task(id: model.query) { await model.search() }
     }
 
+    /// A tap opens the conversation, a long press offers its mute (decisions 0042, 0043). There is no swipe
+    /// (decision 0022): a hidden swipe is found by accident.
     private func rows(_ conversations: [Conversation]) -> some View {
         ForEach(conversations, id: \.id) { conversation in
             Button {
                 onOpen(conversation.id)
             } label: {
-                ConversationRow(conversation: conversation)
+                ConversationRow(conversation: conversation, typing: model.typing.contains(conversation.id))
             }
             .buttonStyle(.plain)
+            .contextMenu {
+                MuteChoices(
+                    muted: conversation.mute != .off,
+                    onMute: { duration in Task { await model.mute(conversation.id, for: duration) } },
+                    onUnmute: { Task { await model.unmute(conversation.id) } })
+            }
             Rectangle().fill(BrandTokens.Colors.border).frame(height: 1)
         }
     }
@@ -215,6 +223,8 @@ private struct ConnectionLine: View {
 
 private struct ConversationRow: View {
     let conversation: Conversation
+    /// Someone is typing in it.
+    let typing: Bool
 
     private var unread: Bool { conversation.unread > 0 }
     private var muted: Bool { conversation.mute != .off }
@@ -239,25 +249,24 @@ private struct ConversationRow: View {
                         VerifiedMark()
                     }
                 }
-                if let last = conversation.last {
-                    Text(verbatim: previewLine(last, group: group))
-                        .font(.sans(12.5, relativeTo: .subheadline))
-                        .foregroundStyle(BrandTokens.Colors.proseBody)
+                if typing {
+                    // In place of the preview, naming no one: the title already says who, or it is a group.
+                    Text("typing_in_row")
+                        .font(RowPreview.font)
+                        .foregroundStyle(BrandTokens.Colors.primary)
                         .lineLimit(1)
+                } else if let last = conversation.last {
+                    RowPreview(item: last, group: group)
                 }
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 6) {
                 if let last = conversation.last {
-                    if last.status == .failed {
-                        Text("message_failed").font(Self.stamp).foregroundStyle(BrandTokens.Colors.danger)
-                    } else {
-                        HStack(spacing: 4) {
-                            if muted { MutedMark() }
-                            Text(verbatim: listStamp(last.ts))
-                                .font(Self.stamp)
-                                .foregroundStyle(calling ? BrandTokens.Colors.primary : BrandTokens.Colors.mutedFg)
-                        }
+                    HStack(spacing: 4) {
+                        if muted { MutedMark() }
+                        Text(verbatim: listStamp(last.ts))
+                            .font(Self.stamp)
+                            .foregroundStyle(calling ? BrandTokens.Colors.primary : BrandTokens.Colors.mutedFg)
                     }
                 }
                 if unread {
@@ -272,7 +281,42 @@ private struct ConversationRow: View {
         .accessibilityElement(children: .combine)
     }
 
-    private static let stamp = Font.sans(10.5, black: true, relativeTo: .caption2)
+    static let stamp = Font.sans(10.5, black: true, relativeTo: .caption2)
+}
+
+/// The second line, and for the reader's own message its state (decision 0043): a clock while it is on its
+/// way, the failed mark, or who read it as the conversation says it (decision 0022): "Lesin" in a 1:1, the
+/// count in a group.
+private struct RowPreview: View {
+    let item: Item
+    let group: Bool
+
+    static let font = Font.sans(12.5, relativeTo: .subheadline)
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if item.own && item.status == .pending {
+                Image(systemName: "clock")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(BrandTokens.Colors.mutedFg)
+                    .accessibilityLabel(Text("message_sending"))
+            }
+            if item.own && item.status == .failed {
+                Text("message_failed").font(ConversationRow.stamp).foregroundStyle(BrandTokens.Colors.danger)
+            }
+            Text(verbatim: previewLine(item, group: group))
+                .font(Self.font)
+                .foregroundStyle(BrandTokens.Colors.proseBody)
+                .lineLimit(1)
+            if let read = readLine(item, group: group) {
+                Text(verbatim: "· \(read)")
+                    .font(Self.font)
+                    .foregroundStyle(BrandTokens.Colors.mutedFg)
+                    .lineLimit(1)
+                    .layoutPriority(1)
+            }
+        }
+    }
 }
 
 /// A muted conversation: the bell struck through, said by its label.

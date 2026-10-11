@@ -1,5 +1,7 @@
 package samtak.spjall.conversations
 
+import samtak.spjall.core.MuteFor
+
 /** What [ConversationsScreen] can ask for. */
 interface ConversationsActions {
     fun open(conversation: String)
@@ -16,6 +18,14 @@ interface ConversationsActions {
     fun invite()
 
     fun retry()
+
+    /** From a long press on a row (0043): the mute of 0042, as the conversation's own menu offers it. */
+    fun mute(
+        conversation: String,
+        duration: MuteFor,
+    )
+
+    fun unmute(conversation: String)
 
     /** The system's notification settings for the app. */
     fun notificationSettings()

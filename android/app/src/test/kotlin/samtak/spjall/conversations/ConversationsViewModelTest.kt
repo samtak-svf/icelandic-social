@@ -5,8 +5,10 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -21,6 +23,8 @@ import samtak.spjall.account.Problem
 import samtak.spjall.account.unreachable
 import samtak.spjall.core.Event
 import samtak.spjall.core.Inviter
+import samtak.spjall.core.Mute
+import samtak.spjall.core.MuteFor
 import samtak.spjall.socket.Connection
 import samtak.spjall.socket.FakeLive
 import samtak.spjall.socket.conversation
@@ -171,5 +175,73 @@ class ConversationsViewModelTest {
             advanceUntilIdle()
             assertNull(model.state.value.problem)
             assertEquals(2, account.calls.count { it.startsWith("searchList") })
+        }
+
+    @Test
+    fun aRowSaysSomeoneIsTypingUntilTheyStopOrTheFrameRunsOut() =
+        runTest(dispatcher) {
+            val model = model()
+            live.events.emit(Event.Typing("c1", true))
+            live.events.emit(Event.Typing("c2", true))
+            runCurrent()
+            assertEquals(setOf("c1", "c2"), model.state.value.typing)
+
+            live.events.emit(Event.Typing("c1", false))
+            runCurrent()
+            assertEquals(setOf("c2"), model.state.value.typing)
+
+            // Another active frame starts the wait again, as the conversation's own line does.
+            advanceTimeBy(4_000)
+            live.events.emit(Event.Typing("c2", true))
+            advanceTimeBy(4_000)
+            runCurrent()
+            assertEquals(setOf("c2"), model.state.value.typing)
+            advanceTimeBy(2_001)
+            runCurrent()
+            assertEquals(emptySet<String>(), model.state.value.typing)
+        }
+
+    @Test
+    fun aLongPressMutesAndUnmutesWithTheCoresCallsAndReadsTheListAgain() =
+        runTest(dispatcher) {
+            account.conversations = listOf(conversation("c1"))
+            val model = model()
+            model.mute("c1", MuteFor.HOUR)
+            advanceUntilIdle()
+            assertEquals(
+                Mute.Until(FakeAccount.NOW + 3_600_000uL),
+                model.state.value.conversations
+                    .single()
+                    .mute,
+            )
+
+            model.unmute("c1")
+            advanceUntilIdle()
+            assertEquals(
+                Mute.Off,
+                model.state.value.conversations
+                    .single()
+                    .mute,
+            )
+            val asked = account.calls.filter { it.startsWith("mute") || it.startsWith("unmute") }
+            assertEquals(listOf("mute c1 HOUR", "unmute c1"), asked)
+            assertEquals(3, reads())
+        }
+
+    @Test
+    fun aFailedMuteIsAProblem() =
+        runTest(dispatcher) {
+            account.conversations = listOf(conversation("c1"))
+            val model = model()
+            account.failNext = unreachable()
+            model.mute("c1", MuteFor.ALWAYS)
+            advanceUntilIdle()
+            assertEquals(Problem.Unreachable, model.state.value.problem)
+            assertEquals(
+                Mute.Off,
+                model.state.value.conversations
+                    .single()
+                    .mute,
+            )
         }
 }

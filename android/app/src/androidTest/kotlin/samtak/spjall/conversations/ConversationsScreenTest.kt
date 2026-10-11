@@ -6,12 +6,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
@@ -25,6 +27,7 @@ import samtak.spjall.core.ConversationState
 import samtak.spjall.core.Item
 import samtak.spjall.core.ItemStatus
 import samtak.spjall.core.Mute
+import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
 import samtak.spjall.socket.Connection
 import samtak.spjall.ui.Dates
@@ -63,6 +66,17 @@ class ConversationsScreenTest {
 
             override fun notificationSettings() {
                 calls += "notificationSettings"
+            }
+
+            override fun mute(
+                conversation: String,
+                duration: MuteFor,
+            ) {
+                calls += "mute $conversation $duration"
+            }
+
+            override fun unmute(conversation: String) {
+                calls += "unmute $conversation"
             }
         }
 
@@ -305,5 +319,82 @@ class ConversationsScreenTest {
         compose.onNodeWithText(text(R.string.conversations_none_found)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.conversations_empty)).assertDoesNotExist()
         compose.onNodeWithText(text(R.string.conversations_people)).assertDoesNotExist()
+    }
+
+    private fun own(
+        status: ItemStatus,
+        readBy: UInt = 0u,
+    ) = Item(8uL, "e8", anna, true, 0uL, status, Content.Text("Takk", null), false, emptyList(), readBy, null, false)
+
+    private fun row(
+        last: Item?,
+        members: List<Person> = listOf(anna),
+        mute: Mute = Mute.Off,
+    ) = Conversation("c1", ConversationState.ACTIVE, members, last, 0u, null, mute)
+
+    @Test
+    fun aLongPressOffersTheMuteAndItsDurations() {
+        show(ConversationsViewModel.State(conversations = listOf(row(null)), loaded = true))
+        compose.onNodeWithText("Anna Jónsdóttir").performTouchInput { longClick() }
+        compose.onNodeWithText(text(R.string.mute)).performClick()
+        compose.onNodeWithText(text(R.string.mute_hour)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.mute_eight_hours)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.mute_always)).performClick()
+        assertEquals(listOf("mute c1 ALWAYS"), calls)
+    }
+
+    @Test
+    fun aLongPressOnAMutedRowTurnsNotificationsBackOn() {
+        show(ConversationsViewModel.State(conversations = listOf(row(null, mute = Mute.Always)), loaded = true))
+        compose.onNodeWithText("Anna Jónsdóttir").performTouchInput { longClick() }
+        compose.onNodeWithText(text(R.string.mute)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.unmute)).performClick()
+        assertEquals(listOf("unmute c1"), calls)
+    }
+
+    @Test
+    fun aRowWithSomeoneTypingSaysSoInPlaceOfThePreviewNamingNoOne() {
+        val bjarni = Person("a3", "Bjarni Pálsson", false)
+        val last = own(ItemStatus.SENT)
+        show(
+            ConversationsViewModel.State(
+                conversations = listOf(row(last, members = listOf(anna, bjarni))),
+                loaded = true,
+                typing = setOf("c1"),
+            ),
+        )
+        compose.onNodeWithText(text(R.string.typing_in_row)).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.last_line_own, "Takk")).assertDoesNotExist()
+    }
+
+    @Test
+    fun theReadersOwnLastMessageCarriesItsState() {
+        var last by mutableStateOf(own(ItemStatus.PENDING))
+        var members by mutableStateOf(listOf(anna))
+        compose.setContent {
+            SpjallTheme {
+                ConversationsScreen(
+                    ConversationsViewModel.State(conversations = listOf(row(last, members)), loaded = true),
+                    actions,
+                )
+            }
+        }
+        compose.onNodeWithContentDescription(text(R.string.message_sending)).assertIsDisplayed()
+
+        last = own(ItemStatus.FAILED)
+        compose.onNodeWithContentDescription(text(R.string.message_sending)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.message_failed)).assertIsDisplayed()
+
+        // Read in a 1:1 says "Lesin" (0022).
+        last = own(ItemStatus.SENT, readBy = 1u)
+        compose.onNodeWithText(text(R.string.message_failed)).assertDoesNotExist()
+        compose.onNodeWithText("· ${text(R.string.read_marker)}").assertIsDisplayed()
+
+        // In a group, how many read it.
+        members = listOf(anna, Person("a3", "Bjarni Pálsson", false))
+        last = own(ItemStatus.SENT, readBy = 2u)
+        compose
+            .onNodeWithText("· ${context.resources.getQuantityString(R.plurals.read_by_count, 2, 2)}")
+            .assertIsDisplayed()
     }
 }

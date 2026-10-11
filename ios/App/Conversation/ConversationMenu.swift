@@ -14,15 +14,10 @@ struct ConversationMenu: View {
 
     var body: some View {
         Menu {
-            if conversation.mute == .off {
-                Menu("mute", systemImage: "bell.slash") {
-                    Button("mute_hour") { Task { await model.mute(.hour) } }
-                    Button("mute_eight_hours") { Task { await model.mute(.eightHours) } }
-                    Button("mute_always") { Task { await model.mute(.always) } }
-                }
-            } else {
-                Button("unmute", systemImage: "bell") { Task { await model.unmute() } }
-            }
+            MuteChoices(
+                muted: conversation.mute != .off,
+                onMute: { duration in Task { await model.mute(duration) } },
+                onUnmute: { Task { await model.unmute() } })
             Button("disappearing_messages", systemImage: "timer") { timing = true }
             if other != nil {
                 Button("block", systemImage: "hand.raised", role: .destructive) { blocking = true }
@@ -47,6 +42,26 @@ struct ConversationMenu: View {
         ) {
             Button("block", role: .destructive) { Task { await model.block() } }
             Button("cancel", role: .cancel) {}
+        }
+    }
+}
+
+/// Mute with its three durations, or notifications back on (decision 0042): in the conversation's menu and
+/// in the list row's long-press menu (decision 0043), the same choices in both.
+struct MuteChoices: View {
+    let muted: Bool
+    let onMute: (MuteFor) -> Void
+    let onUnmute: () -> Void
+
+    var body: some View {
+        if muted {
+            Button("unmute", systemImage: "bell") { onUnmute() }
+        } else {
+            Menu("mute", systemImage: "bell.slash") {
+                Button("mute_hour") { onMute(.hour) }
+                Button("mute_eight_hours") { onMute(.eightHours) }
+                Button("mute_always") { onMute(.always) }
+            }
         }
     }
 }

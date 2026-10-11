@@ -312,8 +312,9 @@ private fun Failed(onResend: () -> Unit) {
     }
 }
 
+/** Who read the reader's message (0022): "Lesin" in a 1:1, the count in a group; the list's row says the same. */
 @Composable
-private fun readLine(
+internal fun readLine(
     count: UInt,
     group: Boolean,
 ): String =
