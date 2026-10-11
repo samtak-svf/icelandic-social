@@ -32,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -79,6 +78,11 @@ import samtak.spjall.me.MeActions
 import samtak.spjall.me.MeScreen
 import samtak.spjall.me.MeViewModel
 import samtak.spjall.me.SettingsScreen
+import samtak.spjall.onboarding.OnboardingActions
+import samtak.spjall.onboarding.OnboardingScreen
+import samtak.spjall.onboarding.OnboardingViewModel
+import samtak.spjall.onboarding.PrefsOnboardingStore
+import samtak.spjall.onboarding.notificationsNeeded
 import samtak.spjall.people.PeopleActions
 import samtak.spjall.people.PeopleScreen
 import samtak.spjall.people.PeopleViewModel
@@ -95,7 +99,7 @@ import samtak.spjall.ui.TabBar
 import samtak.spjall.ui.rememberBack
 
 /**
- * The one activity: sign-in, then the two tabs. It has one composable per
+ * The one activity: sign-in, the first launch, then the tabs. It has one composable per
  * destination, each tying a view model to its screen, which is why it is long.
  */
 @Suppress("TooManyFunctions")
@@ -185,13 +189,71 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** The three tabs, Fljótið, Samtöl and Ég (decision 0034), and the screens they lead to. */
+    /**
+     * Once per install, the first launch's steps come before the tabs (decision 0043). Until they are done the
+     * tabs are not composed, so the Kenni offer, an invite's 1:1 and a tapped notification wait for them.
+     */
     @Composable
     private fun Home(signIns: Int) {
+        val onboarding: OnboardingViewModel =
+            viewModel(viewModelStoreOwner = this, key = "onboarding") {
+                val app = applicationContext
+                OnboardingViewModel(PrefsOnboardingStore(app)) { notificationsNeeded(app) }
+            }
+        val step by onboarding.step.collectAsStateWithLifecycle()
+        LaunchedEffect(Unit) { graph.socket.start() }
+        if (step == OnboardingViewModel.Step.Done) TabScreens(signIns) else Onboarding(signIns, onboarding, step)
+    }
+
+    /** A photo, then notifications; the photo is set as on Ég, by the same view model. */
+    @Composable
+    private fun Onboarding(
+        signIns: Int,
+        onboarding: OnboardingViewModel,
+        step: OnboardingViewModel.Step,
+    ) {
+        val me: MeViewModel =
+            viewModel(viewModelStoreOwner = this, key = "me-$signIns") { MeViewModel(graph.account) }
+        val state by me.state.collectAsStateWithLifecycle()
+        val photo =
+            rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+                uri?.let { me.setPhoto { graph.files.profilePhoto(it) } }
+            }
+        // Refused, the notice on the list and in the settings points at the system's settings (decision 0025).
+        val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { onboarding.asked() }
+        LaunchedEffect(onboarding) {
+            onboarding.ask.collect {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    ask.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    onboarding.asked()
+                }
+            }
+        }
+        OnboardingScreen(
+            step,
+            state,
+            object : OnboardingActions {
+                override fun choosePhoto() =
+                    photo.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+
+                override fun photoDone() = onboarding.photoDone()
+
+                override fun enable() = onboarding.enable()
+
+                override fun notNow() = onboarding.notNow()
+
+                override fun retry() = me.retry()
+            },
+        )
+    }
+
+    /** The three tabs, Fljótið, Samtöl and Ég (decision 0034), and the screens they lead to. */
+    @Composable
+    private fun TabScreens(signIns: Int) {
         val nav = rememberNavController()
         val list: ConversationsViewModel =
             viewModel(key = "list-$signIns") { ConversationsViewModel(graph.account, graph.socket) }
-        LaunchedEffect(Unit) { graph.socket.start() }
         LaunchedEffect(list) { signIn.invites.collect { list.openInvite(it.token, it.signedUp) } }
         LaunchedEffect(list) { list.opened.collect { nav.navigate(conversation(it)) } }
         // Kenni is offered once after a sign-in, and "Seinna" goes on to Fljótið (decision 0035).
@@ -202,7 +264,6 @@ class MainActivity : ComponentActivity() {
                 nav.navigate(conversation(it))
             }
         }
-        AskForNotifications()
         val route =
             nav
                 .currentBackStackEntryAsState()
@@ -245,19 +306,6 @@ class MainActivity : ComponentActivity() {
                     entry.arguments?.getString("postId")?.let { SharePost(it, nav) }
                 }
             }
-        }
-    }
-
-    /** Once per install, after sign-in (decision 0025). Refused, Ég points at the settings. */
-    @Composable
-    private fun AskForNotifications() {
-        val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
-        LaunchedEffect(Unit) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return@LaunchedEffect
-            val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
-            if (prefs.getBoolean(ASKED_NOTIFICATIONS, false)) return@LaunchedEffect
-            prefs.edit { putBoolean(ASKED_NOTIFICATIONS, true) }
-            ask.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
@@ -692,8 +740,6 @@ class MainActivity : ComponentActivity() {
         private const val WALL = "wall"
         private const val REPLIES = "replies"
         private val TABS = setOf(FEED, LIST, ME)
-        private const val PREFS = "push"
-        private const val ASKED_NOTIFICATIONS = "asked_notifications"
 
         private fun conversation(id: String) = "$CONVERSATION/$id"
 

@@ -5,8 +5,10 @@ import SpjallCore
 /// The system's notifications as the app changes them: the notification
 /// service posts them, and the app only asks, registers and takes away.
 protocol Notifier: Sendable {
-    /// Asks the person to allow notifications.
+    /// Asks the person to allow notifications; only from the first launch's button (decision 0043).
     func ask() async
+    /// Whether the person has not yet answered the system's prompt.
+    func undetermined() async -> Bool
     /// Asks the system for this device's push token, which arrives at `PushModel.token`.
     @MainActor func register()
     /// Whether the person has turned this app's notifications off.
@@ -27,25 +29,18 @@ final class PushModel {
     private(set) var off = false
 
     @ObservationIgnored private let account: Account
-    @ObservationIgnored private let notifier: Notifier
-    @ObservationIgnored private let defaults: UserDefaults
+    /// Also the first launch's, which asks for permission (decision 0043).
+    @ObservationIgnored let notifier: Notifier
     /// The socket, while the signed-in screens are up: a new token goes with its next sync.
     @ObservationIgnored weak var live: Live?
 
-    private static let askedKey = "push.asked"
-
-    init(account: Account, notifier: Notifier, defaults: UserDefaults = .standard) {
+    init(account: Account, notifier: Notifier) {
         self.account = account
         self.notifier = notifier
-        self.defaults = defaults
     }
 
-    /// After sign-in: asks once per install, then registers each launch.
+    /// After sign-in, each launch: registers, and never asks; the first launch's priming step does (decision 0043).
     func start() async {
-        if !defaults.bool(forKey: Self.askedKey) {
-            defaults.set(true, forKey: Self.askedKey)
-            await notifier.ask()
-        }
         notifier.register()
         await check()
     }

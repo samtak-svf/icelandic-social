@@ -38,7 +38,7 @@ struct ConversationsView: View {
                         }
                     } else {
                         if model.loaded && model.conversations.isEmpty {
-                            InviteHint(text: "conversations_empty", onInvite: onInvite)
+                            InviteHint(text: "conversations_empty", onInvite: onInvite, onFindPeople: onNew)
                         }
                         rows(model.conversations)
                     }

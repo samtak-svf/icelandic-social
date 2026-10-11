@@ -52,6 +52,10 @@ struct SystemNotifier: Notifier {
         _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
     }
 
+    func undetermined() async -> Bool {
+        await UNUserNotificationCenter.current().notificationSettings().authorizationStatus == .notDetermined
+    }
+
     @MainActor func register() {
         UIApplication.shared.registerForRemoteNotifications()
     }

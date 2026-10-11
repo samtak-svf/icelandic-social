@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -27,6 +28,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -98,7 +100,8 @@ fun ConversationsScreen(
             if (state.nothingFound) {
                 NoneFound()
             } else if (!state.searched && state.loaded && state.conversations.isEmpty()) {
-                InviteHint(stringResource(R.string.conversations_empty), actions::invite)
+                // Everyone signed in is in the picker (decisions 0036, 0043): people can be found, not only invited.
+                InviteHint(stringResource(R.string.conversations_empty), actions::invite, actions::newConversation)
             }
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 if (state.searched) {
@@ -292,11 +295,12 @@ private fun UnreadBadge(
     }
 }
 
-/** The empty list and the empty picker point at the invite link (decision 0022). */
+/** The empty list and the empty picker point at the invite link (decision 0022); the list also at the picker. */
 @Composable
 fun InviteHint(
     text: String,
     onInvite: () -> Unit,
+    onFindPeople: (() -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(24.dp),
@@ -304,7 +308,14 @@ fun InviteHint(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(text = text, style = MaterialTheme.typography.bodyLarge, color = Palette.fg)
-        Button(onClick = onInvite) { Text(stringResource(R.string.invite)) }
+        // Side by side, and one under the other when a large font leaves no room.
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Button(onClick = onInvite) { Text(stringResource(R.string.invite)) }
+            onFindPeople?.let { OutlinedButton(onClick = it) { Text(stringResource(R.string.find_people)) } }
+        }
     }
 }
 

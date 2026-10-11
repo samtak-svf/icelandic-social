@@ -8,22 +8,17 @@ import XCTest
 final class PushModelTests: XCTestCase {
     private let account = FakeAccount(signedIn: true)
     private let notifier = FakeNotifier()
-    private var defaults: UserDefaults!
-
-    override func setUp() async throws {
-        defaults = UserDefaults(suiteName: "PushModelTests")
-        defaults.removePersistentDomain(forName: "PushModelTests")
-    }
 
     private func model() -> PushModel {
-        PushModel(account: account, notifier: notifier, defaults: defaults)
+        PushModel(account: account, notifier: notifier)
     }
 
-    func testAsksOnceAndRegistersEachLaunch() async {
+    func testRegistersEachLaunchAndNeverAsksColdly() async {
         await model().start()
         await model().start()
 
-        XCTAssertEqual(notifier.calls, ["ask", "register", "blocked", "register", "blocked"])
+        // The prompt only follows the first launch's button (decision 0043).
+        XCTAssertEqual(notifier.calls, ["register", "blocked", "register", "blocked"])
     }
 
     func testSaysWhenNotificationsAreOff() async {
@@ -104,6 +99,7 @@ final class FakeNotifier: Notifier, @unchecked Sendable {
     private let lock = NSLock()
     private var _calls: [String] = []
     private var _off = false
+    private var _undetermined = true
 
     var calls: [String] { lock.withLock { _calls } }
 
@@ -116,7 +112,17 @@ final class FakeNotifier: Notifier, @unchecked Sendable {
         lock.withLock { _calls.append(call) }
     }
 
-    func ask() async { record("ask") }
+    var undeterminedValue: Bool {
+        get { lock.withLock { _undetermined } }
+        set { lock.withLock { _undetermined = newValue } }
+    }
+
+    func ask() async {
+        record("ask")
+        lock.withLock { _undetermined = false }
+    }
+
+    func undetermined() async -> Bool { lock.withLock { _undetermined } }
 
     func register() { record("register") }
 

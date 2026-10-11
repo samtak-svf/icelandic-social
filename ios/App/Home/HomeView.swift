@@ -2,7 +2,8 @@ import SpjallCore
 import SwiftUI
 
 /// The three tabs, Fljótið, the conversations and "Ég" (decision 0034), and the
-/// screens they lead to. The socket is open while the scene is active
+/// screens they lead to. Once per install the first launch's steps come before them
+/// (decision 0043), and the Kenni offer waits for those. The socket is open while the scene is active
 /// (decision 0022). While it is, what arrives is on screen, so push announces
 /// none of it (decision 0025).
 struct HomeView: View {
@@ -39,6 +40,7 @@ struct HomeView: View {
     @State private var socket: Socket
     @State private var list: ConversationsModel
     @State private var me: MeModel
+    @State private var onboarding: OnboardingModel
     @State private var feed: PostsModel
     /// The person's own wall, made once it is known who they are.
     @State private var wall: PostsModel?
@@ -69,19 +71,25 @@ struct HomeView: View {
         _socket = State(initialValue: socket)
         _list = State(initialValue: ConversationsModel(account: signIn.account, live: socket))
         _me = State(initialValue: MeModel(account: signIn.account))
+        _onboarding = State(initialValue: OnboardingModel(notifier: push.notifier))
         _feed = State(initialValue: PostsModel(account: signIn.account, source: .feed))
         _photos = State(initialValue: PhotoCache(account: signIn.account, decode: avatarPhoto))
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            switch tab {
-            case .feed: feedStack
-            case .conversations: conversationsStack
-            case .me: meStack
+            if onboarding.step != .done {
+                // The photo is set as on "Ég", by the same model.
+                OnboardingView(model: onboarding, me: me)
+            } else {
+                switch tab {
+                case .feed: feedStack
+                case .conversations: conversationsStack
+                case .me: meStack
+                }
             }
             // Only on the three roots: what they lead to has the screen to itself.
-            if atRoot {
+            if onboarding.step == .done && atRoot {
                 TabBar(
                     selection: $tab,
                     items: [
@@ -132,10 +140,12 @@ struct HomeView: View {
         .onChange(of: push.opened) { _, conversation in
             if conversation != nil { openTapped() }
         }
-        .onChange(of: signIn.offerVerify, initial: true) { _, offer in
-            guard offer else { return }
-            offering = true
-            signIn.verifyOffered()
+        .onChange(of: signIn.offerVerify, initial: true) { offerVerify() }
+        .onChange(of: onboarding.step) { _, step in
+            guard step == .done else { return }
+            // The answer to the prompt, if there was one, for the notice on the list.
+            Task { await push.check() }
+            offerVerify()
         }
         .fullScreenCover(isPresented: $offering) {
             VerifyView(
@@ -273,6 +283,13 @@ struct HomeView: View {
         } else {
             show(person.account)
         }
+    }
+
+    /// Kenni's offer after a sign-in (decision 0035), once the first launch's steps are done.
+    private func offerVerify() {
+        guard signIn.offerVerify, onboarding.step == .done else { return }
+        offering = true
+        signIn.verifyOffered()
     }
 
     /// A tapped notification: into its conversation.

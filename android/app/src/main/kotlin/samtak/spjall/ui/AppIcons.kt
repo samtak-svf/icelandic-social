@@ -74,6 +74,9 @@ object AppIcons {
             "M7 12.5h2",
         )
 
+    /** The first launch's notifications step (decision 0043): a bell. */
+    val Bell = outline("bell", 20f, 1.8f, "M10 3a5 5 0 015 5v4l2 3H3l2-3V8a5 5 0 015-5z", "M8 17.5h4")
+
     val BellOff =
         outline("bell-off", 20f, 1.8f, "M10 3a5 5 0 015 5v4l2 3H3l2-3V8a5 5 0 015-5z", "M8 17.5h4", "M3 3l14 14")
 

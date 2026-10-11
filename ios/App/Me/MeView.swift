@@ -155,7 +155,7 @@ private struct PhotoControls: View {
 }
 
 /// The pick made small and square off the main thread; the copy of the original is deleted.
-private func profilePhoto(_ photo: Picked) async throws -> URL {
+func profilePhoto(_ photo: Picked) async throws -> URL {
     let copy = try await photo.read()
     defer { try? FileManager.default.removeItem(at: copy) }
     return try await offMain { try squarePhoto(copy, side: 1024) }

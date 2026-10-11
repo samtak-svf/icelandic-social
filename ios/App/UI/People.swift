@@ -138,13 +138,26 @@ struct VerifiedMark: View {
 struct InviteHint: View {
     let text: LocalizedStringKey
     let onInvite: () -> Void
+    /// The empty list also leads to the picker, where everyone signed in is (decisions 0036, 0043).
+    var onFindPeople: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 16) {
             Text(text).multilineTextAlignment(.center)
-            Button("invite", action: onInvite).buttonStyle(.borderedProminent)
+            // Side by side, and one under the other when a large font leaves no room.
+            ViewThatFits {
+                HStack(spacing: 8) { buttons }
+                VStack(spacing: 8) { buttons }
+            }
         }
         .padding(24)
         .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder private var buttons: some View {
+        Button("invite", action: onInvite).buttonStyle(.borderedProminent)
+        if let onFindPeople {
+            Button("find_people", action: onFindPeople).buttonStyle(.bordered)
+        }
     }
 }

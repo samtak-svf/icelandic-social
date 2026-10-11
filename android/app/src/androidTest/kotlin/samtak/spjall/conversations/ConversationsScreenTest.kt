@@ -146,6 +146,14 @@ class ConversationsScreenTest {
     }
 
     @Test
+    fun anEmptyListAlsoFindsPeopleInThePicker() {
+        show(ConversationsViewModel.State(loaded = true, connection = Connection.Online))
+        // Everyone signed in is in the picker (0036), so the empty list leads there too (0043).
+        compose.onNodeWithText(text(R.string.find_people)).assertIsDisplayed().performClick()
+        assertEquals(listOf("newConversation"), calls)
+    }
+
+    @Test
     fun aSharedPostIsListedInFixedWordsAsSaidByItsSender() {
         val last =
             Item(6uL, "e6", anna, true, 0uL, ItemStatus.SENT, Content.Post("p1"), false, emptyList(), 0u, null, false)
