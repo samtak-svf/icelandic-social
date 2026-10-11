@@ -105,9 +105,8 @@ pub enum State {
     /// This device missed what it needed to follow the group: messages
     /// expired before it fetched them, or a commit it could not process. It
     /// joins again by an external commit on the next `sync` or notify, and
-    /// keeps its history (0021); after the server refused its join, `sync`
-    /// waits an hour. A conversation this device is joining for the first
-    /// time is `Stale` until the server has its commit.
+    /// keeps its history (0021). A conversation this device is joining for
+    /// the first time is `Stale` until the server has its commit.
     Stale,
 }
 
@@ -302,10 +301,6 @@ enum Drain {
 /// took its epoch.
 const JOIN_ATTEMPTS: usize = 3;
 
-/// How long `sync` waits to join a conversation again after the server
-/// refused the join outright, in milliseconds.
-const JOIN_REFUSED_WAIT: i64 = 60 * 60 * 1000;
-
 /// At most one typing frame per conversation this often (0022).
 const TYPING_EVERY: Duration = Duration::from_secs(3);
 
@@ -329,23 +324,6 @@ fn too_old<T>(result: Result<T, ClientError>) -> Result<(), ClientError> {
     match result {
         Err(error @ ClientError::Transport(ApiError::ClientTooOld { .. })) => Err(error),
         _ => Ok(()),
-    }
-}
-
-/// A refusal of one conversation's request, which the others' do not
-/// share: a 4xx other than an unauthorized device (401) or the account's
-/// rate limit (429).
-fn refused_here(error: &ApiError) -> bool {
-    matches!(error, ApiError::Refused { status, .. }
-        if (400..500).contains(status) && !matches!(status, 401 | 429))
-}
-
-/// Only what stops more than this conversation: one the server refuses
-/// waits, and the others go on.
-fn its_own(result: Result<(), ClientError>) -> Result<(), ClientError> {
-    match result {
-        Err(ClientError::Transport(error)) if refused_here(&error) => Ok(()),
-        result => result,
     }
 }
 
@@ -474,7 +452,7 @@ fn next_unsent(tx: &Transaction, group: &[u8]) -> Result<Option<Unsent>, ClientE
     let row: Option<Row> = tx
         .query_row(
             "SELECT id, kind, intent, client_msg_id, ciphertext, welcome, group_info
-             FROM outbox WHERE group_id = ?1 AND seq IS NULL AND kind != 'join' AND refused = 0
+             FROM outbox WHERE group_id = ?1 AND seq IS NULL AND kind != 'join'
              ORDER BY ciphertext IS NULL, kind = 'remove_devices' DESC, id LIMIT 1",
             [group],
             |r| {
@@ -1081,10 +1059,9 @@ impl<T: Transport> Client<T> {
         let group = group_id(conversation).ok_or(ClientError::UnknownConversation)?;
         self.store.try_write(|tx| {
             conversation_state(tx, &group)?;
-            Ok::<_, ClientError>(tx.execute(
-                "UPDATE outbox SET failed = 0, refused = 0 WHERE group_id = ?1",
-                [&group],
-            )?)
+            Ok::<_, ClientError>(
+                tx.execute("UPDATE outbox SET failed = 0 WHERE group_id = ?1", [&group])?,
+            )
         })?;
         self.sync_one(&group)?;
         Ok(std::mem::take(&mut self.outcome))
@@ -1178,21 +1155,18 @@ impl<T: Transport> Client<T> {
     }
 
     /// Sends what the outbox holds and fetches what came, for every
-    /// conversation this device is in. One the server refuses waits for the
-    /// next sync; the others and the steps after them go on.
+    /// conversation this device is in.
     pub fn sync(&mut self) -> Result<Outcome, ClientError> {
         let groups: Vec<Vec<u8>> = self.store.try_write(|tx| {
             let mut statement = tx.prepare(
-                "SELECT group_id FROM conversations
-                 WHERE state IN ('new', 'active')
-                    OR (state = 'stale' AND (join_refused_at IS NULL OR join_refused_at <= ?1))
+                "SELECT group_id FROM conversations WHERE state IN ('new', 'active', 'stale')
                  ORDER BY created_at",
             )?;
-            let rows = statement.query_map([now() - JOIN_REFUSED_WAIT], |r| r.get(0))?;
+            let rows = statement.query_map([], |r| r.get(0))?;
             rows.collect::<rusqlite::Result<_>>()
         })?;
         for group in groups {
-            its_own(self.sync_one(&group))?;
+            self.sync_one(&group)?;
         }
         // KeyPackages, blocks and mutes set on another device of this
         // account and the push token: the next sync tries each again,
@@ -1297,16 +1271,16 @@ impl<T: Transport> Client<T> {
                 let group =
                     group_id(&conversation).ok_or(ClientError::Protocol("conversation id"))?;
                 let known = self.store.try_write(|tx| conversation_of(tx, &group))?;
-                its_own(match known {
+                match known {
                     Some((State::New | State::Active | State::Excluded, cursor))
                         if seq > cursor =>
                     {
-                        self.sync_one(&group)
+                        self.sync_one(&group)?
                     }
-                    Some((State::Stale, _)) => self.sync_one(&group),
-                    Some(_) => Ok(()),
-                    None => self.join(&group),
-                })?;
+                    Some((State::Stale, _)) => self.sync_one(&group)?,
+                    Some(_) => {}
+                    None => self.join(&group)?,
+                }
                 self.refresh_profiles()?;
             }
             Incoming::Typing {
@@ -1527,33 +1501,15 @@ impl<T: Transport> Client<T> {
                     })?;
                     return Ok(Drain::Over);
                 }
-                Err(error) if row.kind == Kind::Message && refused_here(&error) => {
-                    // Sent again it would be refused again: it shows failed
-                    // and waits for `retry`, sealed anew then; the next sync
-                    // sends the rows behind it.
-                    self.store.try_write(|tx| {
-                        tx.execute(
-                            "UPDATE outbox SET client_msg_id = NULL, ciphertext = NULL,
-                                 failed = 1, refused = 1
-                             WHERE id = ?1",
-                            [row.id],
-                        )
-                    })?;
-                    self.outcome.events.push(Event::Timeline {
-                        conversation,
-                        changed: Vec::new(),
-                    });
-                    return Err(error.into());
-                }
                 Err(error) => return Err(self.failed(group, error)),
             }
         }
     }
 
-    /// A send that did not go: what this conversation has queued shows as
+    /// A send got no answer: what this conversation has queued shows as
     /// failed until `retry` or the next send that gets through.
     fn failed(&mut self, group: &[u8], error: ApiError) -> ClientError {
-        if matches!(error, ApiError::Unreachable(_) | ApiError::Refused { .. }) {
+        if matches!(error, ApiError::Unreachable(_)) {
             let marked = self.store.try_write(|tx| {
                 tx.execute(
                     "UPDATE outbox SET failed = 1
@@ -1840,8 +1796,7 @@ impl<T: Transport> Client<T> {
                     self.store.try_write(|tx| {
                         tx.execute("DELETE FROM outbox WHERE id = ?1", [id])?;
                         tx.execute(
-                            "UPDATE conversations SET cursor = ?2, join_refused_at = NULL
-                             WHERE group_id = ?1",
+                            "UPDATE conversations SET cursor = ?2 WHERE group_id = ?1",
                             params![group, seq as i64],
                         )?;
                         set_state(tx, group, State::Active)
@@ -1863,19 +1818,6 @@ impl<T: Transport> Client<T> {
                 Err(ApiError::Refused { status: 403, .. }) => {
                     self.store.try_write(|tx| drop_join(tx, group, id))?;
                     return Ok(false);
-                }
-                // These bytes will not do: the next join is made from the
-                // GroupInfo then, and `sync` waits before it.
-                Err(error) if refused_here(&error) => {
-                    self.store.try_write(|tx| {
-                        drop_join(tx, group, id)?;
-                        tx.execute(
-                            "UPDATE conversations SET join_refused_at = ?2 WHERE group_id = ?1",
-                            params![group, now()],
-                        )?;
-                        Ok::<_, ClientError>(())
-                    })?;
-                    return Err(error.into());
                 }
                 Err(error) => return Err(error.into()),
             }

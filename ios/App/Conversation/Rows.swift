@@ -59,6 +59,26 @@ func rows(_ items: [Item], calendar: Calendar = .current) -> [Row] {
     return rows
 }
 
+/// What the small line under a bubble shows, in order.
+enum MetaPart: Equatable {
+    case edited, sending, time, read
+}
+
+/// The line under a bubble: the edited marker, then a clock while sending
+/// (decision 0043) or the time, then who read it. The time shows at the end of
+/// a run; the rest always.
+func meta(_ item: Item, last: Bool, readBy: UInt32?) -> [MetaPart] {
+    var parts: [MetaPart] = []
+    if item.edited { parts.append(.edited) }
+    if item.status == .pending {
+        parts.append(.sending)
+    } else if last || readBy != nil {
+        parts.append(.time)
+    }
+    if readBy != nil { parts.append(.read) }
+    return parts
+}
+
 func isCard(_ item: Item) -> Bool {
     switch item.content {
     case .members, .timer: true

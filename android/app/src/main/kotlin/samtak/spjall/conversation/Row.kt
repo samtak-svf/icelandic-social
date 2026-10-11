@@ -2,6 +2,7 @@ package samtak.spjall.conversation
 
 import samtak.spjall.core.Content
 import samtak.spjall.core.Item
+import samtak.spjall.core.ItemStatus
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -75,6 +76,25 @@ fun rows(
         if (row is Row.Bubble && next is Row.Bubble && !next.first) row.copy(last = false) else row
     }
 }
+
+/** What the small line under a bubble shows, in order. */
+enum class MetaPart { EDITED, SENDING, TIME, READ }
+
+/**
+ * The line under a bubble: the edited marker, then a clock while sending
+ * (0043) or the time, then who read it. The time shows at the end of a run;
+ * the rest always.
+ */
+fun Row.Bubble.meta(): List<MetaPart> =
+    listOfNotNull(
+        MetaPart.EDITED.takeIf { item.edited },
+        when {
+            item.status == ItemStatus.PENDING -> MetaPart.SENDING
+            last || readBy != null -> MetaPart.TIME
+            else -> null
+        },
+        MetaPart.READ.takeIf { readBy != null },
+    )
 
 fun Item.isCard() = content is Content.Members || content is Content.Timer
 

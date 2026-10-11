@@ -69,19 +69,14 @@ import samtak.spjall.core.Conversation
 import samtak.spjall.core.ConversationState
 import samtak.spjall.core.Item
 import samtak.spjall.ui.AppIcons
-import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.RoundButton
 import samtak.spjall.ui.SansFamily
 import samtak.spjall.ui.SectionLabel
-import samtak.spjall.ui.VerifiedMark
-import samtak.spjall.ui.avatarKind
 import samtak.spjall.ui.dayHeading
 import samtak.spjall.ui.lastLine
-import samtak.spjall.ui.photoOf
 import samtak.spjall.ui.shownName
-import samtak.spjall.ui.title
 import java.time.LocalDate
 
 /**
@@ -140,67 +135,6 @@ fun ConversationScreen(
             },
             dismissButton = { TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.cancel)) } },
         )
-    }
-}
-
-/** The cream band: back, who this is with, whether Kenni vouched for them, and the menu. */
-@Composable
-private fun TopBar(
-    state: ConversationViewModel.State,
-    actions: ConversationActions,
-) {
-    Column(modifier = Modifier.fillMaxWidth().background(Palette.bg)) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-                    .padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            IconButton(onClick = actions::back) {
-                Icon(AppIcons.Back, contentDescription = stringResource(R.string.back), tint = Palette.fg)
-            }
-            state.conversation?.let {
-                val one = it.members.singleOrNull()
-                val title = it.title()
-                Avatar(
-                    name = if (one == null) title else one.name,
-                    kind = it.avatarKind(),
-                    size = HEADER_AVATAR.dp,
-                    photo = it.photoOf(),
-                )
-                // The title has all the room the menu leaves; the mark sits right after it.
-                Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp),
-                    ) {
-                        Text(
-                            text = title,
-                            style = TITLE,
-                            color = Palette.fg,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false).semantics { heading() },
-                        )
-                        if (one?.verified == true) VerifiedMark()
-                    }
-                    if (one?.verified == true) {
-                        // The dot already says it to TalkBack; this is its visible word.
-                        Text(
-                            text = stringResource(R.string.verified_short),
-                            style = SUBTITLE,
-                            color = Palette.mutedFg,
-                            modifier = Modifier.clearAndSetSemantics {},
-                        )
-                    }
-                }
-                ConversationMenu(it, actions)
-            }
-        }
-        HorizontalDivider(color = Palette.border)
     }
 }
 
@@ -331,7 +265,7 @@ private fun TypingRow(name: String?) {
 }
 
 /**
- * Attach, a pill to write in, and send (1c, 1f). The pill is muted until it
+ * A pill to write in and one action beside it (1c, 1f, 0043). The pill is muted until it
  * has focus, then white with a dark edge, as the keyboard comes up.
  */
 @Composable
@@ -350,18 +284,25 @@ private fun Composer(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (state.mode == ConversationViewModel.Mode.New) AttachButton(actions) else Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(12.dp))
             Field(state.draft, actions::draft, Modifier.weight(1f))
-            val ready = state.draft.isNotBlank()
-            RoundButton(
-                icon = AppIcons.Send,
-                description = stringResource(R.string.send),
-                onClick = actions::send,
-                enabled = ready,
-                fill = if (ready) Palette.primary else Palette.muted,
-                tint = if (ready) Palette.primaryFg else Palette.mutedFg,
-                size = SEND.dp,
-            )
+            // One action at a time, in one place (0043): attach while the field
+            // is empty, send once it has text; replying or editing keeps send.
+            when (state.action) {
+                ConversationViewModel.ComposerAction.ATTACH -> AttachButton(actions)
+                ConversationViewModel.ComposerAction.SEND -> {
+                    val ready = state.draft.isNotBlank()
+                    RoundButton(
+                        icon = AppIcons.Send,
+                        description = stringResource(R.string.send),
+                        onClick = actions::send,
+                        enabled = ready,
+                        fill = if (ready) Palette.primary else Palette.muted,
+                        tint = if (ready) Palette.primaryFg else Palette.mutedFg,
+                        size = SEND.dp,
+                    )
+                }
+            }
         }
     }
 }
@@ -429,7 +370,6 @@ private fun ModeLine(
 
 private const val OLDER_AHEAD = 10
 private const val COMPOSER_LINES = 5
-private const val HEADER_AVATAR = 38
 private const val BANNER_RADIUS = 14
 private const val BUBBLE_PILL = 18
 private const val DOT = 6
@@ -441,7 +381,5 @@ private const val FIELD_EDGE = 1.5f
 /** The typing dots fade from left to right, as in the design. */
 private val DOT_ALPHAS = listOf(1f, 0.7f, 0.4f)
 
-private val TITLE = TextStyle(fontFamily = SansFamily, fontWeight = FontWeight.Black, fontSize = 15.5.sp)
-private val SUBTITLE = TextStyle(fontFamily = SansFamily, fontWeight = FontWeight.Medium, fontSize = 11.sp)
 private val FIELD =
     TextStyle(fontFamily = SansFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp)

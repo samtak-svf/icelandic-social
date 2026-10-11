@@ -86,6 +86,23 @@ final class ConversationModelTests: XCTestCase {
         XCTAssertTrue(model.items.contains { $0.seq == nil }, "the pending item shows")
     }
 
+    func testTheComposerAttachesWhileEmptyAndSendsOnceThereIsText() async {
+        let target = item(4, own: true)
+        let model = await model()
+        XCTAssertEqual(model.composerAction, .attach)
+        model.type("  ")
+        XCTAssertEqual(model.composerAction, .attach)
+        model.type("Hæ")
+        XCTAssertEqual(model.composerAction, .send)
+        model.type("")
+        model.reply(target)
+        XCTAssertEqual(model.composerAction, .send, "a reply never attaches")
+        model.cancelMode()
+        model.edit(target)
+        model.type("")
+        XCTAssertEqual(model.composerAction, .send, "send stays while editing")
+    }
+
     func testABlankDraftSendsNothingAndCancellingAnEditClearsIt() async {
         let target = item(4, own: true)
         let model = await model()

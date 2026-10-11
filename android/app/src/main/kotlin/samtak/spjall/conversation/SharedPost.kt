@@ -87,7 +87,8 @@ internal fun Quoted(
 /**
  * A Fljótið post shared here (decision 0040): its author and text as the
  * server holds them now, fetched while the card is on screen and kept
- * nowhere. Until it comes, and when it cannot, only fixed words.
+ * nowhere, labelled as from the feed above its author (0043). Until it
+ * comes, and when it cannot, only fixed words.
  */
 @Composable
 internal fun SharedCard(
@@ -103,6 +104,12 @@ internal fun SharedCard(
         Column(modifier = Modifier.padding(start = 10.dp)) {
             when (shared) {
                 is Shared.Found -> {
+                    // Not the sender's own words, but a post from the feed (0043).
+                    Text(
+                        text = stringResource(R.string.post_from_feed),
+                        style = Type.meta,
+                        color = foreground,
+                    )
                     NameWithMark(
                         name = shared.post.author.shownName(),
                         verified = shared.post.author.verified,

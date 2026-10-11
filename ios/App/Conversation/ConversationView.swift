@@ -159,6 +159,8 @@ private struct TopBar: View {
     let model: ConversationModel
     let writable: Bool
 
+    /// The conversation's information sheet is open (decision 0043).
+    @State private var info = false
     @Environment(\.dismiss) private var dismiss
 
     private var verified: Bool {
@@ -180,32 +182,19 @@ private struct TopBar: View {
             .buttonStyle(.plain)
             .accessibilityLabel(Text("back"))
             if let conversation {
-                let group = conversation.members.count > 1
-                Avatar(
-                    name: group ? title(conversation) : conversation.members.first?.name,
-                    kind: avatarKind(conversation), size: 38, photo: photoOf(conversation))
-                VStack(alignment: .leading, spacing: 1) {
-                    HStack(spacing: 5) {
-                        Text(verbatim: title(conversation))
-                            .font(.sans(15.5, black: true, relativeTo: .headline))
-                            .foregroundStyle(BrandTokens.Colors.fg)
-                            .lineLimit(1)
-                        if verified { VerifiedMark() }
-                    }
-                    if verified {
-                        // The mark already says it to VoiceOver.
-                        Text("verified_short")
-                            .font(.sans(11, relativeTo: .caption))
-                            .foregroundStyle(BrandTokens.Colors.mutedFg)
-                            .accessibilityHidden(true)
-                    }
+                // A tap on who this is opens the conversation's information (decision 0043).
+                Button {
+                    info = true
+                } label: {
+                    who(conversation)
                 }
-                .accessibilityElement(children: .combine)
-                .accessibilityAddTraits(.isHeader)
+                .buttonStyle(.plain)
+                .disabled(!writable)
+                .accessibilityHint(writable ? Text("conversation_info") : Text(verbatim: ""))
             }
             Spacer(minLength: 0)
             if writable, let conversation {
-                ConversationMenu(conversation: conversation, model: model)
+                ConversationMenu(conversation: conversation, model: model, info: $info)
             }
         }
         .padding(.leading, 4)
@@ -215,6 +204,35 @@ private struct TopBar: View {
         .overlay(alignment: .bottom) {
             Rectangle().fill(BrandTokens.Colors.border).frame(height: 1)
         }
+    }
+
+    private func who(_ conversation: Conversation) -> some View {
+        let group = conversation.members.count > 1
+        return HStack(spacing: 10) {
+            Avatar(
+                name: group ? title(conversation) : conversation.members.first?.name,
+                kind: avatarKind(conversation), size: 38, photo: photoOf(conversation))
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 5) {
+                    Text(verbatim: title(conversation))
+                        .font(.sans(15.5, black: true, relativeTo: .headline))
+                        .foregroundStyle(BrandTokens.Colors.fg)
+                        .lineLimit(1)
+                    if verified { VerifiedMark() }
+                }
+                if verified {
+                    // The mark already says it to VoiceOver.
+                    Text("verified_short")
+                        .font(.sans(11, relativeTo: .caption))
+                        .foregroundStyle(BrandTokens.Colors.mutedFg)
+                        .accessibilityHidden(true)
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+        }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
     }
 }
 
@@ -319,19 +337,7 @@ private struct Composer: View {
             case .edit(let item): ModeLine(label: "edit", item: item, onCancel: model.cancelMode)
             }
             HStack(alignment: .bottom, spacing: 0) {
-                // Attaching starts a message of its own, so not while replying or editing.
-                if model.mode == .new {
-                    Menu {
-                        Button("photo", systemImage: "photo") { picking = true }
-                        Button("file", systemImage: "doc") { importing = true }
-                    } label: {
-                        RoundIcon(
-                            systemImage: "plus", fill: BrandTokens.Colors.muted, tint: BrandTokens.Colors.fg, size: 38)
-                    }
-                    .accessibilityLabel(Text("attach"))
-                } else {
-                    Spacer().frame(width: 12)
-                }
+                Spacer().frame(width: 12)
                 TextField(
                     "composer_placeholder",
                     text: Binding(get: { model.draft }, set: { model.type($0) }),
@@ -353,13 +359,27 @@ private struct Composer: View {
                     }
                 }
                 .padding(.vertical, 2)
-                RoundButton(
-                    systemImage: "paperplane.fill", label: "send",
-                    fill: blank ? BrandTokens.Colors.muted : BrandTokens.Colors.primary,
-                    tint: blank ? BrandTokens.Colors.mutedFg : BrandTokens.Colors.primaryFg,
-                    size: 40, enabled: !blank
-                ) {
-                    Task { await model.send() }
+                // One action at a time, in one place (decision 0043): attach while the field is
+                // empty, send once it has text; replying or editing keeps send.
+                switch model.composerAction {
+                case .attach:
+                    Menu {
+                        Button("photo", systemImage: "photo") { picking = true }
+                        Button("file", systemImage: "doc") { importing = true }
+                    } label: {
+                        RoundIcon(
+                            systemImage: "plus", fill: BrandTokens.Colors.muted, tint: BrandTokens.Colors.fg, size: 38)
+                    }
+                    .accessibilityLabel(Text("attach"))
+                case .send:
+                    RoundButton(
+                        systemImage: "paperplane.fill", label: "send",
+                        fill: blank ? BrandTokens.Colors.muted : BrandTokens.Colors.primary,
+                        tint: blank ? BrandTokens.Colors.mutedFg : BrandTokens.Colors.primaryFg,
+                        size: 40, enabled: !blank
+                    ) {
+                        Task { await model.send() }
+                    }
                 }
             }
             .padding(.horizontal, 4)

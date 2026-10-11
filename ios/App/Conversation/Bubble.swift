@@ -88,12 +88,18 @@ struct Bubble: View {
             }
             if item.status == .failed {
                 Failed(onResend: model.resend)
-            } else if let meta {
-                Text(verbatim: meta)
-                    .font(TypeStyle.meta)
-                    .foregroundStyle(BrandTokens.Colors.mutedFg)
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 3)
+            } else if !parts.isEmpty {
+                HStack(spacing: 4) {
+                    if let words { Text(verbatim: words) }
+                    if parts.contains(.sending) {
+                        Image(systemName: "clock")
+                            .accessibilityLabel(Text("message_sending"))
+                    }
+                }
+                .font(TypeStyle.meta)
+                .foregroundStyle(BrandTokens.Colors.mutedFg)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 3)
             }
         }
         .frame(maxWidth: .infinity, alignment: item.own ? .trailing : .leading)
@@ -138,21 +144,21 @@ struct Bubble: View {
         if offer.delete { Button("delete_for_everyone", systemImage: "trash", role: .destructive, action: onDelete) }
     }
 
-    /// The small line under a message: the edited marker, then sending or
-    /// the time, then who read it. The time shows at the end of a run; the rest
-    /// always.
-    private var meta: String? {
-        var parts: [String] = []
-        if item.edited { parts.append(localized("edited_marker")) }
-        if item.status == .pending {
-            parts.append(localized("message_sending"))
-        } else if last || readBy != nil {
-            parts.append(clockTime(item.ts))
+    /// The small line under a message (`meta`): the edited marker, then a
+    /// clock while sending (decision 0043) or the time, then who read it.
+    private var parts: [MetaPart] { meta(item, last: last, readBy: readBy) }
+
+    /// The line's words; the clock is drawn beside them.
+    private var words: String? {
+        let words = parts.compactMap { part -> String? in
+            switch part {
+            case .edited: localized("edited_marker")
+            case .sending: nil
+            case .time: clockTime(item.ts)
+            case .read: readBy.map { readMarker($0, group: group) }
+            }
         }
-        if let readBy {
-            parts.append(readMarker(readBy, group: group))
-        }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        return words.isEmpty ? nil : words.joined(separator: " · ")
     }
 
     private static let radius: CGFloat = 18

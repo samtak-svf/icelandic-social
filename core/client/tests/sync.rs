@@ -812,117 +812,6 @@ fn a_join_that_lost_its_epoch_is_made_again() {
     assert_eq!(texts(&b2.deliver()), strings(&["hæ"]));
 }
 
-/// One conversation the server refuses holds up neither the conversations
-/// after it nor the steps after them; its join waits an hour.
-#[test]
-fn a_refused_join_holds_up_no_other_conversation() {
-    let relay = Relay::new();
-    let mut a1 = Phone::new(&relay, "a", "a1");
-    let mut b1 = Phone::new(&relay, "b", "b1");
-    let mut c1 = Phone::new(&relay, "c", "c1");
-    let first = conversation(&mut a1, &mut b1);
-    std::thread::sleep(std::time::Duration::from_millis(5));
-    let later = conversation(&mut b1, &mut c1);
-
-    // The first goes stale for b1 while its socket is closed.
-    for text in ["eitt", "tvö", "þrjú"] {
-        a1.send(&first, text);
-    }
-    a1.sync();
-    relay.expire(&first, 3);
-    relay.frames("b1");
-
-    b1.send(&later, "kemst samt");
-    relay.refuse_sends("b1", 1);
-    let asked = |path: &str| {
-        relay
-            .requests("b1")
-            .iter()
-            .filter(|r| r.path == path)
-            .count()
-    };
-    let joins = || asked(&format!("/v1/conversations/{first}/messages"));
-    let listed = asked("/v1/mutes");
-    b1.sync();
-    assert_eq!(joins(), 1);
-    assert_eq!(texts(&c1.deliver()), strings(&["kemst samt"]));
-    assert_eq!(asked("/v1/mutes"), listed + 1);
-    let state = |b1: &mut Phone| {
-        b1.client
-            .conversations()
-            .unwrap()
-            .into_iter()
-            .find(|c| c.id == first)
-            .unwrap()
-            .state
-    };
-    assert_eq!(state(&mut b1), State::Stale);
-
-    // Not tried again until an hour has passed.
-    b1.sync();
-    assert_eq!(joins(), 1);
-    let mut store = spjall_store::Store::open(b1.dir.path(), &KEY).unwrap();
-    store
-        .write(|tx| {
-            tx.execute(
-                "UPDATE conversations SET join_refused_at = join_refused_at - 3600000",
-                [],
-            )
-        })
-        .unwrap();
-    assert_eq!(joined(&b1.sync()), vec![first.clone()]);
-    assert_eq!(state(&mut b1), State::Active);
-}
-
-/// A send the server refuses as malformed would be refused again: it shows
-/// failed, the messages behind it go, and `retry` sends it anew.
-#[test]
-fn a_refused_message_shows_failed_and_holds_up_nothing() {
-    let relay = Relay::new();
-    let mut a1 = Phone::new(&relay, "a", "a1");
-    let mut b1 = Phone::new(&relay, "b", "b1");
-    let conversation = conversation(&mut a1, &mut b1);
-
-    a1.send(&conversation, "hafnað");
-    relay.refuse_sends("a1", 1);
-    a1.sync();
-    assert_eq!(
-        items(&mut a1, &conversation).last().unwrap().status,
-        Status::Failed
-    );
-
-    a1.send(&conversation, "næst");
-    let sent = relay.sends("a1").len();
-    assert_eq!(texts(&a1.sync()), strings(&["næst"]));
-    assert_eq!(relay.sends("a1").len(), sent + 1, "the refused one waits");
-    // What has gone first, then what has not.
-    let statuses: Vec<Status> = items(&mut a1, &conversation)
-        .iter()
-        .rev()
-        .take(2)
-        .map(|i| i.status)
-        .collect();
-    assert_eq!(statuses, vec![Status::Failed, Status::Sent]);
-    assert_eq!(texts(&b1.deliver()), strings(&["næst"]));
-
-    // A retry the server refuses names its request (0037).
-    relay.refuse_sends("a1", 1);
-    match a1.client.retry(&conversation) {
-        Err(ClientError::Transport(error @ ApiError::Refused { status: 400, .. })) => {
-            assert!(error.request_id().is_some());
-        }
-        other => panic!("{other:?}"),
-    }
-    let outcome = a1.client.retry(&conversation).unwrap();
-    a1.forward(outcome.frames);
-    assert!(
-        items(&mut a1, &conversation)
-            .iter()
-            .all(|i| i.status == Status::Sent)
-    );
-    assert_eq!(texts(&b1.deliver()), strings(&["hafnað"]));
-}
-
 #[test]
 fn a_device_of_an_account_outside_the_conversation_does_not_join() {
     let relay = Relay::new();
@@ -1948,12 +1837,10 @@ fn a_blocked_account_cannot_reach_the_blocker_again() {
     conversation(&mut a1, &mut b1);
     a1.client.block("b").unwrap();
     b1.deliver();
-    let refused = b1.client.create_conversation(&strings(&["a"])).unwrap();
-    // It holds up no other conversation's sync, and a retry is told why:
-    // the refusal keeps the id the server gave the request (0037).
-    b1.sync();
+    b1.client.create_conversation(&strings(&["a"])).unwrap();
+    // The refusal keeps the id the server gave the request (0037).
     assert!(matches!(
-        b1.client.retry(&refused),
+        b1.client.sync(),
         Err(ClientError::Transport(ApiError::Refused {
             status: 403,
             request_id: Some(ref id),

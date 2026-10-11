@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -36,6 +38,7 @@ import samtak.spjall.conversation.ConversationViewModel.Shared
 import samtak.spjall.core.Content
 import samtak.spjall.core.Item
 import samtak.spjall.core.ItemStatus
+import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.Type
 import samtak.spjall.ui.clockTime
@@ -209,33 +212,43 @@ private fun Body(
 }
 
 /**
- * The small line under a message: "breytt", then "Sendist…" or the time,
- * then who read it. The time shows at the end of a run; the rest always.
+ * The small line under a message ([meta]): "breytt", then a clock while
+ * sending (0043) or the time, then who read it.
  */
 @Composable
 private fun Meta(
     row: Row.Bubble,
     group: Boolean,
 ) {
-    val item = row.item
-    val pending = item.status == ItemStatus.PENDING
-    val parts =
-        listOfNotNull(
-            if (item.edited) stringResource(R.string.edited_marker) else null,
-            when {
-                pending -> stringResource(R.string.message_sending)
-                row.last || row.readBy != null -> clockTime(item.ts)
-                else -> null
-            },
-            row.readBy?.let { readLine(it, group) },
-        )
+    val parts = row.meta()
     if (parts.isEmpty()) return
-    Text(
-        text = parts.joinToString(" · "),
-        style = Type.meta,
-        color = Palette.mutedFg,
+    val item = row.item
+    val words =
+        parts.mapNotNull {
+            when (it) {
+                MetaPart.EDITED -> stringResource(R.string.edited_marker)
+                MetaPart.TIME -> clockTime(item.ts)
+                MetaPart.READ -> row.readBy?.let { count -> readLine(count, group) }
+                MetaPart.SENDING -> null
+            }
+        }
+    Row(
         modifier = Modifier.padding(horizontal = 4.dp, vertical = 3.dp),
-    )
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (words.isNotEmpty()) {
+            Text(text = words.joinToString(" · "), style = Type.meta, color = Palette.mutedFg)
+        }
+        if (MetaPart.SENDING in parts) {
+            Icon(
+                AppIcons.Clock,
+                contentDescription = stringResource(R.string.message_sending),
+                tint = Palette.mutedFg,
+                modifier = Modifier.size(CLOCK.dp),
+            )
+        }
+    }
 }
 
 @Composable
@@ -329,3 +342,4 @@ private const val BUBBLE_RADIUS = 18
 private const val TAIL_RADIUS = 5
 private const val BUBBLE_SHARE = 0.76f
 private const val CHIP_RADIUS = 12
+private const val CLOCK = 12

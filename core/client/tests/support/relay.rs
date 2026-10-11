@@ -23,9 +23,8 @@
 //!
 //! It serves a conversation's devices and refuses a claim naming a deleted
 //! account (0028), says when each last resort expires (0029), and refuses a
-//! client below its floor (0030). It can refuse a send as malformed. Every
-//! refusal names a request id, as the Worker's do (0037); a floor refusal
-//! names none, which the client ignores.
+//! client below its floor (0030). Every refusal names a request id, as the
+//! Worker's do (0037); a floor refusal names none, which the client ignores.
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::Path;
@@ -95,8 +94,6 @@ struct State {
     /// The same, for `sendMessage` alone.
     fail_sends: BTreeMap<String, usize>,
     lose_sends: BTreeMap<String, usize>,
-    /// Sends the server refuses as malformed, per device.
-    refuse_sends: BTreeMap<String, usize>,
     /// Every `sendMessage` body the server received, per device.
     sends: BTreeMap<String, Vec<Value>>,
     page: usize,
@@ -230,12 +227,6 @@ impl Relay {
     /// answers are lost.
     pub fn lose_sends(&self, device: &str, n: usize) {
         self.state().lose_sends.insert(device.into(), n);
-    }
-
-    /// The server refuses the next `n` sends from this device with 400
-    /// `invalid_request` and stores nothing.
-    pub fn refuse_sends(&self, device: &str, n: usize) {
-        self.state().refuse_sends.insert(device.into(), n);
     }
 
     pub fn sends(&self, device: &str) -> Vec<Value> {
@@ -1342,14 +1333,6 @@ impl Link {
             .entry(self.device.clone())
             .or_default()
             .push(request.clone());
-        if let Some(n) = state
-            .refuse_sends
-            .get_mut(&self.device)
-            .filter(|n| send && **n > 0)
-        {
-            *n -= 1;
-            return Ok(refuse(400, "invalid_request"));
-        }
         // The account the server holds the device under, which a join
         // changes (0035).
         let account = state

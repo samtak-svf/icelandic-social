@@ -1,7 +1,10 @@
 package samtak.spjall.conversation
 
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -177,6 +180,7 @@ class ConversationScreenTest {
         posts: Map<String, ConversationViewModel.Shared> = emptyMap(),
         timer: UInt? = null,
         mute: Mute = Mute.Off,
+        mode: ConversationViewModel.Mode = ConversationViewModel.Mode.New,
     ) = compose.setContent {
         SpjallTheme {
             ConversationScreen(
@@ -188,6 +192,7 @@ class ConversationScreenTest {
                     draft = draft,
                     media = media,
                     posts = posts,
+                    mode = mode,
                 ),
                 actions,
             )
@@ -306,11 +311,54 @@ class ConversationScreenTest {
     }
 
     @Test
-    fun theComposerDraftsAndSends() {
+    fun anEmptyComposerOffersAttachInsteadOfSend() {
         show(draft = "")
-        compose.onNodeWithContentDescription(text(R.string.send)).assertIsNotEnabled()
+        compose.onNodeWithContentDescription(text(R.string.attach)).assertIsDisplayed()
+        compose.onNodeWithContentDescription(text(R.string.send)).assertDoesNotExist()
         compose.onNodeWithText(text(R.string.composer_placeholder)).performTextInput("H")
         assertEquals(listOf("draft H"), calls)
+    }
+
+    @Test
+    fun sendStaysWhileEditingEvenWhenTheFieldIsEmpty() {
+        val own = item(2u, Content.Text("Úps", null), own = true)
+        show(own, mode = ConversationViewModel.Mode.Edit(own))
+        compose.onNodeWithContentDescription(text(R.string.send)).assertIsNotEnabled()
+        compose.onNodeWithContentDescription(text(R.string.attach)).assertDoesNotExist()
+    }
+
+    @Test
+    fun aPendingMessageShowsAClockForItsSendingState() {
+        show(item(null, Content.Text("Á leiðinni", null), own = true, status = ItemStatus.PENDING))
+        compose.onNodeWithContentDescription(text(R.string.message_sending)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.message_sending)).assertDoesNotExist()
+    }
+
+    @Test
+    fun tappingTheTitleOpensTheConversationsInformation() {
+        show(item(1u, Content.Text("Sæl", null)), timer = 3_600u)
+        compose
+            .onNode(hasClickLabel(text(R.string.conversation_info)) and hasRole(Role.Button))
+            .performClick()
+        compose.onNodeWithText(text(R.string.conversation_info)).assertIsDisplayed()
+        val hour = context.resources.getQuantityString(R.plurals.duration_hours, 1, 1)
+        compose.onNodeWithText(context.getString(R.string.disappearing_option, hour)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.mute)).performClick()
+        compose.onNodeWithText(text(R.string.mute_hour)).performClick()
+        assertEquals(listOf("mute HOUR"), calls)
+    }
+
+    @Test
+    fun theMenuOpensTheSameInformation() {
+        val bjorn = Person("a3", "Björn", false)
+        show(item(1u, Content.Text("Sæl", null)), members = listOf(anna, bjorn))
+        compose.onNodeWithContentDescription(text(R.string.more_options)).performClick()
+        compose.onNodeWithText(text(R.string.conversation_info)).performClick()
+        compose
+            .onNodeWithText(context.resources.getQuantityString(R.plurals.group_member_count, 2, 2), ignoreCase = true)
+            .assertIsDisplayed()
+        compose.onNodeWithText("Björn").assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.block)).assertDoesNotExist()
     }
 
     @Test
@@ -418,6 +466,7 @@ class ConversationScreenTest {
         compose.waitForIdle()
         assertEquals("the card asks for its post when it shows", listOf("showPost p1"), calls)
         compose.onNodeWithText("Björn Hansson", substring = true).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.post_from_feed)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.forwarded_marker)).assertIsDisplayed()
         compose.onNodeWithText("Fundur í kvöld").performClick()
         assertEquals(listOf("showPost p1", "openPost p1"), calls)
@@ -458,4 +507,10 @@ class ConversationScreenTest {
         compose.onNodeWithText(text(R.string.try_again)).performClick()
         assertEquals(listOf("fetch 2"), calls)
     }
+
+    private fun hasRole(role: Role) = SemanticsMatcher.expectValue(SemanticsProperties.Role, role)
 }
+
+/** The node a tap acts on, named for TalkBack by [label]. */
+internal fun hasClickLabel(label: String) =
+    SemanticsMatcher("click label $label") { it.config.getOrNull(SemanticsActions.OnClick)?.label == label }

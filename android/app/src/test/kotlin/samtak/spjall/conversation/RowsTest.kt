@@ -3,6 +3,7 @@ package samtak.spjall.conversation
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import samtak.spjall.core.Content
+import samtak.spjall.core.ItemStatus
 import samtak.spjall.socket.item
 import samtak.spjall.socket.person
 import java.time.LocalDate
@@ -84,5 +85,16 @@ class RowsTest {
         val keys = rows(items, ZoneOffset.UTC).map { it.key }
         assertEquals(keys.toSet().size, keys.size)
         assertEquals(keys, rows(items, ZoneOffset.UTC).map { it.key })
+    }
+
+    @Test
+    fun aPendingMessageShowsTheClockInPlaceOfTheTime() {
+        val pending = item(null, sender = me, own = true, ts = day, status = ItemStatus.PENDING)
+        assertEquals(listOf(MetaPart.SENDING), Row.Bubble(pending, first = true, readBy = null).meta())
+        val edited = Row.Bubble(pending.copy(edited = true), first = true, readBy = null, last = false)
+        assertEquals(listOf(MetaPart.EDITED, MetaPart.SENDING), edited.meta())
+        val sent = item(1u, sender = me, own = true, ts = day)
+        assertEquals(listOf(MetaPart.TIME, MetaPart.READ), Row.Bubble(sent, first = true, readBy = 1u).meta())
+        assertEquals(emptyList<MetaPart>(), Row.Bubble(sent, first = true, readBy = null, last = false).meta())
     }
 }

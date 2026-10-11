@@ -56,6 +56,17 @@ final class ConversationModel {
     private(set) var typing = false
     private(set) var draft = ""
     private(set) var mode = Mode.new
+
+    /// The composer's one action (decision 0043).
+    enum ComposerAction: Equatable {
+        case attach, send
+    }
+
+    /// Attach while a new message's field is empty, send once it has text.
+    /// Replying or editing never attaches, so send stays there.
+    var composerAction: ComposerAction {
+        mode == .new && draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .attach : .send
+    }
     private(set) var media: [UInt64: Media] = [:]
     /// Shared posts by id, fetched when their card is on screen.
     private(set) var posts: [String: Shared] = [:]

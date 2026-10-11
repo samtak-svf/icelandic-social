@@ -104,7 +104,17 @@ class ConversationViewModel(
         /** Shared posts by id, fetched when their card is on screen. */
         val posts: Map<String, Shared> = emptyMap(),
         val problem: Problem? = null,
-    )
+    ) {
+        /**
+         * The composer's one action (0043): attach while a new message's
+         * field is empty, send once it has text. Replying or editing never
+         * attaches, so send stays there.
+         */
+        val action: ComposerAction
+            get() = if (mode == Mode.New && draft.isBlank()) ComposerAction.ATTACH else ComposerAction.SEND
+    }
+
+    enum class ComposerAction { ATTACH, SEND }
 
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()

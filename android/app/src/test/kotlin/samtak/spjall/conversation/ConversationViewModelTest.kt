@@ -127,6 +127,26 @@ class ConversationViewModelTest {
         }
 
     @Test
+    fun theComposerAttachesWhileEmptyAndSendsOnceThereIsText() =
+        runTest(dispatcher) {
+            val target = item(4u, own = true)
+            val model = model()
+            val action = { model.state.value.action }
+            assertEquals(ConversationViewModel.ComposerAction.ATTACH, action())
+            model.draft("  ")
+            assertEquals(ConversationViewModel.ComposerAction.ATTACH, action())
+            model.draft("Hæ")
+            assertEquals(ConversationViewModel.ComposerAction.SEND, action())
+            model.draft("")
+            model.reply(target)
+            assertEquals("a reply never attaches", ConversationViewModel.ComposerAction.SEND, action())
+            model.cancelMode()
+            model.edit(target)
+            model.draft("")
+            assertEquals("send stays while editing", ConversationViewModel.ComposerAction.SEND, action())
+        }
+
+    @Test
     fun aBlankDraftSendsNothingAndCancellingAnEditClearsIt() =
         runTest(dispatcher) {
             val target = item(4u, own = true)

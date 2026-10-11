@@ -68,4 +68,14 @@ final class RowsTests: XCTestCase {
         XCTAssertEqual(Set(ids).count, ids.count)
         XCTAssertEqual(ids, rows(items, calendar: utc).map(\.id))
     }
+
+    func testAPendingMessageShowsTheClockInPlaceOfTheTime() {
+        var pending = item(nil, sender: me, own: true, ts: day, status: .pending)
+        XCTAssertEqual(meta(pending, last: true, readBy: nil), [.sending])
+        pending.edited = true
+        XCTAssertEqual(meta(pending, last: false, readBy: nil), [.edited, .sending])
+        let sent = item(1, sender: me, own: true, ts: day)
+        XCTAssertEqual(meta(sent, last: true, readBy: 1), [.time, .read])
+        XCTAssertEqual(meta(sent, last: false, readBy: nil), [])
+    }
 }

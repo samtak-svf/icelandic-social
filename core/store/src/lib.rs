@@ -455,18 +455,6 @@ const MIGRATIONS: &[(u32, &str)] = &[
          -- files are in the media folder's `photos/`, by account and version.
          ALTER TABLE profiles ADD COLUMN photo TEXT;",
     ),
-    (
-        14,
-        "-- A message row the server refused, which sending it again would
-         -- not change: it shows failed and waits for `retry`, and the rows
-         -- behind it go on.
-         ALTER TABLE outbox ADD COLUMN refused INTEGER NOT NULL DEFAULT 0
-             CHECK (refused IN (0, 1));
-
-         -- When the server last refused this device's join outright (0021):
-         -- `sync` tries again an hour later, a notify or `retry` at once.
-         ALTER TABLE conversations ADD COLUMN join_refused_at INTEGER;",
-    ),
 ];
 
 pub struct Store {

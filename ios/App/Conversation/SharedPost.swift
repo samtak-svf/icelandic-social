@@ -12,7 +12,8 @@ struct ForwardedMark: View {
 
 /// A Fljótið post shared here (decision 0040): its author and text as the
 /// server holds them now, fetched while the card is on screen and kept
-/// nowhere. Until it comes, and when it cannot, only fixed words. A tap opens
+/// nowhere, labelled as from the feed above its author (decision 0043).
+/// Until it comes, and when it cannot, only fixed words. A tap opens
 /// its replies once there is a post to open.
 struct SharedCard: View {
     let postId: String
@@ -54,6 +55,8 @@ struct SharedCard: View {
 
     private func found(_ post: Post) -> some View {
         VStack(alignment: .leading, spacing: 2) {
+            // Not the sender's own words, but a post from the feed (decision 0043).
+            Text("post_from_feed").font(TypeStyle.meta)
             HStack(spacing: 4) {
                 Text(verbatim: shownName(post.author)).font(.caption.weight(.semibold))
                 if post.author.verified { VerifiedMark(size: 13) }
