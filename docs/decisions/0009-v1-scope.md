@@ -1,6 +1,6 @@
 # 0009. The first release is chat only, for a closed test group
 
-- Status: accepted; amended by 0033, 0034, 0036, 0039, 0040, 0041 and 0042
+- Status: accepted; amended by 0033, 0034, 0036, 0039, 0040, 0041, 0042 and 0044
 - Date: 2026-10-05
 - Decided by: Guðröður (the scope questions); the implementation choices below follow from them
 - Amended by: [0033](0033-google-sign-in-and-kenni-verification.md) (the invite is no longer the beta gate),
@@ -9,7 +9,8 @@
   [0039](0039-profile-photo.md) (a profile photo, seen by every signed-in account),
   [0040](0040-share-a-post-into-a-conversation.md) (a Fljótið post shared into a conversation),
   [0041](0041-forward-a-message.md) (forward a message),
-  [0042](0042-mute-a-conversation.md) (mute a conversation)
+  [0042](0042-mute-a-conversation.md) (mute a conversation),
+  [0044](0044-no-fljotid-in-v1.md) (Fljótið and the wall leave v1; two tabs again)
 - Built on by: [0022](0022-the-conversation-surfaces.md) (the list, the conversation, the
   toggles), [0023](0023-media-as-encrypted-blobs.md) (photos and files),
   [0024](0024-block.md) (block)

@@ -1,8 +1,11 @@
 # 0040. A Fljótið post is shared into a conversation by its id, never by a copy of its text
 
-- Status: accepted; implemented in the core (#173) and the apps (#178, #183)
+- Status: accepted; implemented in the core (#173) and the apps (#178, #183); superseded
+  by 0044
 - Date: 2026-10-10
 - Decided by: the maintainer, choosing it from a comparison with an established messenger
+- Superseded by: [0044](0044-no-fljotid-in-v1.md) (no posts to share; a shared post shows only
+  "Færslan er ekki lengur til")
 - Builds on: [0002](0002-mls-end-to-end-encryption.md), [0024](0024-block.md),
   [0025](0025-push-without-ids.md), [0034](0034-fljotid-and-the-wall.md)
 - Amends: 0009 (messaging: a shared post)

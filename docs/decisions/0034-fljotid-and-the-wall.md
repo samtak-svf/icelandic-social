@@ -1,6 +1,7 @@
 # 0034. Fljótið: a public feed every account is in, and each account's wall
 
-- Status: accepted; implemented in the backend (#131), the core (#132, 0.11.0) and the apps (#135)
+- Status: accepted; implemented in the backend (#131), the core (#132, 0.11.0) and the apps (#135); the feed, the wall
+  and posts removed by 0044
 - Date: 2026-10-09
 - Decided by: the maintainer, approving the plan for Google sign-in, Kenni verification and
   the feed
@@ -10,7 +11,8 @@
   [0033](0033-google-sign-in-and-kenni-verification.md)
 - Amends: 0009 (the surfaces, finding people), 0022 (who sees a name), 0024 (block extends to
   posts)
-- Amended by: [0036](0036-everyone-signed-in-is-in-the-picker.md) (the picker lists everyone
+- Amended by: [0044](0044-no-fljotid-in-v1.md) (the feed, the wall and posts leave v1; names
+  and `open_direct` stay), [0036](0036-everyone-signed-in-is-in-the-picker.md) (the picker lists everyone
   signed in, with name search)
 
 ## Decision
