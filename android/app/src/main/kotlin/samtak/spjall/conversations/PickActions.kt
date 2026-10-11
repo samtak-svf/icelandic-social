@@ -7,6 +7,9 @@ interface PickActions {
     /** Into every picked conversation. */
     fun send()
 
+    /** The search by name changed (decisions 0038, 0043). */
+    fun search(text: String)
+
     fun back()
 
     fun retry()

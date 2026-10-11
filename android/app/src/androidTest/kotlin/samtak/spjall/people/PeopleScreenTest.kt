@@ -1,11 +1,16 @@
 package samtak.spjall.people
 
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -29,6 +34,18 @@ class PeopleScreenTest {
     private val calls = mutableListOf<String>()
     private val actions =
         object : PeopleActions {
+            override fun open(account: String) {
+                calls += "open $account"
+            }
+
+            override fun group() {
+                calls += "group"
+            }
+
+            override fun single() {
+                calls += "single"
+            }
+
             override fun toggle(account: String) {
                 calls += "toggle $account"
             }
@@ -67,10 +84,27 @@ class PeopleScreenTest {
     }
 
     @Test
-    fun aRowIsACheckboxAndNothingStartsUntilSomeoneIsPicked() {
+    fun aTapOnAPersonOpensTheOneToOneAtOnce() {
         show(PeopleViewModel.State(people = people, loaded = true))
         compose.onNodeWithText(text(R.string.contact_action)).assertDoesNotExist()
         compose.onNodeWithText(text(R.string.person_unnamed)).assertIsDisplayed()
+        compose.onNode(hasText("Anna") and hasClickAction()).assert(!isToggleable()).performClick()
+        assertEquals(listOf("open a2"), calls)
+    }
+
+    @Test
+    fun theNewGroupRowAtTheTopSwitchesToPickingSeveral() {
+        show(PeopleViewModel.State(people = people, loaded = true))
+        compose.onNodeWithText(text(R.string.new_conversation)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.new_group)).assertHasClickAction().performClick()
+        assertEquals(listOf("group"), calls)
+    }
+
+    @Test
+    fun inGroupModeARowIsACheckboxAndNothingStartsUntilSomeoneIsPicked() {
+        show(PeopleViewModel.State(people = people, loaded = true, group = true))
+        compose.onNodeWithText(text(R.string.contact_action)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.new_group)).assertIsDisplayed()
         compose.onNodeWithText("Anna").assertIsOff().performClick()
         assertEquals(listOf("toggle a2"), calls)
     }
@@ -85,7 +119,7 @@ class PeopleScreenTest {
 
     @Test
     fun twoPickedMakeAGroup() {
-        show(PeopleViewModel.State(people = people, loaded = true, picked = listOf("a2", "a3")))
+        show(PeopleViewModel.State(people = people, loaded = true, group = true, picked = listOf("a2", "a3")))
         compose.onNodeWithText(text(R.string.new_group)).assertIsDisplayed()
         compose.onNodeWithText("Anna").assertIsOn()
         compose.onNodeWithText(text(R.string.contact_action)).performClick()
@@ -110,7 +144,7 @@ class PeopleScreenTest {
         compose.onAllNodesWithText("Anna").assertCountEquals(1)
         compose.onNodeWithText("Bára").performClick()
         compose.onNodeWithText(text(R.string.people_search)).performTextInput("Bá")
-        assertEquals(listOf("toggle a4", "search Bá"), calls)
+        assertEquals(listOf("open a4", "search Bá"), calls)
     }
 
     @Test

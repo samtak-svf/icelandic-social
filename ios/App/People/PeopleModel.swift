@@ -4,8 +4,9 @@ import SpjallCore
 
 /// The new-conversation picker (decisions 0022, 0036): the people met through
 /// a shared conversation, then everyone else signed in, a page at a time, and
-/// a name search over the whole directory. One person opens the 1:1 there
-/// already is with them; more start a group.
+/// a name search over the whole directory. A tap on a person opens the 1:1
+/// with them at once, made when there is none (decision 0043); "new group"
+/// switches to picking several, who start a group.
 @MainActor @Observable
 final class PeopleModel {
     /// The people met through a shared conversation.
@@ -19,6 +20,8 @@ final class PeopleModel {
     /// A search or a further page is on its way.
     private(set) var searching = false
     private(set) var loaded = false
+    /// Picking several people for a group rather than opening a 1:1 with one.
+    private(set) var group = false
     /// Account ids, in the order they were picked.
     private(set) var picked: [String] = []
     private(set) var busy = false
@@ -58,6 +61,27 @@ final class PeopleModel {
             self.directory = page.people
             self.next = page.next
             self.loaded = true
+        }
+    }
+
+    /// To picking several people for a group.
+    func pickGroup() {
+        group = true
+    }
+
+    /// Back to opening a 1:1 with one tap; the picks go.
+    func single() {
+        group = false
+        picked = []
+    }
+
+    /// Into the 1:1 with `person`, made when there is none, into `opened`.
+    func open(_ person: String) async {
+        let account = account
+        await perform(again: { await self.open(person) }) {
+            let id = try await offMain { try account.openDirect(person) }
+            self.live.sync()
+            self.opened = id
         }
     }
 

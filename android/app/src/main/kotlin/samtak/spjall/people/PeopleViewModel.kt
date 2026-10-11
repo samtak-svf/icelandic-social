@@ -26,9 +26,11 @@ import samtak.spjall.socket.Live
 /**
  * The new-conversation picker (decisions 0022, 0036): the people met through
  * a shared conversation, then everyone else signed in, a page at a time, and
- * a name search over the whole directory. One person opens the 1:1 there
- * already is with them; more start a group.
+ * a name search over the whole directory. A tap on a person opens the 1:1
+ * with them at once (decision 0043); "Nýr hópur" switches to picking several,
+ * and more than one picked start a group.
  */
+@Suppress("TooManyFunctions") // One per thing the picker does, as PeopleActions lists them.
 class PeopleViewModel(
     private val account: Account,
     private val live: Live,
@@ -46,6 +48,8 @@ class PeopleViewModel(
         /** A search or a further page is on its way. */
         val searching: Boolean = false,
         val loaded: Boolean = false,
+        /** Picking several for a group, each row a checkbox; otherwise a tap opens a 1:1 (decision 0043). */
+        val group: Boolean = false,
         /** Account ids, in the order they were picked. */
         val picked: List<String> = emptyList(),
         val busy: Boolean = false,
@@ -76,6 +80,25 @@ class PeopleViewModel(
 
     init {
         load()
+    }
+
+    /** "Nýr hópur": the rows become checkboxes. */
+    fun group() {
+        _state.update { it.copy(group = true) }
+    }
+
+    /** Back out of picking several: the picks are dropped, and a tap opens a 1:1 again. */
+    fun single() {
+        _state.update { it.copy(group = false, picked = emptyList()) }
+    }
+
+    /** Into the 1:1 with [person], made when there is none. */
+    fun open(person: String) {
+        perform({ open(person) }) {
+            val id = account.openDirect(person)
+            live.sync()
+            _opened.send(id)
+        }
     }
 
     fun toggle(account: String) {

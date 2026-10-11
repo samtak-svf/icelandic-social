@@ -9,6 +9,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
@@ -17,10 +18,15 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import samtak.spjall.account.Problem
 import samtak.spjall.brand.R
+import samtak.spjall.core.Content
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.ConversationState
+import samtak.spjall.core.Item
+import samtak.spjall.core.ItemStatus
 import samtak.spjall.core.Mute
 import samtak.spjall.core.Person
+import samtak.spjall.core.Post
+import samtak.spjall.core.ReactionCounts
 import samtak.spjall.ui.SpjallTheme
 
 @RunWith(AndroidJUnit4::class)
@@ -36,6 +42,10 @@ class PickScreenTest {
 
             override fun send() {
                 calls += "send"
+            }
+
+            override fun search(text: String) {
+                calls += "search $text"
             }
 
             override fun back() {
@@ -96,5 +106,63 @@ class PickScreenTest {
         show(PickViewModel.State(conversations = conversations, loaded = true, problem = Problem.Unreachable))
         compose.onNodeWithText(text(R.string.try_again)).performClick()
         assertEquals(listOf("retry"), calls)
+    }
+
+    @Test
+    fun typingInTheFieldSearches() {
+        show(PickViewModel.State(conversations = conversations, loaded = true))
+        compose.onNodeWithText(text(R.string.pick_search)).performTextInput("Bj")
+        assertEquals(listOf("search Bj"), calls)
+    }
+
+    @Test
+    fun theRowsAreWhatTheSearchFound() {
+        show(
+            PickViewModel.State(
+                conversations = conversations,
+                loaded = true,
+                query = "Bj",
+                found = conversations.drop(1),
+            ),
+        )
+        compose.onNodeWithText("Anna").assertDoesNotExist()
+        compose.onNodeWithText("Björn", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun aSearchThatFindsNothingSaysSo() {
+        show(PickViewModel.State(conversations = conversations, loaded = true, query = "zz", found = emptyList()))
+        compose.onNodeWithText(text(R.string.pick_none_found)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.pick_empty)).assertDoesNotExist()
+    }
+
+    @Test
+    fun theMessageBeingForwardedShowsAtTheTop() {
+        val item =
+            Item(
+                7uL,
+                "e7",
+                Person("a2", "Anna", true),
+                false,
+                0uL,
+                ItemStatus.SENT,
+                Content.Text("Sjáumst á morgun", null),
+                false,
+                emptyList(),
+                0u,
+                null,
+                false,
+            )
+        show(PickViewModel.State(conversations = conversations, loaded = true, outgoing = Outgoing.Message(item)))
+        compose.onNodeWithText("Sjáumst á morgun").assertIsDisplayed()
+    }
+
+    @Test
+    fun thePostBeingSharedShowsWithItsAuthor() {
+        val post =
+            Post("p1", Person("a6", "Elín", false), "Fundur í kvöld", 0uL, 0u, ReactionCounts(0u, 0u, 0u, 0u, 0u), null)
+        show(PickViewModel.State(conversations = conversations, loaded = true, outgoing = Outgoing.SharedPost(post)))
+        compose.onNodeWithText("Elín", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Fundur í kvöld").assertIsDisplayed()
     }
 }

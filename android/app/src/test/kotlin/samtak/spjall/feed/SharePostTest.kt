@@ -16,9 +16,11 @@ import org.junit.Before
 import org.junit.Test
 import samtak.spjall.account.FakeAccount
 import samtak.spjall.account.Problem
+import samtak.spjall.conversations.Outgoing
 import samtak.spjall.conversations.PickViewModel
 import samtak.spjall.socket.FakeLive
 import samtak.spjall.socket.conversation
+import samtak.spjall.socket.person
 
 /** "Senda í samtal": a post shared through the conversation picker (decision 0040). */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -32,7 +34,9 @@ class SharePostTest {
     @After fun reset() = Dispatchers.resetMain()
 
     private fun TestScope.model() =
-        PickViewModel(account, live, io = dispatcher, deliver = sharing("p1")).also { advanceUntilIdle() }
+        PickViewModel(account, live, io = dispatcher, preview = sharedPreview("p1"), deliver = sharing("p1")).also {
+            advanceUntilIdle()
+        }
 
     private val shares get() = account.calls.filter { it.startsWith("sharePost") }
 
@@ -75,5 +79,19 @@ class SharePostTest {
             model.send()
             advanceUntilIdle()
             assertEquals(listOf("sharePost c1 p1", "sharePost c2 p1", "sharePost c2 p1"), shares)
+        }
+
+    @Test
+    fun showsThePostBeingSharedAsTheServerHoldsIt() =
+        runTest(dispatcher) {
+            val shared = FakeAccount.post("p1", person("a2", "Anna"), "Fundur í kvöld")
+            account.posts += shared
+            assertEquals(Outgoing.SharedPost(shared), model().state.value.outgoing)
+        }
+
+    @Test
+    fun aPostNoLongerShownSaysOnlyThat() =
+        runTest(dispatcher) {
+            assertEquals(Outgoing.PostGone, model().state.value.outgoing)
         }
 }

@@ -46,4 +46,26 @@ final class SharePostTests: XCTestCase {
         XCTAssertEqual(shares, ["sharePost c1 p1", "sharePost c2 p1", "sharePost c2 p1"])
         XCTAssertEqual(model.done, 2)
     }
+
+    func testShowsThePostBeingSharedAsTheServerHoldsIt() async {
+        let post = samplePost("p1", body: "Góðan dag")
+        account.posts = [post]
+        let model = await model()
+        XCTAssertEqual(model.outgoing, .post(post))
+    }
+
+    func testAPostNoLongerShownSaysOnlyThat() async {
+        let model = await model()
+        XCTAssertEqual(account.calls.filter { $0.hasPrefix("sharedPost") }, ["sharedPost p1"])
+        XCTAssertEqual(model.outgoing, .postGone)
+    }
+
+    func testAPostThatCannotBeReadLeavesNoPreviewAndTheListStill() async {
+        account.list = [conversation("c1", members: [person("a2")])]
+        account.failOn = "sharedPost p1"
+        let model = await model()
+        XCTAssertNil(model.outgoing)
+        XCTAssertNil(model.problem)
+        XCTAssertEqual(model.conversations.map(\.id), ["c1"])
+    }
 }

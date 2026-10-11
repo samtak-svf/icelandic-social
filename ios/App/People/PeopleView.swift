@@ -1,7 +1,7 @@
 import SpjallCore
 import SwiftUI
 
-/// Pick one person for a 1:1, or more for a group.
+/// A tap on a person opens the 1:1 with them; "new group" at the top picks several for a group (decision 0043).
 struct PeopleView: View {
     let model: PeopleModel
     let onInvite: () -> Void
@@ -16,6 +16,9 @@ struct PeopleView: View {
             if let problem = model.problem {
                 ProblemCard(problem: problem) { Task { await model.retry() } }
                     .listRowSeparator(.hidden)
+            }
+            if !model.group {
+                NewGroupRow { model.pickGroup() }
             }
             let searched = !model.query.trimmingCharacters(in: .whitespaces).isEmpty
             let met = searched ? [] : model.people
@@ -54,10 +57,19 @@ struct PeopleView: View {
             guard model.loaded else { return }
             await model.search()
         }
-        .navigationTitle(Text(model.picked.count > 1 ? "new_group" : "new_conversation"))
+        .navigationTitle(Text(model.group ? "new_group" : "new_conversation"))
         .navigationBarTitleDisplayMode(.inline)
+        // Out of picking several back to one tap, not out of the picker.
+        .navigationBarBackButtonHidden(model.group)
+        .toolbar {
+            if model.group {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("cancel") { model.single() }
+                }
+            }
+        }
         .safeAreaInset(edge: .bottom) {
-            if !model.picked.isEmpty {
+            if model.group && !model.picked.isEmpty {
                 Button {
                     Task { await model.start() }
                 } label: {
@@ -78,16 +90,48 @@ struct PeopleView: View {
 extension PeopleView {
     private func rows(_ people: [Person]) -> some View {
         ForEach(people, id: \.account) { person in
-            PersonRow(person: person, picked: model.picked.contains(person.account)) {
-                model.toggle(person.account)
+            if model.group {
+                PersonRow(person: person, picked: model.picked.contains(person.account)) {
+                    model.toggle(person.account)
+                }
+            } else {
+                PersonRow(person: person, picked: nil) {
+                    Task { await model.open(person.account) }
+                }
             }
         }
     }
 }
 
+/// Switches the picker to picking several people for a group.
+private struct NewGroupRow: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: "plus")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(BrandTokens.Colors.primaryFg)
+                    .frame(width: 46, height: 46)
+                    .background(BrandTokens.Colors.primary, in: Circle())
+                    .accessibilityHidden(true)
+                Text("new_group").font(.sans(14.5, black: true))
+                Spacer()
+            }
+            .frame(minHeight: 48)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// One person: a tap opens the 1:1 when `picked` is nil, and picks or unpicks them in a group otherwise.
 private struct PersonRow: View {
     let person: Person
-    let picked: Bool
+    let picked: Bool?
     let onToggle: () -> Void
 
     var body: some View {
@@ -97,15 +141,17 @@ private struct PersonRow: View {
                 Text(verbatim: shownName(person)).font(.sans(14.5, black: true))
                 if person.verified { VerifiedMark() }
                 Spacer()
-                Image(systemName: picked ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(picked ? BrandTokens.Colors.primary : BrandTokens.Colors.mutedFg)
-                    .accessibilityHidden(true)
+                if let picked {
+                    Image(systemName: picked ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(picked ? BrandTokens.Colors.primary : BrandTokens.Colors.mutedFg)
+                        .accessibilityHidden(true)
+                }
             }
             .frame(minHeight: 48)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(picked ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAddTraits(picked == true ? [.isButton, .isSelected] : .isButton)
     }
 }

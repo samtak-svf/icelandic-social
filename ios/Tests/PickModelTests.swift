@@ -12,7 +12,13 @@ final class PickModelTests: XCTestCase {
 
     /// A forward of seq 7 out of c1, as the conversation screen asks for it (decision 0041).
     private func model() async -> PickModel {
-        let model = PickModel(account: account, live: live, except: "c1") { account, to in
+        let model = PickModel(
+            account: account,
+            live: live,
+            except: "c1",
+            sleep: { _ in },
+            preview: { _ in Outgoing.message(item(7, text: "Sjáumst á morgun")) }
+        ) { account, to in
             _ = try account.forward("c1", seq: 7, to: to)
         }
         await model.load()
@@ -102,8 +108,59 @@ final class PickModelTests: XCTestCase {
         guard let model = conversation.forwarding(item(7)) else { return XCTFail("a message is forwardable") }
         await model.load()
         XCTAssertEqual(model.conversations.map(\.id), ["c2"])
+        XCTAssertEqual(model.outgoing, .message(item(7)))
         model.toggle("c2")
         await model.send()
         XCTAssertEqual(forwards, ["forward c1 7 c2"])
+    }
+
+    func testShowsTheMessageBeingForwarded() async {
+        account.list = [conversation("c2", members: [person("a3", "Björn")])]
+        let model = await model()
+        XCTAssertEqual(model.outgoing, .message(item(7, text: "Sjáumst á morgun")))
+    }
+
+    func testASearchFindsByNameAmongWhatCanBeSentInto() async {
+        account.list = [
+            conversation("c1", members: [person("a2", "Anna")]),
+            conversation("c2", members: [person("a3", "Björn")]),
+            conversation("c3", members: [person("a4", "Anna Dóra")], state: .removed),
+            conversation("c4", members: [person("a5", "Anna Sif")]),
+        ]
+        let model = await model()
+        XCTAssertEqual(model.shown.map(\.id), ["c2", "c4"])
+        model.query = " Anna "
+        await model.search()
+        XCTAssertTrue(account.calls.contains("searchConversations Anna"))
+        // Not the one it came from, nor one it cannot send into.
+        XCTAssertEqual(model.found?.map(\.id), ["c4"])
+        XCTAssertEqual(model.shown.map(\.id), ["c4"])
+
+        model.query = ""
+        await model.search()
+        XCTAssertNil(model.found)
+        XCTAssertEqual(model.shown.map(\.id), ["c2", "c4"])
+    }
+
+    func testASearchThatFindsNothingSaysSo() async {
+        account.list = [conversation("c2", members: [person("a3", "Björn")])]
+        let model = await model()
+        model.query = "Zeta"
+        await model.search()
+        XCTAssertEqual(model.found, [])
+        XCTAssertTrue(model.shown.isEmpty)
+    }
+
+    func testAFailedSearchIsAProblemThatRetrySearchesAgain() async {
+        account.list = [conversation("c2", members: [person("a3", "Björn")])]
+        let model = await model()
+        model.query = "Bj"
+        account.failOn = "searchConversations Bj"
+        await model.search()
+        XCTAssertEqual(model.problem, .unreachable)
+        account.failOn = nil
+        await model.retry()
+        XCTAssertNil(model.problem)
+        XCTAssertEqual(model.found?.map(\.id), ["c2"])
     }
 }

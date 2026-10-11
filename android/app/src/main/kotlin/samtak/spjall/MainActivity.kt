@@ -61,6 +61,7 @@ import samtak.spjall.conversations.ConversationsViewModel
 import samtak.spjall.conversations.PickActions
 import samtak.spjall.conversations.PickScreen
 import samtak.spjall.conversations.PickViewModel
+import samtak.spjall.conversations.forwarding
 import samtak.spjall.core.Item
 import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
@@ -73,6 +74,7 @@ import samtak.spjall.feed.RepliesActions
 import samtak.spjall.feed.RepliesScreen
 import samtak.spjall.feed.RepliesViewModel
 import samtak.spjall.feed.WallScreen
+import samtak.spjall.feed.sharedPreview
 import samtak.spjall.feed.sharing
 import samtak.spjall.me.MeActions
 import samtak.spjall.me.MeScreen
@@ -482,6 +484,12 @@ class MainActivity : ComponentActivity() {
         PeopleScreen(
             state,
             object : PeopleActions {
+                override fun open(account: String) = people.open(account)
+
+                override fun group() = people.group()
+
+                override fun single() = people.single()
+
                 override fun toggle(account: String) = people.toggle(account)
 
                 override fun start() = people.start()
@@ -585,7 +593,9 @@ class MainActivity : ComponentActivity() {
     ) {
         val model: PickViewModel =
             viewModel(key = "forward-$from-$seq") {
-                PickViewModel(graph.account, graph.socket, except = from) { to -> forward(from, seq, to) }
+                PickViewModel(graph.account, graph.socket, except = from, preview = forwarding(from, seq)) { to ->
+                    forward(from, seq, to)
+                }
             }
         Pick(stringResource(R.string.forward), R.plurals.forward_done, model, nav)
     }
@@ -597,7 +607,9 @@ class MainActivity : ComponentActivity() {
         nav: NavController,
     ) {
         val model: PickViewModel =
-            viewModel(key = "share-$postId") { PickViewModel(graph.account, graph.socket, deliver = sharing(postId)) }
+            viewModel(key = "share-$postId") {
+                PickViewModel(graph.account, graph.socket, preview = sharedPreview(postId), deliver = sharing(postId))
+            }
         Pick(stringResource(R.string.share_post), R.plurals.share_post_done, model, nav)
     }
 
@@ -629,6 +641,8 @@ class MainActivity : ComponentActivity() {
                 override fun toggle(conversation: String) = model.toggle(conversation)
 
                 override fun send() = model.send()
+
+                override fun search(text: String) = model.search(text)
 
                 override fun back() = pop()
 

@@ -121,4 +121,46 @@ final class PeopleModelTests: XCTestCase {
         await model.search()
         XCTAssertEqual(model.picked, ["a5"])
     }
+
+    func testATapOnAPersonOpensTheOneToOneAtOnce() async {
+        account.list = [conversation("one", members: [person("a2")])]
+        let model = await model()
+        await model.open("a2")
+        XCTAssertEqual(model.opened, "one")
+        XCTAssertEqual(account.calls.suffix(2), ["openDirect a2", "sync"])
+        XCTAssertTrue(model.picked.isEmpty)
+    }
+
+    func testATapOnSomeoneNotYetTalkedToMakesTheOneToOne() async {
+        let model = await model()
+        await model.open("a3")
+        XCTAssertEqual(model.opened, "c1")
+        XCTAssertTrue(account.calls.contains("createConversation a3"))
+        XCTAssertEqual(live.performed, 1)
+    }
+
+    func testAFailedOpenCanBeTriedAgain() async {
+        let model = await model()
+        account.failNext = unreachable
+        await model.open("a2")
+        XCTAssertEqual(model.problem, .unreachable)
+        XCTAssertNil(model.opened)
+
+        await model.retry()
+        XCTAssertNil(model.problem)
+        XCTAssertEqual(model.opened, "c1")
+    }
+
+    func testNewGroupSwitchesToPickingSeveralAndBackingOutDropsThePicks() async {
+        let model = await model()
+        XCTAssertFalse(model.group)
+        model.pickGroup()
+        XCTAssertTrue(model.group)
+        model.toggle("a2")
+        model.toggle("a3")
+        XCTAssertEqual(model.picked, ["a2", "a3"])
+        model.single()
+        XCTAssertFalse(model.group)
+        XCTAssertTrue(model.picked.isEmpty)
+    }
 }

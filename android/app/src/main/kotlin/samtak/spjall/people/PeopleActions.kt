@@ -2,6 +2,15 @@ package samtak.spjall.people
 
 /** What [PeopleScreen] can ask for. */
 interface PeopleActions {
+    /** A tap on a person outside group mode: into the 1:1 with them (decision 0043). */
+    fun open(account: String)
+
+    /** "Nýr hópur": pick several. */
+    fun group()
+
+    /** Back out of picking several. */
+    fun single()
+
     fun toggle(account: String)
 
     fun start()

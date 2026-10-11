@@ -50,7 +50,51 @@ class PeopleViewModelTest {
         }
 
     @Test
-    fun onePersonOpensTheOneToOneThereIs() =
+    fun aTapOnAPersonOpensTheOneToOneAtOnce() =
+        runTest(dispatcher) {
+            account.people = listOf(anna, bjorn)
+            val model = model()
+            val opened = opened(model)
+            model.open("a2")
+            advanceUntilIdle()
+            assertEquals(listOf("c-a2"), opened)
+            assertTrue("openDirect a2" in account.calls)
+            assertFalse(account.calls.any { it.startsWith("createConversation") })
+            assertEquals(1, live.syncs)
+            assertFalse(model.state.value.busy)
+        }
+
+    @Test
+    fun aFailedOpenCanBeTriedAgain() =
+        runTest(dispatcher) {
+            val model = model()
+            val opened = opened(model)
+            account.failNext = unreachable()
+            model.open("a2")
+            advanceUntilIdle()
+            assertEquals(Problem.Unreachable, model.state.value.problem)
+            model.retry()
+            advanceUntilIdle()
+            assertEquals(listOf("c-a2"), opened)
+        }
+
+    @Test
+    fun newGroupSwitchesToPickingSeveralAndBackingOutDropsThePicks() =
+        runTest(dispatcher) {
+            val model = model()
+            assertFalse(model.state.value.group)
+            model.group()
+            assertTrue(model.state.value.group)
+            model.toggle("a2")
+            model.toggle("a3")
+            assertEquals(listOf("a2", "a3"), model.state.value.picked)
+            model.single()
+            assertFalse(model.state.value.group)
+            assertEquals(emptyList<String>(), model.state.value.picked)
+        }
+
+    @Test
+    fun onePersonPickedInGroupModeOpensTheOneToOneThereIs() =
         runTest(dispatcher) {
             account.conversations =
                 listOf(

@@ -19,10 +19,10 @@ import org.junit.Before
 import org.junit.Test
 import samtak.spjall.account.FakeAccount
 import samtak.spjall.account.Problem
-import samtak.spjall.account.unreachable
 import samtak.spjall.core.ConversationState
 import samtak.spjall.socket.FakeLive
 import samtak.spjall.socket.conversation
+import samtak.spjall.socket.item
 import samtak.spjall.socket.person
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -37,8 +37,68 @@ class PickViewModelTest {
 
     /** A forward of seq 7 out of c1, as the conversation screen asks for it (decision 0041). */
     private fun TestScope.model() =
-        PickViewModel(account, live, except = "c1", io = dispatcher) { to -> forward("c1", 7uL, to) }
-            .also { advanceUntilIdle() }
+        PickViewModel(account, live, except = "c1", io = dispatcher, preview = forwarding("c1", 7uL)) { to ->
+            forward("c1", 7uL, to)
+        }.also { advanceUntilIdle() }
+
+    @Test
+    fun showsTheMessageBeingForwarded() =
+        runTest(dispatcher) {
+            account.timelines["c1"] = mutableListOf(item(6uL), item(7uL, text = "Halló"), item(8uL))
+            val outgoing = model().state.value.outgoing
+            assertEquals(item(7uL, text = "Halló"), (outgoing as Outgoing.Message).item)
+        }
+
+    @Test
+    fun aMessageThatCannotBeReadLeavesNoPreviewAndTheListStill() =
+        runTest(dispatcher) {
+            account.conversations = listOf(conversation("c2"))
+            account.failOn = "timeline c1 8"
+            val state = model().state.value
+            assertNull(state.outgoing)
+            assertNull(state.problem)
+            assertEquals(listOf("c2"), state.shown.map { it.id })
+        }
+
+    @Test
+    fun aSearchWaitsForTheTypingToPauseAndFindsByNameAmongWhatCanBeSentInto() =
+        runTest(dispatcher) {
+            account.conversations =
+                listOf(
+                    conversation("c1", person("a2", "Anna")),
+                    conversation("c2", person("a3", "Anna Björk")),
+                    conversation("c3", person("a4", "Dóra")),
+                    conversation("c4", person("a5", "Anna"), state = ConversationState.REMOVED),
+                )
+            val model = model()
+            model.toggle("c3")
+            model.search("A")
+            model.search("Ann")
+            advanceUntilIdle()
+            assertEquals(listOf("searchConversations Ann"), account.calls.filter { it.startsWith("search") })
+            // Not the one it came from, nor one it cannot send into.
+            assertEquals(
+                listOf("c2"),
+                model.state.value.shown
+                    .map { it.id },
+            )
+            // A pick the search hides stays picked.
+            assertEquals(setOf("c3"), model.state.value.picked)
+            model.search("zz")
+            advanceUntilIdle()
+            assertEquals(
+                emptyList<String>(),
+                model.state.value.found
+                    ?.map { it.id },
+            )
+            model.search(" ")
+            assertNull(model.state.value.found)
+            assertEquals(
+                listOf("c2", "c3"),
+                model.state.value.shown
+                    .map { it.id },
+            )
+        }
 
     @Test
     fun offersEveryConversationItCanSendIntoButTheOneItCameFrom() =
@@ -128,9 +188,10 @@ class PickViewModelTest {
     @Test
     fun aFailedReadIsAProblemThatRetryClears() =
         runTest(dispatcher) {
-            account.failNext = unreachable()
+            account.failOn = "conversations"
             val model = model()
             assertEquals(Problem.Unreachable, model.state.value.problem)
+            account.failOn = null
             model.retry()
             advanceUntilIdle()
             assertNull(model.state.value.problem)

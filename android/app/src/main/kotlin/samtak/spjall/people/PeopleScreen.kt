@@ -1,17 +1,24 @@
 package samtak.spjall.people
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -28,6 +35,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
@@ -39,21 +47,29 @@ import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.conversations.InviteHint
 import samtak.spjall.core.Person
+import samtak.spjall.ui.AVATAR_SIZE
+import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
+import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.VerifiedMark
 import samtak.spjall.ui.shownName
 
-/** Pick one person for a 1:1, or more for a group. */
+/**
+ * The people picker (new_conversation): a tap on a person opens the 1:1 with them; the new_group
+ * row at the top switches to picking several for a group (decision 0043). The list ends above the
+ * keyboard.
+ */
 @Composable
 fun PeopleScreen(
     state: PeopleViewModel.State,
     actions: PeopleActions,
 ) {
+    BackHandler(enabled = state.group, onBack = actions::single)
     Surface(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.safeDrawingPadding()) {
+        Column(modifier = Modifier.imePadding().safeDrawingPadding()) {
             Text(
-                text = stringResource(if (state.picked.size > 1) R.string.new_group else R.string.new_conversation),
+                text = stringResource(if (state.group) R.string.new_group else R.string.new_conversation),
                 style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.padding(16.dp),
             )
@@ -65,7 +81,7 @@ fun PeopleScreen(
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) { ProblemCard(it, actions::retry) }
             }
             PeopleList(state, actions, Modifier.weight(1f))
-            if (state.picked.isNotEmpty()) {
+            if (state.group && state.picked.isNotEmpty()) {
                 Button(
                     onClick = actions::start,
                     enabled = !state.busy,
@@ -104,29 +120,51 @@ private fun PeopleList(
 ) {
     val met = if (state.query.isBlank()) state.people else emptyList()
     val everyone = state.everyone
-    val idle = state.loaded && !state.busy && !state.searching && state.problem == null
-    if (idle && met.isEmpty() && everyone.isEmpty()) {
-        if (state.query.isBlank()) {
-            InviteHint(stringResource(R.string.people_empty), actions::invite)
-        } else {
-            Text(
-                text = stringResource(R.string.people_none_found),
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(16.dp),
-            )
-        }
-    }
+    if (met.isEmpty() && everyone.isEmpty()) NoOne(state, actions)
     val headed = met.isNotEmpty() && everyone.isNotEmpty()
+    val row: @Composable (Person) -> Unit = { ModeRow(it, state, actions) }
     LazyColumn(modifier = modifier) {
+        if (!state.group) item(key = "new-group") { NewGroupRow(actions::group) }
         if (headed) item(key = "met") { Heading(R.string.people_met) }
-        items(met, key = { "met-${it.account}" }) { person ->
-            PersonRow(person, picked = person.account in state.picked, onToggle = { actions.toggle(person.account) })
-        }
+        items(met, key = { "met-${it.account}" }) { row(it) }
         if (headed) item(key = "everyone") { Heading(R.string.people_everyone) }
         itemsIndexed(everyone, key = { _, person -> person.account }) { index, person ->
             if (index == everyone.lastIndex && state.next != null) LaunchedEffect(state.next) { actions.more() }
-            PersonRow(person, picked = person.account in state.picked, onToggle = { actions.toggle(person.account) })
+            row(person)
         }
+    }
+}
+
+/** No one to show, once nothing is on its way: an invite, or that the search found no one. */
+@Composable
+private fun NoOne(
+    state: PeopleViewModel.State,
+    actions: PeopleActions,
+) {
+    val idle = state.loaded && !state.busy && !state.searching && state.problem == null
+    if (!idle) return
+    if (state.query.isBlank()) {
+        InviteHint(stringResource(R.string.people_empty), actions::invite)
+    } else {
+        Text(
+            text = stringResource(R.string.people_none_found),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+}
+
+/** A person as the mode has it: a checkbox while picking several, otherwise a tap that opens the 1:1. */
+@Composable
+private fun ModeRow(
+    person: Person,
+    state: PeopleViewModel.State,
+    actions: PeopleActions,
+) {
+    if (state.group) {
+        PersonRow(person, picked = person.account in state.picked, onToggle = { actions.toggle(person.account) })
+    } else {
+        PersonRow(person, picked = null, onToggle = { actions.open(person.account) })
     }
 }
 
@@ -139,18 +177,56 @@ private fun Heading(text: Int) {
     )
 }
 
+/** The way into picking several; the row's words are its label. */
 @Composable
-private fun PersonRow(
-    person: Person,
-    picked: Boolean,
-    onToggle: () -> Unit,
-) {
+private fun NewGroupRow(onClick: () -> Unit) {
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = ROW_HEIGHT.dp)
-                .toggleable(value = picked, role = Role.Checkbox, onValueChange = { onToggle() })
+                .clickable(role = Role.Button, onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(AVATAR_SIZE.dp)
+                    .clip(CircleShape)
+                    .background(Palette.primary),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(AppIcons.Plus, contentDescription = null, tint = Palette.primaryFg)
+        }
+        Text(
+            text = stringResource(R.string.new_group),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+/** A person: a checkbox while picking several ([picked] not null), otherwise a tap that opens the 1:1. */
+@Composable
+private fun PersonRow(
+    person: Person,
+    picked: Boolean?,
+    onToggle: () -> Unit,
+) {
+    val control =
+        if (picked != null) {
+            Modifier.toggleable(value = picked, role = Role.Checkbox, onValueChange = { onToggle() })
+        } else {
+            Modifier.clickable(role = Role.Button, onClick = onToggle)
+        }
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = ROW_HEIGHT.dp)
+                .then(control)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -169,7 +245,7 @@ private fun PersonRow(
             if (person.verified) VerifiedMark()
         }
         // The row is the control; the box only shows its state.
-        Checkbox(checked = picked, onCheckedChange = null)
+        if (picked != null) Checkbox(checked = picked, onCheckedChange = null)
     }
 }
 
