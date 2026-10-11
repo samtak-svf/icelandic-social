@@ -96,7 +96,7 @@ describe("the request id", () => {
 
   it("is in the body of a request with a body that is not JSON", async () => {
     const { auth } = await device();
-    const response = await worker.fetch(`${BASE}/v1/posts`, {
+    const response = await worker.fetch(`${BASE}/v1/conversations`, {
       method: "POST",
       headers: { ...auth, "content-type": "application/json" },
       body: "{not json",

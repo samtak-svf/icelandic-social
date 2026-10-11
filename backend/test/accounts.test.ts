@@ -94,7 +94,7 @@ describe("GET /v1/accounts/{accountId}", () => {
     });
   });
 
-  it("names a stranger too: everyone is in Fljótið (decision 0034)", async () => {
+  it("names a stranger too: everyone signed in is in the directory (decisions 0034, 0036)", async () => {
     const [alice, stranger] = [
       await named("Alísa Prófsdóttir"),
       await named("Ókunnug Prófsdóttir"),

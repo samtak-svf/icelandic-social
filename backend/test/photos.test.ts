@@ -193,22 +193,12 @@ describe("the profile photo (decision 0039)", () => {
     expect(indexOf(stored, ascii("II*\0"))).toBe(-1);
     expect(indexOf(stored, Uint8Array.of(5055 & 0xff, 5055 >> 8, 0, 0, 100, 0, 0, 0))).toBe(-1);
 
-    // The version is in every profile: the account, the directory, Fljótið and Ég.
+    // The version is in every profile: the account, the directory and Ég.
     expect((await profileOf(reader, owner)).photo).toBe(photo);
     const people = await json<{ people: { accountId: string; photo: string | null }[] }>(
       await fetch("/v1/people?q=ljosmynda", { headers: reader.auth }),
     );
     expect(people.people.find((p) => p.accountId === owner.accountId)?.photo).toBe(photo);
-    const posted = await fetch("/v1/posts", {
-      method: "POST",
-      headers: { ...owner.auth, "content-type": "application/json" },
-      body: JSON.stringify({ body: "Halló" }),
-    });
-    const { postId } = (await posted.json()) as { postId: string };
-    const read = await json<{ author: { photo: string | null } }>(
-      await fetch(`/v1/posts/${postId}`, { headers: reader.auth }),
-    );
-    expect(read.author.photo).toBe(photo);
     const me = await json<{ photo: string | null }>(await fetch("/v1/me", { headers: owner.auth }));
     expect(me.photo).toBe(photo);
   });
@@ -254,17 +244,6 @@ describe("the profile photo (decision 0039)", () => {
       expect(refused.status).toBe(404);
       expect(await errorOf(refused)).toBe("not_found");
     }
-    // The blocked account still reads the owner's posts, without the photo.
-    const posted = await fetch("/v1/posts", {
-      method: "POST",
-      headers: { ...owner.auth, "content-type": "application/json" },
-      body: JSON.stringify({ body: "Halló" }),
-    });
-    const { postId } = (await posted.json()) as { postId: string };
-    const read = await json<{ author: { name: string; photo: string | null } }>(
-      await fetch(`/v1/posts/${postId}`, { headers: blocked.auth }),
-    );
-    expect(read.author).toMatchObject({ name: "Lokandi Mynd", photo: null });
   });
 
   it("answers an account with no photo, or none at all, with 404", async () => {

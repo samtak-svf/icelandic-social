@@ -79,8 +79,8 @@ export type Profile = {
 
 /**
  * An account's name, mark and photo version as `viewer` sees them. Every
- * signed-in account may read any account's: everyone is in Fljótið, where the
- * name is shown anyway (decision 0034). A block either way withholds the
+ * signed-in account may read any account's: everyone signed in is in the
+ * directory anyway (decisions 0034, 0036, kept by 0044). A block either way withholds the
  * photo, not the name (decision 0039).
  */
 export async function profile(

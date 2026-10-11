@@ -326,7 +326,7 @@ async function mergeable(env: Env, from: string, into: string, provider: Provide
 /**
  * Joins the calling account into `into` (decision 0035). One transaction
  * moves the Google identity, the calling device with its token, and the
- * posts, replies, reactions and blocks; then the calling account is deleted
+ * blocks; then the calling account is deleted
  * as DELETE /v1/me deletes one. If that fails part way, the account is left
  * without an identity, and the daily cron finishes it (`deleteOrphans`).
  */
@@ -345,9 +345,6 @@ async function mergeInto(
       .bind(into, deviceId, from),
     // Their credentials name the account the device leaves.
     db(env).prepare("DELETE FROM key_packages WHERE device_id = ?").bind(deviceId),
-    move("UPDATE posts SET author_account_id = ? WHERE author_account_id = ?"),
-    move("UPDATE post_replies SET author_account_id = ? WHERE author_account_id = ?"),
-    move("UPDATE OR IGNORE post_reactions SET account_id = ? WHERE account_id = ?"),
     db(env)
       .prepare(
         "UPDATE OR IGNORE blocks SET blocker_account_id = ?1 WHERE blocker_account_id = ?2 AND blocked_account_id != ?1",

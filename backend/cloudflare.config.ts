@@ -35,9 +35,10 @@ export default defineConfig(({ mode }) => ({
     env: {
       // The oldest client build that may talk to this Worker, per platform.
       // Raised when a protocol change would break older builds; the apps read
-      // it from /health and ask the user to update.
-      MIN_CLIENT_VERSION_ANDROID: bindings.text("0.2.0"),
-      MIN_CLIENT_VERSION_IOS: bindings.text("0.2.0"),
+      // it from /health and ask the user to update. 0.5.0: builds before it
+      // open on Fljótið, whose routes are gone (decision 0044).
+      MIN_CLIENT_VERSION_ANDROID: bindings.text("0.5.0"),
+      MIN_CLIENT_VERSION_IOS: bindings.text("0.5.0"),
       // Kenni's issuer for this Samtak team (decision 0019). The Worker reads
       // its discovery document; the apps get the authorize endpoint from
       // /v1/sign-in. The interop run signs in with dev/worker.ts's fake Kenni.
@@ -88,12 +89,11 @@ export default defineConfig(({ mode }) => ({
       // a brake on abuse, not an exact quota. PUBLIC_LIMIT is per address on
       // the routes a person reaches before signing in; CLAIM_LIMIT is per
       // account on key-package claims, which spend another account's
-      // packages. POST_LIMIT is per account on posts and replies to Fljótið
-      // (decision 0034); PHOTO_LIMIT is per account on profile photo uploads
-      // (decision 0039). A namespace is unique within the Cloudflare account.
+      // packages. PHOTO_LIMIT is per account on profile photo uploads
+      // (decision 0039). A namespace is unique within the Cloudflare account;
+      // 1003 was Fljótið's (decision 0034, removed by 0044) and is not reused.
       PUBLIC_LIMIT: bindings.rateLimit({ namespace: "1001", simple: { limit: 30, period: 60 } }),
       CLAIM_LIMIT: bindings.rateLimit({ namespace: "1002", simple: { limit: 120, period: 60 } }),
-      POST_LIMIT: bindings.rateLimit({ namespace: "1003", simple: { limit: 20, period: 60 } }),
       PHOTO_LIMIT: bindings.rateLimit({ namespace: "1004", simple: { limit: 10, period: 60 } }),
       // Secrets, set by `node tooling/worker-secrets.mjs`, never in this file:
       //   KENNITALA_HMAC_KEY   the key of the kennitala HMAC (decisions 0014, 0019)

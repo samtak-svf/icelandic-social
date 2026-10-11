@@ -76,7 +76,6 @@ describe("worker-config", () => {
       "INBOX",
       "PUBLIC_LIMIT",
       "CLAIM_LIMIT",
-      "POST_LIMIT",
       "PHOTO_LIMIT",
     ]) {
       expect(names).toContain(name);

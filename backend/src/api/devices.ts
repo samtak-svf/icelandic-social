@@ -157,7 +157,7 @@ export const linkIdentityRoute = createRoute({
   tags: ["devices"],
   summary: "Link another way to sign in to this account (decision 0033)",
   description:
-    "Linking Kenni marks the account verified and gives it the registry's name. Linking the identity this account already holds succeeds again. With merge, a Kenni identity held by an account without Google joins this account into that one: the Google identity, this device with its token, the posts, replies, reactions and blocks move, and this account is deleted (decision 0035).",
+    "Linking Kenni marks the account verified and gives it the registry's name. Linking the identity this account already holds succeeds again. With merge, a Kenni identity held by an account without Google joins this account into that one: the Google identity, this device with its token and the blocks move, and this account is deleted (decision 0035).",
   security: DEVICE_TOKEN,
   request: {
     body: { required: true, content: { "application/json": { schema: LinkIdentity } } },

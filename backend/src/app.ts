@@ -49,7 +49,6 @@ import {
 import { authorized, signInConfig, unavailable } from "./identity.ts";
 import { inviteLink, resolveInvite, revokeInvite, rotateInvite } from "./invites.ts";
 import { claim, ownsLeaf, upload } from "./key-packages.ts";
-import { postRoutes } from "./feed.ts";
 import { accountRoutes } from "./people.ts";
 import { linkHost } from "./link.ts";
 import { log } from "./log.ts";
@@ -449,9 +448,6 @@ export function createApp() {
 
   // The profile photo (decision 0039).
   photoRoutes(app);
-
-  // Fljótið and the walls (decision 0034).
-  postRoutes(app);
 
   // The socket lives in the account's Inbox; the Worker tells it which
   // device this is, replacing any such header the client sent.

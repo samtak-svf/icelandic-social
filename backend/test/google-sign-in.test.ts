@@ -263,44 +263,18 @@ describe("POST /v1/me/identities with merge", () => {
     });
   });
 
-  it("carries posts, replies, reactions and blocks over, and drops a block of the older account", async () => {
+  it("carries blocks over, and drops a block of the older account", async () => {
     const kennitala = newKennitala();
     const older = await registered(await signIn({ kennitala }));
     const other = await registered(await withGoogle());
     const me = await registered(await withGoogle());
-    const post = (await (await send("POST", "/v1/posts", me, { body: "Halló" })).json()) as {
-      postId: string;
-    };
-    const theirs = (await (await send("POST", "/v1/posts", other, { body: "Hæ" })).json()) as {
-      postId: string;
-    };
-    expect(
-      (await send("POST", `/v1/posts/${theirs.postId}/replies`, me, { body: "Já" })).status,
-    ).toBe(201);
-    expect(
-      (await send("PUT", `/v1/posts/${theirs.postId}/reaction`, me, { reaction: "heart" })).status,
-    ).toBe(204);
     expect((await send("PUT", `/v1/blocks/${other.accountId}`, me)).status).toBe(204);
     expect((await send("PUT", `/v1/blocks/${older.accountId}`, me)).status).toBe(204);
     expect((await merge(me, { kennitala })).status).toBe(200);
     const rows = (sql: string) => env.DB.prepare(sql).bind(older.accountId).first<{ n: number }>();
-    expect(await rows("SELECT count(*) AS n FROM posts WHERE author_account_id = ?")).toEqual({
-      n: 1,
-    });
-    expect(
-      await rows("SELECT count(*) AS n FROM post_replies WHERE author_account_id = ?"),
-    ).toEqual({ n: 1 });
-    expect(await rows("SELECT count(*) AS n FROM post_reactions WHERE account_id = ?")).toEqual({
-      n: 1,
-    });
     expect(await rows("SELECT count(*) AS n FROM blocks WHERE blocker_account_id = ?")).toEqual({
       n: 1,
     });
-    expect(
-      await env.DB.prepare("SELECT author_account_id AS a FROM posts WHERE post_id = ?")
-        .bind(post.postId)
-        .first(),
-    ).toEqual({ a: older.accountId });
   });
 
   it("revokes the joined account's other devices", async () => {
