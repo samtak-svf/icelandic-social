@@ -292,6 +292,21 @@
       "surfaces": ["android", "ios"],
       "description": "Quote-reply to a message."
     },
+    "copy": {
+      "surfaces": ["android", "ios"],
+      "description": "Message menu entry that copies a text message to the clipboard (docs/decisions/0046)."
+    },
+    "copied": {
+      "surfaces": ["android", "ios"],
+      "description": "Brief confirmation that a message was copied, where the system shows none (docs/decisions/0046)."
+    },
+    "link_open": {
+      "surfaces": ["android", "ios"],
+      "description": "Screen-reader action on a message that opens one of its web links in the browser; link is the link as written (docs/decisions/0046).",
+      "placeholders": {
+        "link": "string"
+      }
+    },
     "edit": {
       "surfaces": ["android", "ios"],
       "description": "Edit an own message."

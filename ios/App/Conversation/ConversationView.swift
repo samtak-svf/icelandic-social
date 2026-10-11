@@ -16,8 +16,9 @@ struct ConversationView: View {
     @State private var preview: URL?
     /// The picker a forward opened (decision 0041).
     @State private var forwarding: PickModel?
-    /// Into how many conversations the last forward went, shown for a moment.
-    @State private var forwarded: String?
+    /// Shown for a moment: into how many conversations the last forward went, or that a text was copied
+    /// (decision 0046).
+    @State private var notice: String?
     /// The bottom of the timeline is in view.
     @State private var atBottom = true
     @Environment(\.scenePhase) private var scenePhase
@@ -65,22 +66,23 @@ struct ConversationView: View {
                     .onChange(of: picker.done) { _, done in
                         guard let done else { return }
                         forwarding = nil
-                        forwarded = plural("forward_done", done)
+                        notice = plural("forward_done", done)
                     }
             }
         }
         .overlay(alignment: .top) {
-            if let forwarded {
-                Text(verbatim: forwarded)
+            if let notice {
+                Text(verbatim: notice)
                     .font(.footnote)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                     .background(.regularMaterial, in: Capsule())
                     .padding(.top, 56)
-                    .task {
-                        AccessibilityNotification.Announcement(forwarded).post()
+                    // A second notice while one shows starts the moment again.
+                    .task(id: notice) {
+                        AccessibilityNotification.Announcement(notice).post()
                         try? await Task.sleep(for: .seconds(2))
-                        self.forwarded = nil
+                        if !Task.isCancelled { self.notice = nil }
                     }
             }
         }
@@ -128,7 +130,8 @@ struct ConversationView: View {
                                 item: item, first: first, last: last, readBy: readBy, group: group, model: model,
                                 onDelete: { deleting = item }, onReact: { reacting = item },
                                 onReactions: { reactionsOf = item.envelopeId },
-                                onForward: { forwarding = model.forwarding(item) })
+                                onForward: { forwarding = model.forwarding(item) },
+                                onCopy: { notice = localized("copied") })
                         }
                     }
                     Color.clear.frame(height: 1).id(Self.bottom)

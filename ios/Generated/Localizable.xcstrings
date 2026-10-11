@@ -745,6 +745,42 @@
         }
       }
     },
+    "copy": {
+      "comment": "Message menu entry that copies a text message to the clipboard (docs/decisions/0046).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afrita"
+          }
+        }
+      }
+    },
+    "copied": {
+      "comment": "Brief confirmation that a message was copied, where the system shows none (docs/decisions/0046).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afritað"
+          }
+        }
+      }
+    },
+    "link_open": {
+      "comment": "Screen-reader action on a message that opens one of its web links in the browser; link is the link as written (docs/decisions/0046).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opna %1$@"
+          }
+        }
+      }
+    },
     "edit": {
       "comment": "Edit an own message.",
       "extractionState": "manual",

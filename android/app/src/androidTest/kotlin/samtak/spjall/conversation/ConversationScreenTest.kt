@@ -1,5 +1,7 @@
 package samtak.spjall.conversation
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -283,8 +285,14 @@ class ConversationScreenTest {
                 .getOrNull(SemanticsActions.CustomActions)
                 ?.map { it.label }
         assertEquals(
-            listOf(R.string.reply, R.string.forward, R.string.edit, R.string.delete_for_everyone, R.string.react)
-                .map(::text),
+            listOf(
+                R.string.reply,
+                R.string.copy,
+                R.string.forward,
+                R.string.edit,
+                R.string.delete_for_everyone,
+                R.string.react,
+            ).map(::text),
             labels,
         )
     }
@@ -317,6 +325,25 @@ class ConversationScreenTest {
         compose.onNodeWithText(text(R.string.message_failed)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.try_again)).performClick()
         assertEquals(listOf("react 1 ❤️", "resend"), calls)
+    }
+
+    @Test
+    fun aTextIsCopiedFromTheMenuAndItsLinkIsAnActionOnTheBubble() {
+        show(item(1u, Content.Text("Sjá https://samtak.is/a.", Quote("e0", anna, "Hvar?"))))
+        val bubble = compose.onNodeWithText("Sjá https://samtak.is/a.", substring = true)
+        val custom = bubble.fetchSemanticsNode().config[SemanticsActions.CustomActions]
+        assertEquals(context.getString(R.string.link_open, "https://samtak.is/a"), custom.last().label)
+        bubble.performTouchInput { longClick() }
+        compose.onNodeWithText(text(R.string.copy)).assertIsDisplayed()
+        // The system's own clipboard preview covers the app once it is copied, so the copy is
+        // made and read on the main thread rather than through the compose rule.
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        var clip: ClipData? = null
+        instrumentation.runOnMainSync { custom.first { it.label == text(R.string.copy) }.action() }
+        instrumentation.runOnMainSync { clip = context.getSystemService(ClipboardManager::class.java).primaryClip }
+        // The whole text and only it, not the quote it replies to (0046).
+        assertEquals("Sjá https://samtak.is/a.", clip?.getItemAt(0)?.text?.toString())
+        assertEquals(true, clip?.description?.extras?.getBoolean("android.content.extra.IS_SENSITIVE"))
     }
 
     @Test

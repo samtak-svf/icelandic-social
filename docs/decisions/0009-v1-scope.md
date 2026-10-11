@@ -10,7 +10,8 @@
   [0040](0040-share-a-post-into-a-conversation.md) (a Fljótið post shared into a conversation),
   [0041](0041-forward-a-message.md) (forward a message),
   [0042](0042-mute-a-conversation.md) (mute a conversation),
-  [0044](0044-no-fljotid-in-v1.md) (Fljótið and the wall leave v1; two tabs again)
+  [0044](0044-no-fljotid-in-v1.md) (Fljótið and the wall leave v1; two tabs again),
+  [0046](0046-copy-a-message-and-open-its-links.md) (copy a message, open its links)
 - Built on by: [0022](0022-the-conversation-surfaces.md) (the list, the conversation, the
   toggles), [0023](0023-media-as-encrypted-blobs.md) (photos and files),
   [0024](0024-block.md) (block)
@@ -27,6 +28,7 @@ scope. The first release (v1) contains:
 |                   | Mute a conversation for 1 hour, 8 hours or until turned back on (0042)            |
 | Message actions   | Reply, edit, delete for everyone, reactions, disappearing messages                |
 |                   | Forward, as a fresh copy marked "Áframsent" (0041)                                |
+|                   | Copy a text, and open its web links on a tap (0046)                               |
 | Surfaces          | Conversation list, conversation, and "Ég" (profile and settings). No other tab    |
 | Identity shown    | Name, verified mark, a profile photo (0039). No place and no domicile             |
 | Finding people    | A personal invite link and QR code                                                |

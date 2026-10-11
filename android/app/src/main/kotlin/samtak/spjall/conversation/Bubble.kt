@@ -55,6 +55,9 @@ private class Offer(
     private val live = sent && item.content != Content.Deleted
     val reply = live
 
+    /** The whole text, also under a timer: the reader can already read it (0046). */
+    val copy = (item.content as? Content.Text)?.text?.takeIf { live }
+
     /**
      * Text or a file, not under a timer, where a copy would outlive the original (0041); never a
      * shared post (0044).
@@ -149,8 +152,10 @@ private fun Message(
     var menu by remember { mutableStateOf(false) }
     val pill = item.pill()
     val foreground = if (item.own) Palette.bubbleOwnFg else Palette.bubbleOtherFg
+    val copy = copier()
     val custom =
-        accessibilityActions(offer, actions, onDelete) { menu = true } +
+        accessibilityActions(offer, actions, onDelete, copy) { menu = true } +
+            linkActions((item.content as? Content.Text)?.text) +
             listOfNotNull(
                 pill?.let {
                     CustomAccessibilityAction(stringResource(R.string.reactions_show)) {
@@ -186,7 +191,7 @@ private fun Message(
         ) {
             Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp)) {
                 if (item.forwarded) ForwardedMark(foreground)
-                Body(item, media, foreground, actions)
+                Body(item, media, foreground, actions, onTap = { tap?.invoke() ?: onTime() }) { menu = true }
             }
         }
         pill?.let {
@@ -199,7 +204,7 @@ private fun Message(
                         .offset(x = if (item.own) -PILL_INSET.dp else PILL_INSET.dp, y = (PILL_HEIGHT / 2).dp),
             )
         }
-        Menu(menu, offer, actions, onDelete) { menu = false }
+        Menu(menu, offer, actions, onDelete, copy) { menu = false }
     }
 }
 
@@ -226,11 +231,13 @@ private fun accessibilityActions(
     offer: Offer,
     actions: ConversationActions,
     onDelete: (Item) -> Unit,
+    onCopy: (String) -> Unit,
     onReact: () -> Unit,
 ): List<CustomAccessibilityAction> {
     val item = offer.item
     return listOfNotNull(
         if (offer.reply) stringResource(R.string.reply) to { actions.reply(item) } else null,
+        offer.copy?.let { text -> stringResource(R.string.copy) to { onCopy(text) } },
         if (offer.forward) stringResource(R.string.forward) to { actions.forward(item) } else null,
         if (offer.edit) stringResource(R.string.edit) to { actions.edit(item) } else null,
         if (offer.delete) stringResource(R.string.delete_for_everyone) to { onDelete(item) } else null,
@@ -249,11 +256,13 @@ private fun Body(
     media: ConversationViewModel.Media?,
     foreground: Color,
     actions: ConversationActions,
+    onTap: () -> Unit,
+    onLongPress: () -> Unit,
 ) {
     when (val content = item.content) {
         is Content.Text -> {
             content.replyTo?.let { Quoted(it, foreground) }
-            Text(text = content.text, style = Type.bubble, color = foreground)
+            LinkedText(content.text, foreground, onTap, onLongPress)
         }
         // Drawn by Bubble as a line of its own.
         Content.Deleted -> Unit
@@ -311,6 +320,7 @@ private fun Menu(
     offer: Offer,
     actions: ConversationActions,
     onDelete: (Item) -> Unit,
+    onCopy: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     DropdownMenu(expanded = open, onDismissRequest = onDismiss) {
@@ -326,6 +336,7 @@ private fun Menu(
         }
         listOfNotNull(
             if (offer.reply) R.string.reply to { actions.reply(offer.item) } else null,
+            offer.copy?.let { text -> R.string.copy to { onCopy(text) } },
             if (offer.forward) R.string.forward to { actions.forward(offer.item) } else null,
             if (offer.edit) R.string.edit to { actions.edit(offer.item) } else null,
             if (offer.delete) R.string.delete_for_everyone to { onDelete(offer.item) } else null,

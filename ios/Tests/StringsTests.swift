@@ -13,6 +13,12 @@ final class StringsTests: XCTestCase {
         XCTAssertEqual(plural("reaction_count", 3), "3 viðbrögð")
     }
 
+    func testCopyAndALinksActionResolve() {
+        XCTAssertEqual(localized("copy"), "Afrita")
+        XCTAssertEqual(localized("copied"), "Afritað")
+        XCTAssertEqual(localized("link_open", "www.example.com"), "Opna www.example.com")
+    }
+
     func testATimerIsWholeDaysOrElseHours() {
         XCTAssertEqual(duration(86_400), "1 dag")
         XCTAssertEqual(duration(7 * 86_400), "7 daga")

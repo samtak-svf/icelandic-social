@@ -1,9 +1,13 @@
 import SpjallCore
 import SwiftUI
+import UIKit
+import UniformTypeIdentifiers
 
 /// What a long press offers on an item.
 struct Offer {
     let reply: Bool
+    /// A text's words, under a timer too: the reader can already read them (decision 0046).
+    let copy: Bool
     /// Text or a file, not under a timer, where a copy would outlive the original (decision 0041);
     /// never a shared post (decision 0044).
     let forward: Bool
@@ -25,13 +29,14 @@ struct Offer {
             break
         }
         reply = live
+        copy = text
         forward = live && item.expiresAt == nil && copyable
         react = live
         edit = live && item.own && text
         delete = live && item.own
     }
 
-    var any: Bool { reply || react || edit || delete }
+    var any: Bool { reply || copy || react || edit || delete }
 }
 
 /// One message (1c): own on the right in red, the other party's on the left
@@ -52,9 +57,12 @@ struct Bubble: View {
     var onReactions: () -> Void = {}
     /// Opens the picker that copies this message into other conversations.
     var onForward: () -> Void = {}
+    /// Says the text was copied (decision 0046).
+    var onCopy: () -> Void = {}
 
     /// A tap on a text shows its time under it, until the next tap.
     @State private var showsTime = false
+    @Environment(\.openURL) private var openURL
 
     private var offer: Offer { Offer(item) }
     private var background: Color { item.own ? BrandTokens.Colors.bubbleOwnBg : BrandTokens.Colors.bubbleOtherBg }
@@ -64,6 +72,14 @@ struct Bubble: View {
         if case .text = item.content { return true }
         return false
     }
+
+    /// The text's words without the quote, which a copy takes and its links are found in.
+    private var plainText: String? {
+        if case .text(let text, _) = item.content { return text }
+        return nil
+    }
+
+    private var links: [WebLink] { plainText.map(webLinks) ?? [] }
 
     /// Rounded all round but at the bottom corner on the sender's side.
     private var shape: UnevenRoundedRectangle {
@@ -148,11 +164,23 @@ struct Bubble: View {
         .accessibilityActions {
             if !item.reactions.isEmpty { Button("reactions_show", action: onReactions) }
             if offer.reply { Button("reply") { model.reply(item) } }
+            if offer.copy { Button("copy", action: copy) }
             if offer.forward { Button("forward") { onForward() } }
             if offer.edit { Button("edit") { model.edit(item) } }
             if offer.delete { Button("delete_for_everyone", action: onDelete) }
             if offer.react { Button("react", action: onReact) }
+            // Each web link opens in the browser, named as written (decision 0046).
+            ForEach(links, id: \.range.lowerBound) { link in
+                Button(localized("link_open", link.written)) { openURL(link.url) }
+            }
         }
+    }
+
+    /// The whole text, without its quote, on this device only (decision 0046).
+    private func copy() {
+        guard let plainText else { return }
+        UIPasteboard.general.setItems([[UTType.plainText.identifier: plainText]], options: [.localOnly: true])
+        onCopy()
     }
 
     @ViewBuilder private var menu: some View {
@@ -164,6 +192,7 @@ struct Bubble: View {
             }
         }
         if offer.reply { Button("reply", systemImage: "arrowshape.turn.up.left") { model.reply(item) } }
+        if offer.copy { Button("copy", systemImage: "doc.on.doc", action: copy) }
         if offer.forward { Button("forward", systemImage: "arrowshape.turn.up.right") { onForward() } }
         if offer.edit { Button("edit", systemImage: "pencil") { model.edit(item) } }
         if offer.delete { Button("delete_for_everyone", systemImage: "trash", role: .destructive, action: onDelete) }
@@ -232,7 +261,12 @@ private struct BodyText: View {
                 }
                 .foregroundStyle(foreground)
             }
-            Text(verbatim: text).font(TypeStyle.bubble).lineSpacing(3).foregroundStyle(foreground)
+            // A tap on a link opens it in the browser (decision 0046); elsewhere it shows the time.
+            Text(linked(text, webLinks(text), foreground: foreground))
+                .font(TypeStyle.bubble)
+                .lineSpacing(3)
+                .foregroundStyle(foreground)
+                .tint(foreground)
         case .deleted:
             // Drawn by Bubble as a line of its own.
             EmptyView()
