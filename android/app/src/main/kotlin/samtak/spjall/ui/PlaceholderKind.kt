@@ -30,8 +30,10 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 
-/** The shape of the rows a list will have: a conversation's, or a post's. */
-enum class PlaceholderKind { Conversation, Post }
+/** The shape of the rows a list will have; the conversation list's is the only one left (decision 0044). */
+enum class PlaceholderKind {
+    Conversation,
+}
 
 /**
  * Grey rows where a list's rows will be, until its first read returns
@@ -60,7 +62,6 @@ fun PlaceholderRows(
         repeat(count) { index ->
             when (kind) {
                 PlaceholderKind.Conversation -> ConversationShape(index)
-                PlaceholderKind.Post -> PostShape(index)
             }
             HorizontalDivider(color = Palette.border)
         }
@@ -95,23 +96,6 @@ private fun ConversationShape(index: Int) {
     }
 }
 
-/** An avatar beside a name and three lines of text, as a post has. */
-@Composable
-private fun PostShape(index: Int) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(modifier = Modifier.size(POST_AVATAR.dp).background(Palette.muted, CircleShape))
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Bar(NAME_SHARES[index % NAME_SHARES.size])
-            Bar(1f)
-            Bar(1f)
-            Bar(LINE_SHARES[index % LINE_SHARES.size])
-        }
-    }
-}
-
 @Composable
 private fun Bar(share: Float) {
     Box(
@@ -125,7 +109,6 @@ private fun Bar(share: Float) {
 
 /** Enough to fill a phone's screen. */
 private const val ROWS = 6
-private const val POST_AVATAR = 40
 private const val BAR = 10
 private const val DIM = 0.45f
 private const val PULSE_MS = 900

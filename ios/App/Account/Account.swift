@@ -64,9 +64,6 @@ protocol Account: Sendable {
     /// Copies the message at `seq` of `from` into `to` as a new message there, marked forwarded (decision 0041).
     /// Refused under a timer, for a deleted message and for a card.
     func forward(_ from: String, seq: UInt64, to: String) throws -> String
-    /// Shares the Fljótið post `postId` into `conversation`: a message that carries the post's id and nothing
-    /// else (decision 0040), sent on the next sync. Returns its envelope id.
-    func sharePost(_ conversation: String, postId: String) throws -> String
     /// Blocks `account` (decision 0024): it can no longer reach this one, and the 1:1 with it ends.
     func block(_ account: String) throws -> Outcome
     func unblock(_ account: String) throws
@@ -83,25 +80,6 @@ protocol Account: Sendable {
     func setPushToken(_ token: String, sandbox: Bool) throws
     /// What to announce since the last call, and the conversations read since; each notice is given once.
     func notices() throws -> Notices
-    /// A page of Fljótið, newest first; `before` is the `next` of the page before (decision 0034).
-    func feed(before: String?, limit: UInt32) throws -> PostPage
-    /// A page of one account's wall, newest first.
-    func wall(account: String, before: String?, limit: UInt32) throws -> PostPage
-    /// One post; `Refused` with 404 when it is gone.
-    func post(_ postId: String) throws -> Post
-    /// A shared post for its card, fetched now and kept nowhere (decision 0040); `gone` for a 404.
-    func sharedPost(_ postId: String) throws -> SharedPost
-    /// Posts to Fljótið and this account's wall.
-    func createPost(body: String) throws -> Post
-    func deletePost(_ postId: String) throws
-    /// This account's one reaction to a post, or none.
-    func reactToPost(_ postId: String, reaction: PostReaction?) throws
-    /// A page of a post's replies, oldest first; `after` is the `next` of the page before.
-    func replies(_ postId: String, after: String?, limit: UInt32) throws -> ReplyPage
-    func createReply(_ postId: String, body: String) throws -> Reply
-    func deleteReply(_ replyId: String) throws
-    /// Who an account is, as Fljótið shows them.
-    func profile(_ account: String) throws -> Person
     /// The 1:1 with `account`, made if there is none, without an invite; its id.
     func openDirect(_ account: String) throws -> String
     /// Sets this account's photo from the image at `path` (decision 0039); its new version.
@@ -222,10 +200,6 @@ final class CoreAccount: Account, @unchecked Sendable {
         try core().forward(from: from, seq: seq, to: to)
     }
 
-    func sharePost(_ conversation: String, postId: String) throws -> String {
-        try core().sharePost(conversation: conversation, postId: postId)
-    }
-
     func block(_ account: String) throws -> Outcome { try core().block(account: account) }
 
     func unblock(_ account: String) throws { try core().unblock(account: account) }
@@ -245,36 +219,6 @@ final class CoreAccount: Account, @unchecked Sendable {
     func setPushToken(_ token: String, sandbox: Bool) throws { try core().setPushToken(token: token, sandbox: sandbox) }
 
     func notices() throws -> Notices { try core().notices() }
-
-    func feed(before: String?, limit: UInt32) throws -> PostPage { try core().feed(before: before, limit: limit) }
-
-    func wall(account: String, before: String?, limit: UInt32) throws -> PostPage {
-        try core().wall(account: account, before: before, limit: limit)
-    }
-
-    func post(_ postId: String) throws -> Post { try core().post(postId: postId) }
-
-    func sharedPost(_ postId: String) throws -> SharedPost { try core().sharedPost(postId: postId) }
-
-    func createPost(body: String) throws -> Post { try core().createPost(body: body) }
-
-    func deletePost(_ postId: String) throws { try core().deletePost(postId: postId) }
-
-    func reactToPost(_ postId: String, reaction: PostReaction?) throws {
-        try core().reactToPost(postId: postId, reaction: reaction)
-    }
-
-    func replies(_ postId: String, after: String?, limit: UInt32) throws -> ReplyPage {
-        try core().replies(postId: postId, after: after, limit: limit)
-    }
-
-    func createReply(_ postId: String, body: String) throws -> Reply {
-        try core().createReply(postId: postId, body: body)
-    }
-
-    func deleteReply(_ replyId: String) throws { try core().deleteReply(replyId: replyId) }
-
-    func profile(_ account: String) throws -> Person { try core().profile(account: account) }
 
     func openDirect(_ account: String) throws -> String { try core().openDirect(account: account) }
 

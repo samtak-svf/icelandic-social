@@ -3,14 +3,10 @@
 <resources>
     <!-- Launcher label, home-screen name, store-facing display name. -->
     <string name="app_name">Hjal</string>
-    <!-- The first tab: the public feed every account is in (docs/decisions/0034). -->
-    <string name="tab_feed">Fljótið</string>
     <!-- Bottom tab: the conversation list. -->
     <string name="tab_conversations">Hjal</string>
     <!-- Bottom tab: own profile, invite link and the way to settings (docs/decisions/0034). -->
     <string name="tab_me">Ég</string>
-    <!-- Title of the settings screen, and the screen-reader label of the gear on Ég that opens it (docs/decisions/0034). -->
-    <string name="settings_title">Stillingar</string>
     <!-- Action that starts a new conversation. -->
     <string name="new_conversation">Nýtt hjal</string>
     <!-- The conversation list when there is none yet; points at the invite link (docs/decisions/0022). -->
@@ -158,19 +154,10 @@
     </plurals>
     <!-- The conversation picker when there is no conversation to send into. -->
     <string name="pick_empty">Ekkert samtal til að senda í.</string>
-    <!-- A Fljótið post's menu entry that shares it into conversations; also the title of the conversation picker it opens (docs/decisions/0040). -->
-    <string name="share_post">Senda í samtal</string>
-    <!-- Brief confirmation after a post was shared: into how many conversations (docs/decisions/0040). -->
-    <plurals name="share_post_done">
-        <item quantity="one">Sent í %1$d samtal</item>
-        <item quantity="other">Sent í %1$d samtöl</item>
-    </plurals>
     <!-- A shared Fljótið post in the conversation list and in a notification: fixed, never the post's text or author (docs/decisions/0040). -->
     <string name="post_shared">Deild færsla</string>
     <!-- The card of a shared post the server no longer shows: deleted, its author's account deleted, or its author blocked. It does not say which (docs/decisions/0040). -->
     <string name="post_gone">Færslan er ekki lengur til</string>
-    <!-- The card of a shared post that could not be fetched; a tap tries again. -->
-    <string name="post_load_failed">Ekki tókst að sækja færsluna. Reyndu aftur.</string>
     <!-- Add a reaction to a message. -->
     <string name="react">Bregðast við</string>
     <!-- Per-conversation setting: messages delete themselves after a set time. -->
@@ -270,34 +257,8 @@
     <string name="photo_remove_confirm">Fjarlægja myndina þína? Hún hverfur hjá öllum.</string>
     <!-- The one line beside the photo buttons on Ég: every signed-in account sees the profile photo, which is not end-to-end encrypted (docs/decisions/0039). -->
     <string name="photo_seen_by_all">Allir sem eru skráðir inn sjá myndina þína.</string>
-    <!-- One line on the feed's header: posts are public and not end-to-end encrypted (0034). -->
-    <string name="feed_public_notice">Allir sem nota Hjal sjá það sem skrifað er hér. Það er ekki dulkóðað eins og samtölin.</string>
-    <!-- The feed's way to write a post, and the composer's placeholder. -->
-    <string name="feed_composer_placeholder">Hvað er að frétta?</string>
-    <!-- Ég's way to write a post, and the composer's placeholder there. -->
-    <string name="wall_composer_placeholder">Skrifa á vegginn þinn…</string>
-    <!-- The feed when no post is there yet. -->
-    <string name="feed_empty">Ekkert hefur verið skrifað í Fljótið enn.</string>
-    <!-- A wall without posts. -->
-    <string name="wall_empty">Ekkert á veggnum enn.</string>
-    <!-- The composer's button that posts. -->
-    <string name="post_action">Birta</string>
-    <!-- A post's heart button, as an accessibility label. -->
-    <string name="post_react">Bregðast við</string>
-    <!-- A post's button that opens its replies. -->
-    <string name="post_reply">Svara</string>
-    <!-- Confirms deleting one's own post. -->
-    <string name="post_delete_confirm">Eyða þessari færslu? Svörin og viðbrögðin fara með henni.</string>
-    <!-- Confirms deleting one's own reply. -->
-    <string name="reply_delete_confirm">Eyða þessu svari?</string>
     <!-- Deletes one's own post or reply, in its menu and its confirmation. -->
     <string name="delete">Eyða</string>
-    <!-- The title of a post's replies screen. -->
-    <string name="replies_title">Svör</string>
-    <!-- The replies screen's composer placeholder. -->
-    <string name="reply_placeholder">Skrifa svar…</string>
-    <!-- A post without replies. -->
-    <string name="replies_empty">Engin svör enn.</string>
     <!-- Kenni verified a person whose kennitala is on another account (409 identity_taken). -->
     <string name="identity_taken">Þessi rafrænu skilríki eru þegar tengd öðrum aðgangi.</string>
     <!-- The server could not be reached; the action can be tried again. -->
@@ -352,14 +313,6 @@
     <string name="typing_in_row">er að skrifa…</string>
     <!-- Screen-reader label of the conversation title, which opens its members, mute and timer (0043). -->
     <string name="conversation_info">Um samtalið</string>
-    <!-- Label above a post shared into a conversation, so it is not read as the sender's own message (0040, 0043). -->
-    <string name="post_from_feed">Úr Fljótinu</string>
-    <!-- The feed header's one short line: posts are public and not end-to-end encrypted; the information button opens feed_public_notice (0034, 0043). -->
-    <string name="feed_public_short">Opið öllum og ekki dulkóðað.</string>
-    <!-- Screen-reader label of the information button beside feed_public_short (0043). -->
-    <string name="feed_public_more">Nánar um Fljótið</string>
-    <!-- Pill shown when a refresh brings newer posts while scrolled down; scrolls to the top (0043). -->
-    <string name="feed_new_posts">Nýjar færslur</string>
     <!-- Placeholder of the search field on the forward and share picker (0038, 0043). -->
     <string name="pick_search">Leita að samtali</string>
     <!-- The forward and share picker when its search finds nothing (0043). -->

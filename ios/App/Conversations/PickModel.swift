@@ -3,7 +3,7 @@ import Observation
 import SpjallCore
 
 /// The conversation picker: the list, to pick one or several conversations from, and what to do in each.
-/// A forward (decision 0041) and a shared post (decision 0040) differ only in `deliver`, run once per
+/// A forward (decision 0041) is its `deliver`, run once per
 /// picked conversation, in the list's order. One that fails stops the round; what went stays sent and
 /// unpicked, so trying again sends no copy twice. A search narrows the list by name, and `outgoing`
 /// shows at the top what is being sent (decision 0043).
@@ -132,12 +132,9 @@ final class PickModel {
     }
 }
 
-/// What a pick sends, shown at its top: the message forwarded, or the post shared as the server holds it.
+/// What a pick sends, shown at its top: the message forwarded.
 enum Outgoing: Equatable, Sendable {
     case message(Item)
-    case post(Post)
-    /// A shared post the server no longer shows.
-    case postGone
 }
 
 /// Runs `work` for each of `targets` in turn, off the main actor, until one throws:

@@ -48,12 +48,6 @@ interface ConversationActions {
     /** Opens the photo or file of [item] in another app. */
     fun open(item: Item)
 
-    /** Fetches a shared post for its card, which is on screen (decision 0040). */
-    fun showPost(postId: String)
-
-    /** Opens a shared post's replies. */
-    fun openPost(postId: String)
-
     /** Sets the disappearing timer, or turns it off with null. */
     fun timer(seconds: UInt?)
 

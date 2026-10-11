@@ -4,7 +4,8 @@ import SwiftUI
 /// What a long press offers on an item.
 struct Offer {
     let reply: Bool
-    /// Not under a timer, where a copy would outlive the original (decision 0041).
+    /// Text or a file, not under a timer, where a copy would outlive the original (decision 0041);
+    /// never a shared post (decision 0044).
     let forward: Bool
     let react: Bool
     let edit: Bool
@@ -18,9 +19,9 @@ struct Offer {
         case .text:
             text = true
             copyable = true
-        case .media, .post:
+        case .media:
             copyable = true
-        case .deleted, .members, .timer:
+        case .post, .deleted, .members, .timer:
             break
         }
         reply = live
@@ -47,8 +48,6 @@ struct Bubble: View {
     let onReact: () -> Void
     /// Opens the picker that copies this message into other conversations.
     var onForward: () -> Void = {}
-    /// Opens a shared post's replies.
-    var onPost: (String) -> Void = { _ in }
 
     private var offer: Offer { Offer(item) }
     private var background: Color { item.own ? BrandTokens.Colors.bubbleOwnBg : BrandTokens.Colors.bubbleOtherBg }
@@ -110,7 +109,7 @@ struct Bubble: View {
     private var bubble: some View {
         VStack(alignment: .leading, spacing: 4) {
             if item.forwarded { ForwardedMark(foreground: foreground) }
-            BodyText(item: item, foreground: foreground, model: model, onPost: onPost)
+            BodyText(item: item, foreground: foreground, model: model)
         }
         .fixedSize(horizontal: false, vertical: true)
         .padding(.horizontal, 14)
@@ -170,7 +169,6 @@ private struct BodyText: View {
     let item: Item
     let foreground: Color
     let model: ConversationModel
-    let onPost: (String) -> Void
 
     var body: some View {
         switch item.content {
@@ -178,9 +176,9 @@ private struct BodyText: View {
             if let quote {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: quote.sender.map(shownName) ?? "").font(.caption.weight(.semibold))
-                    if let postId = quote.postId {
+                    if quote.postId != nil {
                         // A reply to a share quotes the post as its card: the store holds no text of it.
-                        SharedCard(postId: postId, foreground: foreground, model: model, lineLimit: 2)
+                        SharedCard(foreground: foreground)
                     } else {
                         Text(verbatim: quote.text ?? localized("message_deleted")).font(.caption).italic().lineLimit(2)
                     }
@@ -196,8 +194,8 @@ private struct BodyText: View {
             Attachment(
                 item: item, mime: mime, size: size, caption: caption, name: name, foreground: foreground,
                 model: model)
-        case .post(let postId):
-            SharedCard(postId: postId, foreground: foreground, model: model, onPost: onPost)
+        case .post:
+            SharedCard(foreground: foreground)
         case .members, .timer:
             Text(verbatim: lastLine(item)).font(TypeStyle.bubble).foregroundStyle(foreground)
         }

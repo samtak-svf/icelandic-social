@@ -25,8 +25,6 @@ import samtak.spjall.core.Item
 import samtak.spjall.core.ItemStatus
 import samtak.spjall.core.Mute
 import samtak.spjall.core.Person
-import samtak.spjall.core.Post
-import samtak.spjall.core.ReactionCounts
 import samtak.spjall.ui.SpjallTheme
 
 @RunWith(AndroidJUnit4::class)
@@ -155,14 +153,5 @@ class PickScreenTest {
             )
         show(PickViewModel.State(conversations = conversations, loaded = true, outgoing = Outgoing.Message(item)))
         compose.onNodeWithText("Sjáumst á morgun").assertIsDisplayed()
-    }
-
-    @Test
-    fun thePostBeingSharedShowsWithItsAuthor() {
-        val post =
-            Post("p1", Person("a6", "Elín", false), "Fundur í kvöld", 0uL, 0u, ReactionCounts(0u, 0u, 0u, 0u, 0u), null)
-        show(PickViewModel.State(conversations = conversations, loaded = true, outgoing = Outgoing.SharedPost(post)))
-        compose.onNodeWithText("Elín", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("Fundur í kvöld").assertIsDisplayed()
     }
 }

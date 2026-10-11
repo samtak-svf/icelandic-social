@@ -34,7 +34,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
-import samtak.spjall.conversation.ConversationViewModel.Shared
 import samtak.spjall.core.Content
 import samtak.spjall.core.Item
 import samtak.spjall.core.ItemStatus
@@ -53,11 +52,14 @@ private class Offer(
     private val live = sent && item.content != Content.Deleted
     val reply = live
 
-    /** Not under a timer, where a copy would outlive the original (decision 0041). */
+    /**
+     * Text or a file, not under a timer, where a copy would outlive the original (0041); never a
+     * shared post (0044).
+     */
     val forward =
         live &&
             item.expiresAt == null &&
-            (item.content is Content.Text || item.content is Content.Media || item.content is Content.Post)
+            (item.content is Content.Text || item.content is Content.Media)
     val react = live
     val edit = live && item.own && item.content is Content.Text
     val delete = live && item.own
@@ -87,12 +89,11 @@ internal fun Bubble(
     row: Row.Bubble,
     group: Boolean,
     media: ConversationViewModel.Media?,
-    posts: Map<String, Shared>,
     actions: ConversationActions,
     onDelete: (Item) -> Unit,
 ) {
     val item = row.item
-    val tap = item.tap(posts, actions)
+    val tap = item.tap(actions)
     val offer = Offer(item)
     var menu by remember { mutableStateOf(false) }
     val background = if (item.own) Palette.bubbleOwnBg else Palette.bubbleOtherBg
@@ -136,7 +137,7 @@ internal fun Bubble(
                 ) {
                     Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp)) {
                         if (item.forwarded) ForwardedMark(foreground)
-                        Body(item, media, posts, foreground, actions)
+                        Body(item, media, foreground, actions)
                     }
                 }
                 Menu(menu, offer, actions, onDelete) { menu = false }
@@ -194,19 +195,18 @@ private fun accessibilityActions(
 private fun Body(
     item: Item,
     media: ConversationViewModel.Media?,
-    posts: Map<String, Shared>,
     foreground: Color,
     actions: ConversationActions,
 ) {
     when (val content = item.content) {
         is Content.Text -> {
-            content.replyTo?.let { Quoted(it, posts, foreground, actions) }
+            content.replyTo?.let { Quoted(it, foreground) }
             Text(text = content.text, style = Type.bubble, color = foreground)
         }
         // Drawn by Bubble as a line of its own.
         Content.Deleted -> Unit
         is Content.Media -> Attachment(item, content, media, foreground, actions)
-        is Content.Post -> SharedCard(content.postId, posts[content.postId], foreground, actions)
+        is Content.Post -> SharedCard(foreground)
         is Content.Members, is Content.Timer ->
             Text(text = lastLine(item), style = Type.bubble, color = foreground)
     }

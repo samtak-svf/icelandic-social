@@ -39,7 +39,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -49,7 +48,6 @@ import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.EmptyState
 import samtak.spjall.ui.LocalReduceMotion
-import samtak.spjall.ui.NameWithMark
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.Type
@@ -58,14 +56,12 @@ import samtak.spjall.ui.avatarKind
 import samtak.spjall.ui.lastLine
 import samtak.spjall.ui.photoOf
 import samtak.spjall.ui.rowMotion
-import samtak.spjall.ui.shownName
 import samtak.spjall.ui.title
 
 /**
  * The conversation list in pick mode: what is being sent at the top, a search by name, each row a
- * checkbox, and one send for all the picked ones (decision 0043). A forward (decision 0041) and a
- * shared post (decision 0040) differ only in [title], the preview and what the model does per
- * conversation.
+ * checkbox, and one send for all the picked ones (decision 0043). It forwards a message (decision
+ * 0041); [title], the preview and what the model does per conversation say so.
  */
 @Composable
 fun PickScreen(
@@ -144,7 +140,7 @@ private fun PickSearch(
     )
 }
 
-/** What is about to go: the forwarded message's line, or the shared post as its card shows it. */
+/** What is about to go: the forwarded message's line. */
 @Composable
 private fun Preview(outgoing: Outgoing) {
     Row(
@@ -164,29 +160,6 @@ private fun Preview(outgoing: Outgoing) {
                         color = Palette.fg,
                         maxLines = PREVIEW_LINES,
                         overflow = TextOverflow.Ellipsis,
-                    )
-                is Outgoing.SharedPost -> {
-                    NameWithMark(
-                        name = outgoing.post.author.shownName(),
-                        verified = outgoing.post.author.verified,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Palette.fg,
-                        markSize = 13.dp,
-                    )
-                    Text(
-                        text = outgoing.post.body,
-                        style = Type.bubble,
-                        color = Palette.fg,
-                        maxLines = PREVIEW_LINES,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                Outgoing.PostGone ->
-                    Text(
-                        text = stringResource(R.string.post_gone),
-                        style = Type.bubble,
-                        fontStyle = FontStyle.Italic,
-                        color = Palette.mutedFg,
                     )
             }
         }
@@ -235,7 +208,7 @@ private fun PickRow(
 
 private const val ROW_HEIGHT = 64
 
-/** Enough of the message or post to know it by. */
+/** Enough of the message to know it by. */
 private const val PREVIEW_LINES = 3
 
 /** The longest search, as the list's. */

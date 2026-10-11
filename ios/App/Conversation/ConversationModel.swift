@@ -22,15 +22,6 @@ final class ConversationModel {
         case failed
     }
 
-    /// A Fljótið post shared here, as its card shows it; held for the screen only (decision 0040).
-    enum Shared: Equatable {
-        case loading
-        case found(Post)
-        /// Deleted, its author's account deleted, or its author blocked: the card does not say which.
-        case gone
-        case failed
-    }
-
     /// A file fetched for opening, its type, and the sender's name for it.
     struct Opened: Equatable {
         let path: String
@@ -68,8 +59,6 @@ final class ConversationModel {
         mode == .new && draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .attach : .send
     }
     private(set) var media: [UInt64: Media] = [:]
-    /// Shared posts by id, fetched when their card is on screen.
-    private(set) var posts: [String: Shared] = [:]
     /// The file to open next; `didOpen` clears it.
     private(set) var opened: Opened?
     private(set) var problem: Problem?
@@ -241,24 +230,6 @@ final class ConversationModel {
         switch media[seq] {
         case .loading, .ready: return
         case .failed, nil: await download(seq)
-        }
-    }
-
-    /// Fetches the shared post `postId` for its card, once; a failed one can be asked for again.
-    func showPost(_ postId: String) async {
-        switch posts[postId] {
-        case .loading, .found, .gone: return
-        case .failed, nil: break
-        }
-        posts[postId] = .loading
-        let account = account
-        do {
-            switch try await offMain({ try account.sharedPost(postId) }) {
-            case .found(let post): posts[postId] = .found(post)
-            case .gone: posts[postId] = .gone
-            }
-        } catch {
-            posts[postId] = .failed
         }
     }
 

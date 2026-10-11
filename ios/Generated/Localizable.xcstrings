@@ -13,18 +13,6 @@
         }
       }
     },
-    "tab_feed": {
-      "comment": "The first tab: the public feed every account is in (docs/decisions/0034).",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fljótið"
-          }
-        }
-      }
-    },
     "tab_conversations": {
       "comment": "Bottom tab: the conversation list.",
       "extractionState": "manual",
@@ -45,18 +33,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ég"
-          }
-        }
-      }
-    },
-    "settings_title": {
-      "comment": "Title of the settings screen, and the screen-reader label of the gear on Ég that opens it (docs/decisions/0034).",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Stillingar"
           }
         }
       }
@@ -889,42 +865,6 @@
         }
       }
     },
-    "share_post": {
-      "comment": "A Fljótið post's menu entry that shares it into conversations; also the title of the conversation picker it opens (docs/decisions/0040).",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Senda í samtal"
-          }
-        }
-      }
-    },
-    "share_post_done": {
-      "comment": "Brief confirmation after a post was shared: into how many conversations (docs/decisions/0040).",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Sent í %1$lld samtal"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Sent í %1$lld samtöl"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "post_shared": {
       "comment": "A shared Fljótið post in the conversation list and in a notification: fixed, never the post's text or author (docs/decisions/0040).",
       "extractionState": "manual",
@@ -945,18 +885,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Færslan er ekki lengur til"
-          }
-        }
-      }
-    },
-    "post_load_failed": {
-      "comment": "The card of a shared post that could not be fetched; a tap tries again.",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ekki tókst að sækja færsluna. Reyndu aftur."
           }
         }
       }
@@ -1537,126 +1465,6 @@
         }
       }
     },
-    "feed_public_notice": {
-      "comment": "One line on the feed's header: posts are public and not end-to-end encrypted (0034).",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Allir sem nota Hjal sjá það sem skrifað er hér. Það er ekki dulkóðað eins og samtölin."
-          }
-        }
-      }
-    },
-    "feed_composer_placeholder": {
-      "comment": "The feed's way to write a post, and the composer's placeholder.",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hvað er að frétta?"
-          }
-        }
-      }
-    },
-    "wall_composer_placeholder": {
-      "comment": "Ég's way to write a post, and the composer's placeholder there.",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Skrifa á vegginn þinn…"
-          }
-        }
-      }
-    },
-    "feed_empty": {
-      "comment": "The feed when no post is there yet.",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ekkert hefur verið skrifað í Fljótið enn."
-          }
-        }
-      }
-    },
-    "wall_empty": {
-      "comment": "A wall without posts.",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ekkert á veggnum enn."
-          }
-        }
-      }
-    },
-    "post_action": {
-      "comment": "The composer's button that posts.",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Birta"
-          }
-        }
-      }
-    },
-    "post_react": {
-      "comment": "A post's heart button, as an accessibility label.",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bregðast við"
-          }
-        }
-      }
-    },
-    "post_reply": {
-      "comment": "A post's button that opens its replies.",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Svara"
-          }
-        }
-      }
-    },
-    "post_delete_confirm": {
-      "comment": "Confirms deleting one's own post.",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Eyða þessari færslu? Svörin og viðbrögðin fara með henni."
-          }
-        }
-      }
-    },
-    "reply_delete_confirm": {
-      "comment": "Confirms deleting one's own reply.",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Eyða þessu svari?"
-          }
-        }
-      }
-    },
     "delete": {
       "comment": "Deletes one's own post or reply, in its menu and its confirmation.",
       "extractionState": "manual",
@@ -1665,42 +1473,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Eyða"
-          }
-        }
-      }
-    },
-    "replies_title": {
-      "comment": "The title of a post's replies screen.",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Svör"
-          }
-        }
-      }
-    },
-    "reply_placeholder": {
-      "comment": "The replies screen's composer placeholder.",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Skrifa svar…"
-          }
-        }
-      }
-    },
-    "replies_empty": {
-      "comment": "A post without replies.",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Engin svör enn."
           }
         }
       }
@@ -2025,54 +1797,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Um samtalið"
-          }
-        }
-      }
-    },
-    "post_from_feed": {
-      "comment": "Label above a post shared into a conversation, so it is not read as the sender's own message (0040, 0043).",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Úr Fljótinu"
-          }
-        }
-      }
-    },
-    "feed_public_short": {
-      "comment": "The feed header's one short line: posts are public and not end-to-end encrypted; the information button opens feed_public_notice (0034, 0043).",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Opið öllum og ekki dulkóðað."
-          }
-        }
-      }
-    },
-    "feed_public_more": {
-      "comment": "Screen-reader label of the information button beside feed_public_short (0043).",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nánar um Fljótið"
-          }
-        }
-      }
-    },
-    "feed_new_posts": {
-      "comment": "Pill shown when a refresh brings newer posts while scrolled down; scrolls to the top (0043).",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nýjar færslur"
           }
         }
       }

@@ -18,7 +18,7 @@ class EmptyStateTest {
 
     @Test
     fun theLineIsReadAndTheIconIsNot() {
-        compose.setContent { SpjallTheme { EmptyState(AppIcons.Waves, "Ekkert hér") } }
+        compose.setContent { SpjallTheme { EmptyState(AppIcons.Chat, "Ekkert hér") } }
         compose.onNodeWithText("Ekkert hér").assertExists()
         compose.onAllNodesWithText("Áfram").assertCountEquals(0)
     }
@@ -27,7 +27,7 @@ class EmptyStateTest {
     fun itsOneButtonActs() {
         var taps = 0
         compose.setContent {
-            SpjallTheme { EmptyState(AppIcons.Waves, "Ekkert hér", action = "Áfram", onAction = { taps++ }) }
+            SpjallTheme { EmptyState(AppIcons.Chat, "Ekkert hér", action = "Áfram", onAction = { taps++ }) }
         }
         compose.onNodeWithText("Áfram").performClick()
         assertEquals(1, taps)

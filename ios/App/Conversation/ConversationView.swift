@@ -8,8 +8,6 @@ import SwiftUI
 /// is one element for VoiceOver, with the same actions as named actions.
 struct ConversationView: View {
     let model: ConversationModel
-    /// Opens a shared post's replies.
-    var onPost: (String) -> Void = { _ in }
 
     @State private var deleting: Item?
     @State private var reacting: Item?
@@ -127,7 +125,7 @@ struct ConversationView: View {
                             Bubble(
                                 item: item, first: first, last: last, readBy: readBy, group: group, model: model,
                                 onDelete: { deleting = item }, onReact: { reacting = item },
-                                onForward: { forwarding = model.forwarding(item) }, onPost: onPost)
+                                onForward: { forwarding = model.forwarding(item) })
                         }
                     }
                     Color.clear.frame(height: 1).id(Self.bottom)

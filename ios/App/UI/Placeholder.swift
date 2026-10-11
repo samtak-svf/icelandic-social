@@ -4,7 +4,7 @@ import SwiftUI
 /// screen reads as a broken one. The shapes say nothing; the whole is one element read as "loading".
 /// They pulse unless Reduce Motion is on.
 struct PlaceholderRows: View {
-    enum Kind { case conversation, post }
+    enum Kind { case conversation }
 
     let kind: Kind
     var count = 6
@@ -17,7 +17,6 @@ struct PlaceholderRows: View {
             ForEach(0..<count, id: \.self) { index in
                 switch kind {
                 case .conversation: conversation(index)
-                case .post: post(index)
                 }
                 Rectangle().fill(BrandTokens.Colors.border).frame(height: 1)
             }
@@ -42,20 +41,6 @@ struct PlaceholderRows: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 13)
-    }
-
-    /// An avatar beside a name and three lines of text, as a post has.
-    private func post(_ index: Int) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Circle().fill(BrandTokens.Colors.muted).frame(width: 40, height: 40)
-            VStack(alignment: .leading, spacing: 8) {
-                bar(Self.names[index % Self.names.count])
-                bar(1)
-                bar(1)
-                bar(Self.lines[index % Self.lines.count])
-            }
-        }
-        .padding(16)
     }
 
     private func bar(_ share: CGFloat) -> some View {

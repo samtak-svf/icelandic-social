@@ -18,11 +18,9 @@ import samtak.spjall.core.Item
 import samtak.spjall.core.ItemStatus
 import samtak.spjall.core.Mute
 import samtak.spjall.core.Person
-import samtak.spjall.core.Post
-import samtak.spjall.core.ReactionCounts
 import samtak.spjall.ui.SpjallTheme
 
-/** The forward and share picker: its preview, search and empty search (decision 0043). */
+/** The forward picker: its preview, search and empty search (decision 0043). */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [SCREENSHOT_SDK], qualifiers = SCREENSHOT_DEVICE, fontScale = 1f)
@@ -67,9 +65,6 @@ class PickScreenshotTest {
             false,
         )
 
-    private val post =
-        Post("p1", bjarni, "Opinn fundur í kvöld í Gerðubergi.", PAST, 0u, ReactionCounts(0u, 0u, 0u, 0u, 0u), null)
-
     private fun shoot(
         title: Int,
         state: PickViewModel.State,
@@ -88,13 +83,6 @@ class PickScreenshotTest {
                 picked = setOf("c3"),
                 outgoing = Outgoing.Message(message),
             ),
-        )
-
-    @Test
-    fun sharePreview() =
-        shoot(
-            R.string.share_post,
-            PickViewModel.State(conversations = conversations, loaded = true, outgoing = Outgoing.SharedPost(post)),
         )
 
     @Test

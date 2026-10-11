@@ -25,10 +25,10 @@ import samtak.spjall.socket.Live
 
 /**
  * The conversation picker: the list, to pick one or several conversations from, and what to do in each.
- * A forward (decision 0041) and a shared post (decision 0040) differ only in [deliver], run once per
- * picked conversation, in the list's order. One that fails stops the round; what went stays sent and
- * unpicked, so trying again sends no copy twice. The list can be searched by name (decisions 0038,
- * 0043), and [preview] reads what is being sent, to show above it.
+ * A forward (decision 0041) is [deliver], run once per picked conversation, in the list's order.
+ * One that fails stops the round; what went stays sent and unpicked, so trying again sends no
+ * copy twice. The list can be searched by name (decisions 0038, 0043), and [preview] reads what
+ * is being sent, to show above it.
  */
 class PickViewModel(
     private val account: Account,

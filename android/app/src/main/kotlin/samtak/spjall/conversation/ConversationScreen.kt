@@ -211,7 +211,6 @@ private fun Timeline(
                             row,
                             group,
                             row.item.seq?.let { state.media[it] },
-                            state.posts,
                             actions,
                             onDelete,
                         )

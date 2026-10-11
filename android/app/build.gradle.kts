@@ -68,7 +68,7 @@ android {
     defaultConfig {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionCode = env("SPJALL_VERSION_CODE")?.toInt()?.plus(playVersionCodeOffset) ?: 2
-        versionName = "0.4.0"
+        versionName = "0.5.0"
         buildConfigField("String", "FIREBASE_APP_ID", "\"${firebase?.appId.orEmpty()}\"")
         buildConfigField("String", "FIREBASE_API_KEY", "\"${firebase?.apiKey.orEmpty()}\"")
         buildConfigField("String", "FIREBASE_SENDER_ID", "\"${firebase?.senderId.orEmpty()}\"")

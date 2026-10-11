@@ -21,8 +21,8 @@ import samtak.spjall.ui.Palette
 import samtak.spjall.ui.SpjallTheme
 
 /**
- * Ég with its larger photo that opens the picker, and the blocked list's empty state
- * (decision 0043). See ConversationsScreenshotTest.
+ * Ég with its larger photo that opens the picker and its settings below (decisions 0043,
+ * 0044), and the blocked list's empty state. See ConversationsScreenshotTest.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -34,14 +34,13 @@ class MeScreenshotTest {
 
     @Test
     fun me() {
-        compose.setContent { SpjallTheme { MeScreen(MeViewModel.State(me = me), NoMeActions(), onSettings = {}) } }
+        compose.setContent { SpjallTheme { MeScreen(MeViewModel.State(me = me), NoMeActions()) } }
         compose.onRoot().captureRoboImage()
     }
 
     @Test
     fun nobodyBlocked() {
-        // The section alone: the settings screen around it reads the core's version, which needs
-        // the native library.
+        // The section alone, so the image shows the empty state without the screen around it.
         compose.setContent {
             SpjallTheme {
                 Column(modifier = Modifier.background(Palette.bg).padding(16.dp)) {

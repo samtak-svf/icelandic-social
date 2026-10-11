@@ -30,14 +30,12 @@ import samtak.spjall.core.ItemStatus
 import samtak.spjall.core.Mute
 import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
-import samtak.spjall.core.Post
-import samtak.spjall.core.ReactionCounts
 import samtak.spjall.ui.SpjallTheme
 import java.util.TimeZone
 
 /**
  * What one conversation looks like in the states 0043 names: the composer's one action, the
- * clock of a pending message, a shared post's label and the information sheet. Rewrite the
+ * clock of a pending message, a shared post's line and the information sheet. Rewrite the
  * images with `./gradlew recordRoborazziDebug` when a change is meant.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -80,10 +78,6 @@ class ConversationScreenshotTest {
             override fun fetch(item: Item) = Unit
 
             override fun open(item: Item) = Unit
-
-            override fun showPost(postId: String) = Unit
-
-            override fun openPost(postId: String) = Unit
 
             override fun timer(seconds: UInt?) = Unit
 
@@ -133,7 +127,6 @@ class ConversationScreenshotTest {
     private fun show(
         vararg items: Item,
         draft: String = "",
-        posts: Map<String, ConversationViewModel.Shared> = emptyMap(),
     ) = compose.setContent {
         SpjallTheme {
             ConversationScreen(
@@ -151,7 +144,6 @@ class ConversationScreenshotTest {
                     items = items.toList(),
                     loaded = true,
                     draft = draft,
-                    posts = posts,
                 ),
                 actions,
             )
@@ -180,12 +172,8 @@ class ConversationScreenshotTest {
     }
 
     @Test
-    fun sharedPostIsLabelledFromTheFeed() {
-        val post = Post("p1", me, "Fundur í kvöld", 0uL, 0u, ReactionCounts(0u, 0u, 0u, 0u, 0u), null)
-        show(
-            item(1u, Content.Post("p1")),
-            posts = mapOf("p1" to ConversationViewModel.Shared.Found(post)),
-        )
+    fun sharedPostSaysItIsGone() {
+        show(item(1u, Content.Post("p1")))
         compose.onRoot().captureRoboImage()
     }
 

@@ -1,7 +1,6 @@
 package samtak.spjall.me
 
 import androidx.compose.ui.test.getBoundsInRoot
-import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onLast
@@ -9,7 +8,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
@@ -23,16 +21,11 @@ import org.junit.runner.RunWith
 import samtak.spjall.brand.R
 import samtak.spjall.core.AccountDevice
 import samtak.spjall.core.Me
-import samtak.spjall.core.Person
 import samtak.spjall.core.Platform
-import samtak.spjall.core.Post
-import samtak.spjall.core.ReactionCounts
-import samtak.spjall.feed.PostsViewModel
-import samtak.spjall.feed.RecordingPostsActions
 import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.capitals
 
-/** Ég shows the person and their link; everything else is behind the gear (decision 0034). */
+/** Ég shows the person, their photo and their link, and no wall (decision 0044). */
 @RunWith(AndroidJUnit4::class)
 class MeScreenTest {
     @get:Rule val compose = createComposeRule()
@@ -95,7 +88,6 @@ class MeScreenTest {
         link: String? = null,
         name: String = "Jón Jónsson",
         verified: Boolean = true,
-        wall: List<Post> = emptyList(),
         photo: String? = null,
     ) {
         val me =
@@ -117,45 +109,9 @@ class MeScreenTest {
                         link = link,
                     ),
                     actions,
-                    onSettings = { calls += "settings" },
-                    wall = PostsViewModel.State(posts = wall, loaded = true, me = "a1"),
-                    wallActions = RecordingPostsActions(calls),
                 )
             }
         }
-    }
-
-    @Test
-    fun egIsTheWallWithItsOwnPosts() {
-        val mine =
-            Post(
-                "p1",
-                Person("a1", "Jón Jónsson", true),
-                "Fyrsta færslan",
-                1_700_000_000_000u,
-                0u,
-                ReactionCounts(0u, 0u, 0u, 0u, 0u),
-                null,
-            )
-        show(wall = listOf(mine))
-        compose.onNodeWithText("Fyrsta færslan").performScrollTo().assertExists()
-        compose.onNodeWithText(text(R.string.wall_composer_placeholder)).performScrollTo().performClick()
-        compose.onNode(hasSetTextAction()).performTextInput("Önnur")
-        compose.onNodeWithText(text(R.string.post_action)).performClick()
-        assertEquals(listOf("post Önnur"), calls)
-    }
-
-    @Test
-    fun anEmptyWallSaysSo() {
-        show()
-        compose.onNodeWithText(text(R.string.wall_empty)).performScrollTo().assertExists()
-    }
-
-    @Test
-    fun theGearOpensTheSettings() {
-        show()
-        compose.onNodeWithContentDescription(text(R.string.settings_title)).performClick()
-        assertEquals(listOf("settings"), calls)
     }
 
     @Test
@@ -218,14 +174,6 @@ class MeScreenTest {
     fun aVerifiedAccountIsNotOfferedItAgain() {
         show()
         compose.onNodeWithText(text(R.string.verify_cta)).assertDoesNotExist()
-    }
-
-    @Test
-    fun theSettingsAreNotOnEg() {
-        show()
-        compose.onNodeWithText(text(R.string.delete_account)).assertDoesNotExist()
-        compose.onNodeWithText(text(R.string.devices_title).capitals()).assertDoesNotExist()
-        compose.onNodeWithText(text(R.string.devices_title)).assertDoesNotExist()
     }
 
     @Test

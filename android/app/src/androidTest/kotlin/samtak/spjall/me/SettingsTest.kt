@@ -5,7 +5,6 @@ import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -25,9 +24,9 @@ import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.calendarDate
 import samtak.spjall.ui.capitals
 
-/** Nothing that cannot be undone happens on one tap. */
+/** The settings on Ég (decision 0044): nothing that cannot be undone happens on one tap. */
 @RunWith(AndroidJUnit4::class)
-class SettingsScreenTest {
+class SettingsTest {
     @get:Rule val compose = createComposeRule()
 
     private val calls = mutableListOf<String>()
@@ -100,25 +99,25 @@ class SettingsScreenTest {
             )
         compose.setContent {
             SpjallTheme {
-                SettingsScreen(
+                MeScreen(
                     MeViewModel.State(
                         me = me,
                         settings = Settings(readMarkers = true, typing = false),
                         blocked = blocked,
                     ),
                     actions,
-                    onBack = { calls += "back" },
                     notificationsOff = notificationsOff,
+                    version = "1.2.3",
                 )
             }
         }
     }
 
     @Test
-    fun theArrowGoesBack() {
+    fun theSettingsAndTheVersionAreOnEg() {
         show()
-        compose.onNodeWithContentDescription(text(R.string.back)).performClick()
-        assertEquals(listOf("back"), calls)
+        compose.onNodeWithText(text(R.string.devices_title).capitals()).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("1.2.3").performScrollTo().assertIsDisplayed()
     }
 
     @Test

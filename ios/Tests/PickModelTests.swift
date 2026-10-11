@@ -91,11 +91,13 @@ final class PickModelTests: XCTestCase {
         XCTAssertNil(model.problem)
     }
 
-    func testAMessageIsForwardedButNotOneUnderATimerNorACard() {
+    func testAMessageIsForwardedButNotOneUnderATimerNorACardNorASharedPost() {
         XCTAssertTrue(Offer(item(1)).forward)
         XCTAssertFalse(Offer(item(2, expiresAt: FakeAccount.now + 60_000)).forward, "a copy would outlive it")
         XCTAssertFalse(Offer(item(3, content: .deleted)).forward)
         XCTAssertFalse(Offer(item(nil)).forward, "not sent yet")
+        XCTAssertFalse(Offer(item(4, content: .post(postId: "p1"))).forward, "a shared post (decision 0044)")
+        XCTAssertTrue(Offer(item(4, content: .post(postId: "p1"))).reply, "but it can be answered")
     }
 
     func testTheConversationForwardsFromItselfAndOnlyWhatItMayForward() async {

@@ -2,8 +2,7 @@ import SpjallCore
 import SwiftUI
 
 /// The conversation list in pick mode: each row a checkbox, and one send for all the picked ones.
-/// A forward (decision 0041) and a shared post (decision 0040) differ only in `title` and what the
-/// model does per conversation. What is being sent shows at the top, and a search narrows the list by name
+/// A forward (decision 0041): `title` names it and the model does it per conversation. What is being sent shows at the top, and a search narrows the list by name
 /// (decision 0043).
 struct PickView: View {
     let model: PickModel
@@ -72,7 +71,7 @@ struct PickView: View {
     }
 }
 
-/// What is being sent, under a bar as a quote: the message's line, or the post with its author.
+/// What is being sent, under a bar as a quote: the message's line.
 private struct OutgoingPreview: View {
     let outgoing: Outgoing
 
@@ -83,14 +82,6 @@ private struct OutgoingPreview: View {
                 switch outgoing {
                 case .message(let item):
                     Text(verbatim: lastLine(item)).font(TypeStyle.bubble).lineLimit(3)
-                case .post(let post):
-                    HStack(spacing: 4) {
-                        Text(verbatim: shownName(post.author)).font(.caption.weight(.semibold))
-                        if post.author.verified { VerifiedMark(size: 13) }
-                    }
-                    Text(verbatim: post.body).font(TypeStyle.bubble).lineLimit(3)
-                case .postGone:
-                    Text("post_gone").font(TypeStyle.bubble).italic()
                 }
             }
             .foregroundStyle(BrandTokens.Colors.fg)

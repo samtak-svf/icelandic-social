@@ -32,10 +32,8 @@ import samtak.spjall.core.ItemStatus
 import samtak.spjall.core.Mute
 import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
-import samtak.spjall.core.Post
 import samtak.spjall.core.Quote
 import samtak.spjall.core.Reaction
-import samtak.spjall.core.ReactionCounts
 import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.clockTime
 
@@ -107,14 +105,6 @@ class ConversationScreenTest {
                 calls += "open ${item.seq}"
             }
 
-            override fun showPost(postId: String) {
-                calls += "showPost $postId"
-            }
-
-            override fun openPost(postId: String) {
-                calls += "openPost $postId"
-            }
-
             override fun timer(seconds: UInt?) {
                 calls += "timer $seconds"
             }
@@ -177,7 +167,6 @@ class ConversationScreenTest {
         typing: Boolean = false,
         draft: String = "",
         media: Map<ULong, ConversationViewModel.Media> = emptyMap(),
-        posts: Map<String, ConversationViewModel.Shared> = emptyMap(),
         timer: UInt? = null,
         mute: Mute = Mute.Off,
         mode: ConversationViewModel.Mode = ConversationViewModel.Mode.New,
@@ -191,7 +180,6 @@ class ConversationScreenTest {
                     typing = typing,
                     draft = draft,
                     media = media,
-                    posts = posts,
                     mode = mode,
                 ),
                 actions,
@@ -456,44 +444,20 @@ class ConversationScreenTest {
     }
 
     @Test
-    fun aSharedPostShowsItsAuthorAndTextAndOpensOnATap() {
-        val bjorn = Person("a3", "Björn Hansson", true)
-        val post = Post("p1", bjorn, "Fundur í kvöld", 0uL, 0u, ReactionCounts(0u, 0u, 0u, 0u, 0u), null)
-        show(
-            item(1u, Content.Post("p1"), forwarded = true),
-            posts = mapOf("p1" to ConversationViewModel.Shared.Found(post)),
-        )
-        compose.waitForIdle()
-        assertEquals("the card asks for its post when it shows", listOf("showPost p1"), calls)
-        compose.onNodeWithText("Björn Hansson", substring = true).assertIsDisplayed()
-        compose.onNodeWithText(text(R.string.post_from_feed)).assertIsDisplayed()
-        compose.onNodeWithText(text(R.string.forwarded_marker)).assertIsDisplayed()
-        compose.onNodeWithText("Fundur í kvöld").performClick()
-        assertEquals(listOf("showPost p1", "openPost p1"), calls)
-    }
-
-    @Test
-    fun aGonePostSaysOnlyThatAndAFailedOneCanBeTriedAgain() {
-        show(
-            item(1u, Content.Post("p1")),
-            item(2u, Content.Post("p2")),
-            posts = mapOf("p1" to ConversationViewModel.Shared.Gone, "p2" to ConversationViewModel.Shared.Failed),
-        )
+    fun aSharedPostSaysOnlyThatItIsGoneAndCannotBeForwarded() {
+        show(item(1u, Content.Post("p1")))
         compose.onNodeWithText(text(R.string.post_gone)).assertIsDisplayed()
-        compose.onNodeWithText(text(R.string.post_load_failed)).assertIsDisplayed()
-        calls.clear()
-        compose.onNodeWithText(text(R.string.try_again)).performClick()
-        assertEquals(listOf("showPost p2"), calls)
+        compose.onNodeWithText(text(R.string.post_gone)).performClick()
+        assertEquals("the line asks for nothing and opens nothing (decision 0044)", emptyList<String>(), calls)
+        compose.onNodeWithText(text(R.string.post_gone)).performTouchInput { longClick() }
+        compose.onNodeWithText(text(R.string.reply)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.forward)).assertDoesNotExist()
     }
 
     @Test
-    fun aReplyToAShareQuotesThePostAsItsCard() {
-        val post = Post("p1", anna, "Fundur í kvöld", 0uL, 0u, ReactionCounts(0u, 0u, 0u, 0u, 0u), null)
-        show(
-            item(2u, Content.Text("Ég mæti", Quote("e1", anna, null, "p1")), own = true),
-            posts = mapOf("p1" to ConversationViewModel.Shared.Found(post)),
-        )
-        compose.onNodeWithText("Fundur í kvöld", substring = true).assertIsDisplayed()
+    fun aReplyToAShareQuotesItAsTheGoneLine() {
+        show(item(2u, Content.Text("Ég mæti", Quote("e1", anna, null, "p1")), own = true))
+        compose.onNodeWithText(text(R.string.post_gone)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.message_deleted)).assertDoesNotExist()
     }
 

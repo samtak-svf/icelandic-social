@@ -2,91 +2,45 @@ import PhotosUI
 import SpjallCore
 import SwiftUI
 
-/// "Ég" (1e), on cream: the person and their invite link and QR code, then
-/// their wall, written to from here and shown in Fljótið too. The gear at the
-/// top opens `SettingsView`, which holds the rest (decision 0034).
+/// "Ég" (1e), on cream: the account's profile and settings (decision 0044). The
+/// person, their photo and their invite link and QR code, then `SettingsSection`: the
+/// devices, the toggles, who they blocked, and deleting the account.
 struct MeView: View {
     let model: MeModel
-    /// The person's own wall, once it is known who they are.
-    let wall: PostsModel?
-    let onSettings: () -> Void
+    let push: PushModel
     let onVerify: () -> Void
-    let onReplies: (String) -> Void
 
-    @State private var composing = false
     /// What the photo picker chose, from the circle or from the words under it.
     @State private var picked: PhotosPickerItem?
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 0) {
-                head
-                if let wall {
-                    ComposerPill(placeholder: "wall_composer_placeholder") { composing = true }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                    if let problem = wall.problem {
-                        ProblemCard(problem: problem) { Task { await wall.retry() } }
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 8)
-                    }
-                    // Every post here is the person's own: their name leads back here.
-                    PostList(
-                        model: wall, empty: "wall_empty", emptyIcon: "person", onAuthor: { _ in },
-                        onReplies: onReplies
-                    )
-                    .background(BrandTokens.Colors.surface)
+            VStack(alignment: .leading, spacing: 10) {
+                if model.busy {
+                    ProgressView().progressViewStyle(.linear)
                 }
+                if let problem = model.problem {
+                    ProblemCard(problem: problem) { Task { await model.retry() } }
+                }
+                if let me = model.me {
+                    Who(me: me, picked: $picked, enabled: !model.busy)
+                    PhotoControls(model: model, hasPhoto: me.photo != nil, picked: $picked)
+                    if !me.verified { VerifyLink(onVerify: onVerify) }
+                    CardLabel(key: "invite_link_title")
+                    InviteCard(model: model)
+                    SettingsSection(model: model, me: me, notificationsOff: push.off)
+                }
+                VersionLine()
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(BrandTokens.Colors.bg)
         .toolbar(.hidden, for: .navigationBar)
-        .refreshable {
-            await model.load()
-            await wall?.refresh()
-        }
-        .sheet(isPresented: $composing) {
-            if let wall {
-                ComposerSheet(placeholder: "wall_composer_placeholder") { await wall.post(body: $0) }
-            }
-        }
+        .refreshable { await model.load() }
         .task { await model.load() }
-        .task(id: wall?.source) {
-            if let wall, !wall.loaded { await wall.refresh() }
-        }
-    }
-
-    private var head: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if model.busy {
-                ProgressView().progressViewStyle(.linear)
-            }
-            if let problem = model.problem {
-                ProblemCard(problem: problem) { Task { await model.retry() } }
-            }
-            if let me = model.me {
-                HStack(alignment: .top) {
-                    Who(me: me, picked: $picked, enabled: !model.busy)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Button(action: onSettings) {
-                        Image(systemName: "gearshape")
-                            .font(.system(size: 20))
-                            .foregroundStyle(BrandTokens.Colors.fg)
-                            .frame(minWidth: 44, minHeight: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(Text("settings_title"))
-                }
-                PhotoControls(model: model, hasPhoto: me.photo != nil, picked: $picked)
-                if !me.verified { VerifyLink(onVerify: onVerify) }
-                CardLabel(key: "invite_link_title")
-                InviteCard(model: model)
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .task { await push.check() }
     }
 }
 
