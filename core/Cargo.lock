@@ -2445,7 +2445,7 @@ checksum = "e8e2fb0f499abb4d162f2bedad68f5ef91a1682b5a03596ddb67efd37768d100"
 
 [[package]]
 name = "spjall-client"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "aes-gcm 0.11.1",
  "base64",
@@ -2465,7 +2465,7 @@ dependencies = [
 
 [[package]]
 name = "spjall-envelope"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "proptest",
  "serde",
@@ -2475,7 +2475,7 @@ dependencies = [
 
 [[package]]
 name = "spjall-ffi"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "base64",
  "openmls",
@@ -2491,7 +2491,7 @@ dependencies = [
 
 [[package]]
 name = "spjall-mls"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "openmls",
  "openmls_basic_credential",
@@ -2506,7 +2506,7 @@ dependencies = [
 
 [[package]]
 name = "spjall-store"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "rusqlite",
  "serde_json",
@@ -2760,7 +2760,7 @@ dependencies = [
 
 [[package]]
 name = "uniffi-bindgen"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "uniffi",
 ]
@@ -3181,7 +3181,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "anyhow",
  "serde",
