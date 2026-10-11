@@ -3,9 +3,8 @@ import SpjallCore
 
 /// One line of the timeline as the screen draws it.
 enum Row: Identifiable, Equatable {
-    /// Where a new day starts: the day's start, and the item it comes before.
-    /// A day can start twice when an older message arrives after a newer one,
-    /// so the item, not the date, names the row.
+    /// Where a new day starts: the day's start, and the item it comes before,
+    /// which names the row.
     case day(Date, before: Item)
     /// A system card: members or the disappearing timer changed.
     case card(Item)
@@ -33,7 +32,9 @@ func rows(_ items: [Item], calendar: Calendar = .current) -> [Row] {
     var day: Date?
     for item in items {
         let start = calendar.startOfDay(for: Date(timeIntervalSince1970: TimeInterval(item.ts) / 1_000))
-        if start != day {
+        // The timeline is in arrival order, and an older message can arrive after
+        // a newer one: it joins the day already shown rather than going back to its own.
+        if day.map({ start > $0 }) ?? true {
             rows.append(.day(start, before: item))
             day = start
             previous = nil

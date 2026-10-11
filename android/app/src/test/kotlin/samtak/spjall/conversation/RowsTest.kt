@@ -88,8 +88,8 @@ class RowsTest {
     }
 
     @Test
-    fun aDayThatStartsTwiceKeepsItsKeysUnique() {
-        // An older message that arrives after a newer one starts its day again.
+    fun anOlderMessageArrivingLateJoinsTheDayShown() {
+        // Day lines never go back in time: the late message sits under the newer day.
         val items =
             listOf(
                 item(1u, ts = day),
@@ -103,7 +103,6 @@ class RowsTest {
                 "1 first last",
                 "day 2023-11-15",
                 "2 first last",
-                "day 2023-11-14",
                 "3 first last",
             ),
             shape(rows),

@@ -11,10 +11,7 @@ import java.time.ZoneId
 sealed interface Row {
     val key: String
 
-    /**
-     * Where a new day starts, keyed by the item it comes before: a day can
-     * start twice when an older message arrives after a newer one.
-     */
+    /** Where a new day starts, keyed by the item it comes before. */
     data class Day(
         val date: LocalDate,
         val before: Item,
@@ -58,7 +55,9 @@ fun rows(
     var day: LocalDate? = null
     for (item in items) {
         val date = Instant.ofEpochMilli(item.ts.toLong()).atZone(zone).toLocalDate()
-        if (date != day) {
+        // The timeline is in arrival order, and an older message can arrive after
+        // a newer one: it joins the day already shown rather than going back to its own.
+        if (day == null || date > day) {
             rows += Row.Day(date, item)
             day = date
             previous = null

@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Person
 import samtak.spjall.ui.Avatar
+import samtak.spjall.ui.EmptyState
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.SansFamily
 import samtak.spjall.ui.VerifiedMark
@@ -104,15 +105,10 @@ private fun PersonRow(
     }
 }
 
-/** A search that found neither a conversation nor a person. */
+/** A search that found neither a conversation nor a person: the same empty state as every list (decision 0043). */
 @Composable
 internal fun NoneFound() {
-    Text(
-        text = stringResource(R.string.conversations_none_found),
-        style = MaterialTheme.typography.bodyLarge,
-        color = Palette.fg,
-        modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-    )
+    EmptyState(Icons.Filled.Search, stringResource(R.string.conversations_none_found))
 }
 
 /** The longest search the server and the core take (decision 0036). */

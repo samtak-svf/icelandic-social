@@ -51,11 +51,11 @@ final class RowsTests: XCTestCase {
             ["day 2023-11-14", "1 first last", "card 2", "3 first last", "day 2023-11-15", "4 first last"])
     }
 
-    func testADayThatStartsTwiceKeepsItsIdsUnique() {
+    func testAnOlderMessageArrivingLateJoinsTheDayShown() {
         let rows = rows([item(1, ts: day), item(2, ts: day + 120 * minute), item(3, ts: day + minute)], calendar: utc)
         XCTAssertEqual(
             shape(rows),
-            ["day 2023-11-14", "1 first last", "day 2023-11-15", "2 first last", "day 2023-11-14", "3 first last"])
+            ["day 2023-11-14", "1 first last", "day 2023-11-15", "2 first last", "3 first last"])
         XCTAssertEqual(Set(rows.map(\.id)).count, rows.count)
     }
 

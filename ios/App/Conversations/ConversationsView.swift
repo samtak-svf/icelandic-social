@@ -87,12 +87,7 @@ struct ConversationsView: View {
     @ViewBuilder
     private func results(_ found: ConversationsModel.Found) -> some View {
         if found.conversations.isEmpty && found.people.isEmpty && !model.searching {
-            Text("conversations_none_found")
-                .font(.sans(15, relativeTo: .body))
-                .foregroundStyle(BrandTokens.Colors.fg)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+            EmptyState(systemImage: "magnifyingglass", text: "conversations_none_found")
         }
         rows(found.conversations)
         if !found.people.isEmpty {
