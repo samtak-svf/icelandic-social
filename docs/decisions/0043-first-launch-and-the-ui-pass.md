@@ -1,6 +1,6 @@
 # 0043. A first launch that asks before it prompts, and a UI pass within 0022
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the apps (#190, #191, #192, #193, #194, #197, #198)
 - Date: 2026-10-10
 - Decided by: the maintainer, approving the plan for the UI pass after the 0.3.0 hand test
 - Builds on: [0009](0009-v1-scope.md) (the v1 surfaces), [0022](0022-the-conversation-surfaces.md)
