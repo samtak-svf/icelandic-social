@@ -3,7 +3,6 @@ package samtak.spjall.conversations
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -18,11 +17,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,12 +35,17 @@ import samtak.spjall.brand.R
 import samtak.spjall.core.Conversation
 import samtak.spjall.socket.Connection
 import samtak.spjall.ui.AppIcons
+import samtak.spjall.ui.EmptyState
+import samtak.spjall.ui.LocalReduceMotion
 import samtak.spjall.ui.NotificationsOff
 import samtak.spjall.ui.Palette
+import samtak.spjall.ui.PlaceholderKind
+import samtak.spjall.ui.PlaceholderRows
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.RoundButton
 import samtak.spjall.ui.Type
 import samtak.spjall.ui.capitals
+import samtak.spjall.ui.rowMotion
 
 /**
  * The conversation list (1a): dense rows, newest first, as the core orders them. While the system blocks
@@ -72,19 +74,38 @@ fun ConversationsScreen(
                     if (notificationsOff) NotificationsOff(actions::notificationSettings)
                 }
             }
-            if (state.nothingFound) {
-                NoneFound()
-            } else if (!state.searched && state.loaded && state.conversations.isEmpty()) {
-                // Everyone signed in is in the picker (decisions 0036, 0043): people can be found, not only invited.
-                InviteHint(stringResource(R.string.conversations_empty), actions::invite, actions::newConversation)
-            }
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                if (state.searched) {
-                    state.found?.let { results(it, state.typing, actions) }
-                } else {
-                    conversationRows(state.conversations, state.typing, actions)
-                }
-            }
+            Rows(state, actions)
+        }
+    }
+}
+
+/** The rows, or what stands in for them: grey rows until the first read, then the empty state. */
+@Composable
+private fun Rows(
+    state: ConversationsViewModel.State,
+    actions: ConversationsActions,
+) {
+    if (state.nothingFound) {
+        NoneFound()
+    } else if (!state.searched && state.loaded && state.conversations.isEmpty()) {
+        // Everyone signed in is in the picker (decisions 0036, 0043): people can be found, not only invited.
+        EmptyState(
+            AppIcons.Chat,
+            stringResource(R.string.conversations_empty),
+            action = stringResource(R.string.invite),
+            onAction = actions::invite,
+            secondary = stringResource(R.string.find_people),
+            onSecondary = actions::newConversation,
+        )
+    }
+    val reduce = LocalReduceMotion.current
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        if (state.placeholders) {
+            item(key = "placeholders") { PlaceholderRows(PlaceholderKind.Conversation) }
+        } else if (state.searched) {
+            state.found?.let { results(it, state.typing, actions, reduce) }
+        } else {
+            conversationRows(state.conversations, state.typing, actions, reduce)
         }
     }
 }
@@ -93,10 +114,13 @@ internal fun LazyListScope.conversationRows(
     conversations: List<Conversation>,
     typing: Set<String>,
     actions: ConversationsActions,
+    reduce: Boolean,
 ) {
     items(conversations, key = { it.id }) { conversation ->
-        ConversationRow(conversation, typing = conversation.id in typing, actions)
-        HorizontalDivider(color = Palette.border)
+        Column(modifier = Modifier.rowMotion(this, reduce)) {
+            ConversationRow(conversation, typing = conversation.id in typing, actions)
+            HorizontalDivider(color = Palette.border)
+        }
     }
 }
 
@@ -144,30 +168,6 @@ private fun ConnectionLine(connection: Connection) {
         color = Palette.mutedFg,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
     )
-}
-
-/** The empty list and the empty picker point at the invite link (decision 0022); the list also at the picker. */
-@Composable
-fun InviteHint(
-    text: String,
-    onInvite: () -> Unit,
-    onFindPeople: (() -> Unit)? = null,
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(text = text, style = MaterialTheme.typography.bodyLarge, color = Palette.fg)
-        // Side by side, and one under the other when a large font leaves no room.
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Button(onClick = onInvite) { Text(stringResource(R.string.invite)) }
-            onFindPeople?.let { OutlinedButton(onClick = it) { Text(stringResource(R.string.find_people)) } }
-        }
-    }
 }
 
 @Composable

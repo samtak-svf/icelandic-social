@@ -58,14 +58,23 @@ class FeedScreenshotTest {
     private fun feed(
         posts: List<Post> = emptyList(),
         newer: Boolean = false,
+        loaded: Boolean = true,
     ) {
-        val state = PostsViewModel.State(posts = posts, loaded = true, me = "a1", newer = newer)
+        val state = PostsViewModel.State(posts = posts, loaded = loaded, me = "a1", newer = newer)
         compose.setContent { SpjallTheme { FeedScreen(state, actions, emptyFlow()) } }
     }
 
     @Test
     fun empty() {
         feed()
+        compose.onRoot().captureRoboImage()
+    }
+
+    /** Before the first page: grey rows, read out once as loading (0043). */
+    @Test
+    fun placeholders() {
+        feed(loaded = false)
+        compose.onNodeWithContentDescription(text(R.string.loading)).assertExists()
         compose.onRoot().captureRoboImage()
     }
 

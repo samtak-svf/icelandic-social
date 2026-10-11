@@ -7,6 +7,7 @@ struct PeopleView: View {
     let onInvite: () -> Void
     /// The picker is opened to find someone, so the search field has focus at once.
     @State private var searching = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         List {
@@ -26,9 +27,13 @@ struct PeopleView: View {
             let idle = model.loaded && !model.busy && !model.searching && model.problem == nil
             if idle && met.isEmpty && everyone.isEmpty {
                 if searched {
-                    Text("people_none_found").listRowSeparator(.hidden)
+                    EmptyState(systemImage: "magnifyingglass", text: "people_none_found").listRowSeparator(.hidden)
                 } else {
-                    InviteHint(text: "people_empty", onInvite: onInvite).listRowSeparator(.hidden)
+                    EmptyState(
+                        systemImage: "person", text: "people_empty",
+                        action: .init(label: "invite", perform: onInvite)
+                    )
+                    .listRowSeparator(.hidden)
                 }
             }
             Section {
@@ -47,6 +52,8 @@ struct PeopleView: View {
             }
         }
         .listStyle(.plain)
+        // A search's rows come and go in place of the others' (decision 0043).
+        .animation(Motion.rows(reduceMotion: reduceMotion), value: shown)
         .searchable(
             text: Binding(get: { model.query }, set: { model.query = $0 }),
             isPresented: $searching,
@@ -88,6 +95,12 @@ struct PeopleView: View {
 }
 
 extension PeopleView {
+    /// The accounts the list shows, in order: what its animation follows.
+    private var shown: [String] {
+        let searched = !model.query.trimmingCharacters(in: .whitespaces).isEmpty
+        return (searched ? [] : model.people.map(\.account)) + model.everyone.map(\.account)
+    }
+
     private func rows(_ people: [Person]) -> some View {
         ForEach(people, id: \.account) { person in
             if model.group {

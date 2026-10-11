@@ -60,6 +60,30 @@ class ConversationsViewModelTest {
         }
 
     @Test
+    fun placeholdersStandUntilTheFirstReadReturns() =
+        runTest(dispatcher) {
+            account.conversations = listOf(conversation("c1"))
+            val model = ConversationsViewModel(account, live, dispatcher)
+            assertTrue(model.state.value.placeholders)
+            advanceUntilIdle()
+            assertFalse(model.state.value.placeholders)
+        }
+
+    @Test
+    fun aFailedFirstReadEndsThePlaceholdersAndASearchHasNone() =
+        runTest(dispatcher) {
+            account.failNext = unreachable()
+            val model = ConversationsViewModel(account, live, dispatcher)
+            model.search("An")
+            assertFalse(model.state.value.placeholders)
+            model.search("")
+            assertTrue(model.state.value.placeholders)
+            advanceUntilIdle()
+            assertFalse(model.state.value.placeholders)
+            assertEquals(Problem.Unreachable, model.state.value.problem)
+        }
+
+    @Test
     fun readsTheListAgainAfterAnEventButNotForTyping() =
         runTest(dispatcher) {
             model()

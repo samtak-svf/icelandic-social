@@ -10,6 +10,8 @@ struct PickView: View {
     let title: LocalizedStringKey
     let onClose: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         NavigationStack {
             List {
@@ -24,9 +26,10 @@ struct PickView: View {
                         .listRowSeparator(.hidden)
                 }
                 if model.problem == nil, let found = model.found, found.isEmpty {
-                    Text("pick_none_found").listRowSeparator(.hidden)
+                    EmptyState(systemImage: "magnifyingglass", text: "pick_none_found").listRowSeparator(.hidden)
                 } else if model.loaded && model.found == nil && model.conversations.isEmpty && model.problem == nil {
-                    Text("pick_empty").listRowSeparator(.hidden)
+                    EmptyState(systemImage: "bubble.left.and.bubble.right", text: "pick_empty")
+                        .listRowSeparator(.hidden)
                 }
                 ForEach(model.shown, id: \.id) { conversation in
                     PickRow(conversation: conversation, picked: model.picked.contains(conversation.id)) {
@@ -35,6 +38,8 @@ struct PickView: View {
                 }
             }
             .listStyle(.plain)
+            // A search's rows come and go in place of the others' (decision 0043).
+            .animation(Motion.rows(reduceMotion: reduceMotion), value: model.shown.map(\.id))
             .searchable(
                 text: Binding(get: { model.query }, set: { model.query = $0 }),
                 placement: .navigationBarDrawer(displayMode: .always),

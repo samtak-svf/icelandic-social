@@ -57,6 +57,7 @@ import samtak.spjall.feed.posts
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
+import samtak.spjall.ui.LocalReduceMotion
 import samtak.spjall.ui.NameWithMark
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.PhotoOf
@@ -82,6 +83,7 @@ fun MeScreen(
     posted: Flow<Unit> = emptyFlow(),
 ) {
     var composing by rememberSaveable { mutableStateOf(false) }
+    val reduce = LocalReduceMotion.current
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         LazyColumn(modifier = Modifier.safeDrawingPadding()) {
             item(key = "me") {
@@ -124,7 +126,7 @@ fun MeScreen(
                     }
                 }
             }
-            wallActions?.let { wallPosts(wall, it) }
+            wallActions?.let { wallPosts(wall, it, reduce) }
         }
     }
     if (composing && wallActions != null) {
@@ -142,12 +144,13 @@ fun MeScreen(
 private fun LazyListScope.wallPosts(
     wall: PostsViewModel.State,
     actions: PostsActions,
+    reduce: Boolean,
 ) {
     item(key = "wall") { HorizontalDivider(color = Palette.border) }
     wall.problem?.let {
         item(key = "wall-problem") { Box(modifier = Modifier.padding(16.dp)) { ProblemCard(it, actions::refresh) } }
     }
-    posts(wall, actions, empty = R.string.wall_empty, emptyIcon = AppIcons.Person)
+    posts(wall, actions, empty = R.string.wall_empty, emptyIcon = AppIcons.Person, reduce = reduce)
 }
 
 /**

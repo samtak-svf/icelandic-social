@@ -69,6 +69,26 @@ class PostsViewModelTest {
         }
 
     @Test
+    fun placeholdersStandUntilTheFirstPageReturns() =
+        runTest(dispatcher) {
+            account.posts += post("p1", anna)
+            val model = PostsViewModel(Source.Feed, account, dispatcher)
+            assertTrue(model.state.value.placeholders)
+            advanceUntilIdle()
+            assertFalse(model.state.value.placeholders)
+            assertEquals(listOf("p1"), ids(model))
+        }
+
+    @Test
+    fun aFailedFirstPageEndsThePlaceholders() =
+        runTest(dispatcher) {
+            account.failNext = unreachable()
+            val state = model().state.value
+            assertFalse(state.placeholders)
+            assertEquals(Problem.Unreachable, state.problem)
+        }
+
+    @Test
     fun aRefreshKeepsTheOlderPagesAlreadyRead() =
         runTest(dispatcher) {
             account.posts += (1..45).map { post("p$it", anna).copy(createdAt = (1000 - it).toULong()) }

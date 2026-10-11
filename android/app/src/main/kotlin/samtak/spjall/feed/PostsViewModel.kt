@@ -62,7 +62,10 @@ class PostsViewModel(
          */
         val newer: Boolean = false,
         val problem: Problem? = null,
-    )
+    ) {
+        /** Grey rows stand where the posts will be until the first page returns (0043). */
+        val placeholders: Boolean get() = !loaded
+    }
 
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()

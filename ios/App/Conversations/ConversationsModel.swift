@@ -37,6 +37,8 @@ final class ConversationsModel {
 
     /// A search shows its results in place of the list.
     var searched: Bool { !trimmed.isEmpty }
+    /// Grey rows stand where the list will be until its first read returns (decision 0043).
+    var placeholders: Bool { !loaded && !searched }
     private var trimmed: String { query.trimmingCharacters(in: .whitespaces) }
 
     var connection: Connection { live.connection }

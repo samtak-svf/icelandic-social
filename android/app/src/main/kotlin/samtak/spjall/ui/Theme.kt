@@ -156,5 +156,7 @@ object Type {
 
 @Composable
 fun SpjallTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = brandColors, typography = brandType, content = content)
+    ProvideReduceMotion {
+        MaterialTheme(colorScheme = brandColors, typography = brandType, content = content)
+    }
 }

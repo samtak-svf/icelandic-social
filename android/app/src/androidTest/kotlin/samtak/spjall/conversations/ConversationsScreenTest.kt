@@ -266,6 +266,16 @@ class ConversationsScreenTest {
     }
 
     @Test
+    fun placeholderRowsAreReadOutOnceAsLoadingUntilTheFirstRead() {
+        var state by mutableStateOf(ConversationsViewModel.State())
+        compose.setContent { SpjallTheme { ConversationsScreen(state, actions) } }
+        compose.onAllNodesWithContentDescription(text(R.string.loading)).assertCountEquals(1)
+        state = state.copy(loaded = true)
+        compose.onNodeWithContentDescription(text(R.string.loading)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.conversations_empty)).assertIsDisplayed()
+    }
+
+    @Test
     fun aDeadInviteLinkIsSaid() {
         show(ConversationsViewModel.State(loaded = true, inviteExpired = true))
         compose.onNodeWithText(text(R.string.link_expired)).assertIsDisplayed()

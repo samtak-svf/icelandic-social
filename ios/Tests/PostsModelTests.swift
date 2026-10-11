@@ -26,6 +26,21 @@ final class PostsModelTests: XCTestCase {
         XCTAssertEqual(account.calls.filter { $0.hasPrefix("feed") }, ["feed -", "feed 30"])
     }
 
+    func testPlaceholdersStandUntilTheFirstPageReturns() async {
+        account.posts = [samplePost("p1")]
+        let model = PostsModel(account: account, source: .feed)
+        XCTAssertTrue(model.placeholders)
+        await model.refresh()
+        XCTAssertFalse(model.placeholders)
+    }
+
+    func testAFailedFirstPageEndsThePlaceholders() async {
+        account.failNext = unreachable
+        let model = await model()
+        XCTAssertEqual(model.problem, .unreachable)
+        XCTAssertFalse(model.placeholders)
+    }
+
     func testARefreshReplacesWhatWasShown() async {
         account.posts = [samplePost("p1")]
         let model = await model()

@@ -19,6 +19,23 @@ final class ConversationsModelTests: XCTestCase {
         XCTAssertEqual(model.conversations.map(\.id), ["c1"])
     }
 
+    func testPlaceholdersStandUntilTheFirstReadReturns() async {
+        let model = ConversationsModel(account: account, live: live)
+        XCTAssertTrue(model.placeholders)
+        await model.load()
+        XCTAssertFalse(model.placeholders)
+    }
+
+    func testAFailedFirstReadEndsThePlaceholdersAndASearchHasNone() async {
+        let model = ConversationsModel(account: account, live: live)
+        model.query = "an"
+        XCTAssertFalse(model.placeholders)
+        model.query = ""
+        account.failNext = unreachable
+        await model.load()
+        XCTAssertFalse(model.placeholders)
+    }
+
     func testReadsAgainOnEachEventButTyping() async {
         let model = ConversationsModel(account: account, live: live)
         let following = Task { await model.follow() }

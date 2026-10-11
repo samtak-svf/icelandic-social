@@ -2,7 +2,8 @@ import SpjallCore
 import SwiftUI
 
 /// A model's posts with hairlines between, the next page fetched as the last
-/// one comes into view, and `empty` with `emptyIcon` when there are none.
+/// one comes into view; grey rows until the first page, then `empty` with
+/// `emptyIcon` when there are none.
 struct PostList: View {
     let model: PostsModel
     let empty: LocalizedStringKey
@@ -11,9 +12,13 @@ struct PostList: View {
     let onReplies: (String) -> Void
 
     @Environment(\.postSharing) private var sharing
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         LazyVStack(spacing: 0) {
+            if model.placeholders {
+                PlaceholderRows(kind: .post)
+            }
             if model.loaded && model.posts.isEmpty && model.problem == nil {
                 EmptyState(systemImage: emptyIcon, text: empty)
             }
@@ -35,6 +40,8 @@ struct PostList: View {
                 ProgressView().padding(16)
             }
         }
+        // A post a refresh brings or takes away moves the others aside (decision 0043).
+        .animation(Motion.rows(reduceMotion: reduceMotion), value: model.posts.map(\.postId))
     }
 }
 

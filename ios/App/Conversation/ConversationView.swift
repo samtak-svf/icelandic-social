@@ -21,6 +21,7 @@ struct ConversationView: View {
     /// The bottom of the timeline is in view.
     @State private var atBottom = true
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var group: Bool { (model.conversation?.members.count ?? 0) > 1 }
 
@@ -134,6 +135,8 @@ struct ConversationView: View {
                         .onDisappear { atBottom = false }
                 }
                 .padding(.vertical, 8)
+                // A message the core's events bring, change or take away moves the others aside (decision 0043).
+                .animation(Motion.rows(reduceMotion: reduceMotion), value: shown.map(\.id))
             }
             .defaultScrollAnchor(.bottom)
             .scrollDismissesKeyboard(.interactively)
@@ -141,7 +144,11 @@ struct ConversationView: View {
                 guard newest != nil else { return }
                 var own = false
                 if case .bubble(let item, _, _, _)? = shown.last { own = item.own }
-                if own || atBottom { withAnimation { proxy.scrollTo(Self.bottom, anchor: .bottom) } }
+                if own || atBottom {
+                    withAnimation(Motion.rows(reduceMotion: reduceMotion)) {
+                        proxy.scrollTo(Self.bottom, anchor: .bottom)
+                    }
+                }
             }
         }
     }
@@ -325,6 +332,8 @@ private struct Composer: View {
     @State private var picking = false
     @State private var importing = false
     @FocusState private var focused: Bool
+    /// Counts the sends, each one a light tick (decision 0043), as the system's haptics setting allows.
+    @State private var sent = 0
 
     private var blank: Bool { model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
@@ -378,8 +387,10 @@ private struct Composer: View {
                         tint: blank ? BrandTokens.Colors.mutedFg : BrandTokens.Colors.primaryFg,
                         size: 40, enabled: !blank
                     ) {
+                        sent += 1
                         Task { await model.send() }
                     }
+                    .sensoryFeedback(.impact(weight: .light), trigger: sent)
                 }
             }
             .padding(.horizontal, 4)

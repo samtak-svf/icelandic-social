@@ -130,6 +130,7 @@ internal fun Bubble(
                                 onClickLabel = null,
                                 onClick = { tap?.invoke() },
                                 onLongClickLabel = stringResource(R.string.react),
+                                // Its haptic (0043) is combinedClickable's own, as the system setting allows.
                                 onLongClick = { menu = true },
                             ),
                 ) {

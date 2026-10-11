@@ -82,6 +82,7 @@ internal fun ConversationRow(
                     .combinedClickable(
                         onClick = { actions.open(conversation.id) },
                         onLongClickLabel = stringResource(if (muted) R.string.unmute else R.string.mute),
+                        // The long press's haptic (0043) is combinedClickable's own, as the system setting allows.
                         onLongClick = { menu = true },
                     ).padding(horizontal = 20.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically,

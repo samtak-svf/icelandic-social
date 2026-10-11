@@ -46,37 +46,47 @@ import kotlinx.coroutines.flow.Flow
 import samtak.spjall.brand.R
 import samtak.spjall.ui.EmptyState
 import samtak.spjall.ui.Palette
+import samtak.spjall.ui.PlaceholderKind
+import samtak.spjall.ui.PlaceholderRows
 import samtak.spjall.ui.SansFamily
 import samtak.spjall.ui.Type
+import samtak.spjall.ui.rowMotion
 
 /**
  * The posts of [state], each under a hairline, then the next page once the
- * last one shows; [empty] beside [emptyIcon] when there are none. Own
- * posts can be deleted.
+ * last one shows; grey rows until the first page, then [empty] beside
+ * [emptyIcon] when there are none. Own posts can be deleted. A post fades
+ * and moves as a refresh changes the list, unless [reduce] (0043).
  */
 fun LazyListScope.posts(
     state: PostsViewModel.State,
     actions: PostsActions,
     empty: Int,
     emptyIcon: ImageVector,
+    reduce: Boolean,
 ) {
+    if (state.placeholders) {
+        item(key = "placeholders") { PlaceholderRows(PlaceholderKind.Post) }
+    }
     if (state.loaded && state.posts.isEmpty() && state.problem == null) {
         item(key = "empty") { EmptyState(emptyIcon, stringResource(empty)) }
     }
     items(state.posts, key = { it.postId }) { post ->
-        PostRow(
-            post,
-            mine = post.author.account == state.me,
-            actions =
-                PostActions(
-                    author = actions::author,
-                    heart = { actions.heart(post) },
-                    replies = { actions.replies(post.postId) },
-                    delete = { actions.delete(post.postId) },
-                    share = { actions.share(post.postId) },
-                ),
-        )
-        HorizontalDivider(color = Palette.border)
+        Column(modifier = Modifier.rowMotion(this, reduce)) {
+            PostRow(
+                post,
+                mine = post.author.account == state.me,
+                actions =
+                    PostActions(
+                        author = actions::author,
+                        heart = { actions.heart(post) },
+                        replies = { actions.replies(post.postId) },
+                        delete = { actions.delete(post.postId) },
+                        share = { actions.share(post.postId) },
+                    ),
+            )
+            HorizontalDivider(color = Palette.border)
+        }
         if (post == state.posts.last() && state.next != null) {
             LaunchedEffect(post.postId) { actions.loadMore() }
         }

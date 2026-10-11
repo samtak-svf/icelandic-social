@@ -35,6 +35,7 @@ import samtak.spjall.brand.R
 import samtak.spjall.core.Person
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
+import samtak.spjall.ui.LocalReduceMotion
 import samtak.spjall.ui.NameWithMark
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
@@ -63,6 +64,7 @@ fun WallScreen(
                 onRefresh = actions::refresh,
                 modifier = Modifier.fillMaxSize(),
             ) {
+                val reduce = LocalReduceMotion.current
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     item(key = "header") {
                         Header(
@@ -79,7 +81,7 @@ fun WallScreen(
                             }
                         }
                     }
-                    posts(state, actions, empty = R.string.wall_empty, emptyIcon = AppIcons.Person)
+                    posts(state, actions, empty = R.string.wall_empty, emptyIcon = AppIcons.Person, reduce = reduce)
                 }
             }
         }

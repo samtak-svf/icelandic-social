@@ -45,10 +45,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import samtak.spjall.brand.R
 import samtak.spjall.ui.AppIcons
+import samtak.spjall.ui.LocalReduceMotion
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.Type
 import samtak.spjall.ui.capitals
+import samtak.spjall.ui.scrollTo
 
 /**
  * Fljótið (the Fljotid artboard, decision 0034): the public feed every
@@ -68,6 +70,7 @@ fun FeedScreen(
     val list = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val down by remember { derivedStateOf { list.firstVisibleItemIndex > 0 } }
+    val reduce = LocalReduceMotion.current
     // Newer posts that land while the top is in view are seen where they land.
     LaunchedEffect(state.newer, down) { if (state.newer && !down) actions.seenNewer() }
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.surface) {
@@ -93,13 +96,13 @@ fun FeedScreen(
                             }
                         }
                     }
-                    posts(state, actions, empty = R.string.feed_empty, emptyIcon = AppIcons.Waves)
+                    posts(state, actions, empty = R.string.feed_empty, emptyIcon = AppIcons.Waves, reduce = reduce)
                 }
                 if (state.newer && down) {
                     NewPostsPill(
                         onClick = {
                             actions.seenNewer()
-                            scope.launch { list.animateScrollToItem(0) }
+                            scope.launch { list.scrollTo(0, reduce) }
                         },
                         modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp),
                     )

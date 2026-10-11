@@ -64,6 +64,9 @@ class ConversationsViewModel(
         /** A search shows its results in place of the list. */
         val searched: Boolean get() = query.isNotBlank()
 
+        /** Grey rows stand where the list will be until its first read returns (0043). */
+        val placeholders: Boolean get() = !loaded && !searched
+
         /** The search is done and found neither a conversation nor a person. */
         val nothingFound: Boolean
             get() = searched && !searching && found?.let { it.conversations.isEmpty() && it.people.isEmpty() } == true

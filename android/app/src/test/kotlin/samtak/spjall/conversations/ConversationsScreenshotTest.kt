@@ -1,7 +1,10 @@
 package samtak.spjall.conversations
 
+import android.content.Context
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
+import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.After
 import org.junit.Before
@@ -11,6 +14,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import samtak.spjall.brand.R
 import samtak.spjall.core.Content
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.ConversationState
@@ -101,6 +105,14 @@ class ConversationsScreenshotTest {
     private fun shoot(state: ConversationsViewModel.State) {
         compose.setContent { SpjallTheme { ConversationsScreen(state, actions) } }
         compose.onRoot().captureRoboImage()
+    }
+
+    /** Before the first read: grey rows, read out once as loading (0043). */
+    @Test
+    fun placeholders() {
+        shoot(ConversationsViewModel.State(connection = Connection.Online))
+        val loading = ApplicationProvider.getApplicationContext<Context>().getString(R.string.loading)
+        compose.onNodeWithContentDescription(loading).assertExists()
     }
 
     @Test

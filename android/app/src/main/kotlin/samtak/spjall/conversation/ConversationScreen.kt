@@ -49,6 +49,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -69,6 +71,7 @@ import samtak.spjall.core.Conversation
 import samtak.spjall.core.ConversationState
 import samtak.spjall.core.Item
 import samtak.spjall.ui.AppIcons
+import samtak.spjall.ui.LocalReduceMotion
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.RoundButton
@@ -76,6 +79,8 @@ import samtak.spjall.ui.SansFamily
 import samtak.spjall.ui.SectionLabel
 import samtak.spjall.ui.dayHeading
 import samtak.spjall.ui.lastLine
+import samtak.spjall.ui.rowMotion
+import samtak.spjall.ui.scrollTo
 import samtak.spjall.ui.shownName
 import java.time.LocalDate
 
@@ -177,9 +182,10 @@ private fun Timeline(
     // A new item at the bottom comes into view when it is own, or when the
     // newest was in view; someone reading further up stays where they are.
     val newest = rows.firstOrNull()
+    val reduce = LocalReduceMotion.current
     LaunchedEffect(newest?.key) {
         val own = (newest as? Row.Bubble)?.item?.own == true
-        if (newest != null && (own || list.firstVisibleItemIndex <= 1)) list.animateScrollToItem(0)
+        if (newest != null && (own || list.firstVisibleItemIndex <= 1)) list.scrollTo(0, reduce)
     }
     LaunchedEffect(list, rows.size) {
         snapshotFlow {
@@ -195,18 +201,21 @@ private fun Timeline(
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         items(rows, key = { it.key }) { row ->
-            when (row) {
-                is Row.Day -> DayLine(row.date)
-                is Row.Card -> CardLine(row.item, group)
-                is Row.Bubble ->
-                    Bubble(
-                        row,
-                        group,
-                        row.item.seq?.let { state.media[it] },
-                        state.posts,
-                        actions,
-                        onDelete,
-                    )
+            // A message the core's events bring, change or take away moves the others aside (0043).
+            Box(modifier = Modifier.fillMaxWidth().rowMotion(this, reduce)) {
+                when (row) {
+                    is Row.Day -> DayLine(row.date)
+                    is Row.Card -> CardLine(row.item, group)
+                    is Row.Bubble ->
+                        Bubble(
+                            row,
+                            group,
+                            row.item.seq?.let { state.media[it] },
+                            state.posts,
+                            actions,
+                            onDelete,
+                        )
+                }
             }
         }
     }
@@ -292,10 +301,15 @@ private fun Composer(
                 ConversationViewModel.ComposerAction.ATTACH -> AttachButton(actions)
                 ConversationViewModel.ComposerAction.SEND -> {
                     val ready = state.draft.isNotBlank()
+                    val haptics = LocalHapticFeedback.current
                     RoundButton(
                         icon = AppIcons.Send,
                         description = stringResource(R.string.send),
-                        onClick = actions::send,
+                        // A light tick that it went (0043), as the system's touch feedback setting allows.
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                            actions.send()
+                        },
                         enabled = ready,
                         fill = if (ready) Palette.primary else Palette.muted,
                         tint = if (ready) Palette.primaryFg else Palette.mutedFg,

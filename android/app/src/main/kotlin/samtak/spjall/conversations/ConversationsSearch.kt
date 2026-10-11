@@ -42,8 +42,9 @@ internal fun LazyListScope.results(
     found: ConversationsViewModel.Found,
     typing: Set<String>,
     actions: ConversationsActions,
+    reduce: Boolean,
 ) {
-    conversationRows(found.conversations, typing, actions)
+    conversationRows(found.conversations, typing, actions, reduce)
     if (found.people.isEmpty()) return
     item(key = "people") {
         Text(

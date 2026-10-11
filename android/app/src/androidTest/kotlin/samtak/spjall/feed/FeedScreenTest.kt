@@ -64,6 +64,17 @@ class FeedScreenTest {
     }
 
     @Test
+    fun placeholderRowsAreReadOutOnceAsLoadingUntilTheFirstPage() {
+        val state = mutableStateOf(PostsViewModel.State(me = "a1"))
+        compose.setContent { SpjallTheme { FeedScreen(state.value, actions, emptyFlow()) } }
+        compose.onAllNodesWithContentDescription(text(R.string.loading)).assertCountEquals(1)
+        compose.onNodeWithText(text(R.string.feed_empty)).assertDoesNotExist()
+        state.value = state.value.copy(loaded = true)
+        compose.onNodeWithContentDescription(text(R.string.loading)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.feed_empty)).assertExists()
+    }
+
+    @Test
     fun theFeedSaysItIsPublicInOneLineAndTheButtonSaysTheRest() {
         show()
         compose.onNodeWithText(text(R.string.feed_public_short)).assertIsDisplayed()

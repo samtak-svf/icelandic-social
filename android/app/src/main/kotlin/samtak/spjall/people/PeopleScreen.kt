@@ -45,14 +45,16 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
-import samtak.spjall.conversations.InviteHint
 import samtak.spjall.core.Person
 import samtak.spjall.ui.AVATAR_SIZE
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
+import samtak.spjall.ui.EmptyState
+import samtak.spjall.ui.LocalReduceMotion
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.VerifiedMark
+import samtak.spjall.ui.rowMotion
 import samtak.spjall.ui.shownName
 
 /**
@@ -123,14 +125,15 @@ private fun PeopleList(
     if (met.isEmpty() && everyone.isEmpty()) NoOne(state, actions)
     val headed = met.isNotEmpty() && everyone.isNotEmpty()
     val row: @Composable (Person) -> Unit = { ModeRow(it, state, actions) }
+    val reduce = LocalReduceMotion.current
     LazyColumn(modifier = modifier) {
         if (!state.group) item(key = "new-group") { NewGroupRow(actions::group) }
         if (headed) item(key = "met") { Heading(R.string.people_met) }
-        items(met, key = { "met-${it.account}" }) { row(it) }
+        items(met, key = { "met-${it.account}" }) { Box(Modifier.rowMotion(this, reduce)) { row(it) } }
         if (headed) item(key = "everyone") { Heading(R.string.people_everyone) }
         itemsIndexed(everyone, key = { _, person -> person.account }) { index, person ->
             if (index == everyone.lastIndex && state.next != null) LaunchedEffect(state.next) { actions.more() }
-            row(person)
+            Box(Modifier.rowMotion(this, reduce)) { row(person) }
         }
     }
 }
@@ -144,13 +147,14 @@ private fun NoOne(
     val idle = state.loaded && !state.busy && !state.searching && state.problem == null
     if (!idle) return
     if (state.query.isBlank()) {
-        InviteHint(stringResource(R.string.people_empty), actions::invite)
-    } else {
-        Text(
-            text = stringResource(R.string.people_none_found),
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(16.dp),
+        EmptyState(
+            AppIcons.Person,
+            stringResource(R.string.people_empty),
+            action = stringResource(R.string.invite),
+            onAction = actions::invite,
         )
+    } else {
+        EmptyState(Icons.Filled.Search, stringResource(R.string.people_none_found))
     }
 }
 

@@ -11,6 +11,8 @@ struct ConversationsView: View {
     let onNew: () -> Void
     let onInvite: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         VStack(spacing: 0) {
             Header(onNew: onNew)
@@ -32,17 +34,25 @@ struct ConversationsView: View {
             }
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    if model.searched {
+                    if model.placeholders {
+                        PlaceholderRows(kind: .conversation)
+                    } else if model.searched {
                         if let found = model.found {
                             results(found)
                         }
                     } else {
                         if model.loaded && model.conversations.isEmpty {
-                            InviteHint(text: "conversations_empty", onInvite: onInvite, onFindPeople: onNew)
+                            // Everyone signed in is in the picker (decisions 0036, 0043): found, not only invited.
+                            EmptyState(
+                                systemImage: "bubble.left.and.bubble.right", text: "conversations_empty",
+                                action: .init(label: "invite", perform: onInvite),
+                                secondary: .init(label: "find_people", perform: onNew))
                         }
                         rows(model.conversations)
                     }
                 }
+                // A row the core's events bring, change or take away moves the others aside (decision 0043).
+                .animation(Motion.rows(reduceMotion: reduceMotion), value: model.conversations.map(\.id))
             }
         }
         .background(BrandTokens.Colors.surface)

@@ -20,6 +20,8 @@ final class PostsModel {
     let source: Source
     private(set) var posts: [Post] = []
     private(set) var loaded = false
+    /// Grey rows stand where the posts will be until the first page returns (decision 0043).
+    var placeholders: Bool { !loaded }
     private(set) var loadingMore = false
     private(set) var busy = false
     private(set) var problem: Problem?

@@ -47,6 +47,8 @@ import samtak.spjall.brand.R
 import samtak.spjall.core.Conversation
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
+import samtak.spjall.ui.EmptyState
+import samtak.spjall.ui.LocalReduceMotion
 import samtak.spjall.ui.NameWithMark
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
@@ -55,6 +57,7 @@ import samtak.spjall.ui.VerifiedMark
 import samtak.spjall.ui.avatarKind
 import samtak.spjall.ui.lastLine
 import samtak.spjall.ui.photoOf
+import samtak.spjall.ui.rowMotion
 import samtak.spjall.ui.shownName
 import samtak.spjall.ui.title
 
@@ -103,16 +106,17 @@ fun PickScreen(
                     else -> null
                 }
             empty?.let {
-                Text(
-                    text = stringResource(it),
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(16.dp),
-                )
+                EmptyState(if (it == R.string.pick_empty) AppIcons.Chat else Icons.Filled.Search, stringResource(it))
             }
+            val reduce = LocalReduceMotion.current
             LazyColumn(modifier = Modifier.weight(1f)) {
                 items(state.shown, key = { it.id }) { conversation ->
-                    PickRow(conversation, picked = conversation.id in state.picked) { actions.toggle(conversation.id) }
-                    HorizontalDivider(color = Palette.border)
+                    Column(modifier = Modifier.rowMotion(this, reduce)) {
+                        PickRow(conversation, picked = conversation.id in state.picked) {
+                            actions.toggle(conversation.id)
+                        }
+                        HorizontalDivider(color = Palette.border)
+                    }
                 }
             }
             Button(
