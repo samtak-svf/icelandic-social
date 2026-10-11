@@ -5,7 +5,8 @@
 - Date: 2026-10-10
 - Decided by: the maintainer, approving the plan for the UI pass after the 0.3.0 hand test
 - Amended by: [0044](0044-no-fljotid-in-v1.md) (Fljótið, its notice and pill, and the "Úr Fljótinu"
-  label leave with the feed)
+  label leave with the feed), [0045](0045-times-between-messages-and-one-reaction-pill.md) (the
+  meta line under a bubble)
 - Builds on: [0009](0009-v1-scope.md) (the v1 surfaces), [0022](0022-the-conversation-surfaces.md)
   (what each screen shows), [0034](0034-fljotid-and-the-wall.md) (the feed's one line),
   [0035](0035-google-only-sign-in-and-merge-on-kenni.md) (where a name comes from),

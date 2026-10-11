@@ -9,7 +9,9 @@
   [0015](0015-delivery-protocol.md) (the socket frames, retention),
   [0018](0018-the-client-engine-in-the-core.md) (the outbox, typing),
   [0021](0021-group-info-and-external-join.md) (rejoining)
-- Amended by: [0034](0034-fljotid-and-the-wall.md) (every signed-in account sees a name; `open_direct`)
+- Amended by: [0034](0034-fljotid-and-the-wall.md) (every signed-in account sees a name; `open_direct`),
+  [0045](0045-times-between-messages-and-one-reaction-pill.md) (times between messages, one
+  reaction pill)
 - Media is [0023](0023-media-as-encrypted-blobs.md); block is [0024](0024-block.md); push is
   [0025](0025-push-without-ids.md).
 
