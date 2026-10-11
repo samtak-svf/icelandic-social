@@ -1,6 +1,6 @@
 # 0046. A message can be copied, and its web links open on a tap
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the apps (#211), released as 0.6.1
 - Date: 2026-10-11
 - Decided by: the maintainer, reporting after 0.6.0 that text cannot be copied and links do
   not open
