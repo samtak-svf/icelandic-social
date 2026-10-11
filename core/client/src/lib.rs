@@ -21,7 +21,6 @@ mod account;
 pub mod api;
 mod block;
 mod directory;
-mod feed;
 mod forward;
 mod media;
 mod members;
@@ -38,7 +37,6 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 pub use account::{Linked, SignedIn, invite_token};
 use api::{Api, ApiError, Outgoing, Platform, Profile, Transport, conversation_id, group_id};
 pub use directory::{Directory, ListSearch, MAX_QUERY, fold_name};
-pub use feed::MAX_POST;
 pub use media::{MAX_SIZE, MediaError};
 pub use members::Person;
 pub use mute::{Mute, MuteFor};
@@ -894,7 +892,9 @@ impl<T: Transport> Client<T> {
     }
 
     /// Queues an envelope with this body; it is sealed and sent by `sync`.
-    /// Returns the envelope's id, which is also its `clientMsgId`.
+    /// Returns the envelope's id, which is also its `clientMsgId`. The apps
+    /// never send a `Post` since 0044 (the FFI refuses one); it is taken
+    /// here only so tests can stand in for an app from before.
     pub fn send(&mut self, conversation: &str, body: Body) -> Result<String, ClientError> {
         if matches!(body, Body::Typing { .. }) {
             return Err(ClientError::Invalid(

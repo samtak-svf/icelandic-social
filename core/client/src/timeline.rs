@@ -36,7 +36,7 @@ pub struct Quote {
     pub sender: Option<Person>,
     pub text: Option<String>,
     /// The post, when the quoted message is a shared post (0040); its
-    /// `text` is then none, and the app draws the share's card.
+    /// `text` is then none, and the app draws the fixed line of 0044.
     pub post_id: Option<String>,
 }
 
@@ -65,8 +65,8 @@ pub enum Content {
     },
     /// The disappearing timer was set, or turned off.
     Timer { seconds: Option<u32> },
-    /// A Fljótið post shared here (0040): only its id. The app fetches the
-    /// post with `shared_post` when it shows it.
+    /// A post shared here under 0040: only its id. Since 0044 the post is
+    /// gone and nothing fetches it; the app shows a fixed line.
     Post { post_id: String },
 }
 
@@ -118,8 +118,8 @@ pub enum Unforwardable {
     Disappearing,
     /// It was deleted for everyone.
     Deleted,
-    /// No text, file or shared post at that seq on this device: a card, a hidden
-    /// message, one not fetched yet, or nothing.
+    /// No text or file at that seq on this device: a shared post (0044), a
+    /// card, a hidden message, one not fetched yet, or nothing.
     NotAMessage,
 }
 
@@ -131,8 +131,6 @@ pub(crate) enum Forwardable {
         caption: Option<String>,
         name: Option<String>,
     },
-    /// A shared post: shared again by its id (0040).
-    Post(String),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -800,7 +798,8 @@ type ForwardRow = (String, Option<String>, Option<String>, bool, Option<i64>);
 
 /// The content of the message at `seq` a forward copies: its text as it
 /// reads now (the last edit, a reply without its quote), or its file.
-/// Refused under a timer, deleted, or for anything but a message (0041).
+/// Refused under a timer, deleted, or for anything but a message (0041);
+/// a shared post is not one to forward (0044).
 pub(crate) fn forwardable(
     tx: &Transaction,
     group: &[u8],
@@ -833,10 +832,6 @@ pub(crate) fn forwardable(
                 name: name.as_deref().and_then(file_name),
             }),
             _ => Err(ClientError::Protocol("a stored media row")),
-        },
-        "post" => match detail.as_deref().map(serde_json::from_str::<Body>) {
-            Some(Ok(Body::Post { post_id, .. })) => Ok(Forwardable::Post(post_id)),
-            _ => Err(ClientError::Protocol("a stored post row")),
         },
         _ => Err(ClientError::CannotForward(Unforwardable::NotAMessage)),
     }

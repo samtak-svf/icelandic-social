@@ -17,8 +17,8 @@ pub enum NoticeKind {
     Text,
     Photo,
     File,
-    /// A shared Fljótið post (0040). Its notice is a fixed sentence: it
-    /// carries no text, and the post is not fetched for it.
+    /// A post shared under 0040. Its notice is a fixed sentence: it
+    /// carries no text, and nothing fetches the post (0044).
     Post,
 }
 

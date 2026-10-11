@@ -1,18 +1,13 @@
-diff --git a/core/client/src/feed.rs b/core/client/src/feed.rs
-index 79802be..b0cf3a2 100644
---- a/core/client/src/feed.rs
-+++ b/core/client/src/feed.rs
-@@ -69,10 +69,11 @@ impl<T: Transport> Client<T> {
-     /// name, which would outlive a deletion. Returns the envelope id.
-     pub fn share_post(&mut self, conversation: &str, post: &str) -> Result<String, ClientError> {
-         id(post, "post id")?;
-+        let copy = self.post(post)?.body;
-         self.send(
-             conversation,
--            Body::Post {
--                post_id: post.into(),
-+            Body::Text {
-+                text: copy,
-                 forwarded: false,
-             },
-         )
+diff --git a/core/client/src/timeline.rs b/core/client/src/timeline.rs
+index 9a93593..88fcdb0 100644
+--- a/core/client/src/timeline.rs
++++ b/core/client/src/timeline.rs
+@@ -823,7 +823,7 @@ pub(crate) fn forwardable(
+         return Err(ClientError::CannotForward(Unforwardable::Deleted));
+     }
+     match kind.as_str() {
+-        "text" => Ok(Forwardable::Text(text.unwrap_or_default())),
++        "text" | "post" => Ok(Forwardable::Text(text.unwrap_or_default())),
+         "media" => match detail.as_deref().map(serde_json::from_str::<Body>) {
+             Some(Ok(Body::Media { mime, name, .. })) => Ok(Forwardable::Media {
+                 mime,

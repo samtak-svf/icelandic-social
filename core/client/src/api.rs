@@ -8,10 +8,6 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
-mod posts;
-
-pub use posts::{Author, Post, PostPage, PostReaction, ReactionCounts, Reply, ReplyPage};
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Method {
     Get,

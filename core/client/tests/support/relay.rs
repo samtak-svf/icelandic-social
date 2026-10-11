@@ -13,9 +13,6 @@
 //! token. A signed-in account links another provider's identity, unless the
 //! code is `taken`.
 //!
-//! Fljótið (0034) is a list of posts newest first, paged by the last post's
-//! id, with replies and one reaction per account, and blocks hidden.
-//!
 //! Media (0023) is kept per conversation for its roster, and blocks (0024)
 //! refuse the blocked account the blocker's KeyPackages. A member mutes a
 //! conversation for its account (0042), and every device of that account
@@ -107,24 +104,10 @@ struct State {
     mutes: BTreeMap<(String, String), Option<u64>>,
     /// account → the providers it holds an identity of (0033).
     identities: BTreeMap<String, BTreeSet<String>>,
-    /// Fljótið, oldest first (0034).
-    posts: Vec<Post>,
-    /// Ids handed out to posts and replies.
-    minted_posts: usize,
     /// account → its photo's version and the "re-encoded" image (0039).
     photos: BTreeMap<String, (String, Vec<u8>)>,
     /// Photo versions handed out.
     minted_photos: usize,
-}
-
-struct Post {
-    id: String,
-    author: String,
-    body: String,
-    /// account → its reaction.
-    reactions: BTreeMap<String, String>,
-    /// `(reply id, author, body)`, oldest first.
-    replies: Vec<(String, String, String)>,
 }
 
 pub struct Relay(Mutex<State>);
@@ -434,165 +417,6 @@ impl State {
             return None;
         }
         self.photos.get(of).map(|(version, _)| version.clone())
-    }
-
-    fn post_json(&self, reader: &str, post: &Post) -> Value {
-        let mut reactions: BTreeMap<&str, u32> = ["heart", "thumbs_up", "laugh", "wow", "sad"]
-            .map(|r| (r, 0))
-            .into();
-        for reaction in post.reactions.values() {
-            *reactions.get_mut(reaction.as_str()).unwrap() += 1;
-        }
-        let replies = post
-            .replies
-            .iter()
-            .filter(|(_, author, _)| !self.hides(reader, author))
-            .count();
-        json!({
-            "postId": post.id,
-            "author": {
-                "accountId": post.author, "name": format!("Name of {}", post.author), "verified": false,
-                "photo": self.photo_for(reader, &post.author),
-            },
-            "body": post.body,
-            "createdAt": 0,
-            "replyCount": replies,
-            "reactions": reactions,
-            "myReaction": post.reactions.get(reader),
-        })
-    }
-
-    fn mint(&mut self, kind: &str) -> String {
-        self.minted_posts += 1;
-        format!("{kind}_{:04}", self.minted_posts)
-    }
-
-    /// Fljótið and the walls (0034).
-    fn posts(
-        &mut self,
-        account: &str,
-        method: Method,
-        parts: &[&str],
-        query: &str,
-        body: &Value,
-    ) -> Response {
-        let limit: usize = query_param(query, "limit").map_or(20, |l| l.parse().unwrap());
-        let visible = |state: &State, post: &Post| !state.hides(account, &post.author);
-        let find = |state: &State, id: &str| {
-            state
-                .posts
-                .iter()
-                .position(|p| p.id == id && visible(state, p))
-        };
-        match (method, parts) {
-            (Method::Get, ["feed"] | ["accounts", _, "posts"]) => {
-                let author = parts.get(1).filter(|_| parts.len() == 3);
-                let before = query_param(query, "before");
-                let mut posts = self
-                    .posts
-                    .iter()
-                    .rev()
-                    .filter(|p| visible(self, p) && author.is_none_or(|a| p.author == *a))
-                    .skip_while(|p| before.is_some_and(|b| p.id.as_str() >= b));
-                let page: Vec<&Post> = posts.by_ref().take(limit).collect();
-                let more = posts.next().is_some();
-                let next = more.then(|| page.last().unwrap().id.clone());
-                let page: Vec<Value> = page.iter().map(|p| self.post_json(account, p)).collect();
-                answer(200, json!({ "posts": page, "next": next }))
-            }
-            (Method::Post, ["posts"]) => {
-                let id = self.mint("post");
-                self.posts.push(Post {
-                    id,
-                    author: account.into(),
-                    body: body["body"].as_str().unwrap().into(),
-                    reactions: BTreeMap::new(),
-                    replies: Vec::new(),
-                });
-                answer(201, self.post_json(account, self.posts.last().unwrap()))
-            }
-            (Method::Get, ["posts", id]) => match find(self, id) {
-                Some(i) => answer(200, self.post_json(account, &self.posts[i])),
-                None => refuse(404, "not_found"),
-            },
-            (Method::Delete, ["posts", id]) => match self.posts.iter().position(|p| p.id == *id) {
-                Some(i) if self.posts[i].author == account => {
-                    self.posts.remove(i);
-                    answer(204, Value::Null)
-                }
-                Some(_) => refuse(403, "not_author"),
-                None => refuse(404, "not_found"),
-            },
-            (Method::Put, ["posts", id, "reaction"]) => match find(self, id) {
-                Some(i) if self.hides(&self.posts[i].author, account) => refuse(403, "blocked"),
-                Some(i) => {
-                    let reaction = body["reaction"].as_str().unwrap().to_owned();
-                    self.posts[i].reactions.insert(account.into(), reaction);
-                    answer(204, Value::Null)
-                }
-                None => refuse(404, "not_found"),
-            },
-            (Method::Delete, ["posts", id, "reaction"]) => {
-                if let Some(post) = self.posts.iter_mut().find(|p| p.id == *id) {
-                    post.reactions.remove(account);
-                }
-                answer(204, Value::Null)
-            }
-            (Method::Get, ["posts", id, "replies"]) => match find(self, id) {
-                Some(i) => {
-                    let after = query_param(query, "after");
-                    let mut replies = self.posts[i]
-                        .replies
-                        .iter()
-                        .filter(|(_, author, _)| !self.hides(account, author))
-                        .skip_while(|(r, _, _)| after.is_some_and(|a| r.as_str() <= a));
-                    let page: Vec<_> = replies.by_ref().take(limit).collect();
-                    let next = replies.next().map(|_| page.last().unwrap().0.clone());
-                    let page: Vec<Value> = page
-                        .into_iter()
-                        .map(|(r, author, text)| {
-                            json!({
-                                "replyId": r, "postId": id, "body": text, "createdAt": 0,
-                                "author": { "accountId": author, "name": null, "verified": false },
-                            })
-                        })
-                        .collect();
-                    answer(200, json!({ "replies": page, "next": next }))
-                }
-                None => refuse(404, "not_found"),
-            },
-            (Method::Post, ["posts", id, "replies"]) => match find(self, id) {
-                Some(i) if self.hides(&self.posts[i].author, account) => refuse(403, "blocked"),
-                Some(i) => {
-                    let reply = self.mint("reply");
-                    let text = body["body"].as_str().unwrap().to_owned();
-                    self.posts[i]
-                        .replies
-                        .push((reply.clone(), account.into(), text.clone()));
-                    answer(
-                        201,
-                        json!({
-                            "replyId": reply, "postId": id, "body": text, "createdAt": 0,
-                            "author": { "accountId": account, "name": null, "verified": false },
-                        }),
-                    )
-                }
-                None => refuse(404, "not_found"),
-            },
-            (Method::Delete, ["replies", id]) => {
-                for post in &mut self.posts {
-                    if let Some(i) = post.replies.iter().position(|(r, _, _)| r == id) {
-                        if post.replies[i].1 != account {
-                            return refuse(403, "not_author");
-                        }
-                        post.replies.remove(i);
-                        return answer(204, Value::Null);
-                    }
-                }
-                refuse(404, "not_found")
-            }
-            _ => refuse(404, "not_found"),
-        }
     }
 
     /// A frame to every device of `account`, as the Inbox broadcasts it.
@@ -1109,9 +933,6 @@ impl State {
                     }
                 }
                 answer(200, json!({ "keyPackages": claimed }))
-            }
-            (_, ["feed"] | ["posts", ..] | ["replies", _] | ["accounts", _, "posts"]) => {
-                self.posts(account, request.method, &parts, query, &body)
             }
             _ => refuse(404, "not_found"),
         }

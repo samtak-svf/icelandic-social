@@ -348,7 +348,7 @@ fn errors_cross_as_records() {
     ));
     // A refusal crosses with the server's id for the request (0037).
     assert!(matches!(
-        a1.client.post("nope".into()),
+        a1.client.resolve_invite("no-such-invite-token".into()),
         Err(CoreError::Refused { status: 404, code, request_id: Some(id) })
             if code == "not_found" && id.starts_with("relay-")
     ));
@@ -452,8 +452,7 @@ fn files_and_blocks_cross_by_path_and_record() {
 }
 
 #[test]
-fn google_links_fljotid_and_one_to_ones_cross_the_exported_api() {
-    use spjall_core::feed::PostReaction;
+fn google_links_and_one_to_ones_cross_the_exported_api() {
     let relay = Relay::new();
     let a1 = phone(&relay, "a", "a1");
     let b1 = phone(&relay, "b", "b1");
@@ -481,39 +480,24 @@ fn google_links_fljotid_and_one_to_ones_cross_the_exported_api() {
     c1.complete_link(relay::kenni(&url)).unwrap();
     assert!(c1.me().unwrap().verified);
 
-    let post = a1.client.create_post("Halló Fljót".into()).unwrap();
-    assert_eq!(post.author.account, "a");
-    assert!(matches!(
-        a1.client.create_post(" ".into()),
-        Err(CoreError::Invalid { .. })
-    ));
-    let page = b1.client.feed(None, 20).unwrap();
-    assert_eq!(page.posts, vec![post.clone()]);
-    assert_eq!(page.next, None);
-    b1.client
-        .react_to_post(post.post_id.clone(), Some(PostReaction::ThumbsUp))
-        .unwrap();
-    let seen = b1.client.post(post.post_id.clone()).unwrap();
-    assert_eq!(seen.my_reaction, Some(PostReaction::ThumbsUp));
-    assert_eq!(seen.reactions.thumbs_up, 1);
-    let reply = b1
-        .client
-        .create_reply(post.post_id.clone(), "Svar".into())
-        .unwrap();
-    let replies = a1.client.replies(post.post_id.clone(), None, 20).unwrap();
-    assert_eq!(replies.replies, vec![reply.clone()]);
-    b1.client.delete_reply(reply.reply_id).unwrap();
-    assert_eq!(b1.client.wall("a".into(), None, 20).unwrap().posts.len(), 1);
-    a1.client.delete_post(post.post_id).unwrap();
-    assert!(b1.client.feed(None, 20).unwrap().posts.is_empty());
-
-    // From a post's author to an encrypted 1:1, no link.
+    // Any signed-in account to an encrypted 1:1, no link (0034, 0036).
     let one = b1.client.open_direct("a".into()).unwrap();
     b1.client.sync().unwrap();
     deliver(&relay, &a1, "a", "a1");
     assert_eq!(b1.client.open_direct("a".into()).unwrap(), one);
     assert!(matches!(
         b1.client.open_direct("b".into()),
+        Err(CoreError::Invalid { .. })
+    ));
+
+    // Nothing sends a new shared post (0044).
+    assert!(matches!(
+        b1.client.send(
+            one,
+            Body::Post {
+                post_id: "post_0001".into()
+            }
+        ),
         Err(CoreError::Invalid { .. })
     ));
 }

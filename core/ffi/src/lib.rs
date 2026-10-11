@@ -12,7 +12,6 @@ use std::sync::{Arc, Mutex};
 use spjall_envelope as envelope;
 
 pub mod client;
-pub mod feed;
 
 uniffi::setup_scaffolding!();
 
@@ -78,8 +77,8 @@ pub enum Unforwardable {
     Disappearing,
     /// It was deleted for everyone.
     Deleted,
-    /// Not a text, a file or a shared post this device has: a card, or
-    /// nothing.
+    /// Not a text or a file this device has: a shared post (0044), a
+    /// card, or nothing.
     NotAMessage,
 }
 
@@ -153,7 +152,8 @@ pub enum Body {
     Typing {
         active: bool,
     },
-    /// A shared Fljótið post: its id and nothing else (0040).
+    /// A post shared under 0040: its id and nothing else. Still decoded
+    /// so a conversation that holds one does not break (0044).
     Post {
         post_id: String,
     },

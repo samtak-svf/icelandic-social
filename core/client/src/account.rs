@@ -495,8 +495,8 @@ impl<T: Transport> Client<T> {
         self.open_direct(&inviter.account_id)
     }
 
-    /// The 1:1 with `account`, as anyone in Fljótið may open it without a
-    /// link (0034): the conversation this account already has with it
+    /// The 1:1 with `account`, as any signed-in account may open it without
+    /// a link (0034, 0036): the conversation this account already has with it
     /// alone, or a new one that adds it on the next `sync`. Not with this
     /// account itself, nor with one it blocked.
     pub fn open_direct(&mut self, account: &str) -> Result<String, ClientError> {

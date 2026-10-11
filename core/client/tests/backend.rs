@@ -683,20 +683,7 @@ fn devices_talk_through_the_worker() {
         Err(ClientError::Transport(ApiError::Refused { status: 409, ref code, .. })) if code == "identity_taken"
     ));
 
-    // Fljótið: g posts, h reacts and replies, g's wall holds it (0034).
-    let post = g1.client.create_post(&format!("Fljótið {run}")).unwrap();
-    let feed = h1.client.feed(None, 50).unwrap();
-    assert!(feed.posts.iter().any(|p| p.post_id == post.post_id));
-    h1.client
-        .react_to_post(&post.post_id, Some(spjall_client::api::PostReaction::Heart))
-        .unwrap();
-    h1.client.create_reply(&post.post_id, "Svar").unwrap();
-    let seen = g1.client.post(&post.post_id).unwrap();
-    assert_eq!((seen.reactions.heart, seen.reply_count), (1, 1));
-    let wall = h1.client.wall(&g1.account, None, 50).unwrap();
-    assert_eq!(wall.posts[0].post_id, post.post_id);
-
-    // g is in h's directory by name, without posting first (0036).
+    // g is in h's directory by name (0036).
     let name = g1.client.me().unwrap().name.unwrap();
     let found = h1.client.directory(Some(&name), None, 50).unwrap();
     assert!(
@@ -722,8 +709,8 @@ fn devices_talk_through_the_worker() {
     assert_eq!(h1.client.profile(&g1.account).unwrap().photo, None);
     assert!(!file.exists());
 
-    // From the post's author to an encrypted 1:1, no link and nothing
-    // shared before.
+    // From the directory to an encrypted 1:1, no link and nothing shared
+    // before.
     assert!(h1.client.profile(&g1.account).unwrap().verified);
     let one = h1.client.open_direct(&g1.account).unwrap();
     h1.sync();
@@ -733,14 +720,11 @@ fn devices_talk_through_the_worker() {
     h1.send(&one, "hæ");
     h1.sync();
     assert_eq!(texts(&g1.deliver_until(count(1))), strings(&["hæ"]));
-    g1.client.delete_post(&post.post_id).unwrap();
 
     // A Google sign-in whose Kenni names an older Kenni account joins it
-    // (0035): the device is that account's afterwards, and its posts went
-    // with it.
-    let mut k1 = Phone::new(&kennitala(run, 6), None);
+    // (0035): the device is that account's afterwards.
+    let k1 = Phone::new(&kennitala(run, 6), None);
     let mut m1 = Phone::signed_in(Person::Google(&format!("interop-{run}-m")), None);
-    let post = m1.client.create_post(&format!("Áður {run}")).unwrap();
     let url = m1.client.begin_link(Provider::Kenni).unwrap();
     assert!(
         m1.client
@@ -750,8 +734,6 @@ fn devices_talk_through_the_worker() {
     );
     assert_eq!(m1.client.signed_in().unwrap().unwrap().account, k1.account);
     assert!(m1.client.me().unwrap().verified);
-    let wall = k1.client.wall(&k1.account, None, 50).unwrap();
-    assert_eq!(wall.posts[0].post_id, post.post_id);
     // It stocks KeyPackages for k on its next sync.
     m1.client.sync().unwrap();
 }

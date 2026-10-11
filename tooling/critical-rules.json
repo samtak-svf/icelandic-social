@@ -476,8 +476,8 @@
     {
       "id": "shared-post-carries-only-its-id",
       "domain": "privacy",
-      "decision": "0040",
-      "rule": "A shared post carries only its id: no copy of its text or its author's name, in the message, the list's last line or a notice, so a deleted or blocked post shows nothing.",
+      "decision": "0044",
+      "rule": "A post shared under 0040 reads as its id alone: no copy of its text or its author's name in the message, the list's last line or a notice, nothing fetches it, and nothing sends or forwards a new one (0044).",
       "tests": [
         {
           "file": "core/envelope/src/lib.rs",
@@ -485,11 +485,11 @@
         },
         {
           "file": "core/client/tests/sync.rs",
-          "name": "a_shared_post_carries_only_its_id_and_shows_what_the_server_holds_now"
+          "name": "a_shared_post_from_before_0044_reads_as_its_id_and_asks_the_server_nothing"
         },
         {
           "file": "core/client/tests/sync.rs",
-          "name": "a_forwarded_share_is_shared_again_by_its_id_and_a_reply_quotes_it"
+          "name": "a_share_is_not_forwarded_and_a_reply_still_quotes_it"
         }
       ]
     },

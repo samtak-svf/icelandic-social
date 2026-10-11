@@ -388,7 +388,7 @@ pub enum NoticeKind {
     Text,
     Photo,
     File,
-    /// A shared Fljótið post: shown as a fixed sentence, with no text.
+    /// A post shared under 0040: shown as a fixed sentence, with no text.
     Post,
 }
 
@@ -537,7 +537,7 @@ pub struct Quote {
     pub sender: Option<Person>,
     pub text: Option<String>,
     /// The post, when the reply answers a shared post (0040); `text` is
-    /// then none, and the app draws the quote as the share's card.
+    /// then none, and the app draws the quote as the fixed line of 0044.
     #[uniffi(default = None)]
     pub post_id: Option<String>,
 }
@@ -566,9 +566,9 @@ pub enum Content {
     },
     /// The disappearing timer was set, or turned off.
     Timer { seconds: Option<u32> },
-    /// A Fljótið post shared here (0040): only its id. The card fetches
-    /// it with `shared_post` when it is on screen; the list's last line
-    /// and a notice use a fixed sentence.
+    /// A post shared here under 0040: only its id. Since 0044 nothing
+    /// fetches it: the card, the list's last line and a notice each show
+    /// a fixed sentence.
     Post { post_id: String },
 }
 
@@ -1007,8 +1007,14 @@ impl CoreClient {
     }
 
     /// Queues a message; it is sent on the next `sync`. Returns the
-    /// envelope id.
+    /// envelope id. A `Post` is `Invalid`: nothing sends a new shared
+    /// post (0044).
     pub fn send(&self, conversation: String, body: Body) -> Result<String, CoreError> {
+        if matches!(body, Body::Post { .. }) {
+            return Err(CoreError::Invalid {
+                detail: "a shared post (0044)".into(),
+            });
+        }
         Ok(self.client()?.send(&conversation, body.into())?)
     }
 
@@ -1150,7 +1156,7 @@ impl CoreClient {
         Ok(self.client()?.open_invite(&token)?)
     }
 
-    /// The 1:1 with an account met in Fljótið (0034), no link needed: the
+    /// The 1:1 with any signed-in account (0034, 0036), no link needed: the
     /// one this account already has with it alone, or a new one that adds
     /// it on the next `sync`. `Invalid` for this account itself or one it
     /// blocked.

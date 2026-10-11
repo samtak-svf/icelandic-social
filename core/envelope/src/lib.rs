@@ -102,9 +102,9 @@ pub enum Body {
     Typing {
         active: bool,
     },
-    /// A Fljótið post shared into the conversation (0040): its id and
-    /// nothing else. The reader fetches the post when it shows it, so a
-    /// post its author deleted is gone here too.
+    /// A post shared into the conversation (0040): its id and nothing
+    /// else. No client sends one since 0044, and the posts are deleted;
+    /// it stays decodable so a conversation that holds one does not break.
     Post {
         post_id: String,
         /// Shared again by `forward` from another conversation (0041).
