@@ -34,6 +34,31 @@ final class PostsModelTests: XCTestCase {
         XCTAssertEqual(model.posts.map(\.postId), ["p2", "p1"])
     }
 
+    func testARefreshWithNewerPostsSaysSoUntilSeen() async {
+        account.posts = [samplePost("p1")]
+        let model = await model()
+        XCTAssertFalse(model.newer)
+
+        account.posts = [samplePost("p2"), samplePost("p1")]
+        await model.refresh()
+        XCTAssertTrue(model.newer)
+        await model.refresh()
+        XCTAssertTrue(model.newer, "seen only when the reader says so")
+
+        model.seenNewer()
+        XCTAssertFalse(model.newer)
+    }
+
+    func testTheFirstPageAndOwnPostsAreNotNewer() async {
+        account.posts = [samplePost("p1")]
+        let model = await model()
+        XCTAssertFalse(model.newer)
+
+        _ = await model.post(body: "Halló")
+        await model.refresh()
+        XCTAssertFalse(model.newer)
+    }
+
     func testAPostLeadsTheListAndABlankOneIsNotSent() async {
         account.posts = [samplePost("p1")]
         let model = await model()

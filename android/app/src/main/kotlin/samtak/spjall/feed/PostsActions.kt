@@ -22,4 +22,7 @@ interface PostsActions {
     fun loadMore()
 
     fun refresh()
+
+    /** The newer posts a refresh brought are on screen now (decision 0043). */
+    fun seenNewer() {}
 }

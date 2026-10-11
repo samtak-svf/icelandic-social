@@ -14,6 +14,8 @@ struct MeView: View {
     let onReplies: (String) -> Void
 
     @State private var composing = false
+    /// What the photo picker chose, from the circle or from the words under it.
+    @State private var picked: PhotosPickerItem?
 
     var body: some View {
         ScrollView {
@@ -29,8 +31,11 @@ struct MeView: View {
                             .padding(.bottom, 8)
                     }
                     // Every post here is the person's own: their name leads back here.
-                    PostList(model: wall, empty: "wall_empty", onAuthor: { _ in }, onReplies: onReplies)
-                        .background(BrandTokens.Colors.surface)
+                    PostList(
+                        model: wall, empty: "wall_empty", emptyIcon: "person", onAuthor: { _ in },
+                        onReplies: onReplies
+                    )
+                    .background(BrandTokens.Colors.surface)
                 }
             }
         }
@@ -61,7 +66,7 @@ struct MeView: View {
             }
             if let me = model.me {
                 HStack(alignment: .top) {
-                    Who(name: me.name, verified: me.verified, photo: me.photoOf)
+                    Who(me: me, picked: $picked, enabled: !model.busy)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Button(action: onSettings) {
                         Image(systemName: "gearshape")
@@ -73,7 +78,7 @@ struct MeView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel(Text("settings_title"))
                 }
-                PhotoControls(model: model, hasPhoto: me.photo != nil)
+                PhotoControls(model: model, hasPhoto: me.photo != nil, picked: $picked)
                 if !me.verified { VerifyLink(onVerify: onVerify) }
                 CardLabel(key: "invite_link_title")
                 InviteCard(model: model)
@@ -86,14 +91,23 @@ struct MeView: View {
 }
 
 /// The photo, or the dark circle with the initials; the name in capitals, and whether Kenni vouched for it.
+/// A tap on the circle opens the photo picker, as the words under it do (decision 0043).
 private struct Who: View {
-    let name: String?
-    let verified: Bool
-    let photo: PhotoOf?
+    let me: Me
+    @Binding var picked: PhotosPickerItem?
+    let enabled: Bool
+
+    private var name: String? { me.name }
+    private var verified: Bool { me.verified }
 
     var body: some View {
         HStack(spacing: 14) {
-            Avatar(name: name, kind: .me, size: 56, photo: photo)
+            PhotosPicker(selection: $picked, matching: .images) {
+                Avatar(name: name, kind: .me, size: 72, photo: me.photoOf)
+            }
+            .buttonStyle(.plain)
+            .disabled(!enabled)
+            .accessibilityLabel(Text(me.photo == nil ? "photo_choose" : "photo_change"))
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     if let name {
@@ -116,8 +130,8 @@ private struct Who: View {
 private struct PhotoControls: View {
     let model: MeModel
     let hasPhoto: Bool
+    @Binding var picked: PhotosPickerItem?
 
-    @State private var picked: PhotosPickerItem?
     @State private var removing = false
 
     var body: some View {

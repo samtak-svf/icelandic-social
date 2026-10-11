@@ -2,10 +2,11 @@ import SpjallCore
 import SwiftUI
 
 /// A model's posts with hairlines between, the next page fetched as the last
-/// one comes into view, and `empty` when there are none.
+/// one comes into view, and `empty` with `emptyIcon` when there are none.
 struct PostList: View {
     let model: PostsModel
     let empty: LocalizedStringKey
+    let emptyIcon: String
     let onAuthor: (Person) -> Void
     let onReplies: (String) -> Void
 
@@ -14,12 +15,7 @@ struct PostList: View {
     var body: some View {
         LazyVStack(spacing: 0) {
             if model.loaded && model.posts.isEmpty && model.problem == nil {
-                Text(empty)
-                    .font(.sans(14))
-                    .foregroundStyle(BrandTokens.Colors.mutedFg)
-                    .multilineTextAlignment(.center)
-                    .padding(24)
-                    .frame(maxWidth: .infinity)
+                EmptyState(systemImage: emptyIcon, text: empty)
             }
             ForEach(model.posts, id: \.postId) { post in
                 PostRow(

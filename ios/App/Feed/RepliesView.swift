@@ -30,11 +30,7 @@ struct RepliesView: View {
                         Hairline()
                     }
                     if model.loaded && model.replies.isEmpty && model.post != nil {
-                        Text("replies_empty")
-                            .font(.sans(14))
-                            .foregroundStyle(BrandTokens.Colors.mutedFg)
-                            .padding(24)
-                            .frame(maxWidth: .infinity)
+                        EmptyState(systemImage: "bubble.left", text: "replies_empty")
                     }
                     ForEach(model.replies, id: \.replyId) { reply in
                         ReplyRow(reply: reply) { onAuthor(reply.author) }

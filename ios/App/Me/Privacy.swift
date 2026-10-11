@@ -56,10 +56,7 @@ struct BlockedSection: View {
     var body: some View {
         Group {
             if model.blocked.isEmpty {
-                Text("blocked_empty")
-                    .font(.sans(13))
-                    .foregroundStyle(BrandTokens.Colors.mutedFg)
-                    .padding(14)
+                EmptyState(systemImage: "nosign", text: "blocked_empty")
             }
             ForEach(Array(model.blocked.enumerated()), id: \.element.account) { index, person in
                 if index > 0 { Hairline() }

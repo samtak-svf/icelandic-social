@@ -82,6 +82,36 @@ class PostsViewModelTest {
         }
 
     @Test
+    fun aRefreshWithNewerPostsSaysSoUntilSeen() =
+        runTest(dispatcher) {
+            account.posts += post("p1", anna).copy(createdAt = 1000u)
+            val model = model()
+            assertFalse(model.state.value.newer)
+            model.refresh()
+            advanceUntilIdle()
+            assertFalse(model.state.value.newer)
+            account.posts.add(0, post("p0", anna).copy(createdAt = 2000u))
+            model.refresh()
+            advanceUntilIdle()
+            assertTrue(model.state.value.newer)
+            model.seenNewer()
+            assertFalse(model.state.value.newer)
+        }
+
+    @Test
+    fun theFirstPageAndOwnPostsAreNotNewer() =
+        runTest(dispatcher) {
+            account.posts += post("p1", anna)
+            val model = model()
+            assertFalse(model.state.value.newer)
+            model.post("Góðan daginn")
+            advanceUntilIdle()
+            model.refresh()
+            advanceUntilIdle()
+            assertFalse(model.state.value.newer)
+        }
+
+    @Test
     fun aPostGoesOnTopTrimmedAndBlankIsRefused() =
         runTest(dispatcher) {
             account.posts += post("p1", anna)

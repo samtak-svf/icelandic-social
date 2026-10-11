@@ -1,13 +1,17 @@
 package samtak.spjall.feed
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -41,11 +45,17 @@ class FeedScreenTest {
         mine: PostReaction? = null,
     ) = Post(id, author, "Halló frá $id", 1_700_000_000_000u, 2u, ReactionCounts(3u, 0u, 0u, 0u, 0u), mine)
 
-    private fun show(vararg posts: Post) {
+    private val newerState = mutableStateOf(false)
+
+    private fun show(
+        vararg posts: Post,
+        newer: Boolean = false,
+    ) {
+        newerState.value = newer
         compose.setContent {
             SpjallTheme {
                 FeedScreen(
-                    PostsViewModel.State(posts = posts.toList(), loaded = true, me = "a1"),
+                    PostsViewModel.State(posts = posts.toList(), loaded = true, me = "a1", newer = newerState.value),
                     actions,
                     emptyFlow(),
                 )
@@ -54,11 +64,36 @@ class FeedScreenTest {
     }
 
     @Test
-    fun theFeedSaysItIsPublic() {
+    fun theFeedSaysItIsPublicInOneLineAndTheButtonSaysTheRest() {
         show()
-        compose.onNodeWithText(text(R.string.feed_public_notice)).assertExists()
+        compose.onNodeWithText(text(R.string.feed_public_short)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.feed_empty)).assertExists()
+        compose.onNodeWithText(text(R.string.feed_public_notice)).assertDoesNotExist()
+        compose.onNodeWithContentDescription(text(R.string.feed_public_more)).performClick()
+        compose.onNodeWithText(text(R.string.feed_public_notice)).assertIsDisplayed()
     }
+
+    @Test
+    fun newerPostsArrivingAtTheTopAreSeenWithoutAPill() {
+        show(*many(), newer = true)
+        compose.onNodeWithText(text(R.string.feed_new_posts)).assertDoesNotExist()
+        assertEquals(listOf("seenNewer"), calls)
+    }
+
+    @Test
+    fun newerPostsAboveTheReaderShowAPillThatGoesToTheTop() {
+        show(*many(), newer = false)
+        compose.onNode(hasScrollToIndexAction()).performScrollToIndex(POSTS)
+        compose.onNodeWithText(text(R.string.feed_composer_placeholder)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.feed_new_posts)).assertDoesNotExist()
+        newerState.value = true
+        compose.onNodeWithText(text(R.string.feed_new_posts)).assertIsDisplayed().performClick()
+        compose.onNodeWithText(text(R.string.feed_composer_placeholder)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.feed_new_posts)).assertDoesNotExist()
+        assertEquals(listOf("seenNewer"), calls.distinct())
+    }
+
+    private fun many() = (1..POSTS).map { post("p$it", anna) }.toTypedArray()
 
     @Test
     fun thePillWritesAPost() {
@@ -144,4 +179,10 @@ class RecordingPostsActions(
     override fun refresh() {
         calls += "refresh"
     }
+
+    override fun seenNewer() {
+        calls += "seenNewer"
+    }
 }
+
+private const val POSTS = 30

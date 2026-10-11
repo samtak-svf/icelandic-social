@@ -56,6 +56,11 @@ class PostsViewModel(
         val person: Person? = null,
         /** This account blocked the wall's: no 1:1 to open. */
         val blocked: Boolean = false,
+        /**
+         * A refresh brought posts newer than the newest shown before it
+         * (decision 0043); Fljótið offers them until [seenNewer].
+         */
+        val newer: Boolean = false,
         val problem: Problem? = null,
     )
 
@@ -93,11 +98,23 @@ class PostsViewModel(
                         }
                         page(null)
                     }
-                _state.update { it.fresh(page).copy(loaded = true, refreshing = false, problem = null) }
+                _state.update {
+                    it.fresh(page).copy(
+                        loaded = true,
+                        refreshing = false,
+                        problem = null,
+                        newer = it.newer || it.isOlderThan(page),
+                    )
+                }
             } catch (e: CoreException) {
                 _state.update { it.copy(loaded = true, refreshing = false, problem = e.problem()) }
             }
         }
+    }
+
+    /** The newer posts a refresh brought have been seen: the offer to show them goes. */
+    fun seenNewer() {
+        _state.update { it.copy(newer = false) }
     }
 
     /** The page after the last one shown, when there is one. */
@@ -185,6 +202,12 @@ class PostsViewModel(
         val read = page.posts.map { it.postId }.toSet()
         val older = posts.filter { it.createdAt < oldest.createdAt && it.postId !in read }
         return if (older.isEmpty()) copy(posts = page.posts, next = page.next) else copy(posts = page.posts + older)
+    }
+
+    /** Something was shown, and [page] leads with a post that was not among it. */
+    private fun State.isOlderThan(page: PostPage): Boolean {
+        val newest = page.posts.firstOrNull() ?: return false
+        return posts.isNotEmpty() && posts.none { it.postId == newest.postId }
     }
 
     private fun replace(post: Post) {

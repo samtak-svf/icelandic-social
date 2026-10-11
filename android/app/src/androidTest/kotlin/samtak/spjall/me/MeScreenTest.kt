@@ -168,6 +168,20 @@ class MeScreenTest {
     }
 
     @Test
+    fun aTapOnTheEmptyCircleOpensThePickerToo() {
+        show()
+        compose.onNodeWithContentDescription(text(R.string.photo_choose)).performClick()
+        assertEquals(listOf("choosePhoto"), calls)
+    }
+
+    @Test
+    fun aTapOnThePhotoOpensThePickerToReplaceIt() {
+        show(photo = "v1")
+        compose.onNodeWithContentDescription(text(R.string.photo_change)).performClick()
+        assertEquals(listOf("choosePhoto"), calls)
+    }
+
+    @Test
     fun aPhotoCanBeReplacedOrRemovedAndRemovingAsksFirst() {
         show(photo = "v1")
         compose.onNodeWithText(text(R.string.photo_change)).performClick()

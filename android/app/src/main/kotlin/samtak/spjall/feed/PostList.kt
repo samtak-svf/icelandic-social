@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
@@ -43,21 +44,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.flow.Flow
 import samtak.spjall.brand.R
+import samtak.spjall.ui.EmptyState
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.SansFamily
 import samtak.spjall.ui.Type
 
 /**
  * The posts of [state], each under a hairline, then the next page once the
- * last one shows; [empty] when there are none. Own posts can be deleted.
+ * last one shows; [empty] beside [emptyIcon] when there are none. Own
+ * posts can be deleted.
  */
 fun LazyListScope.posts(
     state: PostsViewModel.State,
     actions: PostsActions,
     empty: Int,
+    emptyIcon: ImageVector,
 ) {
     if (state.loaded && state.posts.isEmpty() && state.problem == null) {
-        item(key = "empty") { Hint(empty) }
+        item(key = "empty") { EmptyState(emptyIcon, stringResource(empty)) }
     }
     items(state.posts, key = { it.postId }) { post ->
         PostRow(
@@ -84,16 +88,6 @@ fun LazyListScope.posts(
             }
         }
     }
-}
-
-@Composable
-internal fun Hint(text: Int) {
-    Text(
-        text = stringResource(text),
-        style = Type.bubble,
-        color = Palette.mutedFg,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 24.dp),
-    )
 }
 
 /** The rounded field that is not one yet: a tap opens [ComposerSheet]. */

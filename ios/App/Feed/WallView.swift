@@ -27,7 +27,9 @@ struct WallView: View {
                         }
                     }
                     // Every post here is the owner's, so their name leads nowhere new.
-                    PostList(model: model, empty: "wall_empty", onAuthor: { _ in }, onReplies: onReplies)
+                    PostList(
+                        model: model, empty: "wall_empty", emptyIcon: "person", onAuthor: { _ in },
+                        onReplies: onReplies)
                 }
             }
             .refreshable { await model.refresh() }

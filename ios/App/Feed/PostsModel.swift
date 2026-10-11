@@ -29,6 +29,9 @@ final class PostsModel {
     private(set) var person: Person?
     /// This account blocked the wall's owner: no way to write to them.
     private(set) var blocked = false
+    /// A refresh brought posts newer than the newest shown before it (decision 0043);
+    /// Fljótið offers them until `seenNewer()`.
+    private(set) var newer = false
 
     private let account: Account
     private var next: String?
@@ -58,12 +61,22 @@ final class PostsModel {
                 return (me, page, try account.profile(owner), blocked)
             }
             self.me = me
+            if let newest = page.posts.first, !self.posts.isEmpty,
+                !self.posts.contains(where: { $0.postId == newest.postId })
+            {
+                self.newer = true
+            }
             self.posts = page.posts
             self.next = page.next
             if let owner { self.person = owner }
             self.blocked = blocked
             self.loaded = true
         }
+    }
+
+    /// The newer posts a refresh brought have been seen: the offer to show them goes.
+    func seenNewer() {
+        newer = false
     }
 
     /// The page after the last one shown, if there is one.

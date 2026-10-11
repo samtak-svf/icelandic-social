@@ -2,6 +2,7 @@ package samtak.spjall.me
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -34,7 +36,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -89,7 +94,13 @@ fun MeScreen(
                     state.me?.let { me ->
                         Row(verticalAlignment = Alignment.Top) {
                             Box(modifier = Modifier.weight(1f)) {
-                                Who(me.name, me.verified, me.photo?.let { PhotoOf(me.accountId, it) })
+                                Who(
+                                    me.name,
+                                    me.verified,
+                                    me.photo?.let { PhotoOf(me.accountId, it) },
+                                    onPhoto = actions::choosePhoto,
+                                    enabled = !state.busy,
+                                )
                             }
                             IconButton(onClick = onSettings) {
                                 Icon(
@@ -136,22 +147,38 @@ private fun LazyListScope.wallPosts(
     wall.problem?.let {
         item(key = "wall-problem") { Box(modifier = Modifier.padding(16.dp)) { ProblemCard(it, actions::refresh) } }
     }
-    posts(wall, actions, empty = R.string.wall_empty)
+    posts(wall, actions, empty = R.string.wall_empty, emptyIcon = AppIcons.Person)
 }
 
-/** The photo, or the dark circle with the initials; the name in capitals, and whether Kenni vouched for it. */
+/**
+ * The photo, or the dark circle with the initials; the name in capitals, and whether Kenni vouched for it.
+ * A tap on the photo opens the picker, as its buttons below do (decision 0043).
+ */
 @Composable
 private fun Who(
     name: String?,
     verified: Boolean,
     photo: PhotoOf?,
+    onPhoto: () -> Unit,
+    enabled: Boolean,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Avatar(name, kind = AvatarKind.Me, size = AVATAR.dp, photo = photo)
+        val label = stringResource(if (photo != null) R.string.photo_change else R.string.photo_choose)
+        Avatar(
+            name,
+            kind = AvatarKind.Me,
+            size = AVATAR.dp,
+            photo = photo,
+            modifier =
+                Modifier
+                    .clip(CircleShape)
+                    .clickable(enabled = enabled, role = Role.Button, onClick = onPhoto)
+                    .semantics { contentDescription = label },
+        )
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             name?.let {
                 NameWithMark(
@@ -345,7 +372,7 @@ internal fun Confirm(
     )
 }
 
-private const val AVATAR = 56
+private const val AVATAR = 72
 private const val MARK = 22
 private const val MARK_LINK = 18
 private const val CARD_RADIUS = 18

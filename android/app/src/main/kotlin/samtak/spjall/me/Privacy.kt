@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Person
 import samtak.spjall.core.Settings
+import samtak.spjall.ui.AppIcons
+import samtak.spjall.ui.EmptyState
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.VerifiedMark
 import samtak.spjall.ui.shownName
@@ -63,12 +65,7 @@ internal fun ColumnScope.BlockedSection(
 ) {
     var unblocking by rememberSaveable { mutableStateOf<String?>(null) }
     if (blocked.isEmpty()) {
-        Text(
-            text = stringResource(R.string.blocked_empty),
-            style = MaterialTheme.typography.bodyMedium,
-            color = Palette.mutedFg,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
-        )
+        EmptyState(AppIcons.Blocked, stringResource(R.string.blocked_empty))
     }
     blocked.forEachIndexed { i, person ->
         if (i > 0) HorizontalDivider(color = Palette.border)

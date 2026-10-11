@@ -55,6 +55,12 @@ object AppIcons {
                 "M8.5 10a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0zM13 10a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0z",
         )
 
+    /** More about something: an i in a circle. */
+    val Info = outline("info", 20f, 1.8f, "M17 10a7 7 0 1 1-14 0a7 7 0 1 1 14 0z", "M10 9.5v4.5", "M10 6.5v.01")
+
+    /** The blocked list: a circle struck through. */
+    val Blocked = outline("blocked", 20f, 1.8f, "M17 10a7 7 0 1 1-14 0a7 7 0 1 1 14 0z", "M5 5l10 10")
+
     val Plus = outline("plus", 16f, 1.9f, "M8 3v10M3 8h10")
 
     val Back = outline("back", 20f, 2f, "M12 4l-6 6 6 6")

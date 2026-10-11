@@ -43,6 +43,7 @@ import samtak.spjall.core.Reply
 import samtak.spjall.me.Confirm
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
+import samtak.spjall.ui.EmptyState
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.RoundButton
@@ -90,7 +91,7 @@ fun RepliesScreen(
                     }
                 }
                 if (state.loaded && state.post != null && state.replies.isEmpty()) {
-                    item(key = "empty") { Hint(R.string.replies_empty) }
+                    item(key = "empty") { EmptyState(AppIcons.Bubble, stringResource(R.string.replies_empty)) }
                 }
                 items(state.replies, key = { it.replyId }) { reply ->
                     ReplyRow(reply, mine = reply.author.account == state.me, actions) { deleting = reply.replyId }

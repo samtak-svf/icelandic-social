@@ -459,6 +459,8 @@ class MainActivity : ComponentActivity() {
         override fun loadMore() = model.loadMore()
 
         override fun refresh() = model.refresh()
+
+        override fun seenNewer() = model.seenNewer()
     }
 
     /** An author's wall; this account's own is Ég. */

@@ -79,7 +79,7 @@ fun WallScreen(
                             }
                         }
                     }
-                    posts(state, actions, empty = R.string.wall_empty)
+                    posts(state, actions, empty = R.string.wall_empty, emptyIcon = AppIcons.Person)
                 }
             }
         }
