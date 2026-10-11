@@ -88,6 +88,31 @@ class RowsTest {
     }
 
     @Test
+    fun aDayThatStartsTwiceKeepsItsKeysUnique() {
+        // An older message that arrives after a newer one starts its day again.
+        val items =
+            listOf(
+                item(1u, ts = day),
+                item(2u, ts = day + 120uL * minute),
+                item(3u, ts = day + 1uL * minute),
+            )
+        val rows = rows(items, ZoneOffset.UTC)
+        assertEquals(
+            listOf(
+                "day 2023-11-14",
+                "1 first last",
+                "day 2023-11-15",
+                "2 first last",
+                "day 2023-11-14",
+                "3 first last",
+            ),
+            shape(rows),
+        )
+        val keys = rows.map { it.key }
+        assertEquals(keys.toSet().size, keys.size)
+    }
+
+    @Test
     fun aPendingMessageShowsTheClockInPlaceOfTheTime() {
         val pending = item(null, sender = me, own = true, ts = day, status = ItemStatus.PENDING)
         assertEquals(listOf(MetaPart.SENDING), Row.Bubble(pending, first = true, readBy = null).meta())

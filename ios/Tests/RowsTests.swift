@@ -18,7 +18,7 @@ final class RowsTests: XCTestCase {
         let format = Date.ISO8601FormatStyle(timeZone: TimeZone(identifier: "UTC")!).year().month().day()
         return rows.map {
             switch $0 {
-            case .day(let date): "day \(date.formatted(format))"
+            case .day(let date, _): "day \(date.formatted(format))"
             case .card(let item): "card \(item.seq ?? 0)"
             case .bubble(let item, let first, let last, let readBy):
                 "\(item.seq.map(String.init) ?? "nil")\(first ? " first" : "")\(readBy.map { " read \($0)" } ?? "")"
@@ -49,6 +49,14 @@ final class RowsTests: XCTestCase {
         XCTAssertEqual(
             shape(rows),
             ["day 2023-11-14", "1 first last", "card 2", "3 first last", "day 2023-11-15", "4 first last"])
+    }
+
+    func testADayThatStartsTwiceKeepsItsIdsUnique() {
+        let rows = rows([item(1, ts: day), item(2, ts: day + 120 * minute), item(3, ts: day + minute)], calendar: utc)
+        XCTAssertEqual(
+            shape(rows),
+            ["day 2023-11-14", "1 first last", "day 2023-11-15", "2 first last", "day 2023-11-14", "3 first last"])
+        XCTAssertEqual(Set(rows.map(\.id)).count, rows.count)
     }
 
     func testTheReadLineSitsUnderTheNewestOwnMessageSomeoneRead() {

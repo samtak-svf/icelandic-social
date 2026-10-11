@@ -11,11 +11,15 @@ import java.time.ZoneId
 sealed interface Row {
     val key: String
 
-    /** Where a new day starts. */
+    /**
+     * Where a new day starts, keyed by the item it comes before: a day can
+     * start twice when an older message arrives after a newer one.
+     */
     data class Day(
         val date: LocalDate,
+        val before: Item,
     ) : Row {
-        override val key = "day-$date"
+        override val key = "day-${before.key()}"
     }
 
     /** A system card: members or the disappearing timer changed. */
@@ -55,7 +59,7 @@ fun rows(
     for (item in items) {
         val date = Instant.ofEpochMilli(item.ts.toLong()).atZone(zone).toLocalDate()
         if (date != day) {
-            rows += Row.Day(date)
+            rows += Row.Day(date, item)
             day = date
             previous = null
         }

@@ -3,8 +3,10 @@ import SpjallCore
 
 /// One line of the timeline as the screen draws it.
 enum Row: Identifiable, Equatable {
-    /// Where a new day starts: the day's start.
-    case day(Date)
+    /// Where a new day starts: the day's start, and the item it comes before.
+    /// A day can start twice when an older message arrives after a newer one,
+    /// so the item, not the date, names the row.
+    case day(Date, before: Item)
     /// A system card: members or the disappearing timer changed.
     case card(Item)
     /// `first` starts a run from one sender, which names the sender in a group;
@@ -14,7 +16,7 @@ enum Row: Identifiable, Equatable {
 
     var id: String {
         switch self {
-        case .day(let date): "day-\(Int(date.timeIntervalSince1970))"
+        case .day(_, let before): "day-\(key(before))"
         case .card(let item), .bubble(let item, _, _, _): key(item)
         }
     }
@@ -32,7 +34,7 @@ func rows(_ items: [Item], calendar: Calendar = .current) -> [Row] {
     for item in items {
         let start = calendar.startOfDay(for: Date(timeIntervalSince1970: TimeInterval(item.ts) / 1_000))
         if start != day {
-            rows.append(.day(start))
+            rows.append(.day(start, before: item))
             day = start
             previous = nil
         }

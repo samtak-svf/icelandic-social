@@ -121,7 +121,7 @@ struct ConversationView: View {
                     }
                     ForEach(shown) { row in
                         switch row {
-                        case .day(let date): DayLine(date: date)
+                        case .day(let date, _): DayLine(date: date)
                         case .card(let item): CardLine(item: item, group: group)
                         case .bubble(let item, let first, let last, let readBy):
                             Bubble(
