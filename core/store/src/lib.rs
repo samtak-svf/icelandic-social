@@ -455,6 +455,14 @@ const MIGRATIONS: &[(u32, &str)] = &[
          -- files are in the media folder's `photos/`, by account and version.
          ALTER TABLE profiles ADD COLUMN photo TEXT;",
     ),
+    (
+        14,
+        // Decision 0048.
+        "-- When the server stored the message or commit of the row, in
+         -- milliseconds by its clock, never earlier than the row before; NULL
+         -- for rows stored before the server gave it.
+         ALTER TABLE timeline ADD COLUMN received_at INTEGER;",
+    ),
 ];
 
 pub struct Store {
@@ -664,6 +672,30 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM reactions", [], |r| r.get(0))
             .unwrap();
         assert_eq!(left, 0);
+    }
+
+    /// Migration 14 (0048): a row from before has no server time.
+    #[test]
+    fn rows_from_before_have_no_server_time() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(FILE_NAME);
+        let mut old = connect(&path, &KEY).unwrap();
+        migrate(&mut old, &MIGRATIONS[..13]).unwrap();
+        old.execute_batch(
+            "INSERT INTO conversations (group_id, cursor, created_at) VALUES (x'01', 1, 0);
+             INSERT INTO timeline (group_id, seq, kind, sender_account, sender_device,
+                                   envelope_id, ts, stored_at, text)
+                 VALUES (x'01', 1, 'text', 'a', 'a1', 'm1', 1, 1, 'hæ');",
+        )
+        .unwrap();
+        drop(old);
+
+        let store = Store::open(dir.path(), &KEY).unwrap();
+        let received: Option<i64> = store
+            .connection
+            .query_row("SELECT received_at FROM timeline", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(received, None);
     }
 
     fn refused(store: &mut Store, sql: &str) -> bool {

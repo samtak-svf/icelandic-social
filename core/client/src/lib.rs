@@ -1690,8 +1690,8 @@ impl<T: Transport> Client<T> {
                 self.store
                     .try_write(|tx| set_state(tx, group, State::Active))?;
             }
-            for (seq, bytes) in messages {
-                let (next, events) = self.store.try_write(|tx| receive(tx, group, seq, &bytes))?;
+            for message in messages {
+                let (next, events) = self.store.try_write(|tx| receive(tx, group, &message))?;
                 self.outcome.events.extend(events);
                 match next {
                     Next::Moved => progressed = true,
@@ -1845,9 +1845,9 @@ enum Next {
 fn receive(
     tx: &Transaction,
     group: &[u8],
-    seq: u64,
-    bytes: &[u8],
+    message: &api::Fetched,
 ) -> Result<(Next, Vec<Event>), ClientError> {
+    let (seq, bytes) = (message.seq, message.bytes.as_slice());
     let conversation = conversation_id(group);
     let Some((State::Active, cursor)) = conversation_of(tx, group)? else {
         return Ok((Next::Stop, Vec::new()));
@@ -2028,6 +2028,9 @@ fn receive(
             Err(_) if is_commit(bytes) => return stale(),
             Err(_) => {}
         }
+    }
+    if let Some(at) = message.stored_at {
+        timeline::received(tx, group, seq, at)?;
     }
     tx.execute(
         "UPDATE conversations SET cursor = ?2 WHERE group_id = ?1",

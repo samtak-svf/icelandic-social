@@ -527,6 +527,10 @@ fn devices_talk_through_the_worker() {
     let last = items.last().unwrap();
     assert!(matches!(&last.content, Content::Text { text, .. } if text == "bara við"));
     assert_eq!(last.sender.account, c);
+    // The Worker's own times, in milliseconds and in order (0048).
+    let times: Vec<u64> = items.iter().filter_map(|i| i.received_at).collect();
+    assert!(last.received_at.is_some_and(|at| at > 1_700_000_000_000));
+    assert!(times.is_sorted());
     let listed = a1.client.conversations().unwrap();
     assert_eq!((listed[0].id.as_str(), listed[0].unread), (one.as_str(), 1));
     assert_eq!(listed[0].members[0].account, c);

@@ -403,7 +403,8 @@ pub struct Notice {
     pub kind: NoticeKind,
     /// The text, or a file's caption; none for a shared post.
     pub text: Option<String>,
-    /// The sender's clock, in milliseconds.
+    /// When the server stored it (0048), or the sender's clock for a row
+    /// stored before the server gave it; in milliseconds.
     pub ts: u64,
 }
 
@@ -647,6 +648,11 @@ pub struct Item {
     /// A copy of a message from another conversation, shown with its mark
     /// (0041). `sender` is who forwarded it; the author is not known.
     pub forwarded: bool,
+    /// When the server stored it, in milliseconds by its clock, never
+    /// earlier than the item before (0048). None while it is being sent,
+    /// and for rows stored before the server gave it.
+    #[uniffi(default = None)]
+    pub received_at: Option<u64>,
 }
 
 impl From<core::Item> for Item {
@@ -672,6 +678,7 @@ impl From<core::Item> for Item {
             read_by: item.read_by,
             expires_at: item.expires_at,
             forwarded: item.forwarded,
+            received_at: item.received_at,
         }
     }
 }

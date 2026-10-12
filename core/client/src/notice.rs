@@ -35,7 +35,8 @@ pub struct Notice {
     pub kind: NoticeKind,
     /// The text, or a file's caption; none for a shared post.
     pub text: Option<String>,
-    /// The sender's clock, in milliseconds.
+    /// When the server stored it (0048), or the sender's clock for a row
+    /// stored before the server gave it; in milliseconds.
     pub ts: u64,
 }
 
@@ -101,7 +102,7 @@ fn take_notices(tx: &Transaction) -> Result<Notices, ClientError> {
         type Row = (i64, String, String, Option<String>, Option<String>, i64);
         let new: Vec<Row> = {
             let mut statement = tx.prepare(
-                "SELECT seq, kind, sender_account, text, detail, ts FROM timeline
+                "SELECT seq, kind, sender_account, text, detail, COALESCE(received_at, ts) FROM timeline
                  WHERE group_id = ?1 AND seq > MAX(?2, ?3) AND sender_account != ?4
                        AND kind IN ('text', 'media', 'post') AND deleted = 0
                        AND (expires_at IS NULL OR expires_at > ?5)

@@ -90,6 +90,10 @@ pub struct Item {
     pub own: bool,
     /// The sender's clock, in milliseconds; never used for order.
     pub ts: u64,
+    /// When the server stored it, in milliseconds by its clock, never
+    /// earlier than the item before (0048). None while it is being sent,
+    /// and for rows stored before the server gave it.
+    pub received_at: Option<u64>,
     pub status: Status,
     pub content: Content,
     pub edited: bool,
@@ -195,6 +199,19 @@ struct Row<'a> {
     text: Option<&'a str>,
     reply_to: Option<&'a str>,
     detail: Option<String>,
+}
+
+/// Gives the row at `seq` the time the server stored it, raised to the row
+/// before's so times never go back along `seq` (0048). A row that has a time
+/// keeps it, and a seq with no row (an edit, a reaction) changes nothing.
+pub(crate) fn received(tx: &Transaction, group: &[u8], seq: u64, at: u64) -> rusqlite::Result<()> {
+    tx.execute(
+        "UPDATE timeline SET received_at = MAX(?3, COALESCE(
+             (SELECT MAX(received_at) FROM timeline WHERE group_id = ?1 AND seq < ?2), 0))
+         WHERE group_id = ?1 AND seq = ?2 AND received_at IS NULL",
+        params![group, seq as i64, at as i64],
+    )?;
+    Ok(())
 }
 
 fn insert(tx: &Transaction, group: &[u8], seq: u64, row: Row) -> rusqlite::Result<()> {
@@ -507,6 +524,7 @@ type Stored = (
     bool,
     bool,
     Option<i64>,
+    Option<i64>,
 );
 
 /// Up to `limit` items before `before` (or the newest), oldest first. The
@@ -525,7 +543,7 @@ pub(crate) fn items(
     };
     let mut statement = tx.prepare(
         "SELECT seq, kind, sender_account, envelope_id, ts, text, reply_to, detail, edited,
-                deleted, expires_at
+                deleted, expires_at, received_at
          FROM timeline WHERE group_id = ?1 AND seq < ?2 ORDER BY seq DESC LIMIT ?3",
     )?;
     let rows: Vec<Stored> = statement
@@ -544,13 +562,26 @@ pub(crate) fn items(
                     r.get(8)?,
                     r.get(9)?,
                     r.get(10)?,
+                    r.get(11)?,
                 ))
             },
         )?
         .collect::<rusqlite::Result<_>>()?;
     let mut items = Vec::with_capacity(rows.len());
-    for (seq, kind, sender, envelope_id, ts, text, reply_to, detail, edited, deleted, expires) in
-        rows.into_iter().rev()
+    for (
+        seq,
+        kind,
+        sender,
+        envelope_id,
+        ts,
+        text,
+        reply_to,
+        detail,
+        edited,
+        deleted,
+        expires,
+        received_at,
+    ) in rows.into_iter().rev()
     {
         let own = sender == me;
         let forwarded = match (kind.as_str(), detail.as_deref()) {
@@ -634,6 +665,7 @@ pub(crate) fn items(
             sender: people.get(&sender)?,
             own,
             ts: ts as u64,
+            received_at: received_at.map(|r| r as u64),
             status: Status::Sent,
             content,
             edited,
@@ -777,6 +809,7 @@ fn pending(
             sender: sender.clone(),
             own: true,
             ts: envelope.ts,
+            received_at: None,
             status: if failed {
                 Status::Failed
             } else {

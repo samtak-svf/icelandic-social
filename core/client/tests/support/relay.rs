@@ -41,6 +41,7 @@ struct Stored {
     sender: String,
     client_msg_id: String,
     ciphertext: String,
+    stored_at: u64,
 }
 
 struct Conversation {
@@ -108,6 +109,10 @@ struct State {
     photos: BTreeMap<String, (String, Vec<u8>)>,
     /// Photo versions handed out.
     minted_photos: usize,
+    /// The server's clock, in milliseconds, when a test sets it.
+    clock: Option<u64>,
+    /// Lists messages as a server older than 0048 did, without `storedAt`.
+    no_stored_at: bool,
 }
 
 pub struct Relay(Mutex<State>);
@@ -277,6 +282,16 @@ impl Relay {
         let mut state = self.state();
         let token = state.revoked[device].clone();
         state.tokens.insert(device.into(), token);
+    }
+
+    /// The server's clock from now on, in milliseconds (0048).
+    pub fn set_clock(&self, ms: u64) {
+        self.state().clock = Some(ms);
+    }
+
+    /// Answers as a server older than 0048: no `storedAt` in a listing.
+    pub fn without_stored_at(&self) {
+        self.state().no_stored_at = true;
     }
 
     /// Below this version every request is refused (0030).
@@ -826,7 +841,14 @@ impl State {
                 let messages: Vec<Value> = rows
                     .iter()
                     .take(self.page)
-                    .map(|m| json!({ "seq": m.seq, "ciphertext": m.ciphertext }))
+                    .map(|m| match self.no_stored_at {
+                        true => json!({ "seq": m.seq, "ciphertext": m.ciphertext }),
+                        false => json!({
+                            "seq": m.seq,
+                            "ciphertext": m.ciphertext,
+                            "storedAt": m.stored_at,
+                        }),
+                    })
                     .collect();
                 answer(
                     200,
@@ -1104,6 +1126,7 @@ impl State {
             sender: account.into(),
             client_msg_id: client_msg_id.into(),
             ciphertext: ciphertext.into(),
+            stored_at: self.clock.unwrap_or_else(now),
         });
         if commit {
             conversation.last_epoch = Some(epoch);

@@ -171,17 +171,28 @@ struct Listed {
     more: bool,
 }
 
-/// One page of `listMessages`: `(seq, ciphertext)` oldest first, and
-/// whether more follow.
+/// One page of `listMessages`: messages oldest first, and whether more
+/// follow.
 pub struct Page {
-    pub messages: Vec<(u64, Vec<u8>)>,
+    pub messages: Vec<Fetched>,
     pub more: bool,
+}
+
+/// A stored message as `listMessages` gives it.
+pub struct Fetched {
+    pub seq: u64,
+    pub bytes: Vec<u8>,
+    /// When the server stored it, in milliseconds by its clock (0048); None
+    /// from a server older than that.
+    pub stored_at: Option<u64>,
 }
 
 #[derive(Deserialize)]
 struct Stored {
     seq: u64,
     ciphertext: String,
+    #[serde(default, rename = "storedAt")]
+    stored_at: Option<u64>,
 }
 
 #[derive(Deserialize)]
@@ -566,7 +577,13 @@ impl<'a, T: Transport + ?Sized> Api<'a, T> {
         let messages = page
             .messages
             .into_iter()
-            .map(|m| Ok((m.seq, from_base64(&m.ciphertext).ok_or(())?)))
+            .map(|m| {
+                Ok(Fetched {
+                    seq: m.seq,
+                    bytes: from_base64(&m.ciphertext).ok_or(())?,
+                    stored_at: m.stored_at,
+                })
+            })
             .collect::<Result<_, ()>>()
             .map_err(|_| ApiError::Malformed("listMessages"))?;
         Ok(Page {

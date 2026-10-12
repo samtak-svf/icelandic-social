@@ -2591,3 +2591,100 @@ fn a_block_withholds_the_photo_both_ways_and_the_kept_one_goes() {
     );
     assert!(b1.client.photo("a", &of_a).unwrap().is_some());
 }
+
+/// `received_at` of each item, oldest first.
+fn received(items: &[Item]) -> Vec<Option<u64>> {
+    items.iter().map(|i| i.received_at).collect()
+}
+
+#[test]
+fn times_are_the_servers_and_never_go_back() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut a1, &mut b1);
+
+    relay.set_clock(5_000);
+    a1.send(&conversation, "eitt");
+    // Still being sent: no server time yet.
+    assert_eq!(
+        items(&mut a1, &conversation).last().unwrap().received_at,
+        None
+    );
+    a1.sync();
+    // The server's clock went back; the time does not.
+    relay.set_clock(4_000);
+    b1.send(&conversation, "tvö");
+    b1.sync();
+    relay.set_clock(9_000);
+    a1.send(&conversation, "þrjú");
+    a1.sync();
+    // A card takes the time of its commit.
+    let _c1 = Phone::new(&relay, "c", "c1");
+    relay.set_clock(12_000);
+    a1.client
+        .add_accounts(&conversation, &strings(&["c"]))
+        .unwrap();
+    a1.sync();
+    a1.deliver();
+    b1.deliver();
+
+    let times = vec![Some(5_000), Some(5_000), Some(9_000), Some(12_000)];
+    let a = items(&mut a1, &conversation);
+    assert_eq!(received(&a), times);
+    assert!(matches!(a[3].content, Content::Members { .. }));
+    let b = items(&mut b1, &conversation);
+    assert_eq!(received(&b), times);
+    // The sender's clock is kept beside it.
+    assert!(b[..3].iter().all(|i| i.ts > 12_000));
+}
+
+#[test]
+fn an_edit_keeps_the_time_of_what_it_edits() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut a1, &mut b1);
+    relay.set_clock(5_000);
+    a1.send(&conversation, "fyrst");
+    a1.sync();
+    b1.deliver();
+    let id = items(&mut b1, &conversation)
+        .last()
+        .unwrap()
+        .envelope_id
+        .clone()
+        .unwrap();
+    relay.set_clock(8_000);
+    a1.client
+        .send(
+            &conversation,
+            Body::Edit {
+                target: id,
+                text: "breytt".into(),
+            },
+        )
+        .unwrap();
+    a1.sync();
+    b1.deliver();
+    let last = items(&mut b1, &conversation).pop().unwrap();
+    assert!(last.edited);
+    assert_eq!(last.received_at, Some(5_000));
+}
+
+#[test]
+fn a_server_without_times_leaves_them_unknown() {
+    let relay = Relay::new();
+    relay.without_stored_at();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut a1, &mut b1);
+    a1.send(&conversation, "halló");
+    a1.sync();
+    b1.deliver();
+    assert!(
+        items(&mut b1, &conversation)
+            .iter()
+            .all(|i| i.received_at.is_none())
+    );
+}

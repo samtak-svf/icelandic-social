@@ -207,6 +207,8 @@ fn two_clients_talk_through_the_exported_api() {
         }
     );
     assert_eq!(listed[0].last.as_ref(), Some(item));
+    // When the server stored it (0048).
+    let received_at = item.received_at.expect("a server time");
 
     // What a push shows, once, and takes away when read (0025).
     let notices = b1.client.notices().unwrap();
@@ -219,7 +221,7 @@ fn two_clients_talk_through_the_exported_api() {
             sender: listed[0].members[0].clone(),
             kind: NoticeKind::Text,
             text: Some("hæ".into()),
-            ts: message.envelope.ts,
+            ts: received_at,
         }]
     );
     assert!(b1.client.notices().unwrap().shown.is_empty());
