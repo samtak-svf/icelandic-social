@@ -1,6 +1,7 @@
 # 0048. Times by the server, a preview before sending, and no location in a picked photo
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the backend (#217), the core (#218, core 0.20.0) and the apps
+  (#219, #220), released as 0.7.0
 - Date: 2026-10-12
 - Decided by: the maintainer, after the 0.6.2 hand test, choosing the server's time for the
   time lines
