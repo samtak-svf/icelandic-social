@@ -201,7 +201,7 @@ struct Bubble: View {
     /// What VoiceOver says after the message: its time (decision 0022), then
     /// how many reactions it holds (decision 0045).
     private var spoken: String {
-        var said = [clockTime(item.ts)]
+        var said = [clockTime(item.at)]
         let count = reactionCount(item.reactions)
         if count > 0 { said.append(plural("reaction_count", count)) }
         return said.joined(separator: ", ")
@@ -213,7 +213,7 @@ struct Bubble: View {
 
     /// The line's words, led by the time when a tap showed it; the clock is drawn beside them.
     private var words: String {
-        var words: [String] = showsTime ? [clockTime(item.ts)] : []
+        var words: [String] = showsTime ? [clockTime(item.at)] : []
         words += parts.compactMap { part -> String? in
             switch part {
             case .edited: localized("edited_marker")

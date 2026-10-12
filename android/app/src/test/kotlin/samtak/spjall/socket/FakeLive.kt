@@ -67,4 +67,19 @@ fun item(
     readBy: UInt = 0u,
     expiresAt: ULong? = null,
     forwarded: Boolean = false,
-) = Item(seq, seq?.let { "e$it" }, sender, own, ts, status, content, false, reactions, readBy, expiresAt, forwarded)
+    receivedAt: ULong? = null,
+) = Item(
+    seq,
+    seq?.let { "e$it" },
+    sender,
+    own,
+    ts,
+    status,
+    content,
+    false,
+    reactions,
+    readBy,
+    expiresAt,
+    forwarded,
+    receivedAt,
+)

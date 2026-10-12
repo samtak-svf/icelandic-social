@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import samtak.spjall.brand.R
 import samtak.spjall.conversation.MuteDialog
+import samtak.spjall.conversation.at
 import samtak.spjall.conversation.readLine
 import samtak.spjall.core.Content
 import samtak.spjall.core.Conversation
@@ -167,7 +168,7 @@ private fun RowEnd(
             }
             last?.let {
                 Text(
-                    text = listStamp(it.ts),
+                    text = listStamp(it.at()),
                     style = STAMP,
                     color = if (calling) Palette.primary else Palette.mutedFg,
                 )

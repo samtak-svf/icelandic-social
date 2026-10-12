@@ -86,31 +86,69 @@ class RowsTest {
     }
 
     @Test
-    fun anOlderMessageArrivingLateGetsItsOwnLineAndSoDoesTheNextOne() {
-        // 0045: the late message keeps its arrival place, under a line naming its own day.
-        val items =
-            listOf(
-                item(1u, ts = day),
-                item(2u, ts = day + 120uL * minute),
-                item(3u, ts = day + 1uL * minute),
-                item(4u, ts = day + 125uL * minute),
+    fun serverTimesDrawTheLines() {
+        // 0048: the sender's clock was two hours behind; the server's was not.
+        val skew = 120uL * minute
+        val rows =
+            rows(
+                listOf(
+                    item(1u, ts = day - skew, receivedAt = day),
+                    item(2u, ts = day + 1uL * minute - skew, receivedAt = day + 1uL * minute),
+                    item(3u, ts = day + 61uL * minute - skew, receivedAt = day + 61uL * minute),
+                ),
+                ZoneOffset.UTC,
             )
-        val rows = rows(items, ZoneOffset.UTC)
+        assertEquals(listOf("time 0", "1 first", "2 last", "time 61", "3 first last"), shape(rows))
+    }
+
+    @Test
+    fun aLateSenderClockDrawsNoLine() {
+        // 0045 drew a line for it naming an earlier time; 0048 withdrew that.
+        val rows =
+            rows(
+                listOf(
+                    item(1u, ts = day, receivedAt = day),
+                    item(2u, ts = day + 120uL * minute, receivedAt = day + 120uL * minute),
+                    item(3u, ts = day + 1uL * minute, receivedAt = day + 121uL * minute),
+                    item(4u, ts = day + 125uL * minute, receivedAt = day + 125uL * minute),
+                ),
+                ZoneOffset.UTC,
+            )
         assertEquals(
-            listOf(
-                "time 0",
-                "1 first last",
-                "time 120",
-                "2 first last",
-                "time 1",
-                "3 first last",
-                "time 125",
-                "4 first last",
-            ),
+            listOf("time 0", "1 first last", "time 120", "2 first", "3", "4 last"),
             shape(rows),
         )
-        val keys = rows.map { it.key }
-        assertEquals(keys.toSet().size, keys.size)
+    }
+
+    @Test
+    fun oldRowsFallBackToTheSendersClockButNeverGoBack() {
+        val rows =
+            rows(
+                listOf(
+                    item(1u, ts = day),
+                    item(2u, ts = day + 120uL * minute),
+                    item(3u, ts = day + 1uL * minute),
+                    item(4u, ts = day + 122uL * minute, receivedAt = day + 122uL * minute),
+                ),
+                ZoneOffset.UTC,
+            )
+        assertEquals(
+            listOf("time 0", "1 first last", "time 120", "2 first", "3", "4 last"),
+            shape(rows),
+        )
+    }
+
+    @Test
+    fun aPendingMessageWithASkewedClockAddsNoLine() {
+        val rows =
+            rows(
+                listOf(
+                    item(1u, sender = anna, ts = day, receivedAt = day + 120uL * minute),
+                    item(null, sender = me, own = true, ts = day + 1uL * minute, status = ItemStatus.PENDING),
+                ),
+                ZoneOffset.UTC,
+            )
+        assertEquals(listOf("time 120", "1 first last", "null first last"), shape(rows))
     }
 
     @Test
@@ -122,6 +160,7 @@ class RowsTest {
                     item(1u, sender = anna, ts = early),
                     item(2u, sender = anna, ts = early + 59uL * minute),
                     item(3u, sender = anna, ts = early + 119uL * minute),
+                    // Before 0048 a row could say an earlier time; it no longer goes back.
                     item(4u, sender = anna, ts = early + 59uL * minute),
                 ),
                 ZoneOffset.UTC,
@@ -132,9 +171,8 @@ class RowsTest {
                 "1 first last",
                 "2 first last",
                 "time -81",
-                "3 first last",
-                "time -141",
-                "4 first last",
+                "3 first",
+                "4 last",
             ),
             shape(rows),
         )

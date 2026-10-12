@@ -63,9 +63,10 @@ final class RowsTests: XCTestCase {
         XCTAssertEqual(shape(rows), ["time 1", "1 first last", "2 first last", "time 3", "3 first last"])
     }
 
-    func testAnHourOrMoreBeforeThePreviousItemGetsALine() {
+    func testAnEarlierClockThanThePreviousItemNeverGoesBack() {
+        // Before decision 0048 this drew a line naming the earlier time.
         let rows = rows([item(1, ts: morning + 60 * minute), item(2, ts: morning)], calendar: utc)
-        XCTAssertEqual(shape(rows), ["time 1", "1 first last", "time 2", "2 first last"])
+        XCTAssertEqual(shape(rows), ["time 1", "1 first", "2 last"])
     }
 
     func testWithinAnHourOnTheSameDayThereIsNoLine() {
@@ -85,18 +86,50 @@ final class RowsTests: XCTestCase {
         XCTAssertEqual(shape(rows), ["time 1", "1 first last", "time 2", "card 2", "3 first last"])
     }
 
-    func testAMessageArrivingLateGetsItsOwnLineAndTheNextOneToo() {
+    func testServerTimesDrawTheLines() {
+        // Decision 0048: the sender's clock was two hours behind; the server's was not.
+        let skew = 120 * minute
+        let rows = rows(
+            [
+                item(1, ts: day - skew, receivedAt: day),
+                item(2, ts: day + minute - skew, receivedAt: day + minute),
+                item(3, ts: day + 61 * minute - skew, receivedAt: day + 61 * minute),
+            ], calendar: utc)
+        XCTAssertEqual(shape(rows), ["time 1", "1 first", "2 last", "time 3", "3 first last"])
+        guard case .time(let date, _) = rows.first else { return XCTFail("no time line first") }
+        XCTAssertEqual(date, Date(timeIntervalSince1970: 1_700_000_000))
+    }
+
+    func testALateSenderClockDrawsNoLine() {
+        let rows = rows(
+            [
+                item(1, ts: day, receivedAt: day),
+                item(2, ts: day + 120 * minute, receivedAt: day + 120 * minute),
+                item(3, ts: day + minute, receivedAt: day + 121 * minute),
+                item(4, ts: day + 125 * minute, receivedAt: day + 125 * minute),
+            ], calendar: utc)
+        XCTAssertEqual(shape(rows), ["time 1", "1 first last", "time 2", "2 first", "3", "4 last"])
+        XCTAssertEqual(Set(rows.map(\.id)).count, rows.count)
+    }
+
+    func testOldRowsFallBackToTheSendersClockButNeverGoBack() {
         let rows = rows(
             [
                 item(1, ts: day),
                 item(2, ts: day + 120 * minute),
                 item(3, ts: day + minute),
-                item(4, ts: day + 121 * minute),
+                item(4, ts: day + 122 * minute, receivedAt: day + 122 * minute),
             ], calendar: utc)
-        XCTAssertEqual(
-            shape(rows),
-            ["time 1", "1 first last", "time 2", "2 first last", "time 3", "3 first last", "time 4", "4 first last"])
-        XCTAssertEqual(Set(rows.map(\.id)).count, rows.count)
+        XCTAssertEqual(shape(rows), ["time 1", "1 first last", "time 2", "2 first", "3", "4 last"])
+    }
+
+    func testAPendingMessageWithASkewedClockAddsNoLine() {
+        let rows = rows(
+            [
+                item(1, sender: anna, ts: day, receivedAt: day + 120 * minute),
+                item(nil, sender: me, own: true, ts: day + minute, status: .pending),
+            ], calendar: utc)
+        XCTAssertEqual(shape(rows), ["time 1", "1 first last", "nil first last"])
     }
 
     func testTheReadLineSitsUnderTheNewestOwnMessageSomeoneRead() {

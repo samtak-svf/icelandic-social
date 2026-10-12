@@ -269,7 +269,7 @@ private struct ConversationRow: View {
                 if let last = conversation.last {
                     HStack(spacing: 4) {
                         if muted { MutedMark() }
-                        Text(verbatim: listStamp(last.ts))
+                        Text(verbatim: listStamp(last.at))
                             .font(Self.stamp)
                             .foregroundStyle(calling ? BrandTokens.Colors.primary : BrandTokens.Colors.mutedFg)
                     }

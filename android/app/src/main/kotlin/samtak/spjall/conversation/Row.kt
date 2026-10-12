@@ -52,33 +52,39 @@ fun rows(
     val read = items.lastOrNull { it.own && it.seq != null && it.readBy > 0u }
     val rows = mutableListOf<Row>()
     var previous: Item? = null
-    var before: Item? = null
+    var previousAt = 0uL
+    var before: ULong? = null
     for (item in items) {
-        // The timeline is in arrival order, so a message sent offline yesterday can
-        // come among today's: its day differs from the one before it, and so does
-        // the next one's, so each gets a line and no time shows under the wrong day.
-        if (before == null || apart(before, item, zone)) {
-            rows += Row.Time(item.ts, item)
+        // The timeline is in the server's order, and so are its times (0048): a
+        // row's time never goes back, so no line says an earlier time than the
+        // one above it, whatever the sender's clock said.
+        val at = maxOf(item.at(), before ?: 0uL)
+        if (before == null || apart(before, at, zone)) {
+            rows += Row.Time(at, item)
             previous = null
         }
-        before = item
+        before = at
         if (item.isCard()) {
             rows += Row.Card(item)
             previous = null
             continue
         }
-        val runs =
-            previous != null &&
-                previous.sender.account == item.sender.account &&
-                item.ts - previous.ts <= RUN_MS
+        val runs = previous != null && previous.runsInto(item, at - previousAt)
         rows += Row.Bubble(item, first = !runs, readBy = if (item === read) item.readBy else null)
         previous = item
+        previousAt = at
     }
     return rows.mapIndexed { i, row ->
         val next = rows.getOrNull(i + 1)
         if (row is Row.Bubble && next is Row.Bubble && !next.first) row.copy(last = false) else row
     }
 }
+
+/** One sender's messages close together run into one group. */
+private fun Item.runsInto(
+    next: Item,
+    gap: ULong,
+) = sender.account == next.sender.account && gap <= RUN_MS
 
 /** What the small line under a bubble shows, in order. */
 enum class MetaPart { EDITED, SENDING, TIME, READ }
@@ -103,17 +109,23 @@ fun Item.isCard() = content is Content.Members || content is Content.Timer
 
 private fun Item.key() = seq?.let { "s$it" } ?: envelopeId?.let { "e$it" } ?: "t$ts"
 
-private fun Item.day(zone: ZoneId): LocalDate = Instant.ofEpochMilli(ts.toLong()).atZone(zone).toLocalDate()
+/**
+ * When the server stored it (0048), or the sender's clock for what the server
+ * has not given a time: a row still being sent, or one from before 0048.
+ */
+fun Item.at(): ULong = receivedAt ?: ts
 
-/** A new day, or an hour or more either way: a time line goes between them (0045). */
-private fun apart(
-    before: Item,
-    item: Item,
+private fun day(
+    at: ULong,
     zone: ZoneId,
-): Boolean {
-    val gap = if (item.ts >= before.ts) item.ts - before.ts else before.ts - item.ts
-    return item.day(zone) != before.day(zone) || gap >= TIME_GAP_MS
-}
+): LocalDate = Instant.ofEpochMilli(at.toLong()).atZone(zone).toLocalDate()
+
+/** A new day, or an hour or more: a time line goes between them (0045). */
+private fun apart(
+    before: ULong,
+    at: ULong,
+    zone: ZoneId,
+): Boolean = day(at, zone) != day(before, zone) || at - before >= TIME_GAP_MS
 
 private const val RUN_MS: ULong = 300_000uL
 private const val TIME_GAP_MS: ULong = 3_600_000uL

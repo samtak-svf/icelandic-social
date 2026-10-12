@@ -290,7 +290,7 @@ private fun Meta(
         parts.mapNotNull {
             when (it) {
                 MetaPart.EDITED -> stringResource(R.string.edited_marker)
-                MetaPart.TIME -> clockTime(item.ts)
+                MetaPart.TIME -> clockTime(item.at())
                 MetaPart.READ -> row.readBy?.let { count -> readLine(count, group) }
                 MetaPart.SENDING -> null
             }

@@ -29,29 +29,27 @@ func rows(_ items: [Item], calendar: Calendar = .current) -> [Row] {
     let run: UInt64 = 300_000
     let read = items.last { $0.own && $0.seq != nil && $0.readBy > 0 }
     var rows: [Row] = []
-    // The item before, of any kind; and the bubble a run would continue.
-    var before: Item?
-    var previous: Item?
+    // The time of the item before, of any kind; and the bubble a run would continue.
+    var before: UInt64?
+    var previous: (item: Item, at: UInt64)?
     for item in items {
-        // The timeline is in arrival order, so a message sent yesterday can arrive among
-        // today's. Its day differs from the item before it, so it gets a line with its own
-        // day and time, and the next item, back on today, gets one too.
-        if before.map({ needsLine(item, after: $0, calendar) }) ?? true {
-            rows.append(.time(instant(item.ts), before: item))
+        // The timeline is in the server's order, and so are its times (decision 0048):
+        // a row's time never goes back, so no line says an earlier time than the one
+        // above it, whatever the sender's clock said.
+        let at = max(item.at, before ?? 0)
+        if before.map({ needsLine(at, after: $0, calendar) }) ?? true {
+            rows.append(.time(instant(at), before: item))
             previous = nil
         }
-        before = item
+        before = at
         if isCard(item) {
             rows.append(.card(item))
             previous = nil
             continue
         }
-        // Senders' clocks differ, so an earlier time breaks the run rather than joining it.
-        let runs =
-            previous.map { $0.sender.account == item.sender.account && item.ts >= $0.ts && item.ts - $0.ts <= run }
-            ?? false
+        let runs = previous.map { $0.item.sender.account == item.sender.account && at - $0.at <= run } ?? false
         rows.append(.bubble(item, first: !runs, last: true, readBy: item == read ? item.readBy : nil))
-        previous = item
+        previous = (item, at)
     }
     // A bubble that the next one continues is not the end of its run.
     for index in rows.indices.dropLast() {
@@ -64,12 +62,17 @@ func rows(_ items: [Item], calendar: Calendar = .current) -> [Row] {
     return rows
 }
 
-/// A time line goes before `item` when its local day differs from `previous`'s,
-/// or its time is an hour or more from it, before or after.
-private func needsLine(_ item: Item, after previous: Item, _ calendar: Calendar) -> Bool {
+/// A time line goes before a row when its local day differs from the one
+/// before, or it is an hour or more later.
+private func needsLine(_ at: UInt64, after previous: UInt64, _ calendar: Calendar) -> Bool {
     let hour: UInt64 = 3_600_000
-    let gap = item.ts >= previous.ts ? item.ts - previous.ts : previous.ts - item.ts
-    return gap >= hour || !calendar.isDate(instant(item.ts), inSameDayAs: instant(previous.ts))
+    return at - previous >= hour || !calendar.isDate(instant(at), inSameDayAs: instant(previous))
+}
+
+extension Item {
+    /// When the server stored it (decision 0048), or the sender's clock for what
+    /// the server has not given a time: a row still being sent, or one from before.
+    var at: UInt64 { receivedAt ?? ts }
 }
 
 private func instant(_ millis: UInt64) -> Date {

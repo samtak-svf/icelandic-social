@@ -456,7 +456,8 @@ func item(
     reactions: [Reaction] = [],
     readBy: UInt32 = 0,
     expiresAt: UInt64? = nil,
-    forwarded: Bool = false
+    forwarded: Bool = false,
+    receivedAt: UInt64? = nil
 ) -> Item {
     Item(
         seq: seq,
@@ -470,6 +471,7 @@ func item(
         reactions: reactions,
         readBy: readBy,
         expiresAt: expiresAt,
-        forwarded: forwarded
+        forwarded: forwarded,
+        receivedAt: receivedAt
     )
 }

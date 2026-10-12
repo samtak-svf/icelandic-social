@@ -95,7 +95,7 @@ internal fun spokenWith(
     pill: Pill?,
 ): String =
     listOfNotNull(
-        clockTime(item.ts),
+        clockTime(item.at()),
         pill?.let { pluralStringResource(R.plurals.reaction_count, it.count, it.count) },
     ).joinToString(", ")
 
