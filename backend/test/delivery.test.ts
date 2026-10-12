@@ -91,7 +91,7 @@ describe("delivery", () => {
     expect(await send("a to b", a.auth)).toBe(2);
     expect(await socketB.next()).toEqual(notify(2));
     expect(await list(1, b.auth)).toEqual({
-      messages: [{ seq: 2, ciphertext: mls.base64("a to b") }],
+      messages: [{ seq: 2, ciphertext: mls.base64("a to b"), storedAt: expect.any(Number) }],
       more: false,
     });
     socketB.send({ type: "ack", conversationId: CONVERSATION, seq: 2 });
@@ -100,7 +100,7 @@ describe("delivery", () => {
     expect(await socketA.next()).toEqual(notify(2));
     expect(await socketA.next()).toEqual(notify(3));
     expect(await list(2, a.auth)).toEqual({
-      messages: [{ seq: 3, ciphertext: mls.base64("b to a") }],
+      messages: [{ seq: 3, ciphertext: mls.base64("b to a"), storedAt: expect.any(Number) }],
       more: false,
     });
     socketA.send({ type: "ack", conversationId: CONVERSATION, seq: 3 });

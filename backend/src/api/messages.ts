@@ -50,7 +50,16 @@ const SendMessage = z
 
 const Sent = z.object({ seq: Seq }).openapi("Sent");
 
-const StoredMessage = z.object({ seq: Seq, ciphertext: Ciphertext }).openapi("StoredMessage");
+const StoredMessage = z
+  .object({
+    seq: Seq,
+    ciphertext: Ciphertext,
+    storedAt: z.int().min(0).openapi({
+      description:
+        "When the server stored it, in Unix milliseconds by the server's clock; the order is still seq (decision 0048)",
+    }),
+  })
+  .openapi("StoredMessage");
 
 const MessagePage = z
   .object({

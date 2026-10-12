@@ -72,6 +72,12 @@ describe("the delivery contract", () => {
     ]);
   });
 
+  it("gives every stored message the time the server stored it (0048)", () => {
+    const document = createApp().getOpenAPI31Document(DOCUMENT_INFO);
+    const stored = document.components?.schemas?.["StoredMessage"] as { required?: string[] };
+    expect(stored.required).toContain("storedAt");
+  });
+
   it("points the socket route at the frame union", () => {
     const document = createApp().getOpenAPI31Document(DOCUMENT_INFO);
     expect(document.paths?.["/v1/ws"]?.get?.["x-ws-frames"]).toEqual({

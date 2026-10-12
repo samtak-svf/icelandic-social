@@ -306,7 +306,9 @@ export class Conversation extends DurableObject<Env> {
     account: string,
     after: number,
     limit: number,
-  ): Promise<Result<{ messages: { seq: number; ciphertext: Uint8Array }[]; more: boolean }>> {
+  ): Promise<
+    Result<{ messages: { seq: number; ciphertext: Uint8Array; storedAt: number }[]; more: boolean }>
+  > {
     if (!this.meta()) return { error: "not_found" };
     let last = Number.MAX_SAFE_INTEGER;
     if (!this.isMember(account)) {
@@ -317,8 +319,8 @@ export class Conversation extends DurableObject<Env> {
       last = removed.seq;
     }
     const rows = this.sql
-      .exec<{ seq: number; ciphertext: ArrayBuffer }>(
-        "SELECT seq, ciphertext FROM messages WHERE seq > ? AND seq <= ? ORDER BY seq LIMIT ?",
+      .exec<{ seq: number; ciphertext: ArrayBuffer; storedAt: number }>(
+        "SELECT seq, ciphertext, stored_at AS storedAt FROM messages WHERE seq > ? AND seq <= ? ORDER BY seq LIMIT ?",
         after,
         last,
         limit + 1,
@@ -328,7 +330,7 @@ export class Conversation extends DurableObject<Env> {
       ok: {
         messages: rows
           .slice(0, limit)
-          .map((r) => ({ seq: r.seq, ciphertext: new Uint8Array(r.ciphertext) })),
+          .map((r) => ({ ...r, ciphertext: new Uint8Array(r.ciphertext) })),
         more: rows.length > limit,
       },
     };

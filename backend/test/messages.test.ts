@@ -62,6 +62,7 @@ describe("a conversation over HTTP", () => {
     const welcome = await fetch(`/v1/conversations/${CONVERSATION}/welcome`, { headers: b.auth });
     expect(await welcome.json()).toEqual({ seq: 1, welcome: mls.welcomeBase64 });
 
+    const postedFrom = Date.now();
     for (const [name, sender, seq, ciphertext, extra] of [
       ["a to b", a, 2, mls.base64("a to b"), {}],
       ["b to a", b, 3, mls.base64("b to a"), {}],
@@ -81,6 +82,19 @@ describe("a conversation over HTTP", () => {
       );
       expect(await sent.json(), name).toEqual({ seq });
     }
+    const postedUntil = Date.now();
+
+    // Each carries the time the server stored it, in milliseconds, never back along seq (0048).
+    const stored = (await (await fetch(`${MESSAGES}?after=1`, { headers: b.auth })).json()) as {
+      messages: { seq: number; storedAt: number }[];
+    };
+    const times = stored.messages.map((m) => m.storedAt);
+    expect(times).toHaveLength(4);
+    expect(times).toEqual(times.toSorted((x, y) => x - y));
+    for (const time of times) {
+      expect(time).toBeGreaterThanOrEqual(postedFrom);
+      expect(time).toBeLessThanOrEqual(postedUntil);
+    }
 
     // B committed on epoch 1 too, and lost.
     const lost = await post(
@@ -98,8 +112,8 @@ describe("a conversation over HTTP", () => {
     const page = await fetch(`${MESSAGES}?after=1&limit=2`, { headers: a.auth });
     expect(await page.json()).toEqual({
       messages: [
-        { seq: 2, ciphertext: mls.base64("a to b") },
-        { seq: 3, ciphertext: mls.base64("b to a") },
+        { seq: 2, ciphertext: mls.base64("a to b"), storedAt: expect.any(Number) },
+        { seq: 3, ciphertext: mls.base64("b to a"), storedAt: expect.any(Number) },
       ],
       more: true,
     });

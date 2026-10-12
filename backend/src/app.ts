@@ -319,6 +319,7 @@ export function createApp() {
     const messages = result.ok.messages.map((m) => ({
       seq: m.seq,
       ciphertext: toBase64(m.ciphertext),
+      storedAt: m.storedAt,
     }));
     return c.json({ messages, more: result.ok.more }, 200);
   });
