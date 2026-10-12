@@ -14,6 +14,7 @@ import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -44,6 +45,10 @@ class PeopleScreenTest {
 
             override fun single() {
                 calls += "single"
+            }
+
+            override fun back() {
+                calls += "back"
             }
 
             override fun toggle(account: String) {
@@ -81,6 +86,20 @@ class PeopleScreenTest {
     fun theSearchFieldHasFocusWhenThePickerOpens() {
         show(PeopleViewModel.State(people = people, loaded = true))
         compose.onNode(hasSetTextAction()).assertIsFocused()
+    }
+
+    @Test
+    fun theHeaderBackClosesThePicker() {
+        show(PeopleViewModel.State(people = people, loaded = true))
+        compose.onNodeWithContentDescription(text(R.string.back)).performClick()
+        assertEquals(listOf("back"), calls)
+    }
+
+    @Test
+    fun theHeaderBackLeavesGroupMode() {
+        show(PeopleViewModel.State(people = people, loaded = true, group = true))
+        compose.onNodeWithContentDescription(text(R.string.back)).performClick()
+        assertEquals(listOf("single"), calls)
     }
 
     @Test

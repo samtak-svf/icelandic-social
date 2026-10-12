@@ -2,8 +2,9 @@ import SpjallCore
 import SwiftUI
 
 /// The conversation's menu: its information, mute or notifications back on, the disappearing timer, and
-/// block in a 1:1 (decisions 0043, 0042, 0022, 0024). The information sheet offers the same choices under
-/// who is here; `info` is whether it is open, so a tap on the title opens it too.
+/// block in a 1:1 (decisions 0043, 0042, 0022, 0024), behind the circled ellipsis, the system's own "more"
+/// mark (decision 0047). The information sheet offers the same choices under who is here. `info` is whether
+/// it is open; the top bar presents it, not this menu, so a tap on the title opens it as surely as the item.
 struct ConversationMenu: View {
     let conversation: Conversation
     let model: ConversationModel
@@ -26,15 +27,12 @@ struct ConversationMenu: View {
                 Button("block", systemImage: "hand.raised", role: .destructive) { blocking = true }
             }
         } label: {
-            Image(systemName: "line.3.horizontal")
-                .font(.system(size: 18, weight: .semibold))
+            Image(systemName: "ellipsis.circle")
+                .font(.system(size: 20, weight: .regular))
                 .foregroundStyle(BrandTokens.Colors.fg)
                 .frame(minWidth: 44, minHeight: 44)
         }
         .accessibilityLabel(Text("more_options"))
-        .sheet(isPresented: $info) {
-            InfoSheet(conversation: conversation, model: model)
-        }
         .sheet(isPresented: $timing) {
             TimerSheet(current: conversation.timer) { seconds in
                 timing = false
@@ -73,7 +71,7 @@ struct MuteChoices: View {
 }
 
 /// Who is in the conversation, then the menu's choices, the timer showing what it is set to (decision 0043).
-private struct InfoSheet: View {
+struct ConversationInfo: View {
     let conversation: Conversation
     let model: ConversationModel
 

@@ -75,6 +75,8 @@ class ConversationScreenshotTest {
 
             override fun attachPhoto() = Unit
 
+            override fun takePhoto() = Unit
+
             override fun attachFile() = Unit
 
             override fun fetch(item: Item) = Unit

@@ -141,7 +141,7 @@ private fun MenuButton(
         )
     Box {
         IconButton(onClick = { open = true }) {
-            Icon(AppIcons.Menu, contentDescription = stringResource(R.string.more_options), tint = Palette.fg)
+            Icon(AppIcons.More, contentDescription = stringResource(R.string.more_options), tint = Palette.fg)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             items.forEach { (choice, label) ->
@@ -322,6 +322,19 @@ internal fun MuteDialog(
         },
         confirmButton = {},
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+/** Takes a photo with the system camera (0047); what it takes is sent. */
+@Composable
+internal fun CameraButton(actions: ConversationActions) {
+    RoundButton(
+        icon = AppIcons.Camera,
+        description = stringResource(R.string.camera),
+        onClick = actions::takePhoto,
+        fill = Palette.muted,
+        tint = Palette.fg,
+        size = ATTACH.dp,
     )
 }
 

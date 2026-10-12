@@ -49,6 +49,19 @@ final class MeModelTests: XCTestCase {
         XCTAssertEqual(account.calls.last, "revokeDevice d1")
     }
 
+    func testSigningOutRevokesThisDevice() async {
+        let model = await model()
+        await model.signOut()
+        XCTAssertTrue(model.signedOut)
+        XCTAssertEqual(account.calls.last, "revokeDevice d1", "the same as revoking this device was")
+    }
+
+    func testOnlyTheOtherDevicesOfferToBeRevoked() async {
+        let model = await model()
+        let devices = model.me?.devices ?? []
+        XCTAssertEqual(devices.filter(MeModel.revocable).map(\.deviceId), ["d2"], "this one signs out instead")
+    }
+
     func testDeletingTheAccountSignsOut() async {
         let model = await model()
         await model.deleteAccount()

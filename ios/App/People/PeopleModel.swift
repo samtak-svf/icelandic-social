@@ -75,6 +75,14 @@ final class PeopleModel {
         picked = []
     }
 
+    /// The header's back button (decision 0047): out of picking several back to one, as the system back
+    /// does; true when there is nothing to go back to here, and the screen closes.
+    func back() -> Bool {
+        guard group else { return true }
+        single()
+        return false
+    }
+
     /// Into the 1:1 with `person`, made when there is none, into `opened`.
     func open(_ person: String) async {
         let account = account

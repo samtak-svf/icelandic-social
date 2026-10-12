@@ -21,6 +21,30 @@ class Files(
 ) {
     private val outgoing get() = File(context.cacheDir, OUTGOING)
     private val shared get() = File(context.cacheDir, SHARED)
+    private val camera get() = File(context.cacheDir, CAMERA)
+
+    /** Where the system camera writes the next photo, as a uri it may write to (decision 0047). */
+    fun cameraTarget(): Uri {
+        camera.deleteRecursively()
+        camera.mkdirs()
+        return FileProvider.getUriForFile(context, "${context.packageName}$AUTHORITY", File(camera, TAKEN))
+    }
+
+    /**
+     * The photo the camera wrote to [cameraTarget], without where it was taken (0047), moved to
+     * the outgoing folder for the core to seal. Null when the camera wrote nothing.
+     */
+    fun taken(): Picked? {
+        val file = File(camera, TAKEN).takeIf { it.length() > 0 } ?: return null
+        stripLocation(file.path)
+        outgoing.mkdirs()
+        val moved = File.createTempFile("taken", ".jpg", outgoing)
+        if (!file.renameTo(moved)) {
+            file.copyTo(moved, overwrite = true)
+            file.delete()
+        }
+        return Picked(JPEG, moved.length()) { moved }
+    }
 
     fun picked(uri: Uri): Picked {
         val resolver = context.contentResolver
@@ -82,11 +106,15 @@ class Files(
     fun clear() {
         outgoing.deleteRecursively()
         shared.deleteRecursively()
+        camera.deleteRecursively()
     }
 
     private companion object {
         const val OUTGOING = "outgoing"
         const val SHARED = "shared"
+        const val CAMERA = "camera"
+        const val TAKEN = "taken.jpg"
+        const val JPEG = "image/jpeg"
         const val AUTHORITY = ".files"
         const val OCTET_STREAM = "application/octet-stream"
 

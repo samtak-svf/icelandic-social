@@ -51,6 +51,19 @@ function fontFiles(brand) {
   return [...files.values()];
 }
 
+/**
+ * A sentence as an xcconfig value. xcconfig has no quoting: `//` starts a
+ * comment and `$(` a substitution, so a sentence holding either is refused.
+ *
+ * @param {unknown} value
+ */
+function xcconfigValue(value) {
+  if (typeof value !== "string" || value.includes("//") || value.includes("$(")) {
+    throw new Error(`not a plain sentence for an xcconfig value: ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+
 /** @param {BrandInput} brand */
 function xcconfig(brand) {
   const hosts = [brand.ids.hosts.link, ...brand.manifest.aliasHosts];
@@ -60,6 +73,7 @@ function xcconfig(brand) {
     "// (identifiers/ids.json), not part of the brand.",
     "",
     `INFOPLIST_KEY_CFBundleDisplayName = ${brand.manifest.displayName}`,
+    `INFOPLIST_KEY_NSCameraUsageDescription = ${xcconfigValue(brand.strings.camera_usage)}`,
     "ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon",
     `BRAND_ASSOCIATED_DOMAINS = ${hosts.map((h) => `applinks:${h}`).join(" ")}`,
     "",

@@ -33,8 +33,18 @@ object AppIcons {
 
     val Back = outline("back", 20f, 2f, "M12 4l-6 6 6 6")
 
-    /** The conversation's menu: three lines, the last one short. */
-    val Menu = outline("menu", 20f, 1.8f, "M4 6h12M4 10h12M4 14h8")
+    /** The conversation's menu: Android's own "more" mark, three dots in a column (0047). */
+    val More = outline("more", 20f, 2.6f, "M10 4.5h.01", "M10 10h.01", "M10 15.5h.01")
+
+    /** The composer's camera: a body and its lens. */
+    val Camera =
+        outline(
+            "camera",
+            20f,
+            1.8f,
+            "M3 7.5a2 2 0 012-2h1.8l1.4-2h3.6l1.4 2H15a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7z",
+            "M7 11a3 3 0 1 0 6 0a3 3 0 1 0-6 0z",
+        )
 
     val Send = filled("send", 16f, "M2 14l12-6L2 2l2 6-2 6z")
 

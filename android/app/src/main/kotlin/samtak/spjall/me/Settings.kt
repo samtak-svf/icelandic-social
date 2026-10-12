@@ -44,8 +44,9 @@ import samtak.spjall.ui.capitals
  * The settings on Ég, under the person and the link (decision 0044): the
  * account's devices, the read-marker and typing toggles, who the person
  * blocked, and deleting the account. While the system blocks the app's
- * notifications, a notice under the devices says so. Revoking a device and
- * deleting the account ask first.
+ * notifications, a notice under the devices says so. Signing out is its own
+ * button (0047), doing what revoking this device does. Revoking a device,
+ * signing out and deleting the account ask first.
  */
 @Composable
 internal fun ColumnScope.Settings(
@@ -63,6 +64,7 @@ internal fun ColumnScope.Settings(
     state.settings?.let { Panel { PrivacySection(it, !state.busy, actions) } }
     Label(R.string.blocked_title)
     Panel { BlockedSection(state.blocked, !state.busy, actions::unblock) }
+    me.devices.firstOrNull { it.current }?.let { SignOut(enabled = !state.busy) { actions.revoke(it.deviceId) } }
     TextButton(
         onClick = { deleting = true },
         enabled = !state.busy,
@@ -90,6 +92,33 @@ internal fun ColumnScope.Settings(
                 actions.deleteAccount()
             },
             onDismiss = { deleting = false },
+        )
+    }
+}
+
+/** "Skrá út": revokes this device, after asking (0047). */
+@Composable
+private fun ColumnScope.SignOut(
+    enabled: Boolean,
+    onSignOut: () -> Unit,
+) {
+    var asking by rememberSaveable { mutableStateOf(false) }
+    Pill(
+        text = stringResource(R.string.sign_out),
+        filled = false,
+        onClick = { asking = true },
+        enabled = enabled,
+        modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp),
+    )
+    if (asking) {
+        Confirm(
+            text = stringResource(R.string.sign_out_confirm),
+            confirm = stringResource(R.string.sign_out),
+            onConfirm = {
+                asking = false
+                onSignOut()
+            },
+            onDismiss = { asking = false },
         )
     }
 }
@@ -168,9 +197,11 @@ private fun DeviceRow(
                         .padding(horizontal = 8.dp, vertical = 4.dp),
             )
         }
-        // The current device too: revoking it is how this phone signs out.
-        TextButton(onClick = onRevoke, enabled = enabled, contentPadding = PaddingValues(horizontal = 10.dp)) {
-            Text(stringResource(R.string.device_revoke), style = REVOKE, color = Palette.primary)
+        // Not on this device: "Skrá út" below the settings does that (0047).
+        if (!device.current) {
+            TextButton(onClick = onRevoke, enabled = enabled, contentPadding = PaddingValues(horizontal = 10.dp)) {
+                Text(stringResource(R.string.device_revoke), style = REVOKE, color = Palette.primary)
+            }
         }
     }
 }

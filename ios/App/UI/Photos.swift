@@ -135,3 +135,26 @@ func squarePhoto(_ url: URL, side: Int) throws -> URL {
     guard CGImageDestinationFinalize(destination) else { throw unreadable }
     return file
 }
+
+/// A photo the camera took, drawn upright into a new temporary JPEG of its pixels only (decision 0047): no
+/// EXIF, no location, nothing but the picture. Throws when it cannot be written.
+func cameraPhoto(_ image: UIImage) throws -> URL {
+    let unwritable = CocoaError(.fileWriteUnknown)
+    let format = UIGraphicsImageRendererFormat()
+    format.scale = 1
+    format.opaque = true
+    format.preferredRange = .standard
+    let size = CGSize(width: image.size.width * image.scale, height: image.size.height * image.scale)
+    guard size.width >= 1, size.height >= 1 else { throw unwritable }
+    // Drawing turns it the way it was taken, so no orientation needs to go with it.
+    let upright = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+        image.draw(in: CGRect(origin: .zero, size: size))
+    }
+    let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+    guard let pixels = upright.cgImage,
+        let destination = CGImageDestinationCreateWithURL(file as CFURL, UTType.jpeg.identifier as CFString, 1, nil)
+    else { throw unwritable }
+    CGImageDestinationAddImage(destination, pixels, [kCGImageDestinationLossyCompressionQuality: 0.85] as CFDictionary)
+    guard CGImageDestinationFinalize(destination) else { throw unwritable }
+    return file
+}

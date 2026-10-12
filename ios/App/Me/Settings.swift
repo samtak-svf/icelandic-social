@@ -2,9 +2,9 @@ import SpjallCore
 import SwiftUI
 
 /// The settings on Ég, under the profile (decision 0044): the account's devices,
-/// the read-marker and typing toggles, who the person blocked, and deleting the
-/// account. While the system blocks the app's notifications, a notice under
-/// the devices says so.
+/// the read-marker and typing toggles, who the person blocked, signing out
+/// (decision 0047) and deleting the account. While the system blocks the app's
+/// notifications, a notice under the devices says so.
 struct SettingsSection: View {
     let model: MeModel
     let me: Me
@@ -12,6 +12,7 @@ struct SettingsSection: View {
 
     @State private var revoking: String?
     @State private var deleting = false
+    @State private var signingOut = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -19,7 +20,9 @@ struct SettingsSection: View {
             Panel {
                 ForEach(Array(me.devices.enumerated()), id: \.element.deviceId) { index, device in
                     if index > 0 { Hairline() }
-                    DeviceRow(device: device, enabled: !model.busy) { revoking = device.deviceId }
+                    DeviceRow(
+                        device: device, enabled: !model.busy,
+                        onRevoke: MeModel.revocable(device) ? { revoking = device.deviceId } : nil)
                 }
             }
             if notificationsOff {
@@ -31,6 +34,15 @@ struct SettingsSection: View {
             }
             CardLabel(key: "blocked_title")
             Panel { BlockedSection(model: model) }
+            // Signing out is found where people look for it, not only in the list of devices (decision 0047).
+            Button {
+                signingOut = true
+            } label: {
+                PillLabel(text: "sign_out", filled: false)
+            }
+            .buttonStyle(.plain)
+            .disabled(model.busy)
+            .padding(.top, 8)
             Button {
                 deleting = true
             } label: {
@@ -49,6 +61,10 @@ struct SettingsSection: View {
             presenting: revoking
         ) { deviceId in
             Button("device_revoke", role: .destructive) { Task { await model.revoke(deviceId: deviceId) } }
+            Button("cancel", role: .cancel) {}
+        }
+        .confirmationDialog("sign_out_confirm", isPresented: $signingOut, titleVisibility: .visible) {
+            Button("sign_out", role: .destructive) { Task { await model.signOut() } }
             Button("cancel", role: .cancel) {}
         }
         .confirmationDialog("delete_account_confirm", isPresented: $deleting, titleVisibility: .visible) {
@@ -78,7 +94,8 @@ struct VersionLine: View {
 private struct DeviceRow: View {
     let device: AccountDevice
     let enabled: Bool
-    let onRevoke: () -> Void
+    /// Nil on this device, which has no "Aftengja".
+    let onRevoke: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 10) {
@@ -107,19 +124,22 @@ private struct DeviceRow: View {
                     .padding(.vertical, 4)
                     .background(BrandTokens.Colors.secondarySubtle, in: Capsule())
             }
-            // The current device too: revoking it is how this phone signs out.
-            Button(action: onRevoke) {
-                Text("device_revoke")
-                    .font(.sans(12, black: true))
-                    .foregroundStyle(BrandTokens.Colors.primary)
-                    .padding(.horizontal, 10)
-                    .frame(minHeight: 44)
+            // The others only: this phone signs out with "sign out" under the settings (decision 0047).
+            if let onRevoke {
+                Button(action: onRevoke) {
+                    Text("device_revoke")
+                        .font(.sans(12, black: true))
+                        .foregroundStyle(BrandTokens.Colors.primary)
+                        .padding(.horizontal, 10)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
+                .disabled(!enabled)
             }
-            .buttonStyle(.plain)
-            .disabled(!enabled)
         }
         .padding(.leading, 14)
-        .padding(.trailing, 4)
+        .padding(.trailing, onRevoke == nil ? 14 : 4)
         .padding(.vertical, 10)
+        .frame(minHeight: 64)
     }
 }

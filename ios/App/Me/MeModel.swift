@@ -81,6 +81,19 @@ final class MeModel {
         }
     }
 
+    /// "Skrá út" (decision 0047): revokes this device, as "Aftengja" on it did before; the screen has asked
+    /// first.
+    func signOut() async {
+        guard let current = me?.devices.first(where: \.current) else { return }
+        await revoke(deviceId: current.deviceId)
+    }
+
+    /// The device list offers "Aftengja" on the account's other devices only; this one signs out with
+    /// "Skrá út" (decision 0047).
+    nonisolated static func revocable(_ device: AccountDevice) -> Bool {
+        !device.current
+    }
+
     /// Sets the photo `make` gives, already small and square (decision 0039); its file is deleted once the
     /// core has sent it, or failed to. Trying again makes it again from the pick.
     func setPhoto(_ make: @escaping @Sendable () async throws -> URL) async {

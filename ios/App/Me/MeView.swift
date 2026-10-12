@@ -44,7 +44,8 @@ struct MeView: View {
     }
 }
 
-/// The photo, or the dark circle with the initials; the name in capitals, and whether Kenni vouched for it.
+/// The photo, or the dark circle with the initials; the name as it is written, in the account-name size
+/// (decision 0047), and whether Kenni vouched for it.
 /// A tap on the circle opens the photo picker, as the words under it do (decision 0043).
 private struct Who: View {
     let me: Me
@@ -65,7 +66,7 @@ private struct Who: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     if let name {
-                        Text(verbatim: name.capitals)
+                        Text(verbatim: name)
                             .font(TypeStyle.accountName)
                             .foregroundStyle(BrandTokens.Colors.fg)
                             .accessibilityAddTraits(.isHeader)
@@ -89,16 +90,17 @@ private struct PhotoControls: View {
     @State private var removing = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
+            // Outlined pills, as the invite card's buttons are, so they read as buttons (decision 0047).
+            HStack(spacing: 8) {
                 PhotosPicker(selection: $picked, matching: .images) {
-                    PhotoAction(text: hasPhoto ? "photo_change" : "photo_choose")
+                    PillLabel(text: hasPhoto ? "photo_change" : "photo_choose", filled: false, wide: false)
                 }
                 if hasPhoto {
                     Button {
                         removing = true
                     } label: {
-                        PhotoAction(text: "photo_remove")
+                        PillLabel(text: "photo_remove", filled: false, wide: false)
                     }
                 }
             }
@@ -127,20 +129,6 @@ func profilePhoto(_ photo: Picked) async throws -> URL {
     let copy = try await photo.read()
     defer { try? FileManager.default.removeItem(at: copy) }
     return try await offMain { try squarePhoto(copy, side: 1024) }
-}
-
-/// One of the photo's actions: words in the text colour, as tall as a finger.
-private struct PhotoAction: View {
-    let text: LocalizedStringKey
-
-    var body: some View {
-        Text(text)
-            .font(.sans(14, black: true))
-            .foregroundStyle(BrandTokens.Colors.fg)
-            .padding(.horizontal, 4)
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-    }
 }
 
 /// Small capitals over a card.
@@ -258,10 +246,12 @@ private struct Weighted: Layout {
     }
 }
 
-/// A round-ended button face: filled red, or white with a border.
-private struct PillLabel: View {
+/// A round-ended button face: filled red, or white with a border. `wide` takes the width offered; otherwise
+/// it is as wide as its words.
+struct PillLabel: View {
     let text: LocalizedStringKey
     let filled: Bool
+    var wide = true
 
     var body: some View {
         Text(text)
@@ -269,8 +259,8 @@ private struct PillLabel: View {
             .lineLimit(1)
             .minimumScaleFactor(0.8)
             .foregroundStyle(filled ? BrandTokens.Colors.primaryFg : BrandTokens.Colors.fg)
-            .padding(.horizontal, 12)
-            .frame(maxWidth: .infinity, minHeight: 40)
+            .padding(.horizontal, wide ? 12 : 16)
+            .frame(maxWidth: wide ? .infinity : nil, minHeight: 40)
             .background(filled ? BrandTokens.Colors.primary : BrandTokens.Colors.surface, in: Capsule())
             .overlay {
                 if !filled { Capsule().strokeBorder(BrandTokens.Colors.borderStrong, lineWidth: 1) }

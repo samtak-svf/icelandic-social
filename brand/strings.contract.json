@@ -264,6 +264,14 @@
       "surfaces": ["android", "ios"],
       "description": "Attach a photo or file to a message."
     },
+    "camera": {
+      "surfaces": ["android", "ios"],
+      "description": "Composer button that takes a photo with the system camera (docs/decisions/0047)."
+    },
+    "camera_usage": {
+      "surfaces": ["ios"],
+      "description": "Why the app asks for the camera, shown by iOS in its permission prompt (NSCameraUsageDescription, docs/decisions/0047)."
+    },
     "person_unnamed": {
       "surfaces": ["android", "ios"],
       "description": "Stands in for an account whose name the server has not given, in titles and rows (docs/decisions/0022)."
@@ -651,6 +659,14 @@
     "device_revoke_confirm": {
       "surfaces": ["android", "ios"],
       "description": "Confirmation before signing a device out; says what it stops."
+    },
+    "sign_out": {
+      "surfaces": ["android", "ios"],
+      "description": "Button on Ég that signs this device out, as revoking it does (docs/decisions/0047)."
+    },
+    "sign_out_confirm": {
+      "surfaces": ["android", "ios"],
+      "description": "Confirmation before signing this device out (docs/decisions/0047)."
     },
     "residency_claim": {
       "surfaces": ["android", "ios", "backend"],

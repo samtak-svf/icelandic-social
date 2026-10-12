@@ -48,6 +48,18 @@ class SquarePhotoTest {
     private fun out() = File.createTempFile("square", ".jpg", dir)
 
     @Test
+    fun aPhotoFromTheCameraLosesWhereItWasTakenAndKeepsWhichWayIsUp() {
+        val taken = wide(300, 100, ExifInterface.ORIENTATION_ROTATE_90)
+        assertTrue(ExifInterface(taken).latLong != null)
+        stripLocation(taken.path)
+        val exif = ExifInterface(taken)
+        assertNull("no location goes with it (0047)", exif.latLong)
+        assertNull(exif.getAttribute(ExifInterface.TAG_GPS_LATITUDE))
+        assertEquals(ExifInterface.ORIENTATION_ROTATE_90, exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, 0))
+        assertEquals(300, BitmapFactory.decodeFile(taken.path).width)
+    }
+
+    @Test
     fun aLargePhotoBecomesASmallSquareFromItsMiddleWithoutWhereItWasTaken() {
         val out = out()
         assertTrue(squarePhoto(wide(3000, 1000).path, out, 512))

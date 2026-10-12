@@ -63,6 +63,8 @@
     "other": "{count} meðlimir"
   },
   "attach": "Hengja við",
+  "camera": "Taka mynd",
+  "camera_usage": "Myndavélin er notuð til að taka mynd sem þú sendir í samtali.",
   "person_unnamed": "Nafnlaus",
   "photo": "Mynd",
   "file": "Skrá",
@@ -163,6 +165,8 @@
   "device_added": "Skráð {date}",
   "device_revoke": "Aftengja",
   "device_revoke_confirm": "Aftengja tækið? Þá getur það hvorki sent né tekið við skilaboðum.",
+  "sign_out": "Skrá út",
+  "sign_out_confirm": "Skrá út úr þessu tæki? Þú þarft að skrá þig inn aftur til að nota það.",
   "residency_claim": "Gögnin eru geymd varanlega innan ESB; unnin á netkerfi Cloudflare.",
   "app_version": "Útgáfa {version} ({build}), kjarni {core}",
   "onboarding_photo_title": "Settu inn mynd",

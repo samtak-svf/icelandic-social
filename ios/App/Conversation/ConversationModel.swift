@@ -58,6 +58,31 @@ final class ConversationModel {
     var composerAction: ComposerAction {
         mode == .new && draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .attach : .send
     }
+
+    /// A button beside the composer's field.
+    enum ComposerButton: Equatable {
+        case camera, attach, send
+    }
+
+    /// The camera, where the phone has one, then attach while the field is empty; send alone once it has
+    /// text (decision 0047).
+    func composerButtons(camera: Bool) -> [ComposerButton] {
+        switch composerAction {
+        case .attach: camera ? [.camera, .attach] : [.attach]
+        case .send: [.send]
+        }
+    }
+
+    /// Someone else is here and the conversation still takes messages: the composer, the menu and a tap
+    /// on the title, which opens the conversation's information (decisions 0043, 0047), all show together.
+    /// No one else is here once a block ends a 1:1, so there is nothing to send to.
+    var writable: Bool {
+        guard let conversation, !conversation.members.isEmpty else { return false }
+        switch conversation.state {
+        case .active, .new: return true
+        case .excluded, .removed, .stale: return false
+        }
+    }
     private(set) var media: [UInt64: Media] = [:]
     /// The file to open next; `didOpen` clears it.
     private(set) var opened: Opened?

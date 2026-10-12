@@ -163,4 +163,14 @@ final class PeopleModelTests: XCTestCase {
         XCTAssertFalse(model.group)
         XCTAssertTrue(model.picked.isEmpty)
     }
+
+    func testBackReturnsFromAGroupToPickingOneAndOtherwiseCloses() async {
+        let model = await model()
+        model.pickGroup()
+        model.toggle("a2")
+        XCTAssertFalse(model.back(), "picking several goes back to picking one")
+        XCTAssertFalse(model.group)
+        XCTAssertTrue(model.picked.isEmpty)
+        XCTAssertTrue(model.back(), "picking one closes the screen")
+    }
 }

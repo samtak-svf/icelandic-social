@@ -23,7 +23,6 @@ import samtak.spjall.core.AccountDevice
 import samtak.spjall.core.Me
 import samtak.spjall.core.Platform
 import samtak.spjall.ui.SpjallTheme
-import samtak.spjall.ui.capitals
 
 /** Ég shows the person, their photo and their link, and no wall (decision 0044). */
 @RunWith(AndroidJUnit4::class)
@@ -160,7 +159,7 @@ class MeScreenTest {
     fun theShieldFollowsANameThatWraps() {
         val name = "Jónína Guðrún Sigurbjörg Aðalsteinsdóttir"
         show(name = name)
-        val heading = compose.onNodeWithText(name.capitals(), substring = true).getBoundsInRoot()
+        val heading = compose.onNodeWithText(name, substring = true).getBoundsInRoot()
         val mark = compose.onNodeWithContentDescription(text(R.string.verified_with_kennitala)).getBoundsInRoot()
         assertTrue("the name wraps", heading.height > mark.height * 2)
         assertTrue(

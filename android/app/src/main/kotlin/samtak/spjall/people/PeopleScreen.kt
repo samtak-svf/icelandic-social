@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -59,8 +60,9 @@ import samtak.spjall.ui.shownName
 
 /**
  * The people picker (new_conversation): a tap on a person opens the 1:1 with them; the new_group
- * row at the top switches to picking several for a group (decision 0043). The list ends above the
- * keyboard.
+ * row at the top switches to picking several for a group (decision 0043). The header's back button
+ * returns from picking several to picking one, as the system back does, and otherwise closes the
+ * screen (0047). The list ends above the keyboard.
  */
 @Composable
 fun PeopleScreen(
@@ -70,11 +72,19 @@ fun PeopleScreen(
     BackHandler(enabled = state.group, onBack = actions::single)
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.imePadding().safeDrawingPadding()) {
-            Text(
-                text = stringResource(if (state.group) R.string.new_group else R.string.new_conversation),
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(16.dp),
-            )
+            Row(
+                modifier = Modifier.padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = if (state.group) actions::single else actions::back) {
+                    Icon(AppIcons.Back, contentDescription = stringResource(R.string.back))
+                }
+                Text(
+                    text = stringResource(if (state.group) R.string.new_group else R.string.new_conversation),
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.semantics { heading() },
+                )
+            }
             SearchField(state.query, actions::search)
             if (state.busy || state.searching) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 8.dp))

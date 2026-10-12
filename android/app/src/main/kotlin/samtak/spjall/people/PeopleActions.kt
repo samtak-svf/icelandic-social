@@ -11,6 +11,9 @@ interface PeopleActions {
     /** Back out of picking several. */
     fun single()
 
+    /** Close the picker. */
+    fun back()
+
     fun toggle(account: String)
 
     fun start()

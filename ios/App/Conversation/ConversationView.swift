@@ -26,14 +26,7 @@ struct ConversationView: View {
 
     private var group: Bool { (model.conversation?.members.count ?? 0) > 1 }
 
-    /// No one else is here once a block ends a 1:1: nothing to send to.
-    private var writable: Bool {
-        guard let conversation = model.conversation, !conversation.members.isEmpty else { return false }
-        switch conversation.state {
-        case .active, .new: return true
-        case .excluded, .removed, .stale: return false
-        }
-    }
+    private var writable: Bool { model.writable }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -221,6 +214,13 @@ private struct TopBar: View {
         .overlay(alignment: .bottom) {
             Rectangle().fill(BrandTokens.Colors.border).frame(height: 1)
         }
+        // Here rather than on the menu: a sheet hung on a `Menu` is not sure to show when something
+        // outside the menu, the title, asks for it.
+        .sheet(isPresented: $info) {
+            if let conversation {
+                ConversationInfo(conversation: conversation, model: model)
+            }
+        }
     }
 
     private func who(_ conversation: Conversation) -> some View {
@@ -342,11 +342,16 @@ private struct Composer: View {
     @State private var photo: PhotosPickerItem?
     @State private var picking = false
     @State private var importing = false
+    /// The system camera is open (decision 0047).
+    @State private var shooting = false
     @FocusState private var focused: Bool
     /// Counts the sends, each one a light tick (decision 0043), as the system's haptics setting allows.
     @State private var sent = 0
 
     private var blank: Bool { model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+    /// The phone has a camera; a simulator has none, and shows no camera button.
+    private var camera: Bool { Camera.available }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -379,29 +384,37 @@ private struct Composer: View {
                     }
                 }
                 .padding(.vertical, 2)
-                // One action at a time, in one place (decision 0043): attach while the field is
-                // empty, send once it has text; replying or editing keeps send.
-                switch model.composerAction {
-                case .attach:
-                    Menu {
-                        Button("photo", systemImage: "photo") { picking = true }
-                        Button("file", systemImage: "doc") { importing = true }
-                    } label: {
-                        RoundIcon(
-                            systemImage: "plus", fill: BrandTokens.Colors.muted, tint: BrandTokens.Colors.fg, size: 38)
+                // The camera and attach while the field is empty, send in their place once it has
+                // text; replying or editing keeps send (decisions 0043, 0047).
+                ForEach(model.composerButtons(camera: camera), id: \.self) { button in
+                    switch button {
+                    case .camera:
+                        RoundButton(
+                            systemImage: "camera", label: "camera", fill: BrandTokens.Colors.muted,
+                            tint: BrandTokens.Colors.fg, size: 38
+                        ) { shooting = true }
+                    case .attach:
+                        Menu {
+                            Button("photo", systemImage: "photo") { picking = true }
+                            Button("file", systemImage: "doc") { importing = true }
+                        } label: {
+                            RoundIcon(
+                                systemImage: "plus", fill: BrandTokens.Colors.muted, tint: BrandTokens.Colors.fg,
+                                size: 38)
+                        }
+                        .accessibilityLabel(Text("attach"))
+                    case .send:
+                        RoundButton(
+                            systemImage: "paperplane.fill", label: "send",
+                            fill: blank ? BrandTokens.Colors.muted : BrandTokens.Colors.primary,
+                            tint: blank ? BrandTokens.Colors.mutedFg : BrandTokens.Colors.primaryFg,
+                            size: 40, enabled: !blank
+                        ) {
+                            sent += 1
+                            Task { await model.send() }
+                        }
+                        .sensoryFeedback(.impact(weight: .light), trigger: sent)
                     }
-                    .accessibilityLabel(Text("attach"))
-                case .send:
-                    RoundButton(
-                        systemImage: "paperplane.fill", label: "send",
-                        fill: blank ? BrandTokens.Colors.muted : BrandTokens.Colors.primary,
-                        tint: blank ? BrandTokens.Colors.mutedFg : BrandTokens.Colors.primaryFg,
-                        size: 40, enabled: !blank
-                    ) {
-                        sent += 1
-                        Task { await model.send() }
-                    }
-                    .sensoryFeedback(.impact(weight: .light), trigger: sent)
                 }
             }
             .padding(.horizontal, 4)
@@ -416,6 +429,13 @@ private struct Composer: View {
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.item]) { result in
             if case .success(let file) = result { Task { await model.attach(Picked(file: file)) } }
+        }
+        .fullScreenCover(isPresented: $shooting) {
+            Camera { taken in
+                shooting = false
+                if let taken { Task { await model.attach(Picked(taken: taken)) } }
+            }
+            .ignoresSafeArea()
         }
     }
 }

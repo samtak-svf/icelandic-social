@@ -54,7 +54,6 @@ import samtak.spjall.ui.SansFamily
 import samtak.spjall.ui.SectionLabel
 import samtak.spjall.ui.Type
 import samtak.spjall.ui.VerifiedMark
-import samtak.spjall.ui.capitals
 
 /**
  * "Ég" (1e), on cream: the person, their photo, their invite link and QR
@@ -99,7 +98,8 @@ fun MeScreen(
 }
 
 /**
- * The photo, or the dark circle with the initials; the name in capitals, and whether Kenni vouched for it.
+ * The photo, or the dark circle with the initials; the name as it is written (0047), and whether Kenni
+ * vouched for it.
  * A tap on the photo opens the picker, as its buttons below do (decision 0043).
  */
 @Composable
@@ -130,7 +130,7 @@ private fun Who(
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             name?.let {
                 NameWithMark(
-                    it.capitals(),
+                    it,
                     verified,
                     style = Type.accountName,
                     color = Palette.fg,
@@ -155,25 +155,28 @@ private fun PhotoControls(
 ) {
     var removing by rememberSaveable { mutableStateOf(false) }
     Column {
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            TextButton(onClick = actions::choosePhoto, enabled = !busy) {
-                Text(
-                    text = stringResource(if (hasPhoto) R.string.photo_change else R.string.photo_choose),
-                    style = ACTION,
-                    color = Palette.fg,
-                )
-            }
+        // Outlined pills, as the invite card's buttons are, so they read as buttons (0047).
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Pill(
+                text = stringResource(if (hasPhoto) R.string.photo_change else R.string.photo_choose),
+                filled = false,
+                onClick = actions::choosePhoto,
+                enabled = !busy,
+            )
             if (hasPhoto) {
-                TextButton(onClick = { removing = true }, enabled = !busy) {
-                    Text(text = stringResource(R.string.photo_remove), style = ACTION, color = Palette.fg)
-                }
+                Pill(
+                    text = stringResource(R.string.photo_remove),
+                    filled = false,
+                    onClick = { removing = true },
+                    enabled = !busy,
+                )
             }
         }
         Text(
             text = stringResource(R.string.photo_seen_by_all),
             style = HINT,
             color = Palette.fg,
-            modifier = Modifier.padding(horizontal = 12.dp),
+            modifier = Modifier.padding(top = 8.dp),
         )
     }
     if (removing) {
@@ -280,7 +283,7 @@ private fun InviteCard(
 }
 
 @Composable
-private fun Pill(
+internal fun Pill(
     text: String,
     filled: Boolean,
     onClick: () -> Unit,

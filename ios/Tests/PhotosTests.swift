@@ -1,5 +1,6 @@
 import ImageIO
 import SpjallCore
+import UIKit
 import UniformTypeIdentifiers
 import XCTest
 
@@ -132,6 +133,30 @@ final class SquarePhotoTests: XCTestCase {
         let image = try XCTUnwrap(read(square))
         XCTAssertEqual(color(image, x: 100, y: 20), .red)
         XCTAssertEqual(color(image, x: 100, y: 180), .blue)
+    }
+
+    func testACameraPhotoIsWrittenUprightWithItsPixelsOnly() throws {
+        // Stored 200 × 100 with its left half red; `.right` shows it turned a quarter clockwise, red on top.
+        let context = try XCTUnwrap(
+            CGContext(
+                data: nil, width: 200, height: 100, bitsPerComponent: 8, bytesPerRow: 0,
+                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue))
+        context.setFillColor(red: 0, green: 0, blue: 1, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: 200, height: 100))
+        context.setFillColor(red: 1, green: 0, blue: 0, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
+        let taken = UIImage(cgImage: try XCTUnwrap(context.makeImage()), scale: 1, orientation: .right)
+
+        let file = try cameraPhoto(taken)
+        made.append(file)
+        let image = try XCTUnwrap(read(file))
+        XCTAssertEqual([image.width, image.height], [100, 200])
+        XCTAssertEqual(color(image, x: 50, y: 20), .red)
+        XCTAssertEqual(color(image, x: 50, y: 180), .blue)
+        let source = try XCTUnwrap(CGImageSourceCreateWithURL(file as CFURL, nil))
+        let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+        XCTAssertNil(properties?[kCGImagePropertyGPSDictionary], "no location goes with it")
+        XCTAssertEqual(properties?[kCGImagePropertyOrientation] as? Int ?? 1, 1, "upright in its pixels")
     }
 
     func testAFileThatIsNotAPhotoIsRefused() throws {

@@ -27,6 +27,8 @@ class PeopleScreenshotTest {
 
             override fun group() = Unit
 
+            override fun back() = Unit
+
             override fun single() = Unit
 
             override fun toggle(account: String) = Unit

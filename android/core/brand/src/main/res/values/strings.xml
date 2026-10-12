@@ -119,6 +119,8 @@
     </plurals>
     <!-- Attach a photo or file to a message. -->
     <string name="attach">Hengja við</string>
+    <!-- Composer button that takes a photo with the system camera (docs/decisions/0047). -->
+    <string name="camera">Taka mynd</string>
     <!-- Stands in for an account whose name the server has not given, in titles and rows (docs/decisions/0022). -->
     <string name="person_unnamed">Nafnlaus</string>
     <!-- Label of a photo message, in the conversation list and for screen readers. -->
@@ -304,6 +306,10 @@
     <string name="device_revoke">Aftengja</string>
     <!-- Confirmation before signing a device out; says what it stops. -->
     <string name="device_revoke_confirm">Aftengja tækið? Þá getur það hvorki sent né tekið við skilaboðum.</string>
+    <!-- Button on Ég that signs this device out, as revoking it does (docs/decisions/0047). -->
+    <string name="sign_out">Skrá út</string>
+    <!-- Confirmation before signing this device out (docs/decisions/0047). -->
+    <string name="sign_out_confirm">Skrá út úr þessu tæki? Þú þarft að skrá þig inn aftur til að nota það.</string>
     <!-- The only permitted statement about where data lives (docs/decisions/0001). -->
     <string name="residency_claim">Gögnin eru geymd varanlega innan ESB; unnin á netkerfi Cloudflare.</string>
     <!-- The app's and the core's version, at the foot of the settings, for a bug report. -->

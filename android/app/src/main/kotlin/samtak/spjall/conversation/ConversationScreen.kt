@@ -297,10 +297,13 @@ private fun Composer(
         ) {
             Spacer(Modifier.width(12.dp))
             Field(state.draft, actions::draft, Modifier.weight(1f))
-            // One action at a time, in one place (0043): attach while the field
-            // is empty, send once it has text; replying or editing keeps send.
+            // One action at a time, in one place (0043): camera and attach while the
+            // field is empty (0047), send once it has text; replying or editing keeps send.
             when (state.action) {
-                ConversationViewModel.ComposerAction.ATTACH -> AttachButton(actions)
+                ConversationViewModel.ComposerAction.ATTACH -> {
+                    CameraButton(actions)
+                    AttachButton(actions)
+                }
                 ConversationViewModel.ComposerAction.SEND -> {
                     val ready = state.draft.isNotBlank()
                     val haptics = LocalHapticFeedback.current

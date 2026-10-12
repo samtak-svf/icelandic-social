@@ -1,5 +1,6 @@
 import PhotosUI
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
 /// A photo from the picker, copied out of the library into a file of our own.
@@ -25,6 +26,14 @@ extension Picked {
         }
     }
 
+    /// A photo the system camera took (decision 0047), written as a JPEG of its pixels only, so no location
+    /// goes with it; the encoding waits until it is read, off the main thread.
+    init(taken: UIImage) {
+        self.init(mime: "image/jpeg", size: nil) {
+            try await offMain { try cameraPhoto(taken) }
+        }
+    }
+
     /// A file from `fileImporter`, readable only while its security scope is open.
     init(file: URL) {
         let mime = UTType(filenameExtension: file.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
@@ -33,6 +42,50 @@ extension Picked {
             let open = file.startAccessingSecurityScopedResource()
             defer { if open { file.stopAccessingSecurityScopedResource() } }
             return try copy(file)
+        }
+    }
+}
+
+/// The system camera, for one photo (decision 0047). `onDone` gets the photo, or nil when it was closed
+/// without one; whoever presented it closes it. iOS asks for the camera the first time, with the brand's
+/// usage sentence.
+struct Camera: UIViewControllerRepresentable {
+    let onDone: (UIImage?) -> Void
+
+    /// False on a simulator and on a phone whose camera is restricted: the button is not shown.
+    @MainActor static var available: Bool { UIImagePickerController.isSourceTypeAvailable(.camera) }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.mediaTypes = [UTType.image.identifier]
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ picker: UIImagePickerController, context: Context) {
+        context.coordinator.onDone = onDone
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(onDone: onDone) }
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        var onDone: (UIImage?) -> Void
+
+        init(onDone: @escaping (UIImage?) -> Void) {
+            self.onDone = onDone
+        }
+
+        func imagePickerController(
+            _ picker: UIImagePickerController,
+            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
+        ) {
+            // The original image only: the metadata the camera wrote, its location among it, stays behind.
+            onDone(info[.originalImage] as? UIImage)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            onDone(nil)
         }
     }
 }

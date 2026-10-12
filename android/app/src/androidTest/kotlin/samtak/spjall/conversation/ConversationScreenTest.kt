@@ -92,6 +92,10 @@ class ConversationScreenTest {
 
             override fun loadOlder() = Unit
 
+            override fun takePhoto() {
+                calls += "takePhoto"
+            }
+
             override fun attachPhoto() {
                 calls += "attachPhoto"
             }
@@ -476,6 +480,14 @@ class ConversationScreenTest {
         compose.onNodeWithContentDescription(text(R.string.attach)).performClick()
         compose.onNodeWithText(text(R.string.file)).performClick()
         assertEquals(listOf("attachPhoto", "attachFile"), calls)
+    }
+
+    @Test
+    fun theCameraSitsBesideAttachUntilThereIsText() {
+        show(item(1u, Content.Text("Sæl", null)))
+        compose.onNodeWithContentDescription(text(R.string.camera)).performClick()
+        assertEquals(listOf("takePhoto"), calls)
+        compose.onNodeWithContentDescription(text(R.string.send)).assertDoesNotExist()
     }
 
     @Test

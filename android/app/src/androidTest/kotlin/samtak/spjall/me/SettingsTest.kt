@@ -1,5 +1,6 @@
 package samtak.spjall.me
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -137,7 +138,9 @@ class SettingsTest {
     @Test
     fun revokingADeviceAsksFirst() {
         show()
-        compose.onAllNodesWithText(text(R.string.device_revoke))[1].performScrollTo().performClick()
+        // Only the other device offers it; this one signs out below (0047).
+        compose.onAllNodesWithText(text(R.string.device_revoke)).assertCountEquals(1)
+        compose.onNodeWithText(text(R.string.device_revoke)).performScrollTo().performClick()
         assertEquals(emptyList<String>(), calls)
         compose.onNodeWithText(text(R.string.device_revoke_confirm)).assertExists()
         compose
@@ -146,6 +149,19 @@ class SettingsTest {
             ).let { it[it.fetchSemanticsNodes().size - 1] }
             .performClick()
         assertEquals(listOf("revoke d2"), calls)
+    }
+
+    @Test
+    fun signingOutAsksFirstAndRevokesThisDevice() {
+        show()
+        compose.onNodeWithText(text(R.string.sign_out)).performScrollTo().performClick()
+        compose.onNodeWithText(text(R.string.sign_out_confirm)).assertExists()
+        compose.onNodeWithText(text(R.string.cancel)).performClick()
+        assertEquals(emptyList<String>(), calls)
+
+        compose.onNodeWithText(text(R.string.sign_out)).performScrollTo().performClick()
+        compose.onAllNodesWithText(text(R.string.sign_out))[1].performClick()
+        assertEquals(listOf("revoke d1"), calls)
     }
 
     @Test

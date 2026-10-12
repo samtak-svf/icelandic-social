@@ -39,6 +39,9 @@ interface ConversationActions {
     /** Opens the photo picker; what is picked is sent. */
     fun attachPhoto()
 
+    /** Opens the system camera; the photo it takes is sent (0047). */
+    fun takePhoto()
+
     /** Opens the file picker; what is picked is sent. */
     fun attachFile()
 

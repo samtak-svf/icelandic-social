@@ -661,6 +661,30 @@
         }
       }
     },
+    "camera": {
+      "comment": "Composer button that takes a photo with the system camera (docs/decisions/0047).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taka mynd"
+          }
+        }
+      }
+    },
+    "camera_usage": {
+      "comment": "Why the app asks for the camera, shown by iOS in its permission prompt (NSCameraUsageDescription, docs/decisions/0047).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Myndavélin er notuð til að taka mynd sem þú sendir í samtali."
+          }
+        }
+      }
+    },
     "person_unnamed": {
       "comment": "Stands in for an account whose name the server has not given, in titles and rows (docs/decisions/0022).",
       "extractionState": "manual",
@@ -1737,6 +1761,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aftengja tækið? Þá getur það hvorki sent né tekið við skilaboðum."
+          }
+        }
+      }
+    },
+    "sign_out": {
+      "comment": "Button on Ég that signs this device out, as revoking it does (docs/decisions/0047).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrá út"
+          }
+        }
+      }
+    },
+    "sign_out_confirm": {
+      "comment": "Confirmation before signing this device out (docs/decisions/0047).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrá út úr þessu tæki? Þú þarft að skrá þig inn aftur til að nota það."
           }
         }
       }

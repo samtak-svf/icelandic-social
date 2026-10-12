@@ -75,17 +75,32 @@ struct AtMost: Layout {
 }
 
 /// The system's swipe back on a screen that draws its own top bar instead of
-/// the navigation bar, which hiding the bar would otherwise switch off.
+/// the navigation bar, which hiding the bar would otherwise switch off. With
+/// `instead`, the swipe calls it rather than leaving the screen, as the
+/// screen's own back button does in a mode it can step out of (decision 0047).
 struct SwipeBack: UIViewControllerRepresentable {
+    var instead: (() -> Void)? = nil
+
     func makeUIViewController(context: Context) -> Controller { Controller() }
 
-    func updateUIViewController(_ controller: Controller, context: Context) {}
+    func updateUIViewController(_ controller: Controller, context: Context) {
+        controller.instead = instead
+    }
 
     final class Controller: UIViewController, UIGestureRecognizerDelegate {
         private weak var original: UIGestureRecognizerDelegate?
+        private var edge: UIScreenEdgePanGestureRecognizer?
+        var instead: (() -> Void)?
 
         override func viewDidAppear(_ animated: Bool) {
             super.viewDidAppear(animated)
+            if edge == nil, let view = navigationController?.view {
+                let pan = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(swiped(_:)))
+                pan.edges = .left
+                pan.delegate = self
+                view.addGestureRecognizer(pan)
+                edge = pan
+            }
             guard let recognizer = navigationController?.interactivePopGestureRecognizer,
                 recognizer.delegate !== self
             else { return }
@@ -95,14 +110,27 @@ struct SwipeBack: UIViewControllerRepresentable {
 
         override func viewWillDisappear(_ animated: Bool) {
             super.viewWillDisappear(animated)
+            if let edge {
+                edge.view?.removeGestureRecognizer(edge)
+                self.edge = nil
+            }
             guard let recognizer = navigationController?.interactivePopGestureRecognizer,
                 recognizer.delegate === self
             else { return }
             recognizer.delegate = original
         }
 
-        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-            (navigationController?.viewControllers.count ?? 0) > 1
+        @objc private func swiped(_ pan: UIScreenEdgePanGestureRecognizer) {
+            guard pan.state == .ended, pan.translation(in: pan.view).x > Self.distance else { return }
+            instead?()
         }
+
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            // One of the two: the step out of the mode, or the system's pop.
+            if gestureRecognizer === edge { return instead != nil }
+            return instead == nil && (navigationController?.viewControllers.count ?? 0) > 1
+        }
+
+        private static let distance: CGFloat = 60
     }
 }

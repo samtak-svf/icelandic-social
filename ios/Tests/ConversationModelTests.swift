@@ -14,8 +14,10 @@ final class ConversationModelTests: XCTestCase {
         following.forEach { $0.cancel() }
     }
 
-    private func model() async -> ConversationModel {
-        account.list = [conversation("c1", members: [person("a2", "Anna")])]
+    private func model(_ c1: Conversation = conversation("c1", members: [person("a2", "Anna")])) async
+        -> ConversationModel
+    {
+        account.list = [c1]
         let model = ConversationModel(
             id: "c1", account: account, live: live, sleep: sleeps.sleep, now: { FakeAccount.now })
         following.append(Task { await model.follow() })
@@ -101,6 +103,30 @@ final class ConversationModelTests: XCTestCase {
         model.edit(target)
         model.type("")
         XCTAssertEqual(model.composerAction, .send, "send stays while editing")
+    }
+
+    func testTheCameraSitsBesideAttachWhileEmptyAndSendReplacesBoth() async {
+        let target = item(4, own: true)
+        let model = await model()
+        XCTAssertEqual(model.composerButtons(camera: true), [.camera, .attach])
+        XCTAssertEqual(model.composerButtons(camera: false), [.attach], "no camera, no camera button")
+        model.type("Hæ")
+        XCTAssertEqual(model.composerButtons(camera: true), [.send])
+        model.type("")
+        model.reply(target)
+        XCTAssertEqual(model.composerButtons(camera: true), [.send], "a reply never attaches")
+    }
+
+    func testTheTitleOpensTheInformationWhereverTheMenuShows() async {
+        let anna = person("a2", "Anna")
+        let open = await model(conversation("c1", members: [anna]))
+        XCTAssertTrue(open.writable)
+        for state in [ConversationState.removed, .excluded, .stale] {
+            let model = await model(conversation("c1", members: [anna], state: state))
+            XCTAssertFalse(model.writable, "\(state) has no menu, composer or title tap")
+        }
+        let alone = await model(conversation("c1", members: []))
+        XCTAssertFalse(alone.writable, "no one else is here once a block ends a 1:1")
     }
 
     func testABlankDraftSendsNothingAndCancellingAnEditClearsIt() async {
