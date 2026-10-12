@@ -60,6 +60,32 @@ class SquarePhotoTest {
     }
 
     @Test
+    fun aPickedPhotoLosesWhereItWasTakenInEachFormatThatCanBeWritten() {
+        for ((mime, format) in listOf(
+            "image/jpeg" to Bitmap.CompressFormat.JPEG,
+            "image/png" to Bitmap.CompressFormat.PNG,
+        )) {
+            val picked = File.createTempFile("picked", ".img", dir)
+            picked.outputStream().use { Bitmap.createBitmap(40, 30, Bitmap.Config.ARGB_8888).compress(format, 95, it) }
+            ExifInterface(picked).apply {
+                setLatLong(64.1, -21.9)
+                saveAttributes()
+            }
+            assertTrue(mime, ExifInterface(picked).latLong != null)
+            stripLocation(picked.path, mime)
+            assertNull("no location goes with a picked $mime (0048)", ExifInterface(picked).latLong)
+            assertEquals(40, BitmapFactory.decodeFile(picked.path).width)
+        }
+    }
+
+    @Test
+    fun aFormatThatCannotBeWrittenGoesAsItIs() {
+        val picked = File.createTempFile("picked", ".heic", dir).apply { writeBytes(byteArrayOf(1, 2, 3)) }
+        stripLocation(picked.path, "image/heic")
+        assertEquals(listOf<Byte>(1, 2, 3), picked.readBytes().toList())
+    }
+
+    @Test
     fun aLargePhotoBecomesASmallSquareFromItsMiddleWithoutWhereItWasTaken() {
         val out = out()
         assertTrue(squarePhoto(wide(3000, 1000).path, out, 512))

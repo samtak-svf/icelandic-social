@@ -142,6 +142,7 @@ struct ConversationView: View {
                 }
             }
             .defaultScrollAnchor(.bottom)
+            .followsGrowthAtBottom()
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: shown.last?.id) { _, newest in
                 guard newest != nil else { return }
@@ -157,6 +158,19 @@ struct ConversationView: View {
     }
 
     private static let bottom = "bottom"
+}
+
+extension View {
+    /// While the bottom is in view it stays there, also when the newest row grows as its photo decodes
+    /// (decision 0048). Before iOS 18 the list keeps its offset when a row grows, as it did.
+    @ViewBuilder
+    fileprivate func followsGrowthAtBottom() -> some View {
+        if #available(iOS 18.0, *) {
+            defaultScrollAnchor(.bottom, for: .sizeChanges)
+        } else {
+            self
+        }
+    }
 }
 
 /// The reactions a long press offers.
@@ -348,7 +362,7 @@ private struct Composer: View {
     /// Counts the sends, each one a light tick (decision 0043), as the system's haptics setting allows.
     @State private var sent = 0
 
-    private var blank: Bool { model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    private var blank: Bool { !model.sendable }
 
     /// The phone has a camera; a simulator has none, and shows no camera button.
     private var camera: Bool { Camera.available }
@@ -361,10 +375,13 @@ private struct Composer: View {
             case .reply(let item): ModeLine(label: "reply", item: item, onCancel: model.cancelMode)
             case .edit(let item): ModeLine(label: "edit", item: item, onCancel: model.cancelMode)
             }
+            if let attachment = model.attachment {
+                PendingStrip(pending: attachment, onRemove: model.removeAttachment)
+            }
             HStack(alignment: .bottom, spacing: 0) {
                 Spacer().frame(width: 12)
                 TextField(
-                    "composer_placeholder",
+                    model.attachment == nil ? "composer_placeholder" : "caption_placeholder",
                     text: Binding(get: { model.draft }, set: { model.type($0) }),
                     axis: .vertical
                 )
@@ -385,7 +402,7 @@ private struct Composer: View {
                 }
                 .padding(.vertical, 2)
                 // The camera and attach while the field is empty, send in their place once it has
-                // text; replying or editing keeps send (decisions 0043, 0047).
+                // text or a photo or file waits; replying or editing keeps send (decisions 0043, 0047, 0048).
                 ForEach(model.composerButtons(camera: camera), id: \.self) { button in
                     switch button {
                     case .camera:
@@ -425,15 +442,15 @@ private struct Composer: View {
         .onChange(of: photo) { _, picked in
             guard let picked else { return }
             photo = nil
-            Task { await model.attach(Picked(photo: picked)) }
+            Task { await model.pick(Picked(photo: picked)) }
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.item]) { result in
-            if case .success(let file) = result { Task { await model.attach(Picked(file: file)) } }
+            if case .success(let file) = result { Task { await model.pick(Picked(file: file)) } }
         }
         .fullScreenCover(isPresented: $shooting) {
             Camera { taken in
                 shooting = false
-                if let taken { Task { await model.attach(Picked(taken: taken)) } }
+                if let taken { Task { await model.pick(Picked(taken: taken)) } }
             }
             .ignoresSafeArea()
         }

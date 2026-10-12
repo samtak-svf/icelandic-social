@@ -36,14 +36,17 @@ interface ConversationActions {
 
     fun loadOlder()
 
-    /** Opens the photo picker; what is picked is sent. */
+    /** Opens the photo picker; what is picked waits above the field (0048). */
     fun attachPhoto()
 
-    /** Opens the system camera; the photo it takes is sent (0047). */
+    /** Opens the system camera (0047); the photo it takes waits above the field (0048). */
     fun takePhoto()
 
-    /** Opens the file picker; what is picked is sent. */
+    /** Opens the file picker; what is picked waits above the field (0048). */
     fun attachFile()
+
+    /** Takes the waiting photo or file away. */
+    fun removeAttachment()
 
     /** Downloads the photo or file of [item]. */
     fun fetch(item: Item)

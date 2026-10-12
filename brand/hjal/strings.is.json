@@ -63,6 +63,10 @@
     "other": "{count} meðlimir"
   },
   "attach": "Hengja við",
+  "attachment_remove": "Fjarlægja viðhengi",
+  "caption_placeholder": "Bæta við texta…",
+  "attachment_pending_photo": "Mynd tilbúin til sendingar",
+  "attachment_pending_file": "Skrá tilbúin til sendingar: {name}",
   "camera": "Taka mynd",
   "camera_usage": "Myndavélin er notuð til að taka mynd sem þú sendir í samtali.",
   "person_unnamed": "Nafnlaus",

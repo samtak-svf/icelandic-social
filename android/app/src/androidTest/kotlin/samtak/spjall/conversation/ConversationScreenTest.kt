@@ -11,15 +11,19 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
@@ -104,6 +108,10 @@ class ConversationScreenTest {
                 calls += "attachFile"
             }
 
+            override fun removeAttachment() {
+                calls += "removeAttachment"
+            }
+
             override fun fetch(item: Item) {
                 calls += "fetch ${item.seq}"
             }
@@ -177,6 +185,7 @@ class ConversationScreenTest {
         timer: UInt? = null,
         mute: Mute = Mute.Off,
         mode: ConversationViewModel.Mode = ConversationViewModel.Mode.New,
+        attachment: ConversationViewModel.Pending? = null,
     ) = compose.setContent {
         SpjallTheme {
             ConversationScreen(
@@ -188,6 +197,7 @@ class ConversationScreenTest {
                     draft = draft,
                     media = media,
                     mode = mode,
+                    attachment = attachment,
                 ),
                 actions,
             )
@@ -480,6 +490,124 @@ class ConversationScreenTest {
         compose.onNodeWithContentDescription(text(R.string.attach)).performClick()
         compose.onNodeWithText(text(R.string.file)).performClick()
         assertEquals(listOf("attachPhoto", "attachFile"), calls)
+    }
+
+    @Test
+    fun aWaitingPhotoShowsAboveTheFieldUntilItIsSentOrRemoved() {
+        val photo = java.io.File.createTempFile("waiting", ".jpg", context.cacheDir)
+        photo.outputStream().use {
+            android.graphics.Bitmap
+                .createBitmap(40, 30, android.graphics.Bitmap.Config.ARGB_8888)
+                .compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, it)
+        }
+        show(
+            item(1u, Content.Text("Sæl", null)),
+            attachment = ConversationViewModel.Pending(photo.path, "image/jpeg", null),
+        )
+        compose.onNodeWithContentDescription(text(R.string.attachment_pending_photo)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.caption_placeholder)).assertIsDisplayed()
+        compose.onNodeWithContentDescription(text(R.string.camera)).assertDoesNotExist()
+        compose.onNodeWithContentDescription(text(R.string.attach)).assertDoesNotExist()
+        compose.onNodeWithContentDescription(text(R.string.send)).assertIsEnabled().performClick()
+        compose.onNodeWithContentDescription(text(R.string.attachment_remove)).performClick()
+        assertEquals(listOf("send", "removeAttachment"), calls)
+    }
+
+    @Test
+    fun aWaitingFileIsReadOutByItsName() {
+        show(attachment = ConversationViewModel.Pending("/nowhere/x", "application/pdf", "skýrsla.pdf"))
+        compose
+            .onNodeWithContentDescription(
+                context.getString(R.string.attachment_pending_file, "skýrsla.pdf"),
+            ).assertIsDisplayed()
+    }
+
+    /**
+     * A tall photo on its way as the newest row, step by step as it goes: [stage]
+     * 0 is before it, 1 is sending, 2 is sent and loading, 3 is decoded.
+     */
+    private fun growingPhoto(stage: androidx.compose.runtime.MutableIntState) {
+        val photo = java.io.File.createTempFile("tall", ".jpg", context.cacheDir)
+        photo.outputStream().use {
+            android.graphics.Bitmap
+                .createBitmap(1200, 1600, android.graphics.Bitmap.Config.ARGB_8888)
+                .compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, it)
+        }
+        val texts = (1u..30u).map { item(it.toULong(), Content.Text("Skilaboð $it", null)) }
+        val content = Content.Media("image/jpeg", 10uL, "Esjan", null)
+        val sending = item(null, content, own = true, status = ItemStatus.PENDING)
+        val sent = item(31u, content, own = true)
+        val decoded = ConversationViewModel.Media.Ready(photo.path)
+        compose.setContent {
+            SpjallTheme {
+                ConversationScreen(
+                    ConversationViewModel.State(
+                        conversation =
+                            Conversation(
+                                "c1",
+                                ConversationState.ACTIVE,
+                                listOf(anna),
+                                null,
+                                0u,
+                                null,
+                                Mute.Off,
+                            ),
+                        items =
+                            when (stage.intValue) {
+                                0 -> texts
+                                1 -> texts + sending
+                                else -> texts + sent
+                            },
+                        loaded = true,
+                        media = if (stage.intValue >= 3) mapOf(31uL to decoded) else emptyMap(),
+                    ),
+                    actions,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun aSentPhotoStaysInViewOnceItHasDecoded() {
+        val stage = androidx.compose.runtime.mutableIntStateOf(0)
+        growingPhoto(stage)
+        compose.waitForIdle()
+        // As on a phone: the sent photo comes with its seq and starts to decode
+        // while the list is still on its way down to it.
+        compose.mainClock.autoAdvance = false
+        stage.intValue = 2
+        compose.mainClock.advanceTimeByFrame()
+        compose.mainClock.advanceTimeByFrame()
+        stage.intValue = 3
+        compose.mainClock.autoAdvance = true
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithContentDescription("Esjan").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.waitForIdle()
+        val caption = compose.onNodeWithText("Esjan").fetchSemanticsNode().boundsInRoot
+        val placeholder = text(R.string.composer_placeholder)
+        val field = compose.onNodeWithText(placeholder).fetchSemanticsNode().boundsInRoot
+        val above = caption.bottom <= field.top
+        assert(above) { "the caption under the photo is above the field (0048): $caption, $field" }
+    }
+
+    @Test
+    fun readingHigherUpIsNotPulledDownByAGrowingPhoto() {
+        val stage = androidx.compose.runtime.mutableIntStateOf(2)
+        growingPhoto(stage)
+        compose.waitForIdle()
+        repeat(4) {
+            compose.onRoot().performTouchInput { swipeDown(startY = height * 0.3f, endY = height * 0.7f) }
+        }
+        compose.waitForIdle()
+        compose.onNodeWithText("Skilaboð 30").assertIsNotDisplayed()
+        val read = compose.onAllNodesWithText("Skilaboð", substring = true).fetchSemanticsNodes().first()
+        val before = read.boundsInRoot
+        stage.intValue = 3
+        compose.waitForIdle()
+        val nodes = compose.onAllNodesWithText("Skilaboð", substring = true).fetchSemanticsNodes()
+        val after = nodes.first { it.id == read.id }
+        assertEquals("what is being read stays where it is", before, after.boundsInRoot)
     }
 
     @Test

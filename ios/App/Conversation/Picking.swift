@@ -3,13 +3,14 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
-/// A photo from the picker, copied out of the library into a file of our own.
+/// A photo from the picker, copied out of the library into a file of our own without where it was taken
+/// (decision 0048).
 private struct PickedPhoto: Transferable {
     let url: URL
 
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(importedContentType: .image) { received in
-            PickedPhoto(url: try copy(received.file))
+            PickedPhoto(url: withoutLocation(try copy(received.file)))
         }
     }
 }

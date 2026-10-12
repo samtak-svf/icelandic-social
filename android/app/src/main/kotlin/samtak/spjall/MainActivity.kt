@@ -397,15 +397,15 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(id) { graph.push.dismiss(id) }
         val photo =
             rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-                uri?.let { model.attach(graph.files.picked(it)) }
+                uri?.let { model.pick(graph.files.pickedPhoto(it)) }
             }
         val file =
             rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-                uri?.let { model.attach(graph.files.picked(it)) }
+                uri?.let { model.pick(graph.files.picked(it)) }
             }
         val camera =
             rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { taken ->
-                if (taken) graph.files.taken()?.let(model::attach)
+                if (taken) graph.files.taken()?.let(model::pick)
             }
         LaunchedEffect(model) {
             model.opened.collect { open(it) }
@@ -445,6 +445,8 @@ class MainActivity : ComponentActivity() {
                     photo.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
 
                 override fun attachFile() = file.launch(arrayOf("*/*"))
+
+                override fun removeAttachment() = model.removeAttachment()
 
                 override fun takePhoto() {
                     // A phone with no camera app has nothing to open; the button then does nothing.

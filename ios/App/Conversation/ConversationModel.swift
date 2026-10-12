@@ -22,6 +22,14 @@ final class ConversationModel {
         case failed
     }
 
+    /// A photo or file picked or taken, waiting above the field until it is sent (decision 0048).
+    struct Pending: Equatable {
+        let path: String
+        let mime: String
+        let name: String?
+        var photo: Bool { mime.hasPrefix("image/") }
+    }
+
     /// A file fetched for opening, its type, and the sender's name for it.
     struct Opened: Equatable {
         let path: String
@@ -47,16 +55,24 @@ final class ConversationModel {
     private(set) var typing = false
     private(set) var draft = ""
     private(set) var mode = Mode.new
+    /// The photo or file waiting to go with the field's text as its caption.
+    private(set) var attachment: Pending?
 
     /// The composer's one action (decision 0043).
     enum ComposerAction: Equatable {
         case attach, send
     }
 
-    /// Attach while a new message's field is empty, send once it has text.
-    /// Replying or editing never attaches, so send stays there.
+    /// Attach while a new message's field is empty and nothing waits, send once it has text or a photo or
+    /// file waits (decision 0048). Replying or editing never attaches, so send stays there.
     var composerAction: ComposerAction {
-        mode == .new && draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .attach : .send
+        mode == .new && attachment == nil && draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? .attach : .send
+    }
+
+    /// There is something for send to send.
+    var sendable: Bool {
+        !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (mode == .new && attachment != nil)
     }
 
     /// A button beside the composer's field.
@@ -164,6 +180,7 @@ final class ConversationModel {
     }
 
     func reply(_ item: Item) {
+        removeAttachment()
         mode = .reply(item)
     }
 
@@ -183,6 +200,7 @@ final class ConversationModel {
 
     func edit(_ item: Item) {
         guard case .text(let text, _) = item.content else { return }
+        removeAttachment()
         mode = .edit(item)
         draft = text
     }
@@ -195,6 +213,13 @@ final class ConversationModel {
 
     func send() async {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        if mode == .new, let attachment {
+            self.attachment = nil
+            draft = ""
+            stopTyping()
+            await sendAttachment(attachment, caption: text.isEmpty ? nil : text)
+            return
+        }
         let body: Body? =
             switch mode {
             case .new: .text(text: text)
@@ -220,31 +245,59 @@ final class ConversationModel {
         await queue(.reaction(target: target, emoji: emoji, remove: remove))
     }
 
-    /// Sends a photo or file; one over the limit is refused before it is read.
-    func attach(_ picked: Picked) async {
+    /// Keeps a photo or file above the field without sending it (decision 0048); one over the limit is
+    /// refused before it is read. A second one takes the place of the first.
+    func pick(_ picked: Picked) async {
         if (picked.size ?? 0) > Self.mediaLimit {
             problem = .tooLarge
             return
         }
         problem = nil
-        let (account, id) = (account, id)
         do {
             let file = try await picked.read()
-            // The core copied it into its own folder.
-            defer { try? FileManager.default.removeItem(at: file) }
             let size = (try FileManager.default.attributesOfItem(atPath: file.path)[.size] as? NSNumber)?.int64Value
             if (size ?? 0) > Self.mediaLimit {
+                try? FileManager.default.removeItem(at: file)
                 problem = .tooLarge
                 return
             }
+            removeAttachment()
+            attachment = Pending(path: file.path, mime: picked.mime, name: picked.name)
+            failed = nil
+        } catch {
+            failed = { await self.pick(picked) }
+            problem = Problem(error)
+        }
+    }
+
+    /// Takes the waiting photo or file away; nothing is sent.
+    func removeAttachment() {
+        guard let attachment else { return }
+        self.attachment = nil
+        try? FileManager.default.removeItem(atPath: attachment.path)
+    }
+
+    /// Sends `pending` with its caption; a failure puts both back to be sent again.
+    private func sendAttachment(_ pending: Pending, caption: String?) async {
+        problem = nil
+        let (account, id) = (account, id)
+        do {
             _ = try await offMain {
-                try account.sendMedia(id, path: file.path, mime: picked.mime, caption: nil, name: picked.name)
+                try account.sendMedia(id, path: pending.path, mime: pending.mime, caption: caption, name: pending.name)
             }
+            // The core copied it into its own folder.
+            try? FileManager.default.removeItem(atPath: pending.path)
             failed = nil
             live.sync()
             await load()
         } catch {
-            failed = { await self.attach(picked) }
+            if attachment == nil {
+                attachment = pending
+            } else {
+                try? FileManager.default.removeItem(atPath: pending.path)
+            }
+            if draft.isEmpty { draft = caption ?? "" }
+            failed = { await self.send() }
             problem = Problem(error)
         }
     }

@@ -96,7 +96,7 @@ private struct Photo: View {
 }
 
 /// The photo at `path`, no longer than `longest` pixels, turned the way it was taken.
-private func decodePhoto(_ path: String, longest: CGFloat) -> UIImage? {
+func decodePhoto(_ path: String, longest: CGFloat) -> UIImage? {
     guard let source = CGImageSourceCreateWithURL(URL(filePath: path) as CFURL, nil) else { return nil }
     let options: [CFString: Any] = [
         kCGImageSourceCreateThumbnailFromImageAlways: true,

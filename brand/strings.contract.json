@@ -264,6 +264,25 @@
       "surfaces": ["android", "ios"],
       "description": "Attach a photo or file to a message."
     },
+    "attachment_remove": {
+      "surfaces": ["android", "ios"],
+      "description": "Removes the photo or file waiting above the composer; nothing is sent (docs/decisions/0048)."
+    },
+    "caption_placeholder": {
+      "surfaces": ["android", "ios"],
+      "description": "The empty composer while a photo or file waits above it; its text is sent as the caption (docs/decisions/0048)."
+    },
+    "attachment_pending_photo": {
+      "surfaces": ["android", "ios"],
+      "description": "Screen reader label of the photo waiting above the composer (docs/decisions/0048)."
+    },
+    "attachment_pending_file": {
+      "surfaces": ["android", "ios"],
+      "description": "Screen reader label of the file waiting above the composer; name is the file's name (docs/decisions/0048).",
+      "placeholders": {
+        "name": "string"
+      }
+    },
     "camera": {
       "surfaces": ["android", "ios"],
       "description": "Composer button that takes a photo with the system camera (docs/decisions/0047)."

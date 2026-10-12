@@ -72,6 +72,20 @@ private const val RIGHT = 90f
 private const val HALF = 180f
 private const val LEFT = 270f
 
+/**
+ * Clears the GPS fields of the photo at [path] in place when [mime] is a format whose metadata can be
+ * written without encoding the photo again (decision 0048). Another format, such as HEIC, goes as the
+ * system picker gave it.
+ */
+fun stripLocation(
+    path: String,
+    mime: String,
+) {
+    if (mime in WRITABLE) stripLocation(path)
+}
+
+private val WRITABLE = setOf("image/jpeg", "image/png", "image/webp")
+
 /** Clears the GPS fields of the JPEG at [path] in place, keeping its orientation (decision 0047). */
 fun stripLocation(path: String) {
     val exif = ExifInterface(path)

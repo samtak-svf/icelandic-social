@@ -25,35 +25,97 @@ final class ConversationMediaTests: XCTestCase {
         return file
     }
 
-    func testAFileOverTheLimitIsRefusedBeforeItIsRead() async {
-        let model = await model()
-        await model.attach(
-            Picked(mime: "image/jpeg", size: ConversationModel.mediaLimit + 1) { throw CancellationError() })
-        XCTAssertEqual(model.problem, .tooLarge)
-        XCTAssertFalse(account.calls.contains { $0.hasPrefix("sendMedia") })
+    private func exists(_ file: URL) -> Bool { FileManager.default.fileExists(atPath: file.path) }
+
+    /// A photo picked, waiting above the field.
+    private func picked(_ model: ConversationModel, _ text: String = "hello") async throws -> URL {
+        let file = try copy(text)
+        await model.pick(Picked(mime: "image/jpeg", size: Int64(text.utf8.count), name: "fjall.jpg") { file })
+        return file
     }
 
-    func testAPickedFileIsSentUnderItsNameAndItsCopyDeleted() async throws {
+    func testAFileOverTheLimitIsRefusedBeforeItIsRead() async {
         let model = await model()
-        let file = try copy("hello")
-        await model.attach(Picked(mime: "image/jpeg", size: 5, name: "fjall.jpg") { file })
-        XCTAssertTrue(account.calls.contains("sendMedia c1 image/jpeg fjall.jpg hello"))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path), "the core keeps its own copy")
-        XCTAssertNil(model.problem)
+        await model.pick(
+            Picked(mime: "image/jpeg", size: ConversationModel.mediaLimit + 1) { throw CancellationError() })
+        XCTAssertEqual(model.problem, .tooLarge)
+        XCTAssertNil(model.attachment)
+    }
+
+    func testAPickedPhotoWaitsAndIsNotSent() async throws {
+        let model = await model()
+        let file = try await picked(model)
+        XCTAssertFalse(account.calls.contains { $0.hasPrefix("sendMedia") })
+        XCTAssertEqual(model.attachment, .init(path: file.path, mime: "image/jpeg", name: "fjall.jpg"))
+        XCTAssertTrue(model.sendable, "send replaces attach")
+        XCTAssertEqual(model.composerAction, .send)
+    }
+
+    func testSendSendsTheAttachmentWithTheDraftAsItsCaption() async throws {
+        let model = await model()
+        let file = try await picked(model)
+        model.type("  Esja í morgun ")
+        await model.send()
+        XCTAssertTrue(account.calls.contains("sendMedia c1 image/jpeg fjall.jpg Esja í morgun hello"))
+        XCTAssertFalse(account.calls.contains { $0.hasPrefix("send c1") }, "nothing goes as a text of its own")
+        XCTAssertFalse(exists(file), "the core keeps its own copy")
+        XCTAssertNil(model.attachment)
+        XCTAssertEqual(model.draft, "")
         XCTAssertEqual(account.calls.filter { $0 == "sync" }.count, 1, "the media message goes out")
     }
 
-    func testAFailedSendIsAProblemThatRetryReadsAgain() async throws {
+    func testAnEmptyFieldSendsNoCaption() async throws {
         let model = await model()
-        let (first, second) = (try copy("one"), try copy("two"))
-        let files = Files([first, second])
-        account.failNext = unreachable
-        await model.attach(Picked(mime: "application/pdf", size: nil) { files.next() })
+        _ = try await picked(model)
+        await model.send()
+        XCTAssertTrue(account.calls.contains("sendMedia c1 image/jpeg fjall.jpg nil hello"))
+    }
+
+    func testRemovingTheAttachmentDeletesItAndSendsNothing() async throws {
+        let model = await model()
+        let file = try await picked(model)
+        model.removeAttachment()
+        XCTAssertNil(model.attachment)
+        XCTAssertFalse(exists(file))
+        XCTAssertFalse(account.calls.contains { $0.hasPrefix("sendMedia") })
+        XCTAssertEqual(model.composerAction, .attach)
+    }
+
+    func testASecondPickReplacesTheFirst() async throws {
+        let model = await model()
+        let first = try await picked(model, "first")
+        let second = try await picked(model, "second")
+        XCTAssertFalse(exists(first))
+        XCTAssertEqual(model.attachment?.path, second.path)
+    }
+
+    func testReplyingOrEditingRemovesAWaitingAttachment() async throws {
+        let model = await model()
+        let first = try await picked(model)
+        model.reply(item(4))
+        XCTAssertNil(model.attachment)
+        XCTAssertFalse(exists(first))
+        let second = try await picked(model)
+        model.cancelMode()
+        model.edit(item(5, own: true))
+        XCTAssertNil(model.attachment)
+        XCTAssertFalse(exists(second))
+    }
+
+    func testAFailedSendKeepsTheAttachmentAndCaptionToTryAgain() async throws {
+        let model = await model()
+        let file = try await picked(model)
+        model.type("Esja")
+        account.failOn = "sendMedia c1 image/jpeg fjall.jpg Esja hello"
+        await model.send()
         XCTAssertEqual(model.problem, .unreachable)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: first.path))
+        XCTAssertEqual(model.attachment?.path, file.path)
+        XCTAssertTrue(exists(file))
+        XCTAssertEqual(model.draft, "Esja")
+        account.failOn = nil
         await model.retry()
-        XCTAssertNil(model.problem)
-        XCTAssertTrue(account.calls.contains("sendMedia c1 application/pdf nil two"))
+        XCTAssertNil(model.attachment)
+        XCTAssertEqual(account.calls.filter { $0.hasPrefix("sendMedia") }.count, 2)
     }
 
     func testAFailedDownloadCanBeAskedForAgainAndAReadyOneIsKept() async {
@@ -108,14 +170,4 @@ final class ConversationMediaTests: XCTestCase {
         await model.block()
         XCTAssertFalse(account.calls.contains { $0.hasPrefix("block") })
     }
-}
-
-/// Hands out one file per read.
-private final class Files: @unchecked Sendable {
-    private let lock = NSLock()
-    private var files: [URL]
-
-    init(_ files: [URL]) { self.files = files }
-
-    func next() -> URL { lock.withLock { files.removeFirst() } }
 }

@@ -159,6 +159,36 @@ final class SquarePhotoTests: XCTestCase {
         XCTAssertEqual(properties?[kCGImagePropertyOrientation] as? Int ?? 1, 1, "upright in its pixels")
     }
 
+    func testAPickedPhotoLosesItsLocationAndKeepsItsBytesOtherwise() throws {
+        let original = try write(width: 200, height: 100, orientation: 6, gps: true) { context in
+            context.setFillColor(red: 1, green: 0, blue: 0, alpha: 1)
+            context.fill(CGRect(x: 0, y: 0, width: 200, height: 100))
+        }
+        let pixels = try XCTUnwrap(read(original)).dataProvider?.data as Data?
+        let before = try XCTUnwrap(CGImageSourceCreateWithURL(original as CFURL, nil))
+        let had = CGImageSourceCopyPropertiesAtIndex(before, 0, nil) as? [CFString: Any]
+        XCTAssertNotNil(had?[kCGImagePropertyGPSDictionary], "the photo had a location to lose")
+        XCTAssertEqual(had?[kCGImagePropertyOrientation] as? Int, 6, "the photo was written on its side")
+        let stripped = withoutLocation(original)
+        made.append(stripped)
+        XCTAssertNotEqual(stripped, original)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: original.path), "the copy with a location is gone")
+        let source = try XCTUnwrap(CGImageSourceCreateWithURL(stripped as CFURL, nil))
+        XCTAssertEqual(CGImageSourceGetType(source) as String?, UTType.jpeg.identifier)
+        let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+        XCTAssertNil(properties?[kCGImagePropertyGPSDictionary], "no location goes with a picked photo (0048)")
+        XCTAssertEqual(properties?[kCGImagePropertyOrientation] as? Int, 6, "which way is up stays")
+        XCTAssertEqual(try XCTUnwrap(read(stripped)).dataProvider?.data as Data?, pixels, "not encoded again")
+    }
+
+    func testWhatIsNotAPhotoGoesAsItIs() throws {
+        let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        made.append(file)
+        try Data("not a photo".utf8).write(to: file)
+        XCTAssertEqual(withoutLocation(file), file)
+        XCTAssertEqual(try Data(contentsOf: file), Data("not a photo".utf8))
+    }
+
     func testAFileThatIsNotAPhotoIsRefused() throws {
         let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
         made.append(file)

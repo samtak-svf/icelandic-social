@@ -295,7 +295,7 @@ class FakeAccount(
         caption: String?,
         name: String?,
     ): String {
-        call("sendMedia $conversation $mime $name ${java.io.File(path).readText()}")
+        call("sendMedia $conversation $mime $name $caption ${java.io.File(path).readText()}")
         return "e-media${calls.size}"
     }
 

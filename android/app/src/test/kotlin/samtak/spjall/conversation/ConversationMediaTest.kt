@@ -52,27 +52,127 @@ class ConversationMediaTest {
 
     private val pdf = item(3u, content = Content.Media("application/pdf", 10uL, null, "skýrsla.pdf"))
 
+    private fun TestScope.picked(
+        model: ConversationViewModel,
+        text: String = "hello",
+        mime: String = "image/jpeg",
+    ): java.io.File {
+        val copy = folder.newFile().apply { writeText(text) }
+        model.pick(Picked(mime, text.length.toLong(), "fjall.jpg") { copy })
+        advanceUntilIdle()
+        return copy
+    }
+
     @Test
     fun aFileOverTheLimitIsRefusedBeforeItIsRead() =
         runTest(dispatcher) {
             val model = model()
-            model.attach(Picked("image/jpeg", MEDIA_LIMIT + 1) { error("read") })
+            model.pick(Picked("image/jpeg", MEDIA_LIMIT + 1) { error("read") })
             advanceUntilIdle()
             assertEquals(Problem.TooLarge, model.state.value.problem)
-            assertTrue(account.calls.none { it.startsWith("sendMedia") })
+            assertNull(model.state.value.attachment)
         }
 
     @Test
-    fun aPickedFileIsSentUnderItsNameAndItsCopyDeleted() =
+    fun aPickedPhotoWaitsAndIsNotSent() =
         runTest(dispatcher) {
             val model = model()
-            val copy = folder.newFile().apply { writeText("hello") }
-            model.attach(Picked("image/jpeg", 5, "fjall.jpg") { copy })
+            val copy = picked(model)
+            assertTrue(account.calls.none { it.startsWith("sendMedia") })
+            val state = model.state.value
+            assertEquals(ConversationViewModel.Pending(copy.path, "image/jpeg", "fjall.jpg"), state.attachment)
+            assertTrue("send replaces attach", state.sendable)
+            assertEquals(ConversationViewModel.ComposerAction.SEND, state.action)
+        }
+
+    @Test
+    fun sendSendsTheAttachmentWithTheDraftAsItsCaption() =
+        runTest(dispatcher) {
+            val model = model()
+            val copy = picked(model)
+            model.draft("  Esja í morgun ")
+            model.send()
             advanceUntilIdle()
-            assertTrue("sendMedia c1 image/jpeg fjall.jpg hello" in account.calls)
+            assertTrue("sendMedia c1 image/jpeg fjall.jpg Esja í morgun hello" in account.calls)
+            assertTrue("nothing goes as a text of its own", account.calls.none { it.startsWith("send c1") })
             assertFalse("the core keeps its own copy", copy.exists())
-            assertNull(model.state.value.problem)
+            val state = model.state.value
+            assertNull(state.attachment)
+            assertEquals("", state.draft)
             assertEquals("the media message goes out", 1, live.syncs)
+        }
+
+    @Test
+    fun anEmptyFieldSendsNoCaption() =
+        runTest(dispatcher) {
+            val model = model()
+            picked(model)
+            model.send()
+            advanceUntilIdle()
+            assertTrue("sendMedia c1 image/jpeg fjall.jpg null hello" in account.calls)
+        }
+
+    @Test
+    fun removingTheAttachmentDeletesItAndSendsNothing() =
+        runTest(dispatcher) {
+            val model = model()
+            val copy = picked(model)
+            model.removeAttachment()
+            advanceUntilIdle()
+            assertNull(model.state.value.attachment)
+            assertFalse(copy.exists())
+            assertTrue(account.calls.none { it.startsWith("sendMedia") })
+            assertEquals(ConversationViewModel.ComposerAction.ATTACH, model.state.value.action)
+        }
+
+    @Test
+    fun aSecondPickReplacesTheFirst() =
+        runTest(dispatcher) {
+            val model = model()
+            val first = picked(model, "first")
+            val second = picked(model, "second")
+            assertFalse(first.exists())
+            assertEquals(
+                second.path,
+                model.state.value.attachment
+                    ?.path,
+            )
+        }
+
+    @Test
+    fun replyingOrEditingRemovesAWaitingAttachment() =
+        runTest(dispatcher) {
+            val model = model()
+            val first = picked(model)
+            model.reply(item(4u))
+            assertNull(model.state.value.attachment)
+            assertFalse(first.exists())
+            val second = picked(model)
+            model.cancelMode()
+            model.edit(item(5u, own = true))
+            assertNull(model.state.value.attachment)
+            assertFalse(second.exists())
+        }
+
+    @Test
+    fun aFailedSendKeepsTheAttachmentAndCaptionToTryAgain() =
+        runTest(dispatcher) {
+            val model = model()
+            val copy = picked(model)
+            model.draft("Esja")
+            account.failOn = "sendMedia c1 image/jpeg fjall.jpg Esja hello"
+            model.send()
+            advanceUntilIdle()
+            val state = model.state.value
+            assertEquals(Problem.Unreachable, state.problem)
+            assertEquals(copy.path, state.attachment?.path)
+            assertTrue(copy.exists())
+            assertEquals("Esja", state.draft)
+            account.failOn = null
+            model.retry()
+            advanceUntilIdle()
+            assertNull(model.state.value.attachment)
+            assertEquals(2, account.calls.count { it.startsWith("sendMedia") })
         }
 
     @Test

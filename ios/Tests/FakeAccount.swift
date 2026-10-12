@@ -339,7 +339,7 @@ final class FakeAccount: Account, @unchecked Sendable {
     func sendMedia(_ conversation: String, path: String, mime: String, caption: String?, name: String?) throws -> String
     {
         let text = (try? String(contentsOfFile: path, encoding: .utf8)) ?? "?"
-        try call("sendMedia \(conversation) \(mime) \(name ?? "nil") \(text)")
+        try call("sendMedia \(conversation) \(mime) \(name ?? "nil") \(caption ?? "nil") \(text)")
         return "e-media\(calls.count)"
     }
 

@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -27,6 +28,7 @@ import samtak.spjall.core.Event
 import samtak.spjall.core.Item
 import samtak.spjall.core.MuteFor
 import samtak.spjall.socket.Live
+import java.io.File
 import java.io.IOException
 
 /**
@@ -67,6 +69,15 @@ class ConversationViewModel(
         data object Failed : Media
     }
 
+    /** A photo or file picked and not sent yet (0048): the field's text goes with it as its caption. */
+    data class Pending(
+        val path: String,
+        val mime: String,
+        val name: String?,
+    ) {
+        val photo: Boolean get() = mime.startsWith("image/")
+    }
+
     /** A file to open in another app. */
     data class Opened(
         val path: String,
@@ -85,15 +96,26 @@ class ConversationViewModel(
         val draft: String = "",
         val mode: Mode = Mode.New,
         val media: Map<ULong, Media> = emptyMap(),
+        val attachment: Pending? = null,
         val problem: Problem? = null,
     ) {
         /**
          * The composer's one action (0043): attach while a new message's
-         * field is empty, send once it has text. Replying or editing never
-         * attaches, so send stays there.
+         * field is empty and nothing waits above it (0048), send once it has
+         * text or an attachment. Replying or editing never attaches, so send
+         * stays there.
          */
         val action: ComposerAction
-            get() = if (mode == Mode.New && draft.isBlank()) ComposerAction.ATTACH else ComposerAction.SEND
+            get() =
+                if (mode == Mode.New && draft.isBlank() && attachment == null) {
+                    ComposerAction.ATTACH
+                } else {
+                    ComposerAction.SEND
+                }
+
+        /** Send has something to send. */
+        val sendable: Boolean
+            get() = draft.isNotBlank() || (mode == Mode.New && attachment != null)
     }
 
     enum class ComposerAction { ATTACH, SEND }
@@ -164,12 +186,15 @@ class ConversationViewModel(
         if (text.isBlank()) stopTyping() else startTyping()
     }
 
+    /** A reply or an edit carries no photo or file, so one waiting goes (0048). */
     fun reply(item: Item) {
+        removeAttachment()
         _state.update { it.copy(mode = Mode.Reply(item)) }
     }
 
     fun edit(item: Item) {
         val text = (item.content as? Content.Text)?.text ?: return
+        removeAttachment()
         _state.update { it.copy(mode = Mode.Edit(item), draft = text) }
     }
 
@@ -181,6 +206,12 @@ class ConversationViewModel(
     fun send() {
         val state = _state.value
         val text = state.draft.trim()
+        if (state.mode == Mode.New && state.attachment != null) {
+            _state.update { it.copy(draft = "", attachment = null) }
+            stopTyping()
+            sendAttachment(state.attachment, text.ifEmpty { null })
+            return
+        }
         val body =
             when (val mode = state.mode) {
                 Mode.New -> Body.Text(text)
@@ -206,27 +237,31 @@ class ConversationViewModel(
         queue(Body.Reaction(target, emoji, remove = item.reactions.any { it.emoji == emoji && it.own }))
     }
 
-    /** Sends a photo or file; one over the limit is refused before it is read. */
-    fun attach(picked: Picked) {
+    /**
+     * Reads a picked photo or file to wait above the field until it is sent
+     * or taken away (0048); one over the limit is refused before it is read.
+     * A second one takes the place of the first.
+     */
+    fun pick(picked: Picked) {
         if ((picked.size ?: 0L) > MEDIA_LIMIT) {
             _state.update { it.copy(problem = Problem.TooLarge) }
             return
         }
-        perform({ attach(picked) }) {
+        perform({ pick(picked) }) {
             val file = picked.read()
-            try {
-                if (file.length() > MEDIA_LIMIT) {
-                    _state.update { it.copy(problem = Problem.TooLarge) }
-                } else {
-                    account.sendMedia(id, file.path, picked.mime, null, picked.name)
-                    live.sync()
-                    load()
-                }
-            } finally {
-                // The core copied it into its own folder.
+            if (file.length() > MEDIA_LIMIT) {
                 file.delete()
+                _state.update { it.copy(problem = Problem.TooLarge) }
+                return@perform
             }
+            val pending = Pending(file.path, picked.mime, picked.name)
+            _state.getAndUpdate { it.copy(attachment = pending) }.attachment?.let { File(it.path).delete() }
         }
+    }
+
+    /** Takes the waiting photo or file away; nothing is sent. */
+    fun removeAttachment() {
+        _state.getAndUpdate { it.copy(attachment = null) }.attachment?.let { File(it.path).delete() }
     }
 
     /** Downloads the photo or file of [item], once; a failed one can be asked for again. */
@@ -311,6 +346,33 @@ class ConversationViewModel(
             live.sync()
             load()
         }
+    }
+
+    /** Sends [pending] with its caption; a failure puts both back to be sent again. */
+    private fun sendAttachment(
+        pending: Pending,
+        caption: String?,
+    ) {
+        perform(::send) {
+            try {
+                account.sendMedia(id, pending.path, pending.mime, caption, pending.name)
+            } catch (e: CoreException) {
+                _state.update {
+                    it.copy(attachment = it.attachment ?: pending, draft = it.draft.ifEmpty { caption.orEmpty() })
+                }
+                throw e
+            }
+            // The core copied it into its own folder.
+            File(pending.path).delete()
+            live.sync()
+            load()
+        }
+    }
+
+    override fun onCleared() {
+        // A photo or file still waiting goes with the screen; [samtak.spjall.media.Files.clear] takes
+        // what a process death left.
+        _state.value.attachment?.let { File(it.path).delete() }
     }
 
     private suspend fun read() {

@@ -661,6 +661,54 @@
         }
       }
     },
+    "attachment_remove": {
+      "comment": "Removes the photo or file waiting above the composer; nothing is sent (docs/decisions/0048).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjarlægja viðhengi"
+          }
+        }
+      }
+    },
+    "caption_placeholder": {
+      "comment": "The empty composer while a photo or file waits above it; its text is sent as the caption (docs/decisions/0048).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bæta við texta…"
+          }
+        }
+      }
+    },
+    "attachment_pending_photo": {
+      "comment": "Screen reader label of the photo waiting above the composer (docs/decisions/0048).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mynd tilbúin til sendingar"
+          }
+        }
+      }
+    },
+    "attachment_pending_file": {
+      "comment": "Screen reader label of the file waiting above the composer; name is the file's name (docs/decisions/0048).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrá tilbúin til sendingar: %1$@"
+          }
+        }
+      }
+    },
     "camera": {
       "comment": "Composer button that takes a photo with the system camera (docs/decisions/0047).",
       "extractionState": "manual",

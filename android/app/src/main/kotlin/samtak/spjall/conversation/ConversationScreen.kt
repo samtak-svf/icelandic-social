@@ -188,6 +188,7 @@ private fun Timeline(
         val own = (newest as? Row.Bubble)?.item?.own == true
         if (newest != null && (own || list.firstVisibleItemIndex <= 1)) list.scrollTo(0, reduce)
     }
+    FollowGrowth(list)
     LaunchedEffect(list, rows.size) {
         snapshotFlow {
             list.layoutInfo.visibleItemsInfo
@@ -291,21 +292,24 @@ private fun Composer(
             is ConversationViewModel.Mode.Reply -> ModeLine(R.string.reply, lastLine(mode.item), actions::cancelMode)
             is ConversationViewModel.Mode.Edit -> ModeLine(R.string.edit, lastLine(mode.item), actions::cancelMode)
         }
+        state.attachment?.let { PendingStrip(it, actions::removeAttachment) }
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Spacer(Modifier.width(12.dp))
-            Field(state.draft, actions::draft, Modifier.weight(1f))
+            val placeholder = state.attachment?.let { R.string.caption_placeholder } ?: R.string.composer_placeholder
+            Field(state.draft, actions::draft, placeholder, Modifier.weight(1f))
             // One action at a time, in one place (0043): camera and attach while the
-            // field is empty (0047), send once it has text; replying or editing keeps send.
+            // field is empty (0047), send once it has text or a photo or file waits (0048);
+            // replying or editing keeps send.
             when (state.action) {
                 ConversationViewModel.ComposerAction.ATTACH -> {
                     CameraButton(actions)
                     AttachButton(actions)
                 }
                 ConversationViewModel.ComposerAction.SEND -> {
-                    val ready = state.draft.isNotBlank()
+                    val ready = state.sendable
                     val haptics = LocalHapticFeedback.current
                     RoundButton(
                         icon = AppIcons.Send,
@@ -330,6 +334,7 @@ private fun Composer(
 private fun Field(
     value: String,
     onChange: (String) -> Unit,
+    placeholder: Int,
     modifier: Modifier,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -353,7 +358,7 @@ private fun Field(
                 contentAlignment = Alignment.CenterStart,
             ) {
                 if (value.isEmpty()) {
-                    Text(text = stringResource(R.string.composer_placeholder), style = FIELD, color = Palette.mutedFg)
+                    Text(text = stringResource(placeholder), style = FIELD, color = Palette.mutedFg)
                 }
                 inner()
             }

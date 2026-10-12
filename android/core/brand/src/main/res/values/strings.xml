@@ -119,6 +119,14 @@
     </plurals>
     <!-- Attach a photo or file to a message. -->
     <string name="attach">Hengja við</string>
+    <!-- Removes the photo or file waiting above the composer; nothing is sent (docs/decisions/0048). -->
+    <string name="attachment_remove">Fjarlægja viðhengi</string>
+    <!-- The empty composer while a photo or file waits above it; its text is sent as the caption (docs/decisions/0048). -->
+    <string name="caption_placeholder">Bæta við texta…</string>
+    <!-- Screen reader label of the photo waiting above the composer (docs/decisions/0048). -->
+    <string name="attachment_pending_photo">Mynd tilbúin til sendingar</string>
+    <!-- Screen reader label of the file waiting above the composer; name is the file's name (docs/decisions/0048). -->
+    <string name="attachment_pending_file">Skrá tilbúin til sendingar: %1$s</string>
     <!-- Composer button that takes a photo with the system camera (docs/decisions/0047). -->
     <string name="camera">Taka mynd</string>
     <!-- Stands in for an account whose name the server has not given, in titles and rows (docs/decisions/0022). -->

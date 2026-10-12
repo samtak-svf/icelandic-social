@@ -46,6 +46,18 @@ class Files(
         return Picked(JPEG, moved.length()) { moved }
     }
 
+    /**
+     * A photo picked through "Mynd", without where it was taken (0048), in
+     * the formats that can lose it without being encoded again; [picked]
+     * keeps a file sent through "Skrá" as it is, byte for byte.
+     */
+    fun pickedPhoto(uri: Uri): Picked {
+        val picked = picked(uri)
+        return Picked(picked.mime, picked.size, picked.name) {
+            picked.read().also { stripLocation(it.path, picked.mime) }
+        }
+    }
+
     fun picked(uri: Uri): Picked {
         val resolver = context.contentResolver
         val columns = arrayOf(OpenableColumns.SIZE, OpenableColumns.DISPLAY_NAME)

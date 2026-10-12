@@ -79,6 +79,8 @@ class ConversationScreenshotTest {
 
             override fun attachFile() = Unit
 
+            override fun removeAttachment() = Unit
+
             override fun fetch(item: Item) = Unit
 
             override fun open(item: Item) = Unit
@@ -132,6 +134,7 @@ class ConversationScreenshotTest {
     private fun show(
         vararg items: Item,
         draft: String = "",
+        attachment: ConversationViewModel.Pending? = null,
     ) = compose.setContent {
         SpjallTheme {
             ConversationScreen(
@@ -149,6 +152,7 @@ class ConversationScreenshotTest {
                     items = items.toList(),
                     loaded = true,
                     draft = draft,
+                    attachment = attachment,
                 ),
                 actions,
             )
@@ -158,6 +162,26 @@ class ConversationScreenshotTest {
     @Test
     fun emptyComposerOffersAttach() {
         show(item(1u, Content.Text("Sæl", null)))
+        compose.onRoot().captureRoboImage()
+    }
+
+    @Test
+    fun aWaitingPhotoTakesItsCaptionFromTheField() {
+        // A path with no photo keeps the grey square the strip shows while it decodes.
+        show(
+            item(1u, Content.Text("Sæl", null)),
+            draft = "Esjan í morgun",
+            attachment = ConversationViewModel.Pending("/nowhere/photo.jpg", "image/jpeg", null),
+        )
+        compose.onRoot().captureRoboImage()
+    }
+
+    @Test
+    fun aWaitingFileShowsItsNameAndSend() {
+        show(
+            item(1u, Content.Text("Sæl", null)),
+            attachment = ConversationViewModel.Pending("/nowhere/x", "application/pdf", "skýrsla-um-veðrið.pdf"),
+        )
         compose.onRoot().captureRoboImage()
     }
 
