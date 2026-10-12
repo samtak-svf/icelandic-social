@@ -1,6 +1,8 @@
 # 0047. The conversation header, a camera button, a quieter Ég, and a way back from Nýtt hjal
 
-- Status: accepted; implemented in the apps (#214), released as 0.6.2
+- Status: accepted; attaching amended by [0048](0048-server-time-lines-attachment-preview-and-photo-location.md)
+  (the preview, which 0.6.2 did not have; location in a picked photo), implemented in the apps
+  (#214), released as 0.6.2
 - Date: 2026-10-12
 - Decided by: the maintainer, asking to continue with the next items (5 to 8) of the 0.5.0 UX
   review

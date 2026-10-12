@@ -1,6 +1,8 @@
 # 0045. Times go between messages, and reactions are one pill on the bubble
 
-- Status: accepted; implemented in the apps (#207, #208), released as 0.6.0
+- Status: accepted; time lines amended by [0048](0048-server-time-lines-attachment-preview-and-photo-location.md)
+  (the server's time; no line for a late message), implemented in the apps (#207, #208),
+  released as 0.6.0
 - Date: 2026-10-11
 - Decided by: the maintainer, choosing items 1, 3 and 4 of the 0.5.0 UX review
 - Amends: [0022](0022-the-conversation-surfaces.md) (grouping: "one time"; the reaction
@@ -20,7 +22,8 @@
   the week ("mánudagur 09:12"), else the date ("30. ágúst 14:00"), and with the year when it is
   not this one. It uses the day line's style, so the words for today and yesterday stay brand
   strings.
-- **A message that arrives late gets its own line.** Items stay in `seq` order (0022), so a
+- **A message that arrives late gets its own line** (withdrawn by 0048: a line shows the
+  server's time). Items stay in `seq` order (0022), so a
   message sent offline yesterday and delivered today sits among today's. Its day differs from
   the previous item's, so a line saying "Í gær 23:01" goes before it, and the next item, back
   on today, gets a line too. No time is ever shown under the wrong day.
