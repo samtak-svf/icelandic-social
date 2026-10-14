@@ -72,11 +72,24 @@ describe("revoking a device", () => {
     expect((await fetch("/v1/me", { headers: theirs.auth })).status).toBe(200);
   });
 
-  it("answers 404 for a device already revoked", async () => {
+  it("revokes a device already revoked again, closing the socket a failed revoke left open", async () => {
     const phone = await device();
     const tablet = await device({ accountId: phone.accountId });
+    const socket = await connect(tablet.auth);
+    expect((await socket.next()).type).toBe("hello");
+    // A revoke whose D1 step landed and whose Inbox step failed.
+    await env.DB.prepare("UPDATE devices SET revoked_at = 1 WHERE device_id = ?")
+      .bind(tablet.deviceId)
+      .run();
+
     expect((await remove(`/v1/devices/${tablet.deviceId}`, phone.auth)).status).toBe(204);
-    expect((await remove(`/v1/devices/${tablet.deviceId}`, phone.auth)).status).toBe(404);
+    expect((await socket.closed).code).toBe(REVOKED);
+    expect(
+      await count(
+        "SELECT count(*) AS n FROM devices WHERE device_id = ? AND revoked_at = 1",
+        tablet.deviceId,
+      ),
+    ).toBe(1);
   });
 });
 

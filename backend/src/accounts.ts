@@ -409,9 +409,11 @@ export async function me(env: Env, accountId: string) {
 }
 
 /**
- * Revokes one active device of this account, so its token fails at once, and
- * drops its KeyPackages so no one adds it to a group again (decision 0019).
- * False when the account has no such active device.
+ * Revokes one device of this account, so its token fails at once, and drops
+ * its KeyPackages so no one adds it to a group again (decision 0019). A
+ * device already revoked is revoked again, keeping its time, so a revoke that
+ * failed after this step can be retried. False when the account has no such
+ * device.
  */
 export async function revokeDevice(
   env: Env,
@@ -421,8 +423,8 @@ export async function revokeDevice(
   const [revoked] = await db(env).batch([
     db(env)
       .prepare(
-        `UPDATE devices SET revoked_at = ?, push_token = NULL
-         WHERE device_id = ? AND account_id = ? AND revoked_at IS NULL`,
+        `UPDATE devices SET revoked_at = coalesce(revoked_at, ?), push_token = NULL
+         WHERE device_id = ? AND account_id = ?`,
       )
       .bind(Date.now(), deviceId, accountId),
     db(env)

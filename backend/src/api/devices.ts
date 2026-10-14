@@ -186,14 +186,14 @@ export const revokeDeviceRoute = createRoute({
   tags: ["devices"],
   summary: "Revoke a device of this account and its token",
   description:
-    "The token fails at once, the device's KeyPackages are deleted, and its socket closes with 4401. A device may revoke itself; that is signing out (decision 0019).",
+    "The token fails at once, the device's KeyPackages are deleted, and its socket closes with 4401. A device may revoke itself; that is signing out (decision 0019). Revoking a device already revoked does it again, so a revoke that failed part way can be retried.",
   security: DEVICE_TOKEN,
   request: { params: z.object({ deviceId: OpaqueId }) },
   responses: {
-    204: { description: "The device is revoked" },
+    204: { description: "The device is revoked, or already was" },
     ...INVALID,
     ...AUTHED,
-    404: errorResponse("not_found: this account has no such active device"),
+    404: errorResponse("not_found: this account has no such device"),
   },
 });
 

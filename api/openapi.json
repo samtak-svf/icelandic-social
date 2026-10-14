@@ -1620,7 +1620,7 @@
           "devices"
         ],
         "summary": "Revoke a device of this account and its token",
-        "description": "The token fails at once, the device's KeyPackages are deleted, and its socket closes with 4401. A device may revoke itself; that is signing out (decision 0019).",
+        "description": "The token fails at once, the device's KeyPackages are deleted, and its socket closes with 4401. A device may revoke itself; that is signing out (decision 0019). Revoking a device already revoked does it again, so a revoke that failed part way can be retried.",
         "security": [
           {
             "deviceToken": []
@@ -1640,7 +1640,7 @@
         ],
         "responses": {
           "204": {
-            "description": "The device is revoked"
+            "description": "The device is revoked, or already was"
           },
           "400": {
             "description": "The request does not match the schema",
@@ -1663,7 +1663,7 @@
             }
           },
           "404": {
-            "description": "not_found: this account has no such active device",
+            "description": "not_found: this account has no such device",
             "content": {
               "application/json": {
                 "schema": {
