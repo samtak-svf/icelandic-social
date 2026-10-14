@@ -219,8 +219,35 @@ describe("block", () => {
     const refused = await send("POST", `/v1/conversations/${id}/messages`, a.auth, add);
     expect(refused.status).toBe(403);
     expect(await errorOf(refused)).toBe("blocked");
+    // Without a Welcome too: b's devices would join by GroupInfo on the notify (0021).
+    const quietly = {
+      clientMsgId: "add_b_quietly",
+      ciphertext: mls.claimed("add b", [a.accountId, b.accountId]),
+      groupInfo: mls.groupInfo("add b"),
+    };
+    const alsoRefused = await send("POST", `/v1/conversations/${id}/messages`, a.auth, quietly);
+    expect(alsoRefused.status).toBe(403);
+    expect(await errorOf(alsoRefused)).toBe("blocked");
 
     await send("DELETE", `/v1/blocks/${a.accountId}`, b.auth);
     expect((await send("POST", `/v1/conversations/${id}/messages`, a.auth, add)).status).toBe(200);
+  });
+
+  it("keeps a blocker that is a member already, and refuses only bringing one in", async () => {
+    const [a, b, c] = [await device(), await device(), await device()];
+    const group = await together(a, b);
+    const commit = (epoch: number, roster: Device[], blockedBy: Device[]) =>
+      group.stub.send({
+        account: a.accountId,
+        clientMsgId: `c${epoch}`,
+        ciphertext: Uint8Array.of(2),
+        urgent: false,
+        commitEpoch: epoch,
+        roster: roster.map((m) => m.accountId),
+        blockedBy: blockedBy.map((m) => m.accountId),
+      });
+    expect(await commit(1, [a, b], [b])).toEqual({ ok: { seq: 2 } });
+    expect(await commit(2, [a, b, c], [b, c])).toEqual({ error: "blocked" });
+    expect(await commit(2, [a, b, c], [b])).toEqual({ ok: { seq: 3 } });
   });
 });

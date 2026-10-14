@@ -2,8 +2,9 @@ diff --git a/backend/src/do/conversation.ts b/backend/src/do/conversation.ts
 index 7a10b88..1a196cf 100644
 --- a/backend/src/do/conversation.ts
 +++ b/backend/src/do/conversation.ts
-@@ -5,7 +5,7 @@ import { within } from "../within.ts";
+@@ -5,8 +5,8 @@ import { within } from "../within.ts";
  import { copyRoster, dropRoster } from "../profiles.ts";
+ import { SCHEMA } from "./conversation-schema.ts";
  
  /** Stored ciphertext and Welcomes are deleted this long after they were stored (decision 0015). */
 -export const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;

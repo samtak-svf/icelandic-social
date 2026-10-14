@@ -34,7 +34,7 @@ import { claimKeyPackagesRoute, uploadKeyPackagesRoute } from "./api/key-package
 import { getMediaRoute, putMediaRoute } from "./api/media.ts";
 import { listMessagesRoute, sendMessageRoute } from "./api/messages.ts";
 import { SOCKET_ACCOUNT, SOCKET_DEVICE, socketRoute } from "./api/socket.ts";
-import { blockedByAny } from "./blocks.ts";
+import { blockedByAny, blockersAmong } from "./blocks.ts";
 import { fromBase64, toBase64 } from "./bytes.ts";
 import { belowFloor, CLIENT_HEADER } from "./client-version.ts";
 import { checkSend } from "./conversations.ts";
@@ -283,17 +283,20 @@ export function createApp() {
     if (checked.joiner && !(await ownsLeaf(c.env, c.var.device, checked.joiner))) {
       return fail(c, 400, "invalid_request");
     }
-    // A commit cannot bring in an account that has blocked its sender (0024).
-    const added = checked.ok.welcome?.to ?? [];
-    if (await blockedByAny(c.env, c.var.device.accountId, added)) {
-      return fail(c, 403, "blocked");
-    }
-    const result = await conversation(c.env, conversationId).send(checked.ok);
+    // A commit cannot bring in an account that has blocked its sender (0024):
+    // the DO refuses a claim naming one that is not a member already.
+    const { roster } = checked.ok;
+    const blockedBy = roster && (await blockersAmong(c.env, c.var.device.accountId, roster));
+    const result = await conversation(c.env, conversationId).send({
+      ...checked.ok,
+      ...(blockedBy?.length ? { blockedBy } : {}),
+    });
     if ("ok" in result) return c.json(result.ok, 200);
     switch (result.error) {
       case "not_found":
         return fail(c, 404, result.error);
       case "not_a_member":
+      case "blocked":
         return fail(c, 403, result.error);
       case "epoch_conflict":
       case "claim_names_departed":

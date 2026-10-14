@@ -58,19 +58,27 @@ export async function blockList(env: Env, blocker: string): Promise<Blocked[]> {
   return results.map((r) => ({ ...r, verified: r.verified === 1 }));
 }
 
+/** The accounts among `accounts` that have blocked `account`. */
+export async function blockersAmong(
+  env: Env,
+  account: string,
+  accounts: string[],
+): Promise<string[]> {
+  const { results } = await db(env)
+    .prepare(
+      `SELECT blocker_account_id AS accountId FROM blocks WHERE blocked_account_id = ?
+          AND blocker_account_id IN (SELECT value FROM json_each(?))`,
+    )
+    .bind(account, JSON.stringify(accounts))
+    .all<{ accountId: string }>();
+  return results.map((r) => r.accountId);
+}
+
 /** Whether any of `accounts` has blocked `account`. */
 export async function blockedByAny(
   env: Env,
   account: string,
   accounts: string[],
 ): Promise<boolean> {
-  if (!accounts.length) return false;
-  const row = await db(env)
-    .prepare(
-      `SELECT 1 FROM blocks WHERE blocked_account_id = ?
-          AND blocker_account_id IN (SELECT value FROM json_each(?)) LIMIT 1`,
-    )
-    .bind(account, JSON.stringify(accounts))
-    .first();
-  return row !== null;
+  return (await blockersAmong(env, account, accounts)).length > 0;
 }

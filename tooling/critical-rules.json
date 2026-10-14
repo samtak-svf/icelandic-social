@@ -420,6 +420,10 @@
           "name": "refuses a commit that brings in an account that has blocked its sender"
         },
         {
+          "file": "backend/test/accounts.test.ts",
+          "name": "keeps a blocker that is a member already, and refuses only bringing one in"
+        },
+        {
           "file": "core/client/tests/sync.rs",
           "name": "a_blocked_account_cannot_reach_the_blocker_again"
         }

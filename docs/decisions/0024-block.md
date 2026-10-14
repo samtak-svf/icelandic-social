@@ -1,7 +1,7 @@
 # 0024. Block is per account: the server refuses new contact, the core hides the rest
 
 - Status: accepted; implemented in the backend (#55) and the core (#58); the apps offer it
-  since #64 and #67
+  since #64 and #67; a roster claim without a Welcome refused since #222
 - Date: 2026-10-07
 - Decided by: the maintainer, approving the plan for the conversation UI
 - Builds on: [0009](0009-v1-scope.md) (block is in v1),
@@ -17,7 +17,9 @@
   lift it; `GET /v1/blocks` lists the caller's own blocks for "Ég". Both are reversible.
 - **The server refuses new contact from a blocked account.** It cannot claim the blocker's
   KeyPackages (`403 blocked`), so it cannot add the blocker to a conversation or open a 1:1
-  from the blocker's invite link. `GET /v1/accounts/{accountId}` still answers, so a shared
+  from the blocker's invite link. Nor can a commit's roster claim name the blocker, with a
+  Welcome or without: a claim alone would bring the blocker's devices in by GroupInfo (0021).
+  A blocker who is a member already stays, as below. `GET /v1/accounts/{accountId}` still answers, so a shared
   group keeps showing the name.
 - **The blocker's core removes the blocked account from their shared 1:1s**, with an
   ordinary remove commit (0020). The other side sees the conversation as removed.

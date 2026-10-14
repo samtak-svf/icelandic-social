@@ -3,6 +3,7 @@ import { inbox } from "../env/index.ts";
 import { log } from "../log.ts";
 import { within } from "../within.ts";
 import { copyRoster, dropRoster } from "../profiles.ts";
+import { SCHEMA } from "./conversation-schema.ts";
 
 /** Stored ciphertext and Welcomes are deleted this long after they were stored (decision 0015). */
 export const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -34,6 +35,8 @@ export type SendInput = {
   external?: boolean;
   /** The accounts are the claim's too. */
   welcome?: { to: string[]; message: Uint8Array };
+  /** Set for a commit: the accounts its claim names that have blocked the sender (0024). */
+  blockedBy?: string[];
 };
 
 type Refusal =
@@ -43,7 +46,8 @@ type Refusal =
   | "epoch_conflict"
   | "welcome_not_a_member"
   | "external_changes_roster"
-  | "claim_names_departed";
+  | "claim_names_departed"
+  | "blocked";
 
 export type Result<T> = { ok: T } | { error: Refusal };
 
@@ -68,49 +72,7 @@ export class Conversation extends DurableObject<Env> {
   }
 
   private schema(): void {
-    this.sql.exec(`
-      CREATE TABLE IF NOT EXISTS meta (
-        id INTEGER PRIMARY KEY CHECK (id = 1),
-        conversation_id TEXT NOT NULL,
-        creator TEXT NOT NULL,
-        last_seq INTEGER NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS roster (account TEXT PRIMARY KEY);
-      CREATE TABLE IF NOT EXISTS messages (
-        seq INTEGER PRIMARY KEY,
-        sender TEXT NOT NULL,
-        client_msg_id TEXT NOT NULL,
-        ciphertext BLOB NOT NULL,
-        stored_at INTEGER NOT NULL,
-        UNIQUE (sender, client_msg_id)
-      );
-      CREATE INDEX IF NOT EXISTS messages_by_age ON messages (stored_at);
-      CREATE TABLE IF NOT EXISTS commits (epoch INTEGER PRIMARY KEY, seq INTEGER NOT NULL);
-      CREATE TABLE IF NOT EXISTS welcomes (
-        seq INTEGER PRIMARY KEY,
-        message BLOB NOT NULL,
-        stored_at INTEGER NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS welcome_for (
-        account TEXT NOT NULL,
-        seq INTEGER NOT NULL,
-        PRIMARY KEY (account, seq)
-      );
-      CREATE TABLE IF NOT EXISTS pending_notify (account TEXT PRIMARY KEY, seq INTEGER NOT NULL);
-      CREATE TABLE IF NOT EXISTS urgent (account TEXT PRIMARY KEY, seq INTEGER NOT NULL);
-      CREATE TABLE IF NOT EXISTS removed (account TEXT PRIMARY KEY, seq INTEGER NOT NULL);
-      CREATE TABLE IF NOT EXISTS roster_copy (
-        id INTEGER PRIMARY KEY CHECK (id = 1),
-        seq INTEGER NOT NULL,
-        copied INTEGER NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS group_info (
-        id INTEGER PRIMARY KEY CHECK (id = 1),
-        seq INTEGER NOT NULL,
-        message BLOB NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS departed (account TEXT PRIMARY KEY, at INTEGER NOT NULL);
-    `);
+    this.sql.exec(SCHEMA);
   }
 
   private meta(): { conversationId: string; creator: string; lastSeq: number } | null {
@@ -229,8 +191,10 @@ export class Conversation extends DurableObject<Env> {
    * commit's (decision 0015), and epoch 0, the group's own, for the first
    * (decision 0020). An external commit adds a device of a member account,
    * so it keeps the roster (0021). A claim never names a deleted account
-   * (0028). The epoch is checked first: a join that lost its epoch must hear
-   * so, to make its commit again on the new one.
+   * (0028), nor brings in an account that has blocked the sender, with a
+   * Welcome or without (0024); one that is a member already stays. The epoch
+   * is checked first: a join that lost its epoch must hear so, to make its
+   * commit again on the new one.
    */
   private refusal(input: SendInput, before: string[], after: Set<string>): Refusal | null {
     if (input.commitEpoch !== undefined) {
@@ -244,6 +208,7 @@ export class Conversation extends DurableObject<Env> {
     }
     if (input.welcome?.to.some((account) => !after.has(account))) return "welcome_not_a_member";
     if (input.roster?.some((account) => this.hasDeparted(account))) return "claim_names_departed";
+    if (input.blockedBy?.some((account) => !before.includes(account))) return "blocked";
     return null;
   }
 
