@@ -7,7 +7,7 @@
 //! round-trip every kind through them.
 
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use spjall_envelope as envelope;
 
@@ -337,10 +337,10 @@ impl CoreStore {
 }
 
 impl CoreStore {
+    /// A call that panicked left the store as a failed call does: its
+    /// transaction rolled back as it unwound, so the lock is taken again.
     fn store(&self) -> Result<std::sync::MutexGuard<'_, spjall_store::Store>, CoreError> {
-        self.store.lock().map_err(|_| CoreError::Store {
-            detail: "the store lock is poisoned".into(),
-        })
+        Ok(self.store.lock().unwrap_or_else(PoisonError::into_inner))
     }
 }
 

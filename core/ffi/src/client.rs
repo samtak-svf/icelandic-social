@@ -3,7 +3,7 @@
 //! `CoreClient` off the main thread: every call may block on the network.
 
 use std::path::Path;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use spjall_client::{self as core, ClientError, MediaError, api};
 
@@ -1276,9 +1276,11 @@ impl CoreClient {
 }
 
 impl CoreClient {
+    /// A call that panicked left the client as a failed call does: the
+    /// store's transaction rolled back as it unwound, and `outcome` keeps
+    /// what it had gathered. So the lock is taken again rather than refusing
+    /// every later call until the app restarts.
     pub(crate) fn client(&self) -> Result<MutexGuard<'_, core::Client<Foreign>>, CoreError> {
-        self.client.lock().map_err(|_| CoreError::Store {
-            detail: "the client lock is poisoned".into(),
-        })
+        Ok(self.client.lock().unwrap_or_else(PoisonError::into_inner))
     }
 }

@@ -24,6 +24,8 @@ struct App {
     link: Link,
     seen: Mutex<Vec<HttpRequest>>,
     offline: Mutex<bool>,
+    /// The next request panics, as a bug in the app's transport would.
+    panics: Mutex<bool>,
 }
 
 impl App {
@@ -48,6 +50,9 @@ impl App {
         send: impl FnOnce(api::Request) -> Result<api::Response, api::Unreachable>,
     ) -> Result<HttpResponse, TransportError> {
         self.seen.lock().unwrap().push(request.clone());
+        if std::mem::take(&mut *self.panics.lock().unwrap()) {
+            panic!("the transport panicked");
+        }
         if *self.offline.lock().unwrap() {
             return Err(TransportError::Unreachable {
                 detail: "offline".into(),
@@ -92,6 +97,7 @@ fn phone(relay: &Arc<Relay>, account: &str, device: &str) -> Phone {
         link: relay.link(account, device),
         seen: Mutex::new(Vec::new()),
         offline: Mutex::new(false),
+        panics: Mutex::new(false),
     });
     let client = CoreClient::open(
         dir.path().to_string_lossy().into_owned(),
@@ -286,6 +292,7 @@ fn an_account_is_run_through_the_exported_api() {
         link: relay.link("b", "b1"),
         seen: Mutex::new(Vec::new()),
         offline: Mutex::new(false),
+        panics: Mutex::new(false),
     });
     let b1 = CoreClient::open(
         dir.path().to_string_lossy().into_owned(),
@@ -369,6 +376,19 @@ fn errors_cross_as_records() {
         ),
         Err(CoreError::Invalid { .. })
     ));
+}
+
+#[test]
+fn a_panic_does_not_leave_the_client_locked() {
+    let relay = Relay::new();
+    let a1 = phone(&relay, "a", "a1");
+
+    *a1.app.panics.lock().unwrap() = true;
+    let panicked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        a1.client.stock_key_packages(5)
+    }));
+    assert!(panicked.is_err());
+    a1.client.stock_key_packages(5).unwrap();
 }
 
 #[test]
@@ -465,6 +485,7 @@ fn google_links_and_one_to_ones_cross_the_exported_api() {
         link: relay.link("c", "c1"),
         seen: Mutex::new(Vec::new()),
         offline: Mutex::new(false),
+        panics: Mutex::new(false),
     });
     let c1 = CoreClient::open(
         dir.path().to_string_lossy().into_owned(),
