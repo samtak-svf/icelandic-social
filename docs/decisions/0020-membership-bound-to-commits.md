@@ -65,5 +65,9 @@ other than 0.
 - A claim that leaves out a Welcome recipient the commit really adds stores no Welcome for
   that account. The member's devices get the corrective commit's notify but cannot join from
   it. Joining from a GroupInfo (decision 0021) recovers them.
+- With 0021, a claim alone brings an account in: its devices hear the notify and join from
+  the GroupInfo, Welcome or not. That is no more than claiming its KeyPackages would do, so
+  the server's block check (0024) applies to every account a claim adds, not only to Welcome
+  recipients.
 - Commits a client sealed before this change carry no claim, and the server refuses them.
   No such client has been released.

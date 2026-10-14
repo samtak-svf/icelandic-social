@@ -28,7 +28,8 @@
     equals `appGroup`; interim builds use `appleInterim.appGroup`), which iOS accepts as a
     Keychain access group without a separate entitlement.
   - **Android:** wrapped by an AES key in the Android Keystore, and the wrapped bytes kept in
-    `noBackupFilesDir`.
+    `noBackupFilesDir`. The Keystore key asks for no user authentication and no StrongBox,
+    so it opens whenever the app runs, as the iOS key does after first unlock.
   - A wrong or lost key fails to open the store. Without key backup (0006) that means
     starting empty, like a new device.
 - **`identifiers/ids.json`** has one `store.databaseFile`, `spjall.db`. No build has shipped,
