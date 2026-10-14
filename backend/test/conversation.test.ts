@@ -20,6 +20,16 @@ async function created(creator = "a") {
   return { id, stub };
 }
 
+/**
+ * Waits for the alarm a send set off to finish, which it is once the next
+ * alarm waits for retention. Until then it may still be notifying, and
+ * runDurableObjectAlarm finds no alarm to run.
+ */
+const settled = (stub: ReturnType<typeof conversation>) =>
+  expect
+    .poll(() => runInDurableObject(stub, (_, state) => state.storage.getAlarm()))
+    .toBeGreaterThan(Date.now() + 60_000);
+
 const bytes = (n: number) => Uint8Array.of(n);
 const message = (account: string, clientMsgId: string, more: Partial<SendInput> = {}) => ({
   account,
@@ -215,12 +225,7 @@ describe("a conversation", () => {
       message("a", "add", { commitEpoch: 0, roster: ["a", "b"], welcome, groupInfo }),
     );
     await stub.send(message("a", "new"));
-    await runDurableObjectAlarm(stub);
-    // An alarm a send set off may still be notifying; it is done once the
-    // next alarm waits for retention.
-    await expect
-      .poll(() => runInDurableObject(stub, (_, state) => state.storage.getAlarm()))
-      .toBeGreaterThan(Date.now() + 60_000);
+    await settled(stub);
     await runInDurableObject(stub, async (instance, state) => {
       const old = Date.now() - RETENTION_MS - 1;
       state.storage.sql.exec("UPDATE messages SET stored_at = ? WHERE seq = 1", old);
@@ -242,10 +247,11 @@ describe("a conversation", () => {
     const { stub } = await created("a");
     await stub.send(message("a", "c0", { commitEpoch: 0 }));
     await stub.send(message("a", "c1", { commitEpoch: 1 }));
-    await runInDurableObject(stub, (_, state) => {
+    await settled(stub);
+    await runInDurableObject(stub, async (instance, state) => {
       state.storage.sql.exec("UPDATE messages SET stored_at = ?", Date.now() - RETENTION_MS - 1);
+      await instance.alarm();
     });
-    await runDurableObjectAlarm(stub);
     const epochs = await runInDurableObject(stub, (_, state) =>
       state.storage.sql.exec<{ epoch: number }>("SELECT epoch FROM commits").toArray(),
     );
