@@ -64,8 +64,22 @@ impl Platform {
 }
 
 /// The repo root: the parent of the `core/` workspace.
+///
+/// Read `CARGO_MANIFEST_DIR` from the runtime environment first (`cargo run`
+/// sets it to the invoking worktree's `core/xtask`), falling back to the
+/// compile-time `env!("CARGO_MANIFEST_DIR")` only when invoked directly outside
+/// cargo. A compile-time-only path bakes the first worktree into the shared
+/// `CARGO_TARGET_DIR` binary and makes `cargo xtask fetch` unpack into the
+/// wrong worktree.
 pub fn repo_root() -> PathBuf {
-    let xtask = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    repo_root_from(std::env::var_os("CARGO_MANIFEST_DIR"))
+}
+
+fn repo_root_from(manifest_dir: Option<std::ffi::OsString>) -> PathBuf {
+    let xtask = match manifest_dir.filter(|value| !value.is_empty()) {
+        Some(dir) => PathBuf::from(dir),
+        None => PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+    };
     xtask
         .ancestors()
         .nth(2)
@@ -89,5 +103,25 @@ fn main() -> Result<()> {
             lock::fetch(&root, &lock, Platform::parse(Some(platform))?, from)
         }
         _ => bail!("{USAGE}"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn repo_root_follows_runtime_cargo_manifest_dir() {
+        assert_eq!(
+            repo_root_from(Some("/tmp/wt-b/core/xtask".into())),
+            PathBuf::from("/tmp/wt-b")
+        );
+        assert_eq!(
+            repo_root_from(Some("".into())),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .ancestors()
+                .nth(2)
+                .unwrap()
+        );
     }
 }
