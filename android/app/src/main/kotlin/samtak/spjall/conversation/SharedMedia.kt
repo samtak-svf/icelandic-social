@@ -22,23 +22,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import samtak.spjall.conversation.ConversationViewModel.Media
 import samtak.spjall.core.Content
 import samtak.spjall.core.Item
-import samtak.spjall.media.decodePhoto
+import samtak.spjall.media.rememberPhoto
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.lastLine
 
@@ -52,9 +46,7 @@ internal fun SharedPhoto(
     LaunchedEffect(item.seq) { if (media == null) actions.fetch(item) }
     val longest = with(LocalDensity.current) { CELL.dp.roundToPx() }
     val path = (media as? Media.Ready)?.path
-    val bitmap by produceState<ImageBitmap?>(null, path) {
-        value = path?.let { withContext(Dispatchers.IO) { decodePhoto(it, longest)?.asImageBitmap() } }
-    }
+    val bitmap = rememberPhoto(path, longest)
     val description = lastLine(item)
     Box(
         modifier =

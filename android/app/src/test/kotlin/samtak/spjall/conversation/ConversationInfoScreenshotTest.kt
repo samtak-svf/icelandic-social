@@ -34,7 +34,6 @@ import samtak.spjall.core.Mute
 import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
 import samtak.spjall.socket.item
-import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.clockTime
 import java.util.TimeZone
 import android.graphics.Color as AndroidColor
@@ -114,19 +113,12 @@ class ConversationInfoScreenshotTest {
         timer: UInt? = null,
         shared: List<Item> = emptyList(),
         state: ConversationState = ConversationState.ACTIVE,
-        // Only a test that waits for its image decodes photos: a decode still running on Dispatchers.IO
-        // when the test ends runs into the next test's Robolectric setup and aborts the JVM.
-        decoded: Boolean = false,
     ) {
         val path = landscape()
         val conversation = Conversation("c1", state, members, null, 0u, timer, mute)
-        val ready =
-            shared.filter { decoded && it.isPhoto() }.associate {
-                it.seq!! to
-                    ConversationViewModel.Media.Ready(path)
-            }
+        val ready = shared.filter { it.isPhoto() }.associate { it.seq!! to ConversationViewModel.Media.Ready(path) }
         compose.setContent {
-            SpjallTheme {
+            DecodingTheme {
                 ConversationInfoScreen(
                     ConversationViewModel.State(
                         conversation = conversation,
@@ -152,14 +144,14 @@ class ConversationInfoScreenshotTest {
 
     @Test
     fun aPerson() {
-        show(mute = Mute.Until(PAST + 3_600_000uL), timer = 86_400u, shared = sent, decoded = true)
+        show(mute = Mute.Until(PAST + 3_600_000uL), timer = 86_400u, shared = sent)
         compose.onRoot().captureRoboImage()
     }
 
     @Test
     @Config(qualifiers = "+night")
     fun aPersonAtNight() {
-        show(mute = Mute.Until(PAST + 3_600_000uL), timer = 86_400u, shared = sent, decoded = true)
+        show(mute = Mute.Until(PAST + 3_600_000uL), timer = 86_400u, shared = sent)
         compose.onRoot().captureRoboImage()
     }
 

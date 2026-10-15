@@ -18,13 +18,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -32,10 +28,8 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import samtak.spjall.brand.R
-import samtak.spjall.media.decodePhoto
+import samtak.spjall.media.rememberPhoto
 import samtak.spjall.ui.Palette
 import java.io.File
 
@@ -71,9 +65,7 @@ internal fun PendingStrip(
 @Composable
 private fun Thumbnail(path: String) {
     val longest = with(LocalDensity.current) { THUMBNAIL.dp.roundToPx() * 2 }
-    val bitmap by produceState<ImageBitmap?>(null, path) {
-        value = withContext(Dispatchers.IO) { decodePhoto(path, longest)?.asImageBitmap() }
-    }
+    val bitmap = rememberPhoto(path, longest)
     val shape = RoundedCornerShape(THUMBNAIL_RADIUS.dp)
     val modifier = Modifier.size(THUMBNAIL.dp).clip(shape)
     bitmap?.let {

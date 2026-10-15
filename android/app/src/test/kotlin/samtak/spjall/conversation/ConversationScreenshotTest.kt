@@ -5,6 +5,8 @@ import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Shader
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -35,8 +37,10 @@ import samtak.spjall.core.Mute
 import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
 import samtak.spjall.core.Reaction
+import samtak.spjall.media.LocalPhotoDecoding
 import samtak.spjall.ui.SpjallTheme
 import java.util.TimeZone
+import kotlin.coroutines.EmptyCoroutineContext
 import android.graphics.Color as AndroidColor
 
 /**
@@ -146,7 +150,7 @@ class ConversationScreenshotTest {
         attachment: ConversationViewModel.Pending? = null,
         media: Map<ULong, ConversationViewModel.Media> = emptyMap(),
     ) = compose.setContent {
-        SpjallTheme {
+        DecodingTheme {
             ConversationScreen(
                 ConversationViewModel.State(
                     conversation =
@@ -329,6 +333,14 @@ class ConversationScreenshotTest {
 /** The node a tap acts on, named for TalkBack by [label]. */
 internal fun hasClickLabel(label: String) =
     SemanticsMatcher("click label $label") { it.config.getOrNull(SemanticsActions.OnClick)?.label == label }
+
+/**
+ * The app's theme, with every photo decoded on the composition's own thread: a decode left running on
+ * another thread when a test ends runs into the next test's Robolectric setup and aborts the JVM.
+ */
+@Composable
+internal fun DecodingTheme(content: @Composable () -> Unit) =
+    CompositionLocalProvider(LocalPhotoDecoding provides EmptyCoroutineContext) { SpjallTheme(content = content) }
 
 private const val PHOTO_W = 800
 private const val PHOTO_H = 533
