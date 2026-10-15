@@ -33,7 +33,7 @@ struct SettingsSection: View {
                 Panel { PrivacySection(settings: settings, model: model) }
             }
             CardLabel(key: "blocked_title")
-            Panel { BlockedSection(model: model) }
+            Blocked(model: model)
             // Signing out is found where people look for it, not only in the list of devices (decision 0047).
             Button {
                 signingOut = true

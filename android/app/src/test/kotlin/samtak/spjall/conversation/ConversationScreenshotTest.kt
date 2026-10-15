@@ -1,5 +1,10 @@
 package samtak.spjall.conversation
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Shader
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -16,6 +21,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -34,6 +40,7 @@ import samtak.spjall.core.Person
 import samtak.spjall.core.Reaction
 import samtak.spjall.ui.SpjallTheme
 import java.util.TimeZone
+import android.graphics.Color as AndroidColor
 
 /**
  * What one conversation looks like in the states 0043 names: the composer's one action, the
@@ -44,6 +51,9 @@ import java.util.TimeZone
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [SCREENSHOT_SDK], qualifiers = SCREENSHOT_DEVICE, fontScale = 1f)
 class ConversationScreenshotTest {
+    @get:Rule
+    val folder = TemporaryFolder()
+
     @get:Rule val compose = createComposeRule()
 
     private val actions =
@@ -135,6 +145,7 @@ class ConversationScreenshotTest {
         vararg items: Item,
         draft: String = "",
         attachment: ConversationViewModel.Pending? = null,
+        media: Map<ULong, ConversationViewModel.Media> = emptyMap(),
     ) = compose.setContent {
         SpjallTheme {
             ConversationScreen(
@@ -153,6 +164,7 @@ class ConversationScreenshotTest {
                     loaded = true,
                     draft = draft,
                     attachment = attachment,
+                    media = media,
                 ),
                 actions,
             )
@@ -233,6 +245,57 @@ class ConversationScreenshotTest {
         compose.onRoot().captureRoboImage()
     }
 
+    /** A landscape photo drawn at run time, so the image needs no file in git. */
+    private fun landscape(): String {
+        val bitmap = Bitmap.createBitmap(PHOTO_W, PHOTO_H, Bitmap.Config.ARGB_8888)
+        val paint =
+            Paint().apply {
+                shader =
+                    LinearGradient(
+                        0f,
+                        0f,
+                        PHOTO_W.toFloat(),
+                        PHOTO_H.toFloat(),
+                        AndroidColor.rgb(70, 130, 180),
+                        AndroidColor.rgb(240, 200, 120),
+                        Shader.TileMode.CLAMP,
+                    )
+            }
+        Canvas(bitmap).drawRect(0f, 0f, PHOTO_W.toFloat(), PHOTO_H.toFloat(), paint)
+        val file = folder.newFile("esjan.jpg")
+        file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, PHOTO_QUALITY, it) }
+        return file.path
+    }
+
+    /** A photo fills its bubble (0053): with a caption under it, and alone with no frame. */
+    private fun photos() {
+        val path = landscape()
+        show(
+            item(1u, Content.Media("image/jpeg", 10uL, null, null)),
+            item(2u, Content.Media("image/jpeg", 10uL, "Esjan í morgunsólinni, séð frá Laugarnesi", null), own = true),
+            item(3u, Content.Media("application/pdf", 10uL, null, "skýrsla.pdf")),
+            media =
+                mapOf(
+                    1uL to ConversationViewModel.Media.Ready(path),
+                    2uL to ConversationViewModel.Media.Ready(path),
+                ),
+        )
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun aPhotoFillsItsBubble() {
+        photos()
+        compose.onRoot().captureRoboImage()
+    }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun aPhotoFillsItsBubbleAtNight() {
+        photos()
+        compose.onRoot().captureRoboImage()
+    }
+
     @Test
     fun sharedPostSaysItIsGone() {
         show(item(1u, Content.Post("p1")))
@@ -260,3 +323,7 @@ class ConversationScreenshotTest {
 /** The node a tap acts on, named for TalkBack by [label]. */
 internal fun hasClickLabel(label: String) =
     SemanticsMatcher("click label $label") { it.config.getOrNull(SemanticsActions.OnClick)?.label == label }
+
+private const val PHOTO_W = 800
+private const val PHOTO_H = 533
+private const val PHOTO_QUALITY = 90

@@ -2,6 +2,43 @@ import ImageIO
 import SpjallCore
 import SwiftUI
 
+extension Item {
+    /// Whether this is drawn edge to edge in its bubble (0053): a photo that has not failed to
+    /// download. The bubble's padding then goes round its caption only.
+    func edgeToEdge(_ media: ConversationModel.Media?) -> Bool {
+        guard case .media(let mime, _, _, _) = content else { return false }
+        return mime.hasPrefix("image/") && media != .failed
+    }
+
+    /// A photo with nothing round it, drawn as the photo alone with the bubble's shape and no frame.
+    func bare(_ media: ConversationModel.Media?) -> Bool {
+        guard edgeToEdge(media), case .media(_, _, let caption, _) = content else { return false }
+        return caption == nil && !forwarded
+    }
+}
+
+/// The photo above, then its caption wrapped at the photo's width rather than widening the bubble.
+private struct PhotoAndCaption: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let sizes = measure(proposal, subviews)
+        return CGSize(width: sizes.first?.width ?? 0, height: sizes.reduce(0) { $0 + $1.height })
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for (subview, size) in zip(subviews, measure(proposal, subviews)) {
+            subview.place(at: CGPoint(x: bounds.minX, y: y), proposal: ProposedViewSize(size))
+            y += size.height
+        }
+    }
+
+    private func measure(_ proposal: ProposedViewSize, _ subviews: Subviews) -> [CGSize] {
+        guard let photo = subviews.first?.sizeThatFits(proposal) else { return [] }
+        let below = subviews.dropFirst().map { $0.sizeThatFits(ProposedViewSize(width: photo.width, height: nil)) }
+        return [photo] + below.map { CGSize(width: photo.width, height: $0.height) }
+    }
+}
+
 /// A photo or file in a bubble. A photo downloads as soon as its bubble shows;
 /// a file waits for a tap, which opens it in a preview either way.
 struct Attachment: View {
@@ -21,6 +58,30 @@ struct Attachment: View {
     }
 
     var body: some View {
+        if item.edgeToEdge(media) {
+            // The bubble clips the photo to its shape (0053); only the caption is padded.
+            PhotoAndCaption {
+                photo
+                if let caption {
+                    Text(verbatim: caption)
+                        .foregroundStyle(foreground)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 11)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        } else {
+            padded
+        }
+    }
+
+    private var photo: some View {
+        Photo(path: ready, label: localized("photo"))
+            .onTapGesture { Task { await model.open(item) } }
+            .task(id: item.seq) { if media == nil { await model.fetch(item) } }
+    }
+
+    private var padded: some View {
         VStack(alignment: .leading, spacing: 4) {
             if media == .failed {
                 VStack(alignment: .leading, spacing: 4) {
@@ -28,10 +89,6 @@ struct Attachment: View {
                     Button("try_again") { Task { await model.fetch(item) } }
                 }
                 .foregroundStyle(foreground)
-            } else if mime.hasPrefix("image/") {
-                Photo(path: ready, label: localized("photo"))
-                    .onTapGesture { Task { await model.open(item) } }
-                    .task(id: item.seq) { if media == nil { await model.fetch(item) } }
             } else {
                 Button {
                     Task { await model.open(item) }
@@ -74,16 +131,18 @@ private struct Photo: View {
                     .resizable()
                     .scaledToFit()
                     .frame(maxWidth: Self.size, maxHeight: Self.size)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
                     .accessibilityLabel(Text(verbatim: label))
                     .accessibilityAddTraits(.isImage)
             } else if unreadable {
                 Image(systemName: "photo")
                     .font(.largeTitle)
                     .frame(width: Self.size / 2, height: Self.size / 2)
+                    .background(BrandTokens.Colors.muted)
                     .accessibilityLabel(Text(verbatim: label))
             } else {
-                ProgressView().frame(width: Self.size / 2, height: Self.size / 2)
+                ProgressView()
+                    .frame(width: Self.size / 2, height: Self.size / 2)
+                    .background(BrandTokens.Colors.muted)
             }
         }
         .task(id: path) {

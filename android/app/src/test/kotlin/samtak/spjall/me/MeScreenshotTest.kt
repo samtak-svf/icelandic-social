@@ -46,13 +46,21 @@ class MeScreenshotTest {
         compose.onRoot().captureRoboImage()
     }
 
+    /** At twice the text size (0053): the title stays in its band and the initials in their circle. */
+    @Test
+    @Config(fontScale = 2f)
+    fun largeText() {
+        compose.setContent { SpjallTheme { MeScreen(MeViewModel.State(me = me), NoMeActions()) } }
+        compose.onRoot().captureRoboImage()
+    }
+
     @Test
     fun nobodyBlocked() {
-        // The section alone, so the image shows the empty state without the screen around it.
+        // The section alone, so the image shows the empty line without the screen around it.
         compose.setContent {
             SpjallTheme {
                 Column(modifier = Modifier.background(Palette.bg).padding(16.dp)) {
-                    Panel { BlockedSection(emptyList(), enabled = true, onUnblock = {}) }
+                    Blocked(emptyList(), enabled = true, onUnblock = {})
                 }
             }
         }

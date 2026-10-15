@@ -63,7 +63,7 @@ internal fun ColumnScope.Settings(
     // The design leaves these out; decision 0009 keeps them, in the same cards.
     state.settings?.let { Panel { PrivacySection(it, !state.busy, actions) } }
     Label(R.string.blocked_title)
-    Panel { BlockedSection(state.blocked, !state.busy, actions::unblock) }
+    Blocked(state.blocked, !state.busy, actions::unblock)
     me.devices.firstOrNull { it.current }?.let { SignOut(enabled = !state.busy) { actions.revoke(it.deviceId) } }
     TextButton(
         onClick = { deleting = true },

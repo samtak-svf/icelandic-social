@@ -1,6 +1,6 @@
 # 0052. A dark theme that follows the system
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the apps (#241), released as 0.8.0
 - Date: 2026-10-15
 - Decided by: the maintainer, choosing from the UX round on 0.7.3
 - Builds on: [0043](0043-first-launch-and-the-ui-pass.md) (which left a dark theme to its own

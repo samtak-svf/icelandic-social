@@ -3,7 +3,6 @@ package samtak.spjall.conversations
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,11 +24,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Conversation
@@ -43,8 +39,7 @@ import samtak.spjall.ui.PlaceholderKind
 import samtak.spjall.ui.PlaceholderRows
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.RoundButton
-import samtak.spjall.ui.Type
-import samtak.spjall.ui.capitals
+import samtak.spjall.ui.ScreenHeader
 import samtak.spjall.ui.rowMotion
 
 /**
@@ -60,7 +55,16 @@ fun ConversationsScreen(
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.surface) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
-            Header(actions::newConversation)
+            ScreenHeader(stringResource(R.string.tab_conversations)) {
+                RoundButton(
+                    icon = AppIcons.Plus,
+                    description = stringResource(R.string.new_conversation),
+                    onClick = actions::newConversation,
+                    fill = Palette.primary,
+                    tint = Palette.primaryFg,
+                    size = NEW_BUTTON.dp,
+                )
+            }
             SearchField(state.query, actions::search)
             if (state.searching) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             ConnectionLine(state.connection)
@@ -121,35 +125,6 @@ internal fun LazyListScope.conversationRows(
             ConversationRow(conversation, typing = conversation.id in typing, actions)
             HorizontalDivider(color = Palette.border)
         }
-    }
-}
-
-/** The cream band: the tab's name in capitals, and a round button for a new conversation. */
-@Composable
-private fun Header(onNew: () -> Unit) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(Palette.bg)
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-                .padding(start = 20.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = stringResource(R.string.tab_conversations).capitals(),
-            style = Type.screenTitle,
-            color = Palette.fg,
-            modifier = Modifier.weight(1f).semantics { heading() },
-        )
-        RoundButton(
-            icon = AppIcons.Plus,
-            description = stringResource(R.string.new_conversation),
-            onClick = onNew,
-            fill = Palette.primary,
-            tint = Palette.primaryFg,
-            size = NEW_BUTTON.dp,
-        )
     }
 }
 

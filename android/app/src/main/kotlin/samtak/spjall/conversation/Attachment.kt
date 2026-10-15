@@ -2,15 +2,17 @@ package samtak.spjall.conversation
 
 import android.text.format.Formatter
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.CircularProgressIndicator
@@ -24,7 +26,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -40,11 +41,56 @@ import samtak.spjall.conversation.ConversationViewModel.Media
 import samtak.spjall.core.Content
 import samtak.spjall.core.Item
 import samtak.spjall.media.decodePhoto
+import samtak.spjall.ui.Palette
 import samtak.spjall.ui.lastLine
+
+/**
+ * Whether [item] is drawn edge to edge in its bubble (0053): a photo that has not failed to
+ * download. The bubble's padding then goes round its caption only.
+ */
+internal fun Item.edgeToEdge(media: Media?): Boolean =
+    (content as? Content.Media)?.mime?.startsWith("image/") == true && media != Media.Failed
+
+/** A photo with nothing round it, drawn as the photo alone with the bubble's shape and no frame. */
+internal fun Item.bare(media: Media?): Boolean =
+    edgeToEdge(media) && (content as? Content.Media)?.caption == null && !forwarded
+
+/** The bubble's colour; none for a photo with nothing round it (0053). */
+@Composable
+internal fun bubbleColor(
+    item: Item,
+    media: ConversationViewModel.Media?,
+) = when {
+    item.bare(media) -> Color.Transparent
+    item.own -> Palette.bubbleOwnBg
+    else -> Palette.bubbleOtherBg
+}
+
+/** What the bubble holds. A photo reaches its edges (0053), so only what is round it is padded. */
+@Composable
+internal fun Inside(
+    item: Item,
+    media: ConversationViewModel.Media?,
+    foreground: Color,
+    actions: ConversationActions,
+    onTap: () -> Unit,
+    onLongPress: () -> Unit,
+) {
+    val edge = item.edgeToEdge(media)
+    Column(modifier = if (edge) Modifier else Modifier.padding(horizontal = PAD_X.dp, vertical = PAD_Y.dp)) {
+        if (item.forwarded) {
+            Box(modifier = if (edge) Modifier.padding(start = PAD_X.dp, end = PAD_X.dp, top = PAD_Y.dp) else Modifier) {
+                ForwardedMark(foreground)
+            }
+        }
+        Body(item, media, foreground, actions, onTap, onLongPress)
+    }
+}
 
 /**
  * A photo or file in a bubble. A photo downloads as soon as its bubble shows;
  * a file waits for a tap, which opens it in another app either way.
+ * A photo fills the bubble, which clips it to its shape; a caption wraps at the photo's width.
  */
 @Composable
 internal fun Attachment(
@@ -58,12 +104,22 @@ internal fun Attachment(
     if (photo) {
         LaunchedEffect(item.seq) { if (media == null) actions.fetch(item) }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        when {
-            media == Media.Failed -> Failed(item, foreground, actions)
-            photo -> Photo(media, item)
-            else -> FileRow(item, media, foreground)
+    if (item.edgeToEdge(media)) {
+        Column(modifier = Modifier.width(IntrinsicSize.Min)) {
+            Photo(media, item)
+            content.caption?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = foreground,
+                    modifier = Modifier.padding(horizontal = PAD_X.dp, vertical = PAD_Y.dp),
+                )
+            }
         }
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (media == Media.Failed) Failed(item, foreground, actions) else FileRow(item, media, foreground)
         content.caption?.let {
             Text(text = it, style = MaterialTheme.typography.bodyLarge, color = foreground)
         }
@@ -80,15 +136,17 @@ private fun Photo(
     val bitmap by produceState<ImageBitmap?>(null, path) {
         value = path?.let { withContext(Dispatchers.IO) { decodePhoto(it, longest)?.asImageBitmap() } }
     }
-    val shape = RoundedCornerShape(PHOTO_RADIUS.dp)
     bitmap?.let {
         Image(
             bitmap = it,
             contentDescription = lastLine(item),
             contentScale = ContentScale.Fit,
-            modifier = Modifier.heightIn(max = PHOTO_SIZE.dp).clip(shape),
+            modifier = Modifier.fillMaxWidth().heightIn(max = PHOTO_SIZE.dp),
         )
-    } ?: Box(modifier = Modifier.size(PHOTO_SIZE.dp / 2), contentAlignment = Alignment.Center) {
+    } ?: Box(
+        modifier = Modifier.size(PHOTO_SIZE.dp / 2).background(Palette.muted),
+        contentAlignment = Alignment.Center,
+    ) {
         CircularProgressIndicator()
     }
 }
@@ -140,5 +198,4 @@ private fun Failed(
 }
 
 private const val PHOTO_SIZE = 240
-private const val PHOTO_RADIUS = 8
 private const val ICON_SIZE = 24

@@ -14,6 +14,18 @@ struct MeView: View {
     @State private var picked: PhotosPickerItem?
 
     var body: some View {
+        // The title stays in its band and the rest scrolls under it (0053), as on the list.
+        VStack(spacing: 0) {
+            ScreenHeader(title: localized("tab_me"))
+            content
+        }
+        .background(BrandTokens.Colors.bg)
+        .toolbar(.hidden, for: .navigationBar)
+        .task { await model.load() }
+        .task { await push.check() }
+    }
+
+    private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 if model.busy {
@@ -36,11 +48,7 @@ struct MeView: View {
             .padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(BrandTokens.Colors.bg)
-        .toolbar(.hidden, for: .navigationBar)
         .refreshable { await model.load() }
-        .task { await model.load() }
-        .task { await push.check() }
     }
 }
 

@@ -189,6 +189,11 @@ class ConversationsScreenshotTest {
     @Test
     fun ownStates() = shoot(ownStatesState)
 
+    /** At twice the text size (0053): initials stay inside their circles while the names grow. */
+    @Test
+    @Config(fontScale = 2f)
+    fun largeText() = shoot(ownStatesState)
+
     /** The list in the system's dark mode (0052): an unread row, a failed one, a group. */
     @Test
     @Config(qualifiers = "+night")

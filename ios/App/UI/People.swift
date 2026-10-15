@@ -65,7 +65,7 @@ struct Avatar: View {
                     }
             } else {
                 Text(verbatim: initials(name))
-                    .font(.sans(size * 0.33, black: true))
+                    .font(.sansFixed(size * 0.33, black: true))
                     .foregroundStyle(kind.ink)
             }
         }

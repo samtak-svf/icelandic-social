@@ -138,15 +138,23 @@ struct Bubble: View {
         .padding(.top, first ? 8 : 0)
     }
 
+    private var media: ConversationModel.Media? { item.seq.flatMap { model.media[$0] } }
+
     private var bubble: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if item.forwarded { ForwardedMark(foreground: foreground) }
+        // A photo reaches the bubble's edges (0053), so only what is round it is padded.
+        let edge = item.edgeToEdge(media)
+        return VStack(alignment: .leading, spacing: edge ? 0 : 4) {
+            if item.forwarded {
+                ForwardedMark(foreground: foreground)
+                    .padding(edge ? Edge.Set([.horizontal, .top]) : [], edge ? 14 : 0)
+            }
             BodyText(item: item, foreground: foreground, model: model)
         }
         .fixedSize(horizontal: false, vertical: true)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
-        .background(background, in: shape)
+        .padding(.horizontal, edge ? 0 : 14)
+        .padding(.vertical, edge ? 0 : 11)
+        .background(item.bare(media) ? Color.clear : background, in: shape)
+        .clipShape(shape)
         .contentShape(.contextMenuPreview, shape)
         // A photo and a file keep their own tap, which opens them.
         .onTap(if: isText) { showsTime.toggle() }

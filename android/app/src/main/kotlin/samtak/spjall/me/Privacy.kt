@@ -26,8 +26,6 @@ import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Person
 import samtak.spjall.core.Settings
-import samtak.spjall.ui.AppIcons
-import samtak.spjall.ui.EmptyState
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.VerifiedMark
 import samtak.spjall.ui.shownName
@@ -56,7 +54,29 @@ internal fun ColumnScope.PrivacySection(
     )
 }
 
-/** Who this account blocked (0024), newest first; unblock asks first. The caller gives it its title. */
+/** The blocked people in their card, or, with nobody blocked, one muted line (0053): there is nothing to act on. */
+@Composable
+internal fun Blocked(
+    blocked: List<Person>,
+    enabled: Boolean,
+    onUnblock: (String) -> Unit,
+) {
+    if (blocked.isEmpty()) {
+        Text(
+            text = stringResource(R.string.blocked_empty),
+            style = MaterialTheme.typography.bodyMedium,
+            color = Palette.mutedFg,
+            modifier = Modifier.padding(start = 4.dp),
+        )
+    } else {
+        Panel { BlockedSection(blocked, enabled, onUnblock) }
+    }
+}
+
+/**
+ * Who this account blocked (0024), newest first; unblock asks first.
+ * The caller gives it its title; [Blocked] holds the empty case.
+ */
 @Composable
 internal fun ColumnScope.BlockedSection(
     blocked: List<Person>,
@@ -64,9 +84,6 @@ internal fun ColumnScope.BlockedSection(
     onUnblock: (String) -> Unit,
 ) {
     var unblocking by rememberSaveable { mutableStateOf<String?>(null) }
-    if (blocked.isEmpty()) {
-        EmptyState(AppIcons.Blocked, stringResource(R.string.blocked_empty))
-    }
     blocked.forEachIndexed { i, person ->
         if (i > 0) HorizontalDivider(color = Palette.border)
         Row(

@@ -16,6 +16,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import samtak.spjall.brand.BrandTokens.Colors
@@ -291,3 +294,9 @@ fun SpjallTheme(
         }
     }
 }
+
+/** The initials' size, from the circle in pixels and not the font scale (0053): the circle does not grow with text. */
+internal fun Density.initialsSize(circle: Dp): TextUnit = (circle * INITIALS).toSp()
+
+/** Initials take a third of their circle. */
+private const val INITIALS = 0.33f

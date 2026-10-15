@@ -16,14 +16,16 @@ enum Typefaces {
     }
 
     /// The face of `faces` nearest `weight`, scaled with Dynamic Type as
-    /// `style`; the system font at that weight when the family has none.
+    /// `style`, or at a fixed size when `style` is nil; the system font at that
+    /// weight when the family has none.
     static func font(
         _ faces: [(file: String, name: String, weight: Int)], size: CGFloat, weight: Int,
-        relativeTo style: Font.TextStyle
+        relativeTo style: Font.TextStyle?
     ) -> Font {
         guard let face = faces.min(by: { abs($0.weight - weight) < abs($1.weight - weight) }) else {
             return .system(size: size, weight: systemWeight(weight))
         }
+        guard let style else { return .custom(face.name, fixedSize: size) }
         return .custom(face.name, size: size, relativeTo: style)
     }
 
@@ -47,6 +49,13 @@ extension Font {
     static func sans(_ size: CGFloat, black: Bool = false, relativeTo style: Font.TextStyle = .body) -> Font {
         Typefaces.font(
             BrandTokens.FontFiles.sans, size: size, weight: black ? blackWeight : mediumWeight, relativeTo: style)
+    }
+
+    /// The body family at a size Dynamic Type does not change, for text that must fit a shape that
+    /// does not grow, as initials in their circle (0053).
+    static func sansFixed(_ size: CGFloat, black: Bool = false) -> Font {
+        Typefaces.font(
+            BrandTokens.FontFiles.sans, size: size, weight: black ? blackWeight : mediumWeight, relativeTo: nil)
     }
 
     /// The condensed display family, for screen titles and the account name.

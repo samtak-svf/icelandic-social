@@ -33,7 +33,6 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Content
 import samtak.spjall.core.Conversation
@@ -109,7 +108,7 @@ fun Avatar(
                 color = ink,
                 fontFamily = SansFamily,
                 fontWeight = FontWeight.Black,
-                fontSize = (size.value * INITIALS).sp,
+                fontSize = with(LocalDensity.current) { initialsSize(size) },
             )
         } else {
             val ring = if (kind == AvatarKind.Verified) Modifier.border(RING.dp, fill, CircleShape) else Modifier
@@ -241,6 +240,5 @@ private const val RING = 2
 private const val GREY = 0.09f
 
 /** Initials take a third of the circle, as in the design (15 on 46). */
-private const val INITIALS = 0.33f
 private const val HOUR = 3_600
 private const val DAY = 86_400

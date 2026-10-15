@@ -46,8 +46,24 @@ private struct Setting: View {
     }
 }
 
+/// The blocked people in their card, or, with nobody blocked, one muted line (0053): there is nothing to act on.
+struct Blocked: View {
+    let model: MeModel
+
+    var body: some View {
+        if model.blocked.isEmpty {
+            Text("blocked_empty")
+                .font(.subheadline)
+                .foregroundStyle(BrandTokens.Colors.mutedFg)
+                .padding(.leading, 4)
+        } else {
+            Panel { BlockedSection(model: model) }
+        }
+    }
+}
+
 /// Who this account blocked (decision 0024), newest first; unblock asks first.
-/// The caller gives it its title.
+/// The caller gives it its title; `Blocked` holds the empty case.
 struct BlockedSection: View {
     let model: MeModel
 
@@ -55,9 +71,6 @@ struct BlockedSection: View {
 
     var body: some View {
         Group {
-            if model.blocked.isEmpty {
-                EmptyState(systemImage: "nosign", text: "blocked_empty")
-            }
             ForEach(Array(model.blocked.enumerated()), id: \.element.account) { index, person in
                 if index > 0 { Hairline() }
                 HStack(spacing: 6) {

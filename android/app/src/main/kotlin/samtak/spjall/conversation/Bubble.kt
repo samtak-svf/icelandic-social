@@ -174,7 +174,7 @@ private fun Message(
                 .padding(bottom = if (pill != null) (PILL_HEIGHT / 2).dp else 0.dp),
     ) {
         Surface(
-            color = if (item.own) Palette.bubbleOwnBg else Palette.bubbleOtherBg,
+            color = bubbleColor(item, media),
             contentColor = foreground,
             shape = bubbleShape(item.own),
             modifier =
@@ -191,10 +191,7 @@ private fun Message(
                         onLongClick = { menu = true },
                     ),
         ) {
-            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp)) {
-                if (item.forwarded) ForwardedMark(foreground)
-                Body(item, media, foreground, actions, onTap = { tap?.invoke() ?: onTime() }) { menu = true }
-            }
+            Inside(item, media, foreground, actions, onTap = { tap?.invoke() ?: onTime() }) { menu = true }
         }
         pill?.let {
             ReactionPill(
@@ -253,7 +250,7 @@ private fun accessibilityActions(
 }
 
 @Composable
-private fun Body(
+internal fun Body(
     item: Item,
     media: ConversationViewModel.Media?,
     foreground: Color,
@@ -378,6 +375,10 @@ internal fun readLine(
 
 private val EMOJI = listOf("👍", "❤️", "😂", "😮", "😢", "🙏")
 private const val BUBBLE_RADIUS = 18
+
+/** A bubble's padding round its text. */
+internal const val PAD_X = 14
+internal const val PAD_Y = 11
 private const val TAIL_RADIUS = 5
 private const val BUBBLE_SHARE = 0.76f
 private const val PILL_INSET = 4

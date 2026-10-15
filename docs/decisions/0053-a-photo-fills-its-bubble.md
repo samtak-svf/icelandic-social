@@ -1,6 +1,6 @@
 # 0053. A photo fills its bubble, and three small fixes
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the apps, released as 0.8.1
 - Date: 2026-10-15
 - Decided by: the maintainer, choosing from the UX round on 0.7.3
 - Builds on: [0022](0022-the-conversation-surfaces.md) (bubbles, rows at large text),

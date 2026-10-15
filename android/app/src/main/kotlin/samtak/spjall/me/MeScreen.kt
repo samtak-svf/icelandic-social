@@ -8,12 +8,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,6 +55,7 @@ import samtak.spjall.ui.Palette
 import samtak.spjall.ui.PhotoOf
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.SansFamily
+import samtak.spjall.ui.ScreenHeader
 import samtak.spjall.ui.SectionLabel
 import samtak.spjall.ui.Type
 import samtak.spjall.ui.VerifiedMark
@@ -68,32 +73,46 @@ fun MeScreen(
     version: String? = null,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
-        Column(
-            modifier =
-                Modifier
-                    .safeDrawingPadding()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            state.problem?.let { ProblemCard(it, actions::retry) }
-            state.me?.let { me ->
-                Who(
-                    me.name,
-                    me.verified,
-                    me.photo?.let { PhotoOf(me.accountId, it) },
-                    onPhoto = actions::choosePhoto,
-                    enabled = !state.busy,
-                )
-                PhotoControls(me.photo != null, state.busy, actions)
-                if (!me.verified) VerifyLink(actions::verify)
-                Label(R.string.invite_link_title)
-                InviteCard(state.link, state.busy, actions)
-                Settings(me, state, actions, notificationsOff)
-            }
-            version?.let { VersionLine(it, Modifier.align(Alignment.CenterHorizontally)) }
+        // The title stays in its band and the rest scrolls under it (0053), as on the list.
+        Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
+            ScreenHeader(stringResource(R.string.tab_me))
+            MeContent(state, actions, notificationsOff, version)
         }
+    }
+}
+
+@Composable
+private fun MeContent(
+    state: MeViewModel.State,
+    actions: MeActions,
+    notificationsOff: Boolean,
+    version: String?,
+) {
+    Column(
+        modifier =
+            Modifier
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        state.problem?.let { ProblemCard(it, actions::retry) }
+        state.me?.let { me ->
+            Who(
+                me.name,
+                me.verified,
+                me.photo?.let { PhotoOf(me.accountId, it) },
+                onPhoto = actions::choosePhoto,
+                enabled = !state.busy,
+            )
+            PhotoControls(me.photo != null, state.busy, actions)
+            if (!me.verified) VerifyLink(actions::verify)
+            Label(R.string.invite_link_title)
+            InviteCard(state.link, state.busy, actions)
+            Settings(me, state, actions, notificationsOff)
+        }
+        version?.let { VersionLine(it, Modifier.align(Alignment.CenterHorizontally)) }
     }
 }
 

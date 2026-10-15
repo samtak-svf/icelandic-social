@@ -15,7 +15,11 @@ struct ConversationsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Header(onNew: onNew)
+            ScreenHeader(title: localized("tab_conversations")) {
+                RoundButton(
+                    systemImage: "plus", label: "new_conversation", fill: BrandTokens.Colors.primary,
+                    tint: BrandTokens.Colors.primaryFg, size: 34, action: onNew)
+            }
             SearchField(query: Binding(get: { model.query }, set: { model.query = $0 }))
             if model.searching {
                 ProgressView().progressViewStyle(.linear)
@@ -161,29 +165,6 @@ private struct PersonRow: View {
         .padding(.vertical, 13)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-    }
-}
-
-/// The cream band: the tab's name in capitals, and a round button for a new conversation.
-private struct Header: View {
-    let onNew: () -> Void
-
-    var body: some View {
-        HStack {
-            Text(verbatim: localized("tab_conversations").capitals)
-                .font(TypeStyle.screenTitle)
-                .foregroundStyle(BrandTokens.Colors.fg)
-                .lineLimit(1)
-                .accessibilityAddTraits(.isHeader)
-            Spacer(minLength: 8)
-            RoundButton(
-                systemImage: "plus", label: "new_conversation", fill: BrandTokens.Colors.primary,
-                tint: BrandTokens.Colors.primaryFg, size: 34, action: onNew)
-        }
-        .padding(.leading, 20)
-        .padding(.trailing, 8)
-        .padding(.vertical, 4)
-        .background(BrandTokens.Colors.bg.ignoresSafeArea(edges: .top))
     }
 }
 
