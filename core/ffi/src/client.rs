@@ -1121,6 +1121,22 @@ impl CoreClient {
             .collect())
     }
 
+    /// The photos and files of a conversation (0055), up to `limit` before
+    /// `before` (a seq), newest first, from this device's store alone.
+    pub fn shared(
+        &self,
+        conversation: String,
+        before: Option<u64>,
+        limit: u32,
+    ) -> Result<Vec<Item>, CoreError> {
+        Ok(self
+            .view()
+            .shared(&conversation, before, limit)?
+            .into_iter()
+            .map(Into::into)
+            .collect())
+    }
+
     /// Everything up to `seq` is read; call it when the newest item is on
     /// screen. Sends a receipt on the next `sync` when read markers are on.
     pub fn mark_read(&self, conversation: String, seq: u64) -> Result<(), CoreError> {

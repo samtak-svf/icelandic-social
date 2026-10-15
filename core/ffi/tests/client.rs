@@ -433,6 +433,7 @@ fn texted(relay: &Arc<Relay>, a1: &Phone, b1: &Phone) -> String {
 fn read_all(client: &CoreClient, conversation: &str) -> (usize, usize) {
     let listed = client.conversations().unwrap();
     let items = client.timeline(conversation.into(), None, 10).unwrap();
+    client.shared(conversation.into(), None, 10).unwrap();
     client.search_conversations("name".into()).unwrap();
     client.search_list(" ".into(), 5).unwrap();
     client.people().unwrap();

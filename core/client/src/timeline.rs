@@ -548,6 +548,42 @@ pub(crate) fn items(
     before: Option<u64>,
     limit: u32,
 ) -> Result<Vec<Item>, ClientError> {
+    let mut items = stored(tx, group, me, before, limit, false)?;
+    if before.is_none() {
+        let mut people = People {
+            tx,
+            known: HashMap::new(),
+        };
+        items.extend(pending(tx, group, me, &mut people)?);
+    }
+    Ok(items)
+}
+
+/// The photos and files of a conversation (0055), up to `limit` before
+/// `before`, newest first: the timeline's own rows, read the same way, without
+/// what was deleted for everyone or what the outbox holds.
+pub(crate) fn shared(
+    tx: &Transaction,
+    group: &[u8],
+    me: &str,
+    before: Option<u64>,
+    limit: u32,
+) -> Result<Vec<Item>, ClientError> {
+    let mut items = stored(tx, group, me, before, limit, true)?;
+    items.reverse();
+    Ok(items)
+}
+
+/// Up to `limit` stored items before `before`, oldest first; with `media`,
+/// only the photos and files still there.
+fn stored(
+    tx: &Transaction,
+    group: &[u8],
+    me: &str,
+    before: Option<u64>,
+    limit: u32,
+    media: bool,
+) -> Result<Vec<Item>, ClientError> {
     let markers = settings(tx)?.read_markers;
     let mut people = People {
         tx,
@@ -556,11 +592,13 @@ pub(crate) fn items(
     let mut statement = tx.prepare(
         "SELECT seq, kind, sender_account, envelope_id, ts, text, reply_to, detail, edited,
                 deleted, expires_at, received_at
-         FROM timeline WHERE group_id = ?1 AND seq < ?2 ORDER BY seq DESC LIMIT ?3",
+         FROM timeline WHERE group_id = ?1 AND seq < ?2
+           AND (?4 = 0 OR (kind = 'media' AND deleted = 0))
+         ORDER BY seq DESC LIMIT ?3",
     )?;
     let rows: Vec<Stored> = statement
         .query_map(
-            params![group, before.map_or(i64::MAX, |b| b as i64), limit],
+            params![group, before.map_or(i64::MAX, |b| b as i64), limit, media],
             |r| {
                 Ok((
                     r.get::<_, i64>(0)? as u64,
@@ -690,9 +728,6 @@ pub(crate) fn items(
             expires_at: expires.map(|e| e as u64),
             forwarded,
         });
-    }
-    if before.is_none() {
-        items.extend(pending(tx, group, me, &mut people)?);
     }
     Ok(items)
 }

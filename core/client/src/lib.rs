@@ -1026,6 +1026,16 @@ impl<T: Transport> Client<T> {
         self.reads()?.timeline(conversation, before, limit)
     }
 
+    /// `View::shared`.
+    pub fn shared(
+        &mut self,
+        conversation: &str,
+        before: Option<u64>,
+        limit: u32,
+    ) -> Result<Vec<Item>, ClientError> {
+        self.reads()?.shared(conversation, before, limit)
+    }
+
     /// Everything up to the item `seq` is on screen. With read markers on,
     /// a receipt is queued when that moved this account's mark; the next
     /// `sync` sends it.

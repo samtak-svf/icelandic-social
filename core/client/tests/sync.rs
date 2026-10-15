@@ -2801,3 +2801,111 @@ fn a_server_without_times_leaves_them_unknown() {
             .all(|i| i.received_at.is_none())
     );
 }
+
+/// The media of a conversation for its information screen (0055), newest first.
+fn shared(phone: &mut Phone, conversation: &str, before: Option<u64>, limit: u32) -> Vec<Item> {
+    phone.client.shared(conversation, before, limit).unwrap()
+}
+
+fn media_kind(item: &Item) -> (String, Option<String>) {
+    match &item.content {
+        Content::Media { mime, name, .. } => (mime.clone(), name.clone()),
+        other => panic!("not media: {other:?}"),
+    }
+}
+
+#[test]
+fn shared_lists_photos_and_files_newest_first_without_what_was_deleted() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut a1, &mut b1);
+    let files = tempfile::tempdir().unwrap();
+    let (path, _) = photo(&files);
+    a1.send(&conversation, "texti");
+    a1.client
+        .send_media(
+            &conversation,
+            &path,
+            "image/png",
+            Some("fyrst".into()),
+            None,
+        )
+        .unwrap();
+    let gone = a1
+        .client
+        .send_media(&conversation, &path, "image/png", None, None)
+        .unwrap();
+    a1.client
+        .send_media(
+            &conversation,
+            &path,
+            "application/pdf",
+            None,
+            Some("skýrsla.pdf".into()),
+        )
+        .unwrap();
+    a1.client
+        .send(&conversation, Body::Delete { target: gone })
+        .unwrap();
+    a1.sync();
+    b1.deliver();
+
+    for phone in [&mut a1, &mut b1] {
+        let all = shared(phone, &conversation, None, 10);
+        assert_eq!(
+            all.iter().map(media_kind).collect::<Vec<_>>(),
+            vec![
+                ("application/pdf".into(), Some("skýrsla.pdf".into())),
+                ("image/png".into(), None),
+            ]
+        );
+        assert!(all.windows(2).all(|w| w[0].seq > w[1].seq));
+        // Paged by seq, as the timeline is.
+        let first = shared(phone, &conversation, None, 1);
+        assert_eq!(first.len(), 1);
+        let rest = shared(phone, &conversation, first[0].seq, 10);
+        assert_eq!(
+            rest.iter().map(|i| i.seq).collect::<Vec<_>>(),
+            vec![all[1].seq]
+        );
+    }
+}
+
+#[test]
+fn shared_leaves_out_what_a_timer_ended_before_any_purge() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut a1, &mut b1);
+    let files = tempfile::tempdir().unwrap();
+    let (path, _) = photo(&files);
+    a1.client
+        .send_media(&conversation, &path, "image/png", None, None)
+        .unwrap();
+    a1.client
+        .send(&conversation, Body::Disappearing { seconds: Some(1) })
+        .unwrap();
+    a1.client
+        .send_media(
+            &conversation,
+            &path,
+            "image/png",
+            Some("hverfur".into()),
+            None,
+        )
+        .unwrap();
+    a1.sync();
+    b1.deliver();
+    assert_eq!(shared(&mut b1, &conversation, None, 10).len(), 2);
+    std::thread::sleep(std::time::Duration::from_millis(1100));
+    // No expire() yet: the read leaves the row out by itself (0056).
+    for phone in [&mut a1, &mut b1] {
+        let left = shared(phone, &conversation, None, 10);
+        assert_eq!(left.len(), 1);
+        assert!(matches!(
+            &left[0].content,
+            Content::Media { caption: None, .. }
+        ));
+    }
+}

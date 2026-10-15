@@ -47,6 +47,23 @@ impl View {
         })
     }
 
+    /// The photos and files of a conversation (0055), up to `limit` before
+    /// the item `before` (or the newest), newest first. Read from this
+    /// device's store alone; what a timer ended is already left out.
+    pub fn shared(
+        &mut self,
+        conversation: &str,
+        before: Option<u64>,
+        limit: u32,
+    ) -> Result<Vec<Item>, ClientError> {
+        let group = group_id(conversation).ok_or(ClientError::UnknownConversation)?;
+        self.reader.read(|tx| {
+            conversation_state(tx, &group)?;
+            let (_, me) = this_device(tx)?;
+            timeline::shared(tx, &group, &me.account, before, limit)
+        })
+    }
+
     /// The conversations whose title, the names of the others in it, has a
     /// name matching `search` at the start of a word (0038), in the order
     /// of `conversations`. Read from this device alone, never the server; a
