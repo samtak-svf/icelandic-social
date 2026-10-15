@@ -477,6 +477,7 @@ impl Store {
         let path = dir.join(FILE_NAME);
         let mut connection = connect(&path, key)?;
         migrate(&mut connection, MIGRATIONS)?;
+        repair(&mut connection, REPAIRS)?;
         Ok(Self { connection, path })
     }
 
@@ -557,6 +558,39 @@ fn migrate(connection: &mut Connection, migrations: &[(u32, &str)]) -> rusqlite:
     tx.commit()
 }
 
+/// Columns a store has whatever its history, added when missing (0050).
+/// Version 14 means two things on devices: core 0.18 stored the outbox's
+/// `refused` and the conversation's `join_refused_at` under it, a later
+/// change dropped that migration by mistake, and 0.20 stored the timeline's
+/// `received_at` under the same number. So neither history runs the
+/// other's 14, and no later migration can say which one a store has.
+const REPAIRS: &[(&str, &str, &str)] = &[
+    ("timeline", "received_at", "INTEGER"),
+    (
+        "outbox",
+        "refused",
+        "INTEGER NOT NULL DEFAULT 0 CHECK (refused IN (0, 1))",
+    ),
+    ("conversations", "join_refused_at", "INTEGER"),
+];
+
+fn repair(connection: &mut Connection, repairs: &[(&str, &str, &str)]) -> rusqlite::Result<()> {
+    let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    for (table, column, definition) in repairs {
+        let present: bool = tx.query_row(
+            "SELECT EXISTS (SELECT 1 FROM pragma_table_info(?1) WHERE name = ?2)",
+            [table, column],
+            |row| row.get(0),
+        )?;
+        if !present {
+            tx.execute_batch(&format!(
+                "ALTER TABLE {table} ADD COLUMN {column} {definition}"
+            ))?;
+        }
+    }
+    tx.commit()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -621,6 +655,87 @@ mod tests {
             })
             .unwrap();
         assert_eq!(value, [2]);
+    }
+
+    fn has_column(connection: &Connection, table: &str, column: &str) -> bool {
+        connection
+            .query_row(
+                "SELECT EXISTS (SELECT 1 FROM pragma_table_info(?1) WHERE name = ?2)",
+                [table, column],
+                |row| row.get(0),
+            )
+            .unwrap()
+    }
+
+    /// Core 0.18 stored a different migration 14, which a later change
+    /// dropped; 0.20 then stored the timeline's `received_at` under the same
+    /// number, so a store from 0.18 never got it (0050).
+    #[test]
+    fn a_store_from_the_dropped_migration_14_gets_every_column() {
+        const DROPPED_14: &str = "ALTER TABLE outbox ADD COLUMN refused INTEGER NOT NULL DEFAULT 0
+                 CHECK (refused IN (0, 1));
+             ALTER TABLE conversations ADD COLUMN join_refused_at INTEGER;";
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(FILE_NAME);
+        let mut old = connect(&path, &KEY).unwrap();
+        let mut history = MIGRATIONS[..13].to_vec();
+        history.push((14, DROPPED_14));
+        migrate_only(&mut old, &history);
+        assert!(!has_column(&old, "timeline", "received_at"));
+        drop(old);
+
+        let store = Store::open(dir.path(), &KEY).unwrap();
+        assert_eq!(store.schema_version().unwrap(), MIGRATIONS.len() as u32);
+        for (table, column, _) in REPAIRS {
+            assert!(
+                has_column(&store.connection, table, column),
+                "{table}.{column}"
+            );
+        }
+        drop(store);
+        // Opening again changes nothing.
+        Store::open(dir.path(), &KEY).unwrap();
+    }
+
+    /// A store that ran today's 14 lacks the dropped one's columns, which
+    /// the client reads again.
+    #[test]
+    fn a_store_from_todays_migration_14_gets_the_dropped_columns() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(FILE_NAME);
+        let mut old = connect(&path, &KEY).unwrap();
+        migrate_only(&mut old, MIGRATIONS);
+        assert!(!has_column(&old, "outbox", "refused"));
+        drop(old);
+
+        let store = Store::open(dir.path(), &KEY).unwrap();
+        for (table, column, _) in REPAIRS {
+            assert!(
+                has_column(&store.connection, table, column),
+                "{table}.{column}"
+            );
+        }
+    }
+
+    /// The migrations as a released core ran them, before any repair.
+    fn migrate_only(connection: &mut Connection, migrations: &[(u32, &str)]) {
+        let tx = connection.transaction().unwrap();
+        tx.execute_batch(
+            "CREATE TABLE schema_migrations (
+                 version    INTEGER PRIMARY KEY,
+                 applied_at INTEGER NOT NULL
+             ) STRICT;",
+        )
+        .unwrap();
+        for (version, sql) in migrations {
+            tx.execute_batch(sql).unwrap();
+            tx.execute(
+                "INSERT INTO schema_migrations (version, applied_at) VALUES (?1, 0)",
+                [version],
+            )
+            .unwrap();
+        }
+        tx.commit().unwrap();
     }
 
     /// Migration 12 rebuilds the timeline (0040); the rows and the

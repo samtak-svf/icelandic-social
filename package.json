@@ -23,7 +23,7 @@
     "check:pii": "node tooling/pii-guard.mjs",
     "check:seams": "node tooling/seam-guard.mjs",
     "check:jurisdiction": "node tooling/jurisdiction-check.mjs",
-    "check:core": "node tooling/core-guard.mjs",
+    "check:core": "node tooling/core-guard.mjs && node tooling/migrations-freeze.mjs",
     "check:ws-kotlin": "node tooling/ws-kotlin.mjs --check",
     "check:workflows": "node tooling/workflow-guard.mjs",
     "knip": "knip",
