@@ -1,6 +1,6 @@
 # 0054. A long press lifts the message
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the apps, released as 0.8.2
 - Date: 2026-10-15
 - Decided by: the maintainer, choosing from the UX round on 0.7.3
 - Builds on: [0022](0022-the-conversation-surfaces.md) (long press opens the message menu),
@@ -18,6 +18,9 @@
   for everyone.
 - The actions and their order are unchanged, and so are the screen-reader actions on the bubble
   (0022). With reduced motion the menu appears without the lift animation.
+- **On iOS the system's context menu is kept**: it already lifts the message, dims the screen and
+  holds every touch, and its actions carry their symbols. It cannot be recoloured, so "Taka til
+  baka" is its destructive red; it brings reduced motion and VoiceOver of its own.
 
 ## Why
 

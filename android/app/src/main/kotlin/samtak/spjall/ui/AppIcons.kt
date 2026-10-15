@@ -67,6 +67,13 @@ object AppIcons {
     /** A message still on its way: a clock face at ten past. */
     val Clock = outline("clock", 16f, 1.6f, "M2 8a6 6 0 1 0 12 0a6 6 0 1 0-12 0z", "M8 4.5V8l2.5 1.5")
 
+    /** The message menu's actions (0054), each before its words. */
+    val Reply = outline("reply", 20f, 1.8f, "M8 5L3 10l5 5", "M3 10h9a5 5 0 015 5v1")
+    val Copy = outline("copy", 20f, 1.8f, "M7 7h9v10H7z", "M4 13V3h9")
+    val Forward = outline("forward", 20f, 1.8f, "M12 5l5 5-5 5", "M17 10H8a5 5 0 00-5 5v1")
+    val Edit = outline("edit", 20f, 1.8f, "M13.5 3.5l3 3L7 16H4v-3z")
+    val Trash = outline("trash", 20f, 1.8f, "M3.5 6h13", "M8 6V3.5h4V6", "M5.5 6l1 11h7l1-11")
+
     /** The verified mark's shield, filled; [ShieldCheck] is drawn over it in another ink. */
     val Shield = filled("shield", 24f, "M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3z")
 

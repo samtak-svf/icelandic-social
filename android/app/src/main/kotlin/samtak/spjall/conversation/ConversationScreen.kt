@@ -30,6 +30,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -104,27 +105,30 @@ fun ConversationScreen(
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.surface) {
         // The header pads for the status bar itself, so its cream reaches the top edge.
         val sides = WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
-        Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(sides))) {
-            TopBar(state, actions)
-            conversation?.let { Banner(it) }
-            state.problem?.let { Box(Modifier.padding(16.dp)) { ProblemCard(it, actions::retry) } }
-            Timeline(
-                state = state,
-                group = group,
-                actions = actions,
-                onDelete = { deleting = it },
-                modifier = Modifier.weight(1f),
-            )
-            if (state.typing) {
-                TypingRow(
-                    conversation
-                        ?.members
-                        ?.singleOrNull()
-                        ?.shownName()
-                        .takeUnless { group },
+        // A long-pressed message lifts over all of it, the bars included (0054).
+        MessageMenuHost(Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(sides))) {
+                TopBar(state, actions)
+                conversation?.let { Banner(it) }
+                state.problem?.let { Box(Modifier.padding(16.dp)) { ProblemCard(it, actions::retry) } }
+                Timeline(
+                    state = state,
+                    group = group,
+                    actions = actions,
+                    onDelete = { deleting = it },
+                    modifier = Modifier.weight(1f),
                 )
+                if (state.typing) {
+                    TypingRow(
+                        conversation
+                            ?.members
+                            ?.singleOrNull()
+                            ?.shownName()
+                            .takeUnless { group },
+                    )
+                }
+                if (writable) Composer(state, actions)
             }
-            if (writable) Composer(state, actions)
         }
     }
     deleting?.let { item ->
@@ -132,10 +136,14 @@ fun ConversationScreen(
             onDismissRequest = { deleting = null },
             text = { Text(stringResource(R.string.delete_confirm)) },
             confirmButton = {
-                TextButton(onClick = {
-                    deleting = null
-                    actions.delete(item)
-                }) { Text(stringResource(R.string.delete_for_everyone)) }
+                // It cannot be undone, so it is drawn as the menu drew it (0054).
+                TextButton(
+                    onClick = {
+                        deleting = null
+                        actions.delete(item)
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Palette.danger),
+                ) { Text(stringResource(R.string.delete_for_everyone)) }
             },
             dismissButton = { TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.cancel)) } },
         )

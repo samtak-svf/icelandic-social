@@ -13,6 +13,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -286,6 +287,29 @@ class ConversationScreenTest {
         assertEquals(emptyList<String>(), calls)
         compose.onNodeWithText(text(R.string.delete_for_everyone)).performClick()
         assertEquals(listOf("delete 2"), calls)
+    }
+
+    @Test
+    fun theLiftedMessagesActionsKeepTheirOrderWithDeletingLast() {
+        show(item(2u, Content.Text("Úps", null), own = true))
+        compose.onNodeWithText("Úps", substring = true).performTouchInput { longClick() }
+        // Under the lifted message, top to bottom (0054); the copy drawn over the scrim is not a second node.
+        val tops =
+            listOf(R.string.reply, R.string.copy, R.string.forward, R.string.edit, R.string.delete_for_everyone)
+                .map { compose.onNodeWithText(text(it)).getBoundsInRoot().top }
+        assertEquals(tops.sorted(), tops)
+        compose.onAllNodesWithText("Úps", substring = true).assertCountEquals(1)
+    }
+
+    @Test
+    fun aTapOutsideTheMenuClosesItAndReachesNothingBehind() {
+        show(item(1u, Content.Text("Sæl", null)))
+        compose.onNodeWithText("Sæl", substring = true).performTouchInput { longClick() }
+        compose.onNodeWithText(text(R.string.reply)).assertIsDisplayed()
+        // The camera button is behind the scrim: the tap closes the menu and goes no further.
+        compose.onNodeWithContentDescription(text(R.string.camera)).performClick()
+        compose.onNodeWithText(text(R.string.reply)).assertDoesNotExist()
+        assertEquals(emptyList<String>(), calls)
     }
 
     @Test

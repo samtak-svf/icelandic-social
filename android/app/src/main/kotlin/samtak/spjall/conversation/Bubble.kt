@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -27,7 +25,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -46,33 +46,6 @@ import samtak.spjall.ui.Type
 import samtak.spjall.ui.clockTime
 import samtak.spjall.ui.lastLine
 import samtak.spjall.ui.shownName
-
-/** What a long press offers on this item. */
-private class Offer(
-    val item: Item,
-) {
-    private val sent = item.seq != null && item.envelopeId != null
-
-    // An unreadable row offers nothing: there is nothing in it to act on (0051).
-    private val live = sent && item.content != Content.Deleted && item.content !is Content.Unreadable
-    val reply = live
-
-    /** The whole text, also under a timer: the reader can already read it (0046). */
-    val copy = (item.content as? Content.Text)?.text?.takeIf { live }
-
-    /**
-     * Text or a file, not under a timer, where a copy would outlive the original (0041); never a
-     * shared post (0044).
-     */
-    val forward =
-        live &&
-            item.expiresAt == null &&
-            (item.content is Content.Text || item.content is Content.Media)
-    val react = live
-    val edit = live && item.own && item.content is Content.Text
-    val delete = live && item.own
-    val any = reply || react || edit || delete
-}
 
 /** A tombstone is a quiet line, not a bubble: there is nothing left to press. */
 @Composable
@@ -151,12 +124,15 @@ private fun Message(
 ) {
     val tap = item.tap(actions)
     val offer = Offer(item)
-    var menu by remember { mutableStateOf(false) }
+    val host = LocalMessageMenu.current
+    var at by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val pill = item.pill()
     val foreground = if (item.own) Palette.bubbleOwnFg else Palette.bubbleOtherFg
     val copy = copier()
+    val entries = menuActions(offer, actions, onDelete, copy)
+    val lift = lifter(host, { at }, item, media, foreground, actions, offer, entries)
     val custom =
-        accessibilityActions(offer, actions, onDelete, copy) { menu = true } +
+        accessibilityActions(offer, actions, onDelete, copy, lift) +
             linkActions((item.content as? Content.Text)?.text) +
             listOfNotNull(
                 pill?.let {
@@ -179,6 +155,7 @@ private fun Message(
             shape = bubbleShape(item.own),
             modifier =
                 Modifier
+                    .onGloballyPositioned { at = it }
                     .semantics(mergeDescendants = true) {
                         customActions = custom
                         stateDescription = spoken
@@ -188,10 +165,10 @@ private fun Message(
                         onClick = { tap?.invoke() ?: onTime() },
                         onLongClickLabel = stringResource(R.string.react),
                         // Its haptic (0043) is combinedClickable's own, as the system setting allows.
-                        onLongClick = { menu = true },
+                        onLongClick = lift,
                     ),
         ) {
-            Inside(item, media, foreground, actions, onTap = { tap?.invoke() ?: onTime() }) { menu = true }
+            Inside(item, media, foreground, actions, onTap = { tap?.invoke() ?: onTime() }, onLongPress = lift)
         }
         pill?.let {
             ReactionPill(
@@ -203,9 +180,40 @@ private fun Message(
                         .offset(x = if (item.own) -PILL_INSET.dp else PILL_INSET.dp, y = (PILL_HEIGHT / 2).dp),
             )
         }
-        Menu(menu, offer, actions, onDelete, copy) { menu = false }
     }
 }
+
+/** Lifts the bubble over the rest of the conversation (0054), drawn again as it is here. */
+private fun lifter(
+    host: MessageMenuState?,
+    at: () -> LayoutCoordinates?,
+    item: Item,
+    media: ConversationViewModel.Media?,
+    foreground: Color,
+    actions: ConversationActions,
+    offer: Offer,
+    entries: List<MenuAction>,
+): () -> Unit =
+    {
+        at()?.let { coordinates ->
+            host?.open =
+                MenuRequest(
+                    at = coordinates,
+                    own = item.own,
+                    reactions = if (offer.react) EMOJI else emptyList(),
+                    onReact = { actions.react(item, it) },
+                    actions = entries,
+                ) {
+                    Surface(
+                        color = bubbleColor(item, media),
+                        contentColor = foreground,
+                        shape = bubbleShape(item.own),
+                    ) {
+                        Inside(item, media, foreground, actions, onTap = {}, onLongPress = {})
+                    }
+                }
+        }
+    }
 
 /** Rounded all round but at the bottom corner on the sender's side. */
 private fun bubbleShape(own: Boolean) =
@@ -310,41 +318,6 @@ private fun Meta(
                 tint = Palette.mutedFg,
                 modifier = Modifier.size(CLOCK.dp),
             )
-        }
-    }
-}
-
-@Composable
-private fun Menu(
-    open: Boolean,
-    offer: Offer,
-    actions: ConversationActions,
-    onDelete: (Item) -> Unit,
-    onCopy: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    DropdownMenu(expanded = open, onDismissRequest = onDismiss) {
-        if (offer.react) {
-            Row(modifier = Modifier.padding(horizontal = 8.dp)) {
-                EMOJI.forEach { emoji ->
-                    TextButton(onClick = {
-                        onDismiss()
-                        actions.react(offer.item, emoji)
-                    }) { Text(emoji, style = MaterialTheme.typography.titleLarge) }
-                }
-            }
-        }
-        listOfNotNull(
-            if (offer.reply) R.string.reply to { actions.reply(offer.item) } else null,
-            offer.copy?.let { text -> R.string.copy to { onCopy(text) } },
-            if (offer.forward) R.string.forward to { actions.forward(offer.item) } else null,
-            if (offer.edit) R.string.edit to { actions.edit(offer.item) } else null,
-            if (offer.delete) R.string.delete_for_everyone to { onDelete(offer.item) } else null,
-        ).forEach { (label, act) ->
-            DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = {
-                onDismiss()
-                act()
-            })
         }
     }
 }

@@ -11,9 +11,11 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.platform.app.InstrumentationRegistry
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.captureScreenRoboImage
@@ -295,6 +297,25 @@ class ConversationScreenshotTest {
         photos()
         compose.onRoot().captureRoboImage()
     }
+
+    /** A long press on one's own message (0054): it lifts over a dimmed screen, reactions above, actions below. */
+    private fun menu() {
+        show(
+            item(1u, Content.Text("Sæl, ertu komin heim?", null)),
+            item(2u, Content.Text("Já, rétt í þessu", null), own = true),
+            item(3u, Content.Text("Gott að heyra", null)),
+        )
+        compose.onNodeWithText("Já, rétt í þessu", substring = true).performTouchInput { longClick() }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage()
+    }
+
+    @Test
+    fun aLongPressLiftsTheMessage() = menu()
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun aLongPressLiftsTheMessageAtNight() = menu()
 
     @Test
     fun sharedPostSaysItIsGone() {
