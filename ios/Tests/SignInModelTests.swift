@@ -115,7 +115,8 @@ final class SignInModelTests: XCTestCase {
             account.failNext = CoreError.SignIn(detail: "state mismatch")
             return URL(string: "cb:1")
         }
-        XCTAssertEqual(model.problem, .generic())
+        // A failure no server answered names the core's code (0049).
+        XCTAssertEqual(model.problem, .generic(code: "sign-in"))
 
         await model.retry(browser: browser("cb:2"))
         XCTAssertEqual(

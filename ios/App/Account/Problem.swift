@@ -1,7 +1,8 @@
 import SpjallCore
 
 /// Why an action failed, as far as the person can do something about it. A refusal keeps the
-/// server's request id (decision 0037), so a tester can quote it.
+/// server's request id (decision 0037), and a failure no server answered the core's code for it
+/// (decision 0049), so a tester can quote either.
 enum Problem: Equatable, Sendable {
     /// No answer from the server: trying again may work.
     case unreachable
@@ -10,13 +11,14 @@ enum Problem: Equatable, Sendable {
     /// A photo or file over the 25 MB limit (decision 0023): trying again cannot help.
     case tooLarge
     /// Anything else.
-    case generic(requestId: String? = nil)
+    case generic(requestId: String? = nil, code: String? = nil)
 
     init(_ error: Error) {
         switch error {
         case CoreError.Unreachable: self = .unreachable
         case CoreError.Refused(_, "identity_taken", let requestId): self = .identityTaken(requestId: requestId)
         case CoreError.Refused(_, _, let requestId): self = .generic(requestId: requestId)
+        case let error as CoreError: self = .generic(code: error.code())
         default: self = .generic()
         }
     }
@@ -24,9 +26,15 @@ enum Problem: Equatable, Sendable {
     /// The server's id for the refused request; nil when no server refused it.
     var requestId: String? {
         switch self {
-        case let .identityTaken(requestId), let .generic(requestId): requestId
+        case let .identityTaken(requestId), let .generic(requestId, _): requestId
         case .unreachable, .tooLarge: nil
         }
+    }
+
+    /// The core's code for a failure no server answered (0049); nil for a refusal or no code.
+    var code: String? {
+        if case let .generic(_, code) = self { return code }
+        return nil
     }
 
     /// Trying again cannot free a kennitala another account holds, nor shrink a file.

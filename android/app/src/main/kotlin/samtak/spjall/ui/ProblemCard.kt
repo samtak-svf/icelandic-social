@@ -49,6 +49,15 @@ fun ProblemCard(
                     )
                 }
             }
+            // A failure no server answered names the core's code for it (decision 0049).
+            problem.code?.let { code ->
+                SelectionContainer(modifier = Modifier.padding(top = 4.dp)) {
+                    Text(
+                        text = stringResource(R.string.problem_local_code, code),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
             // The same kennitala stays on the other account, and the same file stays too large.
             if (problem !is Problem.IdentityTaken && problem != Problem.TooLarge) {
                 TextButton(onClick = onRetry) { Text(stringResource(R.string.try_again)) }

@@ -1,6 +1,6 @@
 # 0049. A failure no server answered names its code
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the core (#230, core 0.21.0) and the apps, released as 0.7.2
 - Date: 2026-10-15
 - Decided by: the maintainer, after the 0.7.1 hand test stopped at an empty conversation list
   with no way to tell why

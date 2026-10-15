@@ -23,4 +23,11 @@ class ProblemTest {
         assertNull(CoreException.Unreachable("timeout").problem().requestId)
         assertNull(IllegalStateException().problem().requestId)
     }
+
+    @Test
+    fun aLocalFailureWithoutTheNativeCoreIsGenericWithNoCode() {
+        // The JVM has no native core; on a device the code comes from it (ProblemCardTest).
+        assertEquals(Problem.Generic(), CoreException.Store("busy").problem())
+        assertNull(CoreException.Refused(403u, "blocked", "req-1").problem().code)
+    }
 }

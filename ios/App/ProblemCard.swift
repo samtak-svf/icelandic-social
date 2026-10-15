@@ -16,6 +16,13 @@ struct ProblemCard: View {
                     .foregroundStyle(BrandTokens.Colors.fg)
                     .textSelection(.enabled)
             }
+            // A failure no server answered names the core's code for it (decision 0049).
+            if let line = Self.codeLine(problem) {
+                Text(line)
+                    .font(.footnote)
+                    .foregroundStyle(BrandTokens.Colors.fg)
+                    .textSelection(.enabled)
+            }
             if problem.canRetry {
                 Button("try_again", action: onRetry)
             }
@@ -28,6 +35,11 @@ struct ProblemCard: View {
     /// The line naming the request id, or nil when no server refused the request.
     static func requestIdLine(_ problem: Problem) -> String? {
         problem.requestId.map { localized("problem_request_id", $0) }
+    }
+
+    /// The line naming the core's code, or nil when the failure has none.
+    static func codeLine(_ problem: Problem) -> String? {
+        problem.code.map { localized("problem_local_code", $0) }
     }
 
     private var message: LocalizedStringKey {

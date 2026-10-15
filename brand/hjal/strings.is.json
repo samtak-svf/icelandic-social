@@ -159,6 +159,7 @@
   "error_unreachable": "Ekki náðist samband við þjóninn. Reyndu aftur.",
   "error_generic": "Eitthvað fór úrskeiðis. Reyndu aftur.",
   "problem_request_id": "Villunúmer: {id}",
+  "problem_local_code": "Villukóði: {code}",
   "try_again": "Reyna aftur",
   "cancel": "Hætta við",
   "back": "Til baka",

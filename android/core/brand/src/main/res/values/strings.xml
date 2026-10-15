@@ -294,6 +294,8 @@
     <string name="error_generic">Eitthvað fór úrskeiðis. Reyndu aftur.</string>
     <!-- Small secondary line under a refusal naming the server's request id (decision 0037), so a tester can quote it. -->
     <string name="problem_request_id">Villunúmer: %1$s</string>
+    <!-- Small secondary line under a failure no server answered, naming the core's code for it (decision 0049), so a tester can quote it. -->
+    <string name="problem_local_code">Villukóði: %1$s</string>
     <!-- Button that repeats the action that failed. -->
     <string name="try_again">Reyna aftur</string>
     <!-- Dismisses a confirmation without doing anything. -->

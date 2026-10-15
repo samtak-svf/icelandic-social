@@ -636,6 +636,13 @@
         "id": "string"
       }
     },
+    "problem_local_code": {
+      "surfaces": ["android", "ios"],
+      "description": "Small secondary line under a failure no server answered, naming the core's code for it (decision 0049), so a tester can quote it.",
+      "placeholders": {
+        "code": "string"
+      }
+    },
     "try_again": {
       "surfaces": ["android", "ios"],
       "description": "Button that repeats the action that failed."

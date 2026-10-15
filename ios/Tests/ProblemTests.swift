@@ -23,4 +23,12 @@ final class ProblemTests: XCTestCase {
         XCTAssertNil(ProblemCard.requestIdLine(.unreachable))
         XCTAssertNil(ProblemCard.requestIdLine(Problem(CoreError.Unreachable(detail: "timeout"))))
     }
+
+    func testALocalFailureNamesTheCoresCode() {
+        let problem = Problem(CoreError.Store(detail: "ConstraintViolation/2067"))
+        XCTAssertEqual(problem, .generic(code: "store/ConstraintViolation/2067"))
+        XCTAssertEqual(ProblemCard.codeLine(problem), localized("problem_local_code", "store/ConstraintViolation/2067"))
+        XCTAssertNil(Problem(CoreError.Refused(status: 403, code: "blocked", requestId: "req-1")).code)
+        XCTAssertNil(ProblemCard.codeLine(.unreachable))
+    }
 }
