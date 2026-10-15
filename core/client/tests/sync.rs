@@ -436,6 +436,51 @@ fn revoking_a_device_removes_it_from_every_group() {
     assert_unread(&relay, &mut a2, &["eftir", "takk", "líka"]);
 }
 
+/// A token the server no longer answers, as after the device was revoked
+/// or its account deleted elsewhere: the next sync forgets the store and
+/// says it is not registered (0057), with or without a conversation to sync.
+#[test]
+fn a_dead_token_signs_the_device_out_on_sync() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let mut c1 = Phone::new(&relay, "c", "c1");
+    let conversation = conversation(&mut a1, &mut b1);
+    a1.send(&conversation, "fyrir");
+    a1.sync();
+    b1.deliver();
+    relay.revoke("b1");
+    relay.revoke("c1");
+
+    for phone in [&mut b1, &mut c1] {
+        assert!(matches!(
+            phone.client.sync(),
+            Err(ClientError::NotRegistered)
+        ));
+        assert!(phone.client.signed_in().unwrap().is_none());
+        assert!(phone.client.conversations().unwrap().is_empty());
+    }
+}
+
+/// A frame that sends the device to the server, here one that came just
+/// before the socket closed, finds its token dead the same way (0057).
+#[test]
+fn a_dead_token_signs_the_device_out_on_a_frame() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let conversation = conversation(&mut a1, &mut b1);
+    relay.revoke("b1");
+
+    let frame = format!(r#"{{"type":"notify","conversationId":"{conversation}","seq":99}}"#);
+    assert!(matches!(
+        b1.client.on_frame(&frame),
+        Err(ClientError::NotRegistered)
+    ));
+    assert!(b1.client.signed_in().unwrap().is_none());
+    assert!(b1.client.conversations().unwrap().is_empty());
+}
+
 /// The revoked device's store, shown everything by a server that still
 /// answers its old token, opens none of `texts`: its leaf is gone.
 fn assert_unread(relay: &Relay, revoked: &mut Phone, texts_after: &[&str]) {

@@ -323,13 +323,24 @@ const KEY_PACKAGE_TARGET: u32 = 10;
 /// milliseconds: the server stops counting a package this close to expiry.
 const LAST_RESORT_RENEW: u64 = 14 * 24 * 60 * 60 * 1000;
 
-/// Only `ClientTooOld` of what failed: a step the next sync tries again
-/// cannot be, for a build the server no longer serves (0030).
-fn too_old<T>(result: Result<T, ClientError>) -> Result<(), ClientError> {
+/// Only what stops every step of what failed: a step the next sync tries
+/// again cannot be, for a build the server no longer serves (0030) or a
+/// token it no longer answers (0057).
+fn stops_every_step<T>(result: Result<T, ClientError>) -> Result<(), ClientError> {
     match result {
         Err(error @ ClientError::Transport(ApiError::ClientTooOld { .. })) => Err(error),
+        Err(error) if dead_token(&error) => Err(error),
         _ => Ok(()),
     }
+}
+
+/// The server's 401: the device was revoked or its account deleted, here
+/// or elsewhere, so no later call with this token can succeed.
+fn dead_token(error: &ClientError) -> bool {
+    matches!(
+        error,
+        ClientError::Transport(ApiError::Refused { status: 401, .. })
+    )
 }
 
 /// A refusal of one conversation's request, which the others' do not
@@ -1130,8 +1141,28 @@ impl<T: Transport> Client<T> {
 
     /// Sends what the outbox holds and fetches what came, for every
     /// conversation this device is in. One the server refuses waits for the
-    /// next sync; the others and the steps after them go on.
+    /// next sync; the others and the steps after them go on. A token the
+    /// server no longer answers signs this device out (0057).
     pub fn sync(&mut self) -> Result<Outcome, ClientError> {
+        let synced = self.sync_all();
+        self.unless_dead(synced)
+    }
+
+    /// A token the server no longer answers signs this device out: the
+    /// store forgets everything, as `revoke_device` does for this device,
+    /// and the call says it is not registered (0057).
+    fn unless_dead<R>(&mut self, result: Result<R, ClientError>) -> Result<R, ClientError> {
+        match result {
+            Err(error) if dead_token(&error) => {
+                self.outcome = Outcome::default();
+                self.forget()?;
+                Err(ClientError::NotRegistered)
+            }
+            result => result,
+        }
+    }
+
+    fn sync_all(&mut self) -> Result<Outcome, ClientError> {
         let groups: Vec<Vec<u8>> = self.store.try_write(|tx| {
             let mut statement = tx.prepare(
                 "SELECT group_id FROM conversations
@@ -1148,11 +1179,11 @@ impl<T: Transport> Client<T> {
         // KeyPackages, blocks and mutes set on another device of this
         // account and the push token: the next sync tries each again,
         // unless this build is too old to be served at all (0030).
-        too_old(self.restock())?;
+        stops_every_step(self.restock())?;
         self.refresh_profiles()?;
-        too_old(self.refresh_blocks())?;
-        too_old(self.refresh_mutes())?;
-        too_old(self.send_push_token())?;
+        stops_every_step(self.refresh_blocks())?;
+        stops_every_step(self.refresh_mutes())?;
+        stops_every_step(self.send_push_token())?;
         self.purge()?;
         self.sweep_media()?;
         Ok(std::mem::take(&mut self.outcome))
@@ -1232,8 +1263,13 @@ impl<T: Transport> Client<T> {
         Ok(())
     }
 
-    /// One frame from the socket.
+    /// One frame from the socket. As `sync`, a dead token signs out.
     pub fn on_frame(&mut self, text: &str) -> Result<Outcome, ClientError> {
+        let handled = self.handle_frame(text);
+        self.unless_dead(handled)
+    }
+
+    fn handle_frame(&mut self, text: &str) -> Result<Outcome, ClientError> {
         let frame: Incoming =
             serde_json::from_str(text).map_err(|_| ClientError::Protocol("frame"))?;
         match frame {

@@ -1324,11 +1324,14 @@ impl CoreClient {
 
     /// Sends what is queued and fetches what is new. Call it when the app
     /// starts, when the socket connects, and when the network comes back.
+    /// `NotRegistered` means the server no longer answers this device's
+    /// token: the store has forgotten everything and the app signs in again
+    /// (0057).
     pub fn sync(&self) -> Result<Outcome, CoreError> {
         Ok(self.client()?.sync()?.into())
     }
 
-    /// One text frame from the socket.
+    /// One text frame from the socket. Signs out as `sync` does.
     pub fn on_frame(&self, frame: String) -> Result<Outcome, CoreError> {
         Ok(self.client()?.on_frame(&frame)?.into())
     }

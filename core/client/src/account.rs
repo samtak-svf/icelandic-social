@@ -604,7 +604,7 @@ impl<T: Transport> Client<T> {
     /// timeline, the outbox, the names fetched, the toggles, the blocks, the
     /// mutes and the media files. The next sign-in starts as a new device,
     /// and the push token, which belongs to the install, is sent for it.
-    fn forget(&mut self) -> Result<(), ClientError> {
+    pub(crate) fn forget(&mut self) -> Result<(), ClientError> {
         self.store.write(|tx| {
             tx.execute_batch(
                 "DELETE FROM outbox;
