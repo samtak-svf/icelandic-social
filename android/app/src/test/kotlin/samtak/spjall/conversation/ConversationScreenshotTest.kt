@@ -5,9 +5,7 @@ import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Shader
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -16,9 +14,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
-import androidx.test.platform.app.InstrumentationRegistry
 import com.github.takahirom.roborazzi.captureRoboImage
-import com.github.takahirom.roborazzi.captureScreenRoboImage
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -28,7 +24,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import samtak.spjall.brand.R
 import samtak.spjall.conversations.SCREENSHOT_DEVICE
 import samtak.spjall.conversations.SCREENSHOT_SDK
 import samtak.spjall.core.Content
@@ -46,7 +41,7 @@ import android.graphics.Color as AndroidColor
 
 /**
  * What one conversation looks like in the states 0043 names: the composer's one action, the
- * clock of a pending message, a shared post's line and the information sheet. Rewrite the
+ * clock of a pending message and a shared post's line. Rewrite the
  * images with `./gradlew recordRoborazziDebug` when a change is meant.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -104,6 +99,8 @@ class ConversationScreenshotTest {
             override fun unmute() = Unit
 
             override fun block() = Unit
+
+            override fun info() = Unit
 
             override fun retry() = Unit
 
@@ -321,18 +318,6 @@ class ConversationScreenshotTest {
     fun sharedPostSaysItIsGone() {
         show(item(1u, Content.Post("p1")))
         compose.onRoot().captureRoboImage()
-    }
-
-    @Test
-    fun informationSheet() {
-        show(item(1u, Content.Text("Sæl", null)))
-        val label = InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.conversation_info)
-        compose
-            .onNode(hasClickLabel(label) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
-            .performClick()
-        compose.waitForIdle()
-        // The sheet is a window of its own, so the whole screen is captured.
-        captureScreenRoboImage()
     }
 
     private companion object {

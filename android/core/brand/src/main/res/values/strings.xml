@@ -354,4 +354,14 @@
     <string name="pick_none_found">Ekkert samtal fannst með þessu nafni.</string>
     <!-- Screen-reader text of the placeholder rows shown on a first load (0043). -->
     <string name="loading">Hleður…</string>
+    <!-- The state under the mute row of a conversation's information screen when it is not muted (0055). -->
+    <string name="mute_off">Slökkt</string>
+    <!-- The state under the notifications row of a conversation's information screen while it is muted for a while; time is the clock time it ends (0042, 0055). -->
+    <string name="muted_until">Þaggað til kl. %1$s</string>
+    <!-- The state under the notifications row of a conversation's information screen while it is muted until turned back on (0042, 0055). -->
+    <string name="muted_always">Þaggað þar til þú kveikir aftur</string>
+    <!-- Heading over the photos and files sent in a conversation, on its information screen (0055). -->
+    <string name="shared_media">Myndir og skrár</string>
+    <!-- The information screen when no photo or file has been sent in the conversation (0055). -->
+    <string name="shared_media_empty">Engar myndir eða skrár hafa verið sendar í þessu samtali.</string>
 </resources>

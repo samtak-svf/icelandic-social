@@ -47,6 +47,8 @@ protocol Account: Sendable {
     func openInvite(token: String) throws -> String
     /// The conversation's items, oldest first, up to `limit` before the item `before`; the unsent ones last.
     func timeline(_ conversation: String, before: UInt64?, limit: UInt32) throws -> [Item]
+    /// The photos and files sent in the conversation, newest first, up to `limit` before `before` (decision 0055).
+    func shared(_ conversation: String, before: UInt64?, limit: UInt32) throws -> [Item]
     /// Queues a body to send; the next sync sends it.
     func send(_ conversation: String, body: Body) throws -> String
     /// Queues the failed items to send again.
@@ -202,6 +204,10 @@ final class CoreAccount: Account, @unchecked Sendable {
 
     func timeline(_ conversation: String, before: UInt64?, limit: UInt32) throws -> [Item] {
         try core().timeline(conversation: conversation, before: before, limit: limit)
+    }
+
+    func shared(_ conversation: String, before: UInt64?, limit: UInt32) throws -> [Item] {
+        try core().shared(conversation: conversation, before: before, limit: limit)
     }
 
     func send(_ conversation: String, body: Body) throws -> String {

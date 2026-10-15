@@ -85,6 +85,17 @@ class ConversationViewModel(
         val name: String?,
     )
 
+    /**
+     * The photos and files sent in the conversation, for its information screen (0055), newest first;
+     * read once that screen asks for them, then again on every event for the conversation.
+     */
+    data class Shared(
+        val items: List<Item> = emptyList(),
+        val loaded: Boolean = false,
+        /** There may be older ones than the last here. */
+        val more: Boolean = true,
+    )
+
     data class State(
         val conversation: Conversation? = null,
         /** Oldest first, the unsent ones last. */
@@ -97,6 +108,8 @@ class ConversationViewModel(
         val mode: Mode = Mode.New,
         val media: Map<ULong, Media> = emptyMap(),
         val attachment: Pending? = null,
+        /** Null until the information screen asks for them. */
+        val shared: Shared? = null,
         val problem: Problem? = null,
     ) {
         /**
@@ -142,6 +155,7 @@ class ConversationViewModel(
     private var typingShown: Job? = null
     private var expiry: Job? = null
     private var loadingOlder = false
+    private var loadingShared = false
 
     init {
         viewModelScope.launch { for (unit in reads) read() }
@@ -177,6 +191,35 @@ class ConversationViewModel(
                 _state.update { it.copy(problem = e.problem()) }
             } finally {
                 loadingOlder = false
+            }
+        }
+    }
+
+    /** Reads the photos and files for the information screen (0055); after that, every read includes them. */
+    fun loadShared() {
+        if (_state.value.shared == null) _state.update { it.copy(shared = Shared()) }
+        load()
+    }
+
+    /** The page of photos and files older than the last one here; does nothing while one is read. */
+    fun moreShared() {
+        val last =
+            _state.value.shared
+                ?.takeIf { it.more }
+                ?.items
+                ?.lastOrNull()
+                ?.seq
+        if (last == null || loadingShared) return
+        loadingShared = true
+        viewModelScope.launch {
+            try {
+                val page = withContext(io) { account.shared(id, last, PAGE) }
+                val more = page.size == PAGE.toInt()
+                _state.update { it.copy(shared = it.shared?.run { copy(items = items + page, more = more) }) }
+            } catch (e: CoreException) {
+                _state.update { it.copy(problem = e.problem()) }
+            } finally {
+                loadingShared = false
             }
         }
     }
@@ -377,10 +420,16 @@ class ConversationViewModel(
 
     private suspend fun read() {
         val size = maxOf(PAGE.toInt(), _state.value.items.size).toUInt()
+        val sharedSize = _state.value.shared?.let { maxOf(PAGE.toInt(), it.items.size).toUInt() }
         try {
             val (conversation, items) =
                 withContext(io) {
                     account.conversations().firstOrNull { it.id == id } to account.timeline(id, null, size)
+                }
+            val shared =
+                sharedSize?.let { size ->
+                    val page = withContext(io) { account.shared(id, null, size) }
+                    Shared(page, loaded = true, more = page.size >= size.toInt())
                 }
             failed = null
             _state.update {
@@ -389,6 +438,7 @@ class ConversationViewModel(
                     items = items,
                     loaded = true,
                     older = it.older && items.size >= size.toInt(),
+                    shared = shared ?: it.shared,
                     problem = null,
                 )
             }

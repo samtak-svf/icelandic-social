@@ -3,8 +3,8 @@ import SwiftUI
 
 /// The conversation's menu: its information, mute or notifications back on, the disappearing timer, and
 /// block in a 1:1 (decisions 0043, 0042, 0022, 0024), behind the circled ellipsis, the system's own "more"
-/// mark (decision 0047). The information sheet offers the same choices under who is here. `info` is whether
-/// it is open; the top bar presents it, not this menu, so a tap on the title opens it as surely as the item.
+/// mark (decision 0047). The information screen offers the same choices, each with its state (decision 0055).
+/// `info` is whether it is open; the conversation pushes it, not this menu.
 struct ConversationMenu: View {
     let conversation: Conversation
     let model: ConversationModel
@@ -70,91 +70,13 @@ struct MuteChoices: View {
     }
 }
 
-/// Who is in the conversation, then the menu's choices, the timer showing what it is set to (decision 0043).
-struct ConversationInfo: View {
-    let conversation: Conversation
-    let model: ConversationModel
-
-    @State private var blocking = false
-    @Environment(\.dismiss) private var dismiss
-
-    private var other: Person? { conversation.members.count == 1 ? conversation.members[0] : nil }
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    ForEach(conversation.members, id: \.account) { person in
-                        HStack(spacing: 12) {
-                            Avatar(person: person, size: 36)
-                            Text(verbatim: shownName(person)).foregroundStyle(BrandTokens.Colors.fg)
-                            if person.verified { VerifiedMark() }
-                        }
-                        .accessibilityElement(children: .combine)
-                    }
-                } header: {
-                    if conversation.members.count > 1 {
-                        Text(verbatim: plural("group_member_count", conversation.members.count))
-                    }
-                }
-                Section {
-                    NavigationLink {
-                        TimerList(current: conversation.timer) { seconds in
-                            if seconds != conversation.timer { Task { await model.timer(seconds) } }
-                            dismiss()
-                        }
-                        .navigationTitle(Text("disappearing_messages"))
-                        .navigationBarTitleDisplayMode(.inline)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("disappearing_messages")
-                            Text(verbatim: timerLine(conversation.timer))
-                                .font(.footnote)
-                                .foregroundStyle(BrandTokens.Colors.mutedFg)
-                        }
-                    }
-                    MuteChoices(
-                        muted: conversation.mute != .off,
-                        onMute: { duration in pick { await model.mute(duration) } },
-                        onUnmute: { pick { await model.unmute() } })
-                    if other != nil {
-                        Button("block", role: .destructive) { blocking = true }
-                    }
-                }
-                .foregroundStyle(BrandTokens.Colors.fg)
-            }
-            .scrollContentBackground(.hidden)
-            .background(BrandTokens.Colors.surface)
-            .navigationTitle(Text("conversation_info"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("cancel") { dismiss() } }
-            }
-            .alert(
-                Text(verbatim: other.map { localized("block_confirm", shownName($0)) } ?? ""),
-                isPresented: $blocking
-            ) {
-                Button("block", role: .destructive) { pick { await model.block() } }
-                Button("cancel", role: .cancel) {}
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
-
-    /// Closes the sheet and does what was picked.
-    private func pick(_ action: @escaping @MainActor () async -> Void) {
-        dismiss()
-        Task { await action() }
-    }
-}
-
 /// What the timer is set to, as its choices name it.
-private func timerLine(_ seconds: UInt32?) -> String {
+func timerLine(_ seconds: UInt32?) -> String {
     seconds.map { localized("disappearing_option", duration($0)) } ?? localized("disappearing_off")
 }
 
 /// Off, or one of the timers decision 0022 lists.
-private struct TimerSheet: View {
+struct TimerSheet: View {
     let current: UInt32?
     let onPick: (UInt32?) -> Void
 

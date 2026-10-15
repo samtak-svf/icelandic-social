@@ -137,6 +137,10 @@ class ConversationScreenTest {
                 calls += "block"
             }
 
+            override fun info() {
+                calls += "info"
+            }
+
             override fun retry() {
                 calls += "retry"
             }
@@ -414,12 +418,7 @@ class ConversationScreenTest {
         compose
             .onNode(hasClickLabel(text(R.string.conversation_info)) and hasRole(Role.Button))
             .performClick()
-        compose.onNodeWithText(text(R.string.conversation_info)).assertIsDisplayed()
-        val hour = context.resources.getQuantityString(R.plurals.duration_hours, 1, 1)
-        compose.onNodeWithText(context.getString(R.string.disappearing_option, hour)).assertIsDisplayed()
-        compose.onNodeWithText(text(R.string.mute)).performClick()
-        compose.onNodeWithText(text(R.string.mute_hour)).performClick()
-        assertEquals(listOf("mute HOUR"), calls)
+        assertEquals(listOf("info"), calls)
     }
 
     @Test
@@ -428,11 +427,7 @@ class ConversationScreenTest {
         show(item(1u, Content.Text("Sæl", null)), members = listOf(anna, bjorn))
         compose.onNodeWithContentDescription(text(R.string.more_options)).performClick()
         compose.onNodeWithText(text(R.string.conversation_info)).performClick()
-        compose
-            .onNodeWithText(context.resources.getQuantityString(R.plurals.group_member_count, 2, 2), ignoreCase = true)
-            .assertIsDisplayed()
-        compose.onNodeWithText("Björn").assertIsDisplayed()
-        compose.onNodeWithText(text(R.string.block)).assertDoesNotExist()
+        assertEquals(listOf("info"), calls)
     }
 
     @Test

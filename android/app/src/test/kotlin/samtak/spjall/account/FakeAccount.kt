@@ -226,6 +226,19 @@ class FakeAccount(
         return older.takeLast(limit.toInt())
     }
 
+    override fun shared(
+        conversation: String,
+        before: ULong?,
+        limit: UInt,
+    ): List<Item> {
+        call("shared $conversation ${before ?: "-"}")
+        return timelines[conversation]
+            .orEmpty()
+            .filter { it.content is Content.Media && it.seq != null && (before == null || it.seq!! < before) }
+            .reversed()
+            .take(limit.toInt())
+    }
+
     override fun send(
         conversation: String,
         body: Body,

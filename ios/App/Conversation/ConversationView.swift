@@ -14,6 +14,8 @@ struct ConversationView: View {
     /// The envelope of the message whose reactions sheet is open (decision 0045).
     @State private var reactionsOf: String?
     @State private var preview: URL?
+    /// The conversation's information screen is pushed (decision 0055).
+    @State private var info = false
     /// The picker a forward opened (decision 0041).
     @State private var forwarding: PickModel?
     /// Shown for a moment: into how many conversations the last forward went, or that a text was copied
@@ -30,7 +32,7 @@ struct ConversationView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TopBar(conversation: model.conversation, model: model, writable: writable)
+            TopBar(conversation: model.conversation, model: model, writable: writable, info: $info)
             if let conversation = model.conversation { Banner(conversation: conversation) }
             if let problem = model.problem {
                 ProblemCard(problem: problem) { Task { await model.retry() } }.padding(16)
@@ -43,8 +45,10 @@ struct ConversationView: View {
         .toolbar(.hidden, for: .navigationBar)
         .background { SwipeBack().frame(width: 0, height: 0) }
         .quickLookPreview($preview)
+        .navigationDestination(isPresented: $info) { ConversationInfoView(model: model) }
         .onChange(of: model.opened) { _, opened in
-            guard let opened else { return }
+            // The information screen above opens what was tapped there.
+            guard let opened, !info else { return }
             preview = PreviewCopy.file(opened)
             if preview == nil { model.didOpen() }
         }
@@ -182,9 +186,8 @@ private struct TopBar: View {
     let conversation: Conversation?
     let model: ConversationModel
     let writable: Bool
+    @Binding var info: Bool
 
-    /// The conversation's information sheet is open (decision 0043).
-    @State private var info = false
     @Environment(\.dismiss) private var dismiss
 
     private var verified: Bool {
@@ -206,7 +209,7 @@ private struct TopBar: View {
             .buttonStyle(.plain)
             .accessibilityLabel(Text("back"))
             if let conversation {
-                // A tap on who this is opens the conversation's information (decision 0043).
+                // A tap on who this is opens the conversation's information (decisions 0043, 0055).
                 Button {
                     info = true
                 } label: {
@@ -227,13 +230,6 @@ private struct TopBar: View {
         .background(BrandTokens.Colors.bg.ignoresSafeArea(edges: .top))
         .overlay(alignment: .bottom) {
             Rectangle().fill(BrandTokens.Colors.border).frame(height: 1)
-        }
-        // Here rather than on the menu: a sheet hung on a `Menu` is not sure to show when something
-        // outside the menu, the title, asks for it.
-        .sheet(isPresented: $info) {
-            if let conversation {
-                ConversationInfo(conversation: conversation, model: model)
-            }
         }
     }
 

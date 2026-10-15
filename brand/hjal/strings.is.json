@@ -188,5 +188,10 @@
   "conversation_info": "Um samtalið",
   "pick_search": "Leita að samtali",
   "pick_none_found": "Ekkert samtal fannst með þessu nafni.",
-  "loading": "Hleður…"
+  "loading": "Hleður…",
+  "mute_off": "Slökkt",
+  "muted_until": "Þaggað til kl. {time}",
+  "muted_always": "Þaggað þar til þú kveikir aftur",
+  "shared_media": "Myndir og skrár",
+  "shared_media_empty": "Engar myndir eða skrár hafa verið sendar í þessu samtali."
 }

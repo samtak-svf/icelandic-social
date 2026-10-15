@@ -21,10 +21,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -69,16 +65,15 @@ internal fun TopBar(
                 Icon(AppIcons.Back, contentDescription = stringResource(R.string.back), tint = Palette.fg)
             }
             state.conversation?.let {
-                var info by rememberSaveable { mutableStateOf(false) }
-                Title(it, Modifier.weight(1f)) { info = true }
-                ConversationMenu(it, actions, info) { open -> info = open }
+                Title(it, Modifier.weight(1f), actions::info)
+                ConversationMenu(it, actions)
             }
         }
         HorizontalDivider(color = Palette.border)
     }
 }
 
-/** Who this is with; a tap opens the conversation's information (0043). */
+/** Who this is with; a tap opens the conversation's information (0043, 0055). */
 @Composable
 private fun Title(
     conversation: Conversation,

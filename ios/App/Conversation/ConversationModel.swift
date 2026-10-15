@@ -37,6 +37,14 @@ final class ConversationModel {
         let name: String?
     }
 
+    /// The photos and files the information screen lists, newest first (decision 0055).
+    struct Shared {
+        var items: [Item] = []
+        var loaded = false
+        /// There may be older ones than the last here.
+        var more = true
+    }
+
     nonisolated static let page: UInt32 = 50
     /// The largest photo or file the core sends (decision 0023), 25 MB.
     nonisolated static let mediaLimit: Int64 = 25 * 1_024 * 1_024
@@ -102,6 +110,8 @@ final class ConversationModel {
     private(set) var media: [UInt64: Media] = [:]
     /// The file to open next; `didOpen` clears it.
     private(set) var opened: Opened?
+    /// Nil until the information screen asks for them, so the conversation alone never reads them.
+    private(set) var shared: Shared?
     private(set) var problem: Problem?
 
     @ObservationIgnored private let account: Account
@@ -112,6 +122,7 @@ final class ConversationModel {
     @ObservationIgnored private var reading = false
     @ObservationIgnored private var readAgain = false
     @ObservationIgnored private var loadingOlder = false
+    @ObservationIgnored private var loadingShared = false
     @ObservationIgnored private var marked: UInt64?
     @ObservationIgnored private var typingSent = false
     @ObservationIgnored private var typingIdleTask: Task<Void, Never>?
@@ -311,6 +322,27 @@ final class ConversationModel {
         }
     }
 
+    /// The information screen is open: its photos and files are read now and with every read after.
+    func loadShared() async {
+        if shared == nil { shared = Shared() }
+        await load()
+    }
+
+    /// The page of photos and files before the last one here.
+    func moreShared() async {
+        guard let current = shared, current.more, let last = current.items.last?.seq, !loadingShared else { return }
+        loadingShared = true
+        defer { loadingShared = false }
+        let (account, id) = (account, id)
+        do {
+            let page = try await offMain { try account.shared(id, before: last, limit: Self.page) }
+            shared?.items += page
+            shared?.more = page.count == Int(Self.page)
+        } catch {
+            problem = Problem(error)
+        }
+    }
+
     /// Fetches the file of `item` into `opened`.
     func open(_ item: Item) async {
         guard let seq = item.seq, case .media(let mime, _, _, let name) = item.content else { return }
@@ -416,10 +448,21 @@ final class ConversationModel {
             loaded = true
             await markRead(items)
             scheduleExpiry(items)
+            if let current = shared { await readShared(size: max(Self.page, UInt32(current.items.count))) }
         } catch {
             failed = { await self.load() }
             problem = Problem(error)
             loaded = true
+        }
+    }
+
+    private func readShared(size: UInt32) async {
+        let (account, id) = (account, id)
+        do {
+            let items = try await offMain { try account.shared(id, before: nil, limit: size) }
+            shared = Shared(items: items, loaded: true, more: items.count >= Int(size))
+        } catch {
+            problem = Problem(error)
         }
     }
 

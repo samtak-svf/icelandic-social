@@ -66,6 +66,9 @@ interface ConversationActions {
     /** Blocks the other person of a 1:1. */
     fun block()
 
+    /** Opens the conversation's information screen (0055). */
+    fun info()
+
     fun retry()
 
     /** The screen left or went to the background. */

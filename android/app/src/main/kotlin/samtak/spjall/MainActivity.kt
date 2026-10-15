@@ -53,6 +53,8 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import samtak.spjall.brand.R
 import samtak.spjall.conversation.ConversationActions
+import samtak.spjall.conversation.ConversationInfoActions
+import samtak.spjall.conversation.ConversationInfoScreen
 import samtak.spjall.conversation.ConversationScreen
 import samtak.spjall.conversation.ConversationViewModel
 import samtak.spjall.conversations.ConversationsActions
@@ -280,6 +282,9 @@ class MainActivity : ComponentActivity() {
                 composable("$CONVERSATION/{id}") { entry ->
                     entry.arguments?.getString("id")?.let { Conversation(it, nav) }
                 }
+                composable("$INFO/{id}") { entry ->
+                    entry.arguments?.getString("id")?.let { ConversationInfo(it, nav) }
+                }
                 composable("$FORWARD/{from}/{seq}") { entry ->
                     val from = entry.arguments?.getString("from")
                     val seq = entry.arguments?.getString("seq")?.toULongOrNull()
@@ -468,9 +473,54 @@ class MainActivity : ComponentActivity() {
 
                 override fun block() = model.block()
 
+                override fun info() = nav.navigate("$INFO/$id")
+
                 override fun retry() = model.retry()
 
                 override fun paused() = model.paused()
+            },
+        )
+    }
+
+    /**
+     * A conversation's information (decision 0055), on the conversation's own view model: it sits
+     * under this screen on the back stack, so both show the same state and a photo fetched in one is
+     * there in the other.
+     */
+    @Composable
+    private fun ConversationInfo(
+        id: String,
+        nav: NavController,
+    ) {
+        val owner = remember { nav.previousBackStackEntry } ?: return
+        val model: ConversationViewModel =
+            viewModel(viewModelStoreOwner = owner, key = "conversation-$id") {
+                ConversationViewModel(id, graph.account, graph.socket)
+            }
+        val state by model.state.collectAsStateWithLifecycle()
+        LaunchedEffect(model) { model.loadShared() }
+        LaunchedEffect(model) { model.opened.collect { open(it) } }
+        val pop = rememberBack(nav)
+        ConversationInfoScreen(
+            state,
+            object : ConversationInfoActions {
+                override fun back() = pop()
+
+                override fun timer(seconds: UInt?) = model.timer(seconds)
+
+                override fun mute(duration: MuteFor) = model.mute(duration)
+
+                override fun unmute() = model.unmute()
+
+                override fun block() = model.block()
+
+                override fun fetch(item: Item) = model.fetch(item)
+
+                override fun open(item: Item) = model.open(item)
+
+                override fun more() = model.moreShared()
+
+                override fun retry() = model.retry()
             },
         )
     }
@@ -625,6 +675,7 @@ class MainActivity : ComponentActivity() {
         private const val PEOPLE = "people"
         private const val CONVERSATION = "conversation"
         private const val FORWARD = "forward"
+        private const val INFO = "info"
         private val TABS = setOf(LIST, ME)
 
         private fun conversation(id: String) = "$CONVERSATION/$id"

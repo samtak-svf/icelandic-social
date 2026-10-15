@@ -767,6 +767,29 @@
     "loading": {
       "surfaces": ["android", "ios"],
       "description": "Screen-reader text of the placeholder rows shown on a first load (0043)."
+    },
+    "mute_off": {
+      "surfaces": ["android", "ios"],
+      "description": "The state under the mute row of a conversation's information screen when it is not muted (0055)."
+    },
+    "muted_until": {
+      "surfaces": ["android", "ios"],
+      "description": "The state under the notifications row of a conversation's information screen while it is muted for a while; time is the clock time it ends (0042, 0055).",
+      "placeholders": {
+        "time": "string"
+      }
+    },
+    "muted_always": {
+      "surfaces": ["android", "ios"],
+      "description": "The state under the notifications row of a conversation's information screen while it is muted until turned back on (0042, 0055)."
+    },
+    "shared_media": {
+      "surfaces": ["android", "ios"],
+      "description": "Heading over the photos and files sent in a conversation, on its information screen (0055)."
+    },
+    "shared_media_empty": {
+      "surfaces": ["android", "ios"],
+      "description": "The information screen when no photo or file has been sent in the conversation (0055)."
     }
   }
 }

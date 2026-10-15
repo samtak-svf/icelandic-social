@@ -2052,6 +2052,66 @@
           }
         }
       }
+    },
+    "mute_off": {
+      "comment": "The state under the mute row of a conversation's information screen when it is not muted (0055).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slökkt"
+          }
+        }
+      }
+    },
+    "muted_until": {
+      "comment": "The state under the notifications row of a conversation's information screen while it is muted for a while; time is the clock time it ends (0042, 0055).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þaggað til kl. %1$@"
+          }
+        }
+      }
+    },
+    "muted_always": {
+      "comment": "The state under the notifications row of a conversation's information screen while it is muted until turned back on (0042, 0055).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þaggað þar til þú kveikir aftur"
+          }
+        }
+      }
+    },
+    "shared_media": {
+      "comment": "Heading over the photos and files sent in a conversation, on its information screen (0055).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Myndir og skrár"
+          }
+        }
+      }
+    },
+    "shared_media_empty": {
+      "comment": "The information screen when no photo or file has been sent in the conversation (0055).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engar myndir eða skrár hafa verið sendar í þessu samtali."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

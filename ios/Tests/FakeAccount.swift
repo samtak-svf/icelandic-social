@@ -291,6 +291,15 @@ final class FakeAccount: Account, @unchecked Sendable {
         return Array(older.suffix(Int(limit)))
     }
 
+    func shared(_ conversation: String, before: UInt64?, limit: UInt32) throws -> [Item] {
+        try call("shared \(conversation) \(before.map(String.init) ?? "-")")
+        let media = (timelines[conversation] ?? []).filter {
+            guard case .media = $0.content, let seq = $0.seq else { return false }
+            return before.map { seq < $0 } ?? true
+        }
+        return Array(media.reversed().prefix(Int(limit)))
+    }
+
     func send(_ conversation: String, body: Body) throws -> String {
         try call("send \(conversation) \(body)")
         let id = "e-sent\(calls.count)"

@@ -130,6 +130,16 @@ interface Account {
         limit: UInt,
     ): List<Item>
 
+    /**
+     * The photos and files of a conversation (0055), up to [limit] before the seq [before], newest
+     * first: the timeline's own rows on this device, without what was deleted or what a timer ended.
+     */
+    fun shared(
+        conversation: String,
+        before: ULong?,
+        limit: UInt,
+    ): List<Item>
+
     /** Queues a message for the next [sync]. Returns its envelope id. */
     fun send(
         conversation: String,
@@ -305,6 +315,12 @@ class CoreAccount(
         before: ULong?,
         limit: UInt,
     ) = client.timeline(conversation, before, limit)
+
+    override fun shared(
+        conversation: String,
+        before: ULong?,
+        limit: UInt,
+    ) = client.shared(conversation, before, limit)
 
     override fun send(
         conversation: String,
