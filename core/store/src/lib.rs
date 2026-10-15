@@ -468,6 +468,20 @@ const MIGRATIONS: &[(u32, &str)] = &[
 pub struct Store {
     connection: Connection,
     path: PathBuf,
+    key: Key,
+}
+
+/// A second connection to the store that only reads (decision 0056). In WAL
+/// a reader neither waits for the writer nor holds it up, so whoever holds
+/// the `Store` through a network call never delays what a reader shows.
+///
+/// A row whose disappearing time is up is never read here, purged or not:
+/// on this connection `timeline` and `messages` are temporary views over the
+/// tables that leave such rows out, and SQLite resolves an unqualified name
+/// in `temp` before `main`. So the queries the writer runs read the same
+/// way here, and the purge stays the writer's.
+pub struct Reader {
+    connection: Connection,
 }
 
 impl Store {
@@ -478,7 +492,19 @@ impl Store {
         let mut connection = connect(&path, key)?;
         migrate(&mut connection, MIGRATIONS)?;
         repair(&mut connection, REPAIRS)?;
-        Ok(Self { connection, path })
+        Ok(Self {
+            connection,
+            path,
+            key: *key,
+        })
+    }
+
+    /// Opens a `Reader` on this store's file.
+    pub fn reader(&self) -> rusqlite::Result<Reader> {
+        let connection = connect(&self.path, &self.key)?;
+        connection.execute_batch(UNEXPIRED)?;
+        connection.pragma_update(None, "query_only", true)?;
+        Ok(Reader { connection })
     }
 
     pub fn path(&self) -> &Path {
@@ -513,6 +539,31 @@ impl Store {
         let tx = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let value = f(&tx)?;
+        tx.commit()?;
+        Ok(value)
+    }
+}
+
+/// The views a `Reader` reads `timeline` and `messages` through: a row is
+/// kept until the moment the purge would delete it (`expires_at <= now`),
+/// with now in milliseconds, the clock `expires_at` is kept in.
+const UNEXPIRED: &str = "
+    CREATE TEMP VIEW timeline AS SELECT * FROM main.timeline
+        WHERE expires_at IS NULL OR expires_at > CAST(unixepoch('subsec') * 1000 AS INTEGER);
+    CREATE TEMP VIEW messages AS SELECT * FROM main.messages
+        WHERE expires_at IS NULL OR expires_at > CAST(unixepoch('subsec') * 1000 AS INTEGER);";
+
+impl Reader {
+    /// Runs `f` in a read transaction, so every query in it sees the same
+    /// committed state. Any write in it fails (`query_only`).
+    pub fn read<T, E: From<rusqlite::Error>>(
+        &mut self,
+        f: impl FnOnce(&Transaction) -> Result<T, E>,
+    ) -> Result<T, E> {
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Deferred)?;
         let value = f(&tx)?;
         tx.commit()?;
         Ok(value)
@@ -1073,6 +1124,101 @@ mod tests {
 
     /// Read-modify-write from separate connections, as the app and its
     /// extension do: no update is lost and no writer fails with "locked".
+    /// Rows due at 9 ms past the epoch, in an hour, and never, in both
+    /// tables a timer clears.
+    fn store_with_timers(dir: &Path) -> Store {
+        let mut store = Store::open(dir, &KEY).unwrap();
+        store
+            .write(|tx| {
+                tx.execute_batch(
+                    "INSERT INTO conversations (group_id, cursor, created_at) VALUES (x'01', 3, 0);",
+                )?;
+                let later = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis() as i64
+                    + 3_600_000;
+                for (seq, expires_at) in [(1, Some(9)), (2, Some(later)), (3, None)] {
+                    tx.execute(
+                        "INSERT INTO timeline (group_id, seq, kind, sender_account, sender_device,
+                                               envelope_id, ts, stored_at, text, expires_at)
+                         VALUES (x'01', ?1, 'text', 'a', 'a1', ?1, 1, 1, 'hæ', ?2)",
+                        rusqlite::params![seq, expires_at],
+                    )?;
+                    tx.execute(
+                        "INSERT INTO messages (group_id, seq, sender_account, sender_device,
+                                               envelope, stored_at, expires_at)
+                         VALUES (x'01', ?1, 'a', 'a1', x'00', 1, ?2)",
+                        rusqlite::params![seq, expires_at],
+                    )?;
+                }
+                Ok(())
+            })
+            .unwrap();
+        store
+    }
+
+    fn seqs(tx: &Transaction, table: &str) -> rusqlite::Result<Vec<i64>> {
+        let mut statement = tx.prepare(&format!("SELECT seq FROM {table} ORDER BY seq"))?;
+        statement.query_map([], |r| r.get(0))?.collect()
+    }
+
+    /// Decision 0056: a row whose time is up is gone from a read before the
+    /// purge deletes it, and the writer still sees it to purge.
+    #[test]
+    fn a_reader_never_reads_an_expired_row() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = store_with_timers(dir.path());
+        let mut reader = store.reader().unwrap();
+        for table in ["timeline", "messages"] {
+            assert_eq!(
+                reader.read(|tx| seqs(tx, table)).unwrap(),
+                [2, 3],
+                "{table}"
+            );
+            assert_eq!(
+                store.write(|tx| seqs(tx, table)).unwrap(),
+                [1, 2, 3],
+                "{table}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_reader_does_not_wait_for_a_write_in_progress() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = store_with_timers(dir.path());
+        let mut reader = store.reader().unwrap();
+        store
+            .write(|tx| {
+                tx.execute("DELETE FROM timeline WHERE seq = 3", [])?;
+                let started = std::time::Instant::now();
+                // The write is not committed, so the reader sees the row.
+                assert_eq!(reader.read(|tx| seqs(tx, "timeline"))?, [2, 3]);
+                assert!(started.elapsed() < std::time::Duration::from_secs(1));
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(reader.read(|tx| seqs(tx, "timeline")).unwrap(), [2]);
+    }
+
+    #[test]
+    fn a_reader_cannot_write() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_with_timers(dir.path());
+        let mut reader = store.reader().unwrap();
+        assert!(
+            reader
+                .read(|tx| tx.execute("DELETE FROM main.timeline", []))
+                .is_err()
+        );
+        assert!(
+            reader
+                .read(|tx| tx.execute("INSERT INTO kv VALUES (x'01', x'01')", []))
+                .is_err()
+        );
+    }
+
     #[test]
     fn writers_on_separate_connections_serialize() {
         const WRITERS: u32 = 4;

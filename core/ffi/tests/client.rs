@@ -7,7 +7,8 @@
 mod relay;
 
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex, mpsc};
+use std::time::Duration;
 
 use relay::{Link, Relay};
 use spjall_client::api::{self, Transport as _};
@@ -26,6 +27,10 @@ struct App {
     offline: Mutex<bool>,
     /// The next request panics, as a bug in the app's transport would.
     panics: Mutex<bool>,
+    /// While set, a request waits, as one on a slow network does, and says
+    /// so on the channel `hold` returned.
+    held: Mutex<Option<mpsc::Sender<()>>>,
+    released: Condvar,
 }
 
 impl App {
@@ -44,12 +49,33 @@ impl App {
         }
     }
 
+    /// Holds every request from now on until `release`; the channel hears
+    /// each one that starts waiting.
+    fn hold(&self) -> mpsc::Receiver<()> {
+        let (waiting, heard) = mpsc::channel();
+        *self.held.lock().unwrap() = Some(waiting);
+        heard
+    }
+
+    fn release(&self) {
+        *self.held.lock().unwrap() = None;
+        self.released.notify_all();
+    }
+
     fn through(
         &self,
         request: HttpRequest,
         send: impl FnOnce(api::Request) -> Result<api::Response, api::Unreachable>,
     ) -> Result<HttpResponse, TransportError> {
         self.seen.lock().unwrap().push(request.clone());
+        let mut held = self.held.lock().unwrap();
+        if let Some(waiting) = held.as_ref() {
+            let _ = waiting.send(());
+        }
+        while held.is_some() {
+            held = self.released.wait(held).unwrap();
+        }
+        drop(held);
         if std::mem::take(&mut *self.panics.lock().unwrap()) {
             panic!("the transport panicked");
         }
@@ -88,7 +114,7 @@ impl Transport for App {
 struct Phone {
     app: Arc<App>,
     client: Arc<CoreClient>,
-    _dir: tempfile::TempDir,
+    dir: tempfile::TempDir,
 }
 
 fn phone(relay: &Arc<Relay>, account: &str, device: &str) -> Phone {
@@ -98,6 +124,8 @@ fn phone(relay: &Arc<Relay>, account: &str, device: &str) -> Phone {
         seen: Mutex::new(Vec::new()),
         offline: Mutex::new(false),
         panics: Mutex::new(false),
+        held: Mutex::new(None),
+        released: Condvar::new(),
     });
     let client = CoreClient::open(
         dir.path().to_string_lossy().into_owned(),
@@ -120,11 +148,7 @@ fn phone(relay: &Arc<Relay>, account: &str, device: &str) -> Phone {
         }
     );
     assert_eq!(client.stock_key_packages(2).unwrap(), 2);
-    Phone {
-        app,
-        client,
-        _dir: dir,
-    }
+    Phone { app, client, dir }
 }
 
 /// Hands every frame waiting on the device's socket to its client.
@@ -293,6 +317,8 @@ fn an_account_is_run_through_the_exported_api() {
         seen: Mutex::new(Vec::new()),
         offline: Mutex::new(false),
         panics: Mutex::new(false),
+        held: Mutex::new(None),
+        released: Condvar::new(),
     });
     let b1 = CoreClient::open(
         dir.path().to_string_lossy().into_owned(),
@@ -376,6 +402,150 @@ fn errors_cross_as_records() {
         ),
         Err(CoreError::Invalid { .. })
     ));
+}
+
+/// Runs `read` on a thread of its own and gives what it returned; panics
+/// when it has not returned within two seconds.
+fn promptly<T: Send + 'static>(read: impl FnOnce() -> T + Send + 'static) -> T {
+    let (done, result) = mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = done.send(read());
+    });
+    result
+        .recv_timeout(Duration::from_secs(2))
+        .expect("the read waited")
+}
+
+/// A conversation of a1's with b holding one text from a, delivered to b1.
+fn texted(relay: &Arc<Relay>, a1: &Phone, b1: &Phone) -> String {
+    let conversation = a1.client.create_conversation(vec!["b".into()]).unwrap();
+    a1.client.sync().unwrap();
+    deliver(relay, b1, "b", "b1");
+    a1.client
+        .send(conversation.clone(), Body::Text { text: "hæ".into() })
+        .unwrap();
+    a1.client.sync().unwrap();
+    deliver(relay, b1, "b", "b1");
+    conversation
+}
+
+/// Every read the screens make, as they make it.
+fn read_all(client: &CoreClient, conversation: &str) -> (usize, usize) {
+    let listed = client.conversations().unwrap();
+    let items = client.timeline(conversation.into(), None, 10).unwrap();
+    client.search_conversations("name".into()).unwrap();
+    client.search_list(" ".into(), 5).unwrap();
+    client.people().unwrap();
+    client.settings().unwrap();
+    (listed.len(), items.len())
+}
+
+/// Decision 0056: a sync holds the client through its requests, and the
+/// list and the timeline are read meanwhile, from what is stored.
+#[test]
+fn a_read_during_a_sync_does_not_wait() {
+    let relay = Relay::new();
+    let a1 = phone(&relay, "a", "a1");
+    let b1 = phone(&relay, "b", "b1");
+    let conversation = texted(&relay, &a1, &b1);
+
+    let waiting = b1.app.hold();
+    let syncing = std::thread::spawn({
+        let client = b1.client.clone();
+        move || client.sync()
+    });
+    waiting
+        .recv_timeout(Duration::from_secs(5))
+        .expect("the sync made a request");
+    let (listed, items) = promptly({
+        let client = b1.client.clone();
+        move || read_all(&client, &conversation)
+    });
+    assert_eq!(listed, 1);
+    assert!(items >= 1);
+    b1.app.release();
+    syncing.join().unwrap().unwrap();
+}
+
+/// A read takes no write lock, so another process writing (the
+/// notification service storing a push) does not hold it up.
+#[test]
+fn a_read_does_not_take_the_write_lock() {
+    let relay = Relay::new();
+    let a1 = phone(&relay, "a", "a1");
+    let b1 = phone(&relay, "b", "b1");
+    let conversation = texted(&relay, &a1, &b1);
+
+    let mut other = spjall_store::Store::open(b1.dir.path(), &[7; 32]).unwrap();
+    let client = b1.client.clone();
+    let (listed, items) = other
+        .write(|_| Ok(promptly(move || read_all(&client, &conversation))))
+        .unwrap();
+    assert_eq!(listed, 1);
+    assert!(items >= 1);
+}
+
+/// A message whose timer is up is not read, and the read leaves it for the
+/// purge, which reports it.
+#[test]
+fn an_expired_row_is_not_read_before_the_purge() {
+    let relay = Relay::new();
+    let a1 = phone(&relay, "a", "a1");
+    let b1 = phone(&relay, "b", "b1");
+    let conversation = texted(&relay, &a1, &b1);
+    let seq = b1
+        .client
+        .timeline(conversation.clone(), None, 10)
+        .unwrap()
+        .last()
+        .and_then(|item| item.seq)
+        .unwrap();
+
+    let mut other = spjall_store::Store::open(b1.dir.path(), &[7; 32]).unwrap();
+    let stored = |other: &mut spjall_store::Store| {
+        other
+            .write(|tx| {
+                tx.query_row(
+                    "SELECT COUNT(*) FROM timeline WHERE kind = 'text'",
+                    [],
+                    |r| r.get::<_, u32>(0),
+                )
+            })
+            .unwrap()
+    };
+    other
+        .write(|tx| {
+            tx.execute("UPDATE timeline SET expires_at = 1 WHERE kind = 'text'", [])?;
+            tx.execute("UPDATE messages SET expires_at = 1", [])
+        })
+        .unwrap();
+
+    let listed = b1.client.conversations().unwrap();
+    assert_eq!(listed[0].unread, 0);
+    assert!(
+        listed[0]
+            .last
+            .as_ref()
+            .is_none_or(|last| last.seq != Some(seq))
+    );
+    let items = b1.client.timeline(conversation.clone(), None, 10).unwrap();
+    assert!(items.iter().all(|item| item.seq != Some(seq)));
+    assert!(
+        b1.client
+            .history(conversation.clone(), None, 10)
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(stored(&mut other), 1, "a read deleted it");
+
+    assert_eq!(
+        b1.client.expire().unwrap().events,
+        vec![Event::Expired {
+            conversation,
+            removed: vec![seq]
+        }]
+    );
+    assert_eq!(stored(&mut other), 0);
 }
 
 #[test]
@@ -486,6 +656,8 @@ fn google_links_and_one_to_ones_cross_the_exported_api() {
         seen: Mutex::new(Vec::new()),
         offline: Mutex::new(false),
         panics: Mutex::new(false),
+        held: Mutex::new(None),
+        released: Condvar::new(),
     });
     let c1 = CoreClient::open(
         dir.path().to_string_lossy().into_owned(),

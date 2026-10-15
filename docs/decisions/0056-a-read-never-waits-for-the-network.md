@@ -9,8 +9,10 @@
 ## Decision
 
 - **The core reads through a read-only connection of its own.**
-  - The list, a timeline, the searches, the people, the settings and the blocked list are read
-    on a second SQLite connection to the same store.
+  - The list, a timeline, the history, the list's search on this device, the people and the
+    settings are read on a second SQLite connection to the same store (`View`).
+  - `blocked()` and the directory's half of the list's search ask the server and store what it
+    says, so they stay on the client.
   - That connection is opened with `query_only`, and it is behind its own lock.
   - A read never takes the lock that `sync()`, `on_frame()` or a send holds through their
     network calls, and in WAL it never waits for the writer.

@@ -877,6 +877,9 @@ impl From<core::Outcome> for Outcome {
 #[derive(uniffi::Object)]
 pub struct CoreClient {
     client: Mutex<core::Client<Foreign>>,
+    /// The reads (0056), on a connection and a lock of their own, so a
+    /// sync holding `client` through its requests never delays them.
+    view: Mutex<core::View>,
 }
 
 #[uniffi::export]
@@ -896,8 +899,10 @@ impl CoreClient {
         })?;
         let mut client = core::Client::open(Path::new(&dir), &key, Foreign(transport))?;
         client.set_client_version(platform.into(), &version)?;
+        let view = client.view()?;
         Ok(Arc::new(Self {
             client: Mutex::new(client),
+            view: Mutex::new(view),
         }))
     }
 
@@ -1061,7 +1066,7 @@ impl CoreClient {
     /// Every conversation, newest activity first.
     pub fn conversations(&self) -> Result<Vec<Conversation>, CoreError> {
         Ok(self
-            .client()?
+            .view()
             .conversations()?
             .into_iter()
             .map(Into::into)
@@ -1074,7 +1079,7 @@ impl CoreClient {
     /// blank query keeps every conversation.
     pub fn search_conversations(&self, query: String) -> Result<Vec<Conversation>, CoreError> {
         Ok(self
-            .client()?
+            .view()
             .search_conversations(&query)?
             .into_iter()
             .map(Into::into)
@@ -1086,7 +1091,18 @@ impl CoreClient {
     /// anyone whose 1:1 is already among those conversations so no one
     /// shows twice. A blank query asks the directory nothing.
     pub fn search_list(&self, query: String, limit: u32) -> Result<ListSearch, CoreError> {
-        Ok(self.client()?.search_list(&query, limit)?.into())
+        let conversations = self.view().search_conversations(&query)?;
+        if core::blank(&query)? {
+            return Ok(core::ListSearch {
+                conversations,
+                people: Vec::new(),
+            }
+            .into());
+        }
+        Ok(self
+            .client()?
+            .with_people(&query, limit, conversations)?
+            .into())
     }
 
     /// Up to `limit` items before `before` (a seq), oldest first. The
@@ -1098,7 +1114,7 @@ impl CoreClient {
         limit: u32,
     ) -> Result<Vec<Item>, CoreError> {
         Ok(self
-            .client()?
+            .view()
             .timeline(&conversation, before, limit)?
             .into_iter()
             .map(Into::into)
@@ -1119,7 +1135,7 @@ impl CoreClient {
     /// Every account met through a shared conversation, named ones first:
     /// the people picker.
     pub fn people(&self) -> Result<Vec<Person>, CoreError> {
-        Ok(people(self.client()?.people()?))
+        Ok(people(self.view().people()?))
     }
 
     /// A page of everyone else signed in (0036), for the people picker:
@@ -1170,7 +1186,7 @@ impl CoreClient {
     }
 
     pub fn settings(&self) -> Result<Settings, CoreError> {
-        let settings = self.client()?.settings()?;
+        let settings = self.view().settings()?;
         Ok(Settings {
             read_markers: settings.read_markers,
             typing: settings.typing,
@@ -1309,5 +1325,11 @@ impl CoreClient {
     /// every later call until the app restarts.
     pub(crate) fn client(&self) -> Result<MutexGuard<'_, core::Client<Foreign>>, CoreError> {
         Ok(self.client.lock().unwrap_or_else(PoisonError::into_inner))
+    }
+
+    /// The reads' lock, taken again after a panic as `client` is: a read
+    /// changes nothing, so there is nothing for it to leave half done.
+    fn view(&self) -> MutexGuard<'_, core::View> {
+        self.view.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }

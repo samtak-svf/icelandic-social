@@ -29,6 +29,7 @@ mod notice;
 mod photo;
 mod read;
 mod timeline;
+mod view;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -36,7 +37,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 pub use account::{Linked, SignedIn, invite_token};
 use api::{Api, ApiError, Outgoing, Platform, Profile, Transport, conversation_id, group_id};
-pub use directory::{Directory, ListSearch, MAX_QUERY, fold_name};
+pub use directory::{Directory, ListSearch, MAX_QUERY, blank, fold_name};
 pub use media::{MAX_SIZE, MediaError};
 pub use members::Person;
 pub use mute::{Mute, MuteFor};
@@ -52,6 +53,7 @@ use spjall_mls::storage::Provider;
 use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 use spjall_store::{Key, Store};
 pub use timeline::{Content, Item, Quote, Reaction, Status, Unforwardable};
+pub use view::View;
 
 use members::{refresh_members, set_members};
 use timeline::{fold, fold_members};
@@ -721,6 +723,9 @@ pub struct Client<T> {
     /// This build as `Spjall-Client` names it (0030); none until the app
     /// sets it, which the server reads as the oldest build.
     client: Option<String>,
+    /// The reads of this `Client`'s own read methods, opened on first use.
+    /// The app reads through a `View` of its own (`view`).
+    reads: Option<View>,
 }
 
 impl<T: Transport> Client<T> {
@@ -745,6 +750,7 @@ impl<T: Transport> Client<T> {
             typed: HashMap::new(),
             media,
             client: None,
+            reads: None,
         })
     }
 
@@ -993,61 +999,31 @@ impl<T: Transport> Client<T> {
         ))
     }
 
-    /// Every conversation, the one with the newest activity first.
-    pub fn conversations(&mut self) -> Result<Vec<Conversation>, ClientError> {
-        self.purge()?;
-        self.store.try_write(|tx| {
-            let mut statement = tx.prepare(&format!(
-                "SELECT group_id, {STATE}, timer FROM conversations c
-                 ORDER BY MAX(created_at,
-                              COALESCE((SELECT MAX(stored_at) FROM timeline t
-                                        WHERE t.group_id = c.group_id), 0),
-                              COALESCE((SELECT MAX(created_at) FROM outbox o
-                                        WHERE o.group_id = c.group_id AND o.kind = 'message'),
-                                       0)) DESC,
-                          created_at DESC"
-            ))?;
-            let rows: Vec<(Vec<u8>, State, Option<u32>)> = statement
-                .query_map([], |r| {
-                    Ok((r.get(0)?, State::parse(&r.get::<_, String>(1)?)?, r.get(2)?))
-                })?
-                .collect::<rusqlite::Result<_>>()?;
-            if rows.is_empty() {
-                // Signed out, or none yet.
-                return Ok(Vec::new());
-            }
-            let (_, me) = this_device(tx)?;
-            let mut conversations = Vec::with_capacity(rows.len());
-            for (group, state, timer) in rows {
-                conversations.push(Conversation {
-                    id: conversation_id(&group),
-                    state,
-                    members: notice::others(tx, &group, &me.account)?,
-                    last: timeline::items(tx, &group, &me.account, None, 1)?.pop(),
-                    unread: read::unread(tx, &group, &me.account)?,
-                    timer,
-                    mute: mute::mute_of(tx, &group)?,
-                });
-            }
-            Ok(conversations)
-        })
+    /// A `View` on this store: its reads never wait for this `Client`.
+    pub fn view(&self) -> Result<View, ClientError> {
+        Ok(View::new(self.store.reader()?))
     }
 
-    /// Up to `limit` items before the item `before` (or the newest), oldest
-    /// first; the newest page ends with what is still being sent (0022).
+    fn reads(&mut self) -> Result<&mut View, ClientError> {
+        if self.reads.is_none() {
+            self.reads = Some(self.view()?);
+        }
+        Ok(self.reads.as_mut().expect("opened above"))
+    }
+
+    /// `View::conversations`.
+    pub fn conversations(&mut self) -> Result<Vec<Conversation>, ClientError> {
+        self.reads()?.conversations()
+    }
+
+    /// `View::timeline`.
     pub fn timeline(
         &mut self,
         conversation: &str,
         before: Option<u64>,
         limit: u32,
     ) -> Result<Vec<Item>, ClientError> {
-        let group = group_id(conversation).ok_or(ClientError::UnknownConversation)?;
-        self.purge()?;
-        self.store.try_write(|tx| {
-            conversation_state(tx, &group)?;
-            let (_, me) = this_device(tx)?;
-            timeline::items(tx, &group, &me.account, before, limit)
-        })
+        self.reads()?.timeline(conversation, before, limit)
     }
 
     /// Everything up to the item `seq` is on screen. With read markers on,
@@ -1090,13 +1066,9 @@ impl<T: Transport> Client<T> {
         Ok(std::mem::take(&mut self.outcome))
     }
 
-    /// The accounts met through shared conversations: whom a new
-    /// conversation can be started with.
+    /// `View::people`.
     pub fn people(&mut self) -> Result<Vec<Person>, ClientError> {
-        self.store.try_write(|tx| {
-            let (_, me) = this_device(tx)?;
-            Ok(members::people(tx, &me.account)?)
-        })
+        self.reads()?.people()
     }
 
     /// One account's name and mark, fetched now when the server will give
@@ -1125,8 +1097,9 @@ impl<T: Transport> Client<T> {
         })
     }
 
+    /// `View::settings`.
     pub fn settings(&mut self) -> Result<Settings, ClientError> {
-        Ok(self.store.try_write(read::settings)?)
+        self.reads()?.settings()
     }
 
     pub fn set_settings(&mut self, settings: Settings) -> Result<(), ClientError> {
@@ -1135,46 +1108,14 @@ impl<T: Transport> Client<T> {
             .try_write(|tx| read::set_settings(tx, settings))?)
     }
 
-    /// Up to `limit` messages before `before` (or the newest), oldest first.
+    /// `View::history`.
     pub fn history(
         &mut self,
         conversation: &str,
         before: Option<u64>,
         limit: u32,
     ) -> Result<Vec<Message>, ClientError> {
-        let group = group_id(conversation).ok_or(ClientError::UnknownConversation)?;
-        self.store.try_write(|tx| {
-            let (_, me) = this_device(tx)?;
-            let mut statement = tx.prepare(
-                "SELECT seq, sender_account, sender_device, envelope FROM messages
-                 WHERE group_id = ?1 AND seq < ?2 AND hidden = 0 ORDER BY seq DESC LIMIT ?3",
-            )?;
-            let rows = statement.query_map(
-                params![group, before.map_or(i64::MAX, |b| b as i64), limit],
-                |r| {
-                    Ok((
-                        r.get::<_, i64>(0)? as u64,
-                        r.get::<_, String>(1)?,
-                        r.get::<_, String>(2)?,
-                        r.get::<_, Vec<u8>>(3)?,
-                    ))
-                },
-            )?;
-            let mut messages = Vec::new();
-            for row in rows {
-                let (seq, account, device, envelope) = row?;
-                let sender = Device::new(&account, &device)?;
-                messages.push(Message {
-                    conversation: conversation.to_owned(),
-                    seq,
-                    own: sender == me,
-                    sender,
-                    envelope: Envelope::decode(&envelope)?,
-                });
-            }
-            messages.reverse();
-            Ok(messages)
-        })
+        self.reads()?.history(conversation, before, limit)
     }
 
     /// Sends what the outbox holds and fetches what came, for every
@@ -1215,8 +1156,8 @@ impl<T: Transport> Client<T> {
         Ok(std::mem::take(&mut self.outcome))
     }
 
-    /// Every call that reads the timeline purges first; the events wait
-    /// for the next call that returns an outcome.
+    /// Deletes the rows whose timer is up, which the reads already leave
+    /// out (0056); the events wait for the next call that returns an outcome.
     fn purge(&mut self) -> Result<(), ClientError> {
         let (removed, objects) = self
             .store

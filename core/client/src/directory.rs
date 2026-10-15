@@ -58,14 +58,20 @@ pub fn fold_name(text: &str) -> String {
 
 /// Whether a folded search starts the folded name or a word in it, a word
 /// being what follows a space or a hyphen (0038).
-fn starts_a_word(name: &str, search: &str) -> bool {
+pub(crate) fn starts_a_word(name: &str, search: &str) -> bool {
     name.starts_with(search)
         || name.contains(&format!(" {search}"))
         || name.contains(&format!("-{search}"))
 }
 
 /// A search the server takes: trimmed, none when blank.
-fn query(text: Option<&str>) -> Result<Option<&str>, ClientError> {
+/// True when `search` asks for nothing: `search_list` then keeps every
+/// conversation and asks the directory nothing.
+pub fn blank(search: &str) -> Result<bool, ClientError> {
+    Ok(query(Some(search))?.is_none())
+}
+
+pub(crate) fn query(text: Option<&str>) -> Result<Option<&str>, ClientError> {
     let Some(text) = text.map(str::trim).filter(|t| !t.is_empty()) else {
         return Ok(None);
     };
@@ -119,25 +125,9 @@ impl<T: Transport> Client<T> {
 }
 
 impl<T: Transport> Client<T> {
-    /// The conversations whose title, the names of the others in it, has a
-    /// name matching `search` at the start of a word (0038), in the order
-    /// of `conversations`. Read from this device alone, never the server; a
-    /// blank search keeps every conversation.
+    /// `View::search_conversations`.
     pub fn search_conversations(&mut self, search: &str) -> Result<Vec<Conversation>, ClientError> {
-        let Some(search) = query(Some(search))?.map(fold_name) else {
-            return self.conversations();
-        };
-        Ok(self
-            .conversations()?
-            .into_iter()
-            .filter(|c| {
-                c.members.iter().any(|p| {
-                    p.name
-                        .as_deref()
-                        .is_some_and(|name| starts_a_word(&fold_name(name), &search))
-                })
-            })
-            .collect())
+        self.reads()?.search_conversations(search)
     }
 }
 
@@ -149,7 +139,18 @@ impl<T: Transport> Client<T> {
     /// directory nothing.
     pub fn search_list(&mut self, search: &str, size: u32) -> Result<ListSearch, ClientError> {
         let conversations = self.search_conversations(search)?;
-        if query(Some(search))?.is_none() {
+        self.with_people(search, size, conversations)
+    }
+
+    /// The directory's half of `search_list`, for `conversations` a `View`
+    /// found with `search_conversations`.
+    pub fn with_people(
+        &mut self,
+        search: &str,
+        size: u32,
+        conversations: Vec<Conversation>,
+    ) -> Result<ListSearch, ClientError> {
+        if blank(search)? {
             return Ok(ListSearch {
                 conversations,
                 people: Vec::new(),
