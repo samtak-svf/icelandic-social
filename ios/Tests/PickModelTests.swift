@@ -98,6 +98,7 @@ final class PickModelTests: XCTestCase {
         XCTAssertFalse(Offer(item(nil)).forward, "not sent yet")
         XCTAssertFalse(Offer(item(4, content: .post(postId: "p1"))).forward, "a shared post (decision 0044)")
         XCTAssertTrue(Offer(item(4, content: .post(postId: "p1"))).reply, "but it can be answered")
+        XCTAssertFalse(Offer(item(5, content: .unreadable(code: "protocol/a stored media row"))).any, "decision 0051")
     }
 
     func testTheConversationForwardsFromItselfAndOnlyWhatItMayForward() async {

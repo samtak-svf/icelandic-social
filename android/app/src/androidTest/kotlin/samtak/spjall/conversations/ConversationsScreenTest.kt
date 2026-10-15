@@ -168,6 +168,35 @@ class ConversationsScreenTest {
     }
 
     @Test
+    fun anUnreadableLastRowIsListedInItsFixedLine() {
+        val last =
+            Item(
+                6uL,
+                null,
+                anna,
+                false,
+                0uL,
+                ItemStatus.SENT,
+                Content.Unreadable("envelope/malformed"),
+                false,
+                emptyList(),
+                0u,
+                null,
+                false,
+            )
+        show(
+            ConversationsViewModel.State(
+                conversations =
+                    listOf(
+                        Conversation("c1", ConversationState.ACTIVE, listOf(anna), last, 0u, null, Mute.Off),
+                    ),
+                loaded = true,
+            ),
+        )
+        compose.onNodeWithText(context.getString(R.string.item_unreadable)).assertIsDisplayed()
+    }
+
+    @Test
     fun aSharedPostIsListedInFixedWordsAsSaidByItsSender() {
         val last =
             Item(6uL, "e6", anna, true, 0uL, ItemStatus.SENT, Content.Post("p1"), false, emptyList(), 0u, null, false)

@@ -87,6 +87,17 @@ final class SocketTests: XCTestCase {
         XCTAssertEqual(wire.opened.count, 1)
     }
 
+    func testRetriesWhenTheCoreCannotGiveTheToken() async {
+        // A busy or closed store is not signed out: the socket asks again.
+        account.failNext = unreachable
+        let socket = socket()
+        socket.start()
+        _ = await wire.link(1)
+        XCTAssertEqual(account.calls.filter { $0 == "deviceToken" }.count, 2)
+        XCTAssertEqual(waits.all.count, 1)
+        socket.stop()
+    }
+
     func testStopClosesTheSocket() async {
         let socket = socket()
         socket.start()

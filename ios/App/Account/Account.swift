@@ -92,13 +92,22 @@ protocol Account: Sendable {
 
 /// The core's client, opened on first use so a launch never waits for the
 /// store before drawing.
+///
+/// The store sits in the App Group container, and an open SQLite connection
+/// in WAL mode holds a file lock there for as long as it is open. The system
+/// kills a suspended app that holds one (0xdead10cc), so `suspend` closes the
+/// store when the app leaves the foreground and `resume` lets it open again.
 final class CoreAccount: Account, @unchecked Sendable {
     /// How many KeyPackages the server should hold for this device.
     static let keyPackages: UInt32 = 10
 
+    /// A call made between `suspend` and `resume`; the store is closed.
+    struct Suspended: Error {}
+
     private let open: @Sendable () throws -> CoreClient
     private let lock = NSLock()
     private var client: CoreClient?
+    private var suspended = false
 
     init(open: @escaping @Sendable () throws -> CoreClient) {
         self.open = open
@@ -106,11 +115,35 @@ final class CoreAccount: Account, @unchecked Sendable {
 
     private func core() throws -> CoreClient {
         try lock.withLock {
+            if suspended { throw Suspended() }
             if let client { return client }
             let opened = try open()
             client = opened
             return opened
         }
+    }
+
+    /// Refuses new calls and lets go of the client. The store closes when the
+    /// last call still running returns; until then `closing` holds it weakly.
+    func suspend() -> Closing {
+        lock.withLock {
+            suspended = true
+            defer { client = nil }
+            return Closing(client)
+        }
+    }
+
+    func resume() {
+        lock.withLock { suspended = false }
+    }
+
+    /// The client `suspend` let go of, gone once no call holds it.
+    struct Closing: @unchecked Sendable {
+        private weak var client: CoreClient?
+
+        init(_ client: CoreClient?) { self.client = client }
+
+        var closed: Bool { client == nil }
     }
 
     func signedIn() throws -> Bool { try core().signedIn() != nil }

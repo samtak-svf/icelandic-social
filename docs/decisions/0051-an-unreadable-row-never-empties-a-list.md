@@ -1,6 +1,6 @@
 # 0051. An unreadable row never empties a list
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the core (#235, core 0.22.0) and the apps (#237), released as 0.7.4
 - Date: 2026-10-15
 - Decided by: the maintainer, choosing it from the follow-ups to 0050
 - Builds on: [0049](0049-a-local-failure-names-its-code.md) (the code vocabulary),

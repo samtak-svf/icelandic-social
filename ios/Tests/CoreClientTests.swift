@@ -2,6 +2,8 @@ import Foundation
 import SpjallCore
 import XCTest
 
+@testable import Spjall
+
 /// The core's client from Swift, as the app will call it (decisions 0018
 /// and 0019): two devices, each with its own store and a Swift `Transport`,
 /// sign in and exchange a message and a sealed file (0023), and one is
@@ -51,6 +53,32 @@ final class CoreClientTests: XCTestCase {
         _ = try a.sync()
         XCTAssertEqual(try deliver(b, device: "b1"), [.joined(conversation: conversation)])
         return conversation
+    }
+
+    func testSuspendClosesTheStoreAndResumeOpensItAgain() throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        dirs.append(dir)
+        let opens = Opens()
+        let relay = relay
+        let account = CoreAccount {
+            opens.count()
+            return try CoreClient.open(
+                dir: dir.path(percentEncoded: false),
+                key: Data(repeating: 7, count: 32),
+                transport: relay.link(account: "a", device: "a1"),
+                platform: .ios,
+                version: "0.2.0"
+            )
+        }
+        XCTAssertFalse(try account.signedIn())
+        let closing = account.suspend()
+        // Nothing else holds the client, so the store is closed already.
+        XCTAssertTrue(closing.closed)
+        XCTAssertThrowsError(try account.signedIn()) { XCTAssertTrue($0 is CoreAccount.Suspended) }
+        account.resume()
+        XCTAssertFalse(try account.signedIn())
+        XCTAssertEqual(opens.value, 2)
     }
 
     func testTwoDevicesExchangeAMessage() throws {
@@ -134,4 +162,14 @@ final class CoreClientTests: XCTestCase {
             XCTAssertEqual(min, "0.3.0")
         }
     }
+}
+
+/// How many times a `CoreAccount` opened its client.
+private final class Opens: @unchecked Sendable {
+    private let lock = NSLock()
+    private var opened = 0
+
+    var value: Int { lock.withLock { opened } }
+
+    func count() { lock.withLock { opened += 1 } }
 }

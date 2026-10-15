@@ -172,6 +172,8 @@
     <string name="pick_empty">Ekkert samtal til að senda í.</string>
     <!-- A shared Fljótið post in the conversation list and in a notification: fixed, never the post's text or author (docs/decisions/0040). -->
     <string name="post_shared">Deild færsla</string>
+    <!-- A stored message the core cannot read back, shown in its place in the conversation and as the list's last line, with its code under it (docs/decisions/0051). Never says more. -->
+    <string name="item_unreadable">Ekki tókst að lesa þessi skilaboð.</string>
     <!-- The card of a shared post the server no longer shows: deleted, its author's account deleted, or its author blocked. It does not say which (docs/decisions/0040). -->
     <string name="post_gone">Færslan er ekki lengur til</string>
     <!-- Add a reaction to a message. -->

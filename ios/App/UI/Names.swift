@@ -40,6 +40,8 @@ func lastLine(_ item: Item, group: Bool = true) -> String {
     case .post:
         // Never the post's text or author: the list shows what the store holds (decision 0040).
         localized("post_shared")
+    case .unreadable:
+        localized("item_unreadable")
     case .members(let added, let removed, let devices):
         if !added.isEmpty {
             localized("member_added_card", names(added))
@@ -73,6 +75,6 @@ func previewLine(_ item: Item, group: Bool) -> String {
     case .text, .media, .post:
         if item.own { return localized("last_line_own", line) }
         return group ? localized("last_line_sender", firstName(item.sender), line) : line
-    case .deleted, .members, .timer: return line
+    case .deleted, .members, .timer, .unreadable: return line
     }
 }

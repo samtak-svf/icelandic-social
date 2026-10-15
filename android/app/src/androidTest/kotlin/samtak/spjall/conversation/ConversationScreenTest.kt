@@ -643,6 +643,19 @@ class ConversationScreenTest {
     }
 
     @Test
+    fun anUnreadableRowShowsItsCodeAndOffersNothing() {
+        show(item(1u, Content.Unreadable("protocol/a stored media row")))
+        compose.onNodeWithText(text(R.string.item_unreadable)).assertIsDisplayed()
+        compose
+            .onNodeWithText(context.getString(R.string.problem_local_code, "protocol/a stored media row"))
+            .assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.item_unreadable)).performTouchInput { longClick() }
+        compose.onNodeWithText(text(R.string.reply)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.forward)).assertDoesNotExist()
+        assertEquals("nothing to open or ask for (decision 0051)", emptyList<String>(), calls)
+    }
+
+    @Test
     fun aReplyToAShareQuotesItAsTheGoneLine() {
         show(item(2u, Content.Text("Ég mæti", Quote("e1", anna, null, "p1")), own = true))
         compose.onNodeWithText(text(R.string.post_gone)).assertIsDisplayed()

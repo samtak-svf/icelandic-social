@@ -43,4 +43,10 @@ final class StringsTests: XCTestCase {
         XCTAssertEqual(lastLine(share), localized("post_shared"))
         XCTAssertEqual(previewLine(share, group: false), "Þú: Deild færsla")
     }
+
+    func testAnUnreadableRowIsListedInItsFixedLine() {
+        let row = item(1, own: false, ts: 0, content: .unreadable(code: "envelope/malformed"))
+        XCTAssertEqual(lastLine(row), localized("item_unreadable"))
+        XCTAssertEqual(previewLine(row, group: false), localized("item_unreadable"))
+    }
 }

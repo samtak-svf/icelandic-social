@@ -16,7 +16,7 @@ struct Offer {
     let delete: Bool
 
     init(_ item: Item) {
-        let live = item.seq != nil && item.envelopeId != nil && item.content != .deleted
+        var live = item.seq != nil && item.envelopeId != nil && item.content != .deleted
         var text = false
         var copyable = false
         switch item.content {
@@ -27,6 +27,9 @@ struct Offer {
             copyable = true
         case .post, .deleted, .members, .timer:
             break
+        case .unreadable:
+            // Nothing in it to act on (decision 0051).
+            live = false
         }
         reply = live
         copy = text
@@ -278,6 +281,13 @@ private struct BodyText: View {
             SharedCard(foreground: foreground)
         case .members, .timer:
             Text(verbatim: lastLine(item)).font(TypeStyle.bubble).foregroundStyle(foreground)
+        case .unreadable(let code):
+            // One fixed line and its code to quote (decision 0051).
+            VStack(alignment: .leading, spacing: 4) {
+                Text(verbatim: localized("item_unreadable")).font(TypeStyle.bubble).italic()
+                Text(verbatim: localized("problem_local_code", code)).font(.caption).textSelection(.enabled)
+            }
+            .foregroundStyle(foreground)
         }
     }
 }

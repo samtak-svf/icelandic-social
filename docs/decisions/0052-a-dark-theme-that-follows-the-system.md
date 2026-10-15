@@ -21,6 +21,9 @@
   appearance. The apps keep reading only generated files.
 - **Photos, avatars and the app icon are not recoloured.** The status and navigation bars
   follow the mode.
+- **Until then the iOS app is held light** (`UIUserInterfaceStyle: Light` in
+  `ios/project.yml`), as Android's theme already is. Without it, 0.7.3 in dark mode drew the
+  composer's text white on its light field. The work that lands this record removes the key.
 
 ## Why
 

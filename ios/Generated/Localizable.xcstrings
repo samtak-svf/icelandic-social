@@ -985,6 +985,18 @@
         }
       }
     },
+    "item_unreadable": {
+      "comment": "A stored message the core cannot read back, shown in its place in the conversation and as the list's last line, with its code under it (docs/decisions/0051). Never says more.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekki tókst að lesa þessi skilaboð."
+          }
+        }
+      }
+    },
     "post_gone": {
       "comment": "The card of a shared post the server no longer shows: deleted, its author's account deleted, or its author blocked. It does not say which (docs/decisions/0040).",
       "extractionState": "manual",

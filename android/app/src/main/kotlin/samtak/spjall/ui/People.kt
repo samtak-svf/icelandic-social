@@ -200,6 +200,7 @@ fun lastLine(
         Content.Deleted -> stringResource(R.string.message_deleted)
         // Never the post's text or author: the list shows what the store holds (decision 0040).
         is Content.Post -> stringResource(R.string.post_shared)
+        is Content.Unreadable -> stringResource(R.string.item_unreadable)
         is Content.Members ->
             when {
                 content.added.isNotEmpty() -> stringResource(R.string.member_added_card, names(content.added))

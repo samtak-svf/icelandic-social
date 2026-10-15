@@ -52,7 +52,9 @@ private class Offer(
     val item: Item,
 ) {
     private val sent = item.seq != null && item.envelopeId != null
-    private val live = sent && item.content != Content.Deleted
+
+    // An unreadable row offers nothing: there is nothing in it to act on (0051).
+    private val live = sent && item.content != Content.Deleted && item.content !is Content.Unreadable
     val reply = live
 
     /** The whole text, also under a timer: the reader can already read it (0046). */
@@ -270,6 +272,7 @@ private fun Body(
         is Content.Post -> SharedCard(foreground)
         is Content.Members, is Content.Timer ->
             Text(text = lastLine(item), style = Type.bubble, color = foreground)
+        is Content.Unreadable -> Unreadable(content.code, foreground)
     }
 }
 

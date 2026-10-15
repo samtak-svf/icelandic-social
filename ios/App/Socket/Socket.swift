@@ -119,7 +119,18 @@ final class Socket: Live {
         var failures = 0
         let account = account
         while !Task.isCancelled {
-            let token = (try? await offMain { try account.deviceToken() }) ?? nil
+            let token: String?
+            do {
+                token = try await offMain { try account.deviceToken() }
+            } catch {
+                // The core could not answer (its store busy or closed), which is not
+                // signed out: wait as after a failed connect and ask again.
+                guard !Task.isCancelled else { break }
+                connection = .offline
+                try? await wait(backoff(failures: failures))
+                failures += 1
+                continue
+            }
             guard let token, !Task.isCancelled else { break }
             connection = .connecting
             if await session(token: token) { failures = 0 }

@@ -378,6 +378,10 @@
       "surfaces": ["android", "ios"],
       "description": "A shared Fljótið post in the conversation list and in a notification: fixed, never the post's text or author (docs/decisions/0040)."
     },
+    "item_unreadable": {
+      "surfaces": ["android", "ios"],
+      "description": "A stored message the core cannot read back, shown in its place in the conversation and as the list's last line, with its code under it (docs/decisions/0051). Never says more."
+    },
     "post_gone": {
       "surfaces": ["android", "ios"],
       "description": "The card of a shared post the server no longer shows: deleted, its author's account deleted, or its author blocked. It does not say which (docs/decisions/0040)."
