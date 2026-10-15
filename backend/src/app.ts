@@ -51,7 +51,7 @@ import { inviteLink, resolveInvite, revokeInvite, rotateInvite } from "./invites
 import { claim, ownsLeaf, upload } from "./key-packages.ts";
 import { accountRoutes } from "./people.ts";
 import { linkHost } from "./link.ts";
-import { log } from "./log.ts";
+import { log, timed } from "./log.ts";
 import { getMedia, MAX_CIPHERTEXT, putMedia } from "./media.ts";
 import { muteRoutes } from "./mutes.ts";
 import { photoRoutes } from "./photos.ts";
@@ -101,12 +101,14 @@ const publicLimit = createMiddleware<AppEnv>(async (c, next) => {
 
 /**
  * Every other /v1 route needs a device token (decision 0014): its hash must
- * name an active device in D1, which the handlers then act as.
+ * name an active device in D1, which the handlers then act as. Its time is
+ * logged: every authenticated request pays it first (decision 0056).
  */
 const deviceToken = createMiddleware<AppEnv>(async (c, next) => {
   if (isPublic(c)) return next();
   const token = BEARER.exec(c.req.header("authorization") ?? "")?.[1];
-  const device = token ? await deviceForToken(c.env, token) : null;
+  const checked = token && timed("auth.token_checked", c.var, () => deviceForToken(c.env, token));
+  const device = checked ? await checked : null;
   if (!device) return fail(c, 401, "unauthorized");
   c.set("device", device);
   return next();

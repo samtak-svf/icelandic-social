@@ -56,3 +56,20 @@ export function log(event: `${string}.${string}`, fields: Partial<Fields>): void
   }
   console.log(JSON.stringify(line));
 }
+
+/**
+ * Runs `work` and logs `event` with its `durationMs` once it settles, with
+ * the `requestId` of `on` (decision 0056).
+ */
+export async function timed<T>(
+  event: `${string}.${string}`,
+  on: { requestId: string },
+  work: () => Promise<T>,
+): Promise<T> {
+  const started = Date.now();
+  try {
+    return await work();
+  } finally {
+    log(event, { durationMs: Date.now() - started, requestId: on.requestId });
+  }
+}

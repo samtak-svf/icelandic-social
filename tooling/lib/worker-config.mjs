@@ -41,7 +41,7 @@ const CONFIG_FILE = "backend/cloudflare.config.ts";
 /** Top-level keys. */
 const ROOT_KEYS = new Set(["accountId", "worker"]);
 /** Worker keys that carry no binding and nothing a guard checks. */
-const INERT = new Set(["compatibilityDate", "observability"]);
+const INERT = new Set(["compatibilityDate", "observability", "placement"]);
 /** Worker keys the model reads. */
 const READ = new Set([
   "name",

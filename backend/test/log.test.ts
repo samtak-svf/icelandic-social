@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { log } from "../src/log";
+import { log, timed } from "../src/log";
 
 const lines = () => {
   const spy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -36,6 +36,23 @@ describe("log", () => {
     expect(written()).toEqual([
       { event: "request.failed", code: "[redacted]", deviceId: "[redacted]", accountId: "a_123" },
     ]);
+  });
+
+  it("times work, logging its duration and request id and passing its result on", async () => {
+    const written = lines();
+    expect(await timed("auth.token_checked", { requestId: "r-1" }, async () => 7)).toBe(7);
+    expect(written()).toEqual([
+      { event: "auth.token_checked", durationMs: expect.any(Number), requestId: "r-1" },
+    ]);
+  });
+
+  it("logs the time of work that throws, and throws it on", async () => {
+    const written = lines();
+    const failing = timed("auth.token_checked", { requestId: "r-2" }, () =>
+      Promise.reject(new Error("d1 is down")),
+    );
+    await expect(failing).rejects.toThrow("d1 is down");
+    expect(written()).toHaveLength(1);
   });
 
   it("refuses an event name that is not a dotted identifier", () => {

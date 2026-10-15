@@ -90,6 +90,7 @@ describe("the request id", () => {
     expect(await response.json()).toEqual({ error: "internal_error", requestId: ray });
     const lines = logged.mock.calls.map(([line]) => JSON.parse(String(line)));
     expect(lines).toEqual([
+      { event: "auth.token_checked", durationMs: expect.any(Number), requestId: ray },
       { event: "request.failed", code: "internal_error", status: 500, requestId: ray },
     ]);
   });
