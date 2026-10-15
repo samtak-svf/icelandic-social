@@ -1,6 +1,7 @@
 # 0037. Every response carries a request id, and every error names it
 
-- Status: accepted; implemented in the backend (#151), the core (0.14.0) and the apps
+- Status: accepted; implemented in the backend (#151), the core (0.14.0) and the apps; what a
+  card shows when no server answered amended by [0049](0049-a-local-failure-names-its-code.md)
 - Date: 2026-10-10
 - Decided by: the maintainer, choosing it from a comparison with an established API's error
   trace id

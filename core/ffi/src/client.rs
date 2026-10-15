@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use spjall_client::{self as core, ClientError, MediaError, api};
 
-use crate::{Body, CoreError, Envelope};
+use crate::{Body, CoreError, Envelope, store_code};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum HttpMethod {
@@ -130,12 +130,35 @@ impl api::Transport for Foreign {
     }
 }
 
+/// The code of an MLS failure (0049): which refusal it is, and the step for
+/// one OpenMLS gave. Never OpenMLS's own text.
+fn mls_code(error: &spjall_mls::group::GroupError) -> String {
+    use spjall_mls::group::GroupError;
+    use spjall_mls::storage::StorageError;
+    match error {
+        GroupError::Storage(StorageError::Store(error)) => format!("storage/{}", store_code(error)),
+        GroupError::Storage(StorageError::Serialization(_)) => "storage/serialization".into(),
+        GroupError::Storage(StorageError::Missing) => "storage/missing".into(),
+        GroupError::Missing(what) => format!("missing/{what}"),
+        GroupError::Malformed(what) => format!("malformed/{what}"),
+        GroupError::Credential => "credential".into(),
+        GroupError::NotTheClaimedDevice => "not-the-claimed-device".into(),
+        GroupError::AlreadyMember => "already-member".into(),
+        GroupError::CommitInFlight => "commit-in-flight".into(),
+        GroupError::OwnAccount => "own-account".into(),
+        GroupError::OwnDevice => "own-device".into(),
+        GroupError::Expired => "expired".into(),
+        GroupError::Epoch { .. } => "epoch".into(),
+        GroupError::Mls { step, .. } => format!("openmls/{step}"),
+    }
+}
+
 impl From<ClientError> for CoreError {
     fn from(error: ClientError) -> Self {
         match error {
             ClientError::Store(error) => error.into(),
             ClientError::Mls(error) => Self::Mls {
-                detail: error.to_string(),
+                detail: mls_code(&error),
             },
             ClientError::Transport(api::ApiError::Unreachable(api::Unreachable(detail))) => {
                 Self::Unreachable { detail }
@@ -168,7 +191,7 @@ impl From<ClientError> for CoreError {
             ClientError::Media(MediaError::TooLarge) => Self::TooLarge,
             ClientError::Media(MediaError::Tampered) => Self::Tampered,
             ClientError::Media(MediaError::File(error)) => Self::File {
-                detail: error.to_string(),
+                detail: format!("{:?}", error.kind()),
             },
             ClientError::CannotForward(reason) => Self::CannotForward {
                 reason: reason.into(),
@@ -865,7 +888,7 @@ impl CoreClient {
         version: String,
     ) -> Result<Arc<Self>, CoreError> {
         let key: spjall_store::Key = key.try_into().map_err(|key: Vec<u8>| CoreError::Store {
-            detail: format!("the store key must be 32 bytes, not {}", key.len()),
+            detail: format!("key-length/{}", key.len()),
         })?;
         let mut client = core::Client::open(Path::new(&dir), &key, Foreign(transport))?;
         client.set_client_version(platform.into(), &version)?;

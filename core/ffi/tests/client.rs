@@ -363,7 +363,7 @@ fn errors_cross_as_records() {
     ));
     assert!(matches!(
         CoreClient::open(String::new(), vec![7; 31], a1.app.clone(), Platform::Android, "0.2.0".into()),
-        Err(CoreError::Store { detail }) if detail.contains("32 bytes")
+        Err(CoreError::Store { detail }) if detail == "key-length/31"
     ));
     let dir = tempfile::tempdir().unwrap();
     assert!(matches!(
