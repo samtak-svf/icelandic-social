@@ -106,8 +106,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // The app has only a light theme: dark icons on its bars, whatever the system's mode.
-        val bars = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+        // The bars' icons follow the system's mode, as the theme does (decision 0052).
+        val bars = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
         enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
         // A recreated activity has handled its intent already.
         if (savedInstanceState == null) handle(intent)

@@ -1,7 +1,8 @@
 // @ts-check
 // iOS outputs of the brand, all under ios/Generated/: the xcconfigs the
 // project includes, the string catalog, the token enum, the bundled fonts
-// with their licences, the app icon and the accent colour.
+// with their licences, the app icon, the accent colour and a colour set per
+// token with its dark appearance.
 
 import { brandColors, fontFamilies, hex2, radii } from "./color.mjs";
 import { postScriptName } from "./font-name.mjs";
@@ -207,9 +208,10 @@ function stringCatalog(brand) {
 function tokensSwift(brand) {
   /** @param {string | undefined} text */
   const doc = (text) => (text ? [`        /// ${text}`] : []);
-  const colors = brandColors(brand.tokens).flatMap((c) => [
+  const dark = brandColors(brand.tokens, "dark");
+  const colors = brandColors(brand.tokens).flatMap((c, i) => [
     ...doc(c.description),
-    `        static let ${camel(c.name)} = Color(.sRGB, red: ${c.r} / 255, green: ${c.g} / 255, blue: ${c.b} / 255, opacity: ${c.a} / 255) // #${hex2(c.r)}${hex2(c.g)}${hex2(c.b)}${c.a < 255 ? hex2(c.a) : ""}`,
+    `        static let ${camel(c.name)} = Color("${COLOR_NAMESPACE}/${c.name}", bundle: .main) // ${hexA(c)}, dark ${hexA(dark[i] ?? c)}`,
   ]);
   const fonts = fontFamilies(brand.tokens).map(
     (f) => `        static let ${camel(f.name)} = "${f.family}"`,
@@ -236,8 +238,15 @@ function tokensSwift(brand) {
     "import SwiftUI",
     "",
     "enum BrandTokens {",
+    "    /// The catalog's colour sets (Assets.xcassets/Brand), each with a dark",
+    "    /// appearance, so a colour follows the system's mode (decision 0052).",
     "    enum Colors {",
     ...colors,
+    "",
+    "        /// Every colour by its token name, for the tests that hold each to its set.",
+    "        static let all: [String: Color] = [",
+    ...brandColors(brand.tokens).map((c) => `            "${c.name}": ${camel(c.name)},`),
+    "        ]",
     "    }",
     "",
     "    /// Font family names, as the design names them.",
@@ -305,6 +314,70 @@ function appIcon(brand) {
   ];
 }
 
+/** @param {{ r: number, g: number, b: number, a: number }} c */
+function hexA(c) {
+  return `#${hex2(c.r)}${hex2(c.g)}${hex2(c.b)}${c.a < 255 ? hex2(c.a) : ""}`;
+}
+
+/** @param {{ r: number, g: number, b: number, a: number }} c */
+function catalogColor(c) {
+  const component = (/** @type {number} */ byte) => `0x${hex2(byte)}`;
+  return {
+    "color-space": "srgb",
+    components: {
+      alpha: (c.a / 255).toFixed(3),
+      blue: component(c.b),
+      green: component(c.g),
+      red: component(c.r),
+    },
+  };
+}
+
+/**
+ * A colour set: the light colour, and the dark one for the dark appearance.
+ *
+ * @param {{ r: number, g: number, b: number, a: number }} light
+ * @param {{ r: number, g: number, b: number, a: number }} dark
+ */
+function colorSet(light, dark) {
+  return json({
+    colors: [
+      { color: catalogColor(light), idiom: "universal" },
+      {
+        appearances: [{ appearance: "luminosity", value: "dark" }],
+        color: catalogColor(dark),
+        idiom: "universal",
+      },
+    ],
+    info: XCODE_INFO,
+  });
+}
+
+/** The catalog folder the token colours live in, and the prefix of their names. */
+const COLOR_NAMESPACE = "Brand";
+
+/**
+ * One colour set per token, under a namespace so no name meets the system's
+ * own (`primary`, `secondary`).
+ *
+ * @param {BrandInput} brand
+ * @returns {OutputFile[]}
+ */
+function colorSets(brand) {
+  const folder = `${DIR}/Assets.xcassets/${COLOR_NAMESPACE}`;
+  const dark = brandColors(brand.tokens, "dark");
+  return [
+    {
+      path: `${folder}/Contents.json`,
+      content: json({ info: XCODE_INFO, properties: { "provides-namespace": true } }),
+    },
+    ...brandColors(brand.tokens).map((light, i) => ({
+      path: `${folder}/${light.name}.colorset/Contents.json`,
+      content: colorSet(light, dark[i] ?? light),
+    })),
+  ];
+}
+
 /**
  * The catalog's AccentColor, the brand's primary, which the project names as
  * the app's global accent so system controls never fall back to their blue.
@@ -313,28 +386,12 @@ function appIcon(brand) {
  * @returns {OutputFile}
  */
 function accentColor(brand) {
-  const color = brandColors(brand.tokens).find((c) => c.name === "primary");
-  if (!color) throw new Error("tokens have no primary colour for the accent");
-  const component = (/** @type {number} */ byte) => `0x${hex2(byte)}`;
+  const light = brandColors(brand.tokens).find((c) => c.name === "primary");
+  const dark = brandColors(brand.tokens, "dark").find((c) => c.name === "primary");
+  if (!light || !dark) throw new Error("tokens have no primary colour for the accent");
   return {
     path: `${DIR}/Assets.xcassets/AccentColor.colorset/Contents.json`,
-    content: json({
-      colors: [
-        {
-          color: {
-            "color-space": "srgb",
-            components: {
-              alpha: (color.a / 255).toFixed(3),
-              blue: component(color.b),
-              green: component(color.g),
-              red: component(color.r),
-            },
-          },
-          idiom: "universal",
-        },
-      ],
-      info: XCODE_INFO,
-    }),
+    content: colorSet(light, dark),
   };
 }
 
@@ -352,5 +409,6 @@ export function ios(brand) {
     ...fontFiles(brand),
     ...appIcon(brand),
     accentColor(brand),
+    ...colorSets(brand),
   ];
 }

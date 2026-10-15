@@ -38,6 +38,14 @@ class MeScreenshotTest {
         compose.onRoot().captureRoboImage()
     }
 
+    /** Ég in the system's dark mode (0052). */
+    @Test
+    @Config(qualifiers = "+night")
+    fun night() {
+        compose.setContent { SpjallTheme { MeScreen(MeViewModel.State(me = me), NoMeActions()) } }
+        compose.onRoot().captureRoboImage()
+    }
+
     @Test
     fun nobodyBlocked() {
         // The section alone, so the image shows the empty state without the screen around it.

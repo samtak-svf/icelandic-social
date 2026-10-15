@@ -20,9 +20,12 @@
   resources and a dark scheme in `BrandTokens.kt`, and iOS colour sets with a dark
   appearance. The apps keep reading only generated files.
 - **Photos, avatars and the app icon are not recoloured.** The status and navigation bars
-  follow the mode.
-- **Until then the iOS app is held light** (`UIUserInterfaceStyle: Light` in
-  `ios/project.yml`), as Android's theme already is. Without it, 0.7.3 in dark mode drew the
+  follow the mode. A QR code stays dark on light in both modes, because scanners expect it.
+- **In dark, the primary is lightened and carries dark text**, since no red is both readable as
+  text on a dark surface and dark enough under white text. The own bubble keeps white text on a
+  deep brick of its own (`bubble-own-bg`).
+- **Until then the iOS app was held light** (`UIUserInterfaceStyle: Light` in
+  `ios/project.yml`), as Android's theme already was. Without it, 0.7.3 in dark mode drew the
   composer's text white on its light field. The work that lands this record removes the key.
 
 ## Why

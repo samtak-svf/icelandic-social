@@ -187,8 +187,20 @@ class ConversationsScreenshotTest {
 
     /** The reader's own last message: on its way, failed, read in a 1:1, read by two in a group (0043). */
     @Test
-    fun ownStates() =
+    fun ownStates() = shoot(ownStatesState)
+
+    /** The list in the system's dark mode (0052): an unread row, a failed one, a group. */
+    @Test
+    @Config(qualifiers = "+night")
+    fun night() =
         shoot(
+            ownStatesState.copy(
+                conversations = listOf(row("c0", anna, "Sæl", 3u)) + ownStatesState.conversations,
+            ),
+        )
+
+    private val ownStatesState
+        get() =
             ConversationsViewModel.State(
                 conversations =
                     listOf(
@@ -199,8 +211,7 @@ class ConversationsScreenshotTest {
                     ),
                 loaded = true,
                 connection = Connection.Online,
-            ),
-        )
+            )
 
     private companion object {
         // 14 November 2023, 22:13 in Reykjavík.

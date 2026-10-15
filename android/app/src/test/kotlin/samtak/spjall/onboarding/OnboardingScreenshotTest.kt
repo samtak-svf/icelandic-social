@@ -49,4 +49,9 @@ class OnboardingScreenshotTest {
 
     @Test
     fun notifications() = shoot(Step.Notifications)
+
+    /** The first step in the system's dark mode (0052). */
+    @Test
+    @Config(qualifiers = "+night")
+    fun night() = shoot(Step.Photo, MeViewModel.State(me = Me("a1", "Jón Jónsson", false, emptyList(), null)))
 }

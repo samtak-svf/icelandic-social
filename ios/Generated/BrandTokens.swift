@@ -4,46 +4,80 @@
 import SwiftUI
 
 enum BrandTokens {
+    /// The catalog's colour sets (Assets.xcassets/Brand), each with a dark
+    /// appearance, so a colour follows the system's mode (decision 0052).
     enum Colors {
         /// Cream band: headers, the account screen.
-        static let bg = Color(.sRGB, red: 253 / 255, green: 233 / 255, blue: 215 / 255, opacity: 255 / 255) // #FDE9D7
+        static let bg = Color("Brand/bg", bundle: .main) // #FDE9D7, dark #292018
         /// Screen background.
-        static let surface = Color(.sRGB, red: 255 / 255, green: 255 / 255, blue: 255 / 255, opacity: 255 / 255) // #FFFFFF
+        static let surface = Color("Brand/surface", bundle: .main) // #FFFFFF, dark #15110C
         /// Text on light, black-green.
-        static let fg = Color(.sRGB, red: 7 / 255, green: 19 / 255, blue: 7 / 255, opacity: 255 / 255) // #071307
+        static let fg = Color("Brand/fg", bundle: .main) // #071307, dark #F2EEE6
         /// Brick red: main action, own bubble.
-        static let primary = Color(.sRGB, red: 179 / 255, green: 24 / 255, blue: 0 / 255, opacity: 255 / 255) // #B31800
-        static let primaryFg = Color(.sRGB, red: 255 / 255, green: 255 / 255, blue: 255 / 255, opacity: 255 / 255) // #FFFFFF
+        static let primary = Color("Brand/primary", bundle: .main) // #B31800, dark #F7806A
+        static let primaryFg = Color("Brand/primary-fg", bundle: .main) // #FFFFFF, dark #15110C
         /// Gold: accents and rules. Decorative; see verified-mark for the meaning-bearing gold.
-        static let secondary = Color(.sRGB, red: 237 / 255, green: 163 / 255, blue: 59 / 255, opacity: 255 / 255) // #EDA33B
-        static let secondaryFg = Color(.sRGB, red: 7 / 255, green: 19 / 255, blue: 7 / 255, opacity: 255 / 255) // #071307
-        static let proseBody = Color(.sRGB, red: 30 / 255, green: 41 / 255, blue: 59 / 255, opacity: 255 / 255) // #1E293B
+        static let secondary = Color("Brand/secondary", bundle: .main) // #EDA33B, dark #EDA33B
+        static let secondaryFg = Color("Brand/secondary-fg", bundle: .main) // #071307, dark #15110C
+        static let proseBody = Color("Brand/prose-body", bundle: .main) // #1E293B, dark #D0D8E5
         /// Quiet fills: the other party's bubble, the composer field, icon wells.
-        static let muted = Color(.sRGB, red: 236 / 255, green: 227 / 255, blue: 218 / 255, opacity: 255 / 255) // #ECE3DA
-        static let mutedFg = Color(.sRGB, red: 89 / 255, green: 103 / 255, blue: 125 / 255, opacity: 255 / 255) // #59677D
+        static let muted = Color("Brand/muted", bundle: .main) // #ECE3DA, dark #2F2721
+        static let mutedFg = Color("Brand/muted-fg", bundle: .main) // #59677D, dark #A0ACBE
         /// Wash behind an unread conversation.
-        static let primarySubtle = Color(.sRGB, red: 179 / 255, green: 24 / 255, blue: 0 / 255, opacity: 31 / 255) // #B318001F
+        static let primarySubtle = Color("Brand/primary-subtle", bundle: .main) // #B318001F, dark #F7806A29
         /// Wash behind a group avatar, a notice and the this-device pill.
-        static let secondarySubtle = Color(.sRGB, red: 237 / 255, green: 163 / 255, blue: 59 / 255, opacity: 38 / 255) // #EDA33B26
+        static let secondarySubtle = Color("Brand/secondary-subtle", bundle: .main) // #EDA33B26, dark #EDA33B1F
         /// Decorative dividers only.
-        static let border = Color(.sRGB, red: 7 / 255, green: 19 / 255, blue: 7 / 255, opacity: 46 / 255) // #0713072E
+        static let border = Color("Brand/border", bundle: .main) // #0713072E, dark #F2EEE629
         /// Boundaries that identify a control.
-        static let borderStrong = Color(.sRGB, red: 7 / 255, green: 19 / 255, blue: 7 / 255, opacity: 128 / 255) // #07130780
-        static let danger = Color(.sRGB, red: 179 / 255, green: 24 / 255, blue: 0 / 255, opacity: 255 / 255) // #B31800
-        static let dangerFg = Color(.sRGB, red: 255 / 255, green: 255 / 255, blue: 255 / 255, opacity: 255 / 255) // #FFFFFF
-        static let success = Color(.sRGB, red: 25 / 255, green: 148 / 255, blue: 108 / 255, opacity: 255 / 255) // #19946C
-        static let warning = Color(.sRGB, red: 255 / 255, green: 127 / 255, blue: 37 / 255, opacity: 255 / 255) // #FF7F25
-        static let warningFg = Color(.sRGB, red: 7 / 255, green: 19 / 255, blue: 7 / 255, opacity: 255 / 255) // #071307
-        static let info = Color(.sRGB, red: 33 / 255, green: 132 / 255, blue: 209 / 255, opacity: 255 / 255) // #2184D1
-        static let successText = Color(.sRGB, red: 0 / 255, green: 117 / 255, blue: 79 / 255, opacity: 255 / 255) // #00754F
-        static let warningText = Color(.sRGB, red: 178 / 255, green: 45 / 255, blue: 0 / 255, opacity: 255 / 255) // #B22D00
-        static let infoText = Color(.sRGB, red: 0 / 255, green: 102 / 255, blue: 177 / 255, opacity: 255 / 255) // #0066B1
-        static let bubbleOwnBg = Color(.sRGB, red: 179 / 255, green: 24 / 255, blue: 0 / 255, opacity: 255 / 255) // #B31800
-        static let bubbleOwnFg = Color(.sRGB, red: 255 / 255, green: 255 / 255, blue: 255 / 255, opacity: 255 / 255) // #FFFFFF
-        static let bubbleOtherBg = Color(.sRGB, red: 236 / 255, green: 227 / 255, blue: 218 / 255, opacity: 255 / 255) // #ECE3DA
-        static let bubbleOtherFg = Color(.sRGB, red: 7 / 255, green: 19 / 255, blue: 7 / 255, opacity: 255 / 255) // #071307
+        static let borderStrong = Color("Brand/border-strong", bundle: .main) // #07130780, dark #F2EEE673
+        static let danger = Color("Brand/danger", bundle: .main) // #B31800, dark #F7806A
+        static let dangerFg = Color("Brand/danger-fg", bundle: .main) // #FFFFFF, dark #15110C
+        static let success = Color("Brand/success", bundle: .main) // #19946C, dark #40AF86
+        static let warning = Color("Brand/warning", bundle: .main) // #FF7F25, dark #FF7F25
+        static let warningFg = Color("Brand/warning-fg", bundle: .main) // #071307, dark #15110C
+        static let info = Color("Brand/info", bundle: .main) // #2184D1, dark #419EED
+        static let successText = Color("Brand/success-text", bundle: .main) // #00754F, dark #64CFA4
+        static let warningText = Color("Brand/warning-text", bundle: .main) // #B22D00, dark #FF975C
+        static let infoText = Color("Brand/info-text", bundle: .main) // #0066B1, dark #76BEFF
+        static let bubbleOwnBg = Color("Brand/bubble-own-bg", bundle: .main) // #B31800, dark #9A210C
+        static let bubbleOwnFg = Color("Brand/bubble-own-fg", bundle: .main) // #FFFFFF, dark #FFFFFF
+        static let bubbleOtherBg = Color("Brand/bubble-other-bg", bundle: .main) // #ECE3DA, dark #2F2721
+        static let bubbleOtherFg = Color("Brand/bubble-other-fg", bundle: .main) // #071307, dark #F2EEE6
         /// The verification dot. Same hue and chroma as secondary, lightness lowered until it meets the 3:1 non-text threshold (WCAG 1.4.11) on surface and bg, because the dot carries meaning.
-        static let verifiedMark = Color(.sRGB, red: 180 / 255, green: 110 / 255, blue: 0 / 255, opacity: 255 / 255) // #B46E00
+        static let verifiedMark = Color("Brand/verified-mark", bundle: .main) // #B46E00, dark #E69D33
+
+        /// Every colour by its token name, for the tests that hold each to its set.
+        static let all: [String: Color] = [
+            "bg": bg,
+            "surface": surface,
+            "fg": fg,
+            "primary": primary,
+            "primary-fg": primaryFg,
+            "secondary": secondary,
+            "secondary-fg": secondaryFg,
+            "prose-body": proseBody,
+            "muted": muted,
+            "muted-fg": mutedFg,
+            "primary-subtle": primarySubtle,
+            "secondary-subtle": secondarySubtle,
+            "border": border,
+            "border-strong": borderStrong,
+            "danger": danger,
+            "danger-fg": dangerFg,
+            "success": success,
+            "warning": warning,
+            "warning-fg": warningFg,
+            "info": info,
+            "success-text": successText,
+            "warning-text": warningText,
+            "info-text": infoText,
+            "bubble-own-bg": bubbleOwnBg,
+            "bubble-own-fg": bubbleOwnFg,
+            "bubble-other-bg": bubbleOtherBg,
+            "bubble-other-fg": bubbleOtherFg,
+            "verified-mark": verifiedMark,
+        ]
     }
 
     /// Font family names, as the design names them.

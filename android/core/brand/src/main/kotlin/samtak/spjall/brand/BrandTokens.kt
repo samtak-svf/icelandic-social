@@ -47,6 +47,49 @@ object BrandTokens {
         const val VERIFIED_MARK: Long = 0xFFB46E00L
     }
 
+    /** The same keys in the dark mode (decision 0052). */
+    object DarkColors {
+        /** Cream band: headers, the account screen. */
+        const val BG: Long = 0xFF292018L
+        /** Screen background. */
+        const val SURFACE: Long = 0xFF15110CL
+        /** Text on light, black-green. */
+        const val FG: Long = 0xFFF2EEE6L
+        /** Brick red: main action, own bubble. */
+        const val PRIMARY: Long = 0xFFF7806AL
+        const val PRIMARY_FG: Long = 0xFF15110CL
+        /** Gold: accents and rules. Decorative; see verified-mark for the meaning-bearing gold. */
+        const val SECONDARY: Long = 0xFFEDA33BL
+        const val SECONDARY_FG: Long = 0xFF15110CL
+        const val PROSE_BODY: Long = 0xFFD0D8E5L
+        /** Quiet fills: the other party's bubble, the composer field, icon wells. */
+        const val MUTED: Long = 0xFF2F2721L
+        const val MUTED_FG: Long = 0xFFA0ACBEL
+        /** Wash behind an unread conversation. */
+        const val PRIMARY_SUBTLE: Long = 0x29F7806AL
+        /** Wash behind a group avatar, a notice and the this-device pill. */
+        const val SECONDARY_SUBTLE: Long = 0x1FEDA33BL
+        /** Decorative dividers only. */
+        const val BORDER: Long = 0x29F2EEE6L
+        /** Boundaries that identify a control. */
+        const val BORDER_STRONG: Long = 0x73F2EEE6L
+        const val DANGER: Long = 0xFFF7806AL
+        const val DANGER_FG: Long = 0xFF15110CL
+        const val SUCCESS: Long = 0xFF40AF86L
+        const val WARNING: Long = 0xFFFF7F25L
+        const val WARNING_FG: Long = 0xFF15110CL
+        const val INFO: Long = 0xFF419EEDL
+        const val SUCCESS_TEXT: Long = 0xFF64CFA4L
+        const val WARNING_TEXT: Long = 0xFFFF975CL
+        const val INFO_TEXT: Long = 0xFF76BEFFL
+        const val BUBBLE_OWN_BG: Long = 0xFF9A210CL
+        const val BUBBLE_OWN_FG: Long = 0xFFFFFFFFL
+        const val BUBBLE_OTHER_BG: Long = 0xFF2F2721L
+        const val BUBBLE_OTHER_FG: Long = 0xFFF2EEE6L
+        /** The verification dot. Same hue and chroma as secondary, lightness lowered until it meets the 3:1 non-text threshold (WCAG 1.4.11) on surface and bg, because the dot carries meaning. */
+        const val VERIFIED_MARK: Long = 0xFFE69D33L
+    }
+
     /** Font family names, as the design names them. */
     object Fonts {
         const val SANS: String = "Gothic A1"

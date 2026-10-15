@@ -91,14 +91,24 @@ function parseDtcgColor(value, name) {
 }
 
 /**
- * Flattens a DTCG `color` group into a name → $value map, the names being the
- * token keys (`primary`, `bubble-own-bg`), which is how pairs refer to them.
+ * The colour modes a brand defines (decision 0052), each a DTCG group of
+ * tokens.json with the same keys: `color` for light, `dark` for dark. An alias
+ * (`{color.fg}`) names a key, and resolves in the mode it is read in.
+ */
+export const MODES = /** @type {const} */ ({ light: "color", dark: "dark" });
+
+/** @typedef {keyof typeof MODES} Mode */
+
+/**
+ * Flattens one mode's colour group into a name → $value map, the names being
+ * the token keys (`primary`, `bubble-own-bg`), which is how pairs refer to them.
  *
  * @param {Record<string, unknown>} tokens parsed tokens.json
+ * @param {Mode} [mode]
  * @returns {TokenMap}
  */
-export function colorTokens(tokens) {
-  const group = /** @type {Record<string, { $value?: unknown }>} */ (tokens.color ?? {});
+export function colorTokens(tokens, mode = "light") {
+  const group = /** @type {Record<string, { $value?: unknown }>} */ (tokens[MODES[mode]] ?? {});
   const map = new Map();
   for (const [name, token] of Object.entries(group)) {
     if (name.startsWith("$")) continue;

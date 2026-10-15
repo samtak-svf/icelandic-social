@@ -150,9 +150,46 @@ describe("brand-gen", () => {
         .toString(16)
         .toUpperCase(),
     );
-    expect(output(root, "ios/Generated/BrandTokens.swift")).toMatch(
-      /static let border = Color\(.*opacity: 46 \/ 255\)/,
+    const border = JSON.parse(
+      output(root, "ios/Generated/Assets.xcassets/Brand/border.colorset/Contents.json"),
     );
+    expect(border.colors[0].color.components.alpha).toBe((46 / 255).toFixed(3));
+  });
+
+  it("emits every colour in both modes on both platforms", () => {
+    const root = fixture();
+    editJson(root, `brand/${BRAND}/tokens.json`, (t) => {
+      t.dark.surface.$value = { colorSpace: "oklch", components: [0, 0, 0] };
+    });
+    const kotlin = output(root, KOTLIN);
+    const block = (/** @type {string} */ name) =>
+      new RegExp(`object ${name} \\{([^}]*)\\}`).exec(kotlin)?.[1] ?? "";
+    const keys = (/** @type {string} */ text) =>
+      [...text.matchAll(/const val (\w+):/g)].map((m) => m[1]);
+    expect(keys(block("DarkColors"))).toEqual(keys(block("Colors")));
+    expect(block("DarkColors")).toContain("const val SURFACE: Long = 0xFF000000L");
+    expect(output(root, `${RES}/values-night/themes.xml`)).toContain(
+      '<item name="android:windowBackground">#FF000000</item>',
+    );
+    expect(output(root, `${RES}/values-night/themes.xml`)).toContain("Theme.Material.NoActionBar");
+    expect(output(root, `${RES}/values/themes.xml`)).toContain("Theme.Material.Light.NoActionBar");
+
+    const swift = output(root, "ios/Generated/BrandTokens.swift");
+    const names = [...swift.matchAll(/Color\("Brand\/([a-z0-9-]+)"/g)].map((m) => m[1]);
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) {
+      const set = JSON.parse(
+        output(root, `ios/Generated/Assets.xcassets/Brand/${name}.colorset/Contents.json`),
+      );
+      expect(set.colors.map((/** @type {any} */ c) => c.appearances?.[0]?.value ?? "any")).toEqual([
+        "any",
+        "dark",
+      ]);
+    }
+    const surface = JSON.parse(
+      output(root, "ios/Generated/Assets.xcassets/Brand/surface.colorset/Contents.json"),
+    );
+    expect(surface.colors[1].color.components).toMatchObject({ red: "0x00", green: "0x00" });
   });
 
   it("generates nothing from a brand that brand-check rejects", () => {
@@ -172,8 +209,11 @@ describe("brand-gen", () => {
     expect(run({ name: BRAND, check: true, root }).stale).toEqual([]);
     const path = join(root, RES, "values/strings.xml");
     writeFileSync(path, readFileSync(path, "utf8").replace("</resources>", "</resources> "));
+    const night = join(root, RES, "values-night/themes.xml");
+    writeFileSync(night, readFileSync(night, "utf8").replace("#FF", "#EE"));
     writeFileSync(join(root, RES, "values/extra.xml"), "<resources/>\n");
     expect(run({ name: BRAND, check: true, root }).stale).toEqual([
+      `${RES}/values-night/themes.xml`,
       `${RES}/values/strings.xml`,
       `${RES}/values/extra.xml (not generated)`,
     ]);
@@ -235,23 +275,10 @@ describe("brand-gen", () => {
     }
   });
 
-  it("makes the primary colour the iOS accent", () => {
-    const swift = output(ROOT, "ios/Generated/BrandTokens.swift");
-    const [, r, g, b] =
-      /static let primary = Color\(\.sRGB, red: (\d+) \/ 255, green: (\d+) \/ 255, blue: (\d+) \/ 255/.exec(
-        swift,
-      ) ?? [];
-    const accent = JSON.parse(
-      output(ROOT, "ios/Generated/Assets.xcassets/AccentColor.colorset/Contents.json"),
-    );
-    const hex = (/** @type {string | undefined} */ v) =>
-      `0x${Number(v).toString(16).padStart(2, "0").toUpperCase()}`;
-    expect(accent.colors[0].color.components).toEqual({
-      alpha: "1.000",
-      red: hex(r),
-      green: hex(g),
-      blue: hex(b),
-    });
+  it("makes the primary colour the iOS accent, in both modes", () => {
+    const set = (/** @type {string} */ name) =>
+      JSON.parse(output(ROOT, `ios/Generated/Assets.xcassets/${name}.colorset/Contents.json`));
+    expect(set("AccentColor")).toEqual(set("Brand/primary"));
   });
 
   it("lists each iOS face by file, PostScript name and weight", () => {

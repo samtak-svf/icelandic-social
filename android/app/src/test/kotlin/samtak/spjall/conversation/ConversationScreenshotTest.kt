@@ -214,6 +214,25 @@ class ConversationScreenshotTest {
         compose.onRoot().captureRoboImage()
     }
 
+    /** The conversation in the system's dark mode (0052): both bubbles, a photo, a file, a failed send. */
+    @Test
+    @Config(qualifiers = "+night")
+    fun night() {
+        show(
+            item(
+                1u,
+                Content.Text("Sæl", null),
+                reactions = listOf(Reaction("❤️", true, listOf(me, anna))),
+            ),
+            item(2u, Content.Media("image/jpeg", 10uL, "Esjan", null)),
+            item(3u, Content.Media("application/pdf", 10uL, null, "skýrsla.pdf")),
+            item(4u, Content.Text("Hæ", null), own = true),
+            item(null, Content.Text("Komst ekki", null), own = true, status = ItemStatus.FAILED),
+            draft = "Hvernig",
+        )
+        compose.onRoot().captureRoboImage()
+    }
+
     @Test
     fun sharedPostSaysItIsGone() {
         show(item(1u, Content.Post("p1")))

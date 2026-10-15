@@ -1,7 +1,8 @@
 import CoreImage.CIFilterBuiltins
 import SwiftUI
 
-/// A QR code of `text`, drawn sharp at any size.
+/// A QR code of `text`, drawn sharp at any size: black on white in either
+/// mode, because scanners expect dark modules on light.
 struct QRCode: View {
     let text: String
 

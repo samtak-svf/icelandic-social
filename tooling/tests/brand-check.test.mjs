@@ -84,7 +84,47 @@ describe("brand-check", () => {
         t.color.primary.$value.components = [0.7, 0.19, 32];
       }),
     );
-    expect(problems.join("\n")).toMatch(/contrast primary-fg on primary: .* below 4\.5:1/);
+    expect(problems.join("\n")).toMatch(/contrast light: primary-fg on primary: .* below 4\.5:1/);
+  });
+
+  it("fails a brand without dark colours", () => {
+    const problems = problemsAfter((root) =>
+      editJson(root, `brand/${BRAND}/tokens.json`, (t) => {
+        delete t.dark;
+      }),
+    );
+    expect(problems.join()).toContain('no "dark" group');
+  });
+
+  it("fails a dark mode that lacks a light key, or has one light lacks", () => {
+    const problems = problemsAfter((root) =>
+      editJson(root, `brand/${BRAND}/tokens.json`, (t) => {
+        delete t.dark.muted;
+        t.dark.extra = { $value: "#000000" };
+      }),
+    );
+    expect(problems).toContain("tokens.json dark.muted: missing");
+    expect(problems).toContain("tokens.json dark.extra: not a light colour");
+  });
+
+  it("resolves a dark alias inside the dark mode", () => {
+    const problems = problemsAfter((root) =>
+      editJson(root, `brand/${BRAND}/tokens.json`, (t) => {
+        delete t.dark.surface;
+        t.dark["bubble-other-bg"] = { $value: "{color.surface}" };
+      }),
+    );
+    expect(problems.join("\n")).toMatch(/dark: .* unknown colour "surface"/);
+  });
+
+  it("fails a pair that passes in light but not in dark", () => {
+    const problems = problemsAfter((root) =>
+      editJson(root, `brand/${BRAND}/tokens.json`, (t) => {
+        t.dark["muted-fg"].$value.components = [0.35, 0.03, 260];
+      }),
+    );
+    expect(problems.join("\n")).toMatch(/contrast dark: muted-fg on surface: .* below 4\.5:1/);
+    expect(problems.join("\n")).not.toMatch(/contrast light: muted-fg/);
   });
 
   it("fails a brand.json that the schema rejects", () => {
@@ -103,6 +143,14 @@ describe("contrast", () => {
     expect(measure("black", "white", tokens).ratio).toBe(21);
     expect(measure("white", "white", tokens).ratio).toBe(1);
     expect(measure("white", "#b31800", tokens).ratio).toBe(6.89);
+  });
+
+  it("composites an `over` on the mode's own surface", () => {
+    const tokens = readJson(`brand/${BRAND}/tokens.json`);
+    const light = measure("fg", "border over surface", colorTokens(tokens, "light"));
+    const dark = measure("fg", "border over surface", colorTokens(tokens, "dark"));
+    expect(light.bg).not.toBe(dark.bg);
+    expect(dark.bg).not.toBe(measure("fg", "surface", colorTokens(tokens, "dark")).bg);
   });
 
   it("refuses a translucent colour with nothing under it", () => {

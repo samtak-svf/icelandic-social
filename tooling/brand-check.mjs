@@ -9,7 +9,9 @@
 //   - each value has the declared placeholders, no more and no fewer, and a
 //     plural key carries the Icelandic CLDR categories `one` and `other`;
 //   - a claim the brand makes is worded exactly as decided (CLAIMS below);
-//   - every colour pair in brand/contrast-pairs.json meets its WCAG threshold;
+//   - the dark colours have exactly the keys of the light ones (decision 0052);
+//   - every colour pair in brand/contrast-pairs.json meets its WCAG threshold,
+//     in light and in dark;
 //   - the icon's foreground SVG exists and its background token is opaque;
 //   - every bundled font names a font token, its file and licence exist, and
 //     no family carries the same weight twice.
@@ -18,7 +20,7 @@
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { colorTokens, measure, resolveColor, THRESHOLDS } from "./lib/contrast.mjs";
+import { colorTokens, measure, MODES, resolveColor, THRESHOLDS } from "./lib/contrast.mjs";
 import { brandNames, readJson, ROOT } from "./lib/repo.mjs";
 import { validate } from "./lib/schema.mjs";
 
@@ -123,34 +125,54 @@ export function checkStrings(contract, strings, claims) {
 }
 
 /**
+ * Every mode carries the same colour keys, so a screen never asks for a colour
+ * one mode lacks.
+ *
+ * @param {Record<string, unknown>} tokens parsed tokens.json
+ * @returns {string[]}
+ */
+export function checkModes(tokens) {
+  const light = new Set(colorTokens(tokens, "light").keys());
+  /** @type {string[]} */
+  const problems = [];
+  if (!tokens[MODES.dark]) return [`tokens.json: no "${MODES.dark}" group (decision 0052)`];
+  const dark = new Set(colorTokens(tokens, "dark").keys());
+  for (const key of light) if (!dark.has(key)) problems.push(`dark.${key}: missing`);
+  for (const key of dark) if (!light.has(key)) problems.push(`dark.${key}: not a light colour`);
+  return problems;
+}
+
+/**
  * @param {Record<string, unknown>} tokens parsed tokens.json
  * @param {{ pairs: Array<{ fg: string, bg: string, level: keyof typeof THRESHOLDS, use: string }> }} pairs
  * @returns {{ problems: string[], rows: string[] }}
  */
 export function checkContrast(tokens, pairs) {
-  const map = colorTokens(tokens);
   /** @type {string[]} */
   const problems = [];
   /** @type {string[]} */
   const rows = [];
-  for (const pair of pairs.pairs) {
-    const threshold = THRESHOLDS[pair.level];
-    if (!threshold) {
-      problems.push(`${pair.fg} on ${pair.bg}: unknown level "${pair.level}"`);
-      continue;
-    }
-    try {
-      const { fg, bg, ratio } = measure(pair.fg, pair.bg, map);
-      const ok = ratio >= threshold.min;
-      rows.push(
-        `${ok ? "✓" : "✗"} ${ratio.toFixed(2)}:1 ${pair.fg} on ${pair.bg} (${fg} on ${bg}, ${pair.use})`,
-      );
-      if (!ok)
-        problems.push(
-          `${pair.fg} on ${pair.bg}: ${ratio}:1 is below ${threshold.min}:1 (${threshold.label}, ${pair.use})`,
-        );
-    } catch (error) {
-      problems.push(`${pair.fg} on ${pair.bg}: ${/** @type {Error} */ (error).message}`);
+  for (const mode of /** @type {const} */ (["light", "dark"])) {
+    if (!tokens[MODES[mode]]) continue;
+    const map = colorTokens(tokens, mode);
+    for (const pair of pairs.pairs) {
+      const label = `${mode}: ${pair.fg} on ${pair.bg}`;
+      const threshold = THRESHOLDS[pair.level];
+      if (!threshold) {
+        problems.push(`${label}: unknown level "${pair.level}"`);
+        continue;
+      }
+      try {
+        const { fg, bg, ratio } = measure(pair.fg, pair.bg, map);
+        const ok = ratio >= threshold.min;
+        rows.push(`${ok ? "✓" : "✗"} ${ratio.toFixed(2)}:1 ${label} (${fg} on ${bg}, ${pair.use})`);
+        if (!ok)
+          problems.push(
+            `${label}: ${ratio}:1 is below ${threshold.min}:1 (${threshold.label}, ${pair.use})`,
+          );
+      } catch (error) {
+        problems.push(`${label}: ${/** @type {Error} */ (error).message}`);
+      }
     }
   }
   return { problems, rows };
@@ -256,6 +278,7 @@ export function checkBrand(name, root = ROOT) {
   const tokens = readJson(`${dir}/tokens.json`, root);
   problems.push(...checkIcon(manifest.icon, dir, root, tokens));
   problems.push(...checkFonts(manifest.fonts, dir, root, tokens));
+  problems.push(...checkModes(tokens).map((p) => `tokens.json ${p}`));
   const contrast = checkContrast(tokens, readJson("brand/contrast-pairs.json", root));
   problems.push(...contrast.problems.map((p) => `contrast ${p}`));
   return { problems, rows: contrast.rows };
@@ -273,7 +296,9 @@ function main() {
     const { problems, rows } = checkBrand(name);
     if (verbose) for (const row of rows) console.log(`  ${row}`);
     if (problems.length === 0) {
-      console.log(`✓ brand/${name}: manifest, ${rows.length} contrast pairs, strings complete`);
+      console.log(
+        `✓ brand/${name}: manifest, ${rows.length} contrast pairs (light and dark), strings complete`,
+      );
       continue;
     }
     failed += problems.length;

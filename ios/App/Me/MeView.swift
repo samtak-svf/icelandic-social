@@ -173,6 +173,7 @@ private struct InviteCard: View {
                     if let link = model.link {
                         QRCode(text: link)
                             .padding(6)
+                            .background(.white, in: RoundedRectangle(cornerRadius: 12))
                             .frame(width: 104, height: 104)
                             .overlay {
                                 RoundedRectangle(cornerRadius: 12).strokeBorder(BrandTokens.Colors.border, lineWidth: 1)

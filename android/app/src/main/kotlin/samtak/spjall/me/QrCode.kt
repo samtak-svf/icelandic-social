@@ -2,7 +2,6 @@ package samtak.spjall.me
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -13,10 +12,12 @@ import androidx.compose.ui.semantics.semantics
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
+import samtak.spjall.ui.BrandPalette
 
 /**
  * [text] as a QR code, drawn module by module so it stays sharp at any size.
- * Dark on light from the theme, with the quiet zone scanners need.
+ * Dark on light in either mode, because scanners expect it, with the quiet
+ * zone they need.
  */
 @Composable
 fun QrCode(
@@ -28,8 +29,8 @@ fun QrCode(
         remember(text) {
             QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, 0, 0, mapOf(EncodeHintType.MARGIN to QUIET_ZONE))
         }
-    val dark = MaterialTheme.colorScheme.onSurface
-    val light = MaterialTheme.colorScheme.surface
+    val dark = BrandPalette.Light.fg
+    val light = BrandPalette.Light.surface
     Canvas(modifier = modifier.aspectRatio(1f).semantics { contentDescription = description }) {
         drawRect(light)
         val cell = size.width / matrix.width

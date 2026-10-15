@@ -9,12 +9,17 @@ import { colorTokens, resolveColor } from "../contrast.mjs";
  */
 
 /**
+ * One mode's colours, in the order tokens.json lists the light ones, so both
+ * modes come out key for key (brand-check holds them to the same keys). The
+ * description is the light token's.
+ *
  * @param {any} tokens parsed tokens.json
+ * @param {import("../contrast.mjs").Mode} [mode]
  * @returns {BrandColor[]}
  */
-export function brandColors(tokens) {
-  const map = colorTokens(tokens);
-  return [...map.keys()].map((name) => ({
+export function brandColors(tokens, mode = "light") {
+  const map = colorTokens(tokens, mode);
+  return [...colorTokens(tokens).keys()].map((name) => ({
     name,
     ...resolveColor(name, map),
     description: tokens.color[name].$description,
