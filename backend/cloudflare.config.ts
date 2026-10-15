@@ -107,6 +107,7 @@ export default defineConfig(({ mode }) => ({
       //   GOOGLE_CLIENT_SECRET the Google web client's secret (decision 0033)
       //   FCM_SERVICE_ACCOUNT  the FCM service account's JSON key (decision 0025)
       //   APNS_KEY_P8          the APNs auth key (.p8), and APNS_KEY_ID its key id
+      //   OPERATOR_WIPE_TOKEN  only for the one-off operator wipe (decision 0058)
     },
     // Durable Object classes, declared (decision 0032). Both were created as
     // sqlite classes under the old `migrations` tag v1 and were moved to

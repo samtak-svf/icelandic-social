@@ -91,6 +91,7 @@ type Secrets = {
   FCM_SERVICE_ACCOUNT?: string;
   APNS_KEY_P8?: string;
   APNS_KEY_ID?: string;
+  OPERATOR_WIPE_TOKEN?: string;
 };
 
 /**
@@ -177,6 +178,14 @@ export function kennitalaKeys(env: Env): { key: string; previous: string | null 
   const secrets = env as Env & Secrets;
   if (!secrets.KENNITALA_HMAC_KEY) throw new Error("KENNITALA_HMAC_KEY is not set");
   return { key: secrets.KENNITALA_HMAC_KEY, previous: secrets.KENNITALA_HMAC_KEY_PREVIOUS || null };
+}
+
+/**
+ * The bearer token of the one-off operator wipe (decision 0058), or null while
+ * it is not set, which turns the route off. Set for the one run, then deleted.
+ */
+export function operatorWipeToken(env: Env): string | null {
+  return (env as Env & Secrets).OPERATOR_WIPE_TOKEN || null;
 }
 
 /** What the association files vouch for: the apps that may open /l/ links. */

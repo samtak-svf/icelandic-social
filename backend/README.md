@@ -67,6 +67,26 @@ It reads each value from the vault and sends the set to `cf workers secrets bulk
 checks `cf workers secrets list`. Its table has one row per secret in `src/env/index.ts`; a test
 keeps the two in step. Run it after the first deploy and whenever a vault value changes.
 
+## The operator wipe (one-off)
+
+`POST /operator/wipe` deletes every account the way `DELETE /v1/me` does, then whatever no
+account owns any more (decision 0058). It answers 404 unless `OPERATOR_WIPE_TOKEN` is set, and
+a follow-up PR removes it. The token goes through the vault like every other secret:
+
+```bash
+openssl rand -base64 48 | tr -d '\n' | gcloud secrets create samtak-spjall-operator-wipe-token \
+  --project=samtak-secrets --replication-policy=automatic --data-file=-
+node tooling/worker-secrets.mjs --only=OPERATOR_WIPE_TOKEN
+SPJALL_API_BASE_URL=https://spjall.samtak.is \
+OPERATOR_WIPE_TOKEN="$(gcloud secrets versions access latest --project=samtak-secrets \
+  --secret=samtak-spjall-operator-wipe-token)" \
+  pnpm --filter spjall-backend wipe:operator
+pnpm --filter spjall-backend exec cf workers secrets delete OPERATOR_WIPE_TOKEN --worker spjall-api
+```
+
+The script calls the route until no account and no leftover is there, printing counts only.
+Every invite goes with it, so the first tester after it needs a new `invite:operator`.
+
 ## Not yet
 
 - iOS push needs the APNs key (decision 0025, `docs/store-accounts/README.md`).
