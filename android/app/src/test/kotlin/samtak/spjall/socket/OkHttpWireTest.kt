@@ -62,9 +62,37 @@ class OkHttpWireTest {
     }
 
     @Test
-    fun aRefusedUpgradeIsClosed() {
+    fun anUpgradeAnsweredWith401IsRefused() {
         server.enqueue(MockResponse(code = 401, body = """{"error":"unauthorized"}"""))
         OkHttpWire(server.url("/").toString(), OkHttpClient()).open("t1") { signals += it }
+        assertEquals(Signal.Refused, next())
+    }
+
+    @Test
+    fun anUpgradeThatFailsOtherwiseIsClosed() {
+        server.enqueue(MockResponse(code = 503))
+        OkHttpWire(server.url("/").toString(), OkHttpClient()).open("t1") { signals += it }
         assertEquals(Signal.Closed, next())
+    }
+
+    @Test
+    fun aSocketTheServerClosesWith4401IsRefused() {
+        server.enqueue(
+            MockResponse
+                .Builder()
+                .webSocketUpgrade(
+                    object : WebSocketListener() {
+                        override fun onOpen(
+                            webSocket: WebSocket,
+                            response: Response,
+                        ) {
+                            webSocket.close(4401, "revoked")
+                        }
+                    },
+                ).build(),
+        )
+        OkHttpWire(server.url("/").toString(), OkHttpClient()).open("t1") { signals += it }
+        assertEquals(Signal.Opened, next())
+        assertEquals(Signal.Refused, next())
     }
 }

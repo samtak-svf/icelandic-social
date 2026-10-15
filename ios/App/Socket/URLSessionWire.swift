@@ -60,6 +60,13 @@ private final class WebSocketLink: NSObject, Link, URLSessionWebSocketDelegate, 
         keepAlive()
     }
 
+    func urlSession(
+        _ session: URLSession, webSocketTask: URLSessionWebSocketTask,
+        didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?
+    ) {
+        finish()
+    }
+
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         finish()
     }
@@ -113,7 +120,8 @@ private final class WebSocketLink: NSObject, Link, URLSessionWebSocketDelegate, 
         if ended { pinging.cancel() }
     }
 
-    /// Says `.closed` once, however many ways the socket ended.
+    /// Says `.closed` once, however many ways the socket ended, or `.refused` when the server refused
+    /// the token: 401 to the upgrade, or its close with 4401 (decision 0057).
     private func finish() {
         let (first, pinging) = lock.withLock {
             defer { closed = true }
@@ -121,6 +129,7 @@ private final class WebSocketLink: NSObject, Link, URLSessionWebSocketDelegate, 
         }
         guard first else { return }
         pinging?.cancel()
-        on(.closed)
+        let refused = (task.response as? HTTPURLResponse)?.statusCode == 401 || task.closeCode.rawValue == 4401
+        on(refused ? .refused : .closed)
     }
 }

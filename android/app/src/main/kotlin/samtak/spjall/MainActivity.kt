@@ -49,6 +49,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import samtak.spjall.brand.R
@@ -194,7 +195,14 @@ class MainActivity : ComponentActivity() {
                 OnboardingViewModel(PrefsOnboardingStore(app)) { notificationsNeeded(app) }
             }
         val step by onboarding.step.collectAsStateWithLifecycle()
-        LaunchedEffect(Unit) { graph.socket.start() }
+        LaunchedEffect(Unit) {
+            graph.socket.start()
+            // The server no longer answers this device's token: back to sign-in (decision 0057). The
+            // start cleared what an earlier session left.
+            graph.socket.signedOut.first { it }
+            graph.socket.stop()
+            signIn.signedOut()
+        }
         if (step == OnboardingViewModel.Step.Done) TabScreens(signIns) else Onboarding(signIns, onboarding, step)
     }
 

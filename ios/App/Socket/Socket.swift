@@ -5,7 +5,7 @@ import SpjallCore
 /// Opens the WebSocket: URLSession's in the app, a fake in tests.
 protocol Wire: Sendable {
     /// Opens `/v1/ws` with the device `token`. `on` hears what happens on it,
-    /// from any thread, ending with `.closed`.
+    /// from any thread, ending with `.closed` or `.refused`.
     func open(token: String, on: @escaping @Sendable (Signal) -> Void) -> Link
 }
 
@@ -20,6 +20,8 @@ enum Signal: Sendable, Equatable {
     case frame(String)
     /// Closed by either side, or failed, a missed pong included.
     case closed
+    /// The server refused this device's token: the upgrade got 401, or the socket closed with 4401.
+    case refused
 }
 
 /// What the list's connection line shows.
@@ -53,6 +55,10 @@ extension Live {
 @MainActor @Observable
 final class Socket: Live {
     private(set) var connection = Connection.connecting
+    /// True once this device is signed out while the socket runs: a call it made threw `NotRegistered`, as
+    /// the core does when the server no longer answers the token (decision 0057), or there was no token
+    /// to open with. Each start clears it.
+    private(set) var signedOut = false
 
     @ObservationIgnored private let account: Account
     @ObservationIgnored private let wire: Wire
@@ -76,6 +82,7 @@ final class Socket: Live {
     /// Opens the socket and keeps it open until `stop`. Does nothing while it runs, or when signed out.
     func start() {
         guard running == nil else { return }
+        signedOut = false
         running = Task { await run() }
     }
 
@@ -131,7 +138,11 @@ final class Socket: Live {
                 failures += 1
                 continue
             }
-            guard let token, !Task.isCancelled else { break }
+            guard !Task.isCancelled else { break }
+            guard let token else {
+                signedOut = true
+                break
+            }
             connection = .connecting
             if await session(token: token) { failures = 0 }
             guard !Task.isCancelled else { break }
@@ -148,7 +159,7 @@ final class Socket: Live {
         let (signals, continuation) = AsyncStream.makeStream(of: Signal.self)
         let open = wire.open(token: token) { signal in
             continuation.yield(signal)
-            if signal == .closed { continuation.finish() }
+            if signal == .closed || signal == .refused { continuation.finish() }
         }
         defer {
             link = nil
@@ -167,6 +178,10 @@ final class Socket: Live {
                 await deliver { try account.onFrame(text) }
             case .closed:
                 return opened
+            case .refused:
+                // The core asks the server, and signs out if the token is dead (decision 0057).
+                await deliver { try account.sync() }
+                return opened
             }
         }
         return opened
@@ -178,8 +193,11 @@ final class Socket: Live {
         let next = Task {
             await previous?.value
             // A failed call changed nothing; the next sync or frame tries again.
-            guard let outcome = try? await offMain(call) else { return }
-            emit(outcome)
+            do {
+                emit(try await offMain(call))
+            } catch CoreError.NotRegistered {
+                signedOut = true
+            } catch {}
         }
         tail = next
         await next.value

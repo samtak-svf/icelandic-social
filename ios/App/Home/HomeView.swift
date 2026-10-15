@@ -134,6 +134,12 @@ struct HomeView: View {
             socket.stop()
             onSignedOut()
         }
+        // The server no longer answers this device's token: back to sign-in (decision 0057).
+        .onChange(of: socket.signedOut) { _, signedOut in
+            guard signedOut else { return }
+            socket.stop()
+            onSignedOut()
+        }
         .onDisappear {
             socket.stop()
             push.live = nil

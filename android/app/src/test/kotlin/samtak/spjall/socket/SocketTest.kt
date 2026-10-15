@@ -8,9 +8,11 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import samtak.spjall.account.FakeAccount
+import samtak.spjall.core.CoreException
 import samtak.spjall.core.Event
 import samtak.spjall.core.Outcome
 import kotlin.random.Random
@@ -128,6 +130,57 @@ class SocketTest {
             socket.start()
             runCurrent()
             assertEquals(2, wire.tokens.size)
+        }
+
+    @Test
+    fun aCallTheCoreAnswersNotRegisteredLooksSignedOut() =
+        runTest(dispatcher) {
+            val socket = socket()
+            socket.start()
+            runCurrent()
+            assertFalse(socket.signedOut.value)
+            account.failNext = CoreException.NotRegistered()
+            wire.signal(Signal.Opened)
+            runCurrent()
+            assertTrue(socket.signedOut.value)
+        }
+
+    @Test
+    fun aRefusedSocketSyncsOnceAndStopsWhenTheCoreSignedOut() =
+        runTest(dispatcher) {
+            val socket = socket()
+            socket.start()
+            runCurrent()
+            // The core finds the token dead, signs out and forgets it (decision 0057).
+            account.failNext = CoreException.NotRegistered()
+            account.token = null
+            wire.signal(Signal.Refused)
+            runCurrent()
+            assertEquals(listOf("sync"), account.calls.filter { it == "sync" })
+            assertTrue(socket.signedOut.value)
+            assertEquals(1, wire.closes)
+
+            advanceTimeBy(60_000)
+            assertEquals(1, wire.tokens.size)
+            assertTrue(socket.signedOut.value)
+        }
+
+    @Test
+    fun noTokenIsSignedOutAndTheNextStartClearsIt() =
+        runTest(dispatcher) {
+            val socket = socket()
+            account.token = null
+            socket.start()
+            runCurrent()
+            assertTrue(socket.signedOut.value)
+            account.token = "t2"
+            socket.start()
+            // Cleared before the start returns, so whoever waits for the next sign-out after it
+            // does not take this one.
+            assertFalse(socket.signedOut.value)
+            runCurrent()
+            assertFalse(socket.signedOut.value)
+            assertEquals(listOf("t2"), wire.tokens)
         }
 
     @Test

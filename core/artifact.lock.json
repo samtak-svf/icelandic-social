@@ -1,15 +1,15 @@
 {
-  "version": "0.24.0",
+  "version": "0.25.0",
   "androidNdk": "30.0.16248370",
   "baseUrl": "https://github.com/samtak-svf/icelandic-messenger/releases/download/core-v{version}",
   "artifacts": {
     "android": {
       "file": "spjall-core-android.zip",
-      "sha256": "621f026a06176426d6f2eace3f84f8513f90dd534f1f72cff6bcdb449929715e"
+      "sha256": "d2ba7290161940a67e4361e3b8b38499584430d44065b28bd580f73d91c64068"
     },
     "ios": {
       "file": "spjall-core-ios.zip",
-      "sha256": "3e5dcb1cfdda7e01f494722b7cca2adb376dbb2264b47ce0bcd6e14aacd406e7"
+      "sha256": "db78154469fc862509005ae3c15e5447836609d96d381b055ad22b02fa189087"
     }
   }
 }

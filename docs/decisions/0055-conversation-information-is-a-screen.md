@@ -1,6 +1,6 @@
 # 0055. A conversation's information is a screen
 
-- Status: accepted; implemented in the core (#244, core 0.24.0) and the apps, released as 0.8.3
+- Status: accepted; implemented in the core (#244, core 0.24.0) and the apps, released as 0.8.4
 - Date: 2026-10-15
 - Decided by: the maintainer, choosing from the UX round on 0.7.3
 - Builds on: [0043](0043-first-launch-and-the-ui-pass.md) (tapping the title opens the

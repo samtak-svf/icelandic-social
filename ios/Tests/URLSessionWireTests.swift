@@ -19,7 +19,7 @@ final class URLSessionWireTests: XCTestCase {
             switch signal {
             case .opened: opened.fulfill()
             case .frame: framed.fulfill()
-            case .closed: break
+            case .closed, .refused: break
             }
         }
         defer { link.close() }
@@ -27,6 +27,23 @@ final class URLSessionWireTests: XCTestCase {
         wait(for: [opened, framed], timeout: 5)
         XCTAssertTrue(heard.all.contains(.frame(#"{"type":"hello"}"#)))
         XCTAssertFalse(heard.all.contains(.closed))
+    }
+
+    func testASocketTheServerClosesWith4401IsRefused() throws {
+        let server = try SilentServer(greeting: #"{"type":"hello"}"#, thenClose: 4401)
+        defer { server.stop() }
+        let heard = Signals()
+        let ended = expectation(description: "ended")
+        let wire = URLSessionWire(baseURL: URL(string: "http://127.0.0.1:\(try server.port())/")!)
+
+        let link = wire.open(token: "t") { signal in
+            heard.add(signal)
+            if signal == .refused || signal == .closed { ended.fulfill() }
+        }
+        defer { link.close() }
+
+        wait(for: [ended], timeout: 5)
+        XCTAssertEqual(heard.all.last, .refused)
     }
 }
 
@@ -38,13 +55,14 @@ private final class Signals: @unchecked Sendable {
     var all: [Signal] { lock.withLock { signals } }
 }
 
-/// Accepts WebSocket upgrades, sends each one `greeting`, and lets pings go unanswered.
+/// Accepts WebSocket upgrades, sends each one `greeting`, then closes with `thenClose` if given, and lets pings
+/// go unanswered.
 private final class SilentServer: @unchecked Sendable {
     private let listener: NWListener
     private let queue = DispatchQueue(label: "silent-server")
     private var connections: [NWConnection] = []
 
-    init(greeting: String) throws {
+    init(greeting: String, thenClose: UInt16? = nil) throws {
         let socket = NWProtocolWebSocket.Options()
         socket.autoReplyPing = false
         let parameters = NWParameters.tcp
@@ -57,6 +75,11 @@ private final class SilentServer: @unchecked Sendable {
             let context = NWConnection.ContentContext(identifier: "greeting", metadata: [metadata])
             connection.send(
                 content: Data(greeting.utf8), contentContext: context, isComplete: true, completion: .idempotent)
+            guard let thenClose else { return }
+            let close = NWProtocolWebSocket.Metadata(opcode: .close)
+            close.closeCode = .privateCode(thenClose)
+            let closing = NWConnection.ContentContext(identifier: "close", metadata: [close])
+            connection.send(content: nil, contentContext: closing, isComplete: true, completion: .idempotent)
         }
         let ready = DispatchSemaphore(value: 0)
         listener.stateUpdateHandler = { state in

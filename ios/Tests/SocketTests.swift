@@ -87,6 +87,42 @@ final class SocketTests: XCTestCase {
         XCTAssertEqual(wire.opened.count, 1)
     }
 
+    func testNoTokenIsSignedOutAndTheNextStartClearsIt() async {
+        account.token = nil
+        let socket = socket()
+        socket.start()
+        await eventually { socket.signedOut }
+        account.token = "device-token"
+        socket.start()
+        XCTAssertFalse(socket.signedOut)
+        _ = await wire.link(1)
+        XCTAssertFalse(socket.signedOut)
+    }
+
+    func testACallTheCoreAnswersNotRegisteredIsSignedOut() async {
+        let socket = socket()
+        socket.start()
+        let link = await wire.link(1)
+        account.failNext = CoreError.NotRegistered
+        link.signal(.opened)
+        await eventually { socket.signedOut }
+        socket.stop()
+    }
+
+    func testARefusedSocketSyncsOnceAndStopsWhenTheCoreSignedOut() async {
+        let socket = socket()
+        socket.start()
+        let link = await wire.link(1)
+        // The core empties its store on the 401, so it has no token to open with afterwards.
+        account.failNext = CoreError.NotRegistered
+        account.token = nil
+        link.signal(.refused)
+        await eventually { socket.signedOut }
+        await eventually { self.account.calls.last == "deviceToken" }
+        XCTAssertEqual(account.calls.filter { $0 == "sync" }.count, 1)
+        XCTAssertEqual(wire.opened.count, 1)
+    }
+
     func testRetriesWhenTheCoreCannotGiveTheToken() async {
         // A busy or closed store is not signed out: the socket asks again.
         account.failNext = unreachable

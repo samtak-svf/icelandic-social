@@ -50,6 +50,9 @@ sealed interface Signal {
 
     /** Closed by either side, or failed, a missed pong included. */
     data object Closed : Signal
+
+    /** The server refused this device's token: the upgrade got 401, or the socket closed with 4401. */
+    data object Refused : Signal
 }
 
 /** What the list's connection line shows. */
@@ -61,6 +64,13 @@ interface Live {
 
     /** Every event the core returns, from the socket's frames and from each sync. */
     val events: SharedFlow<Event>
+
+    /**
+     * True once this device is signed out while the socket runs: a call it made said `NotRegistered`, as
+     * the core does when the server no longer answers the token (decision 0057), or there was no token
+     * to open with. Each start clears it.
+     */
+    val signedOut: StateFlow<Boolean>
 
     /** Syncs now, as after a change the server has to hear of. */
     fun sync() = perform { it.sync() }
@@ -94,6 +104,9 @@ class Socket(
     private val _events = MutableSharedFlow<Event>(extraBufferCapacity = EVENTS)
     override val events: SharedFlow<Event> = _events.asSharedFlow()
 
+    private val _signedOut = MutableStateFlow(false)
+    override val signedOut: StateFlow<Boolean> = _signedOut.asStateFlow()
+
     private var job: Job? = null
 
     @Volatile private var link: Link? = null
@@ -104,6 +117,7 @@ class Socket(
     /** Opens the socket and keeps it open until [stop]. Does nothing while it runs, or when signed out. */
     fun start() {
         if (job?.isActive == true) return
+        _signedOut.value = false
         job = scope.launch { run() }
     }
 
@@ -133,7 +147,11 @@ class Socket(
                     withContext(io) { account.deviceToken() }
                 } catch (_: CoreException) {
                     null
-                } ?: return
+                }
+            if (token == null) {
+                _signedOut.value = true
+                return
+            }
             _connection.value = Connection.Connecting
             if (session(token)) failures = 0
             _connection.value = Connection.Offline
@@ -156,7 +174,11 @@ class Socket(
                         deliver { account.sync() }
                     }
                     is Signal.Frame -> deliver { account.onFrame(signal.text) }
-                    Signal.Closed -> break
+                    Signal.Closed, Signal.Refused -> {
+                        // The core asks the server, and signs out if the token is dead (decision 0057).
+                        if (signal == Signal.Refused) deliver { account.sync() }
+                        break
+                    }
                 }
             }
         } finally {
@@ -173,6 +195,9 @@ class Socket(
             val outcome =
                 try {
                     withContext(io) { call() }
+                } catch (_: CoreException.NotRegistered) {
+                    _signedOut.value = true
+                    return
                 } catch (_: CoreException) {
                     return
                 }

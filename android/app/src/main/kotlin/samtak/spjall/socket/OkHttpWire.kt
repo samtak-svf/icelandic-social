@@ -58,13 +58,13 @@ class OkHttpWire(
                         webSocket: WebSocket,
                         code: Int,
                         reason: String,
-                    ) = on(Signal.Closed)
+                    ) = on(if (code == REVOKED) Signal.Refused else Signal.Closed)
 
                     override fun onFailure(
                         webSocket: WebSocket,
                         t: Throwable,
                         response: Response?,
-                    ) = on(Signal.Closed)
+                    ) = on(if (response?.code == UNAUTHORIZED) Signal.Refused else Signal.Closed)
                 },
             )
         return object : Link {
@@ -81,5 +81,9 @@ class OkHttpWire(
     private companion object {
         const val PING_SECONDS = 20L
         const val NORMAL = 1000
+
+        // The server's close when it revokes the token, and its answer to an upgrade with a dead one.
+        const val REVOKED = 4401
+        const val UNAUTHORIZED = 401
     }
 }
