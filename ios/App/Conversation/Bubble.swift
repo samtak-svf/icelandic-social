@@ -201,6 +201,8 @@ struct Bubble: View {
                     Button(emoji) { Task { await model.react(item, emoji) } }
                 }
             }
+            // One row of all six: the default style shows three and lists the rest below them.
+            .controlGroupStyle(.palette)
         }
         if offer.reply { Button("reply", systemImage: "arrowshape.turn.up.left") { model.reply(item) } }
         if offer.copy { Button("copy", systemImage: "doc.on.doc", action: copy) }

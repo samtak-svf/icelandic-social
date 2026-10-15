@@ -114,7 +114,8 @@ struct ConversationView: View {
         let shown = rows(model.items)
         return ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 0) {
+                // 2 points between bubbles, as on Android; a new sender's run adds 8 (Bubble).
+                LazyVStack(spacing: 2) {
                     if model.older && !model.items.isEmpty {
                         ProgressView().padding(8).onAppear { Task { await model.loadOlder() } }
                     }

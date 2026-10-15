@@ -1,10 +1,12 @@
 import Foundation
 
-/// `Wire` over `URLSessionWebSocketTask`. A ping every 20 s fails the socket
-/// when its pong is missed: a network change can end a socket without closing
-/// it (decision 0022). Nothing here logs, since the upgrade carries the device
-/// token. The upgrade names the build as every core request does (decision
-/// 0030).
+/// `Wire` over `URLSessionWebSocketTask`. The socket is open once the upgrade
+/// is answered, and reading starts at once: URLSession reads a pong only while
+/// a receive waits, so a socket that waited for its first pong before reading
+/// never opened. A ping every 20 s then fails the socket when its pong is
+/// missed: a network change can end a socket without closing it (decision
+/// 0022). Nothing here logs, since the upgrade carries the device token. The
+/// upgrade names the build as every core request does (decision 0030).
 struct URLSessionWire: Wire {
     private let url: URL
     private let session: URLSession
@@ -28,7 +30,7 @@ struct URLSessionWire: Wire {
     }
 }
 
-private final class WebSocketLink: Link, @unchecked Sendable {
+private final class WebSocketLink: NSObject, Link, URLSessionWebSocketDelegate, @unchecked Sendable {
     private static let ping: Duration = .seconds(20)
 
     private let task: URLSessionWebSocketTask
@@ -42,17 +44,24 @@ private final class WebSocketLink: Link, @unchecked Sendable {
     init(task: URLSessionWebSocketTask, on: @escaping @Sendable (Signal) -> Void) {
         self.task = task
         self.on = on
+        super.init()
+        task.delegate = self
     }
 
     func start() {
         task.resume()
-        // The first pong comes once the upgrade is done: the socket is open.
-        task.sendPing { [self] error in
-            guard error == nil else { return finish() }
-            on(.opened)
-            receive()
-            keepAlive()
-        }
+        receive()
+    }
+
+    func urlSession(
+        _ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?
+    ) {
+        on(.opened)
+        keepAlive()
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        finish()
     }
 
     func send(_ frame: String) {
