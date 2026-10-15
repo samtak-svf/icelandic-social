@@ -392,17 +392,6 @@ export class Conversation extends DurableObject<Env> {
   }
 
   /**
-   * Deletes the conversation whole, whoever its roster still names: the
-   * one-off operator wipe (decision 0058) calls it for a roster copy that
-   * outlived every account. The caller drops the copy in D1.
-   */
-  async purge(): Promise<void> {
-    await this.ctx.storage.deleteAlarm();
-    await this.ctx.storage.deleteAll();
-    this.schema();
-  }
-
-  /**
    * Copies the roster to D1 if the copy there is behind (decision 0022).
    * Reads the roster and its seq in one synchronous step, so a copy is
    * always one roster as some commit left it; D1 keeps the newest.

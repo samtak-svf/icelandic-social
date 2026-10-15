@@ -63,15 +63,6 @@ export const SECRETS = [
     vault: "apns-key-id",
     when: "now",
   },
-  // The bearer token of the one-off operator wipe (decision 0058): set for the
-  // one run with --only, deleted from the Worker after it, and this row goes
-  // with the route.
-  {
-    name: "OPERATOR_WIPE_TOKEN",
-    vault: "operator-wipe-token",
-    when: "later",
-    reason: "set only for the one operator wipe, then deleted",
-  },
 ];
 
 /**
