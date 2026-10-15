@@ -1,6 +1,6 @@
 # 0056. A read never waits for the network
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the backend (#238) and the core (#239, core 0.23.0), released as 0.7.5
 - Date: 2026-10-15
 - Decided by: the maintainer, approving the plan from the first speed baseline
 - Builds on: [0022](0022-the-conversation-surfaces.md) (the socket that syncs on connect),
