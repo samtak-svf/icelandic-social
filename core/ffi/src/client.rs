@@ -594,6 +594,9 @@ pub enum Content {
     /// fetches it: the card, the list's last line and a notice each show
     /// a fixed sentence.
     Post { post_id: String },
+    /// A stored row the core cannot decode (0051): the app shows a fixed
+    /// sentence and this code, which never holds the row's content.
+    Unreadable { code: String },
 }
 
 impl From<core::Content> for Content {
@@ -632,6 +635,7 @@ impl From<core::Content> for Content {
             },
             C::Timer { seconds } => Self::Timer { seconds },
             C::Post { post_id } => Self::Post { post_id },
+            C::Unreadable { code } => Self::Unreadable { code },
         }
     }
 }

@@ -479,6 +479,21 @@ mod tests {
         ));
     }
 
+    /// An unreadable item carries the code the same failure has as an
+    /// error (0051), so the apps show one vocabulary.
+    #[test]
+    fn an_envelope_failure_has_one_code_as_error_and_as_item() {
+        for error in [
+            envelope::EnvelopeError::UnsupportedVersion(99),
+            envelope::EnvelopeError::EncodeUnknown,
+            envelope::EnvelopeError::Malformed("marker-4711".into()),
+        ] {
+            let item = error.code();
+            assert!(!item.contains("marker"));
+            assert_eq!(CoreError::from(error).code(), Some(item));
+        }
+    }
+
     #[test]
     fn mls_self_test_passes() {
         assert_eq!(mls_self_test().unwrap(), 1);

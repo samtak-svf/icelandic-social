@@ -146,6 +146,17 @@ pub enum EnvelopeError {
     Malformed(String),
 }
 
+impl EnvelopeError {
+    /// Its code in the vocabulary of 0049: fixed words, never the input.
+    pub fn code(&self) -> String {
+        match self {
+            Self::UnsupportedVersion(version) => format!("envelope/v{version}"),
+            Self::EncodeUnknown => "envelope/encode-unknown".into(),
+            Self::Malformed(_) => "envelope/malformed".into(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 struct Header {
     v: u32,

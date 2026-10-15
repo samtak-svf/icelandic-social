@@ -667,14 +667,85 @@ mod tests {
             .unwrap()
     }
 
+    /// Migration 14 as core 0.18 released it (0050).
+    const DROPPED_14: &str = "ALTER TABLE outbox ADD COLUMN refused INTEGER NOT NULL DEFAULT 0
+             CHECK (refused IN (0, 1));
+         ALTER TABLE conversations ADD COLUMN join_refused_at INTEGER;";
+
+    /// Every table's columns and every index, trigger and view, in an order
+    /// that does not depend on the history that built them.
+    fn schema(connection: &Connection) -> Vec<String> {
+        let mut statement = connection
+            .prepare(
+                "SELECT m.name, c.name, c.type, c.\"notnull\", c.dflt_value, c.pk
+                 FROM sqlite_master m JOIN pragma_table_info(m.name) c
+                 WHERE m.type = 'table' AND m.name != 'schema_migrations'",
+            )
+            .unwrap();
+        let mut schema: Vec<String> = statement
+            .query_map([], |r| {
+                Ok(format!(
+                    "{}.{} {} notnull={} default={:?} pk={}",
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, String>(2)?,
+                    r.get::<_, bool>(3)?,
+                    r.get::<_, Option<String>>(4)?,
+                    r.get::<_, i64>(5)?,
+                ))
+            })
+            .unwrap()
+            .collect::<rusqlite::Result<_>>()
+            .unwrap();
+        let mut statement = connection
+            .prepare(
+                "SELECT type || ' ' || name || ' ' || COALESCE(sql, '') FROM sqlite_master
+                 WHERE type IN ('index', 'trigger', 'view')",
+            )
+            .unwrap();
+        schema.extend(
+            statement
+                .query_map([], |r| r.get::<_, String>(0))
+                .unwrap()
+                .collect::<rusqlite::Result<Vec<_>>>()
+                .unwrap(),
+        );
+        schema.sort();
+        schema
+    }
+
+    /// A store left at any schema version, by today's migrations or by
+    /// 0.18's 14, opens to the schema of a new store (0051). With
+    /// `migrations-freeze` holding released migrations to `MIGRATIONS`, this
+    /// covers every store a released core can leave on a device.
+    #[test]
+    fn every_history_opens_to_the_schema_of_a_new_store() {
+        let new = tempfile::tempdir().unwrap();
+        let want = schema(&Store::open(new.path(), &KEY).unwrap().connection);
+        assert!(want.iter().any(|c| c.starts_with("timeline.received_at ")));
+
+        let mut histories: Vec<Vec<(u32, &str)>> = (1..=MIGRATIONS.len())
+            .map(|n| MIGRATIONS[..n].to_vec())
+            .collect();
+        let mut dropped = MIGRATIONS[..13].to_vec();
+        dropped.push((14, DROPPED_14));
+        histories.push(dropped);
+        for history in histories {
+            let name = format!("{:?}", history.iter().map(|(v, _)| v).collect::<Vec<_>>());
+            let dir = tempfile::tempdir().unwrap();
+            let mut old = connect(&dir.path().join(FILE_NAME), &KEY).unwrap();
+            migrate_only(&mut old, &history);
+            drop(old);
+            let store = Store::open(dir.path(), &KEY).unwrap_or_else(|e| panic!("{name}: {e}"));
+            assert_eq!(schema(&store.connection), want, "after {name}");
+        }
+    }
+
     /// Core 0.18 stored a different migration 14, which a later change
     /// dropped; 0.20 then stored the timeline's `received_at` under the same
     /// number, so a store from 0.18 never got it (0050).
     #[test]
     fn a_store_from_the_dropped_migration_14_gets_every_column() {
-        const DROPPED_14: &str = "ALTER TABLE outbox ADD COLUMN refused INTEGER NOT NULL DEFAULT 0
-                 CHECK (refused IN (0, 1));
-             ALTER TABLE conversations ADD COLUMN join_refused_at INTEGER;";
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join(FILE_NAME);
         let mut old = connect(&path, &KEY).unwrap();

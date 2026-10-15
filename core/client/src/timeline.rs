@@ -68,6 +68,18 @@ pub enum Content {
     /// A post shared here under 0040: only its id. Since 0044 the post is
     /// gone and nothing fetches it; the app shows a fixed line.
     Post { post_id: String },
+    /// A stored row this core cannot decode (0051), with its code from the
+    /// vocabulary of 0049. It keeps the row's place; nothing of its content
+    /// is shown.
+    Unreadable { code: String },
+}
+
+impl Content {
+    fn unreadable(reason: &'static str) -> Self {
+        Self::Unreadable {
+            code: format!("protocol/{reason}"),
+        }
+    }
 }
 
 /// One emoji on an item: who put it there, and whether this account did.
@@ -584,12 +596,15 @@ pub(crate) fn items(
     ) in rows.into_iter().rev()
     {
         let own = sender == me;
+        let mut unreadable = None;
         let forwarded = match (kind.as_str(), detail.as_deref()) {
-            ("text", Some(d)) => {
-                serde_json::from_str::<TextMarks>(d)
-                    .map_err(|_| ClientError::Protocol("a stored text row"))?
-                    .forwarded
-            }
+            ("text", Some(d)) => match serde_json::from_str::<TextMarks>(d) {
+                Ok(marks) => marks.forwarded,
+                Err(_) => {
+                    unreadable = Some("a stored text row");
+                    false
+                }
+            },
             ("media" | "post", Some(d)) => matches!(
                 serde_json::from_str(d),
                 Ok(Body::Media {
@@ -604,6 +619,8 @@ pub(crate) fn items(
         };
         let content = if deleted {
             Content::Deleted
+        } else if let Some(reason) = unreadable {
+            Content::unreadable(reason)
         } else {
             match kind.as_str() {
                 "media" => match detail.as_deref().map(serde_json::from_str::<Body>) {
@@ -615,32 +632,32 @@ pub(crate) fn items(
                         caption: text,
                         name: name.as_deref().and_then(file_name),
                     },
-                    _ => return Err(ClientError::Protocol("a stored media row")),
+                    _ => Content::unreadable("a stored media row"),
                 },
                 "post" => match detail.as_deref().map(serde_json::from_str::<Body>) {
                     Some(Ok(Body::Post { post_id, .. })) => Content::Post { post_id },
-                    _ => return Err(ClientError::Protocol("a stored post row")),
+                    _ => Content::unreadable("a stored post row"),
                 },
-                "members" => {
-                    let card: MembersCard = detail
-                        .as_deref()
-                        .and_then(|d| serde_json::from_str(d).ok())
-                        .ok_or(ClientError::Protocol("a stored card"))?;
-                    Content::Members {
+                "members" => match detail
+                    .as_deref()
+                    .and_then(|d| serde_json::from_str::<MembersCard>(d).ok())
+                {
+                    Some(card) => Content::Members {
                         added: people.all(&card.added)?,
                         removed: people.all(&card.removed)?,
                         devices: people.all(&card.devices)?,
-                    }
-                }
-                "timer" => {
-                    let card: TimerCard = detail
-                        .as_deref()
-                        .and_then(|d| serde_json::from_str(d).ok())
-                        .ok_or(ClientError::Protocol("a stored card"))?;
-                    Content::Timer {
+                    },
+                    None => Content::unreadable("a stored card"),
+                },
+                "timer" => match detail
+                    .as_deref()
+                    .and_then(|d| serde_json::from_str::<TimerCard>(d).ok())
+                {
+                    Some(card) => Content::Timer {
                         seconds: card.seconds,
-                    }
-                }
+                    },
+                    None => Content::unreadable("a stored card"),
+                },
                 _ => Content::Text {
                     text: text.unwrap_or_default(),
                     reply_to: reply_to
@@ -764,7 +781,33 @@ fn pending(
     let sender = people.get(me)?;
     let mut items = Vec::new();
     for (intent, seq, failed) in rows {
-        let envelope = Envelope::decode(&intent)?;
+        let envelope = match Envelope::decode(&intent) {
+            Ok(envelope) => envelope,
+            Err(error) => {
+                // Its id and time are inside what failed to decode; the
+                // row's place in the outbox is all it keeps.
+                items.push(Item {
+                    seq: seq.map(|s| s as u64),
+                    envelope_id: None,
+                    sender: sender.clone(),
+                    own: true,
+                    ts: 0,
+                    received_at: None,
+                    status: if failed {
+                        Status::Failed
+                    } else {
+                        Status::Pending
+                    },
+                    content: Content::Unreadable { code: error.code() },
+                    edited: false,
+                    reactions: Vec::new(),
+                    read_by: 0,
+                    expires_at: None,
+                    forwarded: false,
+                });
+                continue;
+            }
+        };
         let forwarded = matches!(
             envelope.body,
             Body::Text {
@@ -952,6 +995,92 @@ mod tests {
                 .try_write(|tx| items(tx, GROUP, "a", None, 100))
                 .unwrap()
         }
+    }
+
+    /// One row this core cannot decode keeps its place as an unreadable
+    /// item; the rows around it read as before (0051).
+    #[test]
+    fn an_undecodable_row_is_an_unreadable_item_in_its_place() {
+        for (kind, detail, code) in [
+            ("text", "{", "protocol/a stored text row"),
+            ("media", "{", "protocol/a stored media row"),
+            ("post", "{", "protocol/a stored post row"),
+            ("members", "{", "protocol/a stored card"),
+            ("timer", "{", "protocol/a stored card"),
+        ] {
+            let mut fold = Fold::new();
+            fold.apply(("b", "b1"), "m1", text("fyrst"));
+            fold.apply(("b", "b1"), "m2", text("brotin"));
+            fold.apply(("b", "b1"), "m3", text("síðast"));
+            fold.apply(("a", "a1"), "r1", react("m2", false));
+            fold.store
+                .write(|tx| {
+                    tx.execute(
+                        "UPDATE timeline SET kind = ?1, detail = ?2, text = NULL,
+                             envelope_id = IIF(?1 IN ('members', 'timer'), NULL, envelope_id)
+                         WHERE seq = 2",
+                        [kind, detail],
+                    )
+                })
+                .unwrap();
+            let items = fold.items();
+            assert_eq!(items.len(), 3, "{kind}");
+            assert_eq!(
+                items[1].content,
+                Content::Unreadable { code: code.into() },
+                "{kind}"
+            );
+            assert_eq!(items[1].seq, Some(2));
+            assert_eq!(items[1].ts, 2);
+            // Cards carry no reactions; a message keeps its own.
+            let card = matches!(kind, "members" | "timer");
+            assert_eq!(items[1].reactions.len(), usize::from(!card), "{kind}");
+            assert!(matches!(&items[2].content, Content::Text { text, .. } if text == "síðast"));
+            // What the conversation list reads.
+            let last = fold
+                .store
+                .try_write(|tx| super::items(tx, GROUP, "a", Some(3), 1))
+                .unwrap();
+            assert_eq!(last[0].content, Content::Unreadable { code: code.into() });
+        }
+    }
+
+    /// A queued message this device cannot read back is an unreadable
+    /// item too, after what is already sent.
+    #[test]
+    fn an_undecodable_queued_message_is_an_unreadable_item() {
+        let mut fold = Fold::new();
+        fold.apply(("b", "b1"), "m1", text("hæ"));
+        fold.store
+            .write(|tx| {
+                tx.execute(
+                    "INSERT INTO outbox (group_id, kind, intent, created_at)
+                     VALUES (?1, 'message', x'7b', 0)",
+                    [GROUP],
+                )
+            })
+            .unwrap();
+        let items = fold.items();
+        assert_eq!(items.len(), 2);
+        assert_eq!(
+            items[1].content,
+            Content::Unreadable {
+                code: "envelope/malformed".into()
+            }
+        );
+        assert_eq!(items[1].status, Status::Pending);
+    }
+
+    /// A failing store still fails: only decoding is softened (0051).
+    #[test]
+    fn a_store_failure_still_fails() {
+        let mut fold = Fold::new();
+        fold.apply(("b", "b1"), "m1", text("hæ"));
+        fold.store
+            .write(|tx| tx.execute_batch("ALTER TABLE timeline DROP COLUMN received_at"))
+            .unwrap();
+        let result = fold.store.try_write(|tx| items(tx, GROUP, "a", None, 100));
+        assert!(matches!(result, Err(ClientError::Store(_))));
     }
 
     fn text(text: &str) -> Body {
