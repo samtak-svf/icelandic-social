@@ -319,3 +319,46 @@ export function measure(foreground, background, tokens) {
   const bg = resolve(background, tokens);
   return { fg: toHex(fg), bg: toHex(bg), ratio: contrastRatio(fg, bg) };
 }
+
+/** @param {number} v */
+function linearFromSrgb(v) {
+  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+}
+
+/**
+ * sRGB to OKLab (Björn Ottosson's matrices, the inverse of oklchToRgb).
+ *
+ * @param {Rgba} color
+ * @returns {[number, number, number]}
+ */
+function oklab({ r, g, b }) {
+  /** @param {number} v */
+  const linear = (v) => linearFromSrgb(byte(v) / 255);
+  const [lr, lg, lb] = [linear(r), linear(g), linear(b)];
+  const l = Math.cbrt(0.4122214708 * lr + 0.5363412865 * lg + 0.0514373327 * lb);
+  const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb);
+  const s = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb);
+  return [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  ];
+}
+
+/**
+ * How far apart two colours look: Euclidean distance in OKLab (ΔE_OK), read
+ * off the bytes the apps get. About 0.02 is the smallest difference most
+ * people notice side by side.
+ *
+ * @param {string} first
+ * @param {string} second
+ * @param {TokenMap} tokens
+ */
+export function distance(first, second, tokens) {
+  const a = resolve(first, tokens);
+  const b = resolve(second, tokens);
+  const [la, aa, ba] = oklab(a);
+  const [lb, ab, bb] = oklab(b);
+  const delta = Math.hypot(la - lb, aa - ab, ba - bb);
+  return { first: toHex(a), second: toHex(b), delta: Math.round(delta * 1000) / 1000 };
+}

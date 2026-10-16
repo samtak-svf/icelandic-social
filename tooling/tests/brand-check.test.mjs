@@ -1,7 +1,7 @@
 // @ts-check
 import { describe, expect, it } from "vitest";
 import { checkBrand, CLAIMS } from "../brand-check.mjs";
-import { colorTokens, measure } from "../lib/contrast.mjs";
+import { colorTokens, distance, measure } from "../lib/contrast.mjs";
 import { brandNames, readJson } from "../lib/repo.mjs";
 import { copyRepo, editJson } from "./helpers.mjs";
 
@@ -87,6 +87,17 @@ describe("brand-check", () => {
     expect(problems.join("\n")).toMatch(/contrast light: primary-fg on primary: .* below 4\.5:1/);
   });
 
+  it("fails a brand whose danger is primary again, in either mode", () => {
+    const problems = problemsAfter((root) =>
+      editJson(root, `brand/${BRAND}/tokens.json`, (t) => {
+        t.color.danger = { $value: "{color.primary}" };
+        t.dark.danger = { $value: "{color.primary}" };
+      }),
+    );
+    expect(problems.join("\n")).toMatch(/distinct light: danger vs primary: ΔE 0 is below/);
+    expect(problems.join("\n")).toMatch(/distinct dark: danger vs primary: ΔE 0 is below/);
+  });
+
   it("fails a brand without dark colours", () => {
     const problems = problemsAfter((root) =>
       editJson(root, `brand/${BRAND}/tokens.json`, (t) => {
@@ -143,6 +154,12 @@ describe("contrast", () => {
     expect(measure("black", "white", tokens).ratio).toBe(21);
     expect(measure("white", "white", tokens).ratio).toBe(1);
     expect(measure("white", "#b31800", tokens).ratio).toBe(6.89);
+  });
+
+  it("measures OKLab distance: 0 for a colour and itself, 1 from black to white", () => {
+    const tokens = new Map();
+    expect(distance("#b31800", "#b31800", tokens).delta).toBe(0);
+    expect(distance("black", "white", tokens).delta).toBe(1);
   });
 
   it("composites an `over` on the mode's own surface", () => {

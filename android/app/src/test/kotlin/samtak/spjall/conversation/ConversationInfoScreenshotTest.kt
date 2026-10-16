@@ -6,6 +6,7 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Shader
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -187,6 +188,22 @@ class ConversationInfoScreenshotTest {
         compose.onNodeWithText(context.getString(R.string.mute)).performClick()
         compose.onNodeWithText(context.getString(R.string.mute_hour)).performClick()
         assertEquals(listOf("mute HOUR"), calls)
+    }
+
+    // The dialog alone: the action in danger, cancel in the text colour beside it.
+    @Test
+    fun theBlockDialog() {
+        show()
+        compose.onNodeWithText(context.getString(R.string.block)).performClick()
+        compose.onNode(isDialog()).captureRoboImage()
+    }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun theBlockDialogAtNight() {
+        show()
+        compose.onNodeWithText(context.getString(R.string.block)).performClick()
+        compose.onNode(isDialog()).captureRoboImage()
     }
 
     @Test

@@ -12,6 +12,8 @@
 //   - the dark colours have exactly the keys of the light ones (decision 0052);
 //   - every colour pair in brand/contrast-pairs.json meets its WCAG threshold,
 //     in light and in dark;
+//   - every `distinct` pair there stays far enough apart to tell by colour
+//     (a destructive action must not look like the main one), in both modes;
 //   - the icon's foreground SVG exists and its background token is opaque;
 //   - every bundled font names a font token, its file and licence exist, and
 //     no family carries the same weight twice.
@@ -20,7 +22,14 @@
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { colorTokens, measure, MODES, resolveColor, THRESHOLDS } from "./lib/contrast.mjs";
+import {
+  colorTokens,
+  distance,
+  measure,
+  MODES,
+  resolveColor,
+  THRESHOLDS,
+} from "./lib/contrast.mjs";
 import { brandNames, readJson, ROOT } from "./lib/repo.mjs";
 import { validate } from "./lib/schema.mjs";
 
@@ -179,6 +188,36 @@ export function checkContrast(tokens, pairs) {
 }
 
 /**
+ * @param {Record<string, unknown>} tokens parsed tokens.json
+ * @param {{ distinct?: Array<{ a: string, b: string, minDelta: number, use: string }> }} pairs
+ * @returns {{ problems: string[], rows: string[] }}
+ */
+export function checkDistinct(tokens, pairs) {
+  /** @type {string[]} */
+  const problems = [];
+  /** @type {string[]} */
+  const rows = [];
+  for (const mode of /** @type {const} */ (["light", "dark"])) {
+    if (!tokens[MODES[mode]]) continue;
+    const map = colorTokens(tokens, mode);
+    for (const pair of pairs.distinct ?? []) {
+      const label = `${mode}: ${pair.a} vs ${pair.b}`;
+      try {
+        const { first, second, delta } = distance(pair.a, pair.b, map);
+        const ok = delta >= pair.minDelta;
+        rows.push(
+          `${ok ? "✓" : "✗"} ΔE ${delta.toFixed(3)} ${label} (${first} vs ${second}, ${pair.use})`,
+        );
+        if (!ok) problems.push(`${label}: ΔE ${delta} is below ${pair.minDelta} (${pair.use})`);
+      } catch (error) {
+        problems.push(`${label}: ${/** @type {Error} */ (error).message}`);
+      }
+    }
+  }
+  return { problems, rows };
+}
+
+/**
  * @param {Record<string, any>} manifest parsed brand.json
  * @param {string} dirName
  * @param {Record<string, unknown>} strings
@@ -279,9 +318,12 @@ export function checkBrand(name, root = ROOT) {
   problems.push(...checkIcon(manifest.icon, dir, root, tokens));
   problems.push(...checkFonts(manifest.fonts, dir, root, tokens));
   problems.push(...checkModes(tokens).map((p) => `tokens.json ${p}`));
-  const contrast = checkContrast(tokens, readJson("brand/contrast-pairs.json", root));
+  const pairs = readJson("brand/contrast-pairs.json", root);
+  const contrast = checkContrast(tokens, pairs);
   problems.push(...contrast.problems.map((p) => `contrast ${p}`));
-  return { problems, rows: contrast.rows };
+  const distinct = checkDistinct(tokens, pairs);
+  problems.push(...distinct.problems.map((p) => `distinct ${p}`));
+  return { problems, rows: [...contrast.rows, ...distinct.rows] };
 }
 
 function main() {
@@ -297,7 +339,7 @@ function main() {
     if (verbose) for (const row of rows) console.log(`  ${row}`);
     if (problems.length === 0) {
       console.log(
-        `✓ brand/${name}: manifest, ${rows.length} contrast pairs (light and dark), strings complete`,
+        `✓ brand/${name}: manifest, ${rows.length} colour checks (light and dark), strings complete`,
       );
       continue;
     }

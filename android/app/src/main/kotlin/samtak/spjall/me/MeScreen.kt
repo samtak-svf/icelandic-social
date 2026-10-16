@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import samtak.spjall.brand.R
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
+import samtak.spjall.ui.CancelButton
 import samtak.spjall.ui.NameWithMark
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.PhotoOf
@@ -344,7 +345,7 @@ internal fun Confirm(
         textContentColor = Palette.fg,
         text = { Text(text) },
         confirmButton = { TextButton(onClick = onConfirm) { Text(confirm) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        dismissButton = { CancelButton(onClick = onDismiss) },
     )
 }
 

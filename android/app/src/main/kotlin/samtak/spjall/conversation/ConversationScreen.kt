@@ -72,6 +72,7 @@ import samtak.spjall.core.Conversation
 import samtak.spjall.core.ConversationState
 import samtak.spjall.core.Item
 import samtak.spjall.ui.AppIcons
+import samtak.spjall.ui.CancelButton
 import samtak.spjall.ui.LocalReduceMotion
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
@@ -145,7 +146,7 @@ fun ConversationScreen(
                     colors = ButtonDefaults.textButtonColors(contentColor = Palette.danger),
                 ) { Text(stringResource(R.string.delete_for_everyone)) }
             },
-            dismissButton = { TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.cancel)) } },
+            dismissButton = { CancelButton(onClick = { deleting = null }) },
         )
     }
 }

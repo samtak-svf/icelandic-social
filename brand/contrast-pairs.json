@@ -1,5 +1,5 @@
 {
-  "$comment": "Every foreground/background pair the apps actually render, by token name, with the WCAG threshold that pair must meet. Shared by all brands: the pairs are a property of the UI, the colours a property of the brand. `level` is a key of THRESHOLDS in tooling/lib/contrast.mjs. A pair that fails stops tooling/brand-check.mjs, so a brand failing WCAG AA does not generate.",
+  "$comment": "Every foreground/background pair the apps actually render, by token name, with the WCAG threshold that pair must meet. Shared by all brands: the pairs are a property of the UI, the colours a property of the brand. `level` is a key of THRESHOLDS in tooling/lib/contrast.mjs. A pair that fails stops tooling/brand-check.mjs, so a brand failing WCAG AA does not generate. `distinct` names two tokens that must stay apart by colour, measured as OKLab distance (ΔE_OK, about 0.02 is just noticeable side by side) against `minDelta`.",
   "pairs": [
     { "fg": "fg", "bg": "surface", "level": "aaNormal", "use": "body text" },
     { "fg": "fg", "bg": "bg", "level": "aaNormal", "use": "text on the cream band" },
@@ -43,6 +43,25 @@
       "bg": "danger",
       "level": "aaNormal",
       "use": "destructive actions (block, delete)"
+    },
+    { "fg": "danger", "bg": "surface", "level": "aaNormal", "use": "block, delete, a failed send" },
+    {
+      "fg": "danger",
+      "bg": "bg",
+      "level": "aaNormal",
+      "use": "delete account on the account screen"
+    },
+    {
+      "fg": "danger",
+      "bg": "primary-subtle over surface",
+      "level": "aaNormal",
+      "use": "a failed send in an unread conversation row"
+    },
+    {
+      "fg": "danger",
+      "bg": "secondary-subtle over bg",
+      "level": "aaNormal",
+      "use": "an expired invite on the sign-in screen"
     },
     { "fg": "success-text", "bg": "surface", "level": "aaNormal", "use": "success text" },
     { "fg": "warning-text", "bg": "surface", "level": "aaNormal", "use": "warning text" },
@@ -115,6 +134,14 @@
       "bg": "secondary-subtle over bg",
       "level": "aaNormal",
       "use": "the action inside a notice on the cream band"
+    }
+  ],
+  "distinct": [
+    {
+      "a": "danger",
+      "b": "primary",
+      "minDelta": 0.03,
+      "use": "a destructive action must not look like the main action"
     }
   ]
 }

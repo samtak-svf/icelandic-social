@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -33,6 +34,7 @@ import samtak.spjall.core.Mute
 import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
 import samtak.spjall.ui.AppIcons
+import samtak.spjall.ui.CancelButton
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.RoundButton
 import samtak.spjall.ui.duration
@@ -143,8 +145,13 @@ internal fun BlockDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         text = { Text(stringResource(R.string.block_confirm, other.shownName())) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.block)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        confirmButton = {
+            // Drawn as the menu draws it (0054).
+            TextButton(onClick = onConfirm, colors = ButtonDefaults.textButtonColors(contentColor = Palette.danger)) {
+                Text(stringResource(R.string.block))
+            }
+        },
+        dismissButton = { CancelButton(onClick = onDismiss) },
     )
 }
 
@@ -181,7 +188,7 @@ internal fun TimerDialog(
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        dismissButton = { CancelButton(onClick = onDismiss) },
     )
 }
 
@@ -212,7 +219,7 @@ internal fun MuteDialog(
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        dismissButton = { CancelButton(onClick = onDismiss) },
     )
 }
 
