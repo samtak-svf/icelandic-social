@@ -74,11 +74,12 @@ interface Account {
     /**
      * Keeps the platform's push token; the next [sync] sends it if the server
      * does not have it yet (decision 0025). An unchanged token sends nothing.
+     * True while the server lacks it: only then is a [sync] due (0056).
      */
     fun setPushToken(
         token: String,
         sandbox: Boolean,
-    )
+    ): Boolean
 
     /** What to announce since the last call, each item once, and which conversations' notifications to take away. */
     fun notices(): Notices

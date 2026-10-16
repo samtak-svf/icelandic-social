@@ -37,6 +37,9 @@ final class FakeAccount: Account, @unchecked Sendable {
     var invites: [String: String] = [:]
     /// What `sync` and `onFrame` return.
     var outcome = Outcome(events: [], frames: [])
+    /// The push token the server has, as the core tracks it: a sync that works sends the one kept.
+    var pushed: String?
+    private var kept: String?
     /// What the next `notices` returns; it is then empty, as the core gives each notice once.
     var nextNotices: Notices {
         get { lock.withLock { _notices } }
@@ -213,7 +216,10 @@ final class FakeAccount: Account, @unchecked Sendable {
 
     func sync() throws -> Outcome {
         try call("sync")
-        return lock.withLock { outcome }
+        return lock.withLock {
+            pushed = kept
+            return outcome
+        }
     }
 
     func onFrame(_ frame: String) throws -> Outcome {
@@ -417,8 +423,12 @@ final class FakeAccount: Account, @unchecked Sendable {
         current = settings
     }
 
-    func setPushToken(_ token: String, sandbox: Bool) throws {
+    func setPushToken(_ token: String, sandbox: Bool) throws -> Bool {
         try call("setPushToken \(token) \(sandbox)")
+        return lock.withLock {
+            kept = token
+            return token != pushed
+        }
     }
 
     func notices() throws -> Notices {

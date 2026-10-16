@@ -72,6 +72,18 @@ final class PushModelTests: XCTestCase {
         XCTAssertEqual(live.performed, 1)
     }
 
+    func testATokenTheServerHasStartsNoSync() {
+        let model = model()
+        let live = FakeLive(account: account)
+        model.live = live
+
+        model.token(Data([0x0a]), sandbox: false)
+        model.token(Data([0x0a]), sandbox: false)
+
+        XCTAssertEqual(account.calls, ["setPushToken 0a false", "sync", "setPushToken 0a false"])
+        XCTAssertEqual(live.performed, 2)
+    }
+
     func testATokenBeforeTheSocketIsKeptForItsFirstSync() async throws {
         model().token(Data([0xab]), sandbox: false)
 

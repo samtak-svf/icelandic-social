@@ -105,7 +105,7 @@ final class CoreClientTests: XCTestCase {
         let b = try phone(account: "b", device: "b1")
         let conversation = try conversation(a, b)
 
-        try b.setPushToken(token: "apns-b1", sandbox: true)
+        XCTAssertTrue(try b.setPushToken(token: "apns-b1", sandbox: true))
         _ = try b.sync()
         _ = try a.send(conversation: conversation, body: .text(text: "vaknaðu"))
         _ = try a.sync()

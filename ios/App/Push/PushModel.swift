@@ -50,17 +50,18 @@ final class PushModel {
         off = await notifier.blocked()
     }
 
-    /// The token the system gave; the core sends it only if the server lacks it.
+    /// The token the system gave; the core sends it only if the server lacks it. Only then does it
+    /// start a sync: the system gives the same token at each launch (0056).
     func token(_ token: Data, sandbox: Bool) {
         let hex = token.map { String(format: "%02x", $0) }.joined()
         if let live {
             live.perform {
-                try $0.setPushToken(hex, sandbox: sandbox)
+                guard try $0.setPushToken(hex, sandbox: sandbox) else { return Outcome(events: [], frames: []) }
                 return try $0.sync()
             }
         } else {
             let account = account
-            Task { try? await offMain { try account.setPushToken(hex, sandbox: sandbox) } }
+            Task { _ = try? await offMain { try account.setPushToken(hex, sandbox: sandbox) } }
         }
     }
 

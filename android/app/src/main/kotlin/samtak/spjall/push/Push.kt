@@ -43,11 +43,14 @@ class Push(
     /** While the app is open, and as it closes, so that nothing seen on screen is announced later. */
     fun quiet() = synchronized(lock) { settle(show = false) }
 
-    /** The platform's token, sent with the next sync, which this one starts. */
+    /**
+     * The platform's token, sent with the next sync. A token the server lacks
+     * starts that sync now; the one it already has, given again at each
+     * launch, starts none (0056).
+     */
     fun token(token: String) {
         try {
-            account.setPushToken(token, sandbox = false)
-            account.sync()
+            if (account.setPushToken(token, sandbox = false)) account.sync()
         } catch (_: CoreException) {
             // Kept or not, the next sync tries again.
         }

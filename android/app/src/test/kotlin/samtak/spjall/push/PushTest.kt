@@ -171,6 +171,24 @@ class PushTest {
         assertEquals(listOf("setPushToken fcm-1 false", "sync", "setPushToken fcm-2 false"), account.calls)
     }
 
+    @Test
+    fun aTokenTheServerHasStartsNoSyncButOneItLacksStillDoes() {
+        push.token("fcm-1")
+        push.token("fcm-1")
+        assertEquals(listOf("setPushToken fcm-1 false", "sync", "setPushToken fcm-1 false"), account.calls)
+
+        // A sync that failed left the new token unsent: the same token starts one again.
+        account.calls.clear()
+        account.failOn = "sync"
+        push.token("fcm-2")
+        account.failOn = null
+        push.token("fcm-2")
+        assertEquals(
+            listOf("setPushToken fcm-2 false", "sync", "setPushToken fcm-2 false", "sync"),
+            account.calls,
+        )
+    }
+
     private class ListNotifier : Notifier {
         val calls = mutableListOf<String>()
         val shown = mutableListOf<Announcement>()

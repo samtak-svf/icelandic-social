@@ -55,6 +55,10 @@ class FakeAccount(
     /** What the next [notices] returns; it is emptied once returned, as the core's is. */
     var notices = Notices(emptyList(), emptyList())
 
+    /** The push token the server has, as the core tracks it: a sync that works sends the one kept. */
+    var pushed: String? = null
+    private var kept: String? = null
+
     /** What the next sync and frames return; each is used once. */
     val outcomes = ArrayDeque<Outcome>()
     private var created = 0
@@ -146,13 +150,18 @@ class FakeAccount(
 
     override fun sync(): Outcome {
         call("sync")
+        pushed = kept
         return outcomes.removeFirstOrNull() ?: Outcome(emptyList(), emptyList())
     }
 
     override fun setPushToken(
         token: String,
         sandbox: Boolean,
-    ) = call("setPushToken $token $sandbox")
+    ): Boolean {
+        call("setPushToken $token $sandbox")
+        kept = token
+        return token != pushed
+    }
 
     override fun notices(): Notices {
         call("notices")
