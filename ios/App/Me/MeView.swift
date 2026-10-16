@@ -97,20 +97,26 @@ private struct PhotoControls: View {
 
     @State private var removing = false
 
+    @ViewBuilder private var pills: some View {
+        PhotosPicker(selection: $picked, matching: .images) {
+            PillLabel(text: hasPhoto ? "photo_change" : "photo_choose", filled: false, wide: false)
+        }
+        if hasPhoto {
+            Button {
+                removing = true
+            } label: {
+                PillLabel(text: "photo_remove", filled: false, wide: false)
+            }
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Outlined pills, as the invite card's buttons are, so they read as buttons (decision 0047).
-            HStack(spacing: 8) {
-                PhotosPicker(selection: $picked, matching: .images) {
-                    PillLabel(text: hasPhoto ? "photo_change" : "photo_choose", filled: false, wide: false)
-                }
-                if hasPhoto {
-                    Button {
-                        removing = true
-                    } label: {
-                        PillLabel(text: "photo_remove", filled: false, wide: false)
-                    }
-                }
+            // Outlined pills, as the invite card's buttons are, so they read as buttons (decision 0047). Side
+            // by side, and one under the other when a large font leaves no room.
+            ViewThatFits {
+                HStack(spacing: 8) { pills }
+                VStack(alignment: .leading, spacing: 8) { pills }
             }
             .buttonStyle(.plain)
             .disabled(model.busy)
@@ -196,16 +202,10 @@ private struct InviteCard: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 if let link = model.link, let url = URL(string: link) {
-                    Weighted(weights: [1, 1.4], spacing: 8) {
-                        ShareLink(item: url) { PillLabel(text: "share", filled: true) }
-                            .buttonStyle(.plain)
-                        Button {
-                            Task { await model.newLink() }
-                        } label: {
-                            PillLabel(text: "invite_link_rotate", filled: false)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(model.busy)
+                    // Side by side, and one under the other when a large font leaves no room.
+                    ViewThatFits {
+                        Weighted(weights: [1, 1.4], spacing: 8) { linkButtons(url) }
+                        VStack(spacing: 8) { linkButtons(url) }
                     }
                 } else {
                     Button {
@@ -220,6 +220,18 @@ private struct InviteCard: View {
             .padding(14)
         }
     }
+
+    @ViewBuilder private func linkButtons(_ url: URL) -> some View {
+        ShareLink(item: url) { PillLabel(text: "share", filled: true) }
+            .buttonStyle(.plain)
+        Button {
+            Task { await model.newLink() }
+        } label: {
+            PillLabel(text: "invite_link_rotate", filled: false)
+        }
+        .buttonStyle(.plain)
+        .disabled(model.busy)
+    }
 }
 
 /// Its children side by side, the width shared out by `weights`.
@@ -228,10 +240,7 @@ private struct Weighted: Layout {
     let spacing: CGFloat
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width =
-            proposal.width
-            ?? subviews.map { $0.sizeThatFits(.unspecified).width }.reduce(0, +) + spacing
-            * CGFloat(max(0, subviews.count - 1))
+        let width = proposal.width ?? idealWidth(subviews)
         let heights = zip(subviews, widths(width, subviews.count)).map {
             $0.sizeThatFits(ProposedViewSize(width: $1, height: nil)).height
         }
@@ -245,6 +254,18 @@ private struct Weighted: Layout {
                 at: CGPoint(x: x, y: bounds.minY), proposal: ProposedViewSize(width: width, height: bounds.height))
             x += width + spacing
         }
+    }
+
+    /// The width at which every child gets at least its own ideal width from its share, so that a
+    /// `ViewThatFits` around this tries the next layout as soon as one child would be cut.
+    private func idealWidth(_ subviews: Subviews) -> CGFloat {
+        let shares = Array(weights.prefix(subviews.count))
+        let total = shares.reduce(0, +)
+        var free: CGFloat = 0
+        for (subview, share) in zip(subviews, shares) where share > 0 {
+            free = max(free, subview.sizeThatFits(.unspecified).width * total / share)
+        }
+        return free + spacing * CGFloat(max(0, subviews.count - 1))
     }
 
     private func widths(_ width: CGFloat, _ count: Int) -> [CGFloat] {
@@ -265,8 +286,7 @@ struct PillLabel: View {
     var body: some View {
         Text(text)
             .font(.sans(12.5, black: true))
-            .lineLimit(1)
-            .minimumScaleFactor(0.8)
+            .multilineTextAlignment(.center)
             .foregroundStyle(filled ? BrandTokens.Colors.primaryFg : BrandTokens.Colors.fg)
             .padding(.horizontal, wide ? 12 : 16)
             .frame(maxWidth: wide ? .infinity : nil, minHeight: 40)

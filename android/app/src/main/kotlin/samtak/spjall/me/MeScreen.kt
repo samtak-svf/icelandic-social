@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -45,6 +46,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import samtak.spjall.brand.R
@@ -174,8 +176,9 @@ private fun PhotoControls(
 ) {
     var removing by rememberSaveable { mutableStateOf(false) }
     Column {
-        // Outlined pills, as the invite card's buttons are, so they read as buttons (0047).
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Outlined pills, as the invite card's buttons are, so they read as buttons (0047). Side by
+        // side, and one under the other when a large font leaves no room.
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Pill(
                 text = stringResource(if (hasPhoto) R.string.photo_change else R.string.photo_choose),
                 filled = false,
@@ -281,7 +284,10 @@ private fun InviteCard(
             if (link == null) {
                 Pill(stringResource(R.string.invite), filled = true, enabled = !busy, onClick = actions::newLink)
             } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     Pill(
                         stringResource(R.string.share),
                         filled = true,
@@ -312,7 +318,7 @@ internal fun Pill(
     val shape = RoundedCornerShape(PILL_RADIUS.dp)
     if (filled) {
         Button(onClick = onClick, enabled = enabled, shape = shape, modifier = modifier.heightIn(min = PILL.dp)) {
-            Text(text, style = PILL_TEXT, maxLines = 1)
+            Text(text, style = PILL_TEXT, textAlign = TextAlign.Center)
         }
     } else {
         OutlinedButton(
@@ -321,7 +327,7 @@ internal fun Pill(
             shape = shape,
             colors = ButtonDefaults.outlinedButtonColors(containerColor = Palette.surface, contentColor = Palette.fg),
             modifier = modifier.heightIn(min = PILL.dp),
-        ) { Text(text, style = PILL_TEXT, maxLines = 1) }
+        ) { Text(text, style = PILL_TEXT, textAlign = TextAlign.Center) }
     }
 }
 
