@@ -1294,8 +1294,9 @@ impl CoreClient {
     }
 
     /// Keeps this device's push token; the next `sync` sends it. `sandbox`
-    /// is an APNs development token.
-    pub fn set_push_token(&self, token: String, sandbox: bool) -> Result<(), CoreError> {
+    /// is an APNs development token. True while the server lacks it: only
+    /// then is a `sync` due.
+    pub fn set_push_token(&self, token: String, sandbox: bool) -> Result<bool, CoreError> {
         Ok(self.client()?.set_push_token(&token, sandbox)?)
     }
 

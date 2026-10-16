@@ -263,9 +263,11 @@ fn two_clients_talk_through_the_exported_api() {
         b1.client.notices().unwrap().cleared,
         vec![conversation.clone()]
     );
-    b1.client.set_push_token("apns-b1".into(), true).unwrap();
+    assert!(b1.client.set_push_token("apns-b1".into(), true).unwrap());
     b1.client.sync().unwrap();
     assert_eq!(relay.push_token("b1"), Some(("apns-b1".into(), true)));
+    // Once the server has it, the same token calls for no sync.
+    assert!(!b1.client.set_push_token("apns-b1".into(), true).unwrap());
 
     let off = Settings {
         read_markers: false,

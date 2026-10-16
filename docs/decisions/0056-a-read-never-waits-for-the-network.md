@@ -1,7 +1,8 @@
 # 0056. A read never waits for the network
 
 - Status: accepted; implemented in the backend (#238) and the core (#239, core 0.23.0), released as 0.7.5;
-  the start's reads moved in core 0.26.0, released as 0.8.6
+  the start's reads moved in core 0.26.0, released as 0.8.6; a known push token starts no sync
+  from core 0.27.0
 - Date: 2026-10-15
 - Decided by: the maintainer, approving the plan from the first speed baseline
 - Builds on: [0022](0022-the-conversation-surfaces.md) (the socket that syncs on connect),
@@ -16,6 +17,9 @@
     (core 0.26.0). On the S23 a sync that the push token started on each launch held the client
     for ~2.3 s, and `signed_in()` waited behind it with the screen blank. The `Spjall-Client`
     value is fixed when the client opens, so reading it takes no lock at all.
+  - **A push token the server already has starts no sync** (core 0.27.0). The system hands the
+    apps the same token on every launch; `set_push_token` says whether the server still lacks
+    it, and only then do the apps sync. The socket's own sync on connect is the start's one.
   - `blocked()` and the directory's half of the list's search ask the server and store what it
     says, so they stay on the client.
   - That connection is opened with `query_only`, and it is behind its own lock.

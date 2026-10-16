@@ -154,8 +154,9 @@ fn take_notices(tx: &Transaction) -> Result<Notices, ClientError> {
 impl<T: Transport> Client<T> {
     /// Keeps this device's push token and sends it on the next `sync`,
     /// until the server has it. The apps call it on every launch and when
-    /// the token changes; an unchanged token is not sent again.
-    pub fn set_push_token(&mut self, token: &str, sandbox: bool) -> Result<(), ClientError> {
+    /// the token changes; an unchanged token is not sent again. Returns
+    /// whether the server still lacks it, so that only then a `sync` is due.
+    pub fn set_push_token(&mut self, token: &str, sandbox: bool) -> Result<bool, ClientError> {
         if token.is_empty() || token.len() > 4096 {
             return Err(ClientError::Invalid("push token"));
         }
@@ -166,10 +167,11 @@ impl<T: Transport> Client<T> {
                      token = excluded.token, sandbox = excluded.sandbox, sent = 0
                  WHERE token != excluded.token OR sandbox != excluded.sandbox",
                 params![token, sandbox],
-            )
-            .map(drop)
-        })?;
-        Ok(())
+            )?;
+            let sent: bool =
+                tx.query_row("SELECT sent FROM push WHERE id = 1", [], |r| r.get(0))?;
+            Ok::<_, ClientError>(!sent)
+        })
     }
 
     /// Sends a token the server does not have yet.

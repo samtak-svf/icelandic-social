@@ -1977,23 +1977,25 @@ fn a_push_token_reaches_the_server_once_and_again_when_it_changes() {
         Err(ClientError::Invalid(_))
     ));
 
-    a1.client.set_push_token("fcm-1", false).unwrap();
+    assert!(a1.client.set_push_token("fcm-1", false).unwrap());
     assert_eq!(relay.push_token("a1"), None);
     // The blocks list, the mutes list, then the token, never reach the
     // server.
     relay.fail_next("a1", 3);
     a1.sync();
     assert_eq!(relay.push_token("a1"), None);
+    // Unsent, the same token still calls for a sync.
+    assert!(a1.client.set_push_token("fcm-1", false).unwrap());
     a1.sync();
     assert_eq!(relay.push_token("a1"), Some(("fcm-1".into(), false)));
 
-    // The same token on the next launch is not sent again.
+    // The same token on the next launch is not sent again, and calls for no sync.
     a1.reopen();
-    a1.client.set_push_token("fcm-1", false).unwrap();
+    assert!(!a1.client.set_push_token("fcm-1", false).unwrap());
     a1.sync();
     assert_eq!(puts(&relay), 1);
 
-    a1.client.set_push_token("apns-1", true).unwrap();
+    assert!(a1.client.set_push_token("apns-1", true).unwrap());
     a1.sync();
     assert_eq!(relay.push_token("a1"), Some(("apns-1".into(), true)));
     assert_eq!(puts(&relay), 2);
