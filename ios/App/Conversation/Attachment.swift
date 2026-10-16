@@ -127,10 +127,7 @@ private struct Photo: View {
     var body: some View {
         Group {
             if let image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: Self.size, maxHeight: Self.size)
+                PhotoImage(image: image, longest: Self.size)
                     .accessibilityLabel(Text(verbatim: label))
                     .accessibilityAddTraits(.isImage)
             } else if unreadable {
@@ -152,6 +149,26 @@ private struct Photo: View {
             unreadable = image == nil
         }
     }
+}
+
+/// A photo at exactly its own shape, its longest side `longest` points. A frame of at most that
+/// size would be square round a tall or wide photo, so the bubble's edge and rounded corners
+/// (0053) would fall on empty space beside it.
+struct PhotoImage: View {
+    let image: UIImage
+    let longest: CGFloat
+
+    var body: some View {
+        let size = fitted(image.size, longest: longest)
+        Image(uiImage: image).resizable().frame(width: size.width, height: size.height)
+    }
+}
+
+/// `size` scaled so that its longest side is `longest`.
+func fitted(_ size: CGSize, longest: CGFloat) -> CGSize {
+    let side = max(size.width, size.height)
+    guard side > 0 else { return CGSize(width: longest, height: longest) }
+    return CGSize(width: size.width * longest / side, height: size.height * longest / side)
 }
 
 /// The photo at `path`, no longer than `longest` pixels, turned the way it was taken.
