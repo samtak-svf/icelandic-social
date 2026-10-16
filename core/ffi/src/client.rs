@@ -880,6 +880,9 @@ pub struct CoreClient {
     /// The reads (0056), on a connection and a lock of their own, so a
     /// sync holding `client` through its requests never delays them.
     view: Mutex<core::View>,
+    /// The `Spjall-Client` value, fixed at `open`, so reading it takes no
+    /// lock at all.
+    header: String,
 }
 
 #[uniffi::export]
@@ -900,20 +903,18 @@ impl CoreClient {
         let mut client = core::Client::open(Path::new(&dir), &key, Foreign(transport))?;
         client.set_client_version(platform.into(), &version)?;
         let view = client.view()?;
+        let header = client.client_header().unwrap_or_default().to_owned();
         Ok(Arc::new(Self {
             client: Mutex::new(client),
             view: Mutex::new(view),
+            header,
         }))
     }
 
     /// The `Spjall-Client` value every request carries (0030), for the
     /// app to set on the WebSocket upgrade too.
     pub fn client_header(&self) -> Result<String, CoreError> {
-        Ok(self
-            .client()?
-            .client_header()
-            .unwrap_or_default()
-            .to_owned())
+        Ok(self.header.clone())
     }
 
     /// This device's Ed25519 public key, made on first call: the
@@ -965,14 +966,16 @@ impl CoreClient {
         Ok(self.client()?.complete_link(&callback)?.moved)
     }
 
-    /// The account and device this store is signed in as, if it is.
+    /// The account and device this store is signed in as, if it is. Read
+    /// from the store, so a sync in progress does not hold up a start.
     pub fn signed_in(&self) -> Result<Option<SignedIn>, CoreError> {
-        Ok(self.client()?.signed_in()?.map(Into::into))
+        Ok(self.view().signed_in()?.map(Into::into))
     }
 
-    /// The device token, for the WebSocket upgrade's `Authorization`.
+    /// The device token, for the WebSocket upgrade's `Authorization`; read
+    /// from the store, as `signed_in` is.
     pub fn device_token(&self) -> Result<Option<String>, CoreError> {
-        Ok(self.client()?.device_token().map(str::to_owned))
+        Ok(self.view().device_token()?)
     }
 
     pub fn me(&self) -> Result<Me, CoreError> {

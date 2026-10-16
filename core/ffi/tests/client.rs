@@ -468,6 +468,45 @@ fn a_read_during_a_sync_does_not_wait() {
     syncing.join().unwrap().unwrap();
 }
 
+/// What an app asks at every start (who it is signed in as, its token, the
+/// `Spjall-Client` value) is answered while a sync, which the push token's
+/// arrival starts on each launch, holds the client through its requests.
+#[test]
+fn a_start_during_a_sync_does_not_wait() {
+    let relay = Relay::new();
+    let a1 = phone(&relay, "a", "a1");
+
+    let waiting = a1.app.hold();
+    let syncing = std::thread::spawn({
+        let client = a1.client.clone();
+        move || client.sync()
+    });
+    waiting
+        .recv_timeout(Duration::from_secs(5))
+        .expect("the sync made a request");
+    let (signed_in, token, header) = promptly({
+        let client = a1.client.clone();
+        move || {
+            (
+                client.signed_in().unwrap(),
+                client.device_token().unwrap(),
+                client.client_header().unwrap(),
+            )
+        }
+    });
+    assert_eq!(
+        signed_in,
+        Some(SignedIn {
+            account_id: "a".into(),
+            device_id: "a1".into()
+        })
+    );
+    assert!(token.is_some());
+    assert_eq!(header, "android/0.2.0");
+    a1.app.release();
+    syncing.join().unwrap().unwrap();
+}
+
 /// A read takes no write lock, so another process writing (the
 /// notification service storing a push) does not hold it up.
 #[test]

@@ -1,6 +1,7 @@
 # 0056. A read never waits for the network
 
-- Status: accepted; implemented in the backend (#238) and the core (#239, core 0.23.0), released as 0.7.5
+- Status: accepted; implemented in the backend (#238) and the core (#239, core 0.23.0), released as 0.7.5;
+  the start's reads moved in core 0.26.0
 - Date: 2026-10-15
 - Decided by: the maintainer, approving the plan from the first speed baseline
 - Builds on: [0022](0022-the-conversation-surfaces.md) (the socket that syncs on connect),
@@ -11,6 +12,10 @@
 - **The core reads through a read-only connection of its own.**
   - The list, a timeline, the history, the list's search on this device, the people and the
     settings are read on a second SQLite connection to the same store (`View`).
+  - So are the two reads every start makes, who the device is signed in as and its token
+    (core 0.26.0). On the S23 a sync that the push token started on each launch held the client
+    for ~2.3 s, and `signed_in()` waited behind it with the screen blank. The `Spjall-Client`
+    value is fixed when the client opens, so reading it takes no lock at all.
   - `blocked()` and the directory's half of the list's search ask the server and store what it
     says, so they stay on the client.
   - That connection is opened with `query_only`, and it is behind its own lock.

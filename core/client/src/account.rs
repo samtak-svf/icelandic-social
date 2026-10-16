@@ -231,7 +231,7 @@ fn pending(tx: &Transaction) -> Result<Option<Pending>, ClientError> {
     }))
 }
 
-fn signed_in(tx: &Transaction) -> Result<Option<Device>, ClientError> {
+pub(crate) fn signed_in(tx: &Transaction) -> Result<Option<Device>, ClientError> {
     let row: Option<(Option<String>, Option<String>)> = tx
         .query_row("SELECT account_id, device_id FROM account", [], |r| {
             Ok((r.get(0)?, r.get(1)?))

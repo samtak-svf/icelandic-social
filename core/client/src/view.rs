@@ -1,18 +1,18 @@
-//! What the screens read, on the store's `Reader` (decision 0056): the
-//! list, a timeline, the list's search on this device, the people and the
-//! settings. None of it waits for a sync or a send holding the `Client`
+//! What the screens read, on the store's `Reader` (decision 0056): who this
+//! device is signed in as and its token, the list, a timeline, the list's
+//! search on this device, the people and the settings. None of it waits for a sync or a send holding the `Client`
 //! through a network call, and none of it writes, so a row whose timer is up
 //! is left out by the `Reader` rather than purged first.
 
 use spjall_envelope::Envelope;
 use spjall_store::Reader;
-use spjall_store::rusqlite::{self, Transaction, params};
+use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 
 use crate::api::{conversation_id, group_id};
 use crate::directory::{fold_name, query, starts_a_word};
 use crate::{
-    ClientError, Conversation, Device, Item, Message, Person, STATE, Settings, State,
-    conversation_state, members, mute, notice, read, this_device, timeline,
+    ClientError, Conversation, Device, Item, Message, Person, STATE, Settings, SignedIn, State,
+    account, conversation_state, members, mute, notice, read, this_device, timeline,
 };
 
 /// The reads, on a connection of their own. The app holds one beside its
@@ -24,6 +24,23 @@ pub struct View {
 impl View {
     pub(crate) fn new(reader: Reader) -> Self {
         Self { reader }
+    }
+
+    /// The account and device this store is signed in as, if it is: what
+    /// an app asks first at every start, so it never waits for a sync.
+    pub fn signed_in(&mut self) -> Result<Option<SignedIn>, ClientError> {
+        self.reader.read(account::signed_in)
+    }
+
+    /// The device token as stored, which the `Client` writes in the same
+    /// transaction as it changes its own (sign-in, signing out).
+    pub fn device_token(&mut self) -> Result<Option<String>, ClientError> {
+        self.reader.read(|tx| {
+            Ok(tx
+                .query_row("SELECT device_token FROM account", [], |r| r.get(0))
+                .optional()?
+                .flatten())
+        })
     }
 
     /// Every conversation, the one with the newest activity first.
