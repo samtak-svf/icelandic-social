@@ -2,15 +2,23 @@
 
 A native Android and iOS messenger for Iceland, built by Samtak svf.
 
-**Status: in development, not yet released.** The backend, the shared Rust core and both apps
-implement sign-in with Kenni, personal invites, devices, and end-to-end encrypted 1:1 and
-group conversations with MLS ([decision 0002](docs/decisions/0002-mls-end-to-end-encryption.md)):
-text, photos and files, replies, edits, deletes, reactions, disappearing messages, block,
-account deletion, and push notifications that carry no message ids
-([decision 0025](docs/decisions/0025-push-without-ids.md)). The first release is a closed test
-group ([decision 0009](docs/decisions/0009-v1-scope.md)). The backend runs at
-`https://spjall.samtak.is` ([backend/README.md](backend/README.md)) with Kenni's production
-client, but sign-in has so far been tested end to end only against a stand-in for Kenni. The
+**Status: closed beta.** Builds reach a small group of testers through TestFlight and Google
+Play internal testing ([decision 0009](docs/decisions/0009-v1-scope.md)). The backend, the
+shared Rust core and both apps implement:
+
+- sign-in with Google, with Kenni verifying who the person is
+  ([decision 0035](docs/decisions/0035-google-only-sign-in-and-merge-on-kenni.md));
+- end-to-end encrypted 1:1 and group conversations with MLS
+  ([decision 0002](docs/decisions/0002-mls-end-to-end-encryption.md));
+- text, photos, files and a location ([decision 0059](docs/decisions/0059-send-a-location.md)),
+  with replies, edits, deletes, forwarding, copying, reactions and disappearing messages;
+- finding people by name or a personal invite link, profile photos, mute, block and account
+  deletion;
+- push notifications that carry no message ids
+  ([decision 0025](docs/decisions/0025-push-without-ids.md)).
+
+Data is stored in the EU ([decision 0001](docs/decisions/0001-eu-storage-and-residency-wording.md)).
+The backend runs at `https://spjall.samtak.is` ([backend/README.md](backend/README.md)). The
 code has not been reviewed by anyone outside the project. Do not rely on it to protect anything.
 
 ## Layout
