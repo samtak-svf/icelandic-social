@@ -14,7 +14,8 @@
     "databaseFile": "spjall.db"
   },
   "identity": {
-    "kenniClientId": "@innskraning.is/spjall"
+    "kenniClientId": "@innskraning.is/spjall",
+    "kenniWebClientId": "@innskraning.is/spjall-web"
   },
   "cloudflare": {
     "worker": "spjall-api",
@@ -33,7 +34,12 @@
   "hosts": {
     "api": "spjall.samtak.is",
     "link": "spjall.samtak.is",
-    "linkPathPrefix": "/l/"
+    "linkPathPrefix": "/l/",
+    "web": "spjall.samtak.is",
+    "webSignInCallbacks": {
+      "kenni": "/auth/kenni/callback",
+      "google": "/auth/google/callback"
+    }
   },
   "services": {
     "firebaseProjectId": "samtak-spjall",

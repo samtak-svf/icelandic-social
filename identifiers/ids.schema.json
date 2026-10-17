@@ -14,7 +14,9 @@
     "fileName": { "type": "string", "pattern": "^[a-z][a-z0-9-]*\\.db$" },
     "channelId": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
     "appGroup": { "type": "string", "pattern": "^group\\.[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$" },
-    "appleTeamId": { "type": "string", "pattern": "^[A-Z0-9]{10}$" }
+    "appleTeamId": { "type": "string", "pattern": "^[A-Z0-9]{10}$" },
+    "kenniClientId": { "type": "string", "pattern": "^@innskraning\\.is/[a-z][a-z0-9-]*$" },
+    "callbackPath": { "type": "string", "pattern": "^/auth/[a-z]+/callback$" }
   },
   "properties": {
     "$schema": { "const": "./ids.schema.json" },
@@ -53,9 +55,10 @@
     "identity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kenniClientId"],
+      "required": ["kenniClientId", "kenniWebClientId"],
       "properties": {
-        "kenniClientId": { "type": "string", "pattern": "^@innskraning\\.is/[a-z][a-z0-9-]*$" }
+        "kenniClientId": { "$ref": "#/$defs/kenniClientId" },
+        "kenniWebClientId": { "$ref": "#/$defs/kenniClientId" }
       }
     },
     "cloudflare": {
@@ -90,11 +93,21 @@
     "hosts": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["api", "link", "linkPathPrefix"],
+      "required": ["api", "link", "linkPathPrefix", "web", "webSignInCallbacks"],
       "properties": {
         "api": { "$ref": "#/$defs/host" },
         "link": { "$ref": "#/$defs/host" },
-        "linkPathPrefix": { "type": "string", "pattern": "^/[a-z]+/$" }
+        "linkPathPrefix": { "type": "string", "pattern": "^/[a-z]+/$" },
+        "web": { "$ref": "#/$defs/host" },
+        "webSignInCallbacks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kenni", "google"],
+          "properties": {
+            "kenni": { "$ref": "#/$defs/callbackPath" },
+            "google": { "$ref": "#/$defs/callbackPath" }
+          }
+        }
       }
     },
     "services": {

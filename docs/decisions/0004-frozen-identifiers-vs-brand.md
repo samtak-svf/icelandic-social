@@ -6,6 +6,7 @@
 - Amended by: [0010](0010-samtak-own-store-accounts.md) (Apple team is `null` until Samtak svf.'s own team exists; § Open is closed)
 - Amended by: [0016](0016-one-encrypted-store-owned-by-the-core.md) (one database file, `spjall.db`)
 - Amended by: [0027](0027-kenni-client-id-spjall.md) (Kenni client id `@innskraning.is/spjall`)
+- Amended by: [0062](0062-the-web-host-and-its-sign-in-callbacks.md) (`hosts.web`, the web sign-in callbacks, Kenni web client `@innskraning.is/spjall-web`)
 
 ## Decision
 
