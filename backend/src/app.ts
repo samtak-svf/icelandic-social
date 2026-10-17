@@ -43,6 +43,7 @@ import {
   clearPushToken,
   type Device,
   inviteRoutes,
+  sessionRoutes,
   linkHost,
   linkIdentity,
   me,
@@ -194,6 +195,7 @@ export function createApp() {
   });
 
   inviteRoutes(app);
+  sessionRoutes(app);
 
   // Decision 0014: in the contract now, built in phase 1.
   app.openapi(revokeDeviceRoute, async (c) => {

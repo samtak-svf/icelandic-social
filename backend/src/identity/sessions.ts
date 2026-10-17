@@ -195,3 +195,74 @@ export async function deviceForToken(
     session: { accountId, sessionId, kind: row.kind ?? row.platform },
   };
 }
+
+/** Every session of the account, newest first, with the device a phone's enrolled. */
+export async function sessionsOf(env: Env, accountId: string) {
+  const { results } = await db(env)
+    .prepare(
+      `SELECT s.session_id AS sessionId, s.kind, s.browser, s.os, d.device_id AS deviceId,
+              s.created_at AS createdAt, s.last_seen_at AS lastSeenAt, s.expires_at AS expiresAt
+         FROM sessions s
+         LEFT JOIN devices d ON d.session_id = s.session_id AND d.revoked_at IS NULL
+        WHERE s.account_id = ? ORDER BY s.created_at DESC, s.session_id`,
+    )
+    .bind(accountId)
+    .all<{
+      sessionId: string;
+      kind: SessionKind;
+      browser: string | null;
+      os: string | null;
+      deviceId: string | null;
+      createdAt: number;
+      lastSeenAt: number;
+      expiresAt: number | null;
+    }>();
+  return results;
+}
+
+/**
+ * Ends sessions of the account (decision 0061), and revokes the devices they
+ * enrolled as `revokeDevice` does: their tokens fail at once and their
+ * KeyPackages go. `which` is one session, or every session but one. How many
+ * sessions ended, and the devices revoked, whose sockets the caller closes.
+ */
+export async function endSessions(
+  env: Env,
+  accountId: string,
+  which: { only: string } | { except: string },
+): Promise<{ ended: number; devices: string[] }> {
+  const [match, id] =
+    "only" in which ? ["session_id = ?", which.only] : ["session_id != ?", which.except];
+  const ending = `SELECT session_id FROM sessions WHERE account_id = ? AND ${match}`;
+  const [, revoked, ended] = await db(env).batch<{ deviceId?: string }>([
+    db(env)
+      .prepare(
+        `DELETE FROM key_packages WHERE device_id IN
+         (SELECT device_id FROM devices WHERE session_id IN (${ending}))`,
+      )
+      .bind(accountId, id),
+    db(env)
+      .prepare(
+        `UPDATE devices SET revoked_at = ?, push_token = NULL
+          WHERE revoked_at IS NULL AND session_id IN (${ending}) RETURNING device_id AS deviceId`,
+      )
+      .bind(Date.now(), accountId, id),
+    // RETURNING, since changes() counts the devices a delete sets null too.
+    db(env)
+      .prepare(`DELETE FROM sessions WHERE account_id = ? AND ${match} RETURNING session_id`)
+      .bind(accountId, id),
+  ]);
+  return {
+    ended: ended?.results.length ?? 0,
+    devices: (revoked?.results ?? []).flatMap((r) => (r.deviceId ? [r.deviceId] : [])),
+  };
+}
+
+/** Deletes the browser sessions past their expiry: the scheduled sweep (decision 0061). */
+export async function expireSessions(env: Env, now = Date.now()): Promise<number> {
+  const { results } = await db(env)
+    .prepare("DELETE FROM sessions WHERE expires_at <= ? RETURNING session_id")
+    .bind(now)
+    .all();
+  return results.length;
+}

@@ -611,6 +611,78 @@
           "inviter"
         ]
       },
+      "SessionInfo": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "web",
+              "android",
+              "ios"
+            ],
+            "description": "The client it is on"
+          },
+          "browser": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A browser's product name, such as Firefox; null for an app or one not known"
+          },
+          "os": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A browser's system, such as Linux; null for an app or one not known"
+          },
+          "deviceId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b",
+            "description": "The device a phone's session enrolled; null for a browser"
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "Signed in, in milliseconds since the epoch"
+          },
+          "lastSeenAt": {
+            "type": "integer",
+            "description": "A browser's last use, to the day; a phone's sign-in. Milliseconds since the epoch"
+          },
+          "expiresAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "When a browser's session ends unless used; null for a phone's"
+          },
+          "current": {
+            "type": "boolean",
+            "description": "The session that asked"
+          }
+        },
+        "required": [
+          "sessionId",
+          "kind",
+          "browser",
+          "os",
+          "deviceId",
+          "createdAt",
+          "lastSeenAt",
+          "expiresAt",
+          "current"
+        ]
+      },
       "PushToken": {
         "type": "object",
         "properties": {
@@ -1631,6 +1703,199 @@
           },
           "429": {
             "description": "rate_limited: too many requests in the last minute; try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/sessions": {
+      "get": {
+        "operationId": "listSessions",
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Every session of this account, newest first",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The sessions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SessionInfo"
+                      }
+                    }
+                  },
+                  "required": [
+                    "sessions"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sessions/{sessionId}": {
+      "delete": {
+        "operationId": "endSession",
+        "tags": [
+          "sessions"
+        ],
+        "summary": "End a session of this account: that client is signed out",
+        "description": "It is refused at once. The device it enrolled is revoked with it, as `revokeDevice` does, so no device outlives the sign-in that made it. Ending the session that asks is signing out; a browser's cookie is then cleared.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "sessionId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The session is ended"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: this account has no such session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/sessions/end-others": {
+      "post": {
+        "operationId": "endOtherSessions",
+        "tags": [
+          "sessions"
+        ],
+        "summary": "End every session of this account but the one that asks",
+        "description": "Each is ended as `endSession` ends one: the devices they enrolled are revoked with them.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "How many sessions were ended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ended": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "ended"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
             "content": {
               "application/json": {
                 "schema": {

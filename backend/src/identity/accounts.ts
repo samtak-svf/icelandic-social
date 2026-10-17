@@ -477,16 +477,23 @@ export async function me(env: Env, accountId: string) {
 /**
  * Revokes one device of this account, so its token fails at once, and drops
  * its KeyPackages so no one adds it to a group again (decision 0019). A
- * device already revoked is revoked again, keeping its time, so a revoke that
- * failed after this step can be retried. False when the account has no such
- * device.
+ * phone's session ends with its device; the session of a browser it was
+ * linked from does not (decision 0061). A device already revoked is revoked
+ * again, keeping its time, so a revoke that failed after this step can be
+ * retried. False when the account has no such device.
  */
 export async function revokeDevice(
   env: Env,
   accountId: string,
   deviceId: string,
 ): Promise<boolean> {
-  const [revoked] = await db(env).batch([
+  const [, revoked] = await db(env).batch([
+    db(env)
+      .prepare(
+        `DELETE FROM sessions WHERE kind != 'web' AND session_id IN
+         (SELECT session_id FROM devices WHERE device_id = ? AND account_id = ?)`,
+      )
+      .bind(deviceId, accountId),
     db(env)
       .prepare(
         `UPDATE devices SET revoked_at = coalesce(revoked_at, ?), push_token = NULL
@@ -504,16 +511,18 @@ export async function revokeDevice(
 }
 
 /**
- * The first step of deleting an account (`deleteAccount`): its tokens die, so
- * nothing acts as the account while the rest goes.
+ * The first step of deleting an account (`deleteAccount`): its tokens and
+ * sessions die, so nothing acts as the account while the rest goes.
  */
 export async function revokeAllDevices(env: Env, accountId: string): Promise<void> {
-  await db(env)
-    .prepare(
-      "UPDATE devices SET revoked_at = ?, push_token = NULL WHERE account_id = ? AND revoked_at IS NULL",
-    )
-    .bind(Date.now(), accountId)
-    .run();
+  await db(env).batch([
+    db(env)
+      .prepare(
+        "UPDATE devices SET revoked_at = ?, push_token = NULL WHERE account_id = ? AND revoked_at IS NULL",
+      )
+      .bind(Date.now(), accountId),
+    db(env).prepare("DELETE FROM sessions WHERE account_id = ?").bind(accountId),
+  ]);
 }
 
 /**

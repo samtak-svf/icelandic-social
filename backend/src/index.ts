@@ -1,7 +1,7 @@
 import { deleteOrphans } from "./account-deletion.ts";
 import { createApp } from "./app.ts";
 import { log } from "./log.ts";
-import { expireKeyPackages } from "./identity/index.ts";
+import { expireKeyPackages, expireSessions } from "./identity/index.ts";
 import { expireMedia } from "./modules/messaging/index.ts";
 
 export { Conversation, Inbox } from "./modules/messaging/objects.ts";
@@ -13,6 +13,7 @@ export default {
   async scheduled(_controller, env) {
     log("media.expired", { count: await expireMedia(env) });
     log("key_packages.expired", { count: await expireKeyPackages(env) });
+    log("sessions.expired", { count: await expireSessions(env) });
     log("accounts.orphans_deleted", { count: await deleteOrphans(env) });
   },
 } satisfies ExportedHandler<Env>;

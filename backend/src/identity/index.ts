@@ -22,10 +22,12 @@ export {
 } from "./accounts.ts";
 export { block, blockedByAny, blockersAmong, blockList, UNBLOCKED, unblock } from "./blocks.ts";
 export { inviteRoutes } from "./invites.ts";
+export { sessionRoutes } from "./session-routes.ts";
 export { claim, expireKeyPackages, ownsLeaf, upload } from "./key-packages.ts";
 export { linkHost } from "./link.ts";
 export {
   deviceForToken,
+  expireSessions,
   type Session,
   SESSION_COOKIE,
   SESSION_SECRET,
