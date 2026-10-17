@@ -4,5 +4,6 @@
 
 INFOPLIST_KEY_CFBundleDisplayName = Hjal
 INFOPLIST_KEY_NSCameraUsageDescription = Myndavélin er notuð til að taka mynd sem þú sendir í samtali.
+INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = Staðsetningin er aðeins lesin þegar þú velur að senda hana í samtali.
 ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
 BRAND_ASSOCIATED_DOMAINS = applinks:spjall.samtak.is

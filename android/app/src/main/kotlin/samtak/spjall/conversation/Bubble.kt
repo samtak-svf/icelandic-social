@@ -134,6 +134,7 @@ private fun Message(
     val custom =
         accessibilityActions(offer, actions, onDelete, copy, lift) +
             linkActions((item.content as? Content.Text)?.text) +
+            placeActions(item.content, actions) +
             listOfNotNull(
                 pill?.let {
                     CustomAccessibilityAction(stringResource(R.string.reactions_show)) {
@@ -244,7 +245,7 @@ private fun accessibilityActions(
     val item = offer.item
     return listOfNotNull(
         if (offer.reply) stringResource(R.string.reply) to { actions.reply(item) } else null,
-        offer.copy?.let { text -> stringResource(R.string.copy) to { onCopy(text) } },
+        offer.copy?.let { text -> stringResource(R.string.copy) to { onCopy(text()) } },
         if (offer.forward) stringResource(R.string.forward) to { actions.forward(item) } else null,
         if (offer.edit) stringResource(R.string.edit) to { actions.edit(item) } else null,
         if (offer.delete) stringResource(R.string.delete_for_everyone) to { onDelete(item) } else null,
@@ -278,6 +279,7 @@ internal fun Body(
         is Content.Members, is Content.Timer ->
             Text(text = lastLine(item), style = Type.bubble, color = foreground)
         is Content.Unreadable -> Unreadable(content.code, foreground)
+        is Content.Location -> LocationCard(content, foreground, actions, onLongPress)
     }
 }
 

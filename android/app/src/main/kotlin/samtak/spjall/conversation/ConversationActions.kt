@@ -45,6 +45,18 @@ interface ConversationActions {
     /** Opens the file picker; what is picked waits above the field (0048). */
     fun attachFile()
 
+    /** Asks for location if the app has none, then looks for the phone's place (0059). */
+    fun attachLocation()
+
+    /** Sends the place found and shown. */
+    fun sendLocation()
+
+    /** Stops looking for the place, or drops the one found. */
+    fun cancelLocation()
+
+    /** Opens a location's map.is link or `geo:` URI (0059). */
+    fun openPlace(uri: String)
+
     /** Takes the waiting photo or file away. */
     fun removeAttachment()
 

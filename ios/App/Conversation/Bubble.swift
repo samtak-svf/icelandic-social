@@ -6,10 +6,11 @@ import UniformTypeIdentifiers
 /// What a long press offers on an item.
 struct Offer {
     let reply: Bool
-    /// A text's words, under a timer too: the reader can already read them (decision 0046).
+    /// A text's words, under a timer too: the reader can already read them (decision 0046); a
+    /// location's point (decision 0059).
     let copy: Bool
-    /// Text or a file, not under a timer, where a copy would outlive the original (decision 0041);
-    /// never a shared post (decision 0044).
+    /// Text, a file or a location, not under a timer, where a copy would outlive the original
+    /// (decision 0041); never a shared post (decision 0044).
     let forward: Bool
     let react: Bool
     let edit: Bool
@@ -18,12 +19,17 @@ struct Offer {
     init(_ item: Item) {
         var live = item.seq != nil && item.envelopeId != nil && item.content != .deleted
         var text = false
+        var place = false
         var copyable = false
         switch item.content {
         case .text:
             text = true
             copyable = true
         case .media:
+            copyable = true
+        case .location:
+            // Sent once and never edited (decision 0059).
+            place = true
             copyable = true
         case .post, .deleted, .members, .timer:
             break
@@ -32,7 +38,7 @@ struct Offer {
             live = false
         }
         reply = live
-        copy = text
+        copy = text || place
         forward = live && item.expiresAt == nil && copyable
         react = live
         edit = live && item.own && text
@@ -80,6 +86,14 @@ struct Bubble: View {
     private var plainText: String? {
         if case .text(let text, _) = item.content { return text }
         return nil
+    }
+
+    /// What a copy takes: the text's words, or a location's point as map apps read it (decision 0059).
+    private var copied: String? {
+        if case .location(let latE6, let lonE6, _) = item.content {
+            return placeLinks(latE6: latE6, lonE6: lonE6).copy
+        }
+        return plainText
     }
 
     private var links: [WebLink] { plainText.map(webLinks) ?? [] }
@@ -187,10 +201,10 @@ struct Bubble: View {
         }
     }
 
-    /// The whole text, without its quote, on this device only (decision 0046).
+    /// The whole text, without its quote, or the location's point, on this device only (decision 0046).
     private func copy() {
-        guard let plainText else { return }
-        UIPasteboard.general.setItems([[UTType.plainText.identifier: plainText]], options: [.localOnly: true])
+        guard let copied else { return }
+        UIPasteboard.general.setItems([[UTType.plainText.identifier: copied]], options: [.localOnly: true])
         onCopy()
     }
 
@@ -267,6 +281,9 @@ private struct BodyText: View {
                     if quote.postId != nil {
                         // A reply to a share quotes the post as its card: the store holds no text of it.
                         SharedCard(foreground: foreground)
+                    } else if quote.location {
+                        // Never the place: a quote of a location says only that it is one (decision 0059).
+                        Label("location", systemImage: "mappin.and.ellipse").font(.caption)
                     } else {
                         Text(verbatim: quote.text ?? localized("message_deleted")).font(.caption).italic().lineLimit(2)
                     }
@@ -289,6 +306,8 @@ private struct BodyText: View {
                 model: model)
         case .post:
             SharedCard(foreground: foreground)
+        case .location(let latE6, let lonE6, let accuracy):
+            LocationCard(latE6: latE6, lonE6: lonE6, accuracy: accuracy, foreground: foreground)
         case .members, .timer:
             Text(verbatim: lastLine(item)).font(TypeStyle.bubble).foregroundStyle(foreground)
         case .unreadable(let code):

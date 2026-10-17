@@ -264,6 +264,13 @@ internal fun AttachButton(actions: ConversationActions) {
                     actions.attachFile()
                 },
             )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.location)) },
+                onClick = {
+                    open = false
+                    actions.attachLocation()
+                },
+            )
         }
     }
 }

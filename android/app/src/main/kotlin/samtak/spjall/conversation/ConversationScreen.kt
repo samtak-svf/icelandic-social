@@ -132,6 +132,7 @@ fun ConversationScreen(
             }
         }
     }
+    state.locating?.let { LocatingDialog(it, actions) }
     deleting?.let { item ->
         AlertDialog(
             onDismissRequest = { deleting = null },

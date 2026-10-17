@@ -1,6 +1,6 @@
 # 0059. A location is sent once, shown without a map, and opened on map.is or a map app
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the core (#261, core 0.28.0) and the apps, released as 0.8.8
 - Date: 2026-10-17
 - Decided by: the maintainer, asking for a location sent with map.is and choosing the current place
   only, a bubble without a map, and opening on map.is or the phone's map app

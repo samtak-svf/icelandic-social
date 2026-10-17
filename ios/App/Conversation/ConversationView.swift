@@ -1,3 +1,4 @@
+import CoreLocation
 import PhotosUI
 import QuickLook
 import SpjallCore
@@ -355,6 +356,11 @@ private struct Composer: View {
     @State private var importing = false
     /// The system camera is open (decision 0047).
     @State private var shooting = false
+    /// The phone is finding where it is, then the place to confirm, or why there is none (decision 0059).
+    @State private var locator = Locator()
+    @State private var finding = false
+    @State private var found: CLLocation?
+    @State private var unlocated: LocalizedStringKey?
     @FocusState private var focused: Bool
     /// Counts the sends, each one a light tick (decision 0043), as the system's haptics setting allows.
     @State private var sent = 0
@@ -374,6 +380,16 @@ private struct Composer: View {
             }
             if let attachment = model.attachment {
                 PendingStrip(pending: attachment, onRemove: model.removeAttachment)
+            }
+            if finding {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("location_finding").font(TypeStyle.meta).foregroundStyle(BrandTokens.Colors.mutedFg)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .accessibilityElement(children: .combine)
             }
             HStack(alignment: .bottom, spacing: 0) {
                 Spacer().frame(width: 12)
@@ -411,6 +427,7 @@ private struct Composer: View {
                         Menu {
                             Button("photo", systemImage: "photo") { picking = true }
                             Button("file", systemImage: "doc") { importing = true }
+                            Button("location", systemImage: "mappin.and.ellipse") { Task { await locate() } }
                         } label: {
                             RoundIcon(
                                 systemImage: "plus", fill: BrandTokens.Colors.muted, tint: BrandTokens.Colors.fg,
@@ -450,6 +467,41 @@ private struct Composer: View {
                 if let taken { Task { await model.pick(Picked(taken: taken)) } }
             }
             .ignoresSafeArea()
+        }
+        .alert(
+            "location_send_title",
+            isPresented: Binding(get: { found != nil }, set: { if !$0 { found = nil } }),
+            presenting: found
+        ) { location in
+            let (latitude, longitude, accuracy) =
+                (location.coordinate.latitude, location.coordinate.longitude, location.horizontalAccuracy)
+            Button("send") {
+                Task { await model.sendLocation(latitude: latitude, longitude: longitude, accuracy: accuracy) }
+            }
+            Button("cancel", role: .cancel) {}
+        } message: { location in
+            if let line = accuracyLine(wholeMetres(location.horizontalAccuracy)) { Text(verbatim: line) }
+        }
+        .alert(
+            "location",
+            isPresented: Binding(get: { unlocated != nil }, set: { if !$0 { unlocated = nil } }),
+            presenting: unlocated
+        ) { _ in
+        } message: { reason in
+            Text(reason)
+        }
+    }
+
+    /// One fresh fix, then a confirmation before anything is sent (decision 0059).
+    private func locate() async {
+        guard !finding else { return }
+        finding = true
+        let outcome = await locator.locate()
+        finding = false
+        switch outcome {
+        case .found(let location): found = location
+        case .denied: unlocated = "location_denied"
+        case .notFound: unlocated = "location_not_found"
         }
     }
 }

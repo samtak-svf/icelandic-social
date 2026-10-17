@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Content
 import samtak.spjall.core.Item
+import samtak.spjall.core.placeLinks
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.LocalReduceMotion
 import samtak.spjall.ui.Palette
@@ -124,17 +125,26 @@ internal class Offer(
     private val live = sent && item.content != Content.Deleted && item.content !is Content.Unreadable
     val reply = live
 
-    /** The whole text, also under a timer: the reader can already read it (0046). */
-    val copy = (item.content as? Content.Text)?.text?.takeIf { live }
+    /**
+     * What copy puts on the clipboard: the whole text, also under a timer, since the reader can already
+     * read it (0046), or a location's point (0059). Asked for only on a copy, so building the menu never
+     * calls the core.
+     */
+    val copy: (() -> String)? =
+        when (val content = item.content) {
+            is Content.Text -> ({ content.text })
+            is Content.Location -> ({ placeLinks(content.latE6, content.lonE6).copy })
+            else -> null
+        }?.takeIf { live }
 
     /**
-     * Text or a file, not under a timer, where a copy would outlive the original (0041); never a
-     * shared post (0044).
+     * Text, a file or a location (0059), not under a timer, where a copy would outlive the original
+     * (0041); never a shared post (0044).
      */
     val forward =
         live &&
             item.expiresAt == null &&
-            (item.content is Content.Text || item.content is Content.Media)
+            (item.content is Content.Text || item.content is Content.Media || item.content is Content.Location)
     val react = live
     val edit = live && item.own && item.content is Content.Text
     val delete = live && item.own
@@ -150,7 +160,7 @@ internal fun menuActions(
 ): List<MenuAction> =
     listOfNotNull(
         if (offer.reply) MenuAction(R.string.reply, AppIcons.Reply) { actions.reply(offer.item) } else null,
-        offer.copy?.let { text -> MenuAction(R.string.copy, AppIcons.Copy) { onCopy(text) } },
+        offer.copy?.let { text -> MenuAction(R.string.copy, AppIcons.Copy) { onCopy(text()) } },
         if (offer.forward) MenuAction(R.string.forward, AppIcons.Forward) { actions.forward(offer.item) } else null,
         if (offer.edit) MenuAction(R.string.edit, AppIcons.Edit) { actions.edit(offer.item) } else null,
         if (offer.delete) {

@@ -199,6 +199,8 @@ fun lastLine(
         Content.Deleted -> stringResource(R.string.message_deleted)
         // Never the post's text or author: the list shows what the store holds (decision 0040).
         is Content.Post -> stringResource(R.string.post_shared)
+        // Never the place: the list is seen over a shoulder as a notice is (decision 0059).
+        is Content.Location -> stringResource(R.string.location)
         is Content.Unreadable -> stringResource(R.string.item_unreadable)
         is Content.Members ->
             when {

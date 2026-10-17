@@ -36,11 +36,13 @@ import samtak.spjall.core.ItemStatus
 import samtak.spjall.core.Mute
 import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
+import samtak.spjall.core.PlaceLinks
 import samtak.spjall.core.Reaction
 import samtak.spjall.media.LocalPhotoDecoding
 import samtak.spjall.ui.SpjallTheme
 import java.util.TimeZone
 import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.math.abs
 import android.graphics.Color as AndroidColor
 
 /**
@@ -91,6 +93,14 @@ class ConversationScreenshotTest {
             override fun attachFile() = Unit
 
             override fun removeAttachment() = Unit
+
+            override fun attachLocation() = Unit
+
+            override fun sendLocation() = Unit
+
+            override fun cancelLocation() = Unit
+
+            override fun openPlace(uri: String) = Unit
 
             override fun fetch(item: Item) = Unit
 
@@ -229,6 +239,16 @@ class ConversationScreenshotTest {
         compose.onRoot().captureRoboImage()
     }
 
+    /** A sent place (0059): a pin, the coordinates with the hemisphere's letter, the accuracy; no map. */
+    @Test
+    fun aLocationIsACardWithoutAMap() {
+        show(
+            item(1u, Content.Location(64_141_960, -21_926_570, 12u)),
+            item(2u, Content.Location(65_683_330, -18_100_000, null), own = true),
+        )
+        compose.onRoot().captureRoboImage()
+    }
+
     /** The conversation in the system's dark mode (0052): both bubbles, a photo, a file, a failed send. */
     @Test
     @Config(qualifiers = "+night")
@@ -340,7 +360,28 @@ internal fun hasClickLabel(label: String) =
  */
 @Composable
 internal fun DecodingTheme(content: @Composable () -> Unit) =
-    CompositionLocalProvider(LocalPhotoDecoding provides EmptyCoroutineContext) { SpjallTheme(content = content) }
+    CompositionLocalProvider(
+        LocalPhotoDecoding provides EmptyCoroutineContext,
+        LocalPlaceLinks provides ::testPlaceLinks,
+    ) { SpjallTheme(content = content) }
+
+/** What the core's place_links gives, for a JVM test with no native core: the digits only, no projection. */
+internal fun testPlaceLinks(
+    latE6: Int,
+    lonE6: Int,
+): PlaceLinks {
+    fun degrees(e6: Int) = "%d,%05d".format(abs(e6) / 1_000_000, (abs(e6) % 1_000_000 + 5) / 10)
+    return PlaceLinks(
+        mapIs = "https://map.is/?action=pin%7Blon:357572,lat:407642,zoom:12%7D",
+        geo = "geo:$latE6,$lonE6",
+        appleMaps = "https://maps.apple.com/",
+        copy = "$latE6, $lonE6",
+        latitude = degrees(latE6),
+        north = latE6 >= 0,
+        longitude = degrees(lonE6),
+        east = lonE6 >= 0,
+    )
+}
 
 private const val PHOTO_W = 800
 private const val PHOTO_H = 533

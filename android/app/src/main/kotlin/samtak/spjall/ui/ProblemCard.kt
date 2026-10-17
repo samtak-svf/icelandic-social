@@ -36,6 +36,8 @@ fun ProblemCard(
                             Problem.Unreachable -> R.string.error_unreachable
                             is Problem.IdentityTaken -> R.string.identity_taken
                             Problem.TooLarge -> R.string.media_too_large
+                            Problem.LocationNotFound -> R.string.location_not_found
+                            Problem.LocationDenied -> R.string.location_denied
                             is Problem.Generic -> R.string.error_generic
                         },
                     ),
@@ -58,10 +60,14 @@ fun ProblemCard(
                     )
                 }
             }
-            // The same kennitala stays on the other account, and the same file stays too large.
-            if (problem !is Problem.IdentityTaken && problem != Problem.TooLarge) {
+            // The same kennitala stays on the other account, and the same file stays too large. A
+            // location is looked for again from the attach menu, so the card offers nothing.
+            if (problem !is Problem.IdentityTaken && problem !in FINAL) {
                 TextButton(onClick = onRetry) { Text(stringResource(R.string.try_again)) }
             }
         }
     }
 }
+
+/** Problems trying again cannot help with, or that have their own way back. */
+private val FINAL = setOf(Problem.TooLarge, Problem.LocationNotFound, Problem.LocationDenied)

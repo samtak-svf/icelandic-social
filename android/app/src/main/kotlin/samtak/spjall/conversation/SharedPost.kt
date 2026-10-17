@@ -59,6 +59,14 @@ internal fun Quoted(
         )
         if (quote.postId != null) {
             SharedCard(foreground)
+        } else if (quote.location) {
+            // Never the place in a quote, as in the list (decision 0059).
+            Text(
+                text = stringResource(R.string.location),
+                style = MaterialTheme.typography.bodySmall,
+                fontStyle = FontStyle.Italic,
+                color = foreground,
+            )
         } else {
             Text(
                 text = quote.text ?: stringResource(R.string.message_deleted),

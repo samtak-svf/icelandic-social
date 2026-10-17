@@ -4,6 +4,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Asked once after sign-in (decision 0025); Ég points at the settings if refused. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Asked only when a location is sent (decision 0059), and only while the app is in use;
+         coarse alone is enough. A phone without GPS can still send one from the network. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <uses-feature android:name="android.hardware.location.network" android:required="false" />
 
     <!-- No backup and no device transfer: message history stays on the device
          that received it (decision 0006), and the MLS state must never be

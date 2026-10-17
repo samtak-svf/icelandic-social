@@ -733,6 +733,174 @@
         }
       }
     },
+    "location": {
+      "comment": "A location message (docs/decisions/0059): the attach menu's choice, the card's heading, the conversation list's last line, a quote of one and a notification. Never the place itself.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Staðsetning"
+          }
+        }
+      }
+    },
+    "location_coordinates": {
+      "comment": "The place on a location card, in degrees with the decimal comma; latitude and longitude are location_north/location_south and location_east/location_west (docs/decisions/0059).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "location_north": {
+      "comment": "A latitude north of the equator; degrees is like 64,14196 (docs/decisions/0059).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@° N"
+          }
+        }
+      }
+    },
+    "location_south": {
+      "comment": "A latitude south of the equator (docs/decisions/0059).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@° S"
+          }
+        }
+      }
+    },
+    "location_east": {
+      "comment": "A longitude east of Greenwich (docs/decisions/0059).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@° A"
+          }
+        }
+      }
+    },
+    "location_west": {
+      "comment": "A longitude west of Greenwich (docs/decisions/0059).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@° V"
+          }
+        }
+      }
+    },
+    "location_accuracy": {
+      "comment": "How close the fix is, in whole metres, on the card and in the send dialog (docs/decisions/0059).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nákvæmni um %1$lld m"
+          }
+        }
+      }
+    },
+    "location_send_title": {
+      "comment": "Heading of the dialog that asks before a location is sent; its buttons are send and cancel (docs/decisions/0059).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Senda staðsetninguna þína?"
+          }
+        }
+      }
+    },
+    "location_finding": {
+      "comment": "While the phone takes a fresh fix, for up to 30 seconds (docs/decisions/0059).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leita að staðsetningu"
+          }
+        }
+      }
+    },
+    "location_not_found": {
+      "comment": "No fix within 30 seconds, or location is off on the phone (docs/decisions/0059).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekki tókst að finna staðsetninguna. Athugaðu að kveikt sé á staðsetningu í símanum."
+          }
+        }
+      }
+    },
+    "location_denied": {
+      "comment": "The person refused location to the app; it can be allowed in the phone's settings (docs/decisions/0059).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forritið hefur ekki leyfi til að lesa staðsetningu. Þú getur leyft það í stillingum símans."
+          }
+        }
+      }
+    },
+    "location_open_map_is": {
+      "comment": "Opens the place on map.is in the browser; offered only inside Iceland's area (docs/decisions/0059).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opna á map.is"
+          }
+        }
+      }
+    },
+    "location_open_maps": {
+      "comment": "Opens the place in the phone's map app (docs/decisions/0059).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opna í kortaappi"
+          }
+        }
+      }
+    },
+    "location_usage": {
+      "comment": "Why the app asks for location, shown by iOS in its permission prompt (NSLocationWhenInUseUsageDescription, docs/decisions/0059).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Staðsetningin er aðeins lesin þegar þú velur að senda hana í samtali."
+          }
+        }
+      }
+    },
     "person_unnamed": {
       "comment": "Stands in for an account whose name the server has not given, in titles and rows (docs/decisions/0022).",
       "extractionState": "manual",

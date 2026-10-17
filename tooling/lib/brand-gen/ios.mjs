@@ -75,6 +75,7 @@ function xcconfig(brand) {
     "",
     `INFOPLIST_KEY_CFBundleDisplayName = ${brand.manifest.displayName}`,
     `INFOPLIST_KEY_NSCameraUsageDescription = ${xcconfigValue(brand.strings.camera_usage)}`,
+    `INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = ${xcconfigValue(brand.strings.location_usage)}`,
     "ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon",
     `BRAND_ASSOCIATED_DOMAINS = ${hosts.map((h) => `applinks:${h}`).join(" ")}`,
     "",

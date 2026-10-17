@@ -25,6 +25,12 @@ sealed interface Problem {
     /** A photo or file over the 25 MB limit (0023): trying again cannot help. */
     data object TooLarge : Problem
 
+    /** No fix came for a location (0059): location may be off on the phone. */
+    data object LocationNotFound : Problem
+
+    /** The person refused the app their location (0059): only the phone's settings can change it. */
+    data object LocationDenied : Problem
+
     /** Anything else. */
     data class Generic(
         override val requestId: String? = null,

@@ -244,6 +244,11 @@ final class ConversationModel {
         await queue(body)
     }
 
+    /// Sends the place the phone found, once the person confirmed it (decision 0059).
+    func sendLocation(latitude: Double, longitude: Double, accuracy: Double) async {
+        await queue(locationBody(latitude: latitude, longitude: longitude, accuracy: accuracy))
+    }
+
     func delete(_ item: Item) async {
         guard let target = item.envelopeId else { return }
         await queue(.delete(target: target))

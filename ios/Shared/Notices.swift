@@ -11,6 +11,8 @@ struct NoticeLabels: Sendable {
     let file: String
     /// A shared Fljótið post: fixed, never its text or author (decision 0040).
     let post: String
+    /// A sent location: fixed, never the place (decision 0059).
+    let location: String
 }
 
 /// One conversation's new items, as one notification (decision 0025).
@@ -54,5 +56,6 @@ private func line(_ notice: Notice, labels: NoticeLabels) -> String {
     case .photo: notice.text ?? labels.photo
     case .file: notice.text ?? labels.file
     case .post: labels.post
+    case .location: labels.location
     }
 }

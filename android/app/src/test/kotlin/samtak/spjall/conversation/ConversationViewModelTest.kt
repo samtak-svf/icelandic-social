@@ -1,5 +1,6 @@
 package samtak.spjall.conversation
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -390,5 +391,53 @@ class ConversationViewModelTest {
                         !it.endsWith("-")
                 },
             )
+        }
+
+    @Test
+    fun aLocationIsSentOnlyOnceThePersonConfirmsIt() =
+        runTest(dispatcher) {
+            val model = model()
+            val found = CompletableDeferred<Fix?>()
+            model.locate { found.await() }
+            runCurrent()
+            assertEquals(ConversationViewModel.Locating.Finding, model.state.value.locating)
+            model.locate { error("looked for twice") }
+            found.complete(Fix(64_141_960, -21_926_570, 12u))
+            runCurrent()
+            assertEquals(
+                ConversationViewModel.Locating.Found(Fix(64_141_960, -21_926_570, 12u)),
+                model.state.value.locating,
+            )
+            assertEquals("nothing is sent before the person says so", emptyList<String>(), sends())
+            model.sendLocation()
+            runCurrent()
+            assertEquals(listOf("send c1 ${Body.Location(64_141_960, -21_926_570, 12u)}"), sends())
+            assertNull(model.state.value.locating)
+        }
+
+    @Test
+    fun aCancelledLocationSendsNothing() =
+        runTest(dispatcher) {
+            val model = model()
+            model.locate { Fix(64_141_960, -21_926_570, null) }
+            runCurrent()
+            model.cancelLocation()
+            model.sendLocation()
+            runCurrent()
+            assertEquals(emptyList<String>(), sends())
+            assertNull(model.state.value.locating)
+        }
+
+    @Test
+    fun noFixAndARefusalAreSaid() =
+        runTest(dispatcher) {
+            val model = model()
+            model.locate { null }
+            runCurrent()
+            assertNull(model.state.value.locating)
+            assertEquals(Problem.LocationNotFound, model.state.value.problem)
+            model.locationDenied()
+            assertEquals(Problem.LocationDenied, model.state.value.problem)
+            assertEquals(emptyList<String>(), sends())
         }
 }

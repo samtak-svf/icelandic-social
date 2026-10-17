@@ -96,6 +96,15 @@ class ConversationViewModel(
         val more: Boolean = true,
     )
 
+    /** Sending a location (0059): the phone looks for its place, then the person is asked. */
+    sealed interface Locating {
+        data object Finding : Locating
+
+        data class Found(
+            val fix: Fix,
+        ) : Locating
+    }
+
     data class State(
         val conversation: Conversation? = null,
         /** Oldest first, the unsent ones last. */
@@ -111,6 +120,7 @@ class ConversationViewModel(
         /** Null until the information screen asks for them. */
         val shared: Shared? = null,
         val problem: Problem? = null,
+        val locating: Locating? = null,
     ) {
         /**
          * The composer's one action (0043): attach while a new message's
@@ -154,6 +164,7 @@ class ConversationViewModel(
     private var typingIdle: Job? = null
     private var typingShown: Job? = null
     private var expiry: Job? = null
+    private var finding: Job? = null
     private var loadingOlder = false
     private var loadingShared = false
 
@@ -300,6 +311,43 @@ class ConversationViewModel(
             val pending = Pending(file.path, picked.mime, picked.name)
             _state.getAndUpdate { it.copy(attachment = pending) }.attachment?.let { File(it.path).delete() }
         }
+    }
+
+    /**
+     * Looks for the phone's place with [find] (0059); null from it is no place found. Nothing is
+     * sent until the person confirms what was found with [sendLocation].
+     */
+    fun locate(find: suspend () -> Fix?) {
+        if (_state.value.locating != null) return
+        _state.update { it.copy(locating = Locating.Finding, problem = null) }
+        finding =
+            viewModelScope.launch {
+                val fix = find()
+                _state.update {
+                    if (fix == null) {
+                        it.copy(locating = null, problem = Problem.LocationNotFound)
+                    } else {
+                        it.copy(locating = Locating.Found(fix))
+                    }
+                }
+            }
+    }
+
+    /** The person refused the app their location. */
+    fun locationDenied() {
+        _state.update { it.copy(problem = Problem.LocationDenied) }
+    }
+
+    /** Sends the place the person was shown. */
+    fun sendLocation() {
+        val found = _state.getAndUpdate { it.copy(locating = null) }.locating as? Locating.Found ?: return
+        queue(Body.Location(found.fix.latE6, found.fix.lonE6, found.fix.accuracy))
+    }
+
+    /** Stops looking, or forgets the place found; nothing is sent. */
+    fun cancelLocation() {
+        finding?.cancel()
+        _state.update { it.copy(locating = null) }
     }
 
     /** Takes the waiting photo or file away; nothing is sent. */

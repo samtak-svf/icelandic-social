@@ -8,7 +8,8 @@ final class NoticesTests: XCTestCase {
     private let anna = person("a2", "Anna Sigurðardóttir")
     private let unnamed = person("a3")
     private let labels = NoticeLabels(
-        unnamed: "Ónefnd", alone: "Bara þú", photo: "Mynd", file: "Skrá", post: "Deild færsla")
+        unnamed: "Ónefnd", alone: "Bara þú", photo: "Mynd", file: "Skrá", post: "Deild færsla",
+        location: "Staðsetning")
 
     private func notice(
         _ conversation: String,
@@ -73,6 +74,16 @@ final class NoticesTests: XCTestCase {
         )
 
         XCTAssertEqual(shown.map(\.body), ["Deild færsla\nDeild færsla"])
+    }
+
+    func testALocationIsAnnouncedInAFixedWordAndNeverByItsPlace() {
+        // The core gives no text for a location; one that did come is still not shown (decision 0059).
+        let shown = announcements(
+            [notice("c1", 1, kind: .location, text: nil), notice("c1", 2, kind: .location, text: "64.1, -21.9")],
+            labels: labels
+        )
+
+        XCTAssertEqual(shown.map(\.body), ["Staðsetning\nStaðsetning"])
     }
 
     func testNothingNewIsNoAnnouncement() {

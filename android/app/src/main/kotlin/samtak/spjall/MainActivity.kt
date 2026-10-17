@@ -58,6 +58,7 @@ import samtak.spjall.conversation.ConversationInfoActions
 import samtak.spjall.conversation.ConversationInfoScreen
 import samtak.spjall.conversation.ConversationScreen
 import samtak.spjall.conversation.ConversationViewModel
+import samtak.spjall.conversation.Locator
 import samtak.spjall.conversations.ConversationsActions
 import samtak.spjall.conversations.ConversationsScreen
 import samtak.spjall.conversations.ConversationsViewModel
@@ -420,6 +421,11 @@ class MainActivity : ComponentActivity() {
             rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { taken ->
                 if (taken) graph.files.taken()?.let(model::pick)
             }
+        val locator = remember { Locator(applicationContext) }
+        val where =
+            rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+                if (granted.values.any { it }) model.locate(locator::current) else model.locationDenied()
+            }
         LaunchedEffect(model) {
             model.opened.collect { open(it) }
         }
@@ -460,6 +466,22 @@ class MainActivity : ComponentActivity() {
                 override fun attachFile() = file.launch(arrayOf("*/*"))
 
                 override fun removeAttachment() = model.removeAttachment()
+
+                // Location is asked for only here, the first time a place is sent (0059).
+                override fun attachLocation() =
+                    if (locator.allowed()) model.locate(locator::current) else where.launch(Locator.PERMISSIONS)
+
+                override fun sendLocation() = model.sendLocation()
+
+                override fun cancelLocation() = model.cancelLocation()
+
+                override fun openPlace(uri: String) {
+                    // With no map app the card still offers map.is, which a browser opens.
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW, uri.toUri()))
+                    } catch (_: ActivityNotFoundException) {
+                    }
+                }
 
                 override fun takePhoto() {
                     // A phone with no camera app has nothing to open; the button then does nothing.

@@ -113,6 +113,22 @@ class ConversationScreenTest {
                 calls += "removeAttachment"
             }
 
+            override fun attachLocation() {
+                calls += "attachLocation"
+            }
+
+            override fun sendLocation() {
+                calls += "sendLocation"
+            }
+
+            override fun cancelLocation() {
+                calls += "cancelLocation"
+            }
+
+            override fun openPlace(uri: String) {
+                calls += "openPlace $uri"
+            }
+
             override fun fetch(item: Item) {
                 calls += "fetch ${item.seq}"
             }

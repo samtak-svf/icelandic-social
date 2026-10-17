@@ -223,7 +223,11 @@ private fun previewLine(
     group: Boolean,
 ): String {
     val line = lastLine(item, group)
-    val said = item.content is Content.Text || item.content is Content.Media || item.content is Content.Post
+    val said =
+        item.content is Content.Text ||
+            item.content is Content.Media ||
+            item.content is Content.Post ||
+            item.content is Content.Location
     return when {
         !said -> line
         item.own -> stringResource(R.string.last_line_own, line)

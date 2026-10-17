@@ -12,6 +12,8 @@ data class Labels(
     val file: String,
     /** A shared Fljótið post: fixed, never its text or author (decision 0040). */
     val post: String,
+    /** A location: fixed, never the place, since a notification shows on a locked screen (decision 0059). */
+    val location: String,
 )
 
 /** One conversation's notification: its title, and the messages to add to it, oldest first. */
@@ -49,11 +51,12 @@ fun announcements(
 
 private fun Person.named(labels: Labels) = name ?: labels.unnamed
 
-/** A photo or file says what it is unless it has a caption; a shared post only that it is one. */
+/** A photo or file says what it is unless it has a caption; a shared post or a location only that it is one. */
 private fun Notice.words(labels: Labels) =
     when (kind) {
         NoticeKind.TEXT -> text.orEmpty()
         NoticeKind.PHOTO -> text ?: labels.photo
         NoticeKind.FILE -> text ?: labels.file
         NoticeKind.POST -> labels.post
+        NoticeKind.LOCATION -> labels.location
     }

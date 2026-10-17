@@ -9,7 +9,8 @@ extension NoticeLabels {
             alone: String(localized: "conversation_alone_title"),
             photo: String(localized: "photo"),
             file: String(localized: "file"),
-            post: String(localized: "post_shared")
+            post: String(localized: "post_shared"),
+            location: String(localized: "location")
         )
     }
 }

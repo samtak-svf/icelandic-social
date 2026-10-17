@@ -101,6 +101,18 @@ final class PickModelTests: XCTestCase {
         XCTAssertFalse(Offer(item(5, content: .unreadable(code: "protocol/a stored media row"))).any, "decision 0051")
     }
 
+    func testALocationIsCopiedForwardedAndAnsweredButNeverEdited() {
+        let place = Content.location(latE6: 64_141_960, lonE6: -21_926_570, accuracy: 12)
+        let offer = Offer(item(1, own: true, content: place))
+        XCTAssertTrue(offer.copy, "its point (decision 0059)")
+        XCTAssertTrue(offer.forward)
+        XCTAssertTrue(offer.reply)
+        XCTAssertTrue(offer.react)
+        XCTAssertTrue(offer.delete)
+        XCTAssertFalse(offer.edit, "sent once (decision 0059)")
+        XCTAssertFalse(Offer(item(2, content: place, expiresAt: FakeAccount.now + 60_000)).forward)
+    }
+
     func testTheConversationForwardsFromItselfAndOnlyWhatItMayForward() async {
         account.list = [
             conversation("c1", members: [person("a2", "Anna")]),

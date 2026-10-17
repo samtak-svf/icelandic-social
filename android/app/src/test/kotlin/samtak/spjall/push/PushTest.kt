@@ -13,7 +13,14 @@ class PushTest {
     private val anna = Person("a2", "Anna Sigurðardóttir", true)
     private val unnamed = Person("a3", null, false)
     private val labels =
-        Labels(unnamed = "Ónefnd", alone = "Bara þú", photo = "Mynd", file = "Skrá", post = "Deild færsla")
+        Labels(
+            unnamed = "Ónefnd",
+            alone = "Bara þú",
+            photo = "Mynd",
+            file = "Skrá",
+            post = "Deild færsla",
+            location = "Staðsetning",
+        )
 
     private val account = FakeAccount(signedIn = true)
     private val notifier = ListNotifier()

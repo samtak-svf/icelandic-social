@@ -129,6 +129,32 @@
     <string name="attachment_pending_file">Skrá tilbúin til sendingar: %1$s</string>
     <!-- Composer button that takes a photo with the system camera (docs/decisions/0047). -->
     <string name="camera">Taka mynd</string>
+    <!-- A location message (docs/decisions/0059): the attach menu's choice, the card's heading, the conversation list's last line, a quote of one and a notification. Never the place itself. -->
+    <string name="location">Staðsetning</string>
+    <!-- The place on a location card, in degrees with the decimal comma; latitude and longitude are location_north/location_south and location_east/location_west (docs/decisions/0059). -->
+    <string name="location_coordinates">%1$s, %2$s</string>
+    <!-- A latitude north of the equator; degrees is like 64,14196 (docs/decisions/0059). -->
+    <string name="location_north">%1$s° N</string>
+    <!-- A latitude south of the equator (docs/decisions/0059). -->
+    <string name="location_south">%1$s° S</string>
+    <!-- A longitude east of Greenwich (docs/decisions/0059). -->
+    <string name="location_east">%1$s° A</string>
+    <!-- A longitude west of Greenwich (docs/decisions/0059). -->
+    <string name="location_west">%1$s° V</string>
+    <!-- How close the fix is, in whole metres, on the card and in the send dialog (docs/decisions/0059). -->
+    <string name="location_accuracy">Nákvæmni um %1$d m</string>
+    <!-- Heading of the dialog that asks before a location is sent; its buttons are send and cancel (docs/decisions/0059). -->
+    <string name="location_send_title">Senda staðsetninguna þína?</string>
+    <!-- While the phone takes a fresh fix, for up to 30 seconds (docs/decisions/0059). -->
+    <string name="location_finding">Leita að staðsetningu</string>
+    <!-- No fix within 30 seconds, or location is off on the phone (docs/decisions/0059). -->
+    <string name="location_not_found">Ekki tókst að finna staðsetninguna. Athugaðu að kveikt sé á staðsetningu í símanum.</string>
+    <!-- The person refused location to the app; it can be allowed in the phone's settings (docs/decisions/0059). -->
+    <string name="location_denied">Forritið hefur ekki leyfi til að lesa staðsetningu. Þú getur leyft það í stillingum símans.</string>
+    <!-- Opens the place on map.is in the browser; offered only inside Iceland's area (docs/decisions/0059). -->
+    <string name="location_open_map_is">Opna á map.is</string>
+    <!-- Opens the place in the phone's map app (docs/decisions/0059). -->
+    <string name="location_open_maps">Opna í kortaappi</string>
     <!-- Stands in for an account whose name the server has not given, in titles and rows (docs/decisions/0022). -->
     <string name="person_unnamed">Nafnlaus</string>
     <!-- Label of a photo message, in the conversation list and for screen readers. -->

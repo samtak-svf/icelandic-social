@@ -32,6 +32,7 @@ class SystemNotifier(
             photo = context.getString(R.string.photo),
             file = context.getString(R.string.file),
             post = context.getString(R.string.post_shared),
+            location = context.getString(R.string.location),
         )
 
     // Posting without the permission does nothing; areNotificationsEnabled says whether it would.

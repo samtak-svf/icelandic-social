@@ -1,3 +1,4 @@
+import SpjallCore
 import XCTest
 
 @testable import Spjall
@@ -42,6 +43,38 @@ final class StringsTests: XCTestCase {
         let share = item(1, own: true, ts: 0, content: .post(postId: "p1"))
         XCTAssertEqual(lastLine(share), localized("post_shared"))
         XCTAssertEqual(previewLine(share, group: false), "Þú: Deild færsla")
+    }
+
+    func testALocationIsListedInAFixedWordAndNeverByItsPlace() {
+        let place = item(1, own: true, ts: 0, content: .location(latE6: 64_141_960, lonE6: -21_926_570, accuracy: nil))
+        XCTAssertEqual(lastLine(place), localized("location"))
+        XCTAssertEqual(previewLine(place, group: false), localized("last_line_own", localized("location")))
+    }
+
+    func testALocationsCardNamesTheCoordinatesByTheirSidesAndTheAccuracyWhenThereIsOne() {
+        let reykjavik = placeLinks(latE6: 64_141_960, lonE6: -21_926_570)
+        XCTAssertEqual(
+            coordinatesLine(reykjavik),
+            localized(
+                "location_coordinates", localized("location_north", "64,14196"),
+                localized("location_west", "21,92657")))
+        let sydney = placeLinks(latE6: -33_856_800, lonE6: 151_215_300)
+        XCTAssertEqual(
+            coordinatesLine(sydney),
+            localized(
+                "location_coordinates", localized("location_south", "33,85680"),
+                localized("location_east", "151,21530")))
+        XCTAssertEqual(accuracyLine(12), localized("location_accuracy", 12))
+        XCTAssertNil(accuracyLine(nil))
+    }
+
+    func testAFixIsSentInRoundedMicrodegreesWithItsAccuracyInWholeMetres() {
+        XCTAssertEqual(
+            locationBody(latitude: 64.1419604, longitude: -21.9265696, accuracy: 11.6),
+            .location(latE6: 64_141_960, lonE6: -21_926_570, accuracy: 12))
+        XCTAssertEqual(
+            locationBody(latitude: 0, longitude: 0, accuracy: -1),
+            .location(latE6: 0, lonE6: 0, accuracy: nil), "a negative accuracy is none")
     }
 
     func testAnUnreadableRowIsListedInItsFixedLine() {
