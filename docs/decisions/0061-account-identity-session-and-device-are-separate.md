@@ -1,6 +1,8 @@
 # 0061. Account, login identity, session and messaging device are four things
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the backend (#321: sessions and the scheme each route
+  declares, #322: web sign-in, #323: listing and ending sessions, #324: `web` in the version
+  floor, as a client in `CLIENTS` beside the device platforms); the web app is not yet built
 - Date: 2026-10-17
 - Decided by: Guðröður Atli Jónsson
 - Builds on: [0002](0002-mls-end-to-end-encryption.md) (a device is an MLS member),
@@ -85,7 +87,9 @@ They are three actions, each on its own route, and none implies a broader one:
 
 - **The device token of 0014 keeps working.** A migration gives every active device a
   session, so no app build at the current floor (0030) changes what it sends.
-- `web` joins the platform list (`backend/src/platforms.ts`) with the first web build.
+- `web` joins the platform list (`backend/src/platforms.ts`) with the first web build. It
+  joined as a client of the version floor (`CLIENTS`), not as a device platform, so the D1
+  CHECK on `devices.platform` still names only the apps (#324).
 
 ## Why
 
