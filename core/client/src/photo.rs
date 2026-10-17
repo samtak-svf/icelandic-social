@@ -6,6 +6,8 @@
 //! version changes; the folder goes with the media files when the store is
 //! forgotten.
 
+#![allow(clippy::disallowed_methods)] // the photos are files
+
 use std::fs;
 use std::path::{Path, PathBuf};
 

@@ -20,6 +20,7 @@
 mod account;
 pub mod api;
 mod block;
+mod clock;
 mod directory;
 mod forward;
 mod media;
@@ -34,7 +35,7 @@ mod view;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 pub use account::{Linked, SignedIn, invite_token};
 use api::{Api, ApiError, Outgoing, Platform, Profile, Transport, conversation_id, group_id};
@@ -56,6 +57,7 @@ use spjall_store::{Key, Store};
 pub use timeline::{Content, Item, Quote, Reaction, Status, Unforwardable};
 pub use view::View;
 
+use clock::{Instant, now};
 use members::{refresh_members, set_members};
 use timeline::{fold, fold_members};
 
@@ -164,9 +166,13 @@ pub struct Message {
 
 /// What changed, for the app to show.
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[expect(
-    clippy::large_enum_variant,
-    reason = "an event lives for one sync round; boxing the message would only move the bytes"
+// Large only with 64-bit pointers; on wasm32 the variants are close enough.
+#[cfg_attr(
+    target_pointer_width = "64",
+    expect(
+        clippy::large_enum_variant,
+        reason = "an event lives for one sync round; boxing the message would only move the bytes"
+    )
 )]
 pub enum Event {
     Message(Message),
@@ -359,12 +365,6 @@ fn its_own(result: Result<(), ClientError>) -> Result<(), ClientError> {
         Err(ClientError::Transport(error)) if refused_here(&error) => Ok(()),
         result => result,
     }
-}
-
-fn now() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |d| d.as_millis() as i64)
 }
 
 /// 16 random bytes in hex: a `clientMsgId`, and an envelope's id.

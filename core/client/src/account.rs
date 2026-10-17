@@ -621,6 +621,7 @@ impl<T: Transport> Client<T> {
             )
         })?;
         self.token = None;
+        #[allow(clippy::disallowed_methods)] // the media folder goes with the store
         match std::fs::remove_dir_all(&self.media) {
             Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
                 Err(crate::MediaError::from(error).into())

@@ -19,6 +19,10 @@ spjall-mls = { path = "../mls" }
 spjall-store = { path = "../store" }
 thiserror.workspace = true
 
+# The clock in a browser (`clock.rs`); openmls already brings it there.
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+web-time = "1"
+
 [dev-dependencies]
 openmls.workspace = true
 spjall-mls = { path = "../mls", features = ["forge"] }

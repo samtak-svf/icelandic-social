@@ -1,0 +1,20 @@
+# Files only in media.rs, photo.rs and forgetting the media folder: a browser
+# has no file system (wasm32 returns Unsupported at run time, not at build),
+# so every other module stays portable. Tests may use files.
+disallowed-methods = [
+  { path = "std::fs::read", reason = "files belong in media.rs or photo.rs" },
+  { path = "std::fs::read_to_string", reason = "files belong in media.rs or photo.rs" },
+  { path = "std::fs::read_dir", reason = "files belong in media.rs or photo.rs" },
+  { path = "std::fs::write", reason = "files belong in media.rs or photo.rs" },
+  { path = "std::fs::copy", reason = "files belong in media.rs or photo.rs" },
+  { path = "std::fs::rename", reason = "files belong in media.rs or photo.rs" },
+  { path = "std::fs::metadata", reason = "files belong in media.rs or photo.rs" },
+  { path = "std::fs::create_dir", reason = "files belong in media.rs or photo.rs" },
+  { path = "std::fs::create_dir_all", reason = "files belong in media.rs or photo.rs" },
+  { path = "std::fs::remove_file", reason = "files belong in media.rs or photo.rs" },
+  { path = "std::fs::remove_dir", reason = "files belong in media.rs or photo.rs" },
+  { path = "std::fs::remove_dir_all", reason = "files belong in media.rs or photo.rs" },
+  { path = "std::fs::File::open", reason = "files belong in media.rs or photo.rs" },
+  { path = "std::fs::File::create", reason = "files belong in media.rs or photo.rs" },
+  { path = "std::fs::OpenOptions::open", reason = "files belong in media.rs or photo.rs" },
+]

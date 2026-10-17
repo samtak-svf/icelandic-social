@@ -20,6 +20,16 @@ serde_json.workspace = true
 spjall-store = { path = "../store" }
 thiserror.workspace = true
 
+# So the core builds for a browser (wasm32-unknown-unknown, checked in
+# core.yml): randomness and the clock come from JavaScript. openmls needs its
+# `js` feature, openmls_rust_crypto reaches getrandom 0.2 through p256 and
+# 0.4 through the RustCrypto traits; feature unification carries both
+# backends to every crate above this one.
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+getrandom = { workspace = true, features = ["wasm_js"] }
+getrandom02 = { package = "getrandom", version = "0.2", features = ["js"] }
+openmls = { workspace = true, features = ["js"] }
+
 [dev-dependencies]
 serde_json.workspace = true
 spjall-mls = { path = ".", features = ["forge"] }

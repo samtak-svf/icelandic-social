@@ -8,6 +8,8 @@
 //!   cargo test -p spjall-client --test backend -- --ignored
 //! ```
 
+#![allow(clippy::disallowed_methods)] // tests use files
+
 use std::net::TcpStream;
 use std::path::Path;
 use std::sync::{Arc, Mutex};

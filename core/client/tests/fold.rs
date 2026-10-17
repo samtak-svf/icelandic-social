@@ -3,6 +3,8 @@
 //! the conversation search on a phone and the directory search on the server
 //! cannot fold the same name two ways.
 
+#![allow(clippy::disallowed_methods)] // tests use files
+
 use std::path::PathBuf;
 
 use serde::Deserialize;

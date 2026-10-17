@@ -8,6 +8,8 @@
 //! send keeps, and what `media()` decrypts. They go with their rows, by the
 //! disappearing purge or a delete for everyone.
 
+#![allow(clippy::disallowed_methods)] // the module that holds the files
+
 use std::collections::HashSet;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Read, Write};

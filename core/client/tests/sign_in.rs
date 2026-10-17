@@ -2,6 +2,8 @@
 //! `state` and the pending sign-in in the store, the token on each request,
 //! and what this device forgets when it ends.
 
+#![allow(clippy::disallowed_methods)] // tests use files
+
 #[path = "support/relay.rs"]
 #[allow(dead_code)]
 mod relay;

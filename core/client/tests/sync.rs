@@ -1,6 +1,8 @@
 //! The sync engine against the in-memory relay: devices with their own store
 //! files, talking only through requests and socket frames.
 
+#![allow(clippy::disallowed_methods)] // tests use files
+
 #[path = "support/relay.rs"]
 #[allow(dead_code)]
 mod relay;
