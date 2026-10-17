@@ -1,0 +1,4 @@
+# The sqlite3mc build, fetched and checksum-verified by fetch.mjs
+vendor/
+# Browser profiles kept with --keep --profiles profiles
+profiles/

@@ -1,0 +1,1998 @@
+{
+  "n": 10000,
+  "at": "2026-10-17T12:34:39.082Z",
+  "runs": [
+    {
+      "run": 1,
+      "browser": "chromium",
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36",
+      "persist": {
+        "before": false,
+        "granted": false,
+        "after": false
+      },
+      "storage": {
+        "usage": 0,
+        "quota": 10737418240,
+        "details": {}
+      },
+      "a": {
+        "open": {
+          "ok": true,
+          "initMs": 46.25499999523163,
+          "vfsMs": 7.995000004768372,
+          "keyMs": 2.830000013113022,
+          "openMs": 42.935000002384186,
+          "totalMs": 100.01500001549721,
+          "cipher": "chacha20",
+          "version": "SQLite3 Multiple Ciphers 2.5.1",
+          "keyCreated": true,
+          "keyUnexportable": true,
+          "orphan": false,
+          "workerMs": 17.49499997496605
+        },
+        "fill": {
+          "ms": 105.29499998688698
+        },
+        "raw": {
+          "bytes": 2293760,
+          "plainHeader": false,
+          "marker": false,
+          "poolFiles": 1,
+          "poolCapacity": 6
+        },
+        "count": 10000,
+        "usage": 9441185
+      },
+      "coldA": {
+        "open": {
+          "ok": true,
+          "initMs": 40.0450000166893,
+          "vfsMs": 8.634999990463257,
+          "keyMs": 3.060000002384186,
+          "openMs": 37.67499998211861,
+          "totalMs": 89.41499999165535,
+          "cipher": "chacha20",
+          "version": "SQLite3 Multiple Ciphers 2.5.1",
+          "keyCreated": false,
+          "keyUnexportable": true,
+          "orphan": false,
+          "workerMs": 15.500000029802322
+        },
+        "latest": {
+          "ms": 2.2150000035762787,
+          "rows": 50,
+          "first": "PLAINTEXT-MARKER 9999 xx"
+        },
+        "wallMs": 111,
+        "count": 10000
+      },
+      "b": {
+        "open": {
+          "ok": true,
+          "openMs": 0.8599999845027924,
+          "keyMs": 0.8149999976158142,
+          "totalMs": 1.6749999821186066,
+          "keyCreated": true,
+          "keyUnexportable": true
+        },
+        "fill": {
+          "ms": 372.2549999952316
+        },
+        "raw": {
+          "marker": false,
+          "ctBytes": 270
+        },
+        "count": 10000,
+        "usage": 4940110
+      },
+      "disk": {
+        "a": 2371584,
+        "b": 4956160,
+        "plaintext": [],
+        "files": [2, 24, 28]
+      },
+      "coldB": {
+        "open": {
+          "ok": true,
+          "openMs": 33.724999994039536,
+          "keyMs": 0.46000000834465027,
+          "totalMs": 34.185000002384186,
+          "keyCreated": false,
+          "keyUnexportable": true
+        },
+        "latest": {
+          "ms": 1.9749999940395355,
+          "rows": 50,
+          "first": "PLAINTEXT-MARKER 9999 xx"
+        },
+        "wallMs": 41,
+        "count": 10000
+      },
+      "reload": {
+        "a": 10000,
+        "b": 10000
+      },
+      "secondTab": {
+        "a": {
+          "second": {
+            "ok": false,
+            "error": "Error: NoModificationAllowedError: Failed to execute 'createSyncAccessHandle' on 'FileSystemFileHandle': Access Handles cannot be created if there is another open Access Handle or Writable stream associated with the same file.",
+            "ms": 66.68500000238419
+          },
+          "countInFirst": 10000
+        },
+        "b": {
+          "countInFirst": 10001,
+          "countInSecond": 10001
+        }
+      },
+      "wipe": {
+        "a": {
+          "keyMs": 1.1850000023841858,
+          "filesMs": 4.144999980926514,
+          "keyBlocked": false
+        },
+        "b": {
+          "ms": 1.969999998807907,
+          "blocked": false
+        },
+        "left": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 4272109
+        },
+        "disk": {
+          "bytes": 5763072,
+          "files": 24,
+          "plaintext": []
+        }
+      },
+      "blockedWipe": {
+        "a": {
+          "whileHeld": {
+            "key": {
+              "blocked": false
+            },
+            "files": "NoModificationAllowedError: Failed to execute 'removeEntry' on 'FileSystemDirectoryHandle': An attempt was made to modify an object where modifications are not allowed.",
+            "ms": 2.219999998807907
+          },
+          "afterHolderClosed": {
+            "released": {
+              "attempts": 1,
+              "waitedMs": 127,
+              "orphan": true
+            },
+            "key": {
+              "blocked": false
+            },
+            "files": "removed",
+            "ms": 2.4650000035762787
+          }
+        },
+        "b": {
+          "whileHeld": {
+            "result": "pending",
+            "ms": 2000.419999986887
+          },
+          "afterHolderClosed": {
+            "result": {
+              "blocked": false
+            },
+            "ms": 2.7399999797344208
+          }
+        },
+        "left": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 9623
+        }
+      },
+      "clearSiteData": {
+        "before": {
+          "opfs": [".a-pool"],
+          "dbs": ["a-key", "b"],
+          "usage": 136434
+        },
+        "ms": 8,
+        "onDisk": {
+          "bytes": 61440,
+          "files": 8,
+          "plaintext": []
+        },
+        "after": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 0
+        },
+        "a": {
+          "keyCreated": true,
+          "count": 0
+        },
+        "b": {
+          "keyCreated": true,
+          "count": 0
+        }
+      },
+      "control": ["Default/IndexedDB/http_127.0.0.1_8797.indexeddb.leveldb/000003.log"],
+      "keyResidue": {
+        "stored": ["Default/IndexedDB/http_127.0.0.1_8797.indexeddb.leveldb/000003.log"],
+        "afterDelete": ["Default/IndexedDB/http_127.0.0.1_8797.indexeddb.leveldb/000005.ldb"],
+        "afterRestart": ["Default/IndexedDB/http_127.0.0.1_8797.indexeddb.leveldb/000005.ldb"],
+        "afterClear": []
+      }
+    },
+    {
+      "run": 2,
+      "browser": "chromium",
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36",
+      "persist": {
+        "before": false,
+        "granted": false,
+        "after": false
+      },
+      "storage": {
+        "usage": 0,
+        "quota": 10737418240,
+        "details": {}
+      },
+      "a": {
+        "open": {
+          "ok": true,
+          "initMs": 39.8299999833107,
+          "vfsMs": 13.065000027418137,
+          "keyMs": 3.2899999916553497,
+          "openMs": 43.15999999642372,
+          "totalMs": 99.3449999988079,
+          "cipher": "chacha20",
+          "version": "SQLite3 Multiple Ciphers 2.5.1",
+          "keyCreated": true,
+          "keyUnexportable": true,
+          "orphan": false,
+          "workerMs": 17.490000009536743
+        },
+        "fill": {
+          "ms": 106.69500002264977
+        },
+        "raw": {
+          "bytes": 2293760,
+          "plainHeader": false,
+          "marker": false,
+          "poolFiles": 1,
+          "poolCapacity": 6
+        },
+        "count": 10000,
+        "usage": 9441185
+      },
+      "coldA": {
+        "open": {
+          "ok": true,
+          "initMs": 47.625,
+          "vfsMs": 9.860000014305115,
+          "keyMs": 2,
+          "openMs": 39.985000014305115,
+          "totalMs": 99.47000002861023,
+          "cipher": "chacha20",
+          "version": "SQLite3 Multiple Ciphers 2.5.1",
+          "keyCreated": false,
+          "keyUnexportable": true,
+          "orphan": false,
+          "workerMs": 15.299999952316284
+        },
+        "latest": {
+          "ms": 3.3649999797344208,
+          "rows": 50,
+          "first": "PLAINTEXT-MARKER 9999 xx"
+        },
+        "wallMs": 122,
+        "count": 10000
+      },
+      "b": {
+        "open": {
+          "ok": true,
+          "openMs": 0.7399999797344208,
+          "keyMs": 0.6200000047683716,
+          "totalMs": 1.3599999845027924,
+          "keyCreated": true,
+          "keyUnexportable": true
+        },
+        "fill": {
+          "ms": 389.044999986887
+        },
+        "raw": {
+          "marker": false,
+          "ctBytes": 270
+        },
+        "count": 10000,
+        "usage": 4940113
+      },
+      "disk": {
+        "a": 2371584,
+        "b": 4956160,
+        "plaintext": [],
+        "files": [2, 24, 28]
+      },
+      "coldB": {
+        "open": {
+          "ok": true,
+          "openMs": 32.67500001192093,
+          "keyMs": 0.4950000047683716,
+          "totalMs": 33.1700000166893,
+          "keyCreated": false,
+          "keyUnexportable": true
+        },
+        "latest": {
+          "ms": 3.354999989271164,
+          "rows": 50,
+          "first": "PLAINTEXT-MARKER 9999 xx"
+        },
+        "wallMs": 40,
+        "count": 10000
+      },
+      "reload": {
+        "a": 10000,
+        "b": 10000
+      },
+      "secondTab": {
+        "a": {
+          "second": {
+            "ok": false,
+            "error": "Error: NoModificationAllowedError: Failed to execute 'createSyncAccessHandle' on 'FileSystemFileHandle': Access Handles cannot be created if there is another open Access Handle or Writable stream associated with the same file.",
+            "ms": 65.28999999165535
+          },
+          "countInFirst": 10000
+        },
+        "b": {
+          "countInFirst": 10001,
+          "countInSecond": 10001
+        }
+      },
+      "wipe": {
+        "a": {
+          "keyMs": 1.1699999868869781,
+          "filesMs": 3.810000002384186,
+          "keyBlocked": false
+        },
+        "b": {
+          "ms": 1.2849999964237213,
+          "blocked": false
+        },
+        "left": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 4272115
+        },
+        "disk": {
+          "bytes": 5763072,
+          "files": 24,
+          "plaintext": []
+        }
+      },
+      "blockedWipe": {
+        "a": {
+          "whileHeld": {
+            "key": {
+              "blocked": false
+            },
+            "files": "NoModificationAllowedError: Failed to execute 'removeEntry' on 'FileSystemDirectoryHandle': An attempt was made to modify an object where modifications are not allowed.",
+            "ms": 1.8400000035762787
+          },
+          "afterHolderClosed": {
+            "released": {
+              "attempts": 1,
+              "waitedMs": 126,
+              "orphan": true
+            },
+            "key": {
+              "blocked": false
+            },
+            "files": "removed",
+            "ms": 1.8650000095367432
+          }
+        },
+        "b": {
+          "whileHeld": {
+            "result": "pending",
+            "ms": 2000.4000000059605
+          },
+          "afterHolderClosed": {
+            "result": {
+              "blocked": false
+            },
+            "ms": 2
+          }
+        },
+        "left": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 9623
+        }
+      },
+      "clearSiteData": {
+        "before": {
+          "opfs": [".a-pool"],
+          "dbs": ["a-key", "b"],
+          "usage": 136434
+        },
+        "ms": 8,
+        "onDisk": {
+          "bytes": 61440,
+          "files": 8,
+          "plaintext": []
+        },
+        "after": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 0
+        },
+        "a": {
+          "keyCreated": true,
+          "count": 0
+        },
+        "b": {
+          "keyCreated": true,
+          "count": 0
+        }
+      },
+      "control": ["Default/IndexedDB/http_127.0.0.1_8797.indexeddb.leveldb/000003.log"],
+      "keyResidue": {
+        "stored": ["Default/IndexedDB/http_127.0.0.1_8797.indexeddb.leveldb/000003.log"],
+        "afterDelete": ["Default/IndexedDB/http_127.0.0.1_8797.indexeddb.leveldb/000005.ldb"],
+        "afterRestart": ["Default/IndexedDB/http_127.0.0.1_8797.indexeddb.leveldb/000005.ldb"],
+        "afterClear": []
+      }
+    },
+    {
+      "run": 3,
+      "browser": "chromium",
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36",
+      "persist": {
+        "before": false,
+        "granted": false,
+        "after": false
+      },
+      "storage": {
+        "usage": 0,
+        "quota": 10737418240,
+        "details": {}
+      },
+      "a": {
+        "open": {
+          "ok": true,
+          "initMs": 41.145000010728836,
+          "vfsMs": 10.75,
+          "keyMs": 2.834999978542328,
+          "openMs": 41.235000014305115,
+          "totalMs": 95.96500000357628,
+          "cipher": "chacha20",
+          "version": "SQLite3 Multiple Ciphers 2.5.1",
+          "keyCreated": true,
+          "keyUnexportable": true,
+          "orphan": false,
+          "workerMs": 15.46000000834465
+        },
+        "fill": {
+          "ms": 85.48000001907349
+        },
+        "raw": {
+          "bytes": 2293760,
+          "plainHeader": false,
+          "marker": false,
+          "poolFiles": 1,
+          "poolCapacity": 6
+        },
+        "count": 10000,
+        "usage": 9441185
+      },
+      "coldA": {
+        "open": {
+          "ok": true,
+          "initMs": 41.66999998688698,
+          "vfsMs": 9.200000017881393,
+          "keyMs": 1.6850000023841858,
+          "openMs": 35.53999999165535,
+          "totalMs": 88.0949999988079,
+          "cipher": "chacha20",
+          "version": "SQLite3 Multiple Ciphers 2.5.1",
+          "keyCreated": false,
+          "keyUnexportable": true,
+          "orphan": false,
+          "workerMs": 15.580000013113022
+        },
+        "latest": {
+          "ms": 2.3949999809265137,
+          "rows": 50,
+          "first": "PLAINTEXT-MARKER 9999 xx"
+        },
+        "wallMs": 110,
+        "count": 10000
+      },
+      "b": {
+        "open": {
+          "ok": true,
+          "openMs": 0.8199999928474426,
+          "keyMs": 0.8850000202655792,
+          "totalMs": 1.7050000131130219,
+          "keyCreated": true,
+          "keyUnexportable": true
+        },
+        "fill": {
+          "ms": 366.28999999165535
+        },
+        "raw": {
+          "marker": false,
+          "ctBytes": 270
+        },
+        "count": 10000,
+        "usage": 4940132
+      },
+      "disk": {
+        "a": 2371584,
+        "b": 4956160,
+        "plaintext": [],
+        "files": [2, 24, 28]
+      },
+      "coldB": {
+        "open": {
+          "ok": true,
+          "openMs": 38.360000014305115,
+          "keyMs": 0.7099999785423279,
+          "totalMs": 39.06999999284744,
+          "keyCreated": false,
+          "keyUnexportable": true
+        },
+        "latest": {
+          "ms": 2.5850000083446503,
+          "rows": 50,
+          "first": "PLAINTEXT-MARKER 9999 xx"
+        },
+        "wallMs": 47,
+        "count": 10000
+      },
+      "reload": {
+        "a": 10000,
+        "b": 10000
+      },
+      "secondTab": {
+        "a": {
+          "second": {
+            "ok": false,
+            "error": "Error: NoModificationAllowedError: Failed to execute 'createSyncAccessHandle' on 'FileSystemFileHandle': Access Handles cannot be created if there is another open Access Handle or Writable stream associated with the same file.",
+            "ms": 62.269999980926514
+          },
+          "countInFirst": 10000
+        },
+        "b": {
+          "countInFirst": 10001,
+          "countInSecond": 10001
+        }
+      },
+      "wipe": {
+        "a": {
+          "keyMs": 1.219999998807907,
+          "filesMs": 4.030000001192093,
+          "keyBlocked": false
+        },
+        "b": {
+          "ms": 1.375,
+          "blocked": false
+        },
+        "left": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 6878030
+        },
+        "disk": {
+          "bytes": 5763072,
+          "files": 24,
+          "plaintext": []
+        }
+      },
+      "blockedWipe": {
+        "a": {
+          "whileHeld": {
+            "key": {
+              "blocked": false
+            },
+            "files": "NoModificationAllowedError: Failed to execute 'removeEntry' on 'FileSystemDirectoryHandle': An attempt was made to modify an object where modifications are not allowed.",
+            "ms": 2.4099999964237213
+          },
+          "afterHolderClosed": {
+            "released": {
+              "attempts": 1,
+              "waitedMs": 128,
+              "orphan": true
+            },
+            "key": {
+              "blocked": false
+            },
+            "files": "removed",
+            "ms": 2.175000011920929
+          }
+        },
+        "b": {
+          "whileHeld": {
+            "result": "pending",
+            "ms": 2000.3350000083447
+          },
+          "afterHolderClosed": {
+            "result": {
+              "blocked": false
+            },
+            "ms": 2.6500000059604645
+          }
+        },
+        "left": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 9623
+        }
+      },
+      "clearSiteData": {
+        "before": {
+          "opfs": [".a-pool"],
+          "dbs": ["a-key", "b"],
+          "usage": 136436
+        },
+        "ms": 9,
+        "onDisk": {
+          "bytes": 61440,
+          "files": 8,
+          "plaintext": []
+        },
+        "after": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 0
+        },
+        "a": {
+          "keyCreated": true,
+          "count": 0
+        },
+        "b": {
+          "keyCreated": true,
+          "count": 0
+        }
+      },
+      "control": ["Default/IndexedDB/http_127.0.0.1_8797.indexeddb.leveldb/000003.log"],
+      "keyResidue": {
+        "stored": ["Default/IndexedDB/http_127.0.0.1_8797.indexeddb.leveldb/000003.log"],
+        "afterDelete": ["Default/IndexedDB/http_127.0.0.1_8797.indexeddb.leveldb/000005.ldb"],
+        "afterRestart": ["Default/IndexedDB/http_127.0.0.1_8797.indexeddb.leveldb/000005.ldb"],
+        "afterClear": []
+      }
+    },
+    {
+      "run": 1,
+      "browser": "firefox",
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64; rv:157.0) Gecko/20100101 Firefox/157.0",
+      "persist": {
+        "before": false,
+        "granted": "no answer in 3 s",
+        "after": false
+      },
+      "storage": {
+        "usage": 0,
+        "quota": 10737418240,
+        "details": null
+      },
+      "a": {
+        "open": {
+          "ok": true,
+          "initMs": 43.400000000000006,
+          "vfsMs": 18.75999999999999,
+          "keyMs": 4.180000000000007,
+          "openMs": 33.01999999999998,
+          "totalMs": 99.35999999999999,
+          "cipher": "chacha20",
+          "version": "SQLite3 Multiple Ciphers 2.5.1",
+          "keyCreated": true,
+          "keyUnexportable": true,
+          "orphan": false,
+          "workerMs": 34.380000000000024
+        },
+        "fill": {
+          "ms": 78.62
+        },
+        "raw": {
+          "bytes": 2293760,
+          "plainHeader": false,
+          "marker": false,
+          "poolFiles": 1,
+          "poolCapacity": 6
+        },
+        "count": 10000,
+        "usage": 2859008
+      },
+      "coldA": {
+        "open": {
+          "ok": true,
+          "initMs": 46.36,
+          "vfsMs": 9.36,
+          "keyMs": 2,
+          "openMs": 28.480000000000004,
+          "totalMs": 86.2,
+          "cipher": "chacha20",
+          "version": "SQLite3 Multiple Ciphers 2.5.1",
+          "keyCreated": false,
+          "keyUnexportable": true,
+          "orphan": false,
+          "workerMs": 34.219999999999985
+        },
+        "latest": {
+          "ms": 2.299999999999997,
+          "rows": 50,
+          "first": "PLAINTEXT-MARKER 9999 xx"
+        },
+        "wallMs": 127,
+        "count": 10000
+      },
+      "b": {
+        "open": {
+          "ok": true,
+          "openMs": 2.9000000000000057,
+          "keyMs": 0.6800000000000068,
+          "totalMs": 3.5800000000000125,
+          "keyCreated": true,
+          "keyUnexportable": true
+        },
+        "fill": {
+          "ms": 393.98
+        },
+        "raw": {
+          "marker": false,
+          "ctBytes": 270
+        },
+        "count": 10000,
+        "usage": 5322784
+      },
+      "disk": {
+        "a": 2859008,
+        "b": 4386816,
+        "plaintext": [],
+        "files": [0, 10, 12]
+      },
+      "coldB": {
+        "open": {
+          "ok": true,
+          "openMs": 2.3800000000000097,
+          "keyMs": 0.7199999999999989,
+          "totalMs": 3.1000000000000085,
+          "keyCreated": false,
+          "keyUnexportable": true
+        },
+        "latest": {
+          "ms": 1.6799999999999926,
+          "rows": 50,
+          "first": "PLAINTEXT-MARKER 9999 xx"
+        },
+        "wallMs": 10,
+        "count": 10000
+      },
+      "reload": {
+        "a": 10000,
+        "b": 10000
+      },
+      "secondTab": {
+        "a": {
+          "second": {
+            "ok": false,
+            "error": "Error: NoModificationAllowedError: No modification allowed",
+            "ms": 85.8
+          },
+          "countInFirst": 10000
+        },
+        "b": {
+          "countInFirst": 10001,
+          "countInSecond": 10001
+        }
+      },
+      "wipe": {
+        "a": {
+          "keyMs": 1.8799999999999955,
+          "filesMs": 6.219999999999999,
+          "keyBlocked": false
+        },
+        "b": {
+          "ms": 2.1399999999999864,
+          "blocked": false
+        },
+        "left": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 491520
+        },
+        "disk": {
+          "bytes": 495616,
+          "files": 2,
+          "plaintext": []
+        }
+      },
+      "blockedWipe": {
+        "a": {
+          "whileHeld": {
+            "key": {
+              "blocked": false
+            },
+            "files": "NoModificationAllowedError: No modification allowed",
+            "ms": 2.6399999999999864
+          },
+          "afterHolderClosed": {
+            "released": {
+              "attempts": 1,
+              "waitedMs": 151,
+              "orphan": true
+            },
+            "key": {
+              "blocked": false
+            },
+            "files": "removed",
+            "ms": 3.2799999999999727
+          }
+        },
+        "b": {
+          "whileHeld": {
+            "result": "pending",
+            "ms": 2000.3600000000001
+          },
+          "afterHolderClosed": {
+            "result": {
+              "blocked": false
+            },
+            "ms": 0.4399999999995998
+          }
+        },
+        "left": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 491520
+        }
+      },
+      "clearSiteData": {
+        "before": {
+          "opfs": [".a-pool"],
+          "dbs": ["a-key", "b"],
+          "usage": 696320
+        },
+        "ms": 22,
+        "onDisk": {
+          "bytes": 0,
+          "files": 0,
+          "plaintext": []
+        },
+        "after": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 491520
+        },
+        "a": {
+          "keyCreated": true,
+          "count": 0
+        },
+        "b": {
+          "keyCreated": true,
+          "count": 0
+        }
+      },
+      "control": ["storage/default/http+++127.0.0.1+8797/idb/3184795158cloonrt.sqlite"],
+      "keyResidue": {
+        "stored": ["storage/default/http+++127.0.0.1+8797/idb/516482103reeusdi.sqlite"],
+        "afterDelete": [],
+        "afterRestart": [],
+        "afterClear": []
+      }
+    },
+    {
+      "run": 2,
+      "browser": "firefox",
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64; rv:157.0) Gecko/20100101 Firefox/157.0",
+      "persist": {
+        "before": false,
+        "granted": "no answer in 3 s",
+        "after": false
+      },
+      "storage": {
+        "usage": 0,
+        "quota": 10737418240,
+        "details": null
+      },
+      "a": {
+        "open": {
+          "ok": true,
+          "initMs": 46.48,
+          "vfsMs": 18.659999999999997,
+          "keyMs": 5.320000000000007,
+          "openMs": 30.980000000000004,
+          "totalMs": 101.44,
+          "cipher": "chacha20",
+          "version": "SQLite3 Multiple Ciphers 2.5.1",
+          "keyCreated": true,
+          "keyUnexportable": true,
+          "orphan": false,
+          "workerMs": 37.5
+        },
+        "fill": {
+          "ms": 100.41999999999999
+        },
+        "raw": {
+          "bytes": 2293760,
+          "plainHeader": false,
+          "marker": false,
+          "poolFiles": 1,
+          "poolCapacity": 6
+        },
+        "count": 10000,
+        "usage": 2859008
+      },
+      "coldA": {
+        "open": {
+          "ok": true,
+          "initMs": 49.2,
+          "vfsMs": 9.019999999999996,
+          "keyMs": 2.1599999999999966,
+          "openMs": 45.56,
+          "totalMs": 105.94,
+          "cipher": "chacha20",
+          "version": "SQLite3 Multiple Ciphers 2.5.1",
+          "keyCreated": false,
+          "keyUnexportable": true,
+          "orphan": false,
+          "workerMs": 33.34
+        },
+        "latest": {
+          "ms": 2.980000000000018,
+          "rows": 50,
+          "first": "PLAINTEXT-MARKER 9999 xx"
+        },
+        "wallMs": 149,
+        "count": 10000
+      },
+      "b": {
+        "open": {
+          "ok": true,
+          "openMs": 3.599999999999966,
+          "keyMs": 0.5,
+          "totalMs": 4.099999999999966,
+          "keyCreated": true,
+          "keyUnexportable": true
+        },
+        "fill": {
+          "ms": 445.59999999999997
+        },
+        "raw": {
+          "marker": false,
+          "ctBytes": 270
+        },
+        "count": 10000,
+        "usage": 5331024
+      },
+      "disk": {
+        "a": 2859008,
+        "b": 4395008,
+        "plaintext": [],
+        "files": [0, 10, 12]
+      },
+      "coldB": {
+        "open": {
+          "ok": true,
+          "openMs": 1.8200000000000074,
+          "keyMs": 0.6999999999999886,
+          "totalMs": 2.519999999999996,
+          "keyCreated": false,
+          "keyUnexportable": true
+        },
+        "latest": {
+          "ms": 2.700000000000003,
+          "rows": 50,
+          "first": "PLAINTEXT-MARKER 9999 xx"
+        },
+        "wallMs": 10,
+        "count": 10000
+      },
+      "reload": {
+        "a": 10000,
+        "b": 10000
+      },
+      "secondTab": {
+        "a": {
+          "second": {
+            "ok": false,
+            "error": "Error: NoModificationAllowedError: No modification allowed",
+            "ms": 167.7
+          },
+          "countInFirst": 10000
+        },
+        "b": {
+          "countInFirst": 10001,
+          "countInSecond": 10001
+        }
+      },
+      "wipe": {
+        "a": {
+          "keyMs": 1.2199999999999989,
+          "filesMs": 7.820000000000007,
+          "keyBlocked": false
+        },
+        "b": {
+          "ms": 1.6399999999998727,
+          "blocked": false
+        },
+        "left": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 491520
+        },
+        "disk": {
+          "bytes": 495616,
+          "files": 2,
+          "plaintext": []
+        }
+      },
+      "blockedWipe": {
+        "a": {
+          "whileHeld": {
+            "key": {
+              "blocked": false
+            },
+            "files": "NoModificationAllowedError: No modification allowed",
+            "ms": 2.7199999999999136
+          },
+          "afterHolderClosed": {
+            "released": {
+              "attempts": 1,
+              "waitedMs": 155,
+              "orphan": true
+            },
+            "key": {
+              "blocked": false
+            },
+            "files": "removed",
+            "ms": 2.5
+          }
+        },
+        "b": {
+          "whileHeld": {
+            "result": "pending",
+            "ms": 2000.4199999999998
+          },
+          "afterHolderClosed": {
+            "result": {
+              "blocked": false
+            },
+            "ms": 0.33999999999969077
+          }
+        },
+        "left": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 491520
+        }
+      },
+      "clearSiteData": {
+        "before": {
+          "opfs": [".a-pool"],
+          "dbs": ["a-key", "b"],
+          "usage": 696320
+        },
+        "ms": 20,
+        "onDisk": {
+          "bytes": 0,
+          "files": 0,
+          "plaintext": []
+        },
+        "after": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 491520
+        },
+        "a": {
+          "keyCreated": true,
+          "count": 0
+        },
+        "b": {
+          "keyCreated": true,
+          "count": 0
+        }
+      },
+      "control": ["storage/default/http+++127.0.0.1+8797/idb/3184795158cloonrt.sqlite"],
+      "keyResidue": {
+        "stored": ["storage/default/http+++127.0.0.1+8797/idb/516482103reeusdi.sqlite"],
+        "afterDelete": [],
+        "afterRestart": [],
+        "afterClear": []
+      }
+    },
+    {
+      "run": 3,
+      "browser": "firefox",
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64; rv:157.0) Gecko/20100101 Firefox/157.0",
+      "persist": {
+        "before": false,
+        "granted": "no answer in 3 s",
+        "after": false
+      },
+      "storage": {
+        "usage": 0,
+        "quota": 10737418240,
+        "details": null
+      },
+      "a": {
+        "open": {
+          "ok": true,
+          "initMs": 45.5,
+          "vfsMs": 20.040000000000006,
+          "keyMs": 4.599999999999994,
+          "openMs": 29.340000000000003,
+          "totalMs": 99.48,
+          "cipher": "chacha20",
+          "version": "SQLite3 Multiple Ciphers 2.5.1",
+          "keyCreated": true,
+          "keyUnexportable": true,
+          "orphan": false,
+          "workerMs": 36.14
+        },
+        "fill": {
+          "ms": 75.42000000000002
+        },
+        "raw": {
+          "bytes": 2293760,
+          "plainHeader": false,
+          "marker": false,
+          "poolFiles": 1,
+          "poolCapacity": 6
+        },
+        "count": 10000,
+        "usage": 2859008
+      },
+      "coldA": {
+        "open": {
+          "ok": true,
+          "initMs": 42.39999999999999,
+          "vfsMs": 9.980000000000004,
+          "keyMs": 2.1000000000000085,
+          "openMs": 27.11999999999999,
+          "totalMs": 81.6,
+          "cipher": "chacha20",
+          "version": "SQLite3 Multiple Ciphers 2.5.1",
+          "keyCreated": false,
+          "keyUnexportable": true,
+          "orphan": false,
+          "workerMs": 34.239999999999995
+        },
+        "latest": {
+          "ms": 2.3599999999999994,
+          "rows": 50,
+          "first": "PLAINTEXT-MARKER 9999 xx"
+        },
+        "wallMs": 123,
+        "count": 10000
+      },
+      "b": {
+        "open": {
+          "ok": true,
+          "openMs": 3.3799999999999955,
+          "keyMs": 0.8400000000000034,
+          "totalMs": 4.219999999999999,
+          "keyCreated": true,
+          "keyUnexportable": true
+        },
+        "fill": {
+          "ms": 423.55999999999995
+        },
+        "raw": {
+          "marker": false,
+          "ctBytes": 270
+        },
+        "count": 10000,
+        "usage": 5335144
+      },
+      "disk": {
+        "a": 2859008,
+        "b": 4390912,
+        "plaintext": [],
+        "files": [0, 10, 12]
+      },
+      "coldB": {
+        "open": {
+          "ok": true,
+          "openMs": 2,
+          "keyMs": 0.8200000000000074,
+          "totalMs": 2.8200000000000074,
+          "keyCreated": false,
+          "keyUnexportable": true
+        },
+        "latest": {
+          "ms": 1.8599999999999994,
+          "rows": 50,
+          "first": "PLAINTEXT-MARKER 9999 xx"
+        },
+        "wallMs": 9,
+        "count": 10000
+      },
+      "reload": {
+        "a": 10000,
+        "b": 10000
+      },
+      "secondTab": {
+        "a": {
+          "second": {
+            "ok": false,
+            "error": "Error: NoModificationAllowedError: No modification allowed",
+            "ms": 82.84
+          },
+          "countInFirst": 10000
+        },
+        "b": {
+          "countInFirst": 10001,
+          "countInSecond": 10001
+        }
+      },
+      "wipe": {
+        "a": {
+          "keyMs": 1.5600000000000023,
+          "filesMs": 7.019999999999996,
+          "keyBlocked": false
+        },
+        "b": {
+          "ms": 2.0799999999999272,
+          "blocked": false
+        },
+        "left": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 491520
+        },
+        "disk": {
+          "bytes": 495616,
+          "files": 2,
+          "plaintext": []
+        }
+      },
+      "blockedWipe": {
+        "a": {
+          "whileHeld": {
+            "key": {
+              "blocked": false
+            },
+            "files": "NoModificationAllowedError: No modification allowed",
+            "ms": 2.519999999999982
+          },
+          "afterHolderClosed": {
+            "released": {
+              "attempts": 1,
+              "waitedMs": 156,
+              "orphan": true
+            },
+            "key": {
+              "blocked": false
+            },
+            "files": "removed",
+            "ms": 4.539999999999964
+          }
+        },
+        "b": {
+          "whileHeld": {
+            "result": "pending",
+            "ms": 2000.4399999999998
+          },
+          "afterHolderClosed": {
+            "result": {
+              "blocked": false
+            },
+            "ms": 0.44000000000005457
+          }
+        },
+        "left": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 491520
+        }
+      },
+      "clearSiteData": {
+        "before": {
+          "opfs": [".a-pool"],
+          "dbs": ["a-key", "b"],
+          "usage": 696320
+        },
+        "ms": 20,
+        "onDisk": {
+          "bytes": 0,
+          "files": 0,
+          "plaintext": []
+        },
+        "after": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 491520
+        },
+        "a": {
+          "keyCreated": true,
+          "count": 0
+        },
+        "b": {
+          "keyCreated": true,
+          "count": 0
+        }
+      },
+      "control": ["storage/default/http+++127.0.0.1+8797/idb/3184795158cloonrt.sqlite"],
+      "keyResidue": {
+        "stored": ["storage/default/http+++127.0.0.1+8797/idb/516482103reeusdi.sqlite"],
+        "afterDelete": [],
+        "afterRestart": [],
+        "afterClear": []
+      }
+    },
+    {
+      "run": 1,
+      "browser": "webkit",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Safari/605.1.15",
+      "persist": {
+        "before": false,
+        "granted": false,
+        "after": false
+      },
+      "storage": {
+        "usage": 0,
+        "quota": 1048576000,
+        "details": null
+      },
+      "a": {
+        "open": {
+          "ok": true,
+          "initMs": 41.54,
+          "vfsMs": 5.660000000000004,
+          "keyMs": 4.679999999999993,
+          "openMs": 38.16000000000001,
+          "totalMs": 90.04,
+          "cipher": "chacha20",
+          "version": "SQLite3 Multiple Ciphers 2.5.1",
+          "keyCreated": true,
+          "keyUnexportable": true,
+          "orphan": false,
+          "workerMs": 15.459999999999994
+        },
+        "fill": {
+          "ms": 65.06
+        },
+        "raw": {
+          "bytes": 2293760,
+          "plainHeader": false,
+          "marker": false,
+          "poolFiles": 1,
+          "poolCapacity": 6
+        },
+        "count": 10000,
+        "usage": 9437436
+      },
+      "coldA": {
+        "open": {
+          "ok": true,
+          "initMs": 39.68,
+          "vfsMs": 5.68,
+          "keyMs": 2.3400000000000034,
+          "openMs": 37.919999999999995,
+          "totalMs": 85.61999999999999,
+          "cipher": "chacha20",
+          "version": "SQLite3 Multiple Ciphers 2.5.1",
+          "keyCreated": false,
+          "keyUnexportable": true,
+          "orphan": false,
+          "workerMs": 14.240000000000023
+        },
+        "latest": {
+          "ms": 2,
+          "rows": 50,
+          "first": "PLAINTEXT-MARKER 9999 xx"
+        },
+        "wallMs": 107,
+        "count": 10000
+      },
+      "b": {
+        "open": {
+          "ok": true,
+          "openMs": 2.660000000000025,
+          "keyMs": 1.3999999999999773,
+          "totalMs": 4.060000000000002,
+          "keyCreated": true,
+          "keyUnexportable": true
+        },
+        "fill": {
+          "ms": 395.84
+        },
+        "raw": {
+          "marker": false,
+          "ctBytes": 270
+        },
+        "count": 10000,
+        "usage": 3575099
+      },
+      "disk": {
+        "a": 2396160,
+        "b": 4042752,
+        "plaintext": [],
+        "files": [0, 7, 8]
+      },
+      "coldB": {
+        "open": {
+          "ok": true,
+          "openMs": 1.7600000000000051,
+          "keyMs": 0.8399999999999892,
+          "totalMs": 2.5999999999999943,
+          "keyCreated": false,
+          "keyUnexportable": true
+        },
+        "latest": {
+          "ms": 4.180000000000007,
+          "rows": 50,
+          "first": "PLAINTEXT-MARKER 9999 xx"
+        },
+        "wallMs": 11,
+        "count": 10000
+      },
+      "reload": {
+        "a": 10000,
+        "b": 10000
+      },
+      "secondTab": {
+        "a": {
+          "second": {
+            "ok": false,
+            "error": "Error: InvalidStateError: The object is in an invalid state.",
+            "ms": 62.42
+          },
+          "countInFirst": 10000
+        },
+        "b": {
+          "countInFirst": 10001,
+          "countInSecond": 10001
+        }
+      },
+      "wipe": {
+        "a": {
+          "keyMs": 2.019999999999996,
+          "filesMs": 1.9200000000000017,
+          "keyBlocked": false
+        },
+        "b": {
+          "ms": 1.1200000000000045,
+          "blocked": false
+        },
+        "left": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 6439293
+        },
+        "disk": {
+          "bytes": 0,
+          "files": 0,
+          "plaintext": []
+        }
+      },
+      "blockedWipe": {
+        "a": {
+          "whileHeld": {
+            "key": {
+              "blocked": false
+            },
+            "files": "NoModificationAllowedError: The object can not be modified.",
+            "ms": 2.0399999999999636
+          },
+          "afterHolderClosed": {
+            "released": {
+              "attempts": 1,
+              "waitedMs": 139,
+              "orphan": true
+            },
+            "key": {
+              "blocked": false
+            },
+            "files": "removed",
+            "ms": 1.7799999999999727
+          }
+        },
+        "b": {
+          "whileHeld": {
+            "result": "pending",
+            "ms": 2000.44
+          },
+          "afterHolderClosed": {
+            "result": {
+              "blocked": false
+            },
+            "ms": 1.7400000000002365
+          }
+        },
+        "left": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 8424969
+        }
+      },
+      "clearSiteData": {
+        "before": {
+          "opfs": [".a-pool"],
+          "dbs": ["a-key", "b"],
+          "usage": 14752526
+        },
+        "ms": 5,
+        "onDisk": {
+          "bytes": 0,
+          "files": 0,
+          "plaintext": []
+        },
+        "after": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 14752526
+        },
+        "a": {
+          "keyCreated": true,
+          "count": 0
+        },
+        "b": {
+          "keyCreated": true,
+          "count": 0
+        }
+      },
+      "control": [
+        "storage/PB-A8TnGQ8uexcG7haUR2RBCV31hCATUVErZsowx-w0/PB-A8TnGQ8uexcG7haUR2RBCV31hCATUVErZsowx-w0/IndexedDB/0FCD568A5CB9BDB4677B69354B11EE415AF8F784519CFF3DA49A26F84EAEE7F2/IndexedDB.sqlite3"
+      ],
+      "keyResidue": {
+        "stored": [
+          "storage/PB-A8TnGQ8uexcG7haUR2RBCV31hCATUVErZsowx-w0/PB-A8TnGQ8uexcG7haUR2RBCV31hCATUVErZsowx-w0/IndexedDB/DE790DEFB8525B43FB46BFCD1AE09E4D52210A0887FA80C94B1C46A67FB55775/IndexedDB.sqlite3"
+        ],
+        "afterDelete": [],
+        "afterRestart": [],
+        "afterClear": []
+      }
+    },
+    {
+      "run": 2,
+      "browser": "webkit",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Safari/605.1.15",
+      "persist": {
+        "before": false,
+        "granted": false,
+        "after": false
+      },
+      "storage": {
+        "usage": 0,
+        "quota": 1048576000,
+        "details": null
+      },
+      "a": {
+        "open": {
+          "ok": true,
+          "initMs": 38.9,
+          "vfsMs": 5.5,
+          "keyMs": 4.900000000000006,
+          "openMs": 38.69999999999999,
+          "totalMs": 88,
+          "cipher": "chacha20",
+          "version": "SQLite3 Multiple Ciphers 2.5.1",
+          "keyCreated": true,
+          "keyUnexportable": true,
+          "orphan": false,
+          "workerMs": 16.039999999999992
+        },
+        "fill": {
+          "ms": 75.28
+        },
+        "raw": {
+          "bytes": 2293760,
+          "plainHeader": false,
+          "marker": false,
+          "poolFiles": 1,
+          "poolCapacity": 6
+        },
+        "count": 10000,
+        "usage": 9437436
+      },
+      "coldA": {
+        "open": {
+          "ok": true,
+          "initMs": 37.2,
+          "vfsMs": 4.980000000000004,
+          "keyMs": 2.299999999999997,
+          "openMs": 37.459999999999994,
+          "totalMs": 81.94,
+          "cipher": "chacha20",
+          "version": "SQLite3 Multiple Ciphers 2.5.1",
+          "keyCreated": false,
+          "keyUnexportable": true,
+          "orphan": false,
+          "workerMs": 16.560000000000016
+        },
+        "latest": {
+          "ms": 3.3599999999999994,
+          "rows": 50,
+          "first": "PLAINTEXT-MARKER 9999 xx"
+        },
+        "wallMs": 105,
+        "count": 10000
+      },
+      "b": {
+        "open": {
+          "ok": true,
+          "openMs": 1.960000000000008,
+          "keyMs": 1.0200000000000102,
+          "totalMs": 2.980000000000018,
+          "keyCreated": true,
+          "keyUnexportable": true
+        },
+        "fill": {
+          "ms": 393.19999999999993
+        },
+        "raw": {
+          "marker": false,
+          "ctBytes": 270
+        },
+        "count": 10000,
+        "usage": 3575099
+      },
+      "disk": {
+        "a": 2396160,
+        "b": 4042752,
+        "plaintext": [],
+        "files": [0, 7, 8]
+      },
+      "coldB": {
+        "open": {
+          "ok": true,
+          "openMs": 1.6199999999999761,
+          "keyMs": 0.7600000000000193,
+          "totalMs": 2.3799999999999955,
+          "keyCreated": false,
+          "keyUnexportable": true
+        },
+        "latest": {
+          "ms": 3.680000000000007,
+          "rows": 50,
+          "first": "PLAINTEXT-MARKER 9999 xx"
+        },
+        "wallMs": 11,
+        "count": 10000
+      },
+      "reload": {
+        "a": 10000,
+        "b": 10000
+      },
+      "secondTab": {
+        "a": {
+          "second": {
+            "ok": false,
+            "error": "Error: InvalidStateError: The object is in an invalid state.",
+            "ms": 58.06
+          },
+          "countInFirst": 10000
+        },
+        "b": {
+          "countInFirst": 10001,
+          "countInSecond": 10001
+        }
+      },
+      "wipe": {
+        "a": {
+          "keyMs": 2.3999999999999915,
+          "filesMs": 1.7800000000000011,
+          "keyBlocked": false
+        },
+        "b": {
+          "ms": 1.759999999999991,
+          "blocked": false
+        },
+        "left": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 6439293
+        },
+        "disk": {
+          "bytes": 0,
+          "files": 0,
+          "plaintext": []
+        }
+      },
+      "blockedWipe": {
+        "a": {
+          "whileHeld": {
+            "key": {
+              "blocked": false
+            },
+            "files": "NoModificationAllowedError: The object can not be modified.",
+            "ms": 2.8599999999999
+          },
+          "afterHolderClosed": {
+            "released": {
+              "attempts": 1,
+              "waitedMs": 130,
+              "orphan": true
+            },
+            "key": {
+              "blocked": false
+            },
+            "files": "removed",
+            "ms": 1.919999999999959
+          }
+        },
+        "b": {
+          "whileHeld": {
+            "result": "pending",
+            "ms": 2000.3400000000001
+          },
+          "afterHolderClosed": {
+            "result": {
+              "blocked": false
+            },
+            "ms": 0.16000000000030923
+          }
+        },
+        "left": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 8424969
+        }
+      },
+      "clearSiteData": {
+        "before": {
+          "opfs": [".a-pool"],
+          "dbs": ["a-key", "b"],
+          "usage": 14752526
+        },
+        "ms": 4,
+        "onDisk": {
+          "bytes": 0,
+          "files": 0,
+          "plaintext": []
+        },
+        "after": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 14752526
+        },
+        "a": {
+          "keyCreated": true,
+          "count": 0
+        },
+        "b": {
+          "keyCreated": true,
+          "count": 0
+        }
+      },
+      "control": [
+        "storage/fB8y_nT685Exi9oMGa_ZLSkHMJ9cQyZdMvanXow0HB0/fB8y_nT685Exi9oMGa_ZLSkHMJ9cQyZdMvanXow0HB0/IndexedDB/0FCD568A5CB9BDB4677B69354B11EE415AF8F784519CFF3DA49A26F84EAEE7F2/IndexedDB.sqlite3"
+      ],
+      "keyResidue": {
+        "stored": [
+          "storage/fB8y_nT685Exi9oMGa_ZLSkHMJ9cQyZdMvanXow0HB0/fB8y_nT685Exi9oMGa_ZLSkHMJ9cQyZdMvanXow0HB0/IndexedDB/DE790DEFB8525B43FB46BFCD1AE09E4D52210A0887FA80C94B1C46A67FB55775/IndexedDB.sqlite3"
+        ],
+        "afterDelete": [],
+        "afterRestart": [],
+        "afterClear": []
+      }
+    },
+    {
+      "run": 3,
+      "browser": "webkit",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Safari/605.1.15",
+      "persist": {
+        "before": false,
+        "granted": false,
+        "after": false
+      },
+      "storage": {
+        "usage": 0,
+        "quota": 1048576000,
+        "details": null
+      },
+      "a": {
+        "open": {
+          "ok": true,
+          "initMs": 40.84,
+          "vfsMs": 6.059999999999995,
+          "keyMs": 4.6000000000000085,
+          "openMs": 39.89999999999999,
+          "totalMs": 91.4,
+          "cipher": "chacha20",
+          "version": "SQLite3 Multiple Ciphers 2.5.1",
+          "keyCreated": true,
+          "keyUnexportable": true,
+          "orphan": false,
+          "workerMs": 17.819999999999993
+        },
+        "fill": {
+          "ms": 92.82000000000001
+        },
+        "raw": {
+          "bytes": 2293760,
+          "plainHeader": false,
+          "marker": false,
+          "poolFiles": 1,
+          "poolCapacity": 6
+        },
+        "count": 10000,
+        "usage": 9437436
+      },
+      "coldA": {
+        "open": {
+          "ok": true,
+          "initMs": 38.44,
+          "vfsMs": 3.6999999999999957,
+          "keyMs": 2.240000000000002,
+          "openMs": 36.78,
+          "totalMs": 81.16,
+          "cipher": "chacha20",
+          "version": "SQLite3 Multiple Ciphers 2.5.1",
+          "keyCreated": false,
+          "keyUnexportable": true,
+          "orphan": false,
+          "workerMs": 17.639999999999986
+        },
+        "latest": {
+          "ms": 2.019999999999996,
+          "rows": 50,
+          "first": "PLAINTEXT-MARKER 9999 xx"
+        },
+        "wallMs": 104,
+        "count": 10000
+      },
+      "b": {
+        "open": {
+          "ok": true,
+          "openMs": 1.839999999999975,
+          "keyMs": 1.0600000000000023,
+          "totalMs": 2.8999999999999773,
+          "keyCreated": true,
+          "keyUnexportable": true
+        },
+        "fill": {
+          "ms": 386.85999999999996
+        },
+        "raw": {
+          "marker": false,
+          "ctBytes": 270
+        },
+        "count": 10000,
+        "usage": 3575099
+      },
+      "disk": {
+        "a": 2396160,
+        "b": 4042752,
+        "plaintext": [],
+        "files": [0, 7, 8]
+      },
+      "coldB": {
+        "open": {
+          "ok": true,
+          "openMs": 1.7000000000000028,
+          "keyMs": 1,
+          "totalMs": 2.700000000000003,
+          "keyCreated": false,
+          "keyUnexportable": true
+        },
+        "latest": {
+          "ms": 2.5200000000000102,
+          "rows": 50,
+          "first": "PLAINTEXT-MARKER 9999 xx"
+        },
+        "wallMs": 9,
+        "count": 10000
+      },
+      "reload": {
+        "a": 10000,
+        "b": 10000
+      },
+      "secondTab": {
+        "a": {
+          "second": {
+            "ok": false,
+            "error": "Error: InvalidStateError: The object is in an invalid state.",
+            "ms": 62.260000000000005
+          },
+          "countInFirst": 10000
+        },
+        "b": {
+          "countInFirst": 10001,
+          "countInSecond": 10001
+        }
+      },
+      "wipe": {
+        "a": {
+          "keyMs": 1.9200000000000017,
+          "filesMs": 1.7600000000000051,
+          "keyBlocked": false
+        },
+        "b": {
+          "ms": 1.5599999999999454,
+          "blocked": false
+        },
+        "left": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 6439293
+        },
+        "disk": {
+          "bytes": 0,
+          "files": 0,
+          "plaintext": []
+        }
+      },
+      "blockedWipe": {
+        "a": {
+          "whileHeld": {
+            "key": {
+              "blocked": false
+            },
+            "files": "NoModificationAllowedError: The object can not be modified.",
+            "ms": 2.0399999999999636
+          },
+          "afterHolderClosed": {
+            "released": {
+              "attempts": 1,
+              "waitedMs": 150,
+              "orphan": true
+            },
+            "key": {
+              "blocked": false
+            },
+            "files": "removed",
+            "ms": 2
+          }
+        },
+        "b": {
+          "whileHeld": {
+            "result": "pending",
+            "ms": 2000.48
+          },
+          "afterHolderClosed": {
+            "result": {
+              "blocked": false
+            },
+            "ms": 0.18000000000029104
+          }
+        },
+        "left": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 8424969
+        }
+      },
+      "clearSiteData": {
+        "before": {
+          "opfs": [".a-pool"],
+          "dbs": ["a-key", "b"],
+          "usage": 14752526
+        },
+        "ms": 5,
+        "onDisk": {
+          "bytes": 0,
+          "files": 0,
+          "plaintext": []
+        },
+        "after": {
+          "opfs": [],
+          "dbs": [],
+          "usage": 14752526
+        },
+        "a": {
+          "keyCreated": true,
+          "count": 0
+        },
+        "b": {
+          "keyCreated": true,
+          "count": 0
+        }
+      },
+      "control": [
+        "storage/EqxbzooX1jB3K6oiJCckCVXt7uJgdJsgwvetxdzxktI/EqxbzooX1jB3K6oiJCckCVXt7uJgdJsgwvetxdzxktI/IndexedDB/0FCD568A5CB9BDB4677B69354B11EE415AF8F784519CFF3DA49A26F84EAEE7F2/IndexedDB.sqlite3"
+      ],
+      "keyResidue": {
+        "stored": [
+          "storage/EqxbzooX1jB3K6oiJCckCVXt7uJgdJsgwvetxdzxktI/EqxbzooX1jB3K6oiJCckCVXt7uJgdJsgwvetxdzxktI/IndexedDB/DE790DEFB8525B43FB46BFCD1AE09E4D52210A0887FA80C94B1C46A67FB55775/IndexedDB.sqlite3"
+        ],
+        "afterDelete": [],
+        "afterRestart": [],
+        "afterClear": []
+      }
+    }
+  ]
+}

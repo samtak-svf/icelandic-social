@@ -10,6 +10,10 @@
       "entry": ["scripts/*.ts", "test/worker.ts", "dev/worker.ts"],
       "project": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts", "dev/**/*.ts"],
       "ignoreDependencies": ["cloudflare", "wrangler"]
+    },
+    "spikes/browser-storage": {
+      "entry": ["*.mjs", "page/bench.js", "page/a-worker.js"],
+      "project": ["*.mjs", "page/*.js"]
     }
   }
 }

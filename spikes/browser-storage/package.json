@@ -1,0 +1,14 @@
+{
+  "name": "spjall-browser-storage",
+  "private": true,
+  "description": "A measurement, not a product: an encrypted message store in the browser, sqlite3mc in OPFS against encrypted IndexedDB (#297). Results in docs/browser-storage.md.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "fetch": "node fetch.mjs",
+    "measure": "node fetch.mjs && node measure.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.64.0"
+  }
+}

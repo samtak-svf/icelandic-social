@@ -100,7 +100,8 @@ The hard part of a browser client is persistence and code delivery, not MLS.
    encrypted with a non-extractable WebCrypto key. IndexedDB serves several tabs and needs
    no C toolchain, but it gives up the store's SQL and its transactions. Which one wins is
    measured in a real browser before the record
-   ([#297](https://github.com/samtak-svf/icelandic-messenger/issues/297)).
+   ([#297](https://github.com/samtak-svf/icelandic-messenger/issues/297)). The result is
+   [browser-storage.md](browser-storage.md): sqlite3mc in OPFS, with one owning tab.
 3. **One thread, one connection.** sqlite-wasm-rs offers OPFS (`sahpool`, dedicated Worker
    only) and IndexedDB VFSes, and none of them supports several connections. `Store::reader`
    opens a second connection
