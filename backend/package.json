@@ -12,6 +12,7 @@
     "test": "cf workers types >/dev/null && vitest run",
     "coverage": "cf workers types >/dev/null && vitest run --coverage",
     "invite:operator": "node scripts/invite-operator.ts",
+    "measure:d1": "node scripts/d1-workload.ts",
     "migrate:remote": "node ../tooling/jurisdiction-check.mjs --deploy && node scripts/d1.ts migrate",
     "deploy": "node ../tooling/jurisdiction-check.mjs --deploy && cf deploy --no-provision"
   },
