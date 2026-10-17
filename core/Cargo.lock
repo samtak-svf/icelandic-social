@@ -2523,6 +2523,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "spjall-web-spike"
+version = "0.28.0"
+dependencies = [
+ "spjall-envelope",
+ "spjall-mls",
+ "spjall-store",
+ "sqlite-wasm-rs",
+ "tempfile",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "spki"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
