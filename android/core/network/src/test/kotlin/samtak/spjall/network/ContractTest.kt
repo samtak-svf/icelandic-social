@@ -17,7 +17,7 @@ class ContractTest {
 
     @Test
     fun healthParses() {
-        val body = """{"status":"ok","minClientVersion":{"android":"1.4.0","ios":"1.3.0"},"later":1}"""
+        val body = """{"status":"ok","minClientVersion":{"android":"1.4.0","ios":"1.3.0","web":"2.0.0"},"later":1}"""
         val health = json.decodeFromString<Health>(body)
         assertEquals("ok", health.status.value)
         assertEquals("1.4.0", health.minClientVersion.android)

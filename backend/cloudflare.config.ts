@@ -44,6 +44,10 @@ export default defineConfig(({ mode }) => ({
       // open on Fljótið, whose routes are gone (decision 0044).
       MIN_CLIENT_VERSION_ANDROID: bindings.text("0.5.0"),
       MIN_CLIENT_VERSION_IOS: bindings.text("0.5.0"),
+      // The web's floor is the version of the web build this Worker serves,
+      // raised by the deploy that ships a new one, so every older tab is
+      // refused with 426 and reloads. 0.1.0 until the web app exists.
+      MIN_CLIENT_VERSION_WEB: bindings.text("0.1.0"),
       // Kenni's issuer for this Samtak team (decision 0019). The Worker reads
       // its discovery document; the apps get the authorize endpoint from
       // /v1/sign-in. The interop run signs in with dev/worker.ts's fake Kenni.

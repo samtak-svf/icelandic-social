@@ -12,8 +12,13 @@ const BASE = "https://spjall.test";
 const fetch = (path: string, headers: Record<string, string>) =>
   bareWorker.fetch(`${BASE}${path}`, { headers });
 
-const floors = (android: string, ios: string) =>
-  ({ ...env, MIN_CLIENT_VERSION_ANDROID: android, MIN_CLIENT_VERSION_IOS: ios }) as Env;
+const floors = (android: string, ios: string, web = "0.1.0") =>
+  ({
+    ...env,
+    MIN_CLIENT_VERSION_ANDROID: android,
+    MIN_CLIENT_VERSION_IOS: ios,
+    MIN_CLIENT_VERSION_WEB: web,
+  }) as Env;
 
 describe("the client version floor", () => {
   it("lets in a build at or above its platform's floor, compared by number", () => {
@@ -41,7 +46,16 @@ describe("the client version floor", () => {
     });
   });
 
-  it.each(["android", "android/0.2", "web/1.0.0", "android/0.2.0-beta", "ios/ 0.2.0"])(
+  it("tells a web tab older than the build the Worker serves to reload, apart from the apps", () => {
+    const at = floors("0.2.0", "0.2.0", "1.3.0");
+    expect(belowFloor(at, "web/1.3.0")).toBeNull();
+    expect(belowFloor(at, "web/1.2.9")).toEqual({ error: "client_too_old", minVersion: "1.3.0" });
+    expect(belowFloor(at, "android/0.2.0")).toBeNull();
+    // Only an app leaves the header out, so the web's floor is not its floor.
+    expect(belowFloor(floors("0.1.0", "0.1.0", "1.3.0"), undefined)).toBeNull();
+  });
+
+  it.each(["android", "android/0.2", "desktop/1.0.0", "android/0.2.0-beta", "ios/ 0.2.0"])(
     "refuses a malformed header %j",
     (header) => {
       expect(belowFloor(floors("0.1.0", "0.1.0"), header)).toEqual({ error: "invalid_request" });

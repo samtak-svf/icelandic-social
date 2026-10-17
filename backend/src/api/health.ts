@@ -1,5 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import { PLATFORMS } from "../platforms.ts";
+import { CLIENTS } from "../platforms.ts";
 import { PUBLIC } from "./common.ts";
 
 const Version = z
@@ -14,8 +14,9 @@ export const versionPerPlatform = <P extends string>(platforms: readonly P[]) =>
 export const Health = z
   .object({
     status: z.literal("ok"),
-    minClientVersion: versionPerPlatform(PLATFORMS).openapi({
-      description: "The oldest build each platform may run. An older app asks the user to update.",
+    minClientVersion: versionPerPlatform(CLIENTS).openapi({
+      description:
+        "The oldest build each client may run. An older app asks the user to update; an older web tab reloads, since `web` is the build the Worker serves.",
     }),
   })
   .openapi("Health");

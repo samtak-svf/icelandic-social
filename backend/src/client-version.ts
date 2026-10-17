@@ -31,15 +31,18 @@ export function belowFloor(env: Env, header: string | undefined): FloorRefusal |
 }
 
 /**
- * The same against any platforms' floors: a header names one of them, and a
- * request without one is `UNNAMED` on whichever floor is highest.
+ * The same against any clients' floors: a header names one of them, and a
+ * request without one is `UNNAMED` on whichever app floor is highest. Only
+ * an app built before the header leaves it out; the web always sends it.
  */
 export function belowFloorOf(
   floors: Readonly<Record<string, string>>,
   header: string | undefined,
 ): FloorRefusal | null {
   let version = UNNAMED;
-  let floor = Object.values(floors).reduce((a, b) => (compare(a, b) >= 0 ? a : b));
+  let floor = Object.entries(floors)
+    .flatMap(([client, min]) => (client === "web" ? [] : [min]))
+    .reduce((a, b) => (compare(a, b) >= 0 ? a : b));
   if (header !== undefined) {
     const slash = header.indexOf("/");
     const platform = header.slice(0, slash);

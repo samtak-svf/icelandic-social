@@ -9,7 +9,7 @@ import ids from "../../../identifiers/ids.json" with { type: "json" };
 import { log } from "../log.ts";
 import type { ApnsKey, FcmAccount } from "../modules/messaging/index.ts";
 import type { Conversation, Inbox } from "../modules/messaging/objects.ts";
-import { PLATFORMS, type Platform } from "../platforms.ts";
+import { type Client, CLIENTS } from "../platforms.ts";
 
 // `cf workers types` types a Durable Object binding by its class only when the
 // config holds the Worker's module, and cloudflare.config.ts names its own
@@ -23,11 +23,11 @@ declare global {
   }
 }
 
-/** Each platform's minimum version, from its `MIN_CLIENT_VERSION_<PLATFORM>` var. */
-export function minClientVersions(env: Env): Record<Platform, string> {
-  const floor = (platform: Platform) =>
-    env[`MIN_CLIENT_VERSION_${platform.toUpperCase() as Uppercase<Platform>}`];
-  return Object.fromEntries(PLATFORMS.map((p) => [p, floor(p)])) as Record<Platform, string>;
+/** Each client's minimum version, from its `MIN_CLIENT_VERSION_<CLIENT>` var. */
+export function minClientVersions(env: Env): Record<Client, string> {
+  const floor = (client: Client) =>
+    env[`MIN_CLIENT_VERSION_${client.toUpperCase() as Uppercase<Client>}`];
+  return Object.fromEntries(CLIENTS.map((p) => [p, floor(p)])) as Record<Client, string>;
 }
 
 /** D1: accounts, devices, tokens and KeyPackages (decisions 0014, 0017). */
