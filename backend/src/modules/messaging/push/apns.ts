@@ -1,4 +1,4 @@
-import { brandStrings } from "../brand.gen.ts";
+import { brandStrings } from "../../../brand.gen.ts";
 import { signJwt } from "./jwt.ts";
 import type { Outcome } from "./index.ts";
 

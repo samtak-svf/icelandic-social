@@ -25,7 +25,6 @@ import { listMessagesRoute, sendMessageRoute } from "./api/messages.ts";
 import { SOCKET_ACCOUNT, SOCKET_DEVICE, socketRoute } from "./api/socket.ts";
 import { fromBase64, toBase64 } from "./bytes.ts";
 import { belowFloor, CLIENT_HEADER } from "./client-version.ts";
-import { checkSend } from "./conversations.ts";
 import { fail, failed, requestId } from "./errors.ts";
 import {
   conversation,
@@ -35,6 +34,7 @@ import {
   withinLimit,
 } from "./env/index.ts";
 import {
+  activeDevicesOf,
   authorized,
   blockedByAny,
   blockersAmong,
@@ -54,12 +54,15 @@ import {
   unavailable,
   upload,
 } from "./identity/index.ts";
-import { accountRoutes } from "./people.ts";
 import { log, timed } from "./log.ts";
-import { getMedia, MAX_CIPHERTEXT, putMedia } from "./media.ts";
-import { muteRoutes } from "./mutes.ts";
-import { photoRoutes } from "./photos.ts";
-import { activeDevices } from "./profiles.ts";
+import {
+  checkSend,
+  getMedia,
+  MAX_CIPHERTEXT,
+  muteRoutes,
+  putMedia,
+} from "./modules/messaging/index.ts";
+import { accountRoutes, photoRoutes } from "./modules/profiles/index.ts";
 
 /** OpenAPI 3.1 document metadata; the routes and schemas come from src/api/. */
 export const DOCUMENT_INFO = {
@@ -358,7 +361,7 @@ export function createApp() {
         ? fail(c, 403, result.error)
         : fail(c, 404, "not_found");
     }
-    return c.json({ accounts: await activeDevices(c.env, result.ok) }, 200);
+    return c.json({ accounts: await activeDevicesOf(c.env, result.ok) }, 200);
   });
 
   // Muting (decision 0042).

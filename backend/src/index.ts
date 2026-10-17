@@ -2,10 +2,9 @@ import { deleteOrphans } from "./account-deletion.ts";
 import { createApp } from "./app.ts";
 import { log } from "./log.ts";
 import { expireKeyPackages } from "./identity/index.ts";
-import { expireMedia } from "./media.ts";
+import { expireMedia } from "./modules/messaging/index.ts";
 
-export { Conversation } from "./do/conversation.ts";
-export { Inbox } from "./do/inbox.ts";
+export { Conversation, Inbox } from "./modules/messaging/objects.ts";
 
 export default {
   fetch: createApp().fetch,

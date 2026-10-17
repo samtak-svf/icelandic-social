@@ -1,6 +1,6 @@
-import { base64url, fromBase64 } from "./bytes.ts";
+import { base64url, fromBase64 } from "../../bytes.ts";
 import type { SendInput } from "./do/conversation.ts";
-import { type Framing, FramingError, type Leaf, readFraming } from "./mls/framing.ts";
+import { type Framing, FramingError, type Leaf, readFraming } from "../../mls/framing.ts";
 
 // What the Worker checks of a send before the `Conversation` DO sees it
 // (decisions 0017, 0020, 0021): only the unencrypted MLS framing, never the

@@ -1,7 +1,6 @@
-import { conversation, db, inbox } from "./env/index.ts";
 import { dropAccount, orphans, revokeAllDevices } from "./identity/index.ts";
-import { deleteAccountMedia } from "./media.ts";
-import { deleteAccountPhoto } from "./photos.ts";
+import { leaveConversations } from "./modules/messaging/index.ts";
+import { deleteAccountPhoto } from "./modules/profiles/index.ts";
 
 // Deleting an account reaches every part of the Worker that keeps something
 // of it, so it lives above them all and each part removes its own.
@@ -14,17 +13,7 @@ import { deleteAccountPhoto } from "./photos.ts";
  */
 export async function deleteAccount(env: Env, accountId: string): Promise<void> {
   await revokeAllDevices(env, accountId);
-  const box = inbox(env, accountId);
-  // The inbox lists a conversation only once something was stored in it;
-  // the roster copy also has those it was added to and never heard from.
-  const { results: copied } = await db(env)
-    .prepare("SELECT conversation_id AS id FROM conversation_members WHERE account_id = ?")
-    .bind(accountId)
-    .all<{ id: string }>();
-  const conversations = new Set([...Object.keys(await box.latest()), ...copied.map((r) => r.id)]);
-  await Promise.all([...conversations].map((id) => conversation(env, id).removeAccount(accountId)));
-  await box.wipe();
-  await deleteAccountMedia(env, accountId);
+  await leaveConversations(env, accountId);
   await deleteAccountPhoto(env, accountId);
   await dropAccount(env, accountId);
 }

@@ -1,9 +1,9 @@
-diff --git a/backend/src/do/conversation.ts b/backend/src/do/conversation.ts
+diff --git a/backend/src/modules/messaging/do/conversation.ts b/backend/src/modules/messaging/do/conversation.ts
 index 7a10b88..1a196cf 100644
---- a/backend/src/do/conversation.ts
-+++ b/backend/src/do/conversation.ts
-@@ -5,8 +5,8 @@ import { within } from "../within.ts";
- import { copyRoster, dropRoster } from "../profiles.ts";
+--- a/backend/src/modules/messaging/do/conversation.ts
++++ b/backend/src/modules/messaging/do/conversation.ts
+@@ -5,8 +5,8 @@ import { within } from "../../../within.ts";
+ import { copyRoster, dropRoster } from "../rosters.ts";
  import { SCHEMA } from "./conversation-schema.ts";
  
  /** Stored ciphertext and Welcomes are deleted this long after they were stored (decision 0015). */
@@ -12,10 +12,10 @@ index 7a10b88..1a196cf 100644
  
  /** How soon a failed fan-out is tried again. */
  const RETRY_MS = 10_000;
-diff --git a/backend/src/media.ts b/backend/src/media.ts
+diff --git a/backend/src/modules/messaging/media.ts b/backend/src/modules/messaging/media.ts
 index 13b6303..1d3435c 100644
---- a/backend/src/media.ts
-+++ b/backend/src/media.ts
+--- a/backend/src/modules/messaging/media.ts
++++ b/backend/src/modules/messaging/media.ts
 @@ -14,7 +14,7 @@ const SEGMENT = 64 * 1024;
  export const MAX_CIPHERTEXT = MAX_PLAINTEXT + 16 * Math.ceil(MAX_PLAINTEXT / SEGMENT);
  

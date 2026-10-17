@@ -1,16 +1,16 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
-import { base64url } from "./bytes.ts";
+import { base64url } from "../../bytes.ts";
 import {
   deletePhotoRoute,
   getPhotoRoute,
   MAX_PHOTO_UPLOAD,
   putPhotoRoute,
-} from "./api/accounts.ts";
-import type { AppEnv } from "./app.ts";
-import { UNBLOCKED } from "./identity/index.ts";
-import { db, images, profilesBucket, withinLimit } from "./env/index.ts";
-import { fail } from "./errors.ts";
-import { log } from "./log.ts";
+} from "../../api/accounts.ts";
+import type { AppEnv } from "../../app.ts";
+import { setPhotoVersion, UNBLOCKED } from "../../identity/index.ts";
+import { db, images, profilesBucket, withinLimit } from "../../env/index.ts";
+import { fail } from "../../errors.ts";
+import { log } from "../../log.ts";
 
 // The profile photo (decision 0039): one per account, shown to every signed-in
 // account but those a block stands between, and not end-to-end encrypted. The
@@ -64,21 +64,14 @@ async function setPhoto(
   if (webp === "invalid_image") return webp;
   await profilesBucket(env).put(accountId, webp, { httpMetadata: { contentType: "image/webp" } });
   const version = `ph_${base64url(crypto.getRandomValues(new Uint8Array(16)))}`;
-  const updated = await db(env)
-    .prepare("UPDATE accounts SET photo_version = ? WHERE account_id = ?")
-    .bind(version, accountId)
-    .run();
   // The account was deleted while the photo was on its way: keep nothing.
-  if (updated.meta.changes === 0) await deleteAccountPhoto(env, accountId);
+  if (!(await setPhotoVersion(env, accountId, version))) await deleteAccountPhoto(env, accountId);
   return { version, size: webp.byteLength };
 }
 
 /** Removes `accountId`'s photo: the version first, so none names a missing photo. */
 async function removePhoto(env: Env, accountId: string): Promise<void> {
-  await db(env)
-    .prepare("UPDATE accounts SET photo_version = NULL WHERE account_id = ?")
-    .bind(accountId)
-    .run();
+  await setPhotoVersion(env, accountId, null);
   await deleteAccountPhoto(env, accountId);
 }
 

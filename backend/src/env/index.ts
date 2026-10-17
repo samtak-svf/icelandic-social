@@ -7,11 +7,9 @@
 
 import ids from "../../../identifiers/ids.json" with { type: "json" };
 import { log } from "../log.ts";
+import type { ApnsKey, FcmAccount } from "../modules/messaging/index.ts";
+import type { Conversation, Inbox } from "../modules/messaging/objects.ts";
 import { PLATFORMS, type Platform } from "../platforms.ts";
-import type { Conversation } from "../do/conversation.ts";
-import type { Inbox } from "../do/inbox.ts";
-import type { ApnsKey } from "../push/apns.ts";
-import type { FcmAccount } from "../push/fcm.ts";
 
 // `cf workers types` types a Durable Object binding by its class only when the
 // config holds the Worker's module, and cloudflare.config.ts names its own

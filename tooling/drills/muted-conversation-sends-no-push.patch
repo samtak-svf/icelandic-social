@@ -1,6 +1,6 @@
-diff --git a/backend/src/do/inbox.ts b/backend/src/do/inbox.ts
---- a/backend/src/do/inbox.ts
-+++ b/backend/src/do/inbox.ts
+diff --git a/backend/src/modules/messaging/do/inbox.ts b/backend/src/modules/messaging/do/inbox.ts
+--- a/backend/src/modules/messaging/do/inbox.ts
++++ b/backend/src/modules/messaging/do/inbox.ts
 @@ -193,7 +193,7 @@
      if (!member) this.unmuteRow(conversationId);
      const muted = this.muted(conversationId);

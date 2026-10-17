@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import fold from "../../api/fold-vectors.json";
 import { ApiError } from "../src/api/common.ts";
-import { nameKey } from "../src/profiles.ts";
+import { nameKey } from "../src/modules/profiles/profiles.ts";
 import { device, revoke } from "./support.ts";
 import { worker } from "./main.ts";
 

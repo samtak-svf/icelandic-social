@@ -36,6 +36,25 @@ export async function activeDevices(env: Env, accountId: string): Promise<string
   return results.map((r) => r.deviceId);
 }
 
+/** Each account with the devices the server still serves, in the order given (decision 0028). */
+export async function activeDevicesOf(
+  env: Env,
+  accounts: string[],
+): Promise<{ accountId: string; deviceIds: string[] }[]> {
+  const { results } = await db(env)
+    .prepare(
+      `SELECT account_id AS accountId, device_id AS deviceId FROM devices
+        WHERE account_id IN (SELECT value FROM json_each(?)) AND revoked_at IS NULL
+        ORDER BY device_id`,
+    )
+    .bind(JSON.stringify(accounts))
+    .all<{ accountId: string; deviceId: string }>();
+  return accounts.map((accountId) => ({
+    accountId,
+    deviceIds: results.filter((r) => r.accountId === accountId).map((r) => r.deviceId),
+  }));
+}
+
 /**
  * Sets this device's push token (decision 0025). A token is one device's at
  * a time: registering it here takes it from any other device that had it.
@@ -90,6 +109,22 @@ export async function dropDeadPushToken(
     .prepare("UPDATE devices SET push_token = NULL WHERE device_id = ? AND push_token = ?")
     .bind(deviceId, token)
     .run();
+}
+
+/**
+ * Sets or clears the account's photo version (decision 0039). False when the
+ * account no longer exists.
+ */
+export async function setPhotoVersion(
+  env: Env,
+  accountId: string,
+  version: string | null,
+): Promise<boolean> {
+  const updated = await db(env)
+    .prepare("UPDATE accounts SET photo_version = ? WHERE account_id = ?")
+    .bind(version, accountId)
+    .run();
+  return updated.meta.changes > 0;
 }
 
 /** A fresh random id or token: `prefix` and 32 random bytes, base64url. */

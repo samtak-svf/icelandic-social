@@ -1,6 +1,6 @@
-diff --git a/backend/src/photos.ts b/backend/src/photos.ts
---- a/backend/src/photos.ts
-+++ b/backend/src/photos.ts
+diff --git a/backend/src/modules/profiles/photos.ts b/backend/src/modules/profiles/photos.ts
+--- a/backend/src/modules/profiles/photos.ts
++++ b/backend/src/modules/profiles/photos.ts
 @@ -100,7 +100,7 @@ export async function photoFor(
    const row = await db(env)
      .prepare(

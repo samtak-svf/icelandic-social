@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { RETENTION_MS, type SendInput } from "../src/do/conversation.ts";
+import { RETENTION_MS, type SendInput } from "../src/modules/messaging/do/conversation.ts";
 import { conversation, inbox } from "../src/env/index.ts";
 import { euEnv } from "./support.ts";
 

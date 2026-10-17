@@ -1,4 +1,4 @@
-import { db, mediaBucket } from "./env/index.ts";
+import { db, mediaBucket } from "../../env/index.ts";
 
 // Photos and files as encrypted blobs in R2 (decision 0023). The core
 // encrypts before upload and the key stays inside MLS, so the Worker stores

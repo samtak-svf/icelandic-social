@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } fr
 import { brandStrings } from "../src/brand.gen.ts";
 import { fromBase64, toBase64 } from "../src/bytes.ts";
 import { pushConfig } from "../src/env/index.ts";
-import { apnsPayload } from "../src/push/apns.ts";
-import { fcmMessage } from "../src/push/fcm.ts";
-import { pushSender, sender } from "../src/push/index.ts";
+import { apnsPayload } from "../src/modules/messaging/push/apns.ts";
+import { fcmMessage } from "../src/modules/messaging/push/fcm.ts";
+import { pushSender, sender } from "../src/modules/messaging/push/index.ts";
 import { device } from "./support.ts";
 
 // The FCM and APNs senders (decision 0025): JWTs signed with WebCrypto, a

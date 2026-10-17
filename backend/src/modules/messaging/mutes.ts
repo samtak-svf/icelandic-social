@@ -3,11 +3,11 @@ import {
   listMutesRoute,
   muteConversationRoute,
   unmuteConversationRoute,
-} from "./api/conversations.ts";
-import type { AppEnv } from "./app.ts";
-import { conversation, inbox } from "./env/index.ts";
-import { fail } from "./errors.ts";
-import { log } from "./log.ts";
+} from "../../api/conversations.ts";
+import type { AppEnv } from "../../app.ts";
+import { conversation, inbox } from "../../env/index.ts";
+import { fail } from "../../errors.ts";
+import { log } from "../../log.ts";
 
 // Muting (decision 0042): a mute is the account's, kept in its Inbox, and set
 // or lifted only by a member, as media is (0023). Log lines carry ids only (0008).

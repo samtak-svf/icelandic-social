@@ -4,6 +4,7 @@
 
 export {
   activeDevices,
+  activeDevicesOf,
   clearPushToken,
   type Device,
   deviceForToken,
@@ -17,6 +18,7 @@ export {
   registerDevice,
   revokeAllDevices,
   revokeDevice,
+  setPhotoVersion,
   setPushToken,
 } from "./accounts.ts";
 export { block, blockedByAny, blockersAmong, blockList, UNBLOCKED, unblock } from "./blocks.ts";

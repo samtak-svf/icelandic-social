@@ -1,4 +1,4 @@
-import { base64url, fromBase64 } from "../bytes.ts";
+import { base64url, fromBase64 } from "../../../bytes.ts";
 
 // JSON Web Tokens for the push providers, signed with WebCrypto (decision
 // 0025): RS256 for Google's OAuth token, ES256 for an APNs provider token.

@@ -1,8 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
-import { inbox } from "../env/index.ts";
-import { log } from "../log.ts";
-import { within } from "../within.ts";
-import { copyRoster, dropRoster } from "../profiles.ts";
+import { inbox } from "../../../env/index.ts";
+import { log } from "../../../log.ts";
+import { within } from "../../../within.ts";
+import { copyRoster, dropRoster } from "../rosters.ts";
 import { SCHEMA } from "./conversation-schema.ts";
 
 /** Stored ciphertext and Welcomes are deleted this long after they were stored (decision 0015). */

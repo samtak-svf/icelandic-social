@@ -20,15 +20,15 @@
         "lines": 99,
         "branches": 84
       },
-      "backend/src/conversations.ts": {
+      "backend/src/modules/messaging/conversations.ts": {
         "lines": 96,
         "branches": 97
       },
-      "backend/src/do/conversation.ts": {
+      "backend/src/modules/messaging/do/conversation.ts": {
         "lines": 96,
         "branches": 95
       },
-      "backend/src/do/inbox.ts": {
+      "backend/src/modules/messaging/do/inbox.ts": {
         "lines": 97,
         "branches": 86
       },
@@ -48,11 +48,11 @@
         "lines": 99,
         "branches": 91
       },
-      "backend/src/media.ts": {
+      "backend/src/modules/messaging/media.ts": {
         "lines": 91,
         "branches": 99
       },
-      "backend/src/push/index.ts": {
+      "backend/src/modules/messaging/push/index.ts": {
         "lines": 94,
         "branches": 93
       }
