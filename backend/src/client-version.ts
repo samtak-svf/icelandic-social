@@ -6,7 +6,7 @@ import { minClientVersions } from "./env/index.ts";
 /** `<platform>/<major.minor.patch>`, set by the core on every request. */
 export const CLIENT_HEADER = "spjall-client";
 
-const HEADER = /^(android|ios)\/(\d{1,6}\.\d{1,6}\.\d{1,6})$/;
+const VERSION = /^\d{1,6}\.\d{1,6}\.\d{1,6}$/;
 
 /** The version of every build made before the header existed. */
 const UNNAMED = "0.1.0";
@@ -25,20 +25,28 @@ export type FloorRefusal =
   | { error: "invalid_request" }
   | { error: "client_too_old"; minVersion: string };
 
-/**
- * Why a request with this Spjall-Client may not go on, or null. A request
- * without one is `UNNAMED` on whichever platform's floor is higher.
- */
+/** Why a request with this Spjall-Client may not go on, or null. */
 export function belowFloor(env: Env, header: string | undefined): FloorRefusal | null {
-  const floors = minClientVersions(env);
+  return belowFloorOf(minClientVersions(env), header);
+}
+
+/**
+ * The same against any platforms' floors: a header names one of them, and a
+ * request without one is `UNNAMED` on whichever floor is highest.
+ */
+export function belowFloorOf(
+  floors: Readonly<Record<string, string>>,
+  header: string | undefined,
+): FloorRefusal | null {
   let version = UNNAMED;
-  let floor = compare(floors.android, floors.ios) >= 0 ? floors.android : floors.ios;
+  let floor = Object.values(floors).reduce((a, b) => (compare(a, b) >= 0 ? a : b));
   if (header !== undefined) {
-    const named = HEADER.exec(header);
-    if (!named) return { error: "invalid_request" };
-    const platform = named[1] as keyof typeof floors;
-    version = named[2]!;
-    floor = floors[platform];
+    const slash = header.indexOf("/");
+    const platform = header.slice(0, slash);
+    version = header.slice(slash + 1);
+    if (slash < 0 || !Object.hasOwn(floors, platform) || !VERSION.test(version))
+      return { error: "invalid_request" };
+    floor = floors[platform]!;
   }
   return compare(version, floor) < 0 ? { error: "client_too_old", minVersion: floor } : null;
 }

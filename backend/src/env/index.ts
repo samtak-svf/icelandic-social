@@ -7,6 +7,7 @@
 
 import ids from "../../../identifiers/ids.json" with { type: "json" };
 import { log } from "../log.ts";
+import { PLATFORMS, type Platform } from "../platforms.ts";
 import type { Conversation } from "../do/conversation.ts";
 import type { Inbox } from "../do/inbox.ts";
 import type { ApnsKey } from "../push/apns.ts";
@@ -24,14 +25,11 @@ declare global {
   }
 }
 
-/** The platforms a client build can report; each has its own minimum version. */
-export type Platform = "android" | "ios";
-
+/** Each platform's minimum version, from its `MIN_CLIENT_VERSION_<PLATFORM>` var. */
 export function minClientVersions(env: Env): Record<Platform, string> {
-  return {
-    android: env.MIN_CLIENT_VERSION_ANDROID,
-    ios: env.MIN_CLIENT_VERSION_IOS,
-  };
+  const floor = (platform: Platform) =>
+    env[`MIN_CLIENT_VERSION_${platform.toUpperCase() as Uppercase<Platform>}`];
+  return Object.fromEntries(PLATFORMS.map((p) => [p, floor(p)])) as Record<Platform, string>;
 }
 
 /** D1: accounts, devices, tokens and KeyPackages (decisions 0014, 0017). */

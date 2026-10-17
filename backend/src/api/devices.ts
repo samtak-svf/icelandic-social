@@ -10,6 +10,7 @@ import {
   PhotoVersion,
   RATE_LIMITED,
 } from "./common.ts";
+import { PLATFORMS } from "../platforms.ts";
 
 // Accounts and devices (decision 0014).
 
@@ -50,7 +51,7 @@ const RegisterDevice = z
       deprecated: true,
     }),
     ...authorization,
-    platform: z.enum(["android", "ios"]),
+    platform: z.enum(PLATFORMS),
     deviceKey: base64(32).openapi({
       description: "The device's Ed25519 public key, also its MLS credential key",
     }),
@@ -273,7 +274,7 @@ const Me = z
     devices: z.array(
       z.object({
         deviceId: OpaqueId,
-        platform: z.enum(["android", "ios"]),
+        platform: z.enum(PLATFORMS),
         createdAt: z.int().openapi({ description: "Milliseconds since the epoch" }),
         current: z.boolean().openapi({ description: "The device that asked" }),
       }),

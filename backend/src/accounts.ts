@@ -3,6 +3,7 @@ import { conversation, db, inbox, kennitalaKeys, type ProviderName } from "./env
 import type { Person } from "./identity.ts";
 import { deleteAccountMedia } from "./media.ts";
 import { deleteAccountPhoto } from "./photos.ts";
+import type { Platform } from "./platforms.ts";
 
 // Accounts and devices in D1 (decision 0014).
 
@@ -163,7 +164,7 @@ function holdIdentity(
 }
 
 export type NewDevice = {
-  platform: "android" | "ios";
+  platform: Platform;
   deviceKey: Uint8Array;
   inviteToken: string | undefined;
 };
@@ -402,7 +403,7 @@ export async function me(env: Env, accountId: string) {
     photo: row?.photo ?? null,
     devices: (devices?.results ?? []) as {
       deviceId: string;
-      platform: "android" | "ios";
+      platform: Platform;
       createdAt: number;
     }[],
   };

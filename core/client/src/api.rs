@@ -953,4 +953,39 @@ mod tests {
         );
         assert_eq!(error.request_id(), None);
     }
+
+    /// Every platform the contract names, `api/openapi.json` being generated
+    /// from the backend's one list (backend/src/platforms.ts). The core keeps
+    /// its own enum because the apps pass it over the FFI.
+    #[test]
+    fn the_platforms_are_the_contracts() {
+        fn enums(value: &serde_json::Value, found: &mut Vec<Vec<String>>) {
+            match value {
+                serde_json::Value::Object(map) => {
+                    if let Some(names) = map.get("platform").and_then(|p| p.get("enum")) {
+                        found.push(serde_json::from_value(names.clone()).unwrap());
+                    }
+                    map.values().for_each(|v| enums(v, found));
+                }
+                serde_json::Value::Array(items) => items.iter().for_each(|v| enums(v, found)),
+                _ => {}
+            }
+        }
+        let contract = include_str!("../../../api/openapi.json");
+        let mut found = Vec::new();
+        enums(&serde_json::from_str(contract).unwrap(), &mut found);
+        assert!(!found.is_empty(), "the contract names no platform");
+
+        // A new variant stops this match compiling, the reminder to list it here.
+        let name = |platform: Platform| match platform {
+            Platform::Android | Platform::Ios => serde_json::to_value(platform).unwrap(),
+        };
+        let core: Vec<_> = [Platform::Android, Platform::Ios].map(name).to_vec();
+        for names in found {
+            assert_eq!(
+                serde_json::to_value(&names).unwrap(),
+                serde_json::Value::from(core.clone())
+            );
+        }
+    }
 }
