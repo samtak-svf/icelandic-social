@@ -20,6 +20,9 @@ pub enum NoticeKind {
     /// A post shared under 0040. Its notice is a fixed sentence: it
     /// carries no text, and nothing fetches the post (0044).
     Post,
+    /// A location (0059). Its notice is a fixed sentence: a notice is shown
+    /// on a locked screen, so it never carries the place.
+    Location,
 }
 
 /// A new message to show: from another account, not blocked, not expired,
@@ -33,7 +36,7 @@ pub struct Notice {
     pub seq: u64,
     pub sender: Person,
     pub kind: NoticeKind,
-    /// The text, or a file's caption; none for a shared post.
+    /// The text, or a file's caption; none for a shared post or a location.
     pub text: Option<String>,
     /// When the server stored it (0048), or the sender's clock for a row
     /// stored before the server gave it; in milliseconds.
@@ -66,6 +69,7 @@ fn kind(kind: &str, detail: Option<&str>) -> NoticeKind {
     match kind {
         "text" => return NoticeKind::Text,
         "post" => return NoticeKind::Post,
+        "location" => return NoticeKind::Location,
         _ => {}
     }
     let mime = detail
@@ -104,7 +108,7 @@ fn take_notices(tx: &Transaction) -> Result<Notices, ClientError> {
             let mut statement = tx.prepare(
                 "SELECT seq, kind, sender_account, text, detail, COALESCE(received_at, ts) FROM timeline
                  WHERE group_id = ?1 AND seq > MAX(?2, ?3) AND sender_account != ?4
-                       AND kind IN ('text', 'media', 'post') AND deleted = 0
+                       AND kind IN ('text', 'media', 'post', 'location') AND deleted = 0
                        AND (expires_at IS NULL OR expires_at > ?5)
                        AND sender_account NOT IN (SELECT account FROM blocks)
                  ORDER BY seq",

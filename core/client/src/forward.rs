@@ -18,7 +18,8 @@ impl<T: Transport> Client<T> {
     /// have it yet, and uploaded again. Returns the new envelope id.
     ///
     /// Refused with `CannotForward` for a message under a disappearing
-    /// timer, a deleted one, or anything that is not a text or a file: a
+    /// timer, a deleted one, or anything that is not a text, a file or a
+    /// location (0059): a
     /// shared post is `NotAMessage` (0044).
     pub fn forward(&mut self, from: &str, seq: u64, to: &str) -> Result<String, ClientError> {
         let source = group_id(from).ok_or(ClientError::UnknownConversation)?;
@@ -46,6 +47,19 @@ impl<T: Transport> Client<T> {
                 let file = self.media(from, seq)?;
                 self.upload_and_send(to, &file, &mime, caption, name, true)
             }
+            Forwardable::Location {
+                lat_e6,
+                lon_e6,
+                accuracy,
+            } => self.send(
+                to,
+                Body::Location {
+                    lat_e6,
+                    lon_e6,
+                    accuracy,
+                    forwarded: true,
+                },
+            ),
         }
     }
 }

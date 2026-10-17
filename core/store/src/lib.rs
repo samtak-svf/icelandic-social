@@ -463,7 +463,60 @@ const MIGRATIONS: &[(u32, &str)] = &[
          -- for rows stored before the server gave it.
          ALTER TABLE timeline ADD COLUMN received_at INTEGER;",
     ),
+    (
+        15,
+        // Decision 0059: a location.
+        "-- The timeline again, with `location`: a place sent once, whose
+         -- `detail` holds its envelope body and which has no text. As in 12,
+         -- `reactions` are kept aside from the cascade. Every store has
+         -- `received_at` here: `open` repairs before this runs.
+         CREATE TEMP TABLE reactions_0059 AS SELECT * FROM reactions;
+         CREATE TABLE timeline_0059 (
+             group_id       BLOB NOT NULL
+                            REFERENCES conversations (group_id) ON DELETE CASCADE,
+             seq            INTEGER NOT NULL,
+             kind           TEXT NOT NULL
+                            CHECK (kind IN ('text', 'media', 'members', 'timer', 'post',
+                                            'location')),
+             sender_account TEXT NOT NULL,
+             sender_device  TEXT NOT NULL,
+             envelope_id    TEXT,
+             ts             INTEGER NOT NULL,
+             stored_at      INTEGER NOT NULL,
+             text           TEXT,
+             reply_to       TEXT,
+             detail         TEXT,
+             edited         INTEGER NOT NULL DEFAULT 0 CHECK (edited IN (0, 1)),
+             deleted        INTEGER NOT NULL DEFAULT 0 CHECK (deleted IN (0, 1)),
+             expires_at     INTEGER,
+             received_at    INTEGER,
+             PRIMARY KEY (group_id, seq),
+             CHECK ((envelope_id IS NULL) = (kind IN ('members', 'timer'))),
+             CHECK (deleted = 0 OR (text IS NULL AND reply_to IS NULL AND detail IS NULL)),
+             CHECK (kind NOT IN ('post', 'location') OR text IS NULL)
+         ) STRICT, WITHOUT ROWID;
+         INSERT INTO timeline_0059 (group_id, seq, kind, sender_account, sender_device,
+                                    envelope_id, ts, stored_at, text, reply_to, detail,
+                                    edited, deleted, expires_at, received_at)
+             SELECT group_id, seq, kind, sender_account, sender_device,
+                    envelope_id, ts, stored_at, text, reply_to, detail,
+                    edited, deleted, expires_at, received_at
+             FROM timeline;
+         DROP TABLE timeline;
+         ALTER TABLE timeline_0059 RENAME TO timeline;
+         CREATE INDEX timeline_by_envelope ON timeline (group_id, envelope_id);
+         CREATE INDEX timeline_by_expiry ON timeline (expires_at)
+             WHERE expires_at IS NOT NULL;
+         INSERT INTO reactions (group_id, seq, account, emoji)
+             SELECT group_id, seq, account, emoji FROM reactions_0059;
+         DROP TABLE reactions_0059;",
+    ),
 ];
+
+/// The migrations every store has run before `REPAIRS` apply: from 15 on,
+/// a migration may rely on a repaired column (0059 rebuilds the timeline
+/// with `received_at`, which a store from 0.18's 14 lacks until repaired).
+const BEFORE_REPAIRS: usize = 14;
 
 pub struct Store {
     connection: Connection,
@@ -490,8 +543,9 @@ impl Store {
     pub fn open(dir: &Path, key: &Key) -> rusqlite::Result<Self> {
         let path = dir.join(FILE_NAME);
         let mut connection = connect(&path, key)?;
-        migrate(&mut connection, MIGRATIONS)?;
+        migrate(&mut connection, &MIGRATIONS[..BEFORE_REPAIRS])?;
         repair(&mut connection, REPAIRS)?;
+        migrate(&mut connection, MIGRATIONS)?;
         Ok(Self {
             connection,
             path,
@@ -901,6 +955,54 @@ mod tests {
         assert!(refused(&mut store, &post("'færslan'")));
         assert!(!refused(&mut store, &post("NULL")));
         // The cascade still holds after the rename.
+        store
+            .write(|tx| tx.execute("DELETE FROM timeline WHERE seq = 1", []))
+            .unwrap();
+        let left: u32 = store
+            .connection
+            .query_row("SELECT COUNT(*) FROM reactions", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(left, 0);
+    }
+
+    /// Migration 15 rebuilds the timeline again (0059): rows, their server
+    /// time and their reactions survive it, and a location holds no text.
+    #[test]
+    fn the_location_rebuild_keeps_its_rows_and_reactions() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(FILE_NAME);
+        let mut old = connect(&path, &KEY).unwrap();
+        migrate(&mut old, &MIGRATIONS[..14]).unwrap();
+        old.execute_batch(
+            "INSERT INTO conversations (group_id, cursor, created_at) VALUES (x'01', 2, 0);
+             INSERT INTO timeline (group_id, seq, kind, sender_account, sender_device,
+                                   envelope_id, ts, stored_at, text, received_at)
+                 VALUES (x'01', 1, 'text', 'a', 'a1', 'm1', 1, 1, 'hæ', 5);
+             INSERT INTO reactions VALUES (x'01', 1, 'b', '👍');",
+        )
+        .unwrap();
+        drop(old);
+
+        let mut store = Store::open(dir.path(), &KEY).unwrap();
+        let kept: (String, i64, String) = store
+            .connection
+            .query_row(
+                "SELECT t.text, t.received_at, r.emoji
+                 FROM timeline t JOIN reactions r USING (group_id, seq)",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(kept, ("hæ".into(), 5, "👍".into()));
+        let location = |text: &str| {
+            format!(
+                "INSERT INTO timeline (group_id, seq, kind, sender_account, sender_device,
+                                       envelope_id, ts, stored_at, text, detail)
+                     VALUES (x'01', 2, 'location', 'a', 'a1', 'm2', 1, 1, {text}, '{{}}')"
+            )
+        };
+        assert!(refused(&mut store, &location("'staður'")));
+        assert!(!refused(&mut store, &location("NULL")));
         store
             .write(|tx| tx.execute("DELETE FROM timeline WHERE seq = 1", []))
             .unwrap();

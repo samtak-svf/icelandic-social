@@ -413,6 +413,8 @@ pub enum NoticeKind {
     File,
     /// A post shared under 0040: shown as a fixed sentence, with no text.
     Post,
+    /// A location (0059): a fixed sentence, never the place.
+    Location,
 }
 
 /// A new message to show after a push (0025).
@@ -455,6 +457,7 @@ impl From<core::Notices> for Notices {
                         core::NoticeKind::Photo => NoticeKind::Photo,
                         core::NoticeKind::File => NoticeKind::File,
                         core::NoticeKind::Post => NoticeKind::Post,
+                        core::NoticeKind::Location => NoticeKind::Location,
                     },
                     text: n.text,
                     ts: n.ts,
@@ -564,6 +567,10 @@ pub struct Quote {
     /// then none, and the app draws the quote as the fixed line of 0044.
     #[uniffi(default = None)]
     pub post_id: Option<String>,
+    /// The reply answers a location (0059); `text` is then none, and the
+    /// app draws the quote as "Staðsetning", never the place.
+    #[uniffi(default = false)]
+    pub location: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -594,6 +601,13 @@ pub enum Content {
     /// fetches it: the card, the list's last line and a notice each show
     /// a fixed sentence.
     Post { post_id: String },
+    /// A place sent once (0059). The card draws it from `place_links`, and
+    /// the list's last line and a notice show a fixed sentence.
+    Location {
+        lat_e6: i32,
+        lon_e6: i32,
+        accuracy: Option<u32>,
+    },
     /// A stored row the core cannot decode (0051): the app shows a fixed
     /// sentence and this code, which never holds the row's content.
     Unreadable { code: String },
@@ -610,6 +624,7 @@ impl From<core::Content> for Content {
                     sender: quote.sender.map(Into::into),
                     text: quote.text,
                     post_id: quote.post_id,
+                    location: quote.location,
                 }),
             },
             C::Media {
@@ -635,6 +650,15 @@ impl From<core::Content> for Content {
             },
             C::Timer { seconds } => Self::Timer { seconds },
             C::Post { post_id } => Self::Post { post_id },
+            C::Location {
+                lat_e6,
+                lon_e6,
+                accuracy,
+            } => Self::Location {
+                lat_e6,
+                lon_e6,
+                accuracy,
+            },
             C::Unreadable { code } => Self::Unreadable { code },
         }
     }

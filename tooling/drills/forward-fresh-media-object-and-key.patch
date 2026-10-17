@@ -1,8 +1,7 @@
 diff --git a/core/client/src/forward.rs b/core/client/src/forward.rs
-index dffb470..18c3bcf 100644
 --- a/core/client/src/forward.rs
 +++ b/core/client/src/forward.rs
-@@ -43,8 +43,10 @@ impl<T: Transport> Client<T> {
+@@ -44,8 +44,10 @@
                  caption,
                  name,
              } => {
@@ -13,5 +12,5 @@ index dffb470..18c3bcf 100644
 +                let original = self.history(from, Some(seq + 1), 1)?.remove(0);
 +                self.send(to, original.envelope.body)
              }
-         }
-     }
+             Forwardable::Location {
+                 lat_e6,

@@ -112,6 +112,18 @@ pub enum Body {
         #[serde(default, skip_serializing_if = "is_false")]
         forwarded: bool,
     },
+    /// The place the sender's phone was when they sent it, once (0059).
+    /// WGS 84 degrees times 10⁶, so the envelope never carries a float.
+    Location {
+        lat_e6: i32,
+        lon_e6: i32,
+        /// The fix's radius in whole metres; none when the system gave none.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        accuracy: Option<u32>,
+        /// Forwarded from another conversation (0041). Absent means false.
+        #[serde(default, skip_serializing_if = "is_false")]
+        forwarded: bool,
+    },
     /// A kind this client does not know. Never encoded.
     #[serde(skip)]
     Unknown {
@@ -121,6 +133,12 @@ pub enum Body {
 
 fn is_false(value: &bool) -> bool {
     !*value
+}
+
+/// Whether a `location` names a point on the globe: a latitude within ±90°
+/// and a longitude within ±180°. Nothing out of range is sent or shown (0059).
+pub fn is_place(lat_e6: i32, lon_e6: i32) -> bool {
+    (-90_000_000..=90_000_000).contains(&lat_e6) && (-180_000_000..=180_000_000).contains(&lon_e6)
 }
 
 const KNOWN_KINDS: &[&str] = &[
@@ -134,6 +152,7 @@ const KNOWN_KINDS: &[&str] = &[
     "receipt",
     "typing",
     "post",
+    "location",
 ];
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -260,6 +279,12 @@ mod tests {
             Body::Typing { active: false },
             Body::Post {
                 post_id: String::new(),
+                forwarded: false,
+            },
+            Body::Location {
+                lat_e6: 0,
+                lon_e6: 0,
+                accuracy: None,
                 forwarded: false,
             },
         ];
@@ -395,6 +420,70 @@ mod tests {
         );
     }
 
+    /// A location is two integers and the accuracy; a fix without one, and
+    /// one not forwarded, is written without the field (0059).
+    #[test]
+    fn a_location_is_integer_microdegrees() {
+        let envelope = Envelope {
+            id: "m1".into(),
+            ts: 7,
+            body: Body::Location {
+                lat_e6: 64_141_960,
+                lon_e6: -21_926_570,
+                accuracy: Some(12),
+                forwarded: false,
+            },
+        };
+        let value: Value = serde_json::from_slice(&envelope.encode().unwrap()).unwrap();
+        assert_eq!(
+            value,
+            serde_json::json!({"v": 1, "id": "m1", "ts": 7, "kind": "location",
+                "latE6": 64_141_960, "lonE6": -21_926_570, "accuracy": 12})
+        );
+        let bare = decode_str(r#"{"v":1,"id":"m","ts":1,"kind":"location","latE6":1,"lonE6":2}"#);
+        assert_eq!(
+            bare.unwrap().body,
+            Body::Location {
+                lat_e6: 1,
+                lon_e6: 2,
+                accuracy: None,
+                forwarded: false
+            }
+        );
+        // A float is not a place this format writes: malformed, not rounded.
+        assert!(matches!(
+            decode_str(r#"{"v":1,"id":"m","ts":1,"kind":"location","latE6":1.5,"lonE6":2}"#),
+            Err(EnvelopeError::Malformed(_))
+        ));
+    }
+
+    #[test]
+    fn a_place_is_within_the_globe() {
+        assert!(is_place(90_000_000, -180_000_000));
+        assert!(is_place(-90_000_000, 180_000_000));
+        assert!(!is_place(90_000_001, 0));
+        assert!(!is_place(0, -180_000_001));
+        assert!(!is_place(i32::MIN, 0));
+    }
+
+    /// A reader from before 0059 decodes a location to `Unknown`, which the
+    /// apps skip, never to an error that would stall the conversation.
+    #[test]
+    fn a_reader_before_locations_skips_one() {
+        let older: Vec<&str> = KNOWN_KINDS
+            .iter()
+            .copied()
+            .filter(|k| *k != "location")
+            .collect();
+        let location = br#"{"v":1,"id":"m","ts":1,"kind":"location","latE6":1,"lonE6":2}"#;
+        assert_eq!(
+            Envelope::decode_known(location, &older).unwrap().body,
+            Body::Unknown {
+                kind: "location".into()
+            }
+        );
+    }
+
     /// A reader from before 0040 decodes a share to `Unknown`, which the
     /// apps skip, never to an error that would stall the conversation.
     #[test]
@@ -495,6 +584,18 @@ mod tests {
             s().prop_map(|up_to| Body::Receipt { up_to }),
             any::<bool>().prop_map(|active| Body::Typing { active }),
             (s(), any::<bool>()).prop_map(|(post_id, forwarded)| Body::Post { post_id, forwarded }),
+            (
+                any::<i32>(),
+                any::<i32>(),
+                proptest::option::of(any::<u32>()),
+                any::<bool>()
+            )
+                .prop_map(|(lat_e6, lon_e6, accuracy, forwarded)| Body::Location {
+                    lat_e6,
+                    lon_e6,
+                    accuracy,
+                    forwarded,
+                }),
         ]
     }
 

@@ -27,6 +27,7 @@ mod members;
 mod mute;
 mod notice;
 mod photo;
+pub mod place;
 mod read;
 mod timeline;
 mod view;
@@ -45,7 +46,7 @@ pub use notice::{Notice, NoticeKind, Notices};
 pub use photo::MAX_PHOTO;
 pub use read::Settings;
 use serde::Deserialize;
-use spjall_envelope::{Body, Envelope, EnvelopeError};
+use spjall_envelope::{Body, Envelope, EnvelopeError, is_place};
 use spjall_mls::group::{
     Claimed, Device, Group, GroupError, Identity, Received, generate_device_key, is_commit,
 };
@@ -458,13 +459,17 @@ fn enqueue(tx: &Transaction, group: &[u8], kind: &str, intent: &[u8]) -> Result<
 }
 
 /// Whether a message wakes the other members' devices (0025): a new text,
-/// reply, file or shared post does; a receipt, reaction, edit, delete or
+/// reply, file, shared post or location does; a receipt, reaction, edit, delete or
 /// timer does not.
 fn urgent(intent: &[u8]) -> bool {
     Envelope::decode(intent).is_ok_and(|e| {
         matches!(
             e.body,
-            Body::Text { .. } | Body::Reply { .. } | Body::Media { .. } | Body::Post { .. }
+            Body::Text { .. }
+                | Body::Reply { .. }
+                | Body::Media { .. }
+                | Body::Post { .. }
+                | Body::Location { .. }
         )
     })
 }
@@ -942,6 +947,9 @@ impl<T: Transport> Client<T> {
         }
         if matches!(&body, Body::Post { post_id, .. } if !is_id(post_id)) {
             return Err(ClientError::Invalid("post id"));
+        }
+        if matches!(body, Body::Location { lat_e6, lon_e6, .. } if !is_place(lat_e6, lon_e6)) {
+            return Err(ClientError::Invalid("a place off the globe"));
         }
         let group = group_id(conversation).ok_or(ClientError::UnknownConversation)?;
         let envelope = Envelope {

@@ -165,6 +165,13 @@ pub enum Body {
     Post {
         post_id: String,
     },
+    /// A place sent once (0059), in WGS 84 microdegrees, and the fix's
+    /// radius in metres when the system gave one.
+    Location {
+        lat_e6: i32,
+        lon_e6: i32,
+        accuracy: Option<u32>,
+    },
     /// A kind this client does not know; the app skips it.
     Unknown {
         kind: String,
@@ -212,6 +219,16 @@ impl From<envelope::Body> for Body {
             B::Typing { active } => Self::Typing { active },
             // The forward mark reaches the apps on `Item`, as for text.
             B::Post { post_id, .. } => Self::Post { post_id },
+            B::Location {
+                lat_e6,
+                lon_e6,
+                accuracy,
+                ..
+            } => Self::Location {
+                lat_e6,
+                lon_e6,
+                accuracy,
+            },
             B::Unknown { kind } => Self::Unknown { kind },
         }
     }
@@ -263,6 +280,16 @@ impl From<Body> for envelope::Body {
                 post_id,
                 forwarded: false,
             },
+            B::Location {
+                lat_e6,
+                lon_e6,
+                accuracy,
+            } => Self::Location {
+                lat_e6,
+                lon_e6,
+                accuracy,
+                forwarded: false,
+            },
             B::Unknown { kind } => Self::Unknown { kind },
         }
     }
@@ -275,6 +302,43 @@ pub fn core_version() -> String {
 }
 
 /// The highest envelope version this core reads and the one it writes.
+/// What the apps need to draw a location and open it (0059).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PlaceLinks {
+    /// map.is at a pin on the place; none outside Iceland and its waters,
+    /// where the card opens the map app directly.
+    pub map_is: Option<String>,
+    /// A `geo:` URI for Android's map app.
+    pub geo: String,
+    /// An Apple Maps link for iOS.
+    pub apple_maps: String,
+    /// What copy puts on the clipboard: `64.141960, -21.926570`.
+    pub copy: String,
+    /// The latitude's distance from the equator, `64,14196`; `north` says
+    /// which side, so the brand's sentence names it.
+    pub latitude: String,
+    pub north: bool,
+    /// The longitude's distance from Greenwich, as `latitude`.
+    pub longitude: String,
+    pub east: bool,
+}
+
+/// The links and numbers for a location's place. Nothing is fetched.
+#[uniffi::export]
+pub fn place_links(lat_e6: i32, lon_e6: i32) -> PlaceLinks {
+    let links = spjall_client::place::links(lat_e6, lon_e6);
+    PlaceLinks {
+        map_is: links.map_is,
+        geo: links.geo,
+        apple_maps: links.apple_maps,
+        copy: links.copy,
+        latitude: links.latitude,
+        north: links.north,
+        longitude: links.longitude,
+        east: links.east,
+    }
+}
+
 #[uniffi::export]
 pub fn envelope_version() -> u32 {
     envelope::VERSION
@@ -443,6 +507,11 @@ mod tests {
             Body::Post {
                 post_id: "p_1".into(),
             },
+            Body::Location {
+                lat_e6: 64_141_960,
+                lon_e6: -21_926_570,
+                accuracy: Some(12),
+            },
         ]
     }
 
@@ -504,7 +573,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().to_string_lossy().into_owned();
         let store = CoreStore::open(path.clone(), vec![1; 32]).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 14);
+        assert_eq!(store.schema_version().unwrap(), 15);
         drop(store);
         assert!(matches!(
             CoreStore::open(path.clone(), vec![2; 32]),

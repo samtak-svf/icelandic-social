@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use spjall_envelope::{Body, Envelope};
+use spjall_envelope::{Body, Envelope, is_place};
 use spjall_mls::group::Device;
 use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 
@@ -38,6 +38,9 @@ pub struct Quote {
     /// The post, when the quoted message is a shared post (0040); its
     /// `text` is then none, and the app draws the fixed line of 0044.
     pub post_id: Option<String>,
+    /// The quoted message is a location (0059); its `text` is none, and the
+    /// app draws "Staðsetning", never the place.
+    pub location: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -68,6 +71,13 @@ pub enum Content {
     /// A post shared here under 0040: only its id. Since 0044 the post is
     /// gone and nothing fetches it; the app shows a fixed line.
     Post { post_id: String },
+    /// A place sent once (0059), in WGS 84 microdegrees, and the fix's
+    /// radius in metres when the system gave one.
+    Location {
+        lat_e6: i32,
+        lon_e6: i32,
+        accuracy: Option<u32>,
+    },
     /// A stored row this core cannot decode (0051), with its code from the
     /// vocabulary of 0049. It keeps the row's place; nothing of its content
     /// is shown.
@@ -146,6 +156,11 @@ pub(crate) enum Forwardable {
         mime: String,
         caption: Option<String>,
         name: Option<String>,
+    },
+    Location {
+        lat_e6: i32,
+        lon_e6: i32,
+        accuracy: Option<u32>,
     },
 }
 
@@ -302,17 +317,29 @@ pub(crate) fn fold(
             insert(tx, group, seq, message("post", None, None, Some(detail)))?;
             vec![seq]
         }
+        // A place off the globe is skipped as an unknown kind is (0059).
+        Body::Location { lat_e6, lon_e6, .. } if !is_place(*lat_e6, *lon_e6) => return Ok(None),
+        body @ Body::Location { .. } => {
+            let detail = serde_json::to_string(body).expect("a body serializes");
+            insert(
+                tx,
+                group,
+                seq,
+                message("location", None, None, Some(detail)),
+            )?;
+            vec![seq]
+        }
         Body::Edit { target, text } => {
             let Some(t) = own_target(tx, group, &sender.account, target)? else {
                 return Ok(None);
             };
-            // A share has no text of its own to edit (0040).
+            // A share has no text of its own to edit (0040), nor a place (0059).
             let kind: String = tx.query_row(
                 "SELECT kind FROM timeline WHERE group_id = ?1 AND seq = ?2",
                 params![group, t as i64],
                 |r| r.get(0),
             )?;
-            if kind == "post" {
+            if kind == "post" || kind == "location" {
                 return Ok(None);
             }
             tx.execute(
@@ -414,7 +441,11 @@ pub(crate) fn fold(
     if sender.account == me
         && matches!(
             envelope.body,
-            Body::Text { .. } | Body::Reply { .. } | Body::Media { .. } | Body::Post { .. }
+            Body::Text { .. }
+                | Body::Reply { .. }
+                | Body::Media { .. }
+                | Body::Post { .. }
+                | Body::Location { .. }
         )
     {
         advance(tx, group, me, seq)?;
@@ -643,12 +674,15 @@ fn stored(
                     false
                 }
             },
-            ("media" | "post", Some(d)) => matches!(
+            ("media" | "post" | "location", Some(d)) => matches!(
                 serde_json::from_str(d),
                 Ok(Body::Media {
                     forwarded: true,
                     ..
                 } | Body::Post {
+                    forwarded: true,
+                    ..
+                } | Body::Location {
                     forwarded: true,
                     ..
                 })
@@ -675,6 +709,19 @@ fn stored(
                 "post" => match detail.as_deref().map(serde_json::from_str::<Body>) {
                     Some(Ok(Body::Post { post_id, .. })) => Content::Post { post_id },
                     _ => Content::unreadable("a stored post row"),
+                },
+                "location" => match detail.as_deref().map(serde_json::from_str::<Body>) {
+                    Some(Ok(Body::Location {
+                        lat_e6,
+                        lon_e6,
+                        accuracy,
+                        ..
+                    })) => Content::Location {
+                        lat_e6,
+                        lon_e6,
+                        accuracy,
+                    },
+                    _ => Content::unreadable("a stored location row"),
                 },
                 "members" => match detail
                     .as_deref()
@@ -753,6 +800,7 @@ fn quote(
             sender: None,
             text: None,
             post_id: None,
+            location: false,
         });
     };
     let post_id = match (kind.as_str(), detail.as_deref().map(serde_json::from_str)) {
@@ -764,6 +812,7 @@ fn quote(
         sender: Some(people.get(&sender)?),
         text,
         post_id,
+        location: kind == "location",
     })
 }
 
@@ -854,6 +903,9 @@ fn pending(
             } | Body::Post {
                 forwarded: true,
                 ..
+            } | Body::Location {
+                forwarded: true,
+                ..
             }
         );
         let content = match envelope.body {
@@ -878,6 +930,16 @@ fn pending(
                 name: name.as_deref().and_then(file_name),
             },
             Body::Post { post_id, .. } => Content::Post { post_id },
+            Body::Location {
+                lat_e6,
+                lon_e6,
+                accuracy,
+                ..
+            } => Content::Location {
+                lat_e6,
+                lon_e6,
+                accuracy,
+            },
             // Edits, deletes, reactions and receipts show once they are back.
             _ => continue,
         };
@@ -943,6 +1005,19 @@ pub(crate) fn forwardable(
                 name: name.as_deref().and_then(file_name),
             }),
             _ => Err(ClientError::Protocol("a stored media row")),
+        },
+        "location" => match detail.as_deref().map(serde_json::from_str::<Body>) {
+            Some(Ok(Body::Location {
+                lat_e6,
+                lon_e6,
+                accuracy,
+                ..
+            })) => Ok(Forwardable::Location {
+                lat_e6,
+                lon_e6,
+                accuracy,
+            }),
+            _ => Err(ClientError::Protocol("a stored location row")),
         },
         _ => Err(ClientError::CannotForward(Unforwardable::NotAMessage)),
     }
@@ -1040,6 +1115,7 @@ mod tests {
             ("text", "{", "protocol/a stored text row"),
             ("media", "{", "protocol/a stored media row"),
             ("post", "{", "protocol/a stored post row"),
+            ("location", "{", "protocol/a stored location row"),
             ("members", "{", "protocol/a stored card"),
             ("timer", "{", "protocol/a stored card"),
         ] {
@@ -1235,6 +1311,22 @@ mod tests {
             .try_write(|tx| crate::read::unread(tx, GROUP, "a"))
             .unwrap();
         assert_eq!(unread, 0);
+    }
+
+    /// A place off the globe from another client is skipped as an unknown
+    /// kind is: no row, and the conversation goes on (0059).
+    #[test]
+    fn a_location_off_the_globe_is_skipped() {
+        let mut fold = Fold::new();
+        let off = Body::Location {
+            lat_e6: 90_000_001,
+            lon_e6: 0,
+            accuracy: None,
+            forwarded: false,
+        };
+        assert_eq!(fold.apply(("b", "b1"), "l", off), None);
+        assert_eq!(fold.apply(("b", "b1"), "m", text("eftir")), Some(vec![2]));
+        assert_eq!(fold.items().len(), 1);
     }
 
     /// A share is a row of its own with only the post's id; an edit has no
