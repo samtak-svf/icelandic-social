@@ -25,6 +25,7 @@ import { listMessagesRoute, sendMessageRoute } from "./api/messages.ts";
 import { SOCKET_ACCOUNT, SOCKET_DEVICE, socketRoute } from "./api/socket.ts";
 import { fromBase64, toBase64 } from "./bytes.ts";
 import { belowFloor, CLIENT_HEADER } from "./client-version.ts";
+import { guards, registerSchemes } from "./credentials.ts";
 import { fail, failed, requestId } from "./errors.ts";
 import {
   conversation,
@@ -41,7 +42,6 @@ import {
   claim,
   clearPushToken,
   type Device,
-  deviceForToken,
   inviteRoutes,
   linkHost,
   linkIdentity,
@@ -49,12 +49,13 @@ import {
   ownsLeaf,
   registerDevice,
   revokeDevice,
+  type Session,
   setPushToken,
   signInConfig,
   unavailable,
   upload,
 } from "./identity/index.ts";
-import { log, timed } from "./log.ts";
+import { log } from "./log.ts";
 import {
   checkSend,
   getMedia,
@@ -70,19 +71,15 @@ export const DOCUMENT_INFO = {
   info: { title: "spjall-api", version: "0.1.0" },
 } as const;
 
-const BEARER = /^Bearer ([A-Za-z0-9_-]{16,256})$/;
-
 /**
- * What every handler sees: the bindings, the device a token resolved to, and
- * the request's id (decision 0037).
+ * What every handler sees: the bindings, the session the request acts in,
+ * the device a token resolved to on a route that takes one, and the
+ * request's id (decision 0037).
  */
-export type AppEnv = { Bindings: Env; Variables: { device: Device; requestId: string } };
-
-/** The /v1 routes a person reaches before they have a device (decision 0019). */
-const PUBLIC = [/^GET \/v1\/sign-in$/, /^POST \/v1\/devices$/, /^GET \/v1\/invites\/[^/]+$/];
-
-const isPublic = (c: { req: { method: string; path: string } }) =>
-  PUBLIC.some((pattern) => pattern.test(`${c.req.method} ${c.req.path}`));
+export type AppEnv = {
+  Bindings: Env;
+  Variables: { session: Session; device: Device; requestId: string };
+};
 
 /** Every /v1 route refuses a build below its platform's floor (decision 0030). */
 const clientFloor = createMiddleware<AppEnv>(async (c, next) => {
@@ -91,34 +88,6 @@ const clientFloor = createMiddleware<AppEnv>(async (c, next) => {
   return refusal.error === "invalid_request"
     ? fail(c, 400, refusal.error)
     : fail(c, 426, refusal.error, { minVersion: refusal.minVersion });
-});
-
-/**
- * The public routes are limited per address. Cloudflare sets
- * cf-connecting-ip on every request it serves; only workerd on its own, in
- * tests and `cf dev`, leaves it out, and those are not limited.
- */
-const publicLimit = createMiddleware<AppEnv>(async (c, next) => {
-  const address = c.req.header("cf-connecting-ip");
-  if (!isPublic(c) || !address) return next();
-  if (await withinLimit(c.env, "public", address)) return next();
-  log("request.rate_limited", { code: "public", requestId: c.var.requestId });
-  return fail(c, 429, "rate_limited");
-});
-
-/**
- * Every other /v1 route needs a device token (decision 0014): its hash must
- * name an active device in D1, which the handlers then act as. Its time is
- * logged: every authenticated request pays it first (decision 0056).
- */
-const deviceToken = createMiddleware<AppEnv>(async (c, next) => {
-  if (isPublic(c)) return next();
-  const token = BEARER.exec(c.req.header("authorization") ?? "")?.[1];
-  const checked = token && timed("auth.token_checked", c.var, () => deviceForToken(c.env, token));
-  const device = checked ? await checked : null;
-  if (!device) return fail(c, 401, "unauthorized");
-  c.set("device", device);
-  return next();
 });
 
 export function createApp() {
@@ -130,15 +99,12 @@ export function createApp() {
   app.onError(failed);
   app.notFound((c) => fail(c, 404, "not_found"));
 
-  app.openAPIRegistry.registerComponent("securitySchemes", "deviceToken", {
-    type: "http",
-    scheme: "bearer",
-    description: "The device token from registerDevice (decision 0014)",
-  });
+  registerSchemes(app);
+  const { publicLimit, credentials } = guards(app);
   app.use("*", requestId);
   app.use("/v1/*", clientFloor);
   app.use("/v1/*", publicLimit);
-  app.use("/v1/*", deviceToken);
+  app.use("/v1/*", credentials);
 
   app.openapi(healthRoute, (c) =>
     c.json({ status: "ok" as const, minClientVersion: minClientVersions(c.env) }, 200),
@@ -181,8 +147,8 @@ export function createApp() {
       log("sign_in.failed", { code: registered.error, requestId: c.var.requestId });
       return fail(c, 409, registered.error);
     }
-    const { accountId, deviceId } = registered.ok;
-    log("device.registered", { accountId, deviceId, provider: person.ok.provider });
+    const { accountId, deviceId, sessionId } = registered.ok;
+    log("device.registered", { accountId, deviceId, sessionId, provider: person.ok.provider });
     return c.json(registered.ok, 200);
   });
 
@@ -218,7 +184,8 @@ export function createApp() {
   });
 
   app.openapi(getMeRoute, async (c) => {
-    const { accountId, deviceId } = c.var.device;
+    const { accountId } = c.var.session;
+    const deviceId = c.var.device?.deviceId;
     const account = await me(c.env, accountId);
     const devices = account.devices.map((d) => ({ ...d, current: d.deviceId === deviceId }));
     const { name, verified, photo } = account;
@@ -229,7 +196,7 @@ export function createApp() {
 
   // Decision 0014: in the contract now, built in phase 1.
   app.openapi(revokeDeviceRoute, async (c) => {
-    const { accountId } = c.var.device;
+    const { accountId } = c.var.session;
     const { deviceId } = c.req.valid("param");
     if (!(await revokeDevice(c.env, accountId, deviceId))) {
       return fail(c, 404, "not_found");
@@ -262,7 +229,7 @@ export function createApp() {
   });
 
   app.openapi(deleteAccountRoute, async (c) => {
-    const { accountId } = c.var.device;
+    const { accountId } = c.var.session;
     await deleteAccount(c.env, accountId);
     log("account.deleted", { accountId });
     return c.body(null, 204);

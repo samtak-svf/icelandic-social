@@ -38,6 +38,7 @@ export const OWNERS = {
   // A device's KeyPackages live and die with it: revoking, merging and
   // deleting drop them in the device's own batch (decisions 0019, 0029).
   key_packages: "identity",
+  sessions: "identity",
   conversation_members: "messaging",
   conversation_rosters: "messaging",
   media: "messaging",

@@ -2,6 +2,7 @@ import { base64url } from "../bytes.ts";
 import { db, kennitalaKeys, type ProviderName } from "../env/index.ts";
 import type { Person } from "./providers.ts";
 import type { Platform } from "../platforms.ts";
+import { phoneSession } from "./sessions.ts";
 
 // Accounts and devices in D1 (decision 0014).
 
@@ -12,17 +13,6 @@ export type Device = { accountId: string; deviceId: string };
 export async function tokenHash(token: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-/** The active device that holds this token, or null. */
-export async function deviceForToken(env: Env, token: string): Promise<Device | null> {
-  return db(env)
-    .prepare(
-      `SELECT account_id AS accountId, device_id AS deviceId
-         FROM devices WHERE token_hash = ? AND revoked_at IS NULL`,
-    )
-    .bind(await tokenHash(token))
-    .first<Device>();
 }
 
 /** The ids of an account's devices that are not revoked. */
@@ -241,7 +231,8 @@ export async function registerDevice(
   person: Person,
   device: NewDevice,
 ): Promise<
-  { ok: { accountId: string; deviceId: string; token: string } } | { error: "device_key_taken" }
+  | { ok: { accountId: string; deviceId: string; sessionId: string; token: string } }
+  | { error: "device_key_taken" }
 > {
   const taken = await db(env)
     .prepare("SELECT 1 FROM devices WHERE device_key = ?")
@@ -254,21 +245,25 @@ export async function registerDevice(
   const token = randomToken("dt_");
   const hash = await tokenHash(token);
   const now = Date.now();
-  const insertDevice = (accountId: string) =>
+  // The sign-in's session and its device, one for the other (decision 0061).
+  const sessionId = randomToken("s_");
+  const insertDevice = (accountId: string) => [
+    phoneSession(env, { sessionId, accountId, kind: device.platform }, now),
     db(env)
       .prepare(
-        `INSERT INTO devices (device_id, account_id, platform, device_key, token_hash, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO devices (device_id, account_id, platform, device_key, token_hash, created_at, session_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
-      .bind(deviceId, accountId, device.platform, device.deviceKey, hash, now);
+      .bind(deviceId, accountId, device.platform, device.deviceKey, hash, now, sessionId),
+  ];
 
   const known = await holder(env, person.provider, hmacs);
   if (known) {
     await db(env).batch([
       ...holdIdentity(env, known.accountId, person.provider, hmacs, now),
-      insertDevice(known.accountId),
+      ...insertDevice(known.accountId),
     ]);
-    return { ok: { accountId: known.accountId, deviceId, token } };
+    return { ok: { accountId: known.accountId, deviceId, sessionId, token } };
   }
 
   // One transaction: the account, its identity and its device. The identity's
@@ -292,15 +287,15 @@ export async function registerDevice(
         )
         .bind(now, invite),
       ...holdIdentity(env, accountId, person.provider, hmacs, now, ""),
-      insertDevice(accountId),
+      ...insertDevice(accountId),
     ]);
   } catch (error) {
     const raced = await holder(env, person.provider, hmacs);
     if (!raced) throw error;
-    await insertDevice(raced.accountId).run();
-    return { ok: { accountId: raced.accountId, deviceId, token } };
+    await db(env).batch(insertDevice(raced.accountId));
+    return { ok: { accountId: raced.accountId, deviceId, sessionId, token } };
   }
-  return { ok: { accountId, deviceId, token } };
+  return { ok: { accountId, deviceId, sessionId, token } };
 }
 
 /** What linking did: the account the calling device now belongs to. */

@@ -98,7 +98,7 @@ async function photoFor(env: Env, viewer: string, owner: string): Promise<R2Obje
 
 export function photoRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(putPhotoRoute, async (c) => {
-    const { accountId } = c.var.device;
+    const { accountId } = c.var.session;
     const body = c.req.raw.body;
     // A refusal cancels the body, so the client stops sending it.
     const refuse = async <T>(answer: T) => (await body?.cancel(), answer);
@@ -124,7 +124,7 @@ export function photoRoutes(app: OpenAPIHono<AppEnv>): void {
   });
 
   app.openapi(deletePhotoRoute, async (c) => {
-    const { accountId } = c.var.device;
+    const { accountId } = c.var.session;
     await removePhoto(c.env, accountId);
     log("photo.removed", { accountId });
     return c.body(null, 204);
@@ -132,7 +132,7 @@ export function photoRoutes(app: OpenAPIHono<AppEnv>): void {
 
   app.openapi(getPhotoRoute, async (c) => {
     const owner = c.req.valid("param").accountId;
-    const object = await photoFor(c.env, c.var.device.accountId, owner);
+    const object = await photoFor(c.env, c.var.session.accountId, owner);
     if (!object) return fail(c, 404, "not_found");
     return c.body(object.body, 200, {
       "content-type": "image/webp",

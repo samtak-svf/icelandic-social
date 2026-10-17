@@ -1,5 +1,6 @@
 import { createRoute, z } from "@hono/zod-openapi";
 import {
+  ACCOUNT,
   AUTHED,
   TOO_OLD,
   base64,
@@ -7,6 +8,7 @@ import {
   errorResponse,
   INVALID,
   OpaqueId,
+  PUBLIC,
   PhotoVersion,
   RATE_LIMITED,
 } from "./common.ts";
@@ -66,6 +68,9 @@ const RegisteredDevice = z
   .object({
     accountId: OpaqueId,
     deviceId: OpaqueId,
+    sessionId: OpaqueId.openapi({
+      description: "The session this sign-in made; ending it revokes the device (decision 0061)",
+    }),
     token: z.string().openapi({ description: "The device token, shown once; send it as Bearer" }),
   })
   .openapi("RegisteredDevice");
@@ -74,6 +79,7 @@ export const registerDeviceRoute = createRoute({
   method: "post",
   path: "/v1/devices",
   operationId: "registerDevice",
+  security: PUBLIC,
   tags: ["devices"],
   summary: "Sign in with Google or Kenni and register this device",
   description:
@@ -112,6 +118,7 @@ export const signInConfigRoute = createRoute({
   method: "get",
   path: "/v1/sign-in",
   operationId: "getSignInConfig",
+  security: PUBLIC,
   tags: ["devices"],
   summary: "Where the app sends a person to sign in (decisions 0019, 0033)",
   request: {
@@ -188,7 +195,7 @@ export const revokeDeviceRoute = createRoute({
   summary: "Revoke a device of this account and its token",
   description:
     "The token fails at once, the device's KeyPackages are deleted, and its socket closes with 4401. A device may revoke itself; that is signing out (decision 0019). Revoking a device already revoked does it again, so a revoke that failed part way can be retried.",
-  security: DEVICE_TOKEN,
+  security: ACCOUNT,
   request: { params: z.object({ deviceId: OpaqueId }) },
   responses: {
     204: { description: "The device is revoked, or already was" },
@@ -259,7 +266,7 @@ export const deleteAccountRoute = createRoute({
   summary: "Delete this account, its devices, inbox and media (decision 0014)",
   description:
     "Every token is revoked, each conversation drops the account from its roster, the inbox is deleted and the sockets close with 4401, then the account's rows go, with its invites (decision 0019).",
-  security: DEVICE_TOKEN,
+  security: ACCOUNT,
   responses: { 204: { description: "The account is deleted" }, ...AUTHED },
 });
 
@@ -288,7 +295,7 @@ export const getMeRoute = createRoute({
   operationId: "getMe",
   tags: ["devices"],
   summary: "This account: its name, its mark and its active devices",
-  security: DEVICE_TOKEN,
+  security: ACCOUNT,
   responses: {
     200: { description: "The account", content: { "application/json": { schema: Me } } },
     ...AUTHED,

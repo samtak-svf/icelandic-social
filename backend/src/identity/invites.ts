@@ -73,14 +73,14 @@ export async function resolveInvite(env: Env, token: string): Promise<Invite | n
 
 export function inviteRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(rotateInviteRoute, async (c) => {
-    const token = await rotateInvite(c.env, c.var.device.accountId);
-    log("invite.rotated", { accountId: c.var.device.accountId });
+    const token = await rotateInvite(c.env, c.var.session.accountId);
+    log("invite.rotated", { accountId: c.var.session.accountId });
     return c.json({ token, link: inviteLink(token) }, 200);
   });
 
   app.openapi(revokeInviteRoute, async (c) => {
-    await revokeInvite(c.env, c.var.device.accountId);
-    log("invite.revoked", { accountId: c.var.device.accountId });
+    await revokeInvite(c.env, c.var.session.accountId);
+    log("invite.revoked", { accountId: c.var.session.accountId });
     return c.body(null, 204);
   });
 

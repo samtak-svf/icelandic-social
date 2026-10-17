@@ -17,7 +17,7 @@ import { decodeDirectoryCursor, directory, profile } from "./profiles.ts";
 
 export function accountRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(getAccountRoute, async (c) => {
-    const found = await profile(c.env, c.var.device.accountId, c.req.valid("param").accountId);
+    const found = await profile(c.env, c.var.session.accountId, c.req.valid("param").accountId);
     return found ? c.json(found, 200) : fail(c, 404, "not_found");
   });
 
@@ -26,7 +26,7 @@ export function accountRoutes(app: OpenAPIHono<AppEnv>): void {
     const { q, after, limit } = c.req.valid("query");
     const cursor = after === undefined ? undefined : decodeDirectoryCursor(after);
     if (cursor === null) return fail(c, 400, "invalid_request");
-    const found = await directory(c.env, c.var.device.accountId, {
+    const found = await directory(c.env, c.var.session.accountId, {
       query: q,
       after: cursor,
       limit,
@@ -35,11 +35,11 @@ export function accountRoutes(app: OpenAPIHono<AppEnv>): void {
   });
 
   app.openapi(listBlocksRoute, async (c) =>
-    c.json({ blocked: await blockList(c.env, c.var.device.accountId) }, 200),
+    c.json({ blocked: await blockList(c.env, c.var.session.accountId) }, 200),
   );
 
   app.openapi(blockRoute, async (c) => {
-    const { accountId } = c.var.device;
+    const { accountId } = c.var.session;
     const target = c.req.valid("param").accountId;
     if (target === accountId) return fail(c, 400, "invalid_request");
     if (!(await block(c.env, accountId, target))) return fail(c, 404, "not_found");
@@ -48,7 +48,7 @@ export function accountRoutes(app: OpenAPIHono<AppEnv>): void {
   });
 
   app.openapi(unblockRoute, async (c) => {
-    const { accountId } = c.var.device;
+    const { accountId } = c.var.session;
     await unblock(c.env, accountId, c.req.valid("param").accountId);
     log("account.unblocked", { accountId });
     return c.body(null, 204);

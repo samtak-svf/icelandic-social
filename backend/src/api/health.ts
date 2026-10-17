@@ -1,5 +1,6 @@
 import { createRoute, z } from "@hono/zod-openapi";
 import { PLATFORMS } from "../platforms.ts";
+import { PUBLIC } from "./common.ts";
 
 const Version = z
   .string()
@@ -23,6 +24,7 @@ export const healthRoute = createRoute({
   method: "get",
   path: "/health",
   operationId: "getHealth",
+  security: PUBLIC,
   tags: ["meta"],
   summary: "Liveness and the minimum client version per platform",
   responses: {

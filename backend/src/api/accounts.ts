@@ -1,7 +1,7 @@
 import { createRoute, z } from "@hono/zod-openapi";
 import {
   AUTHED,
-  DEVICE_TOKEN,
+  ACCOUNT,
   errorResponse,
   INVALID,
   OpaqueId,
@@ -55,7 +55,7 @@ export const getAccountRoute = createRoute({
   operationId: "getAccount",
   tags: ["accounts"],
   summary: "The name, mark and photo version of any account (decisions 0034, 0039)",
-  security: DEVICE_TOKEN,
+  security: ACCOUNT,
   request: { params: account },
   responses: {
     200: { description: "The account", content: { "application/json": { schema: Profile } } },
@@ -76,7 +76,7 @@ export const listPeopleRoute = createRoute({
     "blocked and those that blocked it. `q` keeps the names it starts, or a word in which it " +
     "starts after a space or a hyphen (decision 0038), compared without case or the " +
     "Icelandic letters (ð as d, þ as th, æ as ae, ö as o, no accents).",
-  security: DEVICE_TOKEN,
+  security: ACCOUNT,
   request: {
     query: z.object({
       q: z
@@ -103,7 +103,7 @@ export const listBlocksRoute = createRoute({
   operationId: "listBlocks",
   tags: ["blocks"],
   summary: "The accounts this account has blocked",
-  security: DEVICE_TOKEN,
+  security: ACCOUNT,
   responses: {
     200: { description: "The list", content: { "application/json": { schema: BlockList } } },
     ...AUTHED,
@@ -116,7 +116,7 @@ export const blockRoute = createRoute({
   operationId: "blockAccount",
   tags: ["blocks"],
   summary: "Block an account: it can no longer claim this account's KeyPackages or add it",
-  security: DEVICE_TOKEN,
+  security: ACCOUNT,
   request: { params: account },
   responses: {
     204: { description: "Blocked; blocking again is no error" },
@@ -132,7 +132,7 @@ export const unblockRoute = createRoute({
   operationId: "unblockAccount",
   tags: ["blocks"],
   summary: "Lift a block",
-  security: DEVICE_TOKEN,
+  security: ACCOUNT,
   request: { params: account },
   responses: {
     204: { description: "Not blocked, whether it was or not" },
@@ -161,7 +161,7 @@ export const putPhotoRoute = createRoute({
     "Content-Length. The server re-encodes it to a 512 by 512 WebP without metadata and keeps " +
     "only that; the photo it replaces is gone. Every signed-in account sees it, less those " +
     "a block keeps it from. It is not end-to-end encrypted.",
-  security: DEVICE_TOKEN,
+  security: ACCOUNT,
   request: {
     body: { required: true, content: { "application/octet-stream": { schema: Binary } } },
   },
@@ -183,7 +183,7 @@ export const deletePhotoRoute = createRoute({
   operationId: "removePhoto",
   tags: ["accounts"],
   summary: "Remove this account's profile photo (decision 0039)",
-  security: DEVICE_TOKEN,
+  security: ACCOUNT,
   responses: {
     204: { description: "No photo, whether there was one or not" },
     ...AUTHED,
@@ -196,7 +196,7 @@ export const getPhotoRoute = createRoute({
   operationId: "getPhoto",
   tags: ["accounts"],
   summary: "An account's profile photo, a 512 by 512 WebP (decision 0039)",
-  security: DEVICE_TOKEN,
+  security: ACCOUNT,
   request: { params: account },
   responses: {
     200: { description: "The photo", content: { "image/webp": { schema: Binary } } },

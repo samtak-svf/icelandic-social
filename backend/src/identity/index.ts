@@ -1,13 +1,12 @@
-// Identity: accounts, the sign-in identities and devices that reach them,
-// invites, blocks and each device's KeyPackages (decisions 0014, 0019, 0024,
-// 0029, 0033). The tables it owns are written only here.
+// Identity: accounts, the sign-in identities, sessions and devices that
+// reach them, invites, blocks and each device's KeyPackages (decisions 0014,
+// 0019, 0024, 0029, 0033, 0061). The tables it owns are written only here.
 
 export {
   activeDevices,
   activeDevicesOf,
   clearPushToken,
   type Device,
-  deviceForToken,
   dropAccount,
   dropDeadPushToken,
   linkIdentity,
@@ -25,4 +24,12 @@ export { block, blockedByAny, blockersAmong, blockList, UNBLOCKED, unblock } fro
 export { inviteRoutes } from "./invites.ts";
 export { claim, expireKeyPackages, ownsLeaf, upload } from "./key-packages.ts";
 export { linkHost } from "./link.ts";
+export {
+  deviceForToken,
+  type Session,
+  SESSION_COOKIE,
+  SESSION_SECRET,
+  sessionCookie,
+  sessionForSecret,
+} from "./sessions.ts";
 export { authorized, signInConfig, unavailable } from "./providers.ts";

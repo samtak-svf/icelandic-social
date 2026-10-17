@@ -1,7 +1,8 @@
 import { createRoute, z } from "@hono/zod-openapi";
 import {
   AUTHED,
-  DEVICE_TOKEN,
+  ACCOUNT,
+  PUBLIC,
   errorResponse,
   INVALID,
   OpaqueId,
@@ -52,7 +53,7 @@ export const rotateInviteRoute = createRoute({
   operationId: "rotateInvite",
   tags: ["invites"],
   summary: "Make this account's invite link, revoking the one before",
-  security: DEVICE_TOKEN,
+  security: ACCOUNT,
   responses: {
     200: {
       description: "The new link; the old one no longer lets anyone in",
@@ -68,7 +69,7 @@ export const revokeInviteRoute = createRoute({
   operationId: "revokeInvite",
   tags: ["invites"],
   summary: "Revoke this account's invite link and leave it without one",
-  security: DEVICE_TOKEN,
+  security: ACCOUNT,
   responses: { 204: { description: "The account has no live invite" }, ...AUTHED },
 });
 
@@ -76,6 +77,7 @@ export const resolveInviteRoute = createRoute({
   method: "get",
   path: "/v1/invites/{token}",
   operationId: "resolveInvite",
+  security: PUBLIC,
   tags: ["invites"],
   summary: "Who sent an invite link; needs no device token, the token is the capability",
   request: { params: z.object({ token: InviteToken }) },

@@ -8,6 +8,8 @@
 type Fields = {
   accountId: string;
   deviceId: string;
+  /** A session's opaque id (decision 0061). */
+  sessionId: string;
   conversationId: string;
   postId: string;
   seq: number;
@@ -27,6 +29,7 @@ type Fields = {
 const ALLOWED: ReadonlySet<string> = new Set<keyof Fields>([
   "accountId",
   "deviceId",
+  "sessionId",
   "conversationId",
   "postId",
   "seq",

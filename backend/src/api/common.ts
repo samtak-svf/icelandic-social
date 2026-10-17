@@ -24,7 +24,7 @@ export const ApiError = z
   .object({
     error: z.string().openapi({
       description:
-        "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, internal_error",
+        "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, internal_error",
       example: "unauthorized",
     }),
     requestId: z.string().openapi({
@@ -51,9 +51,9 @@ export const TOO_OLD = {
   ),
 };
 
-/** The answers every route that needs a device token can give. */
+/** The answers every route that needs a device token or a session can give. */
 export const AUTHED = {
-  401: error("No device token, or one that is not valid"),
+  401: error("No device token or session the route takes, or one that is not valid"),
   ...TOO_OLD,
 };
 
@@ -88,5 +88,16 @@ export const PhotoVersion = OpaqueId.nullable().openapi({
     "The profile photo's version, changed by each upload; null when there is none to show (decision 0039)",
 });
 
-/** The security requirement for a route that needs a device token (decision 0014). */
-export const DEVICE_TOKEN = [{ deviceToken: [] }];
+// Every route declares the credentials it takes (decision 0061), and the
+// Worker accepts no other: test/sessions.test.ts fails on a route without one.
+
+type Security = Record<string, string[]>[];
+
+/** A route that needs a device token (decision 0014): messaging, KeyPackages, the socket. */
+export const DEVICE_TOKEN: Security = [{ deviceToken: [] }];
+
+/** A route that takes a device token or a browser's session: the account, profiles, blocks. */
+export const ACCOUNT: Security = [{ deviceToken: [] }, { session: [] }];
+
+/** A route reached before signing in. */
+export const PUBLIC: Security = [];
