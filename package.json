@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "prepare": "lefthook install",
-    "check": "pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run check:ids && pnpm run check:critical-rules && pnpm run check:drills && pnpm run check:quarantine && pnpm run check:brand && pnpm run check:brand-gen && pnpm run check:brand-leak && pnpm run check:thankastrik && pnpm run check:pii && pnpm run check:seams && pnpm run check:jurisdiction && pnpm run check:core && pnpm run check:ws-kotlin && pnpm run check:workflows && pnpm run knip",
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run check:ids && pnpm run check:critical-rules && pnpm run check:drills && pnpm run check:quarantine && pnpm run check:brand && pnpm run check:brand-gen && pnpm run check:brand-leak && pnpm run check:thankastrik && pnpm run check:pii && pnpm run check:seams && pnpm run check:modules && pnpm run check:jurisdiction && pnpm run check:core && pnpm run check:ws-kotlin && pnpm run check:workflows && pnpm run knip",
     "lint": "oxlint",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "format": "oxfmt --write .",
@@ -22,6 +22,7 @@
     "check:thankastrik": "node tooling/thankastrik.mjs",
     "check:pii": "node tooling/pii-guard.mjs",
     "check:seams": "node tooling/seam-guard.mjs",
+    "check:modules": "node tooling/module-guard.mjs",
     "check:jurisdiction": "node tooling/jurisdiction-check.mjs",
     "check:core": "node tooling/core-guard.mjs && node tooling/migrations-freeze.mjs",
     "check:ws-kotlin": "node tooling/ws-kotlin.mjs --check",

@@ -90,6 +90,10 @@ pre-push:
     seams:
       run: node tooling/seam-guard.mjs
 
+    # A module is imported through its index.ts and writes only its own tables.
+    modules:
+      run: node tooling/module-guard.mjs
+
     jurisdiction:
       run: node tooling/jurisdiction-check.mjs
 

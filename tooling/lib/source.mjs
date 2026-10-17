@@ -22,6 +22,23 @@ export function stripCommentsAndStrings(source) {
 }
 
 /**
+ * The string literals of a source, each with its offset, comments skipped.
+ *
+ * @param {string} source
+ * @returns {{ text: string, offset: number }[]}
+ */
+export function stringsOf(source) {
+  /** @type {{ text: string, offset: number }[]} */
+  const found = [];
+  rewrite(source, (span) => {
+    if (span.kind === "string")
+      found.push({ text: span.text, offset: span.next - span.text.length });
+    return "";
+  });
+  return found;
+}
+
+/**
  * @param {string} source
  * @param {(span: Span) => string} replace
  */
