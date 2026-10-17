@@ -1,6 +1,6 @@
 # 0009. The first release is chat only, for a closed test group
 
-- Status: accepted; amended by 0033, 0034, 0036, 0039, 0040, 0041, 0042 and 0044
+- Status: accepted; amended by 0033, 0034, 0036, 0039, 0040, 0041, 0042, 0044, 0046 and 0059
 - Date: 2026-10-05
 - Decided by: Guðröður (the scope questions); the implementation choices below follow from them
 - Amended by: [0033](0033-google-sign-in-and-kenni-verification.md) (the invite is no longer the beta gate),
@@ -11,7 +11,8 @@
   [0041](0041-forward-a-message.md) (forward a message),
   [0042](0042-mute-a-conversation.md) (mute a conversation),
   [0044](0044-no-fljotid-in-v1.md) (Fljótið and the wall leave v1; two tabs again),
-  [0046](0046-copy-a-message-and-open-its-links.md) (copy a message, open its links)
+  [0046](0046-copy-a-message-and-open-its-links.md) (copy a message, open its links),
+  [0059](0059-send-a-location.md) (a location, sent once and opened on map.is or a map app)
 - Built on by: [0022](0022-the-conversation-surfaces.md) (the list, the conversation, the
   toggles), [0023](0023-media-as-encrypted-blobs.md) (photos and files),
   [0024](0024-block.md) (block)
@@ -26,6 +27,7 @@ scope. The first release (v1) contains:
 | Messaging         | 1:1 and small MLS groups, text, photos and files, read markers, typing indicators |
 |                   | A Fljótið post shared into a conversation, by its id (0040)                       |
 |                   | Mute a conversation for 1 hour, 8 hours or until turned back on (0042)            |
+|                   | The current place, sent once and opened on map.is or a map app (0059)             |
 | Message actions   | Reply, edit, delete for everyone, reactions, disappearing messages                |
 |                   | Forward, as a fresh copy marked "Áframsent" (0041)                                |
 |                   | Copy a text, and open its web links on a tap (0046)                               |
