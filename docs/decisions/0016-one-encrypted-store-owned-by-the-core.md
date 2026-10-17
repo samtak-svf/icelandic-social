@@ -3,6 +3,7 @@
 - Status: accepted
 - Date: 2026-10-06
 - Decided by: Guðröður, approving the plan that acted on the phase-0 review
+- Amended by: [0064](0064-non-phone-devices-are-linked-devices.md) (in a browser: SQLite3 Multiple Ciphers in OPFS, a two-part key)
 - Supersedes: 0006's "Room / GRDB" and its separate file lock; 0004's two database files
 
 ## Decision

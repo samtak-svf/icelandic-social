@@ -4,6 +4,7 @@
 - Date: 2026-10-05
 - Decided by: Guðröður (plan), recorded at phase 0
 - Amended by: [0016](0016-one-encrypted-store-owned-by-the-core.md) (one SQLCipher store owned by the core replaces Room / GRDB and the file lock)
+- Amended by: [0064](0064-non-phone-devices-are-linked-devices.md) (a linked device may receive history from the phone that approved it)
 - Built on by: [0018](0018-the-client-engine-in-the-core.md) (plaintext is stored in the transaction that decrypted it),
   [0021](0021-group-info-and-external-join.md) (a new device joins by external commit, and members are told of it)
 
