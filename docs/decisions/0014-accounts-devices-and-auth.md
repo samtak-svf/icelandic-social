@@ -4,12 +4,13 @@
   an account ends are in [0019](0019-sign-in-and-invites.md), which also defers the admin
   list. Welcomes travel with their commit through the `Conversation` DO
   ([0017](0017-conversations-on-the-server.md)); the `Inbox` holds the device list, the
-  sockets and the delivery cursors.
+  sockets and the delivery cursors. Amended by 0061.
 - Date: 2026-10-06
 - Decided by: Guðröður, approving the plan that acted on the phase-0 review
 - Amended by: [0028](0028-removing-a-device-from-its-groups.md) (who removes a deleted account's leaves),
   [0033](0033-google-sign-in-and-kenni-verification.md) (an account is created by Google or Kenni, without an invite),
-  [0035](0035-google-only-sign-in-and-merge-on-kenni.md) (a device moves with its token when linking Kenni joins two accounts)
+  [0035](0035-google-only-sign-in-and-merge-on-kenni.md) (a device moves with its token when linking Kenni joins two accounts),
+  [0061](0061-account-identity-session-and-device-are-separate.md) (a session per sign-in; a browser signs in without a device)
 
 ## Decision
 
