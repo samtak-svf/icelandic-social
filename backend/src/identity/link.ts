@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import ids from "../../identifiers/ids.json" with { type: "json" };
-import { brandStrings } from "./brand.gen.ts";
-import { appLinks } from "./env/index.ts";
+import ids from "../../../identifiers/ids.json" with { type: "json" };
+import { brandStrings } from "../brand.gen.ts";
+import { appLinks } from "../env/index.ts";
 import { type Invite, resolveInvite } from "./invites.ts";
 
 // The link host (decision 0019): the page an invite link opens in a browser,

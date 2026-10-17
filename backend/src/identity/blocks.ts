@@ -1,4 +1,4 @@
-import { db } from "./env/index.ts";
+import { db } from "../env/index.ts";
 
 // Block (decision 0024): one account blocking another. The server refuses
 // new contact from the blocked account; the blocker's core does the rest.

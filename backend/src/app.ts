@@ -1,16 +1,6 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { createMiddleware } from "hono/factory";
-import {
-  type Device,
-  deleteAccount,
-  deviceForToken,
-  clearPushToken,
-  linkIdentity,
-  me,
-  registerDevice,
-  revokeDevice,
-  setPushToken,
-} from "./accounts.ts";
+import { deleteAccount } from "./account-deletion.ts";
 import {
   createConversationRoute,
   getConversationDevicesRoute,
@@ -29,12 +19,10 @@ import {
 } from "./api/devices.ts";
 import { WsFrame } from "./api/frames.ts";
 import { healthRoute } from "./api/health.ts";
-import { resolveInviteRoute, revokeInviteRoute, rotateInviteRoute } from "./api/invites.ts";
 import { claimKeyPackagesRoute, uploadKeyPackagesRoute } from "./api/key-packages.ts";
 import { getMediaRoute, putMediaRoute } from "./api/media.ts";
 import { listMessagesRoute, sendMessageRoute } from "./api/messages.ts";
 import { SOCKET_ACCOUNT, SOCKET_DEVICE, socketRoute } from "./api/socket.ts";
-import { blockedByAny, blockersAmong } from "./blocks.ts";
 import { fromBase64, toBase64 } from "./bytes.ts";
 import { belowFloor, CLIENT_HEADER } from "./client-version.ts";
 import { checkSend } from "./conversations.ts";
@@ -46,11 +34,27 @@ import {
   minClientVersions,
   withinLimit,
 } from "./env/index.ts";
-import { authorized, signInConfig, unavailable } from "./identity.ts";
-import { inviteLink, resolveInvite, revokeInvite, rotateInvite } from "./invites.ts";
-import { claim, ownsLeaf, upload } from "./key-packages.ts";
+import {
+  authorized,
+  blockedByAny,
+  blockersAmong,
+  claim,
+  clearPushToken,
+  type Device,
+  deviceForToken,
+  inviteRoutes,
+  linkHost,
+  linkIdentity,
+  me,
+  ownsLeaf,
+  registerDevice,
+  revokeDevice,
+  setPushToken,
+  signInConfig,
+  unavailable,
+  upload,
+} from "./identity/index.ts";
 import { accountRoutes } from "./people.ts";
-import { linkHost } from "./link.ts";
 import { log, timed } from "./log.ts";
 import { getMedia, MAX_CIPHERTEXT, putMedia } from "./media.ts";
 import { muteRoutes } from "./mutes.ts";
@@ -198,6 +202,8 @@ export function createApp() {
       });
       return fail(c, 409, linked.error);
     }
+    // A join leaves the calling account empty; it goes as DELETE /v1/me (0035).
+    if (linked.ok.merged) await deleteAccount(c.env, accountId);
     const into = { accountId: linked.ok.accountId, deviceId: c.var.device.deviceId };
     if (linked.ok.merged) log("account.merged_away", { accountId });
     log(linked.ok.merged ? "identity.merged" : "identity.linked", {
@@ -216,23 +222,7 @@ export function createApp() {
     return c.json({ accountId, name, verified, photo, devices }, 200);
   });
 
-  // Invites (decision 0019).
-  app.openapi(rotateInviteRoute, async (c) => {
-    const token = await rotateInvite(c.env, c.var.device.accountId);
-    log("invite.rotated", { accountId: c.var.device.accountId });
-    return c.json({ token, link: inviteLink(token) }, 200);
-  });
-
-  app.openapi(revokeInviteRoute, async (c) => {
-    await revokeInvite(c.env, c.var.device.accountId);
-    log("invite.revoked", { accountId: c.var.device.accountId });
-    return c.body(null, 204);
-  });
-
-  app.openapi(resolveInviteRoute, async (c) => {
-    const invite = await resolveInvite(c.env, c.req.valid("param").token);
-    return invite ? c.json(invite, 200) : fail(c, 404, "not_found");
-  });
+  inviteRoutes(app);
 
   // Decision 0014: in the contract now, built in phase 1.
   app.openapi(revokeDeviceRoute, async (c) => {

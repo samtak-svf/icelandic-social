@@ -2,8 +2,8 @@
 // and dev/worker.ts. Nothing here touches Node or a binding, so the dev Worker
 // can bundle it.
 
-import { randomToken, tokenHash } from "../src/accounts.ts";
-import { inviteLink } from "../src/invites.ts";
+import { randomToken, tokenHash } from "../src/identity/accounts.ts";
+import { inviteLink } from "../src/identity/invites.ts";
 
 /** Where `cf dev --mode interop` writes an operator invite into its local D1. */
 export const OPERATOR_INVITE_PATH = "/dev/operator-invite";

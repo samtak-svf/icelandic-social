@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { activeDevices } from "../accounts.ts";
+import { activeDevices } from "../identity/index.ts";
 import { WsFrame } from "../api/frames.ts";
 import { SOCKET_ACCOUNT, SOCKET_DEVICE } from "../api/socket.ts";
 import { conversation } from "../env/index.ts";

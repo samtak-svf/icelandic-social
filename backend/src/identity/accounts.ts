@@ -1,9 +1,7 @@
-import { base64url } from "./bytes.ts";
-import { conversation, db, inbox, kennitalaKeys, type ProviderName } from "./env/index.ts";
-import type { Person } from "./identity.ts";
-import { deleteAccountMedia } from "./media.ts";
-import { deleteAccountPhoto } from "./photos.ts";
-import type { Platform } from "./platforms.ts";
+import { base64url } from "../bytes.ts";
+import { db, kennitalaKeys, type ProviderName } from "../env/index.ts";
+import type { Person } from "./providers.ts";
+import type { Platform } from "../platforms.ts";
 
 // Accounts and devices in D1 (decision 0014).
 
@@ -65,6 +63,32 @@ export async function clearPushToken(env: Env, deviceId: string): Promise<void> 
   await db(env)
     .prepare("UPDATE devices SET push_token = NULL, push_sandbox = 0 WHERE device_id = ?")
     .bind(deviceId)
+    .run();
+}
+
+/** Where a push to a device goes: its platform and token, if it has one. */
+export type PushTarget = { platform: string; token: string | null; sandbox: number };
+
+/** The push target of a device that is not revoked. */
+export function pushTarget(database: D1Database, deviceId: string): Promise<PushTarget | null> {
+  return database
+    .prepare(
+      `SELECT platform, push_token AS token, push_sandbox AS sandbox
+         FROM devices WHERE device_id = ? AND revoked_at IS NULL`,
+    )
+    .bind(deviceId)
+    .first<PushTarget>();
+}
+
+/** Clears a token a provider called dead, unless the device has a new one by now. */
+export async function dropDeadPushToken(
+  database: D1Database,
+  deviceId: string,
+  token: string,
+): Promise<void> {
+  await database
+    .prepare("UPDATE devices SET push_token = NULL WHERE device_id = ? AND push_token = ?")
+    .bind(deviceId, token)
     .run();
 }
 
@@ -327,9 +351,9 @@ async function mergeable(env: Env, from: string, into: string, provider: Provide
 /**
  * Joins the calling account into `into` (decision 0035). One transaction
  * moves the Google identity, the calling device with its token, and the
- * blocks; then the calling account is deleted
- * as DELETE /v1/me deletes one. If that fails part way, the account is left
- * without an identity, and the daily cron finishes it (`deleteOrphans`).
+ * blocks; the caller then deletes the calling account as DELETE /v1/me
+ * deletes one. If that fails part way, the account is left without an
+ * identity, and the daily cron finishes it (`deleteOrphans`).
  */
 async function mergeInto(
   env: Env,
@@ -359,15 +383,14 @@ async function mergeInto(
     ...holdIdentity(env, into, person.provider, hmacs, Date.now()),
     ...verify(env, into, person),
   ]);
-  await deleteAccount(env, from);
 }
 
 /**
- * Deletes the accounts that hold no identity, which no sign-in can reach: a
- * join whose deletion failed part way (decision 0035). Every account is made
- * with an identity in one transaction, and none loses its last otherwise.
+ * The accounts that hold no identity, which no sign-in can reach: a join
+ * whose deletion failed part way (decision 0035). Every account is made with
+ * an identity in one transaction, and none loses its last otherwise.
  */
-export async function deleteOrphans(env: Env): Promise<number> {
+export async function orphans(env: Env): Promise<string[]> {
   const { results } = await db(env)
     .prepare(
       `SELECT account_id AS accountId FROM accounts a
@@ -375,8 +398,7 @@ export async function deleteOrphans(env: Env): Promise<number> {
           AND a.kennitala_hmac IS NULL`,
     )
     .all<{ accountId: string }>();
-  for (const { accountId } of results) await deleteAccount(env, accountId);
-  return results.length;
+  return results.map((r) => r.accountId);
 }
 
 /** The account as its owner sees it: name, mark, photo version and active devices. */
@@ -439,31 +461,22 @@ export async function revokeDevice(
 }
 
 /**
- * Deletes an account in decision 0014's order (0019 spells it out). The
- * tokens die first, so nothing acts as the account while the rest goes. A
- * failure part way leaves an account with no devices; signing in again lands
- * on it, and a second delete finishes the job.
+ * The first step of deleting an account (`deleteAccount`): its tokens die, so
+ * nothing acts as the account while the rest goes.
  */
-export async function deleteAccount(env: Env, accountId: string): Promise<void> {
+export async function revokeAllDevices(env: Env, accountId: string): Promise<void> {
   await db(env)
     .prepare(
       "UPDATE devices SET revoked_at = ?, push_token = NULL WHERE account_id = ? AND revoked_at IS NULL",
     )
     .bind(Date.now(), accountId)
     .run();
-  const box = inbox(env, accountId);
-  // The inbox lists a conversation only once something was stored in it;
-  // the roster copy also has those it was added to and never heard from.
-  const { results: copied } = await db(env)
-    .prepare("SELECT conversation_id AS id FROM conversation_members WHERE account_id = ?")
-    .bind(accountId)
-    .all<{ id: string }>();
-  const conversations = new Set([...Object.keys(await box.latest()), ...copied.map((r) => r.id)]);
-  await Promise.all([...conversations].map((id) => conversation(env, id).removeAccount(accountId)));
-  await box.wipe();
-  await deleteAccountMedia(env, accountId);
-  await deleteAccountPhoto(env, accountId);
-  // Devices, KeyPackages, invites, roster copies and blocks cascade;
-  // invited_by elsewhere goes null.
+}
+
+/**
+ * The last step of deleting an account. Devices, KeyPackages, invites, roster
+ * copies and blocks cascade; invited_by elsewhere goes null.
+ */
+export async function dropAccount(env: Env, accountId: string): Promise<void> {
   await db(env).prepare("DELETE FROM accounts WHERE account_id = ?").bind(accountId).run();
 }

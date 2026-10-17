@@ -1,6 +1,11 @@
-import ids from "../../identifiers/ids.json" with { type: "json" };
+import type { OpenAPIHono } from "@hono/zod-openapi";
+import ids from "../../../identifiers/ids.json" with { type: "json" };
+import { resolveInviteRoute, revokeInviteRoute, rotateInviteRoute } from "../api/invites.ts";
+import type { AppEnv } from "../app.ts";
+import { db } from "../env/index.ts";
+import { fail } from "../errors.ts";
+import { log } from "../log.ts";
 import { randomToken, tokenHash } from "./accounts.ts";
-import { db } from "./env/index.ts";
 
 // Invites (decisions 0009, 0019). D1 keeps only a token's hash, so a link can
 // be shown once, when it is made, and never again.
@@ -14,7 +19,7 @@ export function inviteLink(token: string): string {
  * A new personal invite for the account. Its old one, if any, is revoked in
  * the same batch, so the account never has two live links.
  */
-export async function rotateInvite(env: Env, accountId: string): Promise<string> {
+async function rotateInvite(env: Env, accountId: string): Promise<string> {
   const token = randomToken("");
   const now = Date.now();
   await db(env).batch([
@@ -33,7 +38,7 @@ export async function rotateInvite(env: Env, accountId: string): Promise<string>
 }
 
 /** Revokes the account's personal invite; it then has none. */
-export async function revokeInvite(env: Env, accountId: string): Promise<void> {
+async function revokeInvite(env: Env, accountId: string): Promise<void> {
   await db(env)
     .prepare(
       "UPDATE invites SET revoked_at = ? WHERE inviter_account_id = ? AND revoked_at IS NULL",
@@ -64,4 +69,23 @@ export async function resolveInvite(env: Env, token: string): Promise<Invite | n
         ? null
         : { accountId: row.inviter, name: row.name, verified: row.verified === 1 },
   };
+}
+
+export function inviteRoutes(app: OpenAPIHono<AppEnv>): void {
+  app.openapi(rotateInviteRoute, async (c) => {
+    const token = await rotateInvite(c.env, c.var.device.accountId);
+    log("invite.rotated", { accountId: c.var.device.accountId });
+    return c.json({ token, link: inviteLink(token) }, 200);
+  });
+
+  app.openapi(revokeInviteRoute, async (c) => {
+    await revokeInvite(c.env, c.var.device.accountId);
+    log("invite.revoked", { accountId: c.var.device.accountId });
+    return c.body(null, 204);
+  });
+
+  app.openapi(resolveInviteRoute, async (c) => {
+    const invite = await resolveInvite(c.env, c.req.valid("param").token);
+    return invite ? c.json(invite, 200) : fail(c, 404, "not_found");
+  });
 }

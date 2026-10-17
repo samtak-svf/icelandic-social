@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../src/api/common.ts";
-import { expireKeyPackages } from "../src/key-packages.ts";
+import { expireKeyPackages } from "../src/identity/key-packages.ts";
 import { device, revoke } from "./support.ts";
 import { hexBytes, mls } from "./mls.ts";
 import { worker } from "./main.ts";

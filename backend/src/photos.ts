@@ -7,7 +7,7 @@ import {
   putPhotoRoute,
 } from "./api/accounts.ts";
 import type { AppEnv } from "./app.ts";
-import { UNBLOCKED } from "./blocks.ts";
+import { UNBLOCKED } from "./identity/index.ts";
 import { db, images, profilesBucket, withinLimit } from "./env/index.ts";
 import { fail } from "./errors.ts";
 import { log } from "./log.ts";

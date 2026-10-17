@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { randomToken, tokenHash } from "../src/accounts.ts";
+import { randomToken, tokenHash } from "../src/identity/accounts.ts";
 import { base64url, toBase64 } from "../src/bytes.ts";
 import { worker } from "./main.ts";
 

@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { registerDevice } from "../src/accounts.ts";
+import { registerDevice } from "../src/identity/accounts.ts";
 import { ApiError } from "../src/api/common.ts";
 import { fromBase64, toBase64 } from "../src/bytes.ts";
 import { authorize, invite, newKennitala, registerWith, signIn } from "./oidc.ts";

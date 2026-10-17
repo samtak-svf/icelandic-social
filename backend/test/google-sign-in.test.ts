@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import ids from "../../identifiers/ids.json" with { type: "json" };
 import { ApiError } from "../src/api/common.ts";
-import { deleteOrphans } from "../src/accounts.ts";
+import { deleteOrphans } from "../src/account-deletion.ts";
 import { createApp } from "../src/app.ts";
 import { CLIENT_HEADER } from "../src/client-version.ts";
 import { google } from "../src/env/index.ts";

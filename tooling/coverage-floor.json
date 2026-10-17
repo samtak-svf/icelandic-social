@@ -4,7 +4,7 @@
     "summary": "coverage/backend/coverage-summary.json",
     "format": "istanbul",
     "modules": {
-      "backend/src/accounts.ts": {
+      "backend/src/identity/accounts.ts": {
         "lines": 89,
         "branches": 79
       },
@@ -12,7 +12,7 @@
         "lines": 96,
         "branches": 93
       },
-      "backend/src/blocks.ts": {
+      "backend/src/identity/blocks.ts": {
         "lines": 99,
         "branches": 99
       },
@@ -36,11 +36,11 @@
         "lines": 81,
         "branches": 56
       },
-      "backend/src/identity.ts": {
+      "backend/src/identity/providers.ts": {
         "lines": 93,
         "branches": 81
       },
-      "backend/src/key-packages.ts": {
+      "backend/src/identity/key-packages.ts": {
         "lines": 97,
         "branches": 86
       },

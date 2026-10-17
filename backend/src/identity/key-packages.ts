@@ -1,7 +1,7 @@
 import type { Device } from "./accounts.ts";
-import { fromBase64 } from "./bytes.ts";
-import { db } from "./env/index.ts";
-import { FramingError, type Leaf, readFraming } from "./mls/framing.ts";
+import { fromBase64 } from "../bytes.ts";
+import { db } from "../env/index.ts";
+import { FramingError, type Leaf, readFraming } from "../mls/framing.ts";
 
 // KeyPackages in D1 (decisions 0002, 0017): a device uploads them, and a
 // member who adds its account to a group claims one per active device. A

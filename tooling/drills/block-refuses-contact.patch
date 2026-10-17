@@ -1,6 +1,6 @@
-diff --git a/backend/src/blocks.ts b/backend/src/blocks.ts
---- a/backend/src/blocks.ts
-+++ b/backend/src/blocks.ts
+diff --git a/backend/src/identity/blocks.ts b/backend/src/identity/blocks.ts
+--- a/backend/src/identity/blocks.ts
++++ b/backend/src/identity/blocks.ts
 @@ -66,7 +66,7 @@
  ): Promise<string[]> {
    const { results } = await db(env)

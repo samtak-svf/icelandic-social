@@ -1,7 +1,7 @@
-import { deleteOrphans } from "./accounts.ts";
+import { deleteOrphans } from "./account-deletion.ts";
 import { createApp } from "./app.ts";
 import { log } from "./log.ts";
-import { expireKeyPackages } from "./key-packages.ts";
+import { expireKeyPackages } from "./identity/index.ts";
 import { expireMedia } from "./media.ts";
 
 export { Conversation } from "./do/conversation.ts";

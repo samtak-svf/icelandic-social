@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { tokenHash } from "../src/accounts.ts";
+import { tokenHash } from "../src/identity/accounts.ts";
 import { mls } from "./mls.ts";
 
 // Shared by the tests: the EU check for Durable Object stubs, and seeded

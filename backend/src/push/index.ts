@@ -1,4 +1,5 @@
 import { db, type PushConfig, pushConfig } from "../env/index.ts";
+import { dropDeadPushToken, type PushTarget, pushTarget } from "../identity/index.ts";
 import { log } from "../log.ts";
 import { type ApnsKey, sendApns } from "./apns.ts";
 import { type FcmAccount, sendFcm } from "./fcm.ts";
@@ -30,11 +31,9 @@ export function pushSender(env: Env): PushSender {
   return sender(config, db(env));
 }
 
-type Target = { platform: string; token: string | null; sandbox: number };
-
 /** Sends to the device's own token, FCM for Android and APNs for iOS. */
 export function sender(config: PushConfig, database: D1Database): PushSender {
-  const send = (target: Target & { token: string }, fcm?: FcmAccount, apns?: ApnsKey) => {
+  const send = (target: PushTarget & { token: string }, fcm?: FcmAccount, apns?: ApnsKey) => {
     if (target.platform === "android" && fcm) return sendFcm(fcm, target.token, config.fetch);
     if (target.platform === "ios" && apns) {
       return sendApns(apns, target.token, target.sandbox === 1, config.fetch);
@@ -43,13 +42,7 @@ export function sender(config: PushConfig, database: D1Database): PushSender {
   };
   return {
     async send({ deviceId }) {
-      const target = await database
-        .prepare(
-          `SELECT platform, push_token AS token, push_sandbox AS sandbox
-             FROM devices WHERE device_id = ? AND revoked_at IS NULL`,
-        )
-        .bind(deviceId)
-        .first<Target>();
+      const target = await pushTarget(database, deviceId);
       if (!target?.token) {
         log("push.no_token", { deviceId });
         return;
@@ -60,10 +53,7 @@ export function sender(config: PushConfig, database: D1Database): PushSender {
         return;
       }
       if (outcome.result === "dead") {
-        await database
-          .prepare("UPDATE devices SET push_token = NULL WHERE device_id = ? AND push_token = ?")
-          .bind(deviceId, target.token)
-          .run();
+        await dropDeadPushToken(database, deviceId, target.token);
       }
       log(`push.${outcome.result}`, { deviceId, status: outcome.status });
     },

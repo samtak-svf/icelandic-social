@@ -7,7 +7,7 @@ import {
   unblockRoute,
 } from "./api/accounts.ts";
 import type { AppEnv } from "./app.ts";
-import { block, blockList, unblock } from "./blocks.ts";
+import { block, blockList, unblock } from "./identity/index.ts";
 import { fail } from "./errors.ts";
 import { log } from "./log.ts";
 import { decodeDirectoryCursor, directory, profile } from "./profiles.ts";

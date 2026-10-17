@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { deleteAccount } from "../src/accounts.ts";
+import { deleteAccount } from "../src/account-deletion.ts";
 import { ApiError } from "../src/api/common.ts";
 import { device, euEnv } from "./support.ts";
 import { worker } from "./main.ts";

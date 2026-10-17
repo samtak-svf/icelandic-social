@@ -1,6 +1,6 @@
 import { base64url } from "./bytes.ts";
 import { db } from "./env/index.ts";
-import { UNBLOCKED } from "./blocks.ts";
+import { UNBLOCKED } from "./identity/index.ts";
 
 // Names of other accounts (decisions 0022, 0034), the directory of people
 // (decision 0036), and the copy of each conversation's roster in D1. The
