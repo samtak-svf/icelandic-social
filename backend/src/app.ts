@@ -54,6 +54,7 @@ import {
   signInConfig,
   unavailable,
   upload,
+  webSignInRoutes,
 } from "./identity/index.ts";
 import { log } from "./log.ts";
 import {
@@ -434,6 +435,7 @@ export function createApp() {
 
   // The link host shares the Worker but not the contract.
   app.route("/", linkHost());
+  app.route("/", webSignInRoutes());
 
   return app;
 }

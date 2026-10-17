@@ -250,6 +250,22 @@ async function redeem(
 export const unavailable = (name: ProviderName) =>
   name === "kenni" ? ("kenni_unavailable" as const) : ("google_unavailable" as const);
 
+type Authorized =
+  | { ok: Person }
+  | { error: "sign_in_failed" | "kenni_unavailable" | "google_unavailable" };
+
+/** A redemption's outcome as a route answers it, the failure logged by its code. */
+function outcome(
+  name: ProviderName,
+  person: { ok: Person } | { error: SignInFailure },
+): Authorized {
+  if ("ok" in person) return person;
+  log("sign_in.failed", { code: person.error, provider: name });
+  return person.error === "discovery_failed"
+    ? { error: unavailable(name) }
+    : { error: "sign_in_failed" };
+}
+
 /**
  * Redeems a browser sign-in's code at its provider and checks the ID token
  * (decisions 0019, 0033): the person it names, or why not. Only the
@@ -265,9 +281,7 @@ export async function authorized(
     redirectUri: string;
     nonce: string;
   },
-): Promise<
-  { ok: Person } | { error: "sign_in_failed" | "kenni_unavailable" | "google_unavailable" }
-> {
+): Promise<Authorized> {
   const idp = identityProvider(env, body.provider);
   if (!idp) return { error: unavailable(body.provider) };
   if (body.redirectUri !== idp.redirectUri) return { error: "sign_in_failed" };
@@ -277,9 +291,37 @@ export async function authorized(
     redirectUri: body.redirectUri,
     nonce: body.nonce,
   });
-  if ("ok" in person) return person;
-  log("sign_in.failed", { code: person.error, provider: body.provider });
-  return person.error === "discovery_failed"
-    ? { error: unavailable(body.provider) }
-    : { error: "sign_in_failed" };
+  return outcome(body.provider, person);
+}
+
+/**
+ * Where a browser is sent to sign in (decision 0061): the provider's
+ * authorization endpoint, asking for a code back at the web host's callback,
+ * bound to this request by `state`, `nonce` and the PKCE challenge.
+ */
+export async function authorizationUrl(
+  idp: IdentityProvider,
+  request: { state: string; nonce: string; challenge: string },
+): Promise<string> {
+  const url = new URL((await provider(idp)).discovery.authorization_endpoint);
+  const params = {
+    response_type: "code",
+    client_id: idp.clientId,
+    redirect_uri: idp.redirectUri,
+    scope: idp.scope,
+    state: request.state,
+    nonce: request.nonce,
+    code_challenge: request.challenge,
+    code_challenge_method: "S256",
+  };
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+  return url.toString();
+}
+
+/** Redeems a browser sign-in's code at the callback it came back to, as `authorized` does an app's. */
+export async function webAuthorized(
+  idp: IdentityProvider,
+  code: { code: string; verifier: string; nonce: string },
+): Promise<Authorized> {
+  return outcome(idp.name, await redeem(idp, { ...code, redirectUri: idp.redirectUri }));
 }

@@ -21,7 +21,7 @@ export const SESSION_COOKIE = "session";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** A browser session lasts this long from its last use... */
-const IDLE_MS = 30 * DAY_MS;
+export const IDLE_MS = 30 * DAY_MS;
 /** ...renewed at most once a day... */
 const RENEW_MS = DAY_MS;
 /** ...and never beyond this from sign-in, the longest a browser keeps a cookie. */
@@ -69,6 +69,65 @@ export async function sessionForSecret(
     .bind(now, expires, row.sessionId)
     .run();
   return { session, renewed: expires };
+}
+
+/** The product names a session's label is made of; any other browser or system is left out. */
+const BROWSERS = [
+  ["Edge", /\bEdg(e|A|iOS)?\//],
+  ["Opera", /\b(OPR|Opera)\//],
+  ["Samsung Internet", /\bSamsungBrowser\//],
+  ["Firefox", /\b(Firefox|FxiOS)\//],
+  ["Chrome", /\b(Chrome|CriOS)\//],
+  ["Safari", /\bVersion\/[\d.]+.*\bSafari\//],
+] as const;
+const SYSTEMS = [
+  ["iOS", /\b(iPhone|iPad|iPod)\b/],
+  ["Android", /\bAndroid\b/],
+  ["ChromeOS", /\bCrOS\b/],
+  ["Windows", /\bWindows\b/],
+  ["macOS", /\bMac OS X\b/],
+  ["Linux", /\bLinux\b/],
+] as const;
+
+/**
+ * The coarse label a browser session is shown by ("Firefox", "Linux"): one
+ * name from each fixed list, or null. The user-agent itself is never kept.
+ */
+export function sessionLabel(userAgent: string | undefined) {
+  const ua = userAgent ?? "";
+  const first = (list: readonly (readonly [string, RegExp])[]) =>
+    list.find(([, pattern]) => pattern.test(ua))?.[0] ?? null;
+  return { browser: first(BROWSERS), os: first(SYSTEMS) };
+}
+
+/** A browser's new session: its id, the secret its cookie carries, and that secret's hash. */
+export async function newBrowserSession() {
+  const secret = randomToken("st_");
+  return { sessionId: randomToken("s_"), secret, secretHash: await tokenHash(secret) };
+}
+
+/** The statement that makes a browser's session on an account, at sign-in; it expires at `now + IDLE_MS`. */
+export function browserSession(
+  env: Env,
+  session: { sessionId: string; secretHash: string; browser: string | null; os: string | null },
+  accountId: string,
+  now: number,
+) {
+  return db(env)
+    .prepare(
+      `INSERT INTO sessions (session_id, account_id, kind, secret_hash, browser, os, created_at, last_seen_at, expires_at)
+       VALUES (?, ?, 'web', ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      session.sessionId,
+      accountId,
+      session.secretHash,
+      session.browser,
+      session.os,
+      now,
+      now,
+      now + IDLE_MS,
+    );
 }
 
 /** The statement that makes a phone's session, enrolled with its device. */

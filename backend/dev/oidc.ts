@@ -1,7 +1,7 @@
 import ids from "../../identifiers/ids.json" with { type: "json" };
 
 // Fake identity providers: Kenni (decision 0019) and Google (decision 0033),
-// each a real OpenID Connect provider for one client, the Worker's. dev/worker.ts
+// each a real OpenID Connect provider for the Worker's clients. dev/worker.ts
 // and test/worker.ts mount them under `/dev/kenni` and `/dev/google`. Never
 // deployed: src/ does not import this, and `cf deploy` builds src/index.ts.
 //
@@ -14,10 +14,10 @@ import ids from "../../identifiers/ids.json" with { type: "json" };
 // - `x_sign=wrong`: sign with another key under the same `kid`;
 // - `x_sign=nokid`: sign with the right key, but name no `kid`.
 
-/** One fake provider: where it is mounted, its one client, and its claims. */
+/** One fake provider: where it is mounted, its clients, and its claims. */
 type FakeProvider = {
   path: string;
-  clientId: string;
+  clientIds: string[];
   scopes: string[];
   /** What `login_hint` must look like, and the form's label for it. */
   hint: { pattern: string; label: string };
@@ -26,7 +26,8 @@ type FakeProvider = {
 
 const KENNI: FakeProvider = {
   path: "/dev/kenni",
-  clientId: ids.identity.kenniClientId,
+  // The apps' native client (decision 0027) and the web's (decision 0062).
+  clientIds: [ids.identity.kenniClientId, ids.identity.kenniWebClientId],
   scopes: ["openid", "national_id", "audkenni_name"],
   hint: { pattern: "\\d{10}", label: "Kennitala" },
   claims: (person, name) => ({
@@ -40,7 +41,7 @@ const KENNI: FakeProvider = {
 const GOOGLE: FakeProvider = {
   path: "/dev/google",
   // The client id cloudflare.config.ts and vitest.config.ts give the Worker.
-  clientId: "fake-google-client",
+  clientIds: ["fake-google-client"],
   scopes: ["openid", "email", "profile"],
   hint: { pattern: "[A-Za-z0-9_-]{1,64}", label: "Sub" },
   claims: (person, name) => ({
@@ -146,11 +147,20 @@ function escape(text: string): string {
   return text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
+/** A test's `x_claims`, or null when it is not JSON. */
+function claimsOverride(text: string | null): Record<string, unknown> | null {
+  try {
+    return JSON.parse(text ?? "{}") as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 async function authorize(url: URL, issuer: string, provider: FakeProvider): Promise<Response> {
   const q = url.searchParams;
-  const clientId = q.get("client_id");
+  const clientId = q.get("client_id") ?? "";
   const redirectUri = q.get("redirect_uri");
-  if (clientId !== provider.clientId || !redirectUri) return oauthError("invalid_client");
+  if (!provider.clientIds.includes(clientId) || !redirectUri) return oauthError("invalid_client");
   if (q.get("response_type") !== "code") return oauthError("unsupported_response_type");
   const challenge = q.get("code_challenge");
   if (!challenge || q.get("code_challenge_method") !== "S256") return oauthError("invalid_request");
@@ -162,12 +172,8 @@ async function authorize(url: URL, issuer: string, provider: FakeProvider): Prom
 
   const name = q.get("x_name") ?? "";
   const now = Math.floor(Date.now() / 1000);
-  let overrides: Record<string, unknown> = {};
-  try {
-    overrides = JSON.parse(q.get("x_claims") ?? "{}") as Record<string, unknown>;
-  } catch {
-    return oauthError("invalid_request");
-  }
+  const overrides = claimsOverride(q.get("x_claims"));
+  if (!overrides) return oauthError("invalid_request");
   const claims = {
     iss: issuer,
     aud: clientId,
@@ -268,7 +274,7 @@ function fakeOidcFetcher(issuer: string, provider: FakeProvider): Fetcher {
 
 /**
  * Serves either fake when the request is for one, else null; and the env the
- * Worker sees, with both fakes bound and the fake Google's client secret.
+ * Worker sees, with both fakes bound and the fake confidential clients' secrets.
  */
 export function withFakes(request: Request, env: Env) {
   const path = new URL(request.url).pathname;
@@ -280,6 +286,7 @@ export function withFakes(request: Request, env: Env) {
       KENNI_FAKE: fakeOidcFetcher(issuers.kenni, KENNI),
       GOOGLE_FAKE: fakeOidcFetcher(issuers.google, GOOGLE),
       GOOGLE_CLIENT_SECRET: "fake-google-secret",
+      KENNI_WEB_CLIENT_SECRET: "fake-kenni-web-secret",
     },
   };
 }

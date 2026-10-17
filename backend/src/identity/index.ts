@@ -33,3 +33,4 @@ export {
   sessionForSecret,
 } from "./sessions.ts";
 export { authorized, signInConfig, unavailable } from "./providers.ts";
+export { webSignInRoutes } from "./web-sign-in.ts";

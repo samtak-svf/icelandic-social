@@ -83,6 +83,7 @@ type Secrets = {
   KENNITALA_HMAC_KEY?: string;
   KENNITALA_HMAC_KEY_PREVIOUS?: string;
   KENNI_CLIENT_SECRET?: string;
+  KENNI_WEB_CLIENT_SECRET?: string;
   GOOGLE_CLIENT_SECRET?: string;
   FCM_SERVICE_ACCOUNT?: string;
   APNS_KEY_P8?: string;
@@ -162,6 +163,23 @@ export function google(env: Env): IdentityProvider | null {
 /** A provider by name, or null when it is not configured. */
 export function identityProvider(env: Env, name: ProviderName): IdentityProvider | null {
   return name === "kenni" ? kenni(env) : google(env);
+}
+
+/**
+ * A provider as a browser signs in with it (decision 0062): the code comes
+ * back to the provider's callback on the web host. Kenni's is its own
+ * confidential web client, null until its secret is set; Google's is the
+ * client the apps use, with a second redirect.
+ */
+export function webIdentityProvider(env: Env, name: ProviderName): IdentityProvider | null {
+  const redirectUri = `https://${ids.hosts.web}${ids.hosts.webSignInCallbacks[name]}`;
+  if (name === "google") {
+    const web = google(env);
+    return web && { ...web, redirectUri };
+  }
+  const clientSecret = (env as Env & Secrets).KENNI_WEB_CLIENT_SECRET;
+  if (!clientSecret) return null;
+  return { ...kenni(env), clientId: ids.identity.kenniWebClientId, clientSecret, redirectUri };
 }
 
 /**

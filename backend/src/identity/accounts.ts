@@ -219,11 +219,66 @@ export type NewDevice = {
 };
 
 /**
- * Gives the person a new device: on the account that holds their identity,
- * else on a new account (decision 0033: no invite needed). A Kenni sign-in
- * makes a verified account, a Google one an unverified account with Google's
- * name. A live invite, when given, is recorded as `invited_by` and spent if
- * single-use. Refuses a device key some device already has; migration
+ * Signs the person in (decision 0033: no invite needed): to the account that
+ * holds their identity, else to a new one. A Kenni sign-in makes a verified
+ * account, a Google one an unverified account with Google's name. A live
+ * invite, when given, is recorded as `invited_by` and spent if single-use.
+ * What the sign-in leaves on the account, a phone's session and device or a
+ * browser's session (decision 0061), is written in the same transaction.
+ */
+export async function enrol(
+  env: Env,
+  person: Person,
+  inviteToken: string | undefined,
+  leave: (accountId: string, now: number) => D1PreparedStatement[],
+): Promise<string> {
+  const hmacs = await subjectHmacs(env, person);
+  const now = Date.now();
+  const known = await holder(env, person.provider, hmacs);
+  if (known) {
+    await db(env).batch([
+      ...holdIdentity(env, known.accountId, person.provider, hmacs, now),
+      ...leave(known.accountId, now),
+    ]);
+    return known.accountId;
+  }
+
+  // One transaction: the account, its identity and what the sign-in leaves.
+  // The identity's primary key fails the whole batch when the same person
+  // signed in at the same moment, and this sign-in then joins the account
+  // that request made.
+  const accountId = randomToken("a_");
+  const kenni = person.provider === "kenni";
+  const invite = inviteToken ? await tokenHash(inviteToken) : null;
+  try {
+    await db(env).batch([
+      db(env)
+        .prepare(
+          `INSERT INTO accounts (account_id, display_name, verified, kennitala_hmac, created_at, invited_by)
+           VALUES (?, ?, ?, ?, ?,
+             (SELECT inviter_account_id FROM invites WHERE token_hash = ? AND revoked_at IS NULL))`,
+        )
+        .bind(accountId, person.name, kenni ? 1 : 0, kenni ? hmacs.hmac : null, now, invite),
+      db(env)
+        .prepare(
+          "UPDATE invites SET revoked_at = ? WHERE token_hash = ? AND single_use = 1 AND revoked_at IS NULL",
+        )
+        .bind(now, invite),
+      ...holdIdentity(env, accountId, person.provider, hmacs, now, ""),
+      ...leave(accountId, now),
+    ]);
+  } catch (error) {
+    const raced = await holder(env, person.provider, hmacs);
+    if (!raced) throw error;
+    await db(env).batch(leave(raced.accountId, now));
+    return raced.accountId;
+  }
+  return accountId;
+}
+
+/**
+ * Gives the person a new device, and the session it is enrolled from
+ * (decision 0061). Refuses a device key some device already has; migration
  * 0003's index holds that under a race too.
  */
 export async function registerDevice(
@@ -240,61 +295,19 @@ export async function registerDevice(
     .first();
   if (taken) return { error: "device_key_taken" };
 
-  const hmacs = await subjectHmacs(env, person);
   const deviceId = randomToken("d_");
   const token = randomToken("dt_");
   const hash = await tokenHash(token);
-  const now = Date.now();
-  // The sign-in's session and its device, one for the other (decision 0061).
   const sessionId = randomToken("s_");
-  const insertDevice = (accountId: string) => [
-    phoneSession(env, { sessionId, accountId, kind: device.platform }, now),
+  const accountId = await enrol(env, person, device.inviteToken, (account, now) => [
+    phoneSession(env, { sessionId, accountId: account, kind: device.platform }, now),
     db(env)
       .prepare(
         `INSERT INTO devices (device_id, account_id, platform, device_key, token_hash, created_at, session_id)
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
-      .bind(deviceId, accountId, device.platform, device.deviceKey, hash, now, sessionId),
-  ];
-
-  const known = await holder(env, person.provider, hmacs);
-  if (known) {
-    await db(env).batch([
-      ...holdIdentity(env, known.accountId, person.provider, hmacs, now),
-      ...insertDevice(known.accountId),
-    ]);
-    return { ok: { accountId: known.accountId, deviceId, sessionId, token } };
-  }
-
-  // One transaction: the account, its identity and its device. The identity's
-  // primary key fails the whole batch when the same person signed in at the
-  // same moment, and this device then joins the account that request made.
-  const accountId = randomToken("a_");
-  const kenni = person.provider === "kenni";
-  const invite = device.inviteToken ? await tokenHash(device.inviteToken) : null;
-  try {
-    await db(env).batch([
-      db(env)
-        .prepare(
-          `INSERT INTO accounts (account_id, display_name, verified, kennitala_hmac, created_at, invited_by)
-           VALUES (?, ?, ?, ?, ?,
-             (SELECT inviter_account_id FROM invites WHERE token_hash = ? AND revoked_at IS NULL))`,
-        )
-        .bind(accountId, person.name, kenni ? 1 : 0, kenni ? hmacs.hmac : null, now, invite),
-      db(env)
-        .prepare(
-          "UPDATE invites SET revoked_at = ? WHERE token_hash = ? AND single_use = 1 AND revoked_at IS NULL",
-        )
-        .bind(now, invite),
-      ...holdIdentity(env, accountId, person.provider, hmacs, now, ""),
-      ...insertDevice(accountId),
-    ]);
-  } catch (error) {
-    const raced = await holder(env, person.provider, hmacs);
-    if (!raced) throw error;
-    await db(env).batch(insertDevice(raced.accountId));
-    return { ok: { accountId: raced.accountId, deviceId, sessionId, token } };
-  }
+      .bind(deviceId, account, device.platform, device.deviceKey, hash, now, sessionId),
+  ]);
   return { ok: { accountId, deviceId, sessionId, token } };
 }
 

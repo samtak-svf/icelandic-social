@@ -49,6 +49,9 @@ export const SECRETS = [
     when: "never",
     reason: "the Kenni client is public (decision 0019)",
   },
+  // The Kenni web client's secret (decision 0062): web sign-in redeems its
+  // code with it, and answers 503 for Kenni until it is set.
+  { name: "KENNI_WEB_CLIENT_SECRET", vault: "kenni-web-client-secret", when: "now" },
   // The Google web client's secret (decision 0033); the Worker redeems the
   // code with it.
   { name: "GOOGLE_CLIENT_SECRET", vault: "google-client-secret", when: "now" },

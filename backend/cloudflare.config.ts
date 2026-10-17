@@ -104,6 +104,7 @@ export default defineConfig(({ mode }) => ({
       //   KENNITALA_HMAC_KEY   the key of the kennitala HMAC (decisions 0014, 0019)
       //   KENNITALA_HMAC_KEY_PREVIOUS  the key before it, only while a rotation runs
       //   KENNI_CLIENT_SECRET  only if Kenni ever issues a confidential client
+      //   KENNI_WEB_CLIENT_SECRET the Kenni web client's secret (decision 0062)
       //   GOOGLE_CLIENT_SECRET the Google web client's secret (decision 0033)
       //   FCM_SERVICE_ACCOUNT  the FCM service account's JSON key (decision 0025)
       //   APNS_KEY_P8          the APNs auth key (.p8), and APNS_KEY_ID its key id
