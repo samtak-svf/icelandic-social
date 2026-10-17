@@ -1,6 +1,6 @@
 # 0009. The first release is chat only, for a closed test group
 
-- Status: accepted; amended by 0033, 0034, 0036, 0039, 0040, 0041, 0042, 0044, 0046, 0059 and 0060
+- Status: accepted; amended by 0033, 0034, 0036, 0039, 0040, 0041, 0042, 0044, 0046, 0059, 0060 and 0063
 - Date: 2026-10-05
 - Decided by: Guðröður (the scope questions); the implementation choices below follow from them
 - Amended by: [0033](0033-google-sign-in-and-kenni-verification.md) (the invite is no longer the beta gate),
@@ -13,7 +13,8 @@
   [0044](0044-no-fljotid-in-v1.md) (Fljótið and the wall leave v1; two tabs again),
   [0046](0046-copy-a-message-and-open-its-links.md) (copy a message, open its links),
   [0059](0059-send-a-location.md) (a location, sent once and opened on map.is or a map app),
-  [0060](0060-a-social-platform-with-an-encrypted-messenger.md) (a social platform beside the messenger, and the web as a client)
+  [0060](0060-a-social-platform-with-an-encrypted-messenger.md) (a social platform beside the messenger, and the web as a client),
+  [0063](0063-communities-audiences-and-moderation.md) (report and moderation for communities)
 - Built on by: [0022](0022-the-conversation-surfaces.md) (the list, the conversation, the
   toggles), [0023](0023-media-as-encrypted-blobs.md) (photos and files),
   [0024](0024-block.md) (block)

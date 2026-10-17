@@ -1,13 +1,15 @@
 # 0024. Block is per account: the server refuses new contact, the core hides the rest
 
 - Status: accepted; implemented in the backend (#55) and the core (#58); the apps offer it
-  since #64 and #67; a roster claim without a Welcome refused since #222
+  since #64 and #67; a roster claim without a Welcome refused since #222;
+  amended by 0063
 - Date: 2026-10-07
 - Decided by: the maintainer, approving the plan for the conversation UI
 - Builds on: [0009](0009-v1-scope.md) (block is in v1),
   [0018](0018-the-client-engine-in-the-core.md) (membership by commit),
   [0020](0020-membership-bound-to-commits.md)
-- Amended by: [0034](0034-fljotid-and-the-wall.md) (block extends to posts in Fljótið),
+- Amended by: [0063](0063-communities-audiences-and-moderation.md) (block hides social content both ways; a moderator's duty outranks it),
+  [0034](0034-fljotid-and-the-wall.md) (block extends to posts in Fljótið),
   [0039](0039-profile-photo.md) (block withholds the profile photo, both ways)
 
 ## Decision
