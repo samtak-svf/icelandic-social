@@ -18,6 +18,7 @@ import { android } from "./lib/brand-gen/android.mjs";
 import { backend } from "./lib/brand-gen/backend.mjs";
 import { ios } from "./lib/brand-gen/ios.mjs";
 import { activeBrand, OWNED_DIRS } from "./lib/brand-gen/paths.mjs";
+import { web } from "./lib/brand-gen/web.mjs";
 import { readJson, ROOT } from "./lib/repo.mjs";
 
 /**
@@ -58,7 +59,7 @@ export function generate(name, root = ROOT) {
       }),
     ),
   };
-  const files = [...android(brand), ...ios(brand), ...backend(brand)];
+  const files = [...android(brand), ...ios(brand), ...backend(brand), ...web(brand)];
   return {
     problems: [],
     files: files.sort((a, b) => a.path.localeCompare(b.path)),

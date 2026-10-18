@@ -2,8 +2,10 @@
 // Runs against the first committed brand, whichever it is, in a throwaway
 // copy so a test can break one thing. No brand text appears here: the leak
 // guard would (rightly) report it.
-import { cpSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { generate, run } from "../brand-gen.mjs";
 import { leaksInFiles, loadBrands } from "../brand-leak-guard.mjs";
@@ -19,6 +21,7 @@ const STRINGS = `brand/${BRAND}/strings.is.json`;
 const RES = "android/core/brand/src/main/res";
 const KOTLIN = "android/core/brand/src/main/kotlin/samtak/spjall/brand/BrandTokens.kt";
 const XCSTRINGS = "ios/Generated/Localizable.xcstrings";
+const WEB = "web/src/generated/brand";
 const IOS_ICON = "ios/Generated/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png";
 
 function fixture() {
@@ -79,6 +82,55 @@ describe("brand-gen", () => {
     expect(plural.other.stringUnit.value).toBe("%1$lld mörg");
   });
 
+  it("emits web plurals by Icelandic rules and placeholders as typed arguments", async () => {
+    const root = fixture();
+    editJson(root, "brand/strings.contract.json", (c) => {
+      c.keys.unread_count.surfaces.push("web");
+      c.keys.link_invited_by.surfaces.push("web");
+    });
+    editJson(root, STRINGS, (s) => {
+      s.unread_count = { one: "{count} eitt", other: "{count} mörg" };
+      s.link_invited_by = 'Frá "{name}" \\ hér';
+    });
+    const ts = output(root, `${WEB}/strings.ts`);
+    expect(ts).toContain("unread_count: (args: { count: number }): string =>");
+    expect(ts).toContain("link_invited_by: (args: { name: string }): string =>");
+    const dir = mkdtempSync(join(tmpdir(), "brand-gen-web-"));
+    writeFileSync(join(dir, "strings.ts"), ts);
+    const { strings } = await import(pathToFileURL(join(dir, "strings.ts")).href);
+    // Icelandic takes the singular for every number ending in 1 but 11.
+    expect([1, 21, 101].map((count) => strings.unread_count({ count }))).toEqual([
+      "1 eitt",
+      "21 eitt",
+      "101 eitt",
+    ]);
+    expect([0, 2, 11, 111].map((count) => strings.unread_count({ count }))).toEqual([
+      "0 mörg",
+      "2 mörg",
+      "11 mörg",
+      "111 mörg",
+    ]);
+    expect(strings.link_invited_by({ name: "x`${y}" })).toBe('Frá "x`${y}" \\ hér');
+  });
+
+  it("gives the web the tokens as theme variables, dark mode included", () => {
+    const root = fixture();
+    editJson(root, `brand/${BRAND}/tokens.json`, (t) => {
+      t.dark.surface.$value = { colorSpace: "oklch", components: [0, 0, 0] };
+    });
+    const css = output(root, `${WEB}/theme.css`);
+    const theme = /@theme static \{([^}]*)\}/.exec(css)?.[1] ?? "";
+    const dark = /prefers-color-scheme: dark\) \{\s*:root \{([^}]*)\}/.exec(css)?.[1] ?? "";
+    const names = (/** @type {string} */ text) =>
+      [...text.matchAll(/--color-([a-z0-9-]+):/g)].map((m) => m[1]);
+    expect(names(theme).length).toBeGreaterThan(0);
+    expect(names(dark)).toEqual(names(theme));
+    expect(dark).toContain("--color-surface: #000000;");
+    expect(theme).toContain("--color-*: initial;");
+    expect(theme).toMatch(/--font-sans: "[^"]+", /);
+    expect(theme).toContain("--radius-md: 6px;");
+  });
+
   it("gives each surface only its own keys", () => {
     const root = fixture();
     const xml = output(root, `${RES}/values/strings.xml`);
@@ -91,6 +143,9 @@ describe("brand-gen", () => {
     const ts = output(root, "backend/src/brand.gen.ts");
     expect(ts).toContain("push_fallback_body:");
     expect(ts).not.toContain("send:");
+    const web = output(root, `${WEB}/strings.ts`);
+    expect(web).toContain("app_name:");
+    expect(web).not.toContain("push_fallback_body:");
   });
 
   it("hands Xcode the frozen ids, with an empty team while it is null", () => {
@@ -221,6 +276,15 @@ describe("brand-gen", () => {
     expect(existsSync(join(root, RES, "values/extra.xml"))).toBe(false);
   });
 
+  it("--check fails when a token changes and the web theme was not regenerated", () => {
+    const root = fixture();
+    run({ name: BRAND, check: false, root });
+    editJson(root, `brand/${BRAND}/tokens.json`, (t) => {
+      t.radius.md.$value = { value: 7, unit: "px" };
+    });
+    expect(run({ name: BRAND, check: true, root }).stale).toContain(`${WEB}/theme.css`);
+  });
+
   it("lets generated files name the active brand only", () => {
     const root = fixture();
     run({ name: BRAND, check: false, root });
@@ -258,7 +322,7 @@ describe("brand-gen", () => {
     }
   });
 
-  it("bundles each font byte for byte on both platforms, with its licence", () => {
+  it("bundles each font byte for byte on every platform, with its licence", () => {
     const manifest = readJson(`brand/${BRAND}/brand.json`);
     const files = generate(BRAND).files;
     /** @param {string} path */
@@ -272,6 +336,12 @@ describe("brand-gen", () => {
       const license = readFileSync(join(ROOT, "brand", BRAND, font.license), "utf8").trimEnd();
       expect(bytes(`${RES}/raw/font_licenses.txt`)?.toString()).toContain(license);
       expect(output(ROOT, KOTLIN)).toContain(`R.font.${fontResource(font)} to ${font.weight}`);
+      const name = font.file.split("/").pop();
+      const web = bytes(`${WEB}/fonts/${name}`);
+      expect(Buffer.isBuffer(web) && source.equals(web)).toBe(true);
+      expect(output(ROOT, `${WEB}/theme.css`)).toContain(`url("./fonts/${name}")`);
+      const webLicense = bytes(`${WEB}/fonts/${font.license.split("/").pop()}`)?.toString();
+      expect(webLicense).toContain(license);
     }
   });
 

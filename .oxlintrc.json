@@ -33,5 +33,5 @@
       }
     }
   ],
-  "ignorePatterns": ["node_modules/", "dist/", ".wrangler/", "**/*.gen.ts"]
+  "ignorePatterns": ["node_modules/", "dist/", ".wrangler/", "**/*.gen.ts", "web/src/generated/"]
 }

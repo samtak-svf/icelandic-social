@@ -7,6 +7,19 @@ import { deflateSync, crc32 } from "node:zlib";
 import { Resvg } from "@resvg/resvg-js";
 
 /**
+ * The foreground framed for a square that is shown as it is (iOS, the web).
+ * Android masks the 108 canvas down to the central 66 and adds its own
+ * margin; a plain square gets a 6-unit margin around the 66 safe zone instead.
+ *
+ * @param {string} svg
+ */
+export function squareFrame(svg) {
+  const canvas = 'viewBox="0 0 108 108"';
+  if (!svg.includes(canvas)) throw new Error(`icon foreground must use ${canvas}`);
+  return svg.replace(canvas, 'viewBox="15 15 78 78"');
+}
+
+/**
  * @param {string} svg
  * @param {number} size output width and height in pixels
  * @param {string} [background] CSS colour painted under the SVG

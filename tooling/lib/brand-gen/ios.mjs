@@ -6,7 +6,7 @@
 
 import { brandColors, fontFamilies, hex2, radii } from "./color.mjs";
 import { postScriptName } from "./font-name.mjs";
-import { renderOpaquePng } from "./icon.mjs";
+import { renderOpaquePng, squareFrame } from "./icon.mjs";
 import { camel, keysFor, positional } from "./strings.mjs";
 
 /**
@@ -271,19 +271,6 @@ function tokensSwift(brand) {
   ].join("\n");
 }
 
-/**
- * The foreground framed for iOS. Android masks the 108 canvas down to the
- * central 66 and adds its own margin; iOS shows the square as it is, so the
- * 66 safe zone gets a 6-unit margin on each side instead.
- *
- * @param {string} svg
- */
-function iosFrame(svg) {
-  const canvas = 'viewBox="0 0 108 108"';
-  if (!svg.includes(canvas)) throw new Error(`icon foreground must use ${canvas}`);
-  return svg.replace(canvas, 'viewBox="15 15 78 78"');
-}
-
 /** @param {BrandInput} brand */
 function appIcon(brand) {
   const color = brandColors(brand.tokens).find((c) => c.name === brand.manifest.icon.background);
@@ -310,7 +297,7 @@ function appIcon(brand) {
     },
     {
       path: `${set}/AppIcon-1024.png`,
-      content: renderOpaquePng(iosFrame(brand.iconSvg), 1024, background),
+      content: renderOpaquePng(squareFrame(brand.iconSvg), 1024, background),
     },
   ];
 }

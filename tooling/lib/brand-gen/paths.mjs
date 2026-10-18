@@ -9,7 +9,11 @@
 import { brandNames, ROOT } from "../repo.mjs";
 
 /** Directories brand-gen writes in full. */
-export const OWNED_DIRS = ["android/core/brand/src/main/res", "ios/Generated"];
+export const OWNED_DIRS = [
+  "android/core/brand/src/main/res",
+  "ios/Generated",
+  "web/src/generated/brand",
+];
 
 /** Single files brand-gen writes inside directories it does not own. */
 const OWNED_FILES = [

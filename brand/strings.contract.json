@@ -1,9 +1,9 @@
 {
   "$comment": "The key set every brand's strings.is.json must provide, exactly. Code references these keys only, never a brand's text. A value is either a whole sentence (a string) or, when plural is true, an object with the Icelandic CLDR categories one and other. Placeholders are written {name} and must match the declared set in every brand. A placeholder never carries the brand name: the name inflects, so each brand writes its own whole sentences (docs/decisions/0004).",
-  "surfaces": ["android", "ios", "backend"],
+  "surfaces": ["android", "ios", "backend", "web"],
   "keys": {
     "app_name": {
-      "surfaces": ["android", "ios", "backend"],
+      "surfaces": ["android", "ios", "backend", "web"],
       "description": "Launcher label, home-screen name, store-facing display name."
     },
     "tab_conversations": {
