@@ -54,7 +54,9 @@ Consequences, all enforced by `tooling/brand-leak-guard.mjs`:
 
 ```bash
 pnpm install           # also installs the lefthook hooks
-pnpm check             # lint, types, format, ids, brand, brand-gen, brand-leak, þankastrik, PII, seams, core lock, workflows, knip
+pnpm check             # lint, types, format, ids, critical rules, drills, quarantine, brand, brand-gen, brand-leak,
+                       # þankastrik, PII, seams, modules, jurisdiction, migrations, core lock, ws-kotlin, web-api,
+                       # workflows, knip
 pnpm brand:gen         # regenerate the platform files from brand/$BRAND
 pnpm test              # guard tests (vitest); each guard is proven to fail when it should
                        # what deserves a test, and the known sources of noise: docs/testing.md
@@ -62,8 +64,9 @@ pnpm format            # oxfmt --write .
 node tooling/ids-freeze.mjs --base origin/main   # what CI runs on a PR
 
 # The Worker (backend/ and web/ are packages of the root workspace; `pnpm install` at the root covers them)
-# One Worker serves both: /v1, /auth, /l, /health and /.well-known go to the API (src/worker.ts),
-# everything else to the web app (web/, TanStack Start), through src/index.ts (decision 0062).
+# One Worker serves both: /v1, /auth, /l, /oauth, /ops, /health and /.well-known go to the API
+# (src/worker.ts), everything else to the web app (web/, TanStack Start), through src/index.ts
+# (decision 0062); the list is API_PATHS in src/paths.ts.
 pnpm --filter spjall-backend dev       # cf dev: Vite with the Cloudflare plugin, API and web on :8787
 pnpm --filter spjall-backend build     # cf build: the Worker and the web app, into .cloudflare/output
 pnpm --filter spjall-backend check     # cf workers types, tsc, api/openapi.json drift
@@ -71,6 +74,7 @@ pnpm --filter spjall-backend test      # vitest inside workerd (@cloudflare/vite
 pnpm --filter spjall-backend openapi   # regenerate api/openapi.json after a zod change ...
 node tooling/ws-kotlin.mjs   # ... then the Kotlin WS frames from it
 node tooling/web-api.mjs     # ... and the web client
+cd backend && node scripts/ops.ts jobs   # way back, rollback, restores and jobs: docs/operations.md (0068)
 
 # The web (web/ is a package of the root workspace; the Worker builds and serves it)
 pnpm --filter spjall-web test   # unit tests (vitest)
