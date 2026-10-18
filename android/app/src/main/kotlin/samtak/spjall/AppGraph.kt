@@ -15,6 +15,8 @@ import samtak.spjall.crypto.StoreKey
 import samtak.spjall.media.Files
 import samtak.spjall.push.Push
 import samtak.spjall.push.SystemNotifier
+import samtak.spjall.social.CoreSocial
+import samtak.spjall.social.Social
 import samtak.spjall.socket.OkHttpWire
 import samtak.spjall.socket.Socket
 import samtak.spjall.ui.CorePhotos
@@ -33,22 +35,27 @@ class AppGraph(
     /** Set when the server no longer serves this build (decision 0030). */
     val update = Update()
 
-    val account: Account =
-        CoreAccount {
-            storeDir.mkdirs()
-            val key = StoreKey.forDevice(storeDir).load()
-            try {
-                CoreClient.open(
-                    storeDir.path,
-                    key,
-                    OkHttpTransport(BuildConfig.API_BASE_URL, http, update::required),
-                    Platform.ANDROID,
-                    BuildConfig.VERSION_NAME,
-                )
-            } finally {
-                key.fill(0)
-            }
+    /** The one client, opened on first use; [account] and [social] share it. */
+    private val client by lazy {
+        storeDir.mkdirs()
+        val key = StoreKey.forDevice(storeDir).load()
+        try {
+            CoreClient.open(
+                storeDir.path,
+                key,
+                OkHttpTransport(BuildConfig.API_BASE_URL, http, update::required),
+                Platform.ANDROID,
+                BuildConfig.VERSION_NAME,
+            )
+        } finally {
+            key.fill(0)
         }
+    }
+
+    val account: Account = CoreAccount { client }
+
+    /** Communities, posts and notifications: hosted, kept apart from the conversation store (decision 0060). */
+    val social: Social = CoreSocial { client }
 
     val files = Files(context)
 

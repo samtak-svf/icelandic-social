@@ -26,6 +26,20 @@ object AppIcons {
             "M4 17c0-3.3 2.7-5 6-5s6 1.7 6 5",
         )
 
+    /** The communities tab: one person in front of two (decision 0063). */
+    val Communities =
+        outline(
+            "communities",
+            20f,
+            1.8f,
+            "M12.6 7.5a2.6 2.6 0 1 1-5.2 0a2.6 2.6 0 1 1 5.2 0z",
+            "M5.5 17c0-2.8 2-4.3 4.5-4.3s4.5 1.5 4.5 4.3",
+            "M5.2 9.6a2 2 0 1 1 0-4",
+            "M2 15.5c0-2 1.2-3.2 3-3.5",
+            "M14.8 9.6a2 2 0 1 0 0-4",
+            "M18 15.5c0-2-1.2-3.2-3-3.5",
+        )
+
     /** The blocked list: a circle struck through. */
     val Blocked = outline("blocked", 20f, 1.8f, "M17 10a7 7 0 1 1-14 0a7 7 0 1 1 14 0z", "M5 5l10 10")
 

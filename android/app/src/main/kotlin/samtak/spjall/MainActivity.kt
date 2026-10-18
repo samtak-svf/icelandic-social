@@ -30,6 +30,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
@@ -86,6 +87,9 @@ import samtak.spjall.signin.SignInViewModel
 import samtak.spjall.signin.SignInViewModel.Session
 import samtak.spjall.signin.UpdateScreen
 import samtak.spjall.signin.VerifyScreen
+import samtak.spjall.social.SocialRoutes
+import samtak.spjall.social.UnreadViewModel
+import samtak.spjall.social.socialScreens
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.LocalPhotos
 import samtak.spjall.ui.SpjallTheme
@@ -250,7 +254,10 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    /** The two tabs, the conversation list and Ég (decision 0044), and the screens they lead to. */
+    /**
+     * The four tabs, the conversation list, the communities, the notifications and Ég (decisions 0044, 0063), and
+     * the screens they lead to.
+     */
     @Composable
     private fun TabScreens(signIns: Int) {
         val nav = rememberNavController()
@@ -272,11 +279,16 @@ class MainActivity : ComponentActivity() {
                 .value
                 ?.destination
                 ?.route
+        // The notifications tab's count, asked for on every change of screen, as the web does (decision 0067).
+        val unread: UnreadViewModel = viewModel(key = "unread-$signIns") { UnreadViewModel(graph.social) }
+        val count by unread.count.collectAsStateWithLifecycle()
+        LaunchedEffect(route) { unread.refresh() }
+        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { unread.refresh() }
         // Each screen pads for the status bar itself, so its cream band can reach the top edge.
         Scaffold(
             contentWindowInsets = WindowInsets(0),
             bottomBar = {
-                if (route in TABS) Tabs(route) { nav.navigate(it) { tab() } }
+                if (route in TABS) Tabs(route, count) { nav.navigate(it) { tab() } }
             },
         ) { padding ->
             NavHost(
@@ -286,6 +298,7 @@ class MainActivity : ComponentActivity() {
             ) {
                 composable(LIST) { Conversations(list, nav) }
                 composable(ME) { Me(signIns, nav) }
+                socialScreens(graph.social, graph.account, nav, unread::refresh)
                 composable(VERIFY) { Verify(nav) }
                 composable(PEOPLE) { People(nav) }
                 composable("$CONVERSATION/{id}") { entry ->
@@ -312,11 +325,32 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun Tabs(
         route: String?,
+        unread: Long,
         go: (String) -> Unit,
     ) {
+        val communities = SocialRoutes.COMMUNITIES
+        val notifications = SocialRoutes.NOTIFICATIONS
         TabBar(
             listOf(
                 Tab(AppIcons.Chat, stringResource(R.string.tab_conversations), route == LIST) { go(LIST) },
+                Tab(AppIcons.Communities, stringResource(R.string.tab_communities), route == communities) {
+                    go(communities)
+                },
+                Tab(
+                    AppIcons.Bell,
+                    stringResource(R.string.tab_notifications),
+                    route == notifications,
+                    onClick = { go(notifications) },
+                    badge = unread,
+                    badgeDescription =
+                        if (unread >
+                            0
+                        ) {
+                            pluralStringResource(R.plurals.notifications_unread, unread.toInt(), unread)
+                        } else {
+                            null
+                        },
+                ),
                 Tab(AppIcons.Person, stringResource(R.string.tab_me), route == ME) { go(ME) },
             ),
         )
@@ -706,7 +740,7 @@ class MainActivity : ComponentActivity() {
         private const val CONVERSATION = "conversation"
         private const val FORWARD = "forward"
         private const val INFO = "info"
-        private val TABS = setOf(LIST, ME)
+        private val TABS = setOf(LIST, SocialRoutes.COMMUNITIES, SocialRoutes.NOTIFICATIONS, ME)
 
         private fun conversation(id: String) = "$CONVERSATION/$id"
 
