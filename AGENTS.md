@@ -70,6 +70,7 @@ pnpm --filter spjall-backend check     # cf workers types, tsc, api/openapi.json
 pnpm --filter spjall-backend test      # vitest inside workerd (@cloudflare/vitest-plugin)
 pnpm --filter spjall-backend openapi   # regenerate api/openapi.json after a zod change ...
 node tooling/ws-kotlin.mjs   # ... then the Kotlin WS frames from it
+node tooling/web-api.mjs     # ... and the web client
 
 # The Rust core (core/ is a Cargo workspace; the toolchain is pinned in rust-toolchain.toml)
 cd core && cargo fmt --all && cargo clippy --workspace --all-targets -- -D warnings && cargo test
@@ -91,9 +92,9 @@ git worktree builds its own `core/target` of several GB, so a worktree under a s
 tmpfs runs out of space: point `CARGO_TARGET_DIR` at one shared directory outside `/tmp`
 (e.g. `~/.cache/spjall-target`) for every worktree.
 
-**The contract (decision 0005).** zod in `backend/src/api/` is the source. `api/openapi.json`
-and `api/kotlin/…/WsFrame.kt` are generated and committed; `contract.yml` fails when either is
-stale, and `oasdiff breaking` against the base fails unless the PR has the label
+**The contract (decision 0005).** zod in `backend/src/api/` is the source. `api/openapi.json`,
+`api/kotlin/…/WsFrame.kt` and the web client `web/src/generated/api.ts` are generated and
+committed; `contract.yml` fails when any is stale, and `oasdiff breaking` against the base fails unless the PR has the label
 `api: breaking`.
 
 Tooling is plain `.mjs` with `// @ts-check` and JSDoc, type-checked by `tsc --noEmit`

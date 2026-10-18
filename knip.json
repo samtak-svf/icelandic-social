@@ -16,7 +16,7 @@
       "project": ["*.mjs", "page/*.js"]
     },
     "web": {
-      "entry": ["src/routes/**/*.tsx"],
+      "entry": ["src/routes/**/*.tsx", "src/generated/api.ts"],
       "project": ["src/**/*.{ts,tsx,css}"]
     }
   }

@@ -1,8 +1,8 @@
 name: contract
 
 # The API contract (decision 0005): api/openapi.json is what the zod schemas
-# in backend/src/api/ generate, the Kotlin WS frames are what that spec
-# emits, and nothing breaks against the base branch unless the PR carries
+# in backend/src/api/ generate, the Kotlin WS frames and the web client are
+# what that spec emits, and nothing breaks against the base branch unless the PR carries
 # the label `api: breaking`.
 
 permissions:
@@ -18,6 +18,8 @@ on:
       - "backend/package.json"
       - "api/**"
       - "tooling/ws-kotlin.mjs"
+      - "tooling/web-api.mjs"
+      - "web/src/generated/api.ts"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - ".github/workflows/contract.yml"
@@ -46,6 +48,9 @@ jobs:
 
       - name: Kotlin WS frames match api/openapi.json
         run: node tooling/ws-kotlin.mjs --check
+
+      - name: The web client matches api/openapi.json
+        run: node tooling/web-api.mjs --check
 
   breaking:
     if: "!contains(github.event.pull_request.labels.*.name, 'api: breaking')"
