@@ -116,7 +116,8 @@ final class CoreAccount: Account, @unchecked Sendable {
         self.open = open
     }
 
-    private func core() throws -> CoreClient {
+    /// The client, opened on first use; the hosted social calls (`Social`) reach it too.
+    func core() throws -> CoreClient {
         try lock.withLock {
             if suspended { throw Suspended() }
             if let client { return client }

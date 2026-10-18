@@ -14,6 +14,17 @@ final class StringsTests: XCTestCase {
         XCTAssertEqual(plural("reaction_count", 3), "3 viðbrögð")
     }
 
+    func testTheHostedScreensPluralsAndNames() {
+        XCTAssertEqual(plural("post_comments", 1), "1 athugasemd")
+        XCTAssertEqual(plural("post_comments", 3), "3 athugasemdir")
+        XCTAssertEqual(plural("community_members", 1), "1 meðlimur")
+        XCTAssertEqual(plural("community_members", 2), "2 meðlimir")
+        XCTAssertEqual(plural("notifications_unread", 1), "1 ólesin")
+        XCTAssertEqual(plural("notifications_unread", 4), "4 ólesnar")
+        XCTAssertEqual(localized("notice_comment", "Anna"), "Anna skrifaði athugasemd við póstinn þinn.")
+        XCTAssertEqual(localized("notice_reaction", "Anna"), "Anna brást við póstinum þínum.")
+    }
+
     func testCopyAndALinksActionResolve() {
         XCTAssertEqual(localized("copy"), "Afrita")
         XCTAssertEqual(localized("copied"), "Afritað")

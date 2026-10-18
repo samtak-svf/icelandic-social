@@ -1,13 +1,14 @@
 import SpjallCore
 import SwiftUI
 
-/// The two tabs, the conversations and "Ég" (decision 0044), and the
-/// screens they lead to. Once per install the first launch's steps come before them
-/// (decision 0043), and the Kenni offer waits for those. The socket is open while the scene is active
-/// (decision 0022). While it is, what arrives is on screen, so push announces
-/// none of it (decision 0025).
+/// The tabs, the conversations, the communities, the notifications and "Ég" (decisions 0044, 0063), and the
+/// screens they lead to. The communities and notifications are hosted content, kept apart from the
+/// conversations (decision 0060): their screens have stacks of their own and never touch the conversation
+/// store. Once per install the first launch's steps come before them (decision 0043), and the Kenni offer
+/// waits for those. The socket is open while the scene is active (decision 0022). While it is, what arrives
+/// is on screen, so push announces none of it (decision 0025).
 struct HomeView: View {
-    enum Tab { case conversations, me }
+    enum Tab { case conversations, communities, notifications, me }
 
     enum Route: Hashable {
         case people
@@ -20,6 +21,8 @@ struct HomeView: View {
 
     let signIn: SignInModel
     let push: PushModel
+    /// The communities, their posts and the notifications, which the server hosts.
+    let social: Social
     let onSignedOut: () -> Void
     /// The browser Kenni's link opens in.
     let browser: (URL) async throws -> URL?
@@ -31,6 +34,10 @@ struct HomeView: View {
     @State private var tab = Tab.conversations
     @State private var path: [Route] = []
     @State private var mePath: [MeRoute] = []
+    @State private var communities: CommunitiesModel
+    @State private var notices: NotificationsModel
+    @State private var communitiesPath: [SocialRoute] = []
+    @State private var noticesPath: [SocialRoute] = []
     /// Kenni's offer after a sign-in, over the tabs (decision 0035).
     @State private var offering = false
 
@@ -42,6 +49,7 @@ struct HomeView: View {
     init(
         signIn: SignInModel,
         push: PushModel,
+        social: Social,
         wire: Wire,
         browser: @escaping (URL) async throws -> URL?,
         onSignedOut: @escaping () -> Void
@@ -49,11 +57,14 @@ struct HomeView: View {
         self.signIn = signIn
         self.browser = browser
         self.push = push
+        self.social = social
         self.onSignedOut = onSignedOut
         let socket = Socket(account: signIn.account, wire: wire)
         _socket = State(initialValue: socket)
         _list = State(initialValue: ConversationsModel(account: signIn.account, live: socket))
         _me = State(initialValue: MeModel(account: signIn.account))
+        _communities = State(initialValue: CommunitiesModel(social: social))
+        _notices = State(initialValue: NotificationsModel(social: social))
         _onboarding = State(initialValue: OnboardingModel(notifier: push.notifier))
         _photos = State(initialValue: PhotoCache(account: signIn.account, decode: avatarPhoto))
     }
@@ -66,15 +77,24 @@ struct HomeView: View {
             } else {
                 switch tab {
                 case .conversations: conversationsStack
+                case .communities:
+                    socialStack($communitiesPath) {
+                        CommunitiesView(model: communities) { communitiesPath.append(.community($0)) }
+                    }
+                case .notifications: socialStack($noticesPath) { NotificationsView(model: notices) }
                 case .me: meStack
                 }
             }
-            // Only on the two roots: what they lead to has the screen to itself.
+            // Only on the roots: what they lead to has the screen to itself.
             if onboarding.step == .done && atRoot {
                 TabBar(
                     selection: $tab,
                     items: [
                         .init(tab: .conversations, label: localized("tab_conversations"), systemImage: "bubble.left"),
+                        .init(tab: .communities, label: localized("tab_communities"), systemImage: "person.3"),
+                        .init(
+                            tab: .notifications, label: localized("tab_notifications"), systemImage: "bell",
+                            badge: notices.unread),
                         .init(tab: .me, label: localized("tab_me"), systemImage: "person"),
                     ])
             }
@@ -88,6 +108,8 @@ struct HomeView: View {
             openTapped()
             await push.start()
         }
+        // The count on the notifications tab, as the server has it.
+        .task { await notices.refresh() }
         .task {
             for await _ in socket.events() { await push.quiet() }
         }
@@ -97,6 +119,7 @@ struct HomeView: View {
                 socket.start()
                 // Back from the system settings the notifications notice sends to.
                 Task { await push.check() }
+                Task { await notices.refresh() }
             case .background: socket.stop()
             default: break
             }
@@ -186,9 +209,23 @@ struct HomeView: View {
         }
     }
 
+    /// A hosted tab's stack: its root, then communities, posts and report queues, each with a model of its own.
+    private func socialStack<Root: View>(_ path: Binding<[SocialRoute]>, @ViewBuilder root: () -> Root)
+        -> some View
+    {
+        NavigationStack(path: path) {
+            root()
+                .navigationDestination(for: SocialRoute.self) { route in
+                    SocialDestination(route: route, social: social)
+                }
+        }
+    }
+
     private var atRoot: Bool {
         switch tab {
         case .conversations: path.isEmpty
+        case .communities: communitiesPath.isEmpty
+        case .notifications: noticesPath.isEmpty
         case .me: mePath.isEmpty
         }
     }
@@ -247,5 +284,59 @@ private struct ConversationRoute: View {
 
     var body: some View {
         ConversationView(model: model)
+    }
+}
+
+/// A community, a post or a report queue, with a model of its own each time it opens.
+private struct SocialDestination: View {
+    let route: SocialRoute
+    let social: Social
+
+    var body: some View {
+        switch route {
+        case .community(let id): CommunityRoute(id: id, social: social).id(route)
+        case .post(let id): PostRoute(id: id, social: social).id(route)
+        case .reports(let id): ReportsRoute(id: id, social: social).id(route)
+        }
+    }
+}
+
+private struct CommunityRoute: View {
+    @State private var model: CommunityModel
+    let social: Social
+
+    init(id: String, social: Social) {
+        _model = State(initialValue: CommunityModel(social: social, communityId: id))
+        self.social = social
+    }
+
+    var body: some View {
+        CommunityView(model: model, social: social)
+    }
+}
+
+private struct PostRoute: View {
+    @State private var model: PostModel
+    let social: Social
+
+    init(id: String, social: Social) {
+        _model = State(initialValue: PostModel(social: social, postId: id))
+        self.social = social
+    }
+
+    var body: some View {
+        PostView(model: model, social: social)
+    }
+}
+
+private struct ReportsRoute: View {
+    @State private var model: ReportsModel
+
+    init(id: String, social: Social) {
+        _model = State(initialValue: ReportsModel(social: social, communityId: id))
+    }
+
+    var body: some View {
+        ReportsView(model: model)
     }
 }

@@ -1,0 +1,152 @@
+import Foundation
+import Observation
+import SpjallCore
+
+/// One post (decision 0063) and its comments, oldest first, with a reaction to toggle and a comment to write
+/// for a member of its community who is not muted.
+@MainActor @Observable
+final class PostModel {
+    let postId: String
+    private(set) var post: Post?
+    /// The post's community, which says whether this account may write here.
+    private(set) var community: Community?
+    /// Its comments so far, oldest first.
+    private(set) var comments: [Comment] = []
+    /// The cursor of the next, newer page, nil on the last.
+    private(set) var next: String?
+    /// A further page is on its way.
+    private(set) var paging = false
+    private(set) var loaded = false
+    /// The comment being written.
+    var draft = ""
+    private(set) var busy = false
+    private(set) var problem: Problem?
+
+    private let social: Social
+    private let now: @Sendable () -> UInt64
+    private var failed: (() async -> Void)?
+    private var reacting = false
+
+    init(social: Social, postId: String, now: @escaping @Sendable () -> UInt64 = nowMillis) {
+        self.social = social
+        self.postId = postId
+        self.now = now
+    }
+
+    /// This account may comment and react: a member, not muted, and the post still shown.
+    var writes: Bool {
+        guard let community, post?.state == .visible else { return false }
+        return canWrite(community, now: now())
+    }
+
+    /// A moderator muted this account in the post's community.
+    var muted: Bool { community.map { isMuted($0, now: now()) } ?? false }
+
+    /// The draft may be sent: something written, and not over the limit.
+    var sendable: Bool {
+        let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        return writes && !body.isEmpty && body.count <= Self.commentLimit
+    }
+
+    func load() async {
+        let social = social
+        let id = postId
+        await perform(again: { await self.load() }) {
+            let (post, community, page) = try await offMain {
+                let post = try social.post(id)
+                return (
+                    post, try social.community(post.communityId),
+                    try social.comments(id, after: nil, limit: Self.page)
+                )
+            }
+            self.post = post
+            self.community = community
+            self.comments = page.comments
+            self.next = page.next
+            self.loaded = true
+        }
+    }
+
+    /// The comments' next, newer page, if there is one and none is on its way.
+    func more() async {
+        guard let next, !paging, !busy else { return }
+        let social = social
+        let id = postId
+        paging = true
+        problem = nil
+        do {
+            let page = try await offMain { try social.comments(id, after: next, limit: Self.page) }
+            let shown = Set(comments.map(\.commentId))
+            comments += page.comments.filter { !shown.contains($0.commentId) }
+            self.next = page.next
+            failed = nil
+        } catch {
+            failed = { await self.more() }
+            problem = Problem(error)
+        }
+        paging = false
+    }
+
+    /// Sends the draft. It goes last, as the newest; while newer pages are still to come it arrives with them.
+    func publish() async {
+        guard sendable else { return }
+        let social = social
+        let id = postId
+        let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        await perform(again: { await self.publish() }) {
+            let comment = try await offMain { try social.createComment(id, body: body) }
+            if self.next == nil { self.comments.append(comment) }
+            self.post?.commentCount += 1
+            self.draft = ""
+        }
+    }
+
+    /// Sets this account's reaction to `kind`, or takes it off when it is `kind` already, shown at once and
+    /// put back if the server refuses.
+    func react(_ kind: ReactionKind) async {
+        guard writes, !reacting, let before = post else { return }
+        let off = before.myReaction == kind
+        post = reacted(before, off ? nil : kind)
+        reacting = true
+        let social = social
+        let id = postId
+        problem = nil
+        do {
+            try await offMain {
+                if off { try social.unreact(id) } else { try social.react(id, kind: kind) }
+            }
+            failed = nil
+        } catch {
+            post = before
+            failed = nil
+            problem = Problem(error)
+        }
+        reacting = false
+    }
+
+    /// The longest comment the server takes.
+    nonisolated static let commentLimit = 2_000
+
+    /// A page of comments: a screenful and some.
+    private nonisolated static let page: UInt32 = 30
+
+    /// Tries the action that failed again.
+    func retry() async {
+        await failed?()
+    }
+
+    private func perform(again: @escaping () async -> Void, _ action: () async throws -> Void) async {
+        guard !busy else { return }
+        busy = true
+        problem = nil
+        do {
+            try await action()
+            failed = nil
+        } catch {
+            failed = again
+            loaded = true
+            problem = Problem(error)
+        }
+        busy = false
+    }
+}

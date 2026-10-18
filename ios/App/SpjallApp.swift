@@ -29,6 +29,8 @@ struct RootView: View {
     let signIn: SignInModel
     let push: PushModel
     var update = Update.shared
+    /// The hosted social calls, on the same core as the sign-in.
+    var social: Social = SpjallApp.account
 
     @Environment(\.webAuthenticationSession) private var webAuthenticationSession
     @Environment(\.openURL) private var openURL
@@ -66,6 +68,7 @@ struct RootView: View {
                     HomeView(
                         signIn: signIn,
                         push: push,
+                        social: social,
                         wire: URLSessionWire(baseURL: base, client: CoreStore.client),
                         browser: browser,
                         onSignedOut: signIn.signedOut
