@@ -1,21 +1,18 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { deleteAccount } from "../src/account-deletion.ts";
-import { ApiError } from "../src/api/common.ts";
 import { deleteUnattached } from "../src/modules/social/index.ts";
 import { feed } from "../src/modules/social/posts.ts";
 import { ascii, png } from "./images.ts";
-import { device, euEnv } from "./support.ts";
-import { worker } from "./main.ts";
+import { community, errorOf, ok, person, type Person } from "./people.ts";
+import { euEnv } from "./support.ts";
 
 // A community's content (decisions 0060, 0063, 0065): posts, comments,
 // reactions, the feed within its D1 budget (#275), and the images of posts,
 // validated and re-encoded.
 
-const BASE = "https://spjall.test";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-type Person = Awaited<ReturnType<typeof person>>;
 type Post = {
   postId: string;
   communityId: string;
@@ -27,49 +24,6 @@ type Post = {
   commentCount: number;
 };
 type Comment = { commentId: string; body: string; author: { accountId: string } };
-
-async function person(name: string) {
-  const seeded = await device();
-  await env.DB.prepare("UPDATE accounts SET display_name = ?, verified = 1 WHERE account_id = ?")
-    .bind(name, seeded.accountId)
-    .run();
-  const call = (method: string, path: string, body?: unknown) =>
-    worker.fetch(`${BASE}${path}`, {
-      method,
-      headers: {
-        ...seeded.auth,
-        ...(body === undefined ? {} : { "content-type": "application/json" }),
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-  const send = (path: string, bytes: Uint8Array) =>
-    worker.fetch(`${BASE}${path}`, {
-      method: "POST",
-      headers: { ...seeded.auth, "content-type": "application/octet-stream" },
-      body: bytes,
-    });
-  return { ...seeded, call, send };
-}
-
-const errorOf = async (response: Response) => ApiError.parse(await response.json()).error;
-
-async function ok<T>(response: Response): Promise<T> {
-  expect(response.status).toBe(200);
-  return (await response.json()) as T;
-}
-
-async function community(owner: Person, audience: "open" | "private", ...members: Person[]) {
-  const { communityId } = await ok<{ communityId: string }>(
-    await owner.call("POST", "/v1/communities", { name: "Garðyrkjufélagið", audience }),
-  );
-  for (const member of members) {
-    if (audience === "private") {
-      await owner.call("PUT", `/v1/communities/${communityId}/invitations/${member.accountId}`);
-    }
-    expect((await member.call("POST", `/v1/communities/${communityId}/join`)).status).toBe(200);
-  }
-  return communityId;
-}
 
 const post = (by: Person, communityId: string, body: string, media: string[] = []) =>
   by.call("POST", `/v1/communities/${communityId}/posts`, { body, media });

@@ -3,5 +3,15 @@
 // and the images in R2. The tables it owns are written only here.
 
 export { dropSpace, forgetAccount } from "./lifecycle.ts";
+export { commentAccess, postAccess } from "./access.ts";
 export { deleteUnattached } from "./media.ts";
+export {
+  commentContent,
+  moderateComment,
+  moderatePost,
+  postContent,
+  purgeRemoved,
+  type Content,
+} from "./moderation.ts";
+export { authors } from "./posts.ts";
 export { socialRoutes } from "./routes.ts";

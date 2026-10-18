@@ -26,11 +26,15 @@ const MediaId = OpaqueId.openapi({ example: "sm_3f9a1b2c3d4e5f60718293a4b5c6d7e8
 
 const Reaction = z.enum(REACTIONS);
 
-const Author = z
+const State = z.enum(["visible", "hidden", "removed"]).openapi({
+  description: "Only a moderator sees what is not visible: hidden or removed by a moderator",
+});
+
+export const Author = z
   .object({ accountId: OpaqueId, name: z.string().nullable(), verified: z.boolean() })
   .openapi("Author");
 
-const Media = z
+export const Media = z
   .object({ mediaId: MediaId, width: z.int(), height: z.int() })
   .openapi("SocialMedia", { description: "A re-encoded WebP image" });
 
@@ -47,6 +51,7 @@ const Post = z
       .openapi({ description: "Each reaction the caller can see, with its count" }),
     myReaction: Reaction.nullable(),
     commentCount: z.int(),
+    state: State,
   })
   .openapi("Post");
 
@@ -57,6 +62,7 @@ const Comment = z
     author: Author,
     body: z.string(),
     createdAt: z.int().openapi({ description: "Unix milliseconds" }),
+    state: State,
   })
   .openapi("Comment");
 
@@ -93,7 +99,12 @@ const NO_POST = { 404: errorResponse("not_found: no such post the caller can see
 const NO_COMMUNITY = { 404: errorResponse("not_found: no such community the caller can see") };
 const MEMBERS_POST = {
   403: errorResponse(
-    "not_a_member: only members post, comment and react; read_only: the community takes nothing new",
+    "not_a_member: only members post, comment and react; read_only: the community takes nothing new; muted: a moderator muted the caller here for now",
+  ),
+};
+const MEMBERS_REPLY = {
+  403: errorResponse(
+    "not_a_member: only members comment and react; read_only: the community takes nothing new; muted: a moderator muted the caller here for now; not_permitted: the post was hidden or removed; blocked: a block stands between the caller and the post's author",
   ),
 };
 
@@ -280,7 +291,7 @@ export const createCommentRoute = createRoute({
     200: json("Commented", Comment),
     ...INVALID,
     ...AUTHED,
-    ...MEMBERS_POST,
+    ...MEMBERS_REPLY,
     ...NO_POST,
   },
 });
@@ -320,7 +331,7 @@ export const reactRoute = createRoute({
     204: { description: "Set" },
     ...INVALID,
     ...AUTHED,
-    ...MEMBERS_POST,
+    ...MEMBERS_REPLY,
     ...NO_POST,
   },
 });

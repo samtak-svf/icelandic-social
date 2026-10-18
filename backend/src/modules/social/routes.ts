@@ -19,7 +19,8 @@ import { space, withinLimit } from "../../env/index.ts";
 import { blockedEither } from "../../identity/index.ts";
 import { fail } from "../../errors.ts";
 import { log } from "../../log.ts";
-import { canTakePart, postAccess, spaceAccess, type SpaceAccess } from "./access.ts";
+import { cardRoutes } from "./cards.ts";
+import { commentAccess, postAccess, refusal, replyRefusal, spaceAccess } from "./access.ts";
 import type { CommentContent } from "./do/space.ts";
 import { deleteKeys, postImage, upload } from "./media.ts";
 import {
@@ -38,9 +39,6 @@ import {
 // access.ts whether the caller may see what it names before anything else.
 // A log line carries ids and counts, never a text or an image (0008).
 
-/** Why a member may not add to a space, as the error the routes answer. */
-const refusal = (access: SpaceAccess) => (access.standing.role ? "read_only" : "not_a_member");
-
 /** Comments with their authors' names; a deleted author's go. */
 async function named(env: Env, comments: CommentContent[]) {
   const names = await authors(
@@ -54,12 +52,15 @@ async function named(env: Env, comments: CommentContent[]) {
 }
 
 export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
+  cardRoutes(app);
+
   app.openapi(createPostRoute, async (c) => {
     const { accountId } = c.var.session;
     const { communityId } = c.req.valid("param");
     const access = await spaceAccess(c.env, accountId, communityId);
     if (!access) return fail(c, 404, "not_found");
-    if (!canTakePart(access)) return fail(c, 403, refusal(access));
+    const refused = refusal(access);
+    if (refused) return fail(c, 403, refused);
     const input = c.req.valid("json");
     if (input.body === "" && input.media.length === 0) return fail(c, 400, "invalid_request");
     const created = await createPost(c.env, communityId, accountId, input);
@@ -67,7 +68,7 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     const author = (await authors(c.env, [accountId])).get(accountId);
     if (!author) return fail(c, 404, "not_found");
     log("post.created", { accountId, communityId, postId: created.postId });
-    return c.json({ ...created, communityId, author }, 200);
+    return c.json({ ...created, communityId, author, state: "visible" as const }, 200);
   });
 
   app.openapi(uploadSocialMediaRoute, async (c) => {
@@ -78,7 +79,8 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     const refuse = async <T>(answer: T) => (await body?.cancel(), answer);
     const access = await spaceAccess(c.env, accountId, communityId);
     if (!access) return refuse(fail(c, 404, "not_found"));
-    if (!canTakePart(access)) return refuse(fail(c, 403, refusal(access)));
+    const refused = refusal(access);
+    if (refused) return refuse(fail(c, 403, refused));
     if (!(await withinLimit(c.env, "photos", `social:${accountId}`))) {
       log("request.rate_limited", { code: "photos", requestId: c.var.requestId });
       return refuse(fail(c, 429, "rate_limited"));
@@ -114,7 +116,8 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     const { before, limit } = c.req.valid("query");
     const page = await feed(c.env, accountId, before, limit);
     // The feed's SQL left out the posts of the blocked; the spaces hide their comments and reactions.
-    const viewer = { account: accountId, hidden: await blockedEither(c.env, accountId) };
+    const hidden = await blockedEither(c.env, accountId);
+    const viewer = { account: accountId, hidden, moderator: false };
     return c.json({ posts: await render(c.env, page.rows, viewer), next: page.next }, 200);
   });
 
@@ -176,7 +179,8 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     const { postId } = c.req.valid("param");
     const found = await postAccess(c.env, accountId, postId);
     if (!found) return fail(c, 404, "not_found");
-    if (!canTakePart(found.access)) return fail(c, 403, refusal(found.access));
+    const refused = replyRefusal(found.access, found.post);
+    if (refused) return fail(c, 403, refused);
     const { communityId } = found.post;
     await noteAuthor(c.env, communityId, accountId);
     const added = await space(c.env, communityId).addComment({
@@ -194,18 +198,12 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
 
   app.openapi(deleteCommentRoute, async (c) => {
     const { accountId } = c.var.session;
-    const { commentId } = c.req.valid("param");
-    const postId = commentId.slice(0, Math.max(0, commentId.lastIndexOf("-")));
-    const found = postId ? await postAccess(c.env, accountId, postId) : null;
+    const found = await commentAccess(c.env, accountId, c.req.valid("param").commentId);
     if (!found) return fail(c, 404, "not_found");
-    const stub = space(c.env, found.post.communityId);
-    const comment = await stub.comment(commentId);
-    if (!comment || found.access.viewer.hidden.includes(comment.author)) {
-      return fail(c, 404, "not_found");
-    }
+    const { post, comment } = found;
     if (comment.author !== accountId) return fail(c, 403, "not_author");
-    await stub.deleteComment(commentId);
-    log("comment.deleted", { accountId, communityId: found.post.communityId, postId });
+    await space(c.env, post.communityId).deleteComment(comment.commentId);
+    log("comment.deleted", { accountId, communityId: post.communityId, postId: post.postId });
     return c.body(null, 204);
   });
 
@@ -214,7 +212,8 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     const { postId } = c.req.valid("param");
     const found = await postAccess(c.env, accountId, postId);
     if (!found) return fail(c, 404, "not_found");
-    if (!canTakePart(found.access)) return fail(c, 403, refusal(found.access));
+    const refused = replyRefusal(found.access, found.post);
+    if (refused) return fail(c, 403, refused);
     await noteAuthor(c.env, found.post.communityId, accountId);
     const set = await space(c.env, found.post.communityId).react(
       postId,

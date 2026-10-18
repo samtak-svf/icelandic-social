@@ -22,6 +22,10 @@ export type Standing = {
   invited: boolean;
   readOnly: boolean;
   banned: boolean;
+  /** Until when a moderator muted the viewer here, or null. */
+  mutedUntil: number | null;
+  /** The viewer is on Samtak's list of platform moderators (decision 0063). */
+  platformModerator: boolean;
 };
 
 /** A read-only community is deleted this long after its owner's account was (decision 0063). */
@@ -29,7 +33,8 @@ const READ_ONLY_MS = 90 * 24 * 60 * 60 * 1000;
 
 // ?1 is the viewer in every query that uses these.
 const COLUMNS = `c.community_id, c.name, c.description, c.audience, c.created_at,
-       c.read_only_since, m.role,
+       c.read_only_since, m.role, m.muted_until,
+       EXISTS (SELECT 1 FROM platform_moderators p WHERE p.account_id = ?1) AS platform,
        EXISTS (SELECT 1 FROM community_bans x
                 WHERE x.community_id = c.community_id AND x.account_id = ?1) AS banned,
        EXISTS (SELECT 1 FROM community_join_requests r
@@ -50,6 +55,8 @@ type Row = {
   created_at: number;
   read_only_since: number | null;
   role: Role | null;
+  muted_until: number | null;
+  platform: number;
   banned: number;
   requested: number;
   invited: number;
@@ -69,6 +76,8 @@ function standingOf(row: Row): Standing {
     invited: row.invited === 1,
     readOnly: row.read_only_since !== null,
     banned: row.banned === 1,
+    mutedUntil: row.muted_until,
+    platformModerator: row.platform === 1,
   };
 }
 
@@ -86,9 +95,10 @@ export async function standing(
 }
 
 /** The public face of a standing: the flags the contract does not carry are dropped. */
-export function view(s: Standing): Omit<Standing, "banned"> {
-  const { banned, ...community } = s;
+export function view(s: Standing): Omit<Standing, "banned" | "platformModerator"> {
+  const { banned, platformModerator, ...community } = s;
   void banned;
+  void platformModerator;
   return community;
 }
 
@@ -139,6 +149,8 @@ export async function createCommunity(
     invited: false,
     readOnly: false,
     banned: false,
+    mutedUntil: null,
+    platformModerator: false,
   };
 }
 

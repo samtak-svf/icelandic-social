@@ -1,6 +1,6 @@
 # 0063. Communities have an audience, roles and a moderation log; their content is hosted, not encrypted
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; amended by [0066](0066-moderation-in-d1.md)
 - Date: 2026-10-17
 - Decided by: Guðröður Atli Jónsson
 - Builds on: [0001](0001-eu-storage-and-residency-wording.md), [0008](0008-no-pii-in-logs.md),

@@ -1,6 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import type { REACTIONS } from "../../../api/social.ts";
-import { SCHEMA } from "./space-schema.ts";
+import { REMOVED_KEPT_MS, SCHEMA } from "./space-schema.ts";
 
 export type Reaction = (typeof REACTIONS)[number];
 
@@ -19,21 +19,25 @@ export type PostContent = {
   commentCount: number;
 };
 
+export type ContentState = "visible" | "hidden" | "removed";
+
 export type CommentContent = {
   commentId: string;
   postId: string;
   author: string;
   body: string;
   createdAt: number;
+  state: ContentState;
 };
 
 /**
  * Who is looking: the viewer, and the accounts a block stands between it and
  * (decision 0063), whose comments and reactions it does not see. The Worker
  * has already decided the viewer may read the space; a moderator's `hidden`
- * is empty, since a block does not hide content from moderation.
+ * is empty, since a block does not hide content from moderation, and only a
+ * moderator sees a hidden or removed comment.
  */
-export type Viewer = { account: string; hidden: string[] };
+export type Viewer = { account: string; hidden: string[]; moderator: boolean };
 
 type PostRow = { post_id: string; author: string; body: string; media: string; created_at: number };
 type CommentRow = {
@@ -42,6 +46,7 @@ type CommentRow = {
   author: string;
   body: string;
   created_at: number;
+  state: ContentState;
 };
 
 const comment = (r: CommentRow): CommentContent => ({
@@ -50,6 +55,7 @@ const comment = (r: CommentRow): CommentContent => ({
   author: r.author,
   body: r.body,
   createdAt: r.created_at,
+  state: r.state,
 });
 
 /**
@@ -122,9 +128,11 @@ export class Space extends DurableObject<Env> {
           `SELECT post_id, COUNT(*) AS count FROM comments
             WHERE post_id IN (SELECT value FROM json_each(?1))
               AND author NOT IN (SELECT value FROM json_each(?2))
+              AND (?3 = 1 OR state = 'visible')
             GROUP BY post_id`,
           wanted,
           hidden,
+          viewer.moderator ? 1 : 0,
         )
         .toArray()
         .map((r) => [r.post_id, r.count]),
@@ -170,6 +178,7 @@ export class Space extends DurableObject<Env> {
       .exec<CommentRow>(
         `SELECT * FROM comments
           WHERE post_id = ?1 AND author NOT IN (SELECT value FROM json_each(?2))
+            AND (?6 = 1 OR state = 'visible')
             AND (?3 IS NULL OR created_at > ?3 OR (created_at = ?3 AND comment_id > ?4))
           ORDER BY created_at, comment_id LIMIT ?5`,
         postId,
@@ -177,13 +186,14 @@ export class Space extends DurableObject<Env> {
         after?.createdAt ?? null,
         after?.id ?? null,
         limit,
+        viewer.moderator ? 1 : 0,
       )
       .toArray()
       .map(comment);
   }
 
   /** Stores a comment; null when the post is not here. */
-  addComment(input: CommentContent): CommentContent | null {
+  addComment(input: Omit<CommentContent, "state">): CommentContent | null {
     const exists = this.sql
       .exec("SELECT 1 FROM posts WHERE post_id = ?", input.postId)
       .toArray().length;
@@ -197,7 +207,7 @@ export class Space extends DurableObject<Env> {
       input.body,
       input.createdAt,
     );
-    return input;
+    return { ...input, state: "visible" };
   }
 
   comment(commentId: string): CommentContent | null {
@@ -209,6 +219,38 @@ export class Space extends DurableObject<Env> {
 
   deleteComment(commentId: string): void {
     this.sql.exec("DELETE FROM comments WHERE comment_id = ?", commentId);
+  }
+
+  /**
+   * A moderator's hide, removal or restoring of a comment (decision 0063).
+   * A removed comment's text is deleted REMOVED_KEPT_MS later, by the alarm.
+   */
+  async moderateComment(commentId: string, state: ContentState, at: number): Promise<boolean> {
+    const changed = this.sql.exec(
+      "UPDATE comments SET state = ?, moderated_at = ? WHERE comment_id = ?",
+      state,
+      at,
+      commentId,
+    ).rowsWritten;
+    if (changed > 0 && state === "removed" && (await this.ctx.storage.getAlarm()) === null) {
+      await this.ctx.storage.setAlarm(at + REMOVED_KEPT_MS);
+    }
+    return changed > 0;
+  }
+
+  /** Deletes the comments removed REMOVED_KEPT_MS ago, and waits for the next. */
+  async alarm(): Promise<void> {
+    const now = Date.now();
+    this.sql.exec(
+      "DELETE FROM comments WHERE state = 'removed' AND moderated_at <= ?",
+      now - REMOVED_KEPT_MS,
+    );
+    const next = this.sql
+      .exec<{ at: number | null }>(
+        "SELECT MIN(moderated_at) AS at FROM comments WHERE state = 'removed'",
+      )
+      .one().at;
+    if (next !== null) await this.ctx.storage.setAlarm(next + REMOVED_KEPT_MS);
   }
 
   /** Sets, replaces or (with null) removes `account`'s reaction; false when the post is not here. */

@@ -80,7 +80,7 @@ export interface SignInConfig {
 }
 
 export interface ApiError {
-  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, invalid_media, internal_error */
+  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, invalid_media, muted, internal_error */
   error: string;
   /** The request's id, also in the x-request-id header: opaque, for support to find the request by (decision 0037) */
   requestId: string;
@@ -364,6 +364,8 @@ export interface Community {
   joinRequested: boolean;
   /** A moderator invited the caller */
   invited: boolean;
+  /** Until when (Unix milliseconds) a moderator muted the caller here: it reads, but does not post, comment or react */
+  mutedUntil: number | null;
   /** Its owner's account was deleted and no moderator was left to take it over; it is deleted 90 days later */
   readOnly: boolean;
 }
@@ -391,6 +393,67 @@ export interface JoinRequest {
   requestedAt: number;
 }
 
+/** What a reference shows, by its kind; `unavailable` when the caller may not see it */
+export type Card = {
+  kind: "unavailable";
+  ref: Ref;
+} | {
+  kind: "post";
+  ref: Ref;
+  community: {
+    communityId: string;
+    name: string;
+  };
+  author: Author;
+  /** The text's first 280 characters, an ellipsis ending one cut short */
+  excerpt: string;
+  image: SocialMedia | null;
+  /** Unix milliseconds */
+  createdAt: number;
+} | {
+  kind: "comment";
+  ref: Ref;
+  community: {
+    communityId: string;
+    name: string;
+  };
+  postId: string;
+  author: Author;
+  /** The text's first 280 characters, an ellipsis ending one cut short */
+  excerpt: string;
+  /** Unix milliseconds */
+  createdAt: number;
+} | {
+  kind: "community";
+  ref: Ref;
+  community: {
+    communityId: string;
+    name: string;
+  };
+  description: string;
+  audience: "open" | "private";
+  memberCount: number | null;
+};
+
+/** A stable reference to a post, a comment or a community */
+export interface Ref {
+  kind: "post" | "comment" | "community";
+  id: string;
+}
+
+export interface Author {
+  accountId: string;
+  name: string | null;
+  verified: boolean;
+}
+
+/** A re-encoded WebP image */
+export interface SocialMedia {
+  mediaId: string;
+  width: number;
+  height: number;
+}
+
 export interface Post {
   postId: string;
   communityId: string;
@@ -406,19 +469,8 @@ export interface Post {
   }>;
   myReaction: "like" | "love" | "laugh" | "wow" | "sad" | null;
   commentCount: number;
-}
-
-export interface Author {
-  accountId: string;
-  name: string | null;
-  verified: boolean;
-}
-
-/** A re-encoded WebP image */
-export interface SocialMedia {
-  mediaId: string;
-  width: number;
-  height: number;
+  /** Only a moderator sees what is not visible: hidden or removed by a moderator */
+  state: "visible" | "hidden" | "removed";
 }
 
 export interface PostPage {
@@ -438,6 +490,57 @@ export interface Comment {
   postId: string;
   author: Author;
   body: string;
+  /** Unix milliseconds */
+  createdAt: number;
+  /** Only a moderator sees what is not visible: hidden or removed by a moderator */
+  state: "visible" | "hidden" | "removed";
+}
+
+/** What a report or an action is about */
+export interface ReportTarget {
+  kind: "post" | "comment" | "community" | "account";
+  id: string;
+}
+
+export interface ReportPage {
+  reports: Array<Report>;
+  /** The cursor of the next page */
+  next: string | null;
+}
+
+/** A report, without the account that made it */
+export interface Report {
+  reportId: string;
+  communityId: string | null;
+  target: ReportTarget;
+  targetAccount: Author & Record<string, never> | null;
+  reason: "unlawful" | "harassment" | "spam" | "other";
+  note: string;
+  state: "open" | "closed";
+  /** Unix milliseconds */
+  createdAt: number;
+  closedAt: number | null;
+}
+
+export interface ModerationLogPage {
+  entries: Array<ModerationLogEntry>;
+  /** The cursor of the next, older page */
+  next: string | null;
+}
+
+export interface ModerationLogEntry {
+  entryId: number;
+  communityId: string | null;
+  actor: Author & Record<string, never> | null;
+  /** Done as one of Samtak's platform moderators */
+  asPlatform: boolean;
+  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "close_report";
+  target: {
+    kind: "post" | "comment" | "community" | "account" | "report";
+    id: string;
+  };
+  targetAccount: Author & Record<string, never> | null;
+  reason: string;
   /** Unix milliseconds */
   createdAt: number;
 }
@@ -1001,6 +1104,26 @@ export function transferCommunity(args: {
   return call("PUT", "/v1/communities/{communityId}/owner", args, init);
 }
 
+/**
+ * Resolve references to cards
+ *
+ * The card of each reference, in the order given. A reference to what the caller may not see, or to nothing, resolves to an `unavailable` card, whatever the reason.
+ */
+export function resolveCards(args: {
+  body: {
+    refs: Array<Ref>;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: {
+    cards: Array<Card>;
+  } }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/cards", args, init);
+}
+
 /** A community's posts, newest first */
 export function listCommunityPosts(args: {
   path: {
@@ -1223,4 +1346,156 @@ export function unreact(args: {
   | { status: 426; data: ApiError }
 > {
   return call("DELETE", "/v1/posts/{postId}/reaction", args, init);
+}
+
+/**
+ * Report a post, a comment, a community or an account
+ *
+ * A report on a post or a comment goes to the community's moderators, or with `toPlatform` to Samtak's; one that says the content is unlawful, or is on a community or an account, always goes to Samtak's. The caller reports only what it can see, and a thing once while its report is open; a second report answers the same.
+ */
+export function report(args: {
+  body: {
+    target: ReportTarget;
+    reason: "unlawful" | "harassment" | "spam" | "other";
+    note?: string;
+    toPlatform?: boolean;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/reports", args, init);
+}
+
+/** The community's report queue, oldest first */
+export function communityReports(args: {
+  path: {
+    communityId: string;
+  };
+  query?: {
+    state?: "open" | "closed";
+    /** The `next` of the page before */
+    after?: string;
+    limit?: number;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: ReportPage }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/communities/{communityId}/reports", args, init);
+}
+
+/** Samtak's report queue, oldest first */
+export function platformReports(args?: {
+  query?: {
+    state?: "open" | "closed";
+    /** The `next` of the page before */
+    after?: string;
+    limit?: number;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: ReportPage }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/moderation/reports", args, init);
+}
+
+/**
+ * Close a report, with what was done about it
+ *
+ * The community's moderators close a report in its queue, Samtak's platform moderators any. Closing is logged.
+ */
+export function closeReport(args: {
+  path: {
+    reportId: string;
+  };
+  body: {
+    resolution: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/reports/{reportId}/close", args, init);
+}
+
+/**
+ * Act as a moderator on a post, a comment or a member
+ *
+ * A community's moderators, its owner and Samtak's platform moderators act; each only on what an account of a lower rank wrote, or on such an account (member, moderator, owner, platform moderator). Every action is logged with its reason. A hidden post or comment is shown only to moderators; a removed one too, until its text is deleted 90 days after the removal. A muted member reads but does not post, comment or react until `until`; a removed one may join again; a banned one may not, and reads nothing. With `reportId`, the report is closed by the same action.
+ */
+export function moderate(args: {
+  path: {
+    communityId: string;
+  };
+  body: {
+    action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member";
+    /** The post's, the comment's or the account's id */
+    targetId: string;
+    reason: string;
+    /** With mute_member, and only with it: when the mute ends, in Unix milliseconds */
+    until?: number;
+    reportId?: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/communities/{communityId}/actions", args, init);
+}
+
+/** The community's moderation log, newest first */
+export function communityModerationLog(args: {
+  path: {
+    communityId: string;
+  };
+  query?: {
+    /** The `next` of the page before */
+    before?: string;
+    limit?: number;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: ModerationLogPage }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/communities/{communityId}/moderation-log", args, init);
+}
+
+/** Every community's moderation log, newest first */
+export function platformModerationLog(args?: {
+  query?: {
+    /** The `next` of the page before */
+    before?: string;
+    limit?: number;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: ModerationLogPage }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/moderation/log", args, init);
 }

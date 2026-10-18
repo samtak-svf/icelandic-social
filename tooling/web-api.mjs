@@ -55,6 +55,7 @@ const UNDERSTOOD = new Set([
   "required",
   "items",
   "oneOf",
+  "anyOf",
   "allOf",
 ]);
 
@@ -124,10 +125,12 @@ export function tsType(schema, where, indent = "") {
     }
     return String(schema.$ref).slice("#/components/schemas/".length);
   }
-  if (schema.oneOf)
-    return schema.oneOf
+  // A union, and a nullable $ref, which zod-openapi writes as anyOf with null.
+  const union = schema.oneOf ? "oneOf" : schema.anyOf ? "anyOf" : null;
+  if (union)
+    return schema[union]
       .map((/** @type {any} */ s, /** @type {number} */ i) =>
-        tsType(s, `${where}.oneOf[${i}]`, indent),
+        tsType(s, `${where}.${union}[${i}]`, indent),
       )
       .join(" | ");
   if (schema.allOf) {
@@ -182,7 +185,8 @@ function declaration(name, schema) {
   if (!IDENTIFIER.test(name)) throw new Error(`${name}: not a TypeScript name`);
   const type = tsType(schema, name);
   const head = doc(schema.description, "", schema.deprecated);
-  return type.startsWith("{")
+  // Only a plain object is an interface; a union of objects is a type.
+  return schema.type === "object"
     ? `${head}export interface ${name} ${type}\n`
     : `${head}export type ${name} = ${type};\n`;
 }

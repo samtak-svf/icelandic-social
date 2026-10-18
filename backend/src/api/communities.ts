@@ -30,6 +30,10 @@ const Community = z
     role: Role.nullable().openapi({ description: "The caller's role; null when not a member" }),
     joinRequested: z.boolean().openapi({ description: "The caller's join request waits" }),
     invited: z.boolean().openapi({ description: "A moderator invited the caller" }),
+    mutedUntil: z.int().nullable().openapi({
+      description:
+        "Until when (Unix milliseconds) a moderator muted the caller here: it reads, but does not post, comment or react",
+    }),
     readOnly: z.boolean().openapi({
       description:
         "Its owner's account was deleted and no moderator was left to take it over; it is deleted 90 days later",

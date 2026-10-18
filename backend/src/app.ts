@@ -66,6 +66,7 @@ import {
   putMedia,
 } from "./modules/messaging/index.ts";
 import { communityRoutes } from "./modules/communities/index.ts";
+import { moderationRoutes } from "./modules/moderation/index.ts";
 import { dropSpace, socialRoutes } from "./modules/social/index.ts";
 import { accountRoutes, photoRoutes } from "./modules/profiles/index.ts";
 
@@ -424,6 +425,7 @@ export function createApp() {
   // Communities and membership (decision 0063).
   communityRoutes(app, { beforeDelete: dropSpace });
   socialRoutes(app);
+  moderationRoutes(app);
 
   // The socket lives in the account's Inbox; the Worker tells it which
   // device this is, replacing any such header the client sent.

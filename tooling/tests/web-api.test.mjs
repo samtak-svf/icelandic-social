@@ -70,6 +70,17 @@ describe("web-api", () => {
     expect(tsType({ oneOf: [{ $ref: "#/components/schemas/A" }, { type: "null" }] }, "U")).toBe(
       "A | null",
     );
+    expect(tsType({ anyOf: [{ $ref: "#/components/schemas/A" }, { type: "null" }] }, "N")).toBe(
+      "A | null",
+    );
+  });
+
+  it("declares a union of objects as a type, an object as an interface", () => {
+    const one = { type: "object", properties: { a: { type: "string" } }, required: ["a"] };
+    const either = { oneOf: [one, { $ref: "#/components/schemas/One" }] };
+    const client = emit({ paths: {}, components: { schemas: { One: one, Either: either } } });
+    expect(client).toContain("export interface One {");
+    expect(client).toContain("export type Either = {\n  a: string;\n} | One;");
   });
 
   it("refuses a keyword it does not understand", () => {

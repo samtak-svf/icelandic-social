@@ -1,3 +1,6 @@
+/** A removed post's or comment's text is deleted this long after its removal (decision 0063). */
+export const REMOVED_KEPT_MS = 90 * 24 * 60 * 60 * 1000;
+
 /** The Space DO's tables (decisions 0060, 0063): one community's content. */
 export const SCHEMA = `
   CREATE TABLE IF NOT EXISTS posts (
@@ -13,8 +16,11 @@ export const SCHEMA = `
     post_id TEXT NOT NULL,
     author TEXT NOT NULL,
     body TEXT NOT NULL,
-    created_at INTEGER NOT NULL
+    created_at INTEGER NOT NULL,
+    state TEXT NOT NULL DEFAULT 'visible' CHECK (state IN ('visible', 'hidden', 'removed')),
+    moderated_at INTEGER
   );
+  CREATE INDEX IF NOT EXISTS comments_removed ON comments (moderated_at) WHERE state = 'removed';
   CREATE INDEX IF NOT EXISTS comments_by_post ON comments (post_id, created_at, comment_id);
   CREATE INDEX IF NOT EXISTS comments_by_author ON comments (author);
   CREATE TABLE IF NOT EXISTS reactions (

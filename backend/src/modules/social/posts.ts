@@ -12,7 +12,11 @@ import type { IndexedPost } from "./access.ts";
 const FEED_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type Author = { accountId: string; name: string | null; verified: boolean };
-export type Post = Omit<PostContent, "author"> & { communityId: string; author: Author };
+export type Post = Omit<PostContent, "author"> & {
+  communityId: string;
+  author: Author;
+  state: IndexedPost["state"];
+};
 
 const hex = (n: number) =>
   Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) =>
@@ -59,7 +63,7 @@ export async function render(env: Env, rows: IndexedPost[], viewer: Viewer): Pro
   return rows.flatMap((row) => {
     const content = contents.get(row.postId);
     const author = content && names.get(content.author);
-    return content && author ? [{ ...content, author }] : [];
+    return content && author ? [{ ...content, author, state: row.state }] : [];
   });
 }
 

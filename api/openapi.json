@@ -306,7 +306,7 @@
         "properties": {
           "error": {
             "type": "string",
-            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, invalid_media, internal_error",
+            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, invalid_media, muted, internal_error",
             "example": "unauthorized"
           },
           "requestId": {
@@ -1231,6 +1231,13 @@
             "type": "boolean",
             "description": "A moderator invited the caller"
           },
+          "mutedUntil": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Until when (Unix milliseconds) a moderator muted the caller here: it reads, but does not post, comment or react"
+          },
           "readOnly": {
             "type": "boolean",
             "description": "Its owner's account was deleted and no moderator was left to take it over; it is deleted 90 days later"
@@ -1246,6 +1253,7 @@
           "role",
           "joinRequested",
           "invited",
+          "mutedUntil",
           "readOnly"
         ]
       },
@@ -1338,6 +1346,270 @@
           "requestedAt"
         ]
       },
+      "Card": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "unavailable"
+                ]
+              },
+              "ref": {
+                "$ref": "#/components/schemas/Ref"
+              }
+            },
+            "required": [
+              "kind",
+              "ref"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "post"
+                ]
+              },
+              "ref": {
+                "$ref": "#/components/schemas/Ref"
+              },
+              "community": {
+                "type": "object",
+                "properties": {
+                  "communityId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                    "example": "c_9f3a1b"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "communityId",
+                  "name"
+                ]
+              },
+              "author": {
+                "$ref": "#/components/schemas/Author"
+              },
+              "excerpt": {
+                "type": "string",
+                "description": "The text's first 280 characters, an ellipsis ending one cut short"
+              },
+              "image": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/SocialMedia"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "createdAt": {
+                "type": "integer",
+                "description": "Unix milliseconds"
+              }
+            },
+            "required": [
+              "kind",
+              "ref",
+              "community",
+              "author",
+              "excerpt",
+              "image",
+              "createdAt"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "comment"
+                ]
+              },
+              "ref": {
+                "$ref": "#/components/schemas/Ref"
+              },
+              "community": {
+                "type": "object",
+                "properties": {
+                  "communityId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                    "example": "c_9f3a1b"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "communityId",
+                  "name"
+                ]
+              },
+              "postId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                "example": "c_9f3a1b"
+              },
+              "author": {
+                "$ref": "#/components/schemas/Author"
+              },
+              "excerpt": {
+                "type": "string",
+                "description": "The text's first 280 characters, an ellipsis ending one cut short"
+              },
+              "createdAt": {
+                "type": "integer",
+                "description": "Unix milliseconds"
+              }
+            },
+            "required": [
+              "kind",
+              "ref",
+              "community",
+              "postId",
+              "author",
+              "excerpt",
+              "createdAt"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "community"
+                ]
+              },
+              "ref": {
+                "$ref": "#/components/schemas/Ref"
+              },
+              "community": {
+                "type": "object",
+                "properties": {
+                  "communityId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                    "example": "c_9f3a1b"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "communityId",
+                  "name"
+                ]
+              },
+              "description": {
+                "type": "string"
+              },
+              "audience": {
+                "type": "string",
+                "enum": [
+                  "open",
+                  "private"
+                ]
+              },
+              "memberCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "kind",
+              "ref",
+              "community",
+              "description",
+              "audience",
+              "memberCount"
+            ]
+          }
+        ],
+        "description": "What a reference shows, by its kind; `unavailable` when the caller may not see it"
+      },
+      "Ref": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "post",
+              "comment",
+              "community"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "description": "A stable reference to a post, a comment or a community"
+      },
+      "Author": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "verified": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accountId",
+          "name",
+          "verified"
+        ]
+      },
+      "SocialMedia": {
+        "type": "object",
+        "properties": {
+          "mediaId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "sm_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mediaId",
+          "width",
+          "height"
+        ],
+        "description": "A re-encoded WebP image"
+      },
       "Post": {
         "type": "object",
         "properties": {
@@ -1409,6 +1681,15 @@
           },
           "commentCount": {
             "type": "integer"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "visible",
+              "hidden",
+              "removed"
+            ],
+            "description": "Only a moderator sees what is not visible: hidden or removed by a moderator"
           }
         },
         "required": [
@@ -1420,54 +1701,9 @@
           "createdAt",
           "reactions",
           "myReaction",
-          "commentCount"
+          "commentCount",
+          "state"
         ]
-      },
-      "Author": {
-        "type": "object",
-        "properties": {
-          "accountId": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{1,128}$",
-            "example": "c_9f3a1b"
-          },
-          "name": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "verified": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "accountId",
-          "name",
-          "verified"
-        ]
-      },
-      "SocialMedia": {
-        "type": "object",
-        "properties": {
-          "mediaId": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{1,128}$",
-            "example": "sm_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
-          },
-          "width": {
-            "type": "integer"
-          },
-          "height": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "mediaId",
-          "width",
-          "height"
-        ],
-        "description": "A re-encoded WebP image"
       },
       "PostPage": {
         "type": "object",
@@ -1535,6 +1771,15 @@
           "createdAt": {
             "type": "integer",
             "description": "Unix milliseconds"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "visible",
+              "hidden",
+              "removed"
+            ],
+            "description": "Only a moderator sees what is not visible: hidden or removed by a moderator"
           }
         },
         "required": [
@@ -1542,6 +1787,257 @@
           "postId",
           "author",
           "body",
+          "createdAt",
+          "state"
+        ]
+      },
+      "ReportTarget": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "post",
+              "comment",
+              "community",
+              "account"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "description": "What a report or an action is about"
+      },
+      "ReportPage": {
+        "type": "object",
+        "properties": {
+          "reports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Report"
+            }
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The cursor of the next page"
+          }
+        },
+        "required": [
+          "reports",
+          "next"
+        ]
+      },
+      "Report": {
+        "type": "object",
+        "properties": {
+          "reportId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "communityId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "target": {
+            "$ref": "#/components/schemas/ReportTarget"
+          },
+          "targetAccount": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Author"
+              },
+              {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "Who wrote the post or comment, or the account reported; null once deleted"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "unlawful",
+              "harassment",
+              "spam",
+              "other"
+            ]
+          },
+          "note": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ]
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "Unix milliseconds"
+          },
+          "closedAt": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "reportId",
+          "communityId",
+          "target",
+          "targetAccount",
+          "reason",
+          "note",
+          "state",
+          "createdAt",
+          "closedAt"
+        ],
+        "description": "A report, without the account that made it"
+      },
+      "ModerationLogPage": {
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModerationLogEntry"
+            }
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The cursor of the next, older page"
+          }
+        },
+        "required": [
+          "entries",
+          "next"
+        ]
+      },
+      "ModerationLogEntry": {
+        "type": "object",
+        "properties": {
+          "entryId": {
+            "type": "integer"
+          },
+          "communityId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "actor": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Author"
+              },
+              {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "null once the actor's account is deleted"
+              }
+            ]
+          },
+          "asPlatform": {
+            "type": "boolean",
+            "description": "Done as one of Samtak's platform moderators"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "hide_post",
+              "remove_post",
+              "restore_post",
+              "hide_comment",
+              "remove_comment",
+              "restore_comment",
+              "mute_member",
+              "unmute_member",
+              "remove_member",
+              "ban_member",
+              "unban_member",
+              "close_report"
+            ]
+          },
+          "target": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "post",
+                  "comment",
+                  "community",
+                  "account",
+                  "report"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                "example": "c_9f3a1b"
+              }
+            },
+            "required": [
+              "kind",
+              "id"
+            ]
+          },
+          "targetAccount": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Author"
+              },
+              {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "Unix milliseconds"
+          }
+        },
+        "required": [
+          "entryId",
+          "communityId",
+          "actor",
+          "asPlatform",
+          "action",
+          "target",
+          "targetAccount",
+          "reason",
           "createdAt"
         ]
       }
@@ -5757,6 +6253,100 @@
         }
       }
     },
+    "/v1/cards": {
+      "post": {
+        "operationId": "resolveCards",
+        "tags": [
+          "social"
+        ],
+        "summary": "Resolve references to cards",
+        "description": "The card of each reference, in the order given. A reference to what the caller may not see, or to nothing, resolves to an `unavailable` card, whatever the reason.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refs": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/Ref"
+                    },
+                    "minItems": 1,
+                    "maxItems": 50
+                  }
+                },
+                "required": [
+                  "refs"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The cards",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cards": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Card"
+                      }
+                    }
+                  },
+                  "required": [
+                    "cards"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/communities/{communityId}/posts": {
       "post": {
         "operationId": "createPost",
@@ -5844,7 +6434,7 @@
             }
           },
           "403": {
-            "description": "not_a_member: only members post, comment and react; read_only: the community takes nothing new",
+            "description": "not_a_member: only members post, comment and react; read_only: the community takes nothing new; muted: a moderator muted the caller here for now",
             "content": {
               "application/json": {
                 "schema": {
@@ -6048,7 +6638,7 @@
             }
           },
           "403": {
-            "description": "not_a_member: only members post, comment and react; read_only: the community takes nothing new",
+            "description": "not_a_member: only members post, comment and react; read_only: the community takes nothing new; muted: a moderator muted the caller here for now",
             "content": {
               "application/json": {
                 "schema": {
@@ -6619,7 +7209,7 @@
             }
           },
           "403": {
-            "description": "not_a_member: only members post, comment and react; read_only: the community takes nothing new",
+            "description": "not_a_member: only members comment and react; read_only: the community takes nothing new; muted: a moderator muted the caller here for now; not_permitted: the post was hidden or removed; blocked: a block stands between the caller and the post's author",
             "content": {
               "application/json": {
                 "schema": {
@@ -6814,7 +7404,7 @@
             }
           },
           "403": {
-            "description": "not_a_member: only members post, comment and react; read_only: the community takes nothing new",
+            "description": "not_a_member: only members comment and react; read_only: the community takes nothing new; muted: a moderator muted the caller here for now; not_permitted: the post was hidden or removed; blocked: a block stands between the caller and the post's author",
             "content": {
               "application/json": {
                 "schema": {
@@ -6897,6 +7487,787 @@
           },
           "404": {
             "description": "not_found: no such post the caller can see",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reports": {
+      "post": {
+        "operationId": "report",
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Report a post, a comment, a community or an account",
+        "description": "A report on a post or a comment goes to the community's moderators, or with `toPlatform` to Samtak's; one that says the content is unlawful, or is on a community or an account, always goes to Samtak's. The caller reports only what it can see, and a thing once while its report is open; a second report answers the same.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "target": {
+                    "$ref": "#/components/schemas/ReportTarget"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "unlawful",
+                      "harassment",
+                      "spam",
+                      "other"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "default": ""
+                  },
+                  "toPlatform": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                },
+                "required": [
+                  "target",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Reported"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: nothing the caller can see by that reference",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/communities/{communityId}/reports": {
+      "get": {
+        "operationId": "communityReports",
+        "tags": [
+          "moderation"
+        ],
+        "summary": "The community's report queue, oldest first",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "communityId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "closed"
+              ],
+              "default": "open"
+            },
+            "required": false,
+            "name": "state",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,16}-[A-Za-z0-9_-]{1,128}$",
+              "description": "The `next` of the page before"
+            },
+            "required": false,
+            "description": "The `next` of the page before",
+            "name": "after",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The reports",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: only the community's moderators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such community the caller can see",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/moderation/reports": {
+      "get": {
+        "operationId": "platformReports",
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Samtak's report queue, oldest first",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "closed"
+              ],
+              "default": "open"
+            },
+            "required": false,
+            "name": "state",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,16}-[A-Za-z0-9_-]{1,128}$",
+              "description": "The `next` of the page before"
+            },
+            "required": false,
+            "description": "The `next` of the page before",
+            "name": "after",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The reports",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: only Samtak's platform moderators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reports/{reportId}/close": {
+      "post": {
+        "operationId": "closeReport",
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Close a report, with what was done about it",
+        "description": "The community's moderators close a report in its queue, Samtak's platform moderators any. Closing is logged.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "reportId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "resolution": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "resolution"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Closed"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: the report is in a queue the caller does not moderate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such open report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/communities/{communityId}/actions": {
+      "post": {
+        "operationId": "moderate",
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Act as a moderator on a post, a comment or a member",
+        "description": "A community's moderators, its owner and Samtak's platform moderators act; each only on what an account of a lower rank wrote, or on such an account (member, moderator, owner, platform moderator). Every action is logged with its reason. A hidden post or comment is shown only to moderators; a removed one too, until its text is deleted 90 days after the removal. A muted member reads but does not post, comment or react until `until`; a removed one may join again; a banned one may not, and reads nothing. With `reportId`, the report is closed by the same action.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "communityId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "hide_post",
+                      "remove_post",
+                      "restore_post",
+                      "hide_comment",
+                      "remove_comment",
+                      "restore_comment",
+                      "mute_member",
+                      "unmute_member",
+                      "remove_member",
+                      "ban_member",
+                      "unban_member"
+                    ]
+                  },
+                  "targetId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                    "example": "c_9f3a1b",
+                    "description": "The post's, the comment's or the account's id"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "until": {
+                    "type": "integer",
+                    "description": "With mute_member, and only with it: when the mute ends, in Unix milliseconds"
+                  },
+                  "reportId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                    "example": "c_9f3a1b"
+                  }
+                },
+                "required": [
+                  "action",
+                  "targetId",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Done"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: the caller does not moderate the community, or the target's rank is not lower",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such community, target or open report there",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/communities/{communityId}/moderation-log": {
+      "get": {
+        "operationId": "communityModerationLog",
+        "tags": [
+          "moderation"
+        ],
+        "summary": "The community's moderation log, newest first",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "communityId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,16}$",
+              "description": "The `next` of the page before"
+            },
+            "required": false,
+            "description": "The `next` of the page before",
+            "name": "before",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationLogPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: only the community's moderators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such community the caller can see",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/moderation/log": {
+      "get": {
+        "operationId": "platformModerationLog",
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Every community's moderation log, newest first",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,16}$",
+              "description": "The `next` of the page before"
+            },
+            "required": false,
+            "description": "The `next` of the page before",
+            "name": "before",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationLogPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: only Samtak's platform moderators",
             "content": {
               "application/json": {
                 "schema": {

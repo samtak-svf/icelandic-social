@@ -50,6 +50,9 @@ export const OWNERS = {
   post_index: "social",
   social_media: "social",
   space_authors: "social",
+  platform_moderators: "moderation",
+  reports: "moderation",
+  moderation_log: "moderation",
 };
 
 /** The reads of another module's table, each with its reason. */
@@ -93,6 +96,11 @@ export const READS = [
     module: "social",
     table: "communities",
     why: "the feed ends at the oldest of the caller's communities",
+  },
+  {
+    module: "communities",
+    table: "platform_moderators",
+    why: "a standing says whether the viewer is a platform moderator, who reads and moderates every community (decision 0066)",
   },
 ];
 

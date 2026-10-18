@@ -1,12 +1,14 @@
 import { blockedEither } from "../../identity/index.ts";
-import { db } from "../../env/index.ts";
+import { db, space } from "../../env/index.ts";
 import { canRead, moderates, standing, type Standing } from "../communities/index.ts";
-import type { Viewer } from "./do/space.ts";
+import type { CommentContent, Viewer } from "./do/space.ts";
 
 // The one answer to "may this account see this?" for a community's content
 // (decision 0063, #287). Every path that reads a post, a comment or an image
 // asks here first, so a private community, a ban, a block and a removal are
 // decided in one place. Whatever the reason, the answer is the same null.
+// One function per kind: spaceAccess (a community's content), postAccess (a
+// post, its comments and its images) and commentAccess (one comment).
 
 /** A post's index row: what the access checks and the feed read in D1. */
 export type IndexedPost = {
@@ -17,26 +19,58 @@ export type IndexedPost = {
   state: "visible" | "hidden" | "removed";
 };
 
-/** The viewer in a community it may read: its standing, and who a block hides from it. */
-export type SpaceAccess = { standing: Standing; viewer: Viewer; moderator: boolean };
+/**
+ * The viewer in a community it may read: its standing, who a block hides from
+ * it, and every account a block stands between it and (`between`), which a
+ * moderator still sees but does not reply to.
+ */
+export type SpaceAccess = {
+  standing: Standing;
+  viewer: Viewer;
+  moderator: boolean;
+  between: string[];
+};
 
-/** How `viewer` reads `communityId`, or null when it may not. */
+/**
+ * How `viewer` reads `communityId`, or null when it may not. Samtak's
+ * platform moderators read every community, as its moderators do (0063).
+ */
 export async function spaceAccess(
   env: Env,
   viewer: string,
   communityId: string,
 ): Promise<SpaceAccess | null> {
   const found = await standing(env, viewer, communityId);
-  if (!found || !canRead(found)) return null;
-  const moderator = moderates(found);
+  if (!found || !(canRead(found) || found.platformModerator)) return null;
+  const moderator = moderates(found) || found.platformModerator;
+  const between = await blockedEither(env, viewer);
   // A block does not hide content from the community's moderators (0063).
-  const hidden = moderator ? [] : await blockedEither(env, viewer);
-  return { standing: found, viewer: { account: viewer, hidden }, moderator };
+  const hidden = moderator ? [] : between;
+  return { standing: found, viewer: { account: viewer, hidden, moderator }, moderator, between };
 }
 
-/** Whether a member may add to a space: post, comment, react. */
-export function canTakePart(access: SpaceAccess): boolean {
-  return access.standing.role !== null && !access.standing.readOnly;
+type Refusal = "not_a_member" | "read_only" | "muted";
+
+/** Why `access` may not add to its space (post, comment, react), or null when it may. */
+export function refusal(access: SpaceAccess, now = Date.now()): Refusal | null {
+  const { role, readOnly, mutedUntil } = access.standing;
+  if (role === null) return "not_a_member";
+  if (readOnly) return "read_only";
+  return mutedUntil !== null && mutedUntil > now ? "muted" : null;
+}
+
+/**
+ * Why `access` may not reply to `post` (comment, react), or null when it may:
+ * only a visible post takes replies, and nobody replies across a block (0063).
+ */
+export function replyRefusal(
+  access: SpaceAccess,
+  post: IndexedPost,
+): Refusal | "not_permitted" | "blocked" | null {
+  const refused = refusal(access);
+  if (refused) return refused;
+  if (post.state !== "visible") return "not_permitted";
+  return access.between.includes(post.authorId) ? "blocked" : null;
 }
 
 /** Whether the post is one this access sees: visible, or any to a moderator, and no block. */
@@ -62,4 +96,20 @@ export async function postAccess(
   if (!post) return null;
   const access = await spaceAccess(env, viewer, post.communityId);
   return access && sees(access, post) ? { post, access } : null;
+}
+
+/** The comment, its post and how `viewer` reads them, or null when it may not see it. */
+export async function commentAccess(
+  env: Env,
+  viewer: string,
+  commentId: string,
+): Promise<{ post: IndexedPost; access: SpaceAccess; comment: CommentContent } | null> {
+  // A comment id is its post's id, a dash and its own part (posts.ts).
+  const postId = commentId.slice(0, Math.max(0, commentId.lastIndexOf("-")));
+  const found = postId ? await postAccess(env, viewer, postId) : null;
+  if (!found) return null;
+  const comment = await space(env, found.post.communityId).comment(commentId);
+  if (!comment || found.access.viewer.hidden.includes(comment.author)) return null;
+  if (comment.state !== "visible" && !found.access.moderator) return null;
+  return { ...found, comment };
 }
