@@ -421,9 +421,9 @@ describe("deleting the owner's account", () => {
       status: 403,
       body: expect.objectContaining({ error: "read_only" }),
     });
-    await expireCommunities(env, Date.now() + 89 * DAY_MS);
+    await expireCommunities(env, async () => {}, Date.now() + 89 * DAY_MS);
     expect((await member.call("GET", `/v1/communities/${communityId}`)).status).toBe(200);
-    await expireCommunities(env, Date.now() + 91 * DAY_MS);
+    await expireCommunities(env, async () => {}, Date.now() + 91 * DAY_MS);
     expect((await member.call("GET", `/v1/communities/${communityId}`)).status).toBe(404);
   });
 });

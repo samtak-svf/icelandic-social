@@ -7,6 +7,7 @@
 - Amended by: [0016](0016-one-encrypted-store-owned-by-the-core.md) (one database file, `spjall.db`)
 - Amended by: [0027](0027-kenni-client-id-spjall.md) (Kenni client id `@innskraning.is/spjall`)
 - Amended by: [0062](0062-the-web-host-and-its-sign-in-callbacks.md) (`hosts.web`, the web sign-in callbacks, Kenni web client `@innskraning.is/spjall-web`)
+- Amended by: [0065](0065-the-space-object-and-social-media.md) (`cloudflare.durableObjects.space`, the `Space` class)
 
 ## Decision
 

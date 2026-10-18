@@ -3,6 +3,7 @@
 // lives in its space's Durable Object (decision 0060), not here. The tables it
 // owns are written only here.
 
-export { handOverCommunities } from "./communities.ts";
+export { canRead, moderates } from "./access.ts";
+export { handOverCommunities, standing, type Standing } from "./communities.ts";
 export { expireCommunities } from "./expiry.ts";
 export { communityRoutes } from "./routes.ts";

@@ -66,6 +66,7 @@ import {
   putMedia,
 } from "./modules/messaging/index.ts";
 import { communityRoutes } from "./modules/communities/index.ts";
+import { dropSpace, socialRoutes } from "./modules/social/index.ts";
 import { accountRoutes, photoRoutes } from "./modules/profiles/index.ts";
 
 /** OpenAPI 3.1 document metadata; the routes and schemas come from src/api/. */
@@ -421,7 +422,8 @@ export function createApp() {
   photoRoutes(app);
 
   // Communities and membership (decision 0063).
-  communityRoutes(app);
+  communityRoutes(app, { beforeDelete: dropSpace });
+  socialRoutes(app);
 
   // The socket lives in the account's Inbox; the Worker tells it which
   // device this is, replacing any such header the client sent.

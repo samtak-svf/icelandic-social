@@ -34,12 +34,13 @@ export function euOnly<N extends object>(real: N) {
   return { namespace, asked };
 }
 
-/** `env` with both Durable Object namespaces behind `euOnly`. */
+/** `env` with every Durable Object namespace behind `euOnly`. */
 export function euEnv(real: Env): Env {
   return {
     ...real,
     CONVERSATION: euOnly(real.CONVERSATION).namespace,
     INBOX: euOnly(real.INBOX).namespace,
+    SPACE: euOnly(real.SPACE).namespace,
   };
 }
 

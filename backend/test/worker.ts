@@ -1,5 +1,9 @@
 import { withFakes } from "../dev/oidc.ts";
-import worker, { Conversation as RealConversation, Inbox as RealInbox } from "../src/worker.ts";
+import worker, {
+  Conversation as RealConversation,
+  Inbox as RealInbox,
+  Space as RealSpace,
+} from "../src/worker.ts";
 import { euEnv } from "./support.ts";
 
 // The Worker the tests run (vitest.config.ts `main`): src/worker.ts with
@@ -18,6 +22,12 @@ export class Conversation extends RealConversation {
 }
 
 export class Inbox extends RealInbox {
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, euEnv(env));
+  }
+}
+
+export class Space extends RealSpace {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, euEnv(env));
   }

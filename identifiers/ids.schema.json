@@ -81,10 +81,11 @@
         "durableObjects": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["conversation", "inbox"],
+          "required": ["conversation", "inbox", "space"],
           "properties": {
             "conversation": { "$ref": "#/$defs/className" },
-            "inbox": { "$ref": "#/$defs/className" }
+            "inbox": { "$ref": "#/$defs/className" },
+            "space": { "$ref": "#/$defs/className" }
           }
         },
         "jurisdiction": { "const": "eu" }

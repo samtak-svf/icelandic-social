@@ -1,0 +1,259 @@
+import { DurableObject } from "cloudflare:workers";
+import type { REACTIONS } from "../../../api/social.ts";
+import { SCHEMA } from "./space-schema.ts";
+
+export type Reaction = (typeof REACTIONS)[number];
+
+/** An image a post holds, re-encoded (decision 0065). */
+export type MediaRef = { mediaId: string; width: number; height: number };
+
+/** A post as one viewer sees it, before the Worker adds its author's name. */
+export type PostContent = {
+  postId: string;
+  author: string;
+  body: string;
+  media: MediaRef[];
+  createdAt: number;
+  reactions: { kind: Reaction; count: number }[];
+  myReaction: Reaction | null;
+  commentCount: number;
+};
+
+export type CommentContent = {
+  commentId: string;
+  postId: string;
+  author: string;
+  body: string;
+  createdAt: number;
+};
+
+/**
+ * Who is looking: the viewer, and the accounts a block stands between it and
+ * (decision 0063), whose comments and reactions it does not see. The Worker
+ * has already decided the viewer may read the space; a moderator's `hidden`
+ * is empty, since a block does not hide content from moderation.
+ */
+export type Viewer = { account: string; hidden: string[] };
+
+type PostRow = { post_id: string; author: string; body: string; media: string; created_at: number };
+type CommentRow = {
+  comment_id: string;
+  post_id: string;
+  author: string;
+  body: string;
+  created_at: number;
+};
+
+const comment = (r: CommentRow): CommentContent => ({
+  commentId: r.comment_id,
+  postId: r.post_id,
+  author: r.author,
+  body: r.body,
+  createdAt: r.created_at,
+});
+
+/**
+ * One space's content (decisions 0060, 0063): its posts, the comments on
+ * them and one reaction per account on each. It is hosted, not encrypted:
+ * the Worker checks who may read and write before it calls, and the object
+ * keeps what it is given. Nothing here is logged (0008).
+ */
+export class Space extends DurableObject<Env> {
+  private readonly sql: SqlStorage;
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    this.sql = ctx.storage.sql;
+    this.sql.exec(SCHEMA);
+  }
+
+  createPost(input: {
+    postId: string;
+    author: string;
+    body: string;
+    media: MediaRef[];
+    createdAt: number;
+  }): void {
+    this.sql.exec(
+      "INSERT OR IGNORE INTO posts (post_id, author, body, media, created_at) VALUES (?, ?, ?, ?, ?)",
+      input.postId,
+      input.author,
+      input.body,
+      JSON.stringify(input.media),
+      input.createdAt,
+    );
+  }
+
+  /** The posts of `ids` there are, as `viewer` sees them, in the order asked. */
+  posts(ids: string[], viewer: Viewer): PostContent[] {
+    if (ids.length === 0) return [];
+    const wanted = JSON.stringify(ids);
+    const hidden = JSON.stringify(viewer.hidden);
+    const rows = this.sql
+      .exec<PostRow>(
+        "SELECT * FROM posts WHERE post_id IN (SELECT value FROM json_each(?))",
+        wanted,
+      )
+      .toArray();
+    const counts = this.sql
+      .exec<{ post_id: string; kind: Reaction; count: number }>(
+        `SELECT post_id, kind, COUNT(*) AS count FROM reactions
+          WHERE post_id IN (SELECT value FROM json_each(?1))
+            AND account NOT IN (SELECT value FROM json_each(?2))
+          GROUP BY post_id, kind ORDER BY count DESC, kind`,
+        wanted,
+        hidden,
+      )
+      .toArray();
+    const mine = new Map(
+      this.sql
+        .exec<{ post_id: string; kind: Reaction }>(
+          `SELECT post_id, kind FROM reactions
+            WHERE account = ? AND post_id IN (SELECT value FROM json_each(?))`,
+          viewer.account,
+          wanted,
+        )
+        .toArray()
+        .map((r) => [r.post_id, r.kind]),
+    );
+    const comments = new Map(
+      this.sql
+        .exec<{ post_id: string; count: number }>(
+          `SELECT post_id, COUNT(*) AS count FROM comments
+            WHERE post_id IN (SELECT value FROM json_each(?1))
+              AND author NOT IN (SELECT value FROM json_each(?2))
+            GROUP BY post_id`,
+          wanted,
+          hidden,
+        )
+        .toArray()
+        .map((r) => [r.post_id, r.count]),
+    );
+    const byId = new Map(rows.map((r) => [r.post_id, r]));
+    return ids.flatMap((id) => {
+      const row = byId.get(id);
+      if (!row) return [];
+      return [
+        {
+          postId: row.post_id,
+          author: row.author,
+          body: row.body,
+          media: JSON.parse(row.media) as MediaRef[],
+          createdAt: row.created_at,
+          reactions: counts
+            .filter((c) => c.post_id === id)
+            .map(({ kind, count }) => ({ kind, count })),
+          myReaction: mine.get(id) ?? null,
+          commentCount: comments.get(id) ?? 0,
+        },
+      ];
+    });
+  }
+
+  /** Deletes a post with its comments and reactions. */
+  deletePost(postId: string): void {
+    this.ctx.storage.transactionSync(() => {
+      this.sql.exec("DELETE FROM posts WHERE post_id = ?", postId);
+      this.sql.exec("DELETE FROM comments WHERE post_id = ?", postId);
+      this.sql.exec("DELETE FROM reactions WHERE post_id = ?", postId);
+    });
+  }
+
+  /** A post's comments, oldest first, after the cursor `after`. */
+  comments(
+    postId: string,
+    viewer: Viewer,
+    after: { createdAt: number; id: string } | null,
+    limit: number,
+  ): CommentContent[] {
+    return this.sql
+      .exec<CommentRow>(
+        `SELECT * FROM comments
+          WHERE post_id = ?1 AND author NOT IN (SELECT value FROM json_each(?2))
+            AND (?3 IS NULL OR created_at > ?3 OR (created_at = ?3 AND comment_id > ?4))
+          ORDER BY created_at, comment_id LIMIT ?5`,
+        postId,
+        JSON.stringify(viewer.hidden),
+        after?.createdAt ?? null,
+        after?.id ?? null,
+        limit,
+      )
+      .toArray()
+      .map(comment);
+  }
+
+  /** Stores a comment; null when the post is not here. */
+  addComment(input: CommentContent): CommentContent | null {
+    const exists = this.sql
+      .exec("SELECT 1 FROM posts WHERE post_id = ?", input.postId)
+      .toArray().length;
+    if (!exists) return null;
+    this.sql.exec(
+      `INSERT OR IGNORE INTO comments (comment_id, post_id, author, body, created_at)
+       VALUES (?, ?, ?, ?, ?)`,
+      input.commentId,
+      input.postId,
+      input.author,
+      input.body,
+      input.createdAt,
+    );
+    return input;
+  }
+
+  comment(commentId: string): CommentContent | null {
+    const row = this.sql
+      .exec<CommentRow>("SELECT * FROM comments WHERE comment_id = ?", commentId)
+      .toArray()[0];
+    return row ? comment(row) : null;
+  }
+
+  deleteComment(commentId: string): void {
+    this.sql.exec("DELETE FROM comments WHERE comment_id = ?", commentId);
+  }
+
+  /** Sets, replaces or (with null) removes `account`'s reaction; false when the post is not here. */
+  react(postId: string, account: string, kind: Reaction | null): boolean {
+    const exists = this.sql.exec("SELECT 1 FROM posts WHERE post_id = ?", postId).toArray().length;
+    if (!exists) return false;
+    if (kind === null) {
+      this.sql.exec("DELETE FROM reactions WHERE post_id = ? AND account = ?", postId, account);
+    } else {
+      this.sql.exec(
+        `INSERT INTO reactions (post_id, account, kind, created_at) VALUES (?, ?, ?, ?)
+         ON CONFLICT (post_id, account) DO UPDATE SET kind = excluded.kind`,
+        postId,
+        account,
+        kind,
+        Date.now(),
+      );
+    }
+    return true;
+  }
+
+  /**
+   * Deletes everything `account` wrote here, for the deletion of its account
+   * (decision 0063): its posts with every comment and reaction on them, and
+   * its comments and reactions elsewhere. The ids of its posts, for the Worker
+   * to drop from the index.
+   */
+  forget(account: string): string[] {
+    const posts = this.sql
+      .exec<{ post_id: string }>("SELECT post_id FROM posts WHERE author = ?", account)
+      .toArray();
+    this.ctx.storage.transactionSync(() => {
+      for (const { post_id } of posts) {
+        this.sql.exec("DELETE FROM comments WHERE post_id = ?", post_id);
+        this.sql.exec("DELETE FROM reactions WHERE post_id = ?", post_id);
+      }
+      this.sql.exec("DELETE FROM posts WHERE author = ?", account);
+      this.sql.exec("DELETE FROM comments WHERE author = ?", account);
+      this.sql.exec("DELETE FROM reactions WHERE account = ?", account);
+    });
+    return posts.map((p) => p.post_id);
+  }
+
+  /** Deletes the whole space, with its community (decision 0063). */
+  async drop(): Promise<void> {
+    await this.ctx.storage.deleteAll();
+  }
+}

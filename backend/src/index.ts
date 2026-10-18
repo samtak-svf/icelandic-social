@@ -1,7 +1,7 @@
 import { web } from "spjall-web/server";
 import worker from "./worker.ts";
 
-export { Conversation, Inbox } from "./worker.ts";
+export { Conversation, Inbox, Space } from "./worker.ts";
 
 // The deployed entry: one Worker on one host (decision 0062). The API owns
 // its paths and the web app every other one, so the web reaches its data

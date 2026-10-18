@@ -1,7 +1,11 @@
 import { web } from "spjall-web/server";
 import { withFakes } from "./oidc.ts";
 import { API_PATHS } from "../src/index.ts";
-import worker, { Conversation as RealConversation, Inbox as RealInbox } from "../src/worker.ts";
+import worker, {
+  Conversation as RealConversation,
+  Inbox as RealInbox,
+  Space as RealSpace,
+} from "../src/worker.ts";
 import { OPERATOR_INVITE_PATH, operatorInvite } from "../scripts/operator-invite.ts";
 
 // The Worker that `cf dev --mode interop` runs for the interop test
@@ -41,6 +45,7 @@ function devEnv(env: Env): Env {
     ...env,
     CONVERSATION: local(env.CONVERSATION) as Env["CONVERSATION"],
     INBOX: local(env.INBOX) as Env["INBOX"],
+    SPACE: local(env.SPACE) as Env["SPACE"],
   };
 }
 
@@ -51,6 +56,12 @@ export class Conversation extends RealConversation {
 }
 
 export class Inbox extends RealInbox {
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, devEnv(env));
+  }
+}
+
+export class Space extends RealSpace {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, devEnv(env));
   }

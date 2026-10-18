@@ -59,6 +59,18 @@ export async function blockList(env: Env, blocker: string): Promise<Blocked[]> {
 }
 
 /** The accounts among `accounts` that have blocked `account`. */
+/** Every account a block stands between `viewer` and, in either direction (decision 0063). */
+export async function blockedEither(env: Env, viewer: string): Promise<string[]> {
+  const { results } = await db(env)
+    .prepare(
+      `SELECT blocked_account_id AS accountId FROM blocks WHERE blocker_account_id = ?1
+       UNION SELECT blocker_account_id FROM blocks WHERE blocked_account_id = ?1`,
+    )
+    .bind(viewer)
+    .all<{ accountId: string }>();
+  return results.map((r) => r.accountId);
+}
+
 export async function blockersAmong(
   env: Env,
   account: string,

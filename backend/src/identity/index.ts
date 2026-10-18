@@ -20,7 +20,15 @@ export {
   setPhotoVersion,
   setPushToken,
 } from "./accounts.ts";
-export { block, blockedByAny, blockersAmong, blockList, UNBLOCKED, unblock } from "./blocks.ts";
+export {
+  block,
+  blockedByAny,
+  blockedEither,
+  blockersAmong,
+  blockList,
+  UNBLOCKED,
+  unblock,
+} from "./blocks.ts";
 export { inviteRoutes } from "./invites.ts";
 export { sessionRoutes } from "./session-routes.ts";
 export { claim, expireKeyPackages, ownsLeaf, upload } from "./key-packages.ts";

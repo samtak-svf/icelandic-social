@@ -80,7 +80,7 @@ export interface SignInConfig {
 }
 
 export interface ApiError {
-  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, internal_error */
+  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, invalid_media, internal_error */
   error: string;
   /** The request's id, also in the x-request-id header: opaque, for support to find the request by (decision 0037) */
   requestId: string;
@@ -389,6 +389,57 @@ export interface JoinRequest {
   verified: boolean;
   /** Unix milliseconds */
   requestedAt: number;
+}
+
+export interface Post {
+  postId: string;
+  communityId: string;
+  author: Author;
+  body: string;
+  media: Array<SocialMedia>;
+  /** Unix milliseconds */
+  createdAt: number;
+  /** Each reaction the caller can see, with its count */
+  reactions: Array<{
+    kind: "like" | "love" | "laugh" | "wow" | "sad";
+    count: number;
+  }>;
+  myReaction: "like" | "love" | "laugh" | "wow" | "sad" | null;
+  commentCount: number;
+}
+
+export interface Author {
+  accountId: string;
+  name: string | null;
+  verified: boolean;
+}
+
+/** A re-encoded WebP image */
+export interface SocialMedia {
+  mediaId: string;
+  width: number;
+  height: number;
+}
+
+export interface PostPage {
+  posts: Array<Post>;
+  /** The cursor of the next, older page, or null when there is none. A page may be short, or empty, with more after it */
+  next: string | null;
+}
+
+export interface CommentPage {
+  comments: Array<Comment>;
+  next: string | null;
+}
+
+export interface Comment {
+  /** The post's id, a hyphen, and the comment's own part */
+  commentId: string;
+  postId: string;
+  author: Author;
+  body: string;
+  /** Unix milliseconds */
+  createdAt: number;
 }
 
 // The operations a browser can call: those that take the session cookie,
@@ -948,4 +999,228 @@ export function transferCommunity(args: {
   | { status: 426; data: ApiError }
 > {
   return call("PUT", "/v1/communities/{communityId}/owner", args, init);
+}
+
+/** A community's posts, newest first */
+export function listCommunityPosts(args: {
+  path: {
+    communityId: string;
+  };
+  query?: {
+    /** The `next` of the page before */
+    before?: string;
+    limit?: number;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: PostPage }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/communities/{communityId}/posts", args, init);
+}
+
+/**
+ * Post in a community
+ *
+ * A post has a text, images uploaded to the community first, or both. It is not end-to-end encrypted.
+ */
+export function createPost(args: {
+  path: {
+    communityId: string;
+  };
+  body: {
+    body?: string;
+    media?: Array<string>;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Post }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/communities/{communityId}/posts", args, init);
+}
+
+/**
+ * Upload an image for a post in a community
+ *
+ * The body is an image (JPEG, PNG, WebP, GIF or AVIF) of at most 10 MB, with a Content-Length. The server re-encodes it to a WebP no larger than 2048 pixels a side, without metadata, and keeps only that. An image no post takes within a day is deleted.
+ */
+export function uploadSocialMedia(args: {
+  path: {
+    communityId: string;
+  };
+  body: Blob | ArrayBuffer;
+}, init?: CallInit): Promise<
+  | { status: 200; data: SocialMedia }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 413; data: ApiError }
+  | { status: 426; data: ApiError }
+  | { status: 429; data: ApiError }
+> {
+  return call("POST", "/v1/communities/{communityId}/media", args, init, "application/octet-stream");
+}
+
+/**
+ * The posts of the caller's communities, newest first
+ *
+ * Read a time window at a time, so a page can be short or empty while older posts remain: follow `next` until it is null.
+ */
+export function getFeed(args?: {
+  query?: {
+    /** The `next` of the page before */
+    before?: string;
+    limit?: number;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: PostPage }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/feed", args, init);
+}
+
+/** One post */
+export function getPost(args: {
+  path: {
+    postId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Post }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/posts/{postId}", args, init);
+}
+
+/** Delete the caller's own post, its comments, reactions and images */
+export function deletePost(args: {
+  path: {
+    postId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/posts/{postId}", args, init);
+}
+
+/** An image of a post, as WebP */
+export function getPostMedia(args: {
+  path: {
+    postId: string;
+    mediaId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Blob }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/posts/{postId}/media/{mediaId}", args, init);
+}
+
+/** A post's comments, oldest first */
+export function listComments(args: {
+  path: {
+    postId: string;
+  };
+  query?: {
+    /** The `next` of the page before */
+    after?: string;
+    limit?: number;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: CommentPage }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/posts/{postId}/comments", args, init);
+}
+
+/** Comment on a post */
+export function createComment(args: {
+  path: {
+    postId: string;
+  };
+  body: {
+    body: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Comment }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/posts/{postId}/comments", args, init);
+}
+
+/** Delete the caller's own comment */
+export function deleteComment(args: {
+  path: {
+    /** The post's id, a hyphen, and the comment's own part */
+    commentId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/comments/{commentId}", args, init);
+}
+
+/** Set the caller's reaction to a post, replacing any it had */
+export function react(args: {
+  path: {
+    postId: string;
+  };
+  body: {
+    kind: "like" | "love" | "laugh" | "wow" | "sad";
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("PUT", "/v1/posts/{postId}/reaction", args, init);
+}
+
+/** Remove the caller's reaction to a post */
+export function unreact(args: {
+  path: {
+    postId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/posts/{postId}/reaction", args, init);
 }

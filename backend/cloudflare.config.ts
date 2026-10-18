@@ -101,6 +101,8 @@ export default defineConfig(({ mode }) => ({
       // are made.
       CONVERSATION: bindings.durableObject({ worker: "spjall-api", exportName: "Conversation" }),
       INBOX: bindings.durableObject({ worker: "spjall-api", exportName: "Inbox" }),
+      // One per community: its posts, comments and reactions (decisions 0060, 0065).
+      SPACE: bindings.durableObject({ worker: "spjall-api", exportName: "Space" }),
       // Workers rate limits. Each is counted per Cloudflare location, so it is
       // a brake on abuse, not an exact quota. PUBLIC_LIMIT is per address on
       // the routes a person reaches before signing in; CLAIM_LIMIT is per
@@ -124,12 +126,14 @@ export default defineConfig(({ mode }) => ({
       //   FCM_SERVICE_ACCOUNT  the FCM service account's JSON key (decision 0025)
       //   APNS_KEY_P8          the APNs auth key (.p8), and APNS_KEY_ID its key id
     },
-    // Durable Object classes, declared (decision 0032). Both were created as
-    // sqlite classes under the old `migrations` tag v1 and were moved to
-    // exports with their namespaces unchanged; there is no way back.
+    // Durable Object classes, declared (decision 0032). Conversation and Inbox
+    // were created as sqlite classes under the old `migrations` tag v1 and were
+    // moved to exports with their namespaces unchanged; there is no way back.
+    // Space is new with decision 0065.
     exports: {
       Conversation: exports.durableObject({ storage: "sqlite" }),
       Inbox: exports.durableObject({ storage: "sqlite" }),
+      Space: exports.durableObject({ storage: "sqlite" }),
     },
   },
 }));

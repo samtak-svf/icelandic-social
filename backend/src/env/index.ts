@@ -9,6 +9,7 @@ import ids from "../../../identifiers/ids.json" with { type: "json" };
 import { log } from "../log.ts";
 import type { ApnsKey, FcmAccount } from "../modules/messaging/index.ts";
 import type { Conversation, Inbox } from "../modules/messaging/objects.ts";
+import type { Space } from "../modules/social/objects.ts";
 import { type Client, CLIENTS } from "../platforms.ts";
 
 // `cf workers types` types a Durable Object binding by its class only when the
@@ -19,6 +20,7 @@ declare global {
     interface Env {
       CONVERSATION: DurableObjectNamespace<Conversation>;
       INBOX: DurableObjectNamespace<Inbox>;
+      SPACE: DurableObjectNamespace<Space>;
     }
   }
 }
@@ -63,6 +65,15 @@ export function profilesBucket(env: Env): R2Bucket {
   return env.PROFILES;
 }
 
+/**
+ * R2: the re-encoded images of community posts (decision 0065), under
+ * `social/` in the profiles bucket, which has no lifecycle rule: they live as
+ * long as their post.
+ */
+export function socialBucket(env: Env): R2Bucket {
+  return env.PROFILES;
+}
+
 /** Cloudflare Images, which re-encodes a profile photo and keeps nothing (decision 0039). */
 export function images(env: Env): ImagesBinding {
   return env.IMAGES;
@@ -76,6 +87,11 @@ export function conversation(env: Env, conversationId: string) {
 /** The `Inbox` DO for one account id: its devices' WebSockets and push. */
 export function inbox(env: Env, accountId: string) {
   return env.INBOX.jurisdiction("eu").getByName(accountId);
+}
+
+/** The `Space` DO for one community id: its posts, comments and reactions (decision 0060). */
+export function space(env: Env, communityId: string) {
+  return env.SPACE.jurisdiction("eu").getByName(communityId);
 }
 
 /** Worker secrets, which `cf workers types` cannot see (cloudflare.config.ts names them). */

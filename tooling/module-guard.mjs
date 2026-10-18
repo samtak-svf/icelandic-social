@@ -47,6 +47,9 @@ export const OWNERS = {
   community_join_requests: "communities",
   community_invitations: "communities",
   community_bans: "communities",
+  post_index: "social",
+  social_media: "social",
+  space_authors: "social",
 };
 
 /** The reads of another module's table, each with its reason. */
@@ -75,6 +78,21 @@ export const READS = [
     module: "communities",
     table: "accounts",
     why: "only a verified account creates a community, and members are listed by name (decision 0063)",
+  },
+  {
+    module: "social",
+    table: "accounts",
+    why: "a post and a comment show their author's name and mark (decision 0063)",
+  },
+  {
+    module: "social",
+    table: "community_members",
+    why: "the feed reads the posts of the caller's communities in one query (#275)",
+  },
+  {
+    module: "social",
+    table: "communities",
+    why: "the feed ends at the oldest of the caller's communities",
   },
 ];
 

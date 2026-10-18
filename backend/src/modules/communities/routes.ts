@@ -21,6 +21,7 @@ import type { AppEnv } from "../../app.ts";
 import { fail } from "../../errors.ts";
 import { log } from "../../log.ts";
 import { canRead, moderates } from "./access.ts";
+import type { BeforeDelete } from "./expiry.ts";
 import {
   communitiesOf,
   createCommunity,
@@ -48,7 +49,10 @@ import {
 // The routes of communities and membership (decision 0063). A log line
 // carries the account and the community's ids, never a name (0008).
 
-export function communityRoutes(app: OpenAPIHono<AppEnv>): void {
+export function communityRoutes(
+  app: OpenAPIHono<AppEnv>,
+  hooks: { beforeDelete: BeforeDelete },
+): void {
   app.openapi(createCommunityRoute, async (c) => {
     const { accountId } = c.var.session;
     if (!(await isVerified(c.env, accountId))) return fail(c, 403, "not_verified");
@@ -99,6 +103,7 @@ export function communityRoutes(app: OpenAPIHono<AppEnv>): void {
     const found = await standing(c.env, accountId, communityId);
     if (!found) return fail(c, 404, "not_found");
     if (found.role !== "owner") return fail(c, 403, "not_permitted");
+    await hooks.beforeDelete(c.env, communityId);
     await deleteCommunityRows(c.env, communityId);
     log("community.deleted", { accountId, communityId });
     return c.body(null, 204);

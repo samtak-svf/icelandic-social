@@ -27,7 +27,8 @@
     },
     "durableObjects": {
       "conversation": "Conversation",
-      "inbox": "Inbox"
+      "inbox": "Inbox",
+      "space": "Space"
     },
     "jurisdiction": "eu"
   },
