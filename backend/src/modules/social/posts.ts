@@ -213,11 +213,18 @@ export async function createPost(
 }
 
 /** Records that `account` wrote in `communityId`, so deleting the account reaches the space. */
-export async function noteAuthor(env: Env, communityId: string, account: string): Promise<void> {
-  await db(env)
-    .prepare("INSERT OR IGNORE INTO space_authors (community_id, account_id) VALUES (?, ?)")
-    .bind(communityId, account)
-    .run();
+export async function noteAuthor(
+  env: Env,
+  communityId: string,
+  account: string,
+  jobs: D1PreparedStatement[] = [],
+): Promise<void> {
+  await db(env).batch([
+    db(env)
+      .prepare("INSERT OR IGNORE INTO space_authors (community_id, account_id) VALUES (?, ?)")
+      .bind(communityId, account),
+    ...jobs,
+  ]);
 }
 
 /** Drops posts from the index, with their images' rows; the R2 keys to delete. */

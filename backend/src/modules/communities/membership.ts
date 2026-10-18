@@ -1,5 +1,6 @@
 import { db } from "../../env/index.ts";
 import { UNBLOCKED } from "../../identity/index.ts";
+import { notice } from "../jobs/index.ts";
 
 // Who joins, leaves and moderates a community (decision 0063): the writes to
 // its members, requests and invitations.
@@ -68,8 +69,14 @@ export async function removeMember(
   return result.meta.changes > 0;
 }
 
-/** Approves a waiting join request; false when none waits. */
-export async function approve(env: Env, communityId: string, accountId: string): Promise<boolean> {
+/** Approves a waiting join request as `by`, telling its account; false when none waits. */
+export async function approve(
+  env: Env,
+  communityId: string,
+  accountId: string,
+  by: string,
+): Promise<boolean> {
+  const now = Date.now();
   const [admitted] = await db(env).batch([
     db(env)
       .prepare(
@@ -78,7 +85,14 @@ export async function approve(env: Env, communityId: string, accountId: string):
           WHERE community_id = ?1 AND account_id = ?2
          ON CONFLICT DO NOTHING`,
       )
-      .bind(communityId, accountId, Date.now()),
+      .bind(communityId, accountId, now),
+    // Written only when the request was there to approve.
+    notice(
+      env,
+      `${communityId}:${accountId}:${now}`,
+      { kind: "join_approved", accountId, actorId: by, communityId },
+      true,
+    ),
     ...admit(env, communityId, accountId).slice(1),
   ]);
   return (admitted?.meta.changes ?? 0) > 0;
@@ -114,7 +128,7 @@ export async function invite(
   if (!row) return "missing";
   if (row.unblocked !== 1) return "blocked";
   if (row.requested === 1) {
-    await approve(env, communityId, accountId);
+    await approve(env, communityId, accountId, inviter);
     return "joined";
   }
   await db(env)

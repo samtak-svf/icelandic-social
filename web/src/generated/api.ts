@@ -545,6 +545,28 @@ export interface ModerationLogEntry {
   createdAt: number;
 }
 
+export interface NotificationPage {
+  notifications: Array<Notification>;
+  /** How many of the caller's notifications are unread */
+  unread: number;
+  /** The cursor of the next, older page */
+  next: string | null;
+}
+
+export interface Notification {
+  notificationId: string;
+  kind: "comment" | "reaction" | "join_approved" | "moderated";
+  actor: Author & Record<string, never> | null;
+  communityId: string;
+  postId: string | null;
+  commentId: string | null;
+  /** For `moderated`, the moderator's action (`hide_post`, `remove_comment`, ...) */
+  action: string | null;
+  /** Unix milliseconds */
+  createdAt: number;
+  read: boolean;
+}
+
 // The operations a browser can call: those that take the session cookie,
 // or no credential and are not an app's alone.
 
@@ -1498,4 +1520,35 @@ export function platformModerationLog(args?: {
   | { status: 426; data: ApiError }
 > {
   return call("GET", "/v1/moderation/log", args, init);
+}
+
+/** The caller's notifications, newest first */
+export function notifications(args?: {
+  query?: {
+    /** The `next` of the page before */
+    before?: string;
+    limit?: number;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: NotificationPage }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/notifications", args, init);
+}
+
+/** Mark the caller's notifications read, up to a time */
+export function readNotifications(args: {
+  body: {
+    /** Every notification created at or before it */
+    upTo: number;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/notifications/read", args, init);
 }

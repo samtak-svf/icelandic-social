@@ -167,7 +167,7 @@ export function communityRoutes(
     const found = await standing(c.env, accountId, communityId);
     if (!found) return fail(c, 404, "not_found");
     if (!moderates(found)) return fail(c, 403, "not_permitted");
-    if (!(await approve(c.env, communityId, target))) return fail(c, 404, "not_found");
+    if (!(await approve(c.env, communityId, target, accountId))) return fail(c, 404, "not_found");
     log("community.request_approved", { accountId, communityId });
     return c.body(null, 204);
   });

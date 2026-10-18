@@ -1,6 +1,6 @@
 # 0066. Reports and the moderation log are in D1; an action and its entry are one write
 
-- Status: accepted; implemented in the backend (#289)
+- Status: accepted; implemented in the backend (#289); amended by [0067](0067-jobs-and-notifications.md)
 - Date: 2026-10-18
 - Decided by: Guðröður Atli Jónsson (phase 4, #306)
 - Builds on: [0063](0063-communities-audiences-and-moderation.md) (roles, reports, the log,
@@ -56,7 +56,7 @@
 
 ## Not built yet
 
-These parts of 0063 wait for their own work: the tombstone and the notice to the author with
-its single review (notifications are #290), locking a post's comments, a platform moderator
+These parts of 0063 wait for their own work: the tombstone and the single review (the notice to
+the author is [0067](0067-jobs-and-notifications.md)), locking a post's comments, a platform moderator
 removing a community or suspending an account across the platform, and the platform's queue
 for a community left with no moderator who can act.

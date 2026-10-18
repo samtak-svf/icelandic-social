@@ -2040,6 +2040,108 @@
           "reason",
           "createdAt"
         ]
+      },
+      "NotificationPage": {
+        "type": "object",
+        "properties": {
+          "notifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Notification"
+            }
+          },
+          "unread": {
+            "type": "integer",
+            "description": "How many of the caller's notifications are unread"
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The cursor of the next, older page"
+          }
+        },
+        "required": [
+          "notifications",
+          "unread",
+          "next"
+        ]
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "notificationId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "comment",
+              "reaction",
+              "join_approved",
+              "moderated"
+            ]
+          },
+          "actor": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Author"
+              },
+              {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "Who did it; null once deleted"
+              }
+            ]
+          },
+          "communityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "postId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "commentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "action": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "For `moderated`, the moderator's action (`hide_post`, `remove_comment`, ...)"
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "Unix milliseconds"
+          },
+          "read": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "notificationId",
+          "kind",
+          "actor",
+          "communityId",
+          "postId",
+          "commentId",
+          "action",
+          "createdAt",
+          "read"
+        ]
       }
     },
     "parameters": {}
@@ -8268,6 +8370,160 @@
           },
           "403": {
             "description": "not_permitted: only Samtak's platform moderators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notifications": {
+      "get": {
+        "operationId": "notifications",
+        "tags": [
+          "notifications"
+        ],
+        "summary": "The caller's notifications, newest first",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,16}$",
+              "description": "The `next` of the page before"
+            },
+            "required": false,
+            "description": "The `next` of the page before",
+            "name": "before",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The notifications",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notifications/read": {
+      "post": {
+        "operationId": "readNotifications",
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Mark the caller's notifications read, up to a time",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "upTo": {
+                    "type": "integer",
+                    "description": "Every notification created at or before it"
+                  }
+                },
+                "required": [
+                  "upTo"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Marked"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
             "content": {
               "application/json": {
                 "schema": {

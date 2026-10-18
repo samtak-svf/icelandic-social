@@ -15,6 +15,7 @@ import {
   postContent,
   type Content,
 } from "../social/index.ts";
+import { notice } from "../jobs/index.ts";
 import { entry } from "./log.ts";
 import { closing, openReport } from "./reports.ts";
 
@@ -107,6 +108,29 @@ async function apply(
   await sanction(env, communityId, target.targetAccount, what, entries);
 }
 
+/** The notice to the author of content a moderator hid or removed (decision 0063). */
+function told(
+  env: Env,
+  accountId: string,
+  communityId: string,
+  input: Input,
+  target: { content: Content | null; targetAccount: string },
+): D1PreparedStatement[] {
+  if (!target.content || input.action.startsWith("restore_")) return [];
+  const comment = ACTIONS[input.action] === "comment";
+  return [
+    notice(env, `${input.targetId}:${input.action}:${Date.now()}`, {
+      kind: "moderated",
+      accountId: target.targetAccount,
+      actorId: accountId,
+      communityId,
+      postId: target.content.postId,
+      ...(comment ? { commentId: input.targetId } : {}),
+      action: input.action,
+    }),
+  ];
+}
+
 /** Does `input` as `accountId` in `communityId`; what refused it, or null when done. */
 export async function act(
   env: Env,
@@ -140,6 +164,7 @@ export async function act(
       reason: input.reason,
     }),
     ...(report ? [closing(env, report.reportId, accountId)] : []),
+    ...told(env, accountId, communityId, input, target),
   ];
   await apply(env, communityId, input, target, entries);
   return null;

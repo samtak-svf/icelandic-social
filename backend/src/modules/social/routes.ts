@@ -19,6 +19,7 @@ import { space, withinLimit } from "../../env/index.ts";
 import { blockedEither } from "../../identity/index.ts";
 import { fail } from "../../errors.ts";
 import { log } from "../../log.ts";
+import { notice } from "../jobs/index.ts";
 import { cardRoutes } from "./cards.ts";
 import { commentAccess, postAccess, refusal, replyRefusal, spaceAccess } from "./access.ts";
 import type { CommentContent } from "./do/space.ts";
@@ -182,9 +183,21 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     const refused = replyRefusal(found.access, found.post);
     if (refused) return fail(c, 403, refused);
     const { communityId } = found.post;
-    await noteAuthor(c.env, communityId, accountId);
+    // The author's notice is written first; its job finds no comment to tell
+    // of if the space then fails to take it.
+    const commentId = newCommentId(postId);
+    await noteAuthor(c.env, communityId, accountId, [
+      notice(c.env, commentId, {
+        kind: "comment",
+        accountId: found.post.authorId,
+        actorId: accountId,
+        communityId,
+        postId,
+        commentId,
+      }),
+    ]);
     const added = await space(c.env, communityId).addComment({
-      commentId: newCommentId(postId),
+      commentId,
       postId,
       author: accountId,
       body: c.req.valid("json").body,
@@ -214,7 +227,17 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     if (!found) return fail(c, 404, "not_found");
     const refused = replyRefusal(found.access, found.post);
     if (refused) return fail(c, 403, refused);
-    await noteAuthor(c.env, found.post.communityId, accountId);
+    const { communityId, authorId } = found.post;
+    // One notice for each account's reaction to a post, whatever it changes to.
+    await noteAuthor(c.env, communityId, accountId, [
+      notice(c.env, `${postId}:${accountId}`, {
+        kind: "reaction",
+        accountId: authorId,
+        actorId: accountId,
+        communityId,
+        postId,
+      }),
+    ]);
     const set = await space(c.env, found.post.communityId).react(
       postId,
       accountId,

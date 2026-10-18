@@ -38,8 +38,11 @@ export default defineConfig(({ mode }) => ({
     workersDev: false,
     // Once a day the Worker deletes media past its 30 days (decision 0023). An
     // R2 lifecycle rule on spjall-media is the backstop, made with the bucket
-    // (backend/README.md).
-    triggers: [triggers.scheduled({ schedule: "17 3 * * *" })],
+    // (backend/README.md). Every minute it runs the jobs that are due (0067).
+    triggers: [
+      triggers.scheduled({ schedule: "17 3 * * *" }),
+      triggers.scheduled({ schedule: "* * * * *" }),
+    ],
     // Read only through src/env/ (tooling/seam-guard.mjs).
     env: {
       // The web app's built files (decision 0062), served by Cloudflare before

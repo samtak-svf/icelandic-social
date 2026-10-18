@@ -53,6 +53,8 @@ export const OWNERS = {
   platform_moderators: "moderation",
   reports: "moderation",
   moderation_log: "moderation",
+  jobs: "jobs",
+  notifications: "notifications",
 };
 
 /** The reads of another module's table, each with its reason. */
@@ -101,6 +103,16 @@ export const READS = [
     module: "communities",
     table: "platform_moderators",
     why: "a standing says whether the viewer is a platform moderator, who reads and moderates every community (decision 0066)",
+  },
+  {
+    module: "notifications",
+    table: "accounts",
+    why: "a notification is written only for an account that still exists",
+  },
+  {
+    module: "notifications",
+    table: "communities",
+    why: "a notification is written only for a community that still exists",
   },
 ];
 
