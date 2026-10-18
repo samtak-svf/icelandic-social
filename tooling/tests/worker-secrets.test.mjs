@@ -37,6 +37,7 @@ describe("worker-secrets", () => {
       "FCM_SERVICE_ACCOUNT",
       "APNS_KEY_P8",
       "APNS_KEY_ID",
+      "OPS_TOKEN",
     ]);
   });
 

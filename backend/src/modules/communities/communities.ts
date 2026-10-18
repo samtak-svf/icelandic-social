@@ -108,6 +108,15 @@ function newCommunityId(): string {
   return `cm_${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}`;
 }
 
+/** Whether `communityId` exists, read-only or not. */
+export async function communityExists(env: Env, communityId: string): Promise<boolean> {
+  const row = await db(env)
+    .prepare("SELECT 1 AS found FROM communities WHERE community_id = ?")
+    .bind(communityId)
+    .first<{ found: number }>();
+  return row !== null;
+}
+
 /** Whether Kenni verified the account (decision 0063: only a verified account creates). */
 export async function isVerified(env: Env, accountId: string): Promise<boolean> {
   const row = await db(env)

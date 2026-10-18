@@ -294,6 +294,43 @@ export class Space extends DurableObject<Env> {
     return posts.map((p) => p.post_id);
   }
 
+  /**
+   * What the space holds, for reconciling it with D1 after a restore
+   * (decision 0068): its posts' ids, the comments' ids, and every account
+   * that wrote or reacted here.
+   */
+  inventory(): { posts: string[]; comments: string[]; accounts: string[] } {
+    const column = (query: string) =>
+      this.sql
+        .exec<{ id: string }>(query)
+        .toArray()
+        .map((r) => r.id);
+    return {
+      posts: column("SELECT post_id AS id FROM posts"),
+      comments: column("SELECT comment_id AS id FROM comments"),
+      accounts: column(
+        `SELECT author AS id FROM posts UNION SELECT author FROM comments
+          UNION SELECT account FROM reactions`,
+      ),
+    };
+  }
+
+  /**
+   * Sets the space to restore, when it next starts, to `target`: a time, or a
+   * bookmark an earlier restore returned (decision 0068). The bookmark of now,
+   * which undoes the restore. The object starts again only after `restart`.
+   */
+  async restoreTo(target: { at: number } | { bookmark: string }): Promise<string> {
+    const bookmark =
+      "at" in target ? await this.ctx.storage.getBookmarkForTime(target.at) : target.bookmark;
+    return this.ctx.storage.onNextSessionRestoreBookmark(bookmark);
+  }
+
+  /** Ends this run of the object, so the next call starts it on the restored storage. */
+  restart(): void {
+    this.ctx.abort("restored");
+  }
+
   /** Deletes the whole space, with its community (decision 0063). */
   async drop(): Promise<void> {
     await this.ctx.storage.deleteAll();

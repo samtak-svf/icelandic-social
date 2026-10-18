@@ -27,7 +27,7 @@ export async function databaseId(): Promise<string> {
  * The command that runs the pinned cf: node on its bin, so that a signal to
  * the child reaches cf itself and not a `pnpm exec` in between (see migrate).
  */
-function cf(): [string, string] {
+export function cf(): [string, string] {
   const manifest = fileURLToPath(import.meta.resolve("cf/package.json"));
   const { bin } = JSON.parse(readFileSync(manifest, "utf8")) as { bin: { cf: string } };
   return [process.execPath, join(dirname(manifest), bin.cf)];

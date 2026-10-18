@@ -1,3 +1,4 @@
+-- contract: Fljótið and the walls left v1 (decision 0044); no live version reads these tables.
 -- Fljótið and the walls leave v1 (decision 0044): every post, reply and
 -- reaction is deleted, and nothing is kept or exported. The tables of
 -- 0009_posts.sql go, the children first; their indexes go with them, and are

@@ -66,6 +66,9 @@ export const SECRETS = [
     vault: "apns-key-id",
     when: "now",
   },
+  // The maintainer's bearer token for /ops (decision 0068). Unset, the routes
+  // answer 404; shorter than 32 characters, they do too.
+  { name: "OPS_TOKEN", vault: "ops-token", when: "now" },
 ];
 
 /**

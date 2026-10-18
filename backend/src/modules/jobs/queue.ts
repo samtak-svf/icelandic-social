@@ -104,3 +104,118 @@ export async function expireJobs(env: Env, now = Date.now()): Promise<number> {
     .run();
   return meta.changes;
 }
+
+/** A pending job still not taken this long after its time is stuck: the cron is not running it. */
+const STUCK_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** The most runs one drain makes, BATCH jobs each. */
+const DRAIN_RUNS = 40;
+
+type State = "pending" | "done" | "failed";
+
+/**
+ * Every job's count by state and kind, and the failed ones with their errors
+ * (decision 0068). The errors are read by the maintainer, never logged.
+ */
+export async function jobsOverview(env: Env, now = Date.now()) {
+  const [counts, failed, stuck] = await db(env).batch<Record<string, unknown>>([
+    db(env).prepare(
+      "SELECT state, kind, COUNT(*) AS count FROM jobs GROUP BY state, kind ORDER BY state, kind",
+    ),
+    db(env).prepare(
+      `SELECT job_id AS jobId, kind, attempts, error, finished_at AS finishedAt FROM jobs
+        WHERE state = 'failed' ORDER BY finished_at DESC LIMIT 100`,
+    ),
+    db(env)
+      .prepare(
+        `SELECT job_id AS jobId, kind, attempts, run_after AS runAfter FROM jobs
+          WHERE state = 'pending' AND run_after < ? ORDER BY run_after LIMIT 100`,
+      )
+      .bind(now - STUCK_MS),
+  ]);
+  return {
+    counts: (counts?.results ?? []) as { state: State; kind: string; count: number }[],
+    failed: (failed?.results ?? []) as {
+      jobId: number;
+      kind: string;
+      attempts: number;
+      error: string | null;
+      finishedAt: number;
+    }[],
+    stuck: (stuck?.results ?? []) as {
+      jobId: number;
+      kind: string;
+      attempts: number;
+      runAfter: number;
+    }[],
+  };
+}
+
+/**
+ * The jobs that need a look, as counts by kind: the ones that failed for good
+ * in the day before `now`, and the ones stuck (decision 0068).
+ */
+export async function jobHealth(
+  env: Env,
+  now = Date.now(),
+): Promise<{ failed: Record<string, number>; stuck: Record<string, number> }> {
+  const byKind = (rows: { kind: string; count: number }[]) =>
+    Object.fromEntries(rows.map((r) => [r.kind, r.count]));
+  const [failed, stuck] = await db(env).batch<{ kind: string; count: number }>([
+    db(env)
+      .prepare(
+        `SELECT kind, COUNT(*) AS count FROM jobs
+          WHERE state = 'failed' AND finished_at > ? GROUP BY kind`,
+      )
+      .bind(now - DAY_MS),
+    db(env)
+      .prepare(
+        `SELECT kind, COUNT(*) AS count FROM jobs
+          WHERE state = 'pending' AND run_after < ? GROUP BY kind`,
+      )
+      .bind(now - STUCK_MS),
+  ]);
+  return { failed: byKind(failed?.results ?? []), stuck: byKind(stuck?.results ?? []) };
+}
+
+/**
+ * Makes failed jobs pending again with their attempts back at zero, so the
+ * next run takes them: the ones named, or every failed one. How many.
+ */
+export async function retryJobs(
+  env: Env,
+  which: { jobIds: number[] } | { allFailed: true },
+  now = Date.now(),
+): Promise<number> {
+  const { meta } = await db(env)
+    .prepare(
+      `UPDATE jobs SET state = 'pending', attempts = 0, error = NULL, run_after = ?1,
+              finished_at = NULL
+        WHERE state = 'failed' AND (?2 IS NULL OR job_id IN (SELECT value FROM json_each(?2)))`,
+    )
+    .bind(now, "jobIds" in which ? JSON.stringify(which.jobIds) : null)
+    .run();
+  return meta.changes;
+}
+
+/**
+ * Runs the jobs due at `now` until none is left or DRAIN_RUNS runs have
+ * gone, for the maintainer after an outage (decision 0068). A job that fails
+ * waits its backoff, so a drain takes each job at most once.
+ */
+export async function drainJobs(
+  env: Env,
+  handlers: Record<string, Handler>,
+  now = Date.now(),
+): Promise<{ done: number; retried: number; failed: number; runs: number }> {
+  const total = { done: 0, retried: 0, failed: 0, runs: 0 };
+  while (total.runs < DRAIN_RUNS) {
+    const ran = await runJobs(env, handlers, now);
+    total.runs += 1;
+    total.done += ran.done;
+    total.retried += ran.retried;
+    total.failed += ran.failed;
+    if (ran.done + ran.retried + ran.failed === 0) break;
+  }
+  return total;
+}

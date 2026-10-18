@@ -3,4 +3,13 @@
 // here; what a job does is its handler's, given by the module that owns it.
 
 export { type Notice, notice } from "./notices.ts";
-export { expireJobs, type Handler, MAX_ATTEMPTS, runJobs } from "./queue.ts";
+export {
+  drainJobs,
+  expireJobs,
+  type Handler,
+  jobHealth,
+  jobsOverview,
+  MAX_ATTEMPTS,
+  retryJobs,
+  runJobs,
+} from "./queue.ts";

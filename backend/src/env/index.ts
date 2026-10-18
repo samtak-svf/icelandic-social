@@ -104,7 +104,17 @@ type Secrets = {
   FCM_SERVICE_ACCOUNT?: string;
   APNS_KEY_P8?: string;
   APNS_KEY_ID?: string;
+  OPS_TOKEN?: string;
 };
+
+/**
+ * The maintainer's token for the /ops routes (decision 0068); undefined when
+ * unset or shorter than 32 characters, and then every /ops route is not found.
+ */
+export function opsToken(env: Env): string | undefined {
+  const token = (env as Env & Secrets).OPS_TOKEN;
+  return token && token.length >= 32 ? token : undefined;
+}
 
 /**
  * Bound only by dev/worker.ts and test/worker.ts: the fake Kenni and Google,

@@ -57,6 +57,10 @@ asks `/health` on the API host.
 Both package scripts run `jurisdiction-check.mjs --deploy` first, so a deploy from a laptop is
 refused on the same terms.
 
+Before the migrations the run writes its way back (a D1 bookmark and the version that served
+until then) to its summary. Rolling back, restoring a community's space or D1, retrying jobs and
+the alert on errors are in [`docs/operations.md`](../docs/operations.md) (decision 0068).
+
 ## Secrets
 
 ```bash

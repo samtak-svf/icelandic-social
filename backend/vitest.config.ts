@@ -22,6 +22,8 @@ export default defineConfig({
           GOOGLE_ISSUER: "https://spjall.test/dev/google",
           GOOGLE_CLIENT_ID: "fake-google-client",
           KENNITALA_HMAC_KEY: "test-only-kennitala-key",
+          // The maintainer's token for /ops (decision 0068), test-only.
+          OPS_TOKEN: "test-only-ops-token-0123456789abcdef",
         },
       },
     })),

@@ -70,6 +70,7 @@ import { moderationRoutes } from "./modules/moderation/index.ts";
 import { notificationRoutes } from "./modules/notifications/index.ts";
 import { dropSpace, socialRoutes } from "./modules/social/index.ts";
 import { accountRoutes, photoRoutes } from "./modules/profiles/index.ts";
+import { opsRoutes } from "./ops/index.ts";
 
 /** OpenAPI 3.1 document metadata; the routes and schemas come from src/api/. */
 export const DOCUMENT_INFO = {
@@ -428,6 +429,9 @@ export function createApp() {
   socialRoutes(app);
   moderationRoutes(app);
   notificationRoutes(app);
+
+  // The maintainer's jobs and restore, behind OPS_TOKEN (decision 0068).
+  opsRoutes(app);
 
   // The socket lives in the account's Inbox; the Worker tells it which
   // device this is, replacing any such header the client sent.

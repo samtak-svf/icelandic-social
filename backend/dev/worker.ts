@@ -1,6 +1,6 @@
 import { web } from "spjall-web/server";
 import { withFakes } from "./oidc.ts";
-import { API_PATHS } from "../src/index.ts";
+import { API_PATHS } from "../src/paths.ts";
 import worker, {
   Conversation as RealConversation,
   Inbox as RealInbox,

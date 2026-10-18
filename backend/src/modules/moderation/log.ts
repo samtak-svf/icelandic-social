@@ -1,6 +1,6 @@
 import type { Action, REPORT_KINDS } from "../../api/moderation.ts";
 import { db } from "../../env/index.ts";
-import { authors } from "../social/index.ts";
+import { authors, type Moderated } from "../social/index.ts";
 
 // The moderation log (decision 0066): one entry per action, appended and
 // never edited. Migration 0016's triggers refuse an edit or a deletion; an
@@ -90,4 +90,32 @@ export async function logPage(
     })),
     next: results.length > limit ? String(page.at(-1)?.entry_id) : null,
   };
+}
+
+const COMMENT_STATES = {
+  hide_comment: "hidden",
+  remove_comment: "removed",
+  restore_comment: "visible",
+} as const;
+
+/**
+ * Each comment's latest state in `communityId`'s log and when it was given,
+ * for a space restored to a time before it (decision 0068).
+ */
+export async function commentModeration(env: Env, communityId: string): Promise<Moderated[]> {
+  const { results } = await db(env)
+    .prepare(
+      `SELECT target_id, action, created_at FROM moderation_log
+        WHERE entry_id IN (SELECT MAX(entry_id) FROM moderation_log
+                            WHERE community_id = ? AND target_kind = 'comment'
+                              AND action IN ('hide_comment', 'remove_comment', 'restore_comment')
+                            GROUP BY target_id)`,
+    )
+    .bind(communityId)
+    .all<{ target_id: string; action: keyof typeof COMMENT_STATES; created_at: number }>();
+  return results.map((r) => ({
+    commentId: r.target_id,
+    state: COMMENT_STATES[r.action],
+    at: r.created_at,
+  }));
 }

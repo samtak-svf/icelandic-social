@@ -3,7 +3,7 @@ import { createApp } from "./app.ts";
 import { log } from "./log.ts";
 import { expireKeyPackages, expireSessions } from "./identity/index.ts";
 import { expireCommunities } from "./modules/communities/index.ts";
-import { expireJobs, runJobs } from "./modules/jobs/index.ts";
+import { expireJobs, jobHealth, runJobs } from "./modules/jobs/index.ts";
 import { expireMedia, pushSender } from "./modules/messaging/index.ts";
 import { expireReports } from "./modules/moderation/index.ts";
 import { expireNotifications, jobHandlers } from "./modules/notifications/index.ts";
@@ -23,7 +23,8 @@ export default {
   // read-only communities past their 90 days (0063), images no post took
   // within a day (0065), posts removed by a moderator 90 days ago and reports
   // closed a year ago (0066), and finished jobs and notifications past their
-  // time (0067).
+  // time (0067). It also counts, by kind, the jobs that failed for good that
+  // day and the ones the minute cron has stopped taking (0068).
   async scheduled(controller, env) {
     if (controller.cron === JOBS_SCHEDULE) {
       const ran = await runJobs(env, jobHandlers(pushSender(env)));
@@ -40,5 +41,12 @@ export default {
     log("reports.expired", { count: await expireReports(env) });
     log("jobs.expired", { count: await expireJobs(env) });
     log("notifications.expired", { count: await expireNotifications(env) });
+    const health = await jobHealth(env);
+    for (const [kind, count] of Object.entries(health.failed)) {
+      log("jobs.failed", { code: kind, count });
+    }
+    for (const [kind, count] of Object.entries(health.stuck)) {
+      log("jobs.stuck", { code: kind, count });
+    }
   },
 } satisfies ExportedHandler<Env>;

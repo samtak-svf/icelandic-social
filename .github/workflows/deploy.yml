@@ -1,7 +1,7 @@
 name: deploy
 
-# Deploys the Worker spjall-api to spjall.samtak.is: remote D1 migrations
-# first, then the Worker. Started by hand only, from main, and held by the
+# Deploys the Worker spjall-api to spjall.samtak.is: the way back recorded
+# first (docs/operations.md), then remote D1 migrations, then the Worker. Started by hand only, from main, and held by the
 # `production` environment until the maintainer approves the run; the
 # Cloudflare API token lives in that environment and nowhere else.
 #
@@ -52,6 +52,12 @@ jobs:
         run: |
           pnpm --filter spjall-backend run check
           pnpm --filter spjall-backend test
+
+      # The bookmark and the version a rollback goes back to, in the run's
+      # summary before anything changes: ids only (decision 0068).
+      - name: The way back
+        working-directory: backend
+        run: node scripts/ops.ts way-back >> "$GITHUB_STEP_SUMMARY"
 
       - name: Remote D1 migrations
         run: pnpm --filter spjall-backend run migrate:remote
