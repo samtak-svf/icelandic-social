@@ -33,3 +33,7 @@ ios/Packages/SpjallCore/
 
 # Private data never enters git (PII guard, docs/decisions/0008)
 private/
+
+# Playwright
+test-results/
+playwright-report/

@@ -1,0 +1,9 @@
+{
+  // The Playwright tests run under Node, not in the app's browser bundle.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "lib": ["ES2024", "DOM"]
+  },
+  "include": [".", "../playwright.config.ts"]
+}

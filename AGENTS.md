@@ -72,6 +72,10 @@ pnpm --filter spjall-backend openapi   # regenerate api/openapi.json after a zod
 node tooling/ws-kotlin.mjs   # ... then the Kotlin WS frames from it
 node tooling/web-api.mjs     # ... and the web client
 
+# The web (web/ is a package of the root workspace; the Worker builds and serves it)
+pnpm --filter spjall-web test   # unit tests (vitest)
+pnpm --filter spjall-web e2e    # Playwright in Chromium against `cf dev --mode interop` (web.yml)
+
 # The Rust core (core/ is a Cargo workspace; the toolchain is pinned in rust-toolchain.toml)
 cd core && cargo fmt --all && cargo clippy --workspace --all-targets -- -D warnings && cargo test
 cargo xtask core android     # needs the NDK named in core/artifact.lock.json and cargo-ndk

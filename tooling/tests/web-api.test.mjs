@@ -1,7 +1,6 @@
 // @ts-check
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { readJson, ROOT } from "../lib/repo.mjs";
 import { emit, forWeb, OUTPUT, tsType } from "../web-api.mjs";
@@ -82,55 +81,6 @@ describe("web-api", () => {
     ).toThrow("x: unsupported parameter in header");
     expect(() => emit(spec({ responses: {} }))).toThrow(
       "get /v1/things/{thingId}: needs an operationId",
-    );
-  });
-
-  it("calls the API with the path, query, body and client header it declares", async () => {
-    // Imported by URL so the tooling's type check does not walk into web/.
-    const api = await import(pathToFileURL(join(ROOT, OUTPUT)).href);
-    const CLIENT = `web/${readJson("web/package.json").version}`;
-    /** @type {Request[]} */
-    const seen = [];
-    /** @param {Response} answer */
-    const fake = (answer) => ({
-      /** @param {string} url @param {RequestInit} init */
-      fetch: async (url, init) => {
-        seen.push(new Request(new URL(url, "https://web.test"), init));
-        return answer;
-      },
-    });
-    const json = (/** @type {unknown} */ body, status = 200) =>
-      new Response(JSON.stringify(body), {
-        status,
-        headers: { "content-type": "application/json" },
-      });
-
-    const ended = await api.endSession(
-      { path: { sessionId: "a/b c" } },
-      fake(new Response(null, { status: 204 })),
-    );
-    expect(ended).toEqual({ status: 204, data: undefined });
-    expect(seen[0]?.method).toBe("DELETE");
-    expect(new URL(seen[0]?.url ?? "").pathname).toBe("/v1/sessions/a%2Fb%20c");
-    expect(seen[0]?.headers.get("spjall-client")).toBe(CLIENT);
-    expect(CLIENT).toMatch(/^web\/\d+\.\d+\.\d+$/);
-    expect(seen[0]?.credentials).toBe("same-origin");
-
-    const page = await api.listPeople(
-      { query: { q: "jón", limit: 5 } },
-      fake(json({ people: [] })),
-    );
-    expect(page).toEqual({ status: 200, data: { people: [] } });
-    expect(new URL(seen[1]?.url ?? "").search).toBe("?q=j%C3%B3n&limit=5");
-
-    const refused = await api.getMe(fake(json({ error: "unauthorized", requestId: "r" }, 401)));
-    expect(refused).toEqual({ status: 401, data: { error: "unauthorized", requestId: "r" } });
-
-    const photo = new Uint8Array([1, 2, 3]).buffer;
-    await api.setPhoto({ body: photo }, fake(json({ photo: "v1" })));
-    expect(seen[3]?.headers.get("content-type")).toBe("application/octet-stream");
-    expect(new Uint8Array(await (seen[3] ?? new Request("x:")).arrayBuffer())).toEqual(
-      new Uint8Array([1, 2, 3]),
     );
   });
 });

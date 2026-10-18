@@ -1,9 +1,13 @@
+import { web } from "spjall-web/server";
 import { withFakes } from "./oidc.ts";
+import { API_PATHS } from "../src/index.ts";
 import worker, { Conversation as RealConversation, Inbox as RealInbox } from "../src/worker.ts";
 import { OPERATOR_INVITE_PATH, operatorInvite } from "../scripts/operator-invite.ts";
 
 // The Worker that `cf dev --mode interop` runs for the interop test
-// (core/client/tests/backend.rs). Never deployed: every other mode's entry is
+// (core/client/tests/backend.rs) and the web's Playwright run (web/e2e/), with
+// the web app on every path the API does not own, as in src/index.ts. Never
+// deployed: every other mode's entry is
 // src/index.ts (cloudflare.config.ts), and `jurisdiction-check.mjs --deploy`
 // refuses any other.
 //
@@ -62,6 +66,7 @@ export default {
       await env.DB.prepare(sql).run();
       return new Response(link);
     }
+    if (!API_PATHS.test(url.pathname)) return web(request);
     return worker.fetch(request, { ...devEnv(env), ...fakes.env }, ctx);
   },
 } satisfies ExportedHandler<Env>;

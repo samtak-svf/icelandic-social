@@ -21,8 +21,9 @@ export default defineConfig(({ mode }) => ({
     // (decision 0062); the API itself uses neither.
     compatibilityFlags: ["nodejs_compat"],
     // `cf dev --mode interop` runs dev/worker.ts, the real Worker plus a fake
-    // Kenni, for the interop test (interop.yml). Every other mode, and every
-    // deploy, runs src/index.ts; `jurisdiction-check.mjs` holds that.
+    // Kenni and Google, for the interop test (interop.yml) and the web's
+    // Playwright run (web.yml). Every other mode, and every deploy, runs
+    // src/index.ts; `jurisdiction-check.mjs` holds that.
     entrypoint: mode === "interop" ? "dev/worker.ts" : "src/index.ts",
     observability: { enabled: true },
     // Every authenticated request makes two or more D1 round trips, and D1
