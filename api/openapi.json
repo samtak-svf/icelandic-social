@@ -1857,16 +1857,12 @@
             "$ref": "#/components/schemas/ReportTarget"
           },
           "targetAccount": {
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/Author"
               },
               {
-                "type": [
-                  "object",
-                  "null"
-                ],
-                "description": "Who wrote the post or comment, or the account reported; null once deleted"
+                "type": "null"
               }
             ]
           },
@@ -1950,16 +1946,12 @@
             "example": "c_9f3a1b"
           },
           "actor": {
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/Author"
               },
               {
-                "type": [
-                  "object",
-                  "null"
-                ],
-                "description": "null once the actor's account is deleted"
+                "type": "null"
               }
             ]
           },
@@ -2009,15 +2001,12 @@
             ]
           },
           "targetAccount": {
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/Author"
               },
               {
-                "type": [
-                  "object",
-                  "null"
-                ]
+                "type": "null"
               }
             ]
           },
@@ -2084,16 +2073,12 @@
             ]
           },
           "actor": {
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/Author"
               },
               {
-                "type": [
-                  "object",
-                  "null"
-                ],
-                "description": "Who did it; null once deleted"
+                "type": "null"
               }
             ]
           },

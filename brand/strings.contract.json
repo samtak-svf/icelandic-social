@@ -462,11 +462,11 @@
       "description": "The card of a shared post the server no longer shows: deleted, its author's account deleted, or its author blocked. It does not say which (docs/decisions/0040)."
     },
     "react": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Add a reaction to a message."
     },
     "reactions_title": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Title of the sheet listing who reacted to a message (docs/decisions/0045)."
     },
     "reaction_count": {
@@ -963,6 +963,252 @@
     "reload": {
       "surfaces": ["web"],
       "description": "Button that reloads the web page."
+    },
+    "tab_communities": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Navigation: the communities a person is in and the way to find more (decision 0063)."
+    },
+    "tab_notifications": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Navigation: what was addressed to this account in communities (decision 0067)."
+    },
+    "notifications_unread": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Badge text on the notifications tab: how many are unread.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "notifications_empty": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The notifications list when there is none."
+    },
+    "notice_comment": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A notification: someone commented on the reader's post. {name} is that person's name.",
+      "placeholders": {
+        "name": "string"
+      }
+    },
+    "notice_reaction": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A notification: someone reacted to the reader's post.",
+      "placeholders": {
+        "name": "string"
+      }
+    },
+    "notice_join_approved": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A notification: a moderator approved the reader's request to join a private community."
+    },
+    "notice_moderated": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A notification: a moderator hid or removed the reader's post or comment (decision 0063)."
+    },
+    "person_deleted": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Shown in place of the name of an account that was deleted."
+    },
+    "communities_mine": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Heading of the communities the person is a member of."
+    },
+    "communities_empty": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The person's community list when it is empty."
+    },
+    "communities_find": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Label of the search for communities by name."
+    },
+    "communities_none_found": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The community search found nothing."
+    },
+    "community_create": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Heading and button: create a new community."
+    },
+    "community_name": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Label of a community's name field."
+    },
+    "community_description": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Label of a community's description field."
+    },
+    "community_open": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A community anyone signed in may read and join (decision 0063)."
+    },
+    "community_private": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A community only members read; joining takes approval (decision 0063)."
+    },
+    "community_open_hint": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Explains an open community where it is chosen."
+    },
+    "community_private_hint": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Explains a private community where it is chosen."
+    },
+    "community_members": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "How many members a community has.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "community_join": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Button: join an open community."
+    },
+    "community_request_join": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Button: ask to join a private community."
+    },
+    "community_join_requested": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Shown while the person's join request waits."
+    },
+    "community_leave": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Button: leave a community."
+    },
+    "community_muted": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Shown to a muted member in place of the composer."
+    },
+    "post_compose": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Label of the field where a member writes a new post."
+    },
+    "post_publish": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Button: publish the post being written."
+    },
+    "posts_empty": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A community with no posts yet."
+    },
+    "post_comments": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "How many comments a post has; opens the post.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "post_back": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Link from a post back to its community."
+    },
+    "comment_compose": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Label of the field where a member writes a comment."
+    },
+    "comment_publish": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Button: send the comment being written."
+    },
+    "comments_empty": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A post with no comments yet."
+    },
+    "reaction_like": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The like reaction, for a screen reader and as a button's name."
+    },
+    "reaction_love": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The love reaction."
+    },
+    "reaction_laugh": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The laughing reaction."
+    },
+    "reaction_wow": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The surprised reaction."
+    },
+    "reaction_sad": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The sad reaction."
+    },
+    "content_hidden": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Marks a post or comment a moderator hid; only moderators see it."
+    },
+    "content_removed": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Marks a post or comment a moderator removed; only moderators see it."
+    },
+    "report": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Button on a post or comment: report it to the moderators."
+    },
+    "report_title": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Heading of the report form."
+    },
+    "report_reason": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Label of the reason chosen in the report form and of a moderator's reason."
+    },
+    "report_reason_unlawful": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Report reason: unlawful; goes to the platform's moderators (decision 0066)."
+    },
+    "report_reason_harassment": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Report reason: harassment."
+    },
+    "report_reason_spam": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Report reason: spam."
+    },
+    "report_reason_other": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Report reason: other."
+    },
+    "report_note": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Label of the optional note in the report form."
+    },
+    "report_send": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Button: send the report."
+    },
+    "report_sent": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Confirmation after a report is sent; never names who reported."
+    },
+    "moderation_queue": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Heading of a community's queue of reports, for its moderators."
+    },
+    "moderation_queue_empty": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The report queue when it is empty."
+    },
+    "moderation_hide": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Moderator action: hide the reported post or comment."
+    },
+    "moderation_remove": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Moderator action: remove the reported post or comment."
+    },
+    "moderation_dismiss": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Moderator action: close the report and change nothing."
+    },
+    "moderation_done": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Confirmation after a moderator acts; every action is logged (decision 0066)."
     }
   }
 }

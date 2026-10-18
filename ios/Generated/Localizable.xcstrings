@@ -2280,6 +2280,726 @@
           }
         }
       }
+    },
+    "tab_communities": {
+      "comment": "Navigation: the communities a person is in and the way to find more (decision 0063).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Samfélög"
+          }
+        }
+      }
+    },
+    "tab_notifications": {
+      "comment": "Navigation: what was addressed to this account in communities (decision 0067).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tilkynningar"
+          }
+        }
+      }
+    },
+    "notifications_unread": {
+      "comment": "Badge text on the notifications tab: how many are unread.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld ólesin"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld ólesnar"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "notifications_empty": {
+      "comment": "The notifications list when there is none.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engar tilkynningar enn."
+          }
+        }
+      }
+    },
+    "notice_comment": {
+      "comment": "A notification: someone commented on the reader's post. {name} is that person's name.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ skrifaði athugasemd við póstinn þinn."
+          }
+        }
+      }
+    },
+    "notice_reaction": {
+      "comment": "A notification: someone reacted to the reader's post.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ brást við póstinum þínum."
+          }
+        }
+      }
+    },
+    "notice_join_approved": {
+      "comment": "A notification: a moderator approved the reader's request to join a private community.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inngöngubeiðni þín var samþykkt."
+          }
+        }
+      }
+    },
+    "notice_moderated": {
+      "comment": "A notification: a moderator hid or removed the reader's post or comment (decision 0063).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stjórnandi faldi eða fjarlægði efni frá þér."
+          }
+        }
+      }
+    },
+    "person_deleted": {
+      "comment": "Shown in place of the name of an account that was deleted.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eyddur reikningur"
+          }
+        }
+      }
+    },
+    "communities_mine": {
+      "comment": "Heading of the communities the person is a member of.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Samfélögin mín"
+          }
+        }
+      }
+    },
+    "communities_empty": {
+      "comment": "The person's community list when it is empty.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þú ert ekki í neinu samfélagi enn."
+          }
+        }
+      }
+    },
+    "communities_find": {
+      "comment": "Label of the search for communities by name.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finna samfélag"
+          }
+        }
+      }
+    },
+    "communities_none_found": {
+      "comment": "The community search found nothing.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekkert samfélag fannst."
+          }
+        }
+      }
+    },
+    "community_create": {
+      "comment": "Heading and button: create a new community.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stofna samfélag"
+          }
+        }
+      }
+    },
+    "community_name": {
+      "comment": "Label of a community's name field.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heiti"
+          }
+        }
+      }
+    },
+    "community_description": {
+      "comment": "Label of a community's description field.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lýsing"
+          }
+        }
+      }
+    },
+    "community_open": {
+      "comment": "A community anyone signed in may read and join (decision 0063).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opið"
+          }
+        }
+      }
+    },
+    "community_private": {
+      "comment": "A community only members read; joining takes approval (decision 0063).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokað"
+          }
+        }
+      }
+    },
+    "community_open_hint": {
+      "comment": "Explains an open community where it is chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allir innskráðir geta lesið það og gengið í það."
+          }
+        }
+      }
+    },
+    "community_private_hint": {
+      "comment": "Explains a private community where it is chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aðeins meðlimir lesa það og stjórnandi samþykkir nýja."
+          }
+        }
+      }
+    },
+    "community_members": {
+      "comment": "How many members a community has.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld meðlimur"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld meðlimir"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "community_join": {
+      "comment": "Button: join an open community.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ganga í samfélagið"
+          }
+        }
+      }
+    },
+    "community_request_join": {
+      "comment": "Button: ask to join a private community.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biðja um inngöngu"
+          }
+        }
+      }
+    },
+    "community_join_requested": {
+      "comment": "Shown while the person's join request waits.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beiðni þín bíður samþykkis stjórnanda."
+          }
+        }
+      }
+    },
+    "community_leave": {
+      "comment": "Button: leave a community.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yfirgefa samfélagið"
+          }
+        }
+      }
+    },
+    "community_muted": {
+      "comment": "Shown to a muted member in place of the composer.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stjórnandi þaggaði niður í þér hér. Þú getur lesið en ekki skrifað."
+          }
+        }
+      }
+    },
+    "post_compose": {
+      "comment": "Label of the field where a member writes a new post.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrifa póst"
+          }
+        }
+      }
+    },
+    "post_publish": {
+      "comment": "Button: publish the post being written.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Birta"
+          }
+        }
+      }
+    },
+    "posts_empty": {
+      "comment": "A community with no posts yet.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engir póstar enn."
+          }
+        }
+      }
+    },
+    "post_comments": {
+      "comment": "How many comments a post has; opens the post.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld athugasemd"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld athugasemdir"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "post_back": {
+      "comment": "Link from a post back to its community.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Til baka í samfélagið"
+          }
+        }
+      }
+    },
+    "comment_compose": {
+      "comment": "Label of the field where a member writes a comment.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrifa athugasemd"
+          }
+        }
+      }
+    },
+    "comment_publish": {
+      "comment": "Button: send the comment being written.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Senda"
+          }
+        }
+      }
+    },
+    "comments_empty": {
+      "comment": "A post with no comments yet.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engar athugasemdir enn."
+          }
+        }
+      }
+    },
+    "reaction_like": {
+      "comment": "The like reaction, for a screen reader and as a button's name.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Líkar vel"
+          }
+        }
+      }
+    },
+    "reaction_love": {
+      "comment": "The love reaction.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elska"
+          }
+        }
+      }
+    },
+    "reaction_laugh": {
+      "comment": "The laughing reaction.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hlæ"
+          }
+        }
+      }
+    },
+    "reaction_wow": {
+      "comment": "The surprised reaction.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vá"
+          }
+        }
+      }
+    },
+    "reaction_sad": {
+      "comment": "The sad reaction.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leitt"
+          }
+        }
+      }
+    },
+    "content_hidden": {
+      "comment": "Marks a post or comment a moderator hid; only moderators see it.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falið af stjórnanda"
+          }
+        }
+      }
+    },
+    "content_removed": {
+      "comment": "Marks a post or comment a moderator removed; only moderators see it.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjarlægt af stjórnanda"
+          }
+        }
+      }
+    },
+    "report": {
+      "comment": "Button on a post or comment: report it to the moderators.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tilkynna"
+          }
+        }
+      }
+    },
+    "report_title": {
+      "comment": "Heading of the report form.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tilkynna efni"
+          }
+        }
+      }
+    },
+    "report_reason": {
+      "comment": "Label of the reason chosen in the report form and of a moderator's reason.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ástæða"
+          }
+        }
+      }
+    },
+    "report_reason_unlawful": {
+      "comment": "Report reason: unlawful; goes to the platform's moderators (decision 0066).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ólöglegt efni"
+          }
+        }
+      }
+    },
+    "report_reason_harassment": {
+      "comment": "Report reason: harassment.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Áreitni"
+          }
+        }
+      }
+    },
+    "report_reason_spam": {
+      "comment": "Report reason: spam.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruslefni"
+          }
+        }
+      }
+    },
+    "report_reason_other": {
+      "comment": "Report reason: other.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annað"
+          }
+        }
+      }
+    },
+    "report_note": {
+      "comment": "Label of the optional note in the report form.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nánar, ef þú vilt"
+          }
+        }
+      }
+    },
+    "report_send": {
+      "comment": "Button: send the report.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Senda tilkynningu"
+          }
+        }
+      }
+    },
+    "report_sent": {
+      "comment": "Confirmation after a report is sent; never names who reported.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Takk. Stjórnendur skoða þetta."
+          }
+        }
+      }
+    },
+    "moderation_queue": {
+      "comment": "Heading of a community's queue of reports, for its moderators.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tilkynnt efni"
+          }
+        }
+      }
+    },
+    "moderation_queue_empty": {
+      "comment": "The report queue when it is empty.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekkert bíður."
+          }
+        }
+      }
+    },
+    "moderation_hide": {
+      "comment": "Moderator action: hide the reported post or comment.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fela"
+          }
+        }
+      }
+    },
+    "moderation_remove": {
+      "comment": "Moderator action: remove the reported post or comment.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjarlægja"
+          }
+        }
+      }
+    },
+    "moderation_dismiss": {
+      "comment": "Moderator action: close the report and change nothing.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loka án aðgerðar"
+          }
+        }
+      }
+    },
+    "moderation_done": {
+      "comment": "Confirmation after a moderator acts; every action is logged (decision 0066).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aðgerðin var skráð."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

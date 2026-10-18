@@ -11,7 +11,8 @@ const Notification = z
   .object({
     notificationId: z.string(),
     kind: z.enum(["comment", "reaction", "join_approved", "moderated"]),
-    actor: Author.nullable().openapi({ description: "Who did it; null once deleted" }),
+    // Who did it; null once deleted.
+    actor: z.union([Author, z.null()]),
     communityId: OpaqueId,
     postId: OpaqueId.nullable(),
     commentId: z.string().nullable(),

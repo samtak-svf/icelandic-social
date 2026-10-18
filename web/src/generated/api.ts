@@ -513,7 +513,7 @@ export interface Report {
   reportId: string;
   communityId: string | null;
   target: ReportTarget;
-  targetAccount: Author & Record<string, never> | null;
+  targetAccount: Author | null;
   reason: "unlawful" | "harassment" | "spam" | "other";
   note: string;
   state: "open" | "closed";
@@ -531,7 +531,7 @@ export interface ModerationLogPage {
 export interface ModerationLogEntry {
   entryId: number;
   communityId: string | null;
-  actor: Author & Record<string, never> | null;
+  actor: Author | null;
   /** Done as one of Samtak's platform moderators */
   asPlatform: boolean;
   action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "close_report";
@@ -539,7 +539,7 @@ export interface ModerationLogEntry {
     kind: "post" | "comment" | "community" | "account" | "report";
     id: string;
   };
-  targetAccount: Author & Record<string, never> | null;
+  targetAccount: Author | null;
   reason: string;
   /** Unix milliseconds */
   createdAt: number;
@@ -556,7 +556,7 @@ export interface NotificationPage {
 export interface Notification {
   notificationId: string;
   kind: "comment" | "reaction" | "join_approved" | "moderated";
-  actor: Author & Record<string, never> | null;
+  actor: Author | null;
   communityId: string;
   postId: string | null;
   commentId: string | null;

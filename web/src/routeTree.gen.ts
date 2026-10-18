@@ -10,11 +10,21 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as CommunitiesIndexRouteImport } from './routes/communities.index'
+import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
+import { Route as CommunitiesCommunityIdIndexRouteImport } from './routes/communities.$communityId.index'
+import { Route as CommunitiesCommunityIdReportsRouteImport } from './routes/communities.$communityId.reports'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -22,31 +32,95 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CommunitiesIndexRoute = CommunitiesIndexRouteImport.update({
+  id: '/communities/',
+  path: '/communities/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PostsPostIdRoute = PostsPostIdRouteImport.update({
+  id: '/posts/$postId',
+  path: '/posts/$postId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CommunitiesCommunityIdIndexRoute =
+  CommunitiesCommunityIdIndexRouteImport.update({
+    id: '/communities/$communityId/',
+    path: '/communities/$communityId/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const CommunitiesCommunityIdReportsRoute =
+  CommunitiesCommunityIdReportsRouteImport.update({
+    id: '/communities/$communityId/reports',
+    path: '/communities/$communityId/reports',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/notifications': typeof NotificationsRoute
   '/settings': typeof SettingsRoute
+  '/posts/$postId': typeof PostsPostIdRoute
+  '/communities/': typeof CommunitiesIndexRoute
+  '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
+  '/communities/$communityId/': typeof CommunitiesCommunityIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/notifications': typeof NotificationsRoute
   '/settings': typeof SettingsRoute
+  '/posts/$postId': typeof PostsPostIdRoute
+  '/communities': typeof CommunitiesIndexRoute
+  '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
+  '/communities/$communityId': typeof CommunitiesCommunityIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/notifications': typeof NotificationsRoute
   '/settings': typeof SettingsRoute
+  '/posts/$postId': typeof PostsPostIdRoute
+  '/communities/': typeof CommunitiesIndexRoute
+  '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
+  '/communities/$communityId/': typeof CommunitiesCommunityIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/settings'
+  fullPaths:
+    | '/'
+    | '/notifications'
+    | '/settings'
+    | '/posts/$postId'
+    | '/communities/'
+    | '/communities/$communityId/reports'
+    | '/communities/$communityId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/settings'
-  id: '__root__' | '/' | '/settings'
+  to:
+    | '/'
+    | '/notifications'
+    | '/settings'
+    | '/posts/$postId'
+    | '/communities'
+    | '/communities/$communityId/reports'
+    | '/communities/$communityId'
+  id:
+    | '__root__'
+    | '/'
+    | '/notifications'
+    | '/settings'
+    | '/posts/$postId'
+    | '/communities/'
+    | '/communities/$communityId/reports'
+    | '/communities/$communityId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  NotificationsRoute: typeof NotificationsRoute
   SettingsRoute: typeof SettingsRoute
+  PostsPostIdRoute: typeof PostsPostIdRoute
+  CommunitiesIndexRoute: typeof CommunitiesIndexRoute
+  CommunitiesCommunityIdReportsRoute: typeof CommunitiesCommunityIdReportsRoute
+  CommunitiesCommunityIdIndexRoute: typeof CommunitiesCommunityIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -58,6 +132,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -65,12 +146,45 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/communities/': {
+      id: '/communities/'
+      path: '/communities'
+      fullPath: '/communities/'
+      preLoaderRoute: typeof CommunitiesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/posts/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: typeof PostsPostIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/communities/$communityId/': {
+      id: '/communities/$communityId/'
+      path: '/communities/$communityId'
+      fullPath: '/communities/$communityId/'
+      preLoaderRoute: typeof CommunitiesCommunityIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/communities/$communityId/reports': {
+      id: '/communities/$communityId/reports'
+      path: '/communities/$communityId/reports'
+      fullPath: '/communities/$communityId/reports'
+      preLoaderRoute: typeof CommunitiesCommunityIdReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  NotificationsRoute: NotificationsRoute,
   SettingsRoute: SettingsRoute,
+  PostsPostIdRoute: PostsPostIdRoute,
+  CommunitiesIndexRoute: CommunitiesIndexRoute,
+  CommunitiesCommunityIdReportsRoute: CommunitiesCommunityIdReportsRoute,
+  CommunitiesCommunityIdIndexRoute: CommunitiesCommunityIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

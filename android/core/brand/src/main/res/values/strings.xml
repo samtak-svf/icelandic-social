@@ -390,4 +390,127 @@
     <string name="shared_media">Myndir og skrár</string>
     <!-- The information screen when no photo or file has been sent in the conversation (0055). -->
     <string name="shared_media_empty">Engar myndir eða skrár hafa verið sendar í þessu samtali.</string>
+    <!-- Navigation: the communities a person is in and the way to find more (decision 0063). -->
+    <string name="tab_communities">Samfélög</string>
+    <!-- Navigation: what was addressed to this account in communities (decision 0067). -->
+    <string name="tab_notifications">Tilkynningar</string>
+    <!-- Badge text on the notifications tab: how many are unread. -->
+    <plurals name="notifications_unread">
+        <item quantity="one">%1$d ólesin</item>
+        <item quantity="other">%1$d ólesnar</item>
+    </plurals>
+    <!-- The notifications list when there is none. -->
+    <string name="notifications_empty">Engar tilkynningar enn.</string>
+    <!-- A notification: someone commented on the reader's post. {name} is that person's name. -->
+    <string name="notice_comment">%1$s skrifaði athugasemd við póstinn þinn.</string>
+    <!-- A notification: someone reacted to the reader's post. -->
+    <string name="notice_reaction">%1$s brást við póstinum þínum.</string>
+    <!-- A notification: a moderator approved the reader's request to join a private community. -->
+    <string name="notice_join_approved">Inngöngubeiðni þín var samþykkt.</string>
+    <!-- A notification: a moderator hid or removed the reader's post or comment (decision 0063). -->
+    <string name="notice_moderated">Stjórnandi faldi eða fjarlægði efni frá þér.</string>
+    <!-- Shown in place of the name of an account that was deleted. -->
+    <string name="person_deleted">Eyddur reikningur</string>
+    <!-- Heading of the communities the person is a member of. -->
+    <string name="communities_mine">Samfélögin mín</string>
+    <!-- The person's community list when it is empty. -->
+    <string name="communities_empty">Þú ert ekki í neinu samfélagi enn.</string>
+    <!-- Label of the search for communities by name. -->
+    <string name="communities_find">Finna samfélag</string>
+    <!-- The community search found nothing. -->
+    <string name="communities_none_found">Ekkert samfélag fannst.</string>
+    <!-- Heading and button: create a new community. -->
+    <string name="community_create">Stofna samfélag</string>
+    <!-- Label of a community's name field. -->
+    <string name="community_name">Heiti</string>
+    <!-- Label of a community's description field. -->
+    <string name="community_description">Lýsing</string>
+    <!-- A community anyone signed in may read and join (decision 0063). -->
+    <string name="community_open">Opið</string>
+    <!-- A community only members read; joining takes approval (decision 0063). -->
+    <string name="community_private">Lokað</string>
+    <!-- Explains an open community where it is chosen. -->
+    <string name="community_open_hint">Allir innskráðir geta lesið það og gengið í það.</string>
+    <!-- Explains a private community where it is chosen. -->
+    <string name="community_private_hint">Aðeins meðlimir lesa það og stjórnandi samþykkir nýja.</string>
+    <!-- How many members a community has. -->
+    <plurals name="community_members">
+        <item quantity="one">%1$d meðlimur</item>
+        <item quantity="other">%1$d meðlimir</item>
+    </plurals>
+    <!-- Button: join an open community. -->
+    <string name="community_join">Ganga í samfélagið</string>
+    <!-- Button: ask to join a private community. -->
+    <string name="community_request_join">Biðja um inngöngu</string>
+    <!-- Shown while the person's join request waits. -->
+    <string name="community_join_requested">Beiðni þín bíður samþykkis stjórnanda.</string>
+    <!-- Button: leave a community. -->
+    <string name="community_leave">Yfirgefa samfélagið</string>
+    <!-- Shown to a muted member in place of the composer. -->
+    <string name="community_muted">Stjórnandi þaggaði niður í þér hér. Þú getur lesið en ekki skrifað.</string>
+    <!-- Label of the field where a member writes a new post. -->
+    <string name="post_compose">Skrifa póst</string>
+    <!-- Button: publish the post being written. -->
+    <string name="post_publish">Birta</string>
+    <!-- A community with no posts yet. -->
+    <string name="posts_empty">Engir póstar enn.</string>
+    <!-- How many comments a post has; opens the post. -->
+    <plurals name="post_comments">
+        <item quantity="one">%1$d athugasemd</item>
+        <item quantity="other">%1$d athugasemdir</item>
+    </plurals>
+    <!-- Link from a post back to its community. -->
+    <string name="post_back">Til baka í samfélagið</string>
+    <!-- Label of the field where a member writes a comment. -->
+    <string name="comment_compose">Skrifa athugasemd</string>
+    <!-- Button: send the comment being written. -->
+    <string name="comment_publish">Senda</string>
+    <!-- A post with no comments yet. -->
+    <string name="comments_empty">Engar athugasemdir enn.</string>
+    <!-- The like reaction, for a screen reader and as a button's name. -->
+    <string name="reaction_like">Líkar vel</string>
+    <!-- The love reaction. -->
+    <string name="reaction_love">Elska</string>
+    <!-- The laughing reaction. -->
+    <string name="reaction_laugh">Hlæ</string>
+    <!-- The surprised reaction. -->
+    <string name="reaction_wow">Vá</string>
+    <!-- The sad reaction. -->
+    <string name="reaction_sad">Leitt</string>
+    <!-- Marks a post or comment a moderator hid; only moderators see it. -->
+    <string name="content_hidden">Falið af stjórnanda</string>
+    <!-- Marks a post or comment a moderator removed; only moderators see it. -->
+    <string name="content_removed">Fjarlægt af stjórnanda</string>
+    <!-- Button on a post or comment: report it to the moderators. -->
+    <string name="report">Tilkynna</string>
+    <!-- Heading of the report form. -->
+    <string name="report_title">Tilkynna efni</string>
+    <!-- Label of the reason chosen in the report form and of a moderator's reason. -->
+    <string name="report_reason">Ástæða</string>
+    <!-- Report reason: unlawful; goes to the platform's moderators (decision 0066). -->
+    <string name="report_reason_unlawful">Ólöglegt efni</string>
+    <!-- Report reason: harassment. -->
+    <string name="report_reason_harassment">Áreitni</string>
+    <!-- Report reason: spam. -->
+    <string name="report_reason_spam">Ruslefni</string>
+    <!-- Report reason: other. -->
+    <string name="report_reason_other">Annað</string>
+    <!-- Label of the optional note in the report form. -->
+    <string name="report_note">Nánar, ef þú vilt</string>
+    <!-- Button: send the report. -->
+    <string name="report_send">Senda tilkynningu</string>
+    <!-- Confirmation after a report is sent; never names who reported. -->
+    <string name="report_sent">Takk. Stjórnendur skoða þetta.</string>
+    <!-- Heading of a community's queue of reports, for its moderators. -->
+    <string name="moderation_queue">Tilkynnt efni</string>
+    <!-- The report queue when it is empty. -->
+    <string name="moderation_queue_empty">Ekkert bíður.</string>
+    <!-- Moderator action: hide the reported post or comment. -->
+    <string name="moderation_hide">Fela</string>
+    <!-- Moderator action: remove the reported post or comment. -->
+    <string name="moderation_remove">Fjarlægja</string>
+    <!-- Moderator action: close the report and change nothing. -->
+    <string name="moderation_dismiss">Loka án aðgerðar</string>
+    <!-- Confirmation after a moderator acts; every action is logged (decision 0066). -->
+    <string name="moderation_done">Aðgerðin var skráð.</string>
 </resources>

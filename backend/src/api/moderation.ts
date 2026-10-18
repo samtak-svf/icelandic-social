@@ -40,9 +40,8 @@ const Report = z
     reportId: OpaqueId,
     communityId: OpaqueId.nullable(),
     target: Target,
-    targetAccount: Author.nullable().openapi({
-      description: "Who wrote the post or comment, or the account reported; null once deleted",
-    }),
+    // Who wrote the post or comment, or the account reported; null once deleted.
+    targetAccount: z.union([Author, z.null()]),
     reason: z.enum(REPORT_REASONS),
     note: z.string(),
     state: z.enum(["open", "closed"]),
@@ -62,11 +61,12 @@ const LogEntry = z
   .object({
     entryId: z.int(),
     communityId: OpaqueId.nullable(),
-    actor: Author.nullable().openapi({ description: "null once the actor's account is deleted" }),
+    // null once the actor's account is deleted.
+    actor: z.union([Author, z.null()]),
     asPlatform: z.boolean().openapi({ description: "Done as one of Samtak's platform moderators" }),
     action: z.enum([...(Object.keys(ACTIONS) as [Action, ...Action[]]), "close_report"]),
     target: z.object({ kind: z.enum([...REPORT_KINDS, "report"]), id: OpaqueId }),
-    targetAccount: Author.nullable(),
+    targetAccount: z.union([Author, z.null()]),
     reason: z.string(),
     createdAt: CreatedAt,
   })

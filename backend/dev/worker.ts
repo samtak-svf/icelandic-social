@@ -23,7 +23,11 @@ import { OPERATOR_INVITE_PATH, operatorInvite } from "../scripts/operator-invite
 //   KENNI_ISSUER, GOOGLE_ISSUER and GOOGLE_CLIENT_ID to them;
 // - a POST to /dev/operator-invite writes an operator invite into the local D1
 //   and answers its link (scripts/invite-operator.ts --local), since cf has no
-//   local `d1 query`.
+//   local `d1 query`;
+// - a POST to /dev/jobs runs the minute cron once (decision 0067), since local
+//   cf dev fires no cron, so a test sees its notification at once.
+
+const JOBS_PATH = "/dev/jobs";
 
 function local(namespace: DurableObjectNamespace): DurableObjectNamespace {
   return new Proxy(namespace, {
@@ -76,6 +80,11 @@ export default {
       const { link, sql } = await operatorInvite();
       await env.DB.prepare(sql).run();
       return new Response(link);
+    }
+    if (url.pathname === JOBS_PATH && request.method === "POST") {
+      const cron = { cron: "* * * * *", scheduledTime: Date.now(), noRetry() {} };
+      await worker.scheduled(cron, devEnv(env));
+      return new Response(null, { status: 204 });
     }
     if (!API_PATHS.test(url.pathname)) return web(request);
     return worker.fetch(request, { ...devEnv(env), ...fakes.env }, ctx);
