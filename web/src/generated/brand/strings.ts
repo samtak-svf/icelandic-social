@@ -4,4 +4,86 @@
 export const strings = {
   /** Launcher label, home-screen name, store-facing display name. */
   app_name: "Hjal",
+  /** Bottom tab: own profile, invite link and the way to settings (docs/decisions/0034). */
+  tab_me: "Ég",
+  /** Short form of verified_with_kennitala, under the other person's name at the top of a conversation. */
+  verified_short: "Vottað",
+  /** Stands in for an account whose name the server has not given, in titles and rows (docs/decisions/0022). */
+  person_unnamed: "Nafnlaus",
+  /** Primary sign-in button: signs in with Google (docs/decisions/0033). */
+  sign_in_google: "Halda áfram með Google",
+  /** On Ég for an account with no profile photo: opens the photo picker to set one (docs/decisions/0039). */
+  photo_choose: "Setja inn mynd",
+  /** On Ég for an account with a profile photo: opens the photo picker to put another in its place (docs/decisions/0039). */
+  photo_change: "Skipta um mynd",
+  /** On Ég: removes the profile photo, after a confirmation; also that confirmation's button (docs/decisions/0039). */
+  photo_remove: "Fjarlægja mynd",
+  /** Asks before the profile photo is removed: it goes for everyone (docs/decisions/0039). */
+  photo_remove_confirm: "Fjarlægja myndina þína? Hún hverfur hjá öllum.",
+  /** The one line beside the photo buttons on Ég: every signed-in account sees the profile photo, which is not end-to-end encrypted (docs/decisions/0039). */
+  photo_seen_by_all: "Allir sem eru skráðir inn sjá myndina þína.",
+  /** The server could not be reached; the action can be tried again. */
+  error_unreachable: "Ekki náðist samband við þjóninn. Reyndu aftur.",
+  /** Something failed that the person cannot fix but may retry. */
+  error_generic: "Eitthvað fór úrskeiðis. Reyndu aftur.",
+  /** Small secondary line under a refusal naming the server's request id (decision 0037), so a tester can quote it. */
+  problem_request_id: (args: { id: string }): string =>
+    "Villunúmer: " + args.id,
+  /** Button that repeats the action that failed. */
+  try_again: "Reyna aftur",
+  /** Confirmation before signing a device out; says what it stops. */
+  device_revoke_confirm: "Aftengja tækið? Þá getur það hvorki sent né tekið við skilaboðum.",
+  /** Button on Ég that signs this device out, as revoking it does (docs/decisions/0047). */
+  sign_out: "Skrá út",
+  /** The only permitted statement about where data lives (docs/decisions/0001). */
+  residency_claim: "Gögnin eru geymd varanlega innan ESB; unnin á netkerfi Cloudflare.",
+  /** Screen-reader text of the placeholder rows shown on a first load (0043). */
+  loading: "Hleður…",
+  /** Heading of the web's sign-in page (decision 0062). */
+  sign_in_title: "Skráðu þig inn",
+  /** Web sign-in button: signs in with Kenni, which verifies the name (decisions 0035, 0062). */
+  sign_in_kenni: "Skrá inn með rafrænum skilríkjum",
+  /** Line under the web's two sign-in buttons: what each provider gives. */
+  sign_in_web_hint: "Google gefur aðeins nafn og netfang. Með rafrænum skilríkjum fær nafnið þitt staðfestingarmerki.",
+  /** The web's settings page: its heading and its link in the navigation. */
+  settings_title: "Stillingar",
+  /** Accessible name of the web's main navigation. */
+  main_navigation: "Aðalvalmynd",
+  /** Heading of the list of sessions (decision 0061). */
+  sessions_title: "Innskráningar",
+  /** Line under the sessions heading: what the list is. */
+  sessions_hint: "Vafrar og öpp þar sem aðgangurinn þinn er skráður inn.",
+  /** Marks the session in the list that is this browser. */
+  session_this: "Þessi vafri",
+  /** A browser session in the list: its browser and system, as the server named them. */
+  session_browser: (args: { browser: string; os: string }): string =>
+    args.browser + " á " + args.os,
+  /** A browser session whose browser the server could not name. */
+  session_browser_unknown: "Vafri",
+  /** A session of the Android app in the list. */
+  session_android: "App á Android",
+  /** A session of the iOS app in the list. */
+  session_ios: "App á iPhone",
+  /** When a browser session was last used, to the day. */
+  session_last_seen: (args: { date: string }): string =>
+    "Síðast notuð " + args.date,
+  /** When an app's session signed in. */
+  session_signed_in: (args: { date: string }): string =>
+    "Skráð inn " + args.date,
+  /** Button on another session in the list: signs that session out. */
+  session_end: "Skrá út",
+  /** Confirmation before signing another browser out. */
+  session_end_confirm: "Skrá út í þessum vafra? Þar þarf þá að skrá sig inn aftur.",
+  /** Button: signs out every session but this browser. */
+  sessions_end_others: "Skrá út alls staðar annars staðar",
+  /** Confirmation before signing out every other session; says that an app's device is signed out with it. */
+  sessions_end_others_confirm: "Skrá út í öllum öðrum vöfrum og öppum? Sími sem er skráður út er aftengdur og getur hvorki sent né tekið við skilaboðum.",
+  /** Alternative text of the person's own photo. */
+  photo_own_alt: "Myndin þín",
+  /** A photo upload was refused: too large or not an image (decision 0039). */
+  photo_upload_failed: "Ekki tókst að setja inn myndina. Veldu mynd sem er minni en 10 MB.",
+  /** The web build is below the version floor (decision 0030). */
+  reload_required: "Ný útgáfa er komin. Hladdu síðunni aftur.",
+  /** Button that reloads the web page. */
+  reload: "Hlaða aftur",
 } as const;

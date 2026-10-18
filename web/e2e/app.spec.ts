@@ -1,0 +1,121 @@
+import type { Page } from "@playwright/test";
+import { strings } from "../src/generated/brand/strings.ts";
+import { expect, serveOrigin, test, WEB } from "./origin.ts";
+import { newGoogleSubject, newKennitala } from "./people.ts";
+
+// The signed-in web app (#284): signing in from its own page, Ég, settings,
+// the session list and signing out, all through what a person sees. The name
+// is not edited because no one can edit it (decision 0043): it comes from
+// Google or from Kenni, so the photo is what Ég changes. However much is done
+// here, the browser never becomes a device.
+
+const NAME = "Prófa Prófsdóttir";
+
+/** Signs in from the sign-in page as `person`, through the provider's fake. */
+async function signIn(page: Page, provider: "kenni" | "google", person: string) {
+  await page.goto(`${WEB}/`);
+  await page.getByRole("heading", { name: strings.sign_in_title }).waitFor();
+  const button = provider === "kenni" ? strings.sign_in_kenni : strings.sign_in_google;
+  await page.getByRole("link", { name: button }).click();
+  await page.locator('input[name="login_hint"]').fill(person);
+  await page.locator('input[name="x_name"]').fill(NAME);
+  await page.getByRole("button").click();
+  await page.waitForURL(`${WEB}/`);
+  await expect(page.getByText(NAME)).toBeVisible();
+}
+
+/** The account, as the API describes it to this browser. */
+async function me(page: Page): Promise<unknown> {
+  return page.evaluate(async () => {
+    const answer = await fetch("/v1/me", { headers: { "spjall-client": "web/0.1.0" } });
+    const body: unknown = await answer.json();
+    return body;
+  });
+}
+
+/** A PNG the browser draws, so no image sits in the repo. */
+async function png(page: Page): Promise<Buffer> {
+  const bytes = await page.evaluate(async () => {
+    const canvas = new OffscreenCanvas(640, 480);
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("no 2d context");
+    context.fillStyle = "#3a7";
+    context.fillRect(0, 0, 640, 480);
+    const blob = await canvas.convertToBlob({ type: "image/png" });
+    return [...new Uint8Array(await blob.arrayBuffer())];
+  });
+  return Buffer.from(bytes);
+}
+
+test("signs in with Kenni and shows the verified name on Ég", async ({ page }) => {
+  await signIn(page, "kenni", newKennitala());
+  await expect(page.getByText(strings.verified_short)).toBeVisible();
+  await expect(page.getByRole("link", { name: strings.tab_me })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  expect(await me(page)).toMatchObject({ devices: [] });
+});
+
+test("sets, changes and removes the photo on Ég", async ({ page }) => {
+  await signIn(page, "google", newGoogleSubject());
+  await expect(page.getByText(strings.verified_short)).toHaveCount(0);
+  const photo = page.getByRole("img", { name: strings.photo_own_alt });
+  await expect(photo).toHaveCount(0);
+
+  const file = { name: "mynd.png", mimeType: "image/png", buffer: await png(page) };
+  await page.getByLabel(strings.photo_choose).setInputFiles(file);
+  await expect(photo).toBeVisible();
+  expect(await photo.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+
+  await page.getByLabel(strings.photo_change).setInputFiles(file);
+  await expect(photo).toBeVisible();
+
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page.getByRole("button", { name: strings.photo_remove }).click();
+  await expect(photo).toHaveCount(0);
+  await expect(page.getByLabel(strings.photo_choose)).toBeAttached();
+
+  await page.reload();
+  await expect(page.getByText(NAME)).toBeVisible();
+  await expect(photo).toHaveCount(0);
+  expect(await me(page)).toMatchObject({ devices: [] });
+});
+
+test("ends another browser's session from settings", async ({ page, browser }) => {
+  const person = newKennitala();
+  const other = await browser.newContext();
+  const elsewhere = await other.newPage();
+  await serveOrigin(elsewhere);
+  await signIn(elsewhere, "kenni", person);
+  await signIn(page, "kenni", person);
+
+  await page.getByRole("link", { name: strings.settings_title }).click();
+  await expect(page.getByRole("heading", { name: strings.sessions_title })).toBeVisible();
+  const rows = page
+    .getByRole("list")
+    .filter({ hasText: strings.session_this })
+    .getByRole("listitem");
+  await expect(rows).toHaveCount(2);
+
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page.getByRole("button", { name: `${strings.session_end}:` }).click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows).toContainText(strings.session_this);
+
+  await elsewhere.reload();
+  await expect(elsewhere.getByRole("heading", { name: strings.sign_in_title })).toBeVisible();
+  expect(await me(page)).toMatchObject({ devices: [] });
+  await other.close();
+});
+
+test("signs out from settings", async ({ page }) => {
+  await signIn(page, "google", newGoogleSubject());
+  await page.getByRole("link", { name: strings.settings_title }).click();
+  await page.getByRole("button", { name: strings.sign_out, exact: true }).click();
+  await expect(page.getByRole("heading", { name: strings.sign_in_title })).toBeVisible();
+  expect((await page.context().cookies(WEB)).map((c) => c.name)).not.toContain("__Host-session");
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: strings.sign_in_title })).toBeVisible();
+});

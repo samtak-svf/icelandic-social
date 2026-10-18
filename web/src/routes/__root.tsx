@@ -1,9 +1,11 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { AccountProvider } from "../account.tsx";
 import appleTouchIcon from "../generated/brand/apple-touch-icon.png?url";
 import favicon from "../generated/brand/favicon.svg?url";
 import { strings } from "../generated/brand/strings.ts";
 import appCss from "../styles.css?url";
+import { Shell } from "../ui/shell.tsx";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -25,7 +27,11 @@ export const Route = createRootRoute({
 function Root() {
   return (
     <Document>
-      <Outlet />
+      <AccountProvider>
+        <Shell>
+          <Outlet />
+        </Shell>
+      </AccountProvider>
     </Document>
   );
 }

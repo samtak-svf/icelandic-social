@@ -11,7 +11,7 @@
       "description": "Bottom tab: the conversation list."
     },
     "tab_me": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Bottom tab: own profile, invite link and the way to settings (docs/decisions/0034)."
     },
     "new_conversation": {
@@ -119,7 +119,7 @@
       "description": "Badge on a person verified through Kenni."
     },
     "verified_short": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Short form of verified_with_kennitala, under the other person's name at the top of a conversation."
     },
     "last_line_own": {
@@ -367,7 +367,7 @@
       "description": "Why the app asks for location, shown by iOS in its permission prompt (NSLocationWhenInUseUsageDescription, docs/decisions/0059)."
     },
     "person_unnamed": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Stands in for an account whose name the server has not given, in titles and rows (docs/decisions/0022)."
     },
     "photo": {
@@ -633,7 +633,7 @@
       "description": "Under the sign-in button: what Google is asked for, and that Kenni can verify later."
     },
     "sign_in_google": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Primary sign-in button: signs in with Google (docs/decisions/0033)."
     },
     "verify_title": {
@@ -673,23 +673,23 @@
       "description": "On Ég and in settings for an account Kenni has not verified: opens the verify screen."
     },
     "photo_choose": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "On Ég for an account with no profile photo: opens the photo picker to set one (docs/decisions/0039)."
     },
     "photo_change": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "On Ég for an account with a profile photo: opens the photo picker to put another in its place (docs/decisions/0039)."
     },
     "photo_remove": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "On Ég: removes the profile photo, after a confirmation; also that confirmation's button (docs/decisions/0039)."
     },
     "photo_remove_confirm": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Asks before the profile photo is removed: it goes for everyone (docs/decisions/0039)."
     },
     "photo_seen_by_all": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "The one line beside the photo buttons on Ég: every signed-in account sees the profile photo, which is not end-to-end encrypted (docs/decisions/0039)."
     },
     "delete": {
@@ -701,15 +701,15 @@
       "description": "Kenni verified a person whose kennitala is on another account (409 identity_taken)."
     },
     "error_unreachable": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "The server could not be reached; the action can be tried again."
     },
     "error_generic": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Something failed that the person cannot fix but may retry."
     },
     "problem_request_id": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Small secondary line under a refusal naming the server's request id (decision 0037), so a tester can quote it.",
       "placeholders": {
         "id": "string"
@@ -723,7 +723,7 @@
       }
     },
     "try_again": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Button that repeats the action that failed."
     },
     "cancel": {
@@ -762,11 +762,11 @@
       "description": "Signs a device out of the account (DELETE /v1/devices/{id})."
     },
     "device_revoke_confirm": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Confirmation before signing a device out; says what it stops."
     },
     "sign_out": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Button on Ég that signs this device out, as revoking it does (docs/decisions/0047)."
     },
     "sign_out_confirm": {
@@ -774,7 +774,7 @@
       "description": "Confirmation before signing this device out (docs/decisions/0047)."
     },
     "residency_claim": {
-      "surfaces": ["android", "ios", "backend"],
+      "surfaces": ["android", "ios", "backend", "web"],
       "description": "The only permitted statement about where data lives (docs/decisions/0001).",
       "claim": "residency"
     },
@@ -840,7 +840,7 @@
       "description": "The forward and share picker when its search finds nothing (0043)."
     },
     "loading": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Screen-reader text of the placeholder rows shown on a first load (0043)."
     },
     "mute_off": {
@@ -865,6 +865,104 @@
     "shared_media_empty": {
       "surfaces": ["android", "ios"],
       "description": "The information screen when no photo or file has been sent in the conversation (0055)."
+    },
+    "sign_in_title": {
+      "surfaces": ["web"],
+      "description": "Heading of the web's sign-in page (decision 0062)."
+    },
+    "sign_in_kenni": {
+      "surfaces": ["web"],
+      "description": "Web sign-in button: signs in with Kenni, which verifies the name (decisions 0035, 0062)."
+    },
+    "sign_in_web_hint": {
+      "surfaces": ["web"],
+      "description": "Line under the web's two sign-in buttons: what each provider gives."
+    },
+    "settings_title": {
+      "surfaces": ["web"],
+      "description": "The web's settings page: its heading and its link in the navigation."
+    },
+    "main_navigation": {
+      "surfaces": ["web"],
+      "description": "Accessible name of the web's main navigation."
+    },
+    "sessions_title": {
+      "surfaces": ["web"],
+      "description": "Heading of the list of sessions (decision 0061)."
+    },
+    "sessions_hint": {
+      "surfaces": ["web"],
+      "description": "Line under the sessions heading: what the list is."
+    },
+    "session_this": {
+      "surfaces": ["web"],
+      "description": "Marks the session in the list that is this browser."
+    },
+    "session_browser": {
+      "surfaces": ["web"],
+      "description": "A browser session in the list: its browser and system, as the server named them.",
+      "placeholders": {
+        "browser": "string",
+        "os": "string"
+      }
+    },
+    "session_browser_unknown": {
+      "surfaces": ["web"],
+      "description": "A browser session whose browser the server could not name."
+    },
+    "session_android": {
+      "surfaces": ["web"],
+      "description": "A session of the Android app in the list."
+    },
+    "session_ios": {
+      "surfaces": ["web"],
+      "description": "A session of the iOS app in the list."
+    },
+    "session_last_seen": {
+      "surfaces": ["web"],
+      "description": "When a browser session was last used, to the day.",
+      "placeholders": {
+        "date": "string"
+      }
+    },
+    "session_signed_in": {
+      "surfaces": ["web"],
+      "description": "When an app's session signed in.",
+      "placeholders": {
+        "date": "string"
+      }
+    },
+    "session_end": {
+      "surfaces": ["web"],
+      "description": "Button on another session in the list: signs that session out."
+    },
+    "session_end_confirm": {
+      "surfaces": ["web"],
+      "description": "Confirmation before signing another browser out."
+    },
+    "sessions_end_others": {
+      "surfaces": ["web"],
+      "description": "Button: signs out every session but this browser."
+    },
+    "sessions_end_others_confirm": {
+      "surfaces": ["web"],
+      "description": "Confirmation before signing out every other session; says that an app's device is signed out with it."
+    },
+    "photo_own_alt": {
+      "surfaces": ["web"],
+      "description": "Alternative text of the person's own photo."
+    },
+    "photo_upload_failed": {
+      "surfaces": ["web"],
+      "description": "A photo upload was refused: too large or not an image (decision 0039)."
+    },
+    "reload_required": {
+      "surfaces": ["web"],
+      "description": "The web build is below the version floor (decision 0030)."
+    },
+    "reload": {
+      "surfaces": ["web"],
+      "description": "Button that reloads the web page."
     }
   }
 }

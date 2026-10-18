@@ -19,7 +19,7 @@ export const WEB = `https://${ids.hosts.web}`;
  * providers) go through the same handler for their redirect to the callback.
  * Any other host is refused, so a test never reaches the real one.
  */
-async function serveOrigin(page: Page) {
+export async function serveOrigin(page: Page) {
   await page.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
