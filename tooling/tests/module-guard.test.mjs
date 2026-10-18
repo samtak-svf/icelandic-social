@@ -123,13 +123,13 @@ describe("module-guard", () => {
     initRepo(root);
     expect(findViolations(root, { owners: OWNERS, reads: [] }).violations).toEqual([]);
     const extra = join(root, "backend/migrations/9999_extra.sql");
-    writeFileSync(extra, "CREATE TABLE communities (community_id TEXT PRIMARY KEY);\n");
+    writeFileSync(extra, "CREATE TABLE bulletins (bulletin_id TEXT PRIMARY KEY);\n");
     expect(
       findViolations(root, { owners: OWNERS, reads: [] }).violations.map(
         (v) => `${v.rule}:${v.message}`,
       ),
     ).toEqual([
-      `unowned-table:communities has no owner; add it to OWNERS in tooling/module-guard.mjs`,
+      `unowned-table:bulletins has no owner; add it to OWNERS in tooling/module-guard.mjs`,
     ]);
   });
 

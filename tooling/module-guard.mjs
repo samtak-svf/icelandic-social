@@ -42,6 +42,11 @@ export const OWNERS = {
   conversation_members: "messaging",
   conversation_rosters: "messaging",
   media: "messaging",
+  communities: "communities",
+  community_members: "communities",
+  community_join_requests: "communities",
+  community_invitations: "communities",
+  community_bans: "communities",
 };
 
 /** The reads of another module's table, each with its reason. */
@@ -65,6 +70,11 @@ export const READS = [
     module: "profiles",
     table: "blocks",
     why: "the directory and photos are withheld across a block (decisions 0036, 0039)",
+  },
+  {
+    module: "communities",
+    table: "accounts",
+    why: "only a verified account creates a community, and members are listed by name (decision 0063)",
   },
 ];
 

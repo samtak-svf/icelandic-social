@@ -1,0 +1,222 @@
+import type { OpenAPIHono } from "@hono/zod-openapi";
+import {
+  approveJoinRequestRoute,
+  createCommunityRoute,
+  declineJoinRequestRoute,
+  deleteCommunityRoute,
+  getCommunityRoute,
+  inviteMemberRoute,
+  joinCommunityRoute,
+  leaveCommunityRoute,
+  listCommunitiesRoute,
+  listJoinRequestsRoute,
+  listMembersRoute,
+  myCommunitiesRoute,
+  setRoleRoute,
+  transferOwnershipRoute,
+  updateCommunityRoute,
+  withdrawJoinRequestRoute,
+} from "../../api/communities.ts";
+import type { AppEnv } from "../../app.ts";
+import { fail } from "../../errors.ts";
+import { log } from "../../log.ts";
+import { canRead, moderates } from "./access.ts";
+import {
+  communitiesOf,
+  createCommunity,
+  deleteCommunityRows,
+  discover,
+  isVerified,
+  joinRequests,
+  members,
+  standing,
+  updateCommunity,
+  view,
+} from "./communities.ts";
+import {
+  addMember,
+  approve,
+  decline,
+  invite,
+  removeMember,
+  requestToJoin,
+  setRole,
+  transfer,
+  withdraw,
+} from "./membership.ts";
+
+// The routes of communities and membership (decision 0063). A log line
+// carries the account and the community's ids, never a name (0008).
+
+export function communityRoutes(app: OpenAPIHono<AppEnv>): void {
+  app.openapi(createCommunityRoute, async (c) => {
+    const { accountId } = c.var.session;
+    if (!(await isVerified(c.env, accountId))) return fail(c, 403, "not_verified");
+    const created = await createCommunity(c.env, accountId, c.req.valid("json"));
+    log("community.created", { accountId, communityId: created.communityId });
+    return c.json(view(created), 200);
+  });
+
+  app.openapi(listCommunitiesRoute, async (c) => {
+    const { q, after, limit } = c.req.valid("query");
+    const [createdAt, id] = after?.split("-") ?? [];
+    const found = await discover(c.env, c.var.session.accountId, {
+      query: q,
+      after: id === undefined ? undefined : { createdAt: Number(createdAt), id },
+      limit,
+    });
+    return c.json({ communities: found.items.map(view), next: found.next }, 200);
+  });
+
+  app.openapi(myCommunitiesRoute, async (c) =>
+    c.json({ communities: (await communitiesOf(c.env, c.var.session.accountId)).map(view) }, 200),
+  );
+
+  app.openapi(getCommunityRoute, async (c) => {
+    const found = await standing(c.env, c.var.session.accountId, c.req.valid("param").communityId);
+    return found ? c.json(view(found), 200) : fail(c, 404, "not_found");
+  });
+
+  app.openapi(updateCommunityRoute, async (c) => {
+    const { accountId } = c.var.session;
+    const { communityId } = c.req.valid("param");
+    const found = await standing(c.env, accountId, communityId);
+    if (!found) return fail(c, 404, "not_found");
+    if (found.role !== "owner") return fail(c, 403, "not_permitted");
+    const change = c.req.valid("json");
+    if (found.audience === "private" && change.audience === "open") {
+      return fail(c, 409, "audience_locked");
+    }
+    await updateCommunity(c.env, communityId, change);
+    log("community.updated", { accountId, communityId });
+    const updated = await standing(c.env, accountId, communityId);
+    return updated ? c.json(view(updated), 200) : fail(c, 404, "not_found");
+  });
+
+  app.openapi(deleteCommunityRoute, async (c) => {
+    const { accountId } = c.var.session;
+    const { communityId } = c.req.valid("param");
+    const found = await standing(c.env, accountId, communityId);
+    if (!found) return fail(c, 404, "not_found");
+    if (found.role !== "owner") return fail(c, 403, "not_permitted");
+    await deleteCommunityRows(c.env, communityId);
+    log("community.deleted", { accountId, communityId });
+    return c.body(null, 204);
+  });
+
+  app.openapi(joinCommunityRoute, async (c) => {
+    const { accountId } = c.var.session;
+    const { communityId } = c.req.valid("param");
+    const found = await standing(c.env, accountId, communityId);
+    if (!found) return fail(c, 404, "not_found");
+    if (found.role) return c.json({ state: "member" as const }, 200);
+    if (found.banned) return fail(c, 403, "banned");
+    if (found.readOnly) return fail(c, 403, "read_only");
+    if (found.audience === "open" || found.invited) {
+      await addMember(c.env, communityId, accountId);
+      log("community.joined", { accountId, communityId });
+      return c.json({ state: "member" as const }, 200);
+    }
+    await requestToJoin(c.env, communityId, accountId);
+    log("community.join_requested", { accountId, communityId });
+    return c.json({ state: "requested" as const }, 200);
+  });
+
+  app.openapi(withdrawJoinRequestRoute, async (c) => {
+    await withdraw(c.env, c.req.valid("param").communityId, c.var.session.accountId);
+    return c.body(null, 204);
+  });
+
+  app.openapi(leaveCommunityRoute, async (c) => {
+    const { accountId } = c.var.session;
+    const { communityId } = c.req.valid("param");
+    const found = await standing(c.env, accountId, communityId);
+    if (found?.role === "owner") return fail(c, 409, "owner_cannot_leave");
+    if (found?.role) {
+      await removeMember(c.env, communityId, accountId);
+      log("community.left", { accountId, communityId });
+    }
+    return c.body(null, 204);
+  });
+
+  app.openapi(listMembersRoute, async (c) => {
+    const { accountId } = c.var.session;
+    const { communityId } = c.req.valid("param");
+    const found = await standing(c.env, accountId, communityId);
+    if (!found) return fail(c, 404, "not_found");
+    if (!canRead(found)) return fail(c, 403, "not_a_member");
+    return c.json({ members: await members(c.env, accountId, communityId, moderates(found)) }, 200);
+  });
+
+  app.openapi(listJoinRequestsRoute, async (c) => {
+    const { communityId } = c.req.valid("param");
+    const found = await standing(c.env, c.var.session.accountId, communityId);
+    if (!found) return fail(c, 404, "not_found");
+    if (!moderates(found)) return fail(c, 403, "not_permitted");
+    return c.json({ requests: await joinRequests(c.env, communityId) }, 200);
+  });
+
+  app.openapi(approveJoinRequestRoute, async (c) => {
+    const { communityId, accountId: target } = c.req.valid("param");
+    const { accountId } = c.var.session;
+    const found = await standing(c.env, accountId, communityId);
+    if (!found) return fail(c, 404, "not_found");
+    if (!moderates(found)) return fail(c, 403, "not_permitted");
+    if (!(await approve(c.env, communityId, target))) return fail(c, 404, "not_found");
+    log("community.request_approved", { accountId, communityId });
+    return c.body(null, 204);
+  });
+
+  app.openapi(declineJoinRequestRoute, async (c) => {
+    const { communityId, accountId: target } = c.req.valid("param");
+    const { accountId } = c.var.session;
+    const found = await standing(c.env, accountId, communityId);
+    if (!found) return fail(c, 404, "not_found");
+    if (!moderates(found)) return fail(c, 403, "not_permitted");
+    await decline(c.env, communityId, target);
+    log("community.request_declined", { accountId, communityId });
+    return c.body(null, 204);
+  });
+
+  app.openapi(inviteMemberRoute, async (c) => {
+    const { communityId, accountId: target } = c.req.valid("param");
+    const { accountId } = c.var.session;
+    const found = await standing(c.env, accountId, communityId);
+    if (!found) return fail(c, 404, "not_found");
+    if (!moderates(found) || found.readOnly) return fail(c, 403, "not_permitted");
+    const theirs = await standing(c.env, target, communityId);
+    if (theirs?.banned) return fail(c, 403, "banned");
+    if (theirs?.role) return c.body(null, 204);
+    const invited = await invite(c.env, communityId, accountId, target);
+    if (invited === "missing") return fail(c, 404, "not_found");
+    if (invited === "blocked") return fail(c, 403, "blocked");
+    log("community.invited", { accountId, communityId });
+    return c.body(null, 204);
+  });
+
+  app.openapi(setRoleRoute, async (c) => {
+    const { communityId, accountId: target } = c.req.valid("param");
+    const { accountId } = c.var.session;
+    const found = await standing(c.env, accountId, communityId);
+    if (!found) return fail(c, 404, "not_found");
+    if (found.role !== "owner") return fail(c, 403, "not_permitted");
+    if (!(await setRole(c.env, communityId, target, c.req.valid("json").role))) {
+      return fail(c, 404, "not_found");
+    }
+    log("community.role_set", { accountId, communityId });
+    return c.body(null, 204);
+  });
+
+  app.openapi(transferOwnershipRoute, async (c) => {
+    const { communityId } = c.req.valid("param");
+    const { accountId } = c.var.session;
+    const found = await standing(c.env, accountId, communityId);
+    if (!found) return fail(c, 404, "not_found");
+    if (found.role !== "owner") return fail(c, 403, "not_permitted");
+    if (!(await transfer(c.env, communityId, accountId, c.req.valid("json").accountId))) {
+      return fail(c, 404, "not_found");
+    }
+    log("community.transferred", { accountId, communityId });
+    return c.body(null, 204);
+  });
+}

@@ -1,4 +1,5 @@
 import { dropAccount, orphans, revokeAllDevices } from "./identity/index.ts";
+import { handOverCommunities } from "./modules/communities/index.ts";
 import { leaveConversations } from "./modules/messaging/index.ts";
 import { deleteAccountPhoto } from "./modules/profiles/index.ts";
 
@@ -15,6 +16,8 @@ export async function deleteAccount(env: Env, accountId: string): Promise<void> 
   await revokeAllDevices(env, accountId);
   await leaveConversations(env, accountId);
   await deleteAccountPhoto(env, accountId);
+  // The communities it owns pass on first; its memberships go with its row (0063).
+  await handOverCommunities(env, accountId);
   await dropAccount(env, accountId);
 }
 

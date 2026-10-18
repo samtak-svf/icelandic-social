@@ -11,6 +11,8 @@ type Fields = {
   /** A session's opaque id (decision 0061). */
   sessionId: string;
   conversationId: string;
+  /** A community's opaque id (decision 0063), never its name. */
+  communityId: string;
   postId: string;
   seq: number;
   epoch: number;
@@ -31,6 +33,7 @@ const ALLOWED: ReadonlySet<string> = new Set<keyof Fields>([
   "deviceId",
   "sessionId",
   "conversationId",
+  "communityId",
   "postId",
   "seq",
   "epoch",

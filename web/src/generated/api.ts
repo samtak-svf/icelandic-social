@@ -80,7 +80,7 @@ export interface SignInConfig {
 }
 
 export interface ApiError {
-  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, internal_error */
+  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, internal_error */
   error: string;
   /** The request's id, also in the x-request-id header: opaque, for support to find the request by (decision 0037) */
   requestId: string;
@@ -348,6 +348,49 @@ export interface PhotoSet {
   photo: string;
 }
 
+export interface Community {
+  communityId: string;
+  name: string;
+  description: string;
+  /** open: every signed-in account reads it and joins at once; private: only members read it, and joining takes a moderator's approval or an invitation */
+  audience: "open" | "private";
+  /** Unix milliseconds */
+  createdAt: number;
+  /** null for a private community the caller is not a member of */
+  memberCount: number | null;
+  /** The caller's role; null when not a member */
+  role: "owner" | "moderator" | "member" | null;
+  /** The caller's join request waits */
+  joinRequested: boolean;
+  /** A moderator invited the caller */
+  invited: boolean;
+  /** Its owner's account was deleted and no moderator was left to take it over; it is deleted 90 days later */
+  readOnly: boolean;
+}
+
+export interface CommunityPage {
+  communities: Array<Community>;
+  /** The cursor of the next page */
+  next: string | null;
+}
+
+export interface CommunityMember {
+  accountId: string;
+  name: string | null;
+  verified: boolean;
+  role: "owner" | "moderator" | "member";
+  /** Unix milliseconds */
+  joinedAt: number;
+}
+
+export interface JoinRequest {
+  accountId: string;
+  name: string | null;
+  verified: boolean;
+  /** Unix milliseconds */
+  requestedAt: number;
+}
+
 // The operations a browser can call: those that take the session cookie,
 // or no credential and are not an app's alone.
 
@@ -608,4 +651,301 @@ export function getPhoto(args: {
   | { status: 426; data: ApiError }
 > {
   return call("GET", "/v1/accounts/{accountId}/photo", args, init);
+}
+
+/**
+ * Discover communities, newest first
+ *
+ * Every community's name and description is visible to a signed-in account; a private one's members and posts are not. `q` keeps those whose name contains it, without case.
+ */
+export function listCommunities(args?: {
+  query?: {
+    q?: string;
+    /** From `next` */
+    after?: string;
+    limit?: number;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: CommunityPage }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/communities", args, init);
+}
+
+/**
+ * Create a community, with the caller as its owner
+ *
+ * Only an account Kenni verified may create one (decision 0063).
+ */
+export function createCommunity(args?: {
+  body?: {
+    name: string;
+    description?: string;
+    /** open: every signed-in account reads it and joins at once; private: only members read it, and joining takes a moderator's approval or an invitation */
+    audience: "open" | "private";
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Community }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/communities", args, init);
+}
+
+/** The communities the caller belongs to, by name */
+export function myCommunities(init?: CallInit): Promise<
+  | { status: 200; data: {
+    communities: Array<Community>;
+  } }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/me/communities", undefined, init);
+}
+
+/** One community */
+export function getCommunity(args: {
+  path: {
+    communityId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Community }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/communities/{communityId}", args, init);
+}
+
+/** Delete a community and everything in it */
+export function deleteCommunity(args: {
+  path: {
+    communityId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/communities/{communityId}", args, init);
+}
+
+/**
+ * Rename a community, change its description, or make an open one private
+ *
+ * Only the owner. A private community never becomes open: its members joined on that promise (decision 0063).
+ */
+export function updateCommunity(args: {
+  path: {
+    communityId: string;
+  };
+  body?: {
+    name?: string;
+    description?: string;
+    /** open: every signed-in account reads it and joins at once; private: only members read it, and joining takes a moderator's approval or an invitation */
+    audience?: "open" | "private";
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Community }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("PATCH", "/v1/communities/{communityId}", args, init);
+}
+
+/**
+ * Join an open community, or ask to join a private one
+ *
+ * An open community, or a private one that invited the caller, is joined at once. Otherwise a join request waits for a moderator. Asking again is no error.
+ */
+export function joinCommunity(args: {
+  path: {
+    communityId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: {
+    state: "member" | "requested";
+  } }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/communities/{communityId}/join", args, init);
+}
+
+/** Withdraw the caller's join request, or decline an invitation */
+export function withdrawJoinRequest(args: {
+  path: {
+    communityId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/communities/{communityId}/join", args, init);
+}
+
+/** Leave a community */
+export function leaveCommunity(args: {
+  path: {
+    communityId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/communities/{communityId}/leave", args, init);
+}
+
+/**
+ * The members, owner and moderators first
+ *
+ * An open community's are visible to every signed-in account, a private one's to its members. Accounts a block stands between are left out, except for a moderator.
+ */
+export function listCommunityMembers(args: {
+  path: {
+    communityId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: {
+    members: Array<CommunityMember>;
+  } }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/communities/{communityId}/members", args, init);
+}
+
+/** The join requests that wait, oldest first */
+export function listJoinRequests(args: {
+  path: {
+    communityId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: {
+    requests: Array<JoinRequest>;
+  } }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/communities/{communityId}/join-requests", args, init);
+}
+
+/** Approve a join request: the account becomes a member */
+export function approveJoinRequest(args: {
+  path: {
+    communityId: string;
+    accountId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/communities/{communityId}/join-requests/{accountId}", args, init);
+}
+
+/** Decline a join request */
+export function declineJoinRequest(args: {
+  path: {
+    communityId: string;
+    accountId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/communities/{communityId}/join-requests/{accountId}", args, init);
+}
+
+/**
+ * Invite an account to a community; it joins when it accepts
+ *
+ * A join request the account already made is approved instead. An account that blocked the inviter, or that the community banned, cannot be invited.
+ */
+export function inviteToCommunity(args: {
+  path: {
+    communityId: string;
+    accountId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("PUT", "/v1/communities/{communityId}/invitations/{accountId}", args, init);
+}
+
+/** Make a member a moderator, or a moderator a member again */
+export function setCommunityRole(args: {
+  path: {
+    communityId: string;
+    accountId: string;
+  };
+  body?: {
+    role: "moderator" | "member";
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("PUT", "/v1/communities/{communityId}/members/{accountId}/role", args, init);
+}
+
+/** Hand the community to another member; the owner becomes a moderator */
+export function transferCommunity(args: {
+  path: {
+    communityId: string;
+  };
+  body?: {
+    accountId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("PUT", "/v1/communities/{communityId}/owner", args, init);
 }

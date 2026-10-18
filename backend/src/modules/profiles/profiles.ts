@@ -90,7 +90,8 @@ export function decodeDirectoryCursor(text: string): DirectoryCursor | null {
 }
 
 /** `%` and `_` match themselves in a LIKE pattern, under ESCAPE '\'. */
-const likeLiteral = (text: string) => text.replace(/[\\%_]/g, (c) => `\\${c}`);
+/** `text` as a LIKE pattern matches it literally, with `ESCAPE '\\'`. */
+export const likeLiteral = (text: string) => text.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 /**
  * A page of the directory as `viewer` sees it (decision 0036): every account

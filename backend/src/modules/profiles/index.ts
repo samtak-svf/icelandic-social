@@ -4,3 +4,4 @@
 
 export { accountRoutes } from "./people.ts";
 export { deleteAccountPhoto, photoRoutes } from "./photos.ts";
+export { likeLiteral, nameKey } from "./profiles.ts";
