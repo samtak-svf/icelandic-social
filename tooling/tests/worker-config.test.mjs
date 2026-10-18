@@ -23,6 +23,7 @@ describe("worker-config", () => {
           KV: { type: "kv", id: "k" },
           SVC: { type: "worker", worker: "s" },
           IMG: { type: "images" },
+          S: { type: "secret" },
         },
         exports: {
           C: { type: "durable-object", storage: "sqlite" },
@@ -45,7 +46,18 @@ describe("worker-config", () => {
     ]);
     expect(config.crons).toEqual(["0 0 * * *"]);
     expect(config.queues).toBe(false);
-    expect(configuredNames(config).sort()).toEqual(["DB", "IMG", "KV", "L", "NS", "R", "SVC", "V"]);
+    expect(config.secrets).toEqual(["S"]);
+    expect(configuredNames(config).sort()).toEqual([
+      "DB",
+      "IMG",
+      "KV",
+      "L",
+      "NS",
+      "R",
+      "S",
+      "SVC",
+      "V",
+    ]);
   });
 
   it("refuses a key or a binding type it does not know, so no binding goes unseen", () => {

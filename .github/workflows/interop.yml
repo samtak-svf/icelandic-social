@@ -17,6 +17,7 @@ on:
     paths:
       - "core/**"
       - "backend/**"
+      - "web/**"
       - "api/**"
       - "pnpm-lock.yaml"
       - ".github/workflows/interop.yml"
@@ -25,6 +26,7 @@ on:
     paths:
       - "core/**"
       - "backend/**"
+      - "web/**"
       - "api/**"
       - "pnpm-lock.yaml"
       - ".github/workflows/interop.yml"
@@ -77,7 +79,7 @@ jobs:
           # cf has no --persist-to for dev: the migrations go where cf dev
           # keeps its state, and the operator invite goes through the dev
           # Worker itself (scripts/invite-operator.ts --local).
-          node scripts/d1.ts migrate --local --persist-to .wrangler/state
+          node scripts/d1.ts migrate --local --persist-to .cloudflare/state
           printf 'KENNITALA_HMAC_KEY=%s\n' "$(openssl rand -hex 32)" > .dev.vars
           nohup pnpm exec cf dev --mode interop > "$RUNNER_TEMP/worker.log" 2>&1 &
           for _ in $(seq 60); do

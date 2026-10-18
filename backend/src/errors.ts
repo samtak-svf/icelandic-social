@@ -31,6 +31,24 @@ export const requestId = createMiddleware<AppEnv>(async (c, next) => {
   if (c.res.status !== 101) c.header(REQUEST_ID_HEADER, id);
 });
 
+/** The largest unread body read to its end; a larger one is left, and the connection with it. */
+const DRAIN_LIMIT = 64 * 1024;
+
+/**
+ * Outermost in the chain: reads a small body the route never read, as HTTP
+ * servers do. workerd resets a keep-alive connection whose request body was
+ * left unread, and a client that sends its next request on it gets a reset
+ * instead of an answer: `cf dev` did, after `{}` on POST /v1/me/invite.
+ */
+export const drainBody = createMiddleware<AppEnv>(async (c, next) => {
+  await next();
+  const raw = c.req.raw;
+  const length = Number(raw.headers.get("content-length") ?? Number.NaN);
+  if (raw.body !== null && !raw.bodyUsed && !raw.body.locked && length <= DRAIN_LIMIT) {
+    await raw.arrayBuffer();
+  }
+});
+
 /** An error answer: the stable code, the request id, and minVersion with a 426. */
 export function fail<S extends ContentfulStatusCode>(
   c: Context<AppEnv>,

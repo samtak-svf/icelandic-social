@@ -14,6 +14,7 @@ on:
   pull_request:
     paths:
       - "backend/**"
+      - "web/**"
       - "api/**"
       - "identifiers/**"
       - "tooling/jurisdiction-check.mjs"
@@ -25,6 +26,7 @@ on:
     branches: [main]
     paths:
       - "backend/**"
+      - "web/**"
       - "identifiers/**"
       - "tooling/coverage-floor.*"
       - "pnpm-lock.yaml"
@@ -52,6 +54,9 @@ jobs:
 
       - name: Types and OpenAPI drift
         run: pnpm --filter spjall-backend run check
+
+      - name: The Worker builds, with the web app (cf build)
+        run: pnpm --filter spjall-backend build
 
       - name: Tests in workerd, with coverage
         run: pnpm --filter spjall-backend coverage

@@ -21,6 +21,12 @@
   },
   "overrides": [
     {
+      // The web app (decision 0062): React's rules, and accessibility as a
+      // check, not a review item (#284 wants keyboard and screen readers).
+      "files": ["web/**"],
+      "plugins": ["typescript", "import", "react", "jsx-a11y"]
+    },
+    {
       "files": ["**/tests/**", "**/*.test.mjs", "**/*.test.ts"],
       "rules": {
         "eslint/max-lines": "off"

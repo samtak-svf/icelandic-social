@@ -1,19 +1,18 @@
-import { deleteOrphans } from "./account-deletion.ts";
-import { createApp } from "./app.ts";
-import { log } from "./log.ts";
-import { expireKeyPackages, expireSessions } from "./identity/index.ts";
-import { expireMedia } from "./modules/messaging/index.ts";
+import { web } from "spjall-web/server";
+import worker from "./worker.ts";
 
-export { Conversation, Inbox } from "./modules/messaging/objects.ts";
+export { Conversation, Inbox } from "./worker.ts";
+
+// The deployed entry: one Worker on one host (decision 0062). The API owns
+// its paths and the web app every other one, so the web reaches its data
+// only through the API (decision 0005). The tests and `cf dev --mode interop`
+// run src/worker.ts, the API alone.
+const API_PATHS = /^\/(v1|auth|l|oauth|\.well-known)\/|^\/health$/;
 
 export default {
-  fetch: createApp().fetch,
-  // The daily cron in cloudflare.config.ts: media past its 30 days (decision 0023)
-  // expired KeyPackages (0029), and accounts a join left without an identity (0035).
-  async scheduled(_controller, env) {
-    log("media.expired", { count: await expireMedia(env) });
-    log("key_packages.expired", { count: await expireKeyPackages(env) });
-    log("sessions.expired", { count: await expireSessions(env) });
-    log("accounts.orphans_deleted", { count: await deleteOrphans(env) });
+  fetch(request, env, ctx) {
+    if (API_PATHS.test(new URL(request.url).pathname)) return worker.fetch(request, env, ctx);
+    return web(request);
   },
+  scheduled: worker.scheduled,
 } satisfies ExportedHandler<Env>;

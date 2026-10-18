@@ -32,6 +32,7 @@ const CONFIG_FILE = "backend/cloudflare.config.ts";
  *   classes: { className: string, storage: unknown, state: unknown }[],
  *   rateLimits: { binding: string, namespaceId: unknown }[],
  *   services: { binding: string }[],
+ *   secrets: string[],
  *   vars: Record<string, unknown>,
  *   crons: string[],
  *   queues: boolean,
@@ -41,7 +42,7 @@ const CONFIG_FILE = "backend/cloudflare.config.ts";
 /** Top-level keys. */
 const ROOT_KEYS = new Set(["accountId", "worker"]);
 /** Worker keys that carry no binding and nothing a guard checks. */
-const INERT = new Set(["compatibilityDate", "observability", "placement"]);
+const INERT = new Set(["compatibilityDate", "compatibilityFlags", "observability", "placement"]);
 /** Worker keys the model reads. */
 const READ = new Set([
   "name",
@@ -93,9 +94,13 @@ function addBinding(config, binding, b) {
       config.queues = true;
       config.services.push({ binding });
       return true;
+    case "secret":
+      config.secrets.push(binding);
+      return true;
     case "kv":
     case "worker":
     case "images":
+    case "assets":
       config.services.push({ binding });
       return true;
     default:
@@ -155,6 +160,7 @@ export function normalise(raw, file = CONFIG_FILE) {
     classes: classesOf(worker),
     rateLimits: [],
     services: [],
+    secrets: [],
     vars: {},
     crons: [],
     queues: false,
@@ -203,6 +209,7 @@ export function configuredNames(config) {
     ...config.durableObjects.map((b) => b.binding),
     ...config.rateLimits.map((l) => l.binding),
     ...config.services.map((s) => s.binding),
+    ...config.secrets,
     ...Object.keys(config.vars),
   ];
 }

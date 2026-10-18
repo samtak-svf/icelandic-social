@@ -7,13 +7,17 @@
       "ignoreBinaries": ["gcloud", "cf"]
     },
     "backend": {
-      "entry": ["scripts/*.ts", "test/worker.ts", "dev/worker.ts"],
+      "entry": ["src/index.ts", "scripts/*.ts", "test/worker.ts", "dev/worker.ts"],
       "project": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts", "dev/**/*.ts"],
-      "ignoreDependencies": ["cloudflare", "wrangler"]
+      "ignoreDependencies": ["cloudflare", "@tanstack/react-router", "react", "react-dom"]
     },
     "spikes/browser-storage": {
       "entry": ["*.mjs", "page/bench.js", "page/a-worker.js"],
       "project": ["*.mjs", "page/*.js"]
+    },
+    "web": {
+      "entry": ["src/routes/**/*.tsx"],
+      "project": ["src/**/*.{ts,tsx,css}"]
     }
   }
 }

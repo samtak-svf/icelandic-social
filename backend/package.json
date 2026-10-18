@@ -14,19 +14,26 @@
     "invite:operator": "node scripts/invite-operator.ts",
     "measure:d1": "node scripts/d1-workload.ts",
     "migrate:remote": "node ../tooling/jurisdiction-check.mjs --deploy && node scripts/d1.ts migrate",
-    "deploy": "node ../tooling/jurisdiction-check.mjs --deploy && cf deploy --no-provision"
+    "build": "cf build",
+    "deploy": "node ../tooling/jurisdiction-check.mjs --deploy && cf build && cf deploy --prebuilt --no-provision"
   },
   "dependencies": {
     "@hono/zod-openapi": "^1.6.3",
+    "@tanstack/react-router": "1.170.42",
     "hono": "^4.13.13",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "spjall-web": "workspace:*",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "2.0.0-beta.v.1",
     "@cloudflare/vitest-plugin": "1.4.0",
     "@types/node": "^26.6.4",
     "@vitest/coverage-istanbul": "5.0.3",
-    "cf": "1.0.0-beta.13",
+    "cf": "1.0.0-beta.14",
     "typescript": "^7.0.2",
+    "vite": "8.3.4",
     "vitest": "^5",
     "wrangler": "4.149.0"
   },

@@ -26,7 +26,7 @@ import { SOCKET_ACCOUNT, SOCKET_DEVICE, socketRoute } from "./api/socket.ts";
 import { fromBase64, toBase64 } from "./bytes.ts";
 import { belowFloor, CLIENT_HEADER } from "./client-version.ts";
 import { guards, registerSchemes } from "./credentials.ts";
-import { fail, failed, requestId } from "./errors.ts";
+import { drainBody, fail, failed, requestId } from "./errors.ts";
 import {
   conversation,
   identityProvider,
@@ -103,6 +103,7 @@ export function createApp() {
 
   registerSchemes(app);
   const { publicLimit, credentials } = guards(app);
+  app.use("*", drainBody);
   app.use("*", requestId);
   app.use("/v1/*", clientFloor);
   app.use("/v1/*", publicLimit);

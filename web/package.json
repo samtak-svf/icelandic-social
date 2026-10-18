@@ -1,0 +1,37 @@
+{
+  "name": "spjall-web",
+  "private": true,
+  "description": "The web client: a TanStack Start app the Worker spjall-api serves beside the API (decision 0062). Built by backend/vite.config.ts.",
+  "type": "module",
+  "exports": {
+    "./build": "./build.ts",
+    "./server": {
+      "types": "./src/server-api.d.ts",
+      "default": "./src/server.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "1.170.42",
+    "@tanstack/react-start": "1.168.61",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@babel/core": "8.0.7",
+    "@rolldown/plugin-babel": "0.2.4",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "babel-plugin-react-compiler": "1.0.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "8.3.4"
+  },
+  "engines": {
+    "node": ">=24.2"
+  }
+}

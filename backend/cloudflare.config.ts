@@ -17,6 +17,9 @@ export default defineConfig(({ mode }) => ({
   worker: {
     name: "spjall-api",
     compatibilityDate: "2026-08-22",
+    // TanStack Start's server build imports node:async_hooks and node:stream
+    // (decision 0062); the API itself uses neither.
+    compatibilityFlags: ["nodejs_compat"],
     // `cf dev --mode interop` runs dev/worker.ts, the real Worker plus a fake
     // Kenni, for the interop test (interop.yml). Every other mode, and every
     // deploy, runs src/index.ts; `jurisdiction-check.mjs` holds that.
@@ -38,6 +41,9 @@ export default defineConfig(({ mode }) => ({
     triggers: [triggers.scheduled({ schedule: "17 3 * * *" })],
     // Read only through src/env/ (tooling/seam-guard.mjs).
     env: {
+      // The web app's built files (decision 0062), served by Cloudflare before
+      // the Worker runs; every other path reaches src/index.ts.
+      ASSETS: bindings.assets(),
       // The oldest client build that may talk to this Worker, per platform.
       // Raised when a protocol change would break older builds; the apps read
       // it from /health and ask the user to update. 0.5.0: builds before it
@@ -104,8 +110,12 @@ export default defineConfig(({ mode }) => ({
       PUBLIC_LIMIT: bindings.rateLimit({ namespace: "1001", simple: { limit: 30, period: 60 } }),
       CLAIM_LIMIT: bindings.rateLimit({ namespace: "1002", simple: { limit: 120, period: 60 } }),
       PHOTO_LIMIT: bindings.rateLimit({ namespace: "1004", simple: { limit: 10, period: 60 } }),
-      // Secrets, set by `node tooling/worker-secrets.mjs`, never in this file:
-      //   KENNITALA_HMAC_KEY   the key of the kennitala HMAC (decisions 0014, 0019)
+      // The key of the kennitala HMAC (decisions 0014, 0019). Declared because
+      // `cf dev` hands a Worker only the .dev.vars entries named here; a deploy
+      // then requires it to be set, which it always is.
+      KENNITALA_HMAC_KEY: bindings.secret(),
+      // The other secrets, set by `node tooling/worker-secrets.mjs` and never in
+      // this file. They are not declared, so a deploy does not wait for them:
       //   KENNITALA_HMAC_KEY_PREVIOUS  the key before it, only while a rotation runs
       //   KENNI_CLIENT_SECRET  only if Kenni ever issues a confidential client
       //   KENNI_WEB_CLIENT_SECRET the Kenni web client's secret (decision 0062)

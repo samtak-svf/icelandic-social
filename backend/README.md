@@ -50,7 +50,8 @@ create a missing one without it, and a jurisdiction can never be added afterward
 The `deploy` workflow (Actions → deploy → Run workflow, on `main`). The `production`
 environment holds it until the maintainer approves. It runs
 `tooling/jurisdiction-check.mjs --deploy --live`, the backend's checks and tests, the remote D1
-migrations (`pnpm --filter spjall-backend run migrate:remote`), `cf deploy --no-provision`, and then
+migrations (`pnpm --filter spjall-backend run migrate:remote`), `cf build` (the Worker and the web
+app) and `cf deploy --prebuilt --no-provision`, and then
 asks `/health` on the API host.
 
 Both package scripts run `jurisdiction-check.mjs --deploy` first, so a deploy from a laptop is

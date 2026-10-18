@@ -3,7 +3,7 @@
 // names a database by id, and the config is the one place it is written.
 //
 //   node scripts/d1.ts migrate                         # production (migrate:remote)
-//   node scripts/d1.ts migrate --local --persist-to .wrangler/state  # cf dev's D1
+//   node scripts/d1.ts migrate --local --persist-to .cloudflare/state  # cf dev's D1
 //
 // Runs under plain `node`, like scripts/openapi.ts.
 

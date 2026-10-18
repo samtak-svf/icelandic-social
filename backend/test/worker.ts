@@ -1,8 +1,8 @@
 import { withFakes } from "../dev/oidc.ts";
-import worker, { Conversation as RealConversation, Inbox as RealInbox } from "../src/index.ts";
+import worker, { Conversation as RealConversation, Inbox as RealInbox } from "../src/worker.ts";
 import { euEnv } from "./support.ts";
 
-// The Worker the tests run (vitest.config.ts `main`): src/index.ts with
+// The Worker the tests run (vitest.config.ts `main`): src/worker.ts with
 // every Durable Object namespace behind `euOnly`, in the Worker and in each
 // Durable Object, so a request or DO-to-DO call that makes a stub any other
 // way than `.jurisdiction("eu")` fails. Production code is unchanged.

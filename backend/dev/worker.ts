@@ -1,5 +1,5 @@
 import { withFakes } from "./oidc.ts";
-import worker, { Conversation as RealConversation, Inbox as RealInbox } from "../src/index.ts";
+import worker, { Conversation as RealConversation, Inbox as RealInbox } from "../src/worker.ts";
 import { OPERATOR_INVITE_PATH, operatorInvite } from "../scripts/operator-invite.ts";
 
 // The Worker that `cf dev --mode interop` runs for the interop test
