@@ -1,0 +1,951 @@
+//! Communities, posts, comments, reactions, reports, moderation and
+//! notifications (0063) as the apps see them. The core builds each request
+//! and the app's `Transport` carries it (0018). Nothing here is stored on
+//! the device: each call asks the server, and may block on the network.
+
+use spjall_client::api;
+
+use crate::CoreError;
+use crate::client::CoreClient;
+
+/// Who wrote a post or a comment, did what a notification tells, or is
+/// reported. Its photo is not named here; `profile` gives it.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct Author {
+    pub account_id: String,
+    /// None for an account that never gave one.
+    pub name: Option<String>,
+    pub verified: bool,
+}
+
+impl From<api::Author> for Author {
+    fn from(author: api::Author) -> Self {
+        Self {
+            account_id: author.account_id,
+            name: author.name,
+            verified: author.verified,
+        }
+    }
+}
+
+/// Who reads a community and how one joins it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum CommunityAudience {
+    /// Every signed-in account reads it and joins at once.
+    Open,
+    /// Only members read it; joining takes a moderator's approval or an
+    /// invitation.
+    Private,
+}
+
+impl From<api::Audience> for CommunityAudience {
+    fn from(audience: api::Audience) -> Self {
+        match audience {
+            api::Audience::Open => Self::Open,
+            api::Audience::Private => Self::Private,
+        }
+    }
+}
+
+impl From<CommunityAudience> for api::Audience {
+    fn from(audience: CommunityAudience) -> Self {
+        match audience {
+            CommunityAudience::Open => Self::Open,
+            CommunityAudience::Private => Self::Private,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum CommunityRole {
+    Owner,
+    Moderator,
+    Member,
+}
+
+impl From<api::Role> for CommunityRole {
+    fn from(role: api::Role) -> Self {
+        match role {
+            api::Role::Owner => Self::Owner,
+            api::Role::Moderator => Self::Moderator,
+            api::Role::Member => Self::Member,
+        }
+    }
+}
+
+/// A community as this account sees it.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct Community {
+    pub community_id: String,
+    pub name: String,
+    pub description: String,
+    pub audience: CommunityAudience,
+    /// Unix milliseconds.
+    pub created_at: u64,
+    /// None for a private community this account is not a member of.
+    pub member_count: Option<u64>,
+    /// This account's role; none when it is not a member.
+    pub role: Option<CommunityRole>,
+    /// This account's join request waits for a moderator.
+    pub join_requested: bool,
+    /// A moderator invited this account: joining takes it at once.
+    pub invited: bool,
+    /// Until when, in Unix milliseconds, a moderator muted this account
+    /// here: it reads, but does not post, comment or react.
+    pub muted_until: Option<u64>,
+    /// Its owner's account was deleted and no moderator was left to take
+    /// it over; it is deleted 90 days later.
+    pub read_only: bool,
+}
+
+impl From<api::Community> for Community {
+    fn from(community: api::Community) -> Self {
+        Self {
+            community_id: community.community_id,
+            name: community.name,
+            description: community.description,
+            audience: community.audience.into(),
+            created_at: community.created_at,
+            member_count: community.member_count,
+            role: community.role.map(Into::into),
+            join_requested: community.join_requested,
+            invited: community.invited,
+            muted_until: community.muted_until,
+            read_only: community.read_only,
+        }
+    }
+}
+
+fn communities(communities: Vec<api::Community>) -> Vec<Community> {
+    communities.into_iter().map(Into::into).collect()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct CommunityPage {
+    pub communities: Vec<Community>,
+    /// The `after` of the next page, none on the last.
+    pub next: Option<String>,
+}
+
+/// What joining did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum JoinState {
+    /// This account is a member now.
+    Member,
+    /// The request waits for a moderator of a private community.
+    Requested,
+}
+
+impl From<api::JoinState> for JoinState {
+    fn from(state: api::JoinState) -> Self {
+        match state {
+            api::JoinState::Member => Self::Member,
+            api::JoinState::Requested => Self::Requested,
+        }
+    }
+}
+
+/// An image of a post: a WebP the server re-encoded.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PostImage {
+    pub media_id: String,
+    pub width: u32,
+    pub height: u32,
+}
+
+impl From<api::SocialMedia> for PostImage {
+    fn from(media: api::SocialMedia) -> Self {
+        Self {
+            media_id: media.media_id,
+            width: media.width,
+            height: media.height,
+        }
+    }
+}
+
+/// The reactions a post takes; an account has at most one on each.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ReactionKind {
+    Like,
+    Love,
+    Laugh,
+    Wow,
+    Sad,
+}
+
+impl From<api::ReactionKind> for ReactionKind {
+    fn from(kind: api::ReactionKind) -> Self {
+        use api::ReactionKind as K;
+        match kind {
+            K::Like => Self::Like,
+            K::Love => Self::Love,
+            K::Laugh => Self::Laugh,
+            K::Wow => Self::Wow,
+            K::Sad => Self::Sad,
+        }
+    }
+}
+
+impl From<ReactionKind> for api::ReactionKind {
+    fn from(kind: ReactionKind) -> Self {
+        match kind {
+            ReactionKind::Like => Self::Like,
+            ReactionKind::Love => Self::Love,
+            ReactionKind::Laugh => Self::Laugh,
+            ReactionKind::Wow => Self::Wow,
+            ReactionKind::Sad => Self::Sad,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct ReactionCount {
+    pub kind: ReactionKind,
+    pub count: u64,
+}
+
+/// Whether a moderator hid or removed a post or a comment. Only a
+/// moderator is shown one that is not `Visible`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ModerationState {
+    Visible,
+    Hidden,
+    Removed,
+}
+
+impl From<api::ModerationState> for ModerationState {
+    fn from(state: api::ModerationState) -> Self {
+        match state {
+            api::ModerationState::Visible => Self::Visible,
+            api::ModerationState::Hidden => Self::Hidden,
+            api::ModerationState::Removed => Self::Removed,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct Post {
+    pub post_id: String,
+    pub community_id: String,
+    pub author: Author,
+    pub body: String,
+    pub images: Vec<PostImage>,
+    /// Unix milliseconds.
+    pub created_at: u64,
+    /// Each reaction this account can see, with its count.
+    pub reactions: Vec<ReactionCount>,
+    pub my_reaction: Option<ReactionKind>,
+    pub comment_count: u64,
+    pub state: ModerationState,
+}
+
+impl From<api::Post> for Post {
+    fn from(post: api::Post) -> Self {
+        Self {
+            post_id: post.post_id,
+            community_id: post.community_id,
+            author: post.author.into(),
+            body: post.body,
+            images: post.media.into_iter().map(Into::into).collect(),
+            created_at: post.created_at,
+            reactions: post
+                .reactions
+                .into_iter()
+                .map(|r| ReactionCount {
+                    kind: r.kind.into(),
+                    count: r.count,
+                })
+                .collect(),
+            my_reaction: post.my_reaction.map(Into::into),
+            comment_count: post.comment_count,
+            state: post.state.into(),
+        }
+    }
+}
+
+/// A page of a community's posts, newest first. A page may be short, or
+/// empty, with more after it.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PostPage {
+    pub posts: Vec<Post>,
+    /// The `before` of the next, older page; none on the last.
+    pub next: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct Comment {
+    /// The post's id, a hyphen, and the comment's own part.
+    pub comment_id: String,
+    pub post_id: String,
+    pub author: Author,
+    pub body: String,
+    /// Unix milliseconds.
+    pub created_at: u64,
+    pub state: ModerationState,
+}
+
+impl From<api::Comment> for Comment {
+    fn from(comment: api::Comment) -> Self {
+        Self {
+            comment_id: comment.comment_id,
+            post_id: comment.post_id,
+            author: comment.author.into(),
+            body: comment.body,
+            created_at: comment.created_at,
+            state: comment.state.into(),
+        }
+    }
+}
+
+/// A page of a post's comments, oldest first.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct CommentPage {
+    pub comments: Vec<Comment>,
+    /// The `after` of the next page; none on the last.
+    pub next: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ReportTargetKind {
+    Post,
+    Comment,
+    Community,
+    Account,
+}
+
+/// What a report is about: a post, a comment, a community or an account.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ReportTarget {
+    pub kind: ReportTargetKind,
+    pub id: String,
+}
+
+impl From<api::Target> for ReportTarget {
+    fn from(target: api::Target) -> Self {
+        use api::TargetKind as K;
+        Self {
+            kind: match target.kind {
+                K::Post => ReportTargetKind::Post,
+                K::Comment => ReportTargetKind::Comment,
+                K::Community => ReportTargetKind::Community,
+                K::Account => ReportTargetKind::Account,
+            },
+            id: target.id,
+        }
+    }
+}
+
+impl From<ReportTarget> for api::Target {
+    fn from(target: ReportTarget) -> Self {
+        use api::TargetKind as K;
+        Self {
+            kind: match target.kind {
+                ReportTargetKind::Post => K::Post,
+                ReportTargetKind::Comment => K::Comment,
+                ReportTargetKind::Community => K::Community,
+                ReportTargetKind::Account => K::Account,
+            },
+            id: target.id,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ReportReason {
+    Unlawful,
+    Harassment,
+    Spam,
+    Other,
+}
+
+impl From<api::ReportReason> for ReportReason {
+    fn from(reason: api::ReportReason) -> Self {
+        use api::ReportReason as R;
+        match reason {
+            R::Unlawful => Self::Unlawful,
+            R::Harassment => Self::Harassment,
+            R::Spam => Self::Spam,
+            R::Other => Self::Other,
+        }
+    }
+}
+
+impl From<ReportReason> for api::ReportReason {
+    fn from(reason: ReportReason) -> Self {
+        match reason {
+            ReportReason::Unlawful => Self::Unlawful,
+            ReportReason::Harassment => Self::Harassment,
+            ReportReason::Spam => Self::Spam,
+            ReportReason::Other => Self::Other,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ReportState {
+    Open,
+    Closed,
+}
+
+impl From<api::ReportState> for ReportState {
+    fn from(state: api::ReportState) -> Self {
+        match state {
+            api::ReportState::Open => Self::Open,
+            api::ReportState::Closed => Self::Closed,
+        }
+    }
+}
+
+impl From<ReportState> for api::ReportState {
+    fn from(state: ReportState) -> Self {
+        match state {
+            ReportState::Open => Self::Open,
+            ReportState::Closed => Self::Closed,
+        }
+    }
+}
+
+/// A report in a moderator's queue. The account that made it is never
+/// shown.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct Report {
+    pub report_id: String,
+    /// None for one about an account, made to the platform.
+    pub community_id: Option<String>,
+    pub target: ReportTarget,
+    /// Whose content it is, or the account reported; none once deleted.
+    pub target_account: Option<Author>,
+    pub reason: ReportReason,
+    pub note: String,
+    pub state: ReportState,
+    /// Unix milliseconds.
+    pub created_at: u64,
+    pub closed_at: Option<u64>,
+}
+
+impl From<api::Report> for Report {
+    fn from(report: api::Report) -> Self {
+        Self {
+            report_id: report.report_id,
+            community_id: report.community_id,
+            target: report.target.into(),
+            target_account: report.target_account.map(Into::into),
+            reason: report.reason.into(),
+            note: report.note,
+            state: report.state.into(),
+            created_at: report.created_at,
+            closed_at: report.closed_at,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ReportPage {
+    pub reports: Vec<Report>,
+    /// The `after` of the next page; none on the last.
+    pub next: Option<String>,
+}
+
+/// What a moderator can do in a community. The post, comment or account it
+/// acts on is the `target_id` of `moderate`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ModerationAction {
+    HidePost,
+    RemovePost,
+    RestorePost,
+    HideComment,
+    RemoveComment,
+    RestoreComment,
+    /// Takes `until` on `moderate`.
+    MuteMember,
+    UnmuteMember,
+    RemoveMember,
+    BanMember,
+    UnbanMember,
+}
+
+impl From<ModerationAction> for api::ModerationAction {
+    fn from(action: ModerationAction) -> Self {
+        use ModerationAction as M;
+        match action {
+            M::HidePost => Self::HidePost,
+            M::RemovePost => Self::RemovePost,
+            M::RestorePost => Self::RestorePost,
+            M::HideComment => Self::HideComment,
+            M::RemoveComment => Self::RemoveComment,
+            M::RestoreComment => Self::RestoreComment,
+            M::MuteMember => Self::MuteMember,
+            M::UnmuteMember => Self::UnmuteMember,
+            M::RemoveMember => Self::RemoveMember,
+            M::BanMember => Self::BanMember,
+            M::UnbanMember => Self::UnbanMember,
+        }
+    }
+}
+
+impl From<api::ModerationAction> for ModerationAction {
+    fn from(action: api::ModerationAction) -> Self {
+        use api::ModerationAction as M;
+        match action {
+            M::HidePost => Self::HidePost,
+            M::RemovePost => Self::RemovePost,
+            M::RestorePost => Self::RestorePost,
+            M::HideComment => Self::HideComment,
+            M::RemoveComment => Self::RemoveComment,
+            M::RestoreComment => Self::RestoreComment,
+            M::MuteMember => Self::MuteMember,
+            M::UnmuteMember => Self::UnmuteMember,
+            M::RemoveMember => Self::RemoveMember,
+            M::BanMember => Self::BanMember,
+            M::UnbanMember => Self::UnbanMember,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum CardKind {
+    Post,
+    Comment,
+    Community,
+}
+
+/// A stable reference to a post, a comment or a community, which `cards`
+/// shows.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct CardRef {
+    pub kind: CardKind,
+    pub id: String,
+}
+
+impl From<api::Ref> for CardRef {
+    fn from(reference: api::Ref) -> Self {
+        Self {
+            kind: match reference.kind {
+                api::RefKind::Post => CardKind::Post,
+                api::RefKind::Comment => CardKind::Comment,
+                api::RefKind::Community => CardKind::Community,
+            },
+            id: reference.id,
+        }
+    }
+}
+
+impl From<CardRef> for api::Ref {
+    fn from(reference: CardRef) -> Self {
+        Self {
+            kind: match reference.kind {
+                CardKind::Post => api::RefKind::Post,
+                CardKind::Comment => api::RefKind::Comment,
+                CardKind::Community => api::RefKind::Community,
+            },
+            id: reference.id,
+        }
+    }
+}
+
+/// The community a card's post or comment is in, or the card's community.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct CardCommunity {
+    pub community_id: String,
+    pub name: String,
+}
+
+impl From<api::CardCommunity> for CardCommunity {
+    fn from(community: api::CardCommunity) -> Self {
+        Self {
+            community_id: community.community_id,
+            name: community.name,
+        }
+    }
+}
+
+/// What a reference shows, as a report in the queue or a shared link
+/// shows it. An excerpt is the text's first 280 characters, an ellipsis
+/// ending one cut short.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum Card {
+    /// Gone, or not this account's to see.
+    Unavailable { reference: CardRef },
+    Post {
+        reference: CardRef,
+        community: CardCommunity,
+        author: Author,
+        excerpt: String,
+        image: Option<PostImage>,
+        /// Unix milliseconds.
+        created_at: u64,
+    },
+    Comment {
+        reference: CardRef,
+        community: CardCommunity,
+        post_id: String,
+        author: Author,
+        excerpt: String,
+        /// Unix milliseconds.
+        created_at: u64,
+    },
+    Community {
+        reference: CardRef,
+        community: CardCommunity,
+        description: String,
+        audience: CommunityAudience,
+        /// None for a private community this account is not a member of.
+        member_count: Option<u64>,
+    },
+}
+
+impl From<api::Card> for Card {
+    fn from(card: api::Card) -> Self {
+        match card {
+            api::Card::Unavailable { reference } => Self::Unavailable {
+                reference: reference.into(),
+            },
+            api::Card::Post {
+                reference,
+                community,
+                author,
+                excerpt,
+                image,
+                created_at,
+            } => Self::Post {
+                reference: reference.into(),
+                community: community.into(),
+                author: author.into(),
+                excerpt,
+                image: image.map(Into::into),
+                created_at,
+            },
+            api::Card::Comment {
+                reference,
+                community,
+                post_id,
+                author,
+                excerpt,
+                created_at,
+            } => Self::Comment {
+                reference: reference.into(),
+                community: community.into(),
+                post_id,
+                author: author.into(),
+                excerpt,
+                created_at,
+            },
+            api::Card::Community {
+                reference,
+                community,
+                description,
+                audience,
+                member_count,
+            } => Self::Community {
+                reference: reference.into(),
+                community: community.into(),
+                description,
+                audience: audience.into(),
+                member_count,
+            },
+        }
+    }
+}
+
+/// What a notification tells. Named apart from the platforms' own
+/// `Notification` types, which an app imports beside this one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum SocialNotificationKind {
+    /// A comment on this account's post.
+    Comment,
+    /// A reaction on this account's post.
+    Reaction,
+    /// A moderator approved this account's join request.
+    JoinApproved,
+    /// A moderator acted on this account's post or comment; `action` says
+    /// how.
+    Moderated,
+}
+
+/// Something addressed to this account. It carries ids, never the
+/// content: the app reads the post or comment with `post` or `comments`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct SocialNotification {
+    pub notification_id: String,
+    pub kind: SocialNotificationKind,
+    /// Who did it; none for a moderator's action or a deleted account.
+    pub actor: Option<Author>,
+    pub community_id: String,
+    pub post_id: Option<String>,
+    pub comment_id: Option<String>,
+    /// For `Moderated`, the moderator's action.
+    pub action: Option<ModerationAction>,
+    /// Unix milliseconds: the `up_to` of `read_notifications`.
+    pub created_at: u64,
+    pub read: bool,
+}
+
+impl From<api::Notification> for SocialNotification {
+    fn from(notification: api::Notification) -> Self {
+        use api::NotificationKind as K;
+        Self {
+            notification_id: notification.notification_id,
+            kind: match notification.kind {
+                K::Comment => SocialNotificationKind::Comment,
+                K::Reaction => SocialNotificationKind::Reaction,
+                K::JoinApproved => SocialNotificationKind::JoinApproved,
+                K::Moderated => SocialNotificationKind::Moderated,
+            },
+            actor: notification.actor.map(Into::into),
+            community_id: notification.community_id,
+            post_id: notification.post_id,
+            comment_id: notification.comment_id,
+            action: notification.action.map(Into::into),
+            created_at: notification.created_at,
+            read: notification.read,
+        }
+    }
+}
+
+/// A page of notifications, newest first. A kind this build does not know
+/// is left out.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct SocialNotificationPage {
+    pub notifications: Vec<SocialNotification>,
+    /// How many of this account's notifications are unread, on every page.
+    pub unread: u64,
+    /// The `before` of the next, older page; none on the last.
+    pub next: Option<String>,
+}
+
+/// Communities.
+#[uniffi::export]
+impl CoreClient {
+    /// A page of the communities this account may see; `query` keeps those
+    /// whose name matches it, and `after` is the `next` of the page before.
+    /// At most 50 a page.
+    pub fn communities(
+        &self,
+        query: Option<String>,
+        after: Option<String>,
+        limit: u32,
+    ) -> Result<CommunityPage, CoreError> {
+        let page = self
+            .client()?
+            .communities(query.as_deref(), after.as_deref(), limit)?;
+        Ok(CommunityPage {
+            communities: communities(page.communities),
+            next: page.next,
+        })
+    }
+
+    /// Every community this account is a member of.
+    pub fn my_communities(&self) -> Result<Vec<Community>, CoreError> {
+        Ok(communities(self.client()?.my_communities()?))
+    }
+
+    /// A new community, owned by this account. `Invalid` for a blank name.
+    pub fn create_community(
+        &self,
+        name: String,
+        description: String,
+        audience: CommunityAudience,
+    ) -> Result<Community, CoreError> {
+        Ok(self
+            .client()?
+            .create_community(&name, &description, audience.into())?
+            .into())
+    }
+
+    /// One community; `Refused` with 404 for none this account may see.
+    pub fn community(&self, community_id: String) -> Result<Community, CoreError> {
+        Ok(self.client()?.community(&community_id)?.into())
+    }
+
+    /// Joins an open community at once, or asks a private one's moderators.
+    pub fn join_community(&self, community_id: String) -> Result<JoinState, CoreError> {
+        Ok(self.client()?.join_community(&community_id)?.into())
+    }
+
+    /// Takes back a join request that waits; no error when none does.
+    pub fn withdraw_join_request(&self, community_id: String) -> Result<(), CoreError> {
+        Ok(self.client()?.withdraw_join_request(&community_id)?)
+    }
+
+    /// Leaves a community. Its owner is `Refused` with 409.
+    pub fn leave_community(&self, community_id: String) -> Result<(), CoreError> {
+        Ok(self.client()?.leave_community(&community_id)?)
+    }
+}
+
+/// Posts, comments and reactions.
+#[uniffi::export]
+impl CoreClient {
+    /// A page of a community's posts, newest first; `before` is the `next`
+    /// of the page before. At most 50 a page.
+    pub fn community_posts(
+        &self,
+        community_id: String,
+        before: Option<String>,
+        limit: u32,
+    ) -> Result<PostPage, CoreError> {
+        let page = self
+            .client()?
+            .community_posts(&community_id, before.as_deref(), limit)?;
+        Ok(PostPage {
+            posts: page.posts.into_iter().map(Into::into).collect(),
+            next: page.next,
+        })
+    }
+
+    /// Posts text to a community. `Invalid` for a blank one.
+    pub fn create_post(&self, community_id: String, body: String) -> Result<Post, CoreError> {
+        Ok(self.client()?.create_post(&community_id, &body)?.into())
+    }
+
+    pub fn post(&self, post_id: String) -> Result<Post, CoreError> {
+        Ok(self.client()?.post(&post_id)?.into())
+    }
+
+    /// Deletes this account's own post.
+    pub fn delete_post(&self, post_id: String) -> Result<(), CoreError> {
+        Ok(self.client()?.delete_post(&post_id)?)
+    }
+
+    /// Sets this account's one reaction on a post, in place of any other.
+    pub fn react(&self, post_id: String, kind: ReactionKind) -> Result<(), CoreError> {
+        Ok(self.client()?.react(&post_id, kind.into())?)
+    }
+
+    /// Takes this account's reaction off a post; no error when it had none.
+    pub fn unreact(&self, post_id: String) -> Result<(), CoreError> {
+        Ok(self.client()?.unreact(&post_id)?)
+    }
+
+    /// A page of a post's comments, oldest first; `after` is the `next` of
+    /// the page before. At most 100 a page.
+    pub fn comments(
+        &self,
+        post_id: String,
+        after: Option<String>,
+        limit: u32,
+    ) -> Result<CommentPage, CoreError> {
+        let page = self.client()?.comments(&post_id, after.as_deref(), limit)?;
+        Ok(CommentPage {
+            comments: page.comments.into_iter().map(Into::into).collect(),
+            next: page.next,
+        })
+    }
+
+    /// Comments on a post. `Invalid` for a blank comment.
+    pub fn create_comment(&self, post_id: String, body: String) -> Result<Comment, CoreError> {
+        Ok(self.client()?.create_comment(&post_id, &body)?.into())
+    }
+
+    /// Deletes this account's own comment.
+    pub fn delete_comment(&self, comment_id: String) -> Result<(), CoreError> {
+        Ok(self.client()?.delete_comment(&comment_id)?)
+    }
+}
+
+/// Reports, moderation and cards.
+#[uniffi::export]
+impl CoreClient {
+    /// Reports a post, a comment, a community or an account to the
+    /// community's moderators or, with `to_platform`, the platform's. The
+    /// moderators are never told who reported it.
+    pub fn report(
+        &self,
+        target: ReportTarget,
+        reason: ReportReason,
+        note: String,
+        to_platform: bool,
+    ) -> Result<(), CoreError> {
+        Ok(self.client()?.report(&api::NewReport {
+            target: target.into(),
+            reason: reason.into(),
+            note,
+            to_platform,
+        })?)
+    }
+
+    /// A page of a community's reports, for its moderators: `Refused` with
+    /// 403 for anyone else. `after` is the `next` of the page before.
+    pub fn community_reports(
+        &self,
+        community_id: String,
+        state: ReportState,
+        after: Option<String>,
+        limit: u32,
+    ) -> Result<ReportPage, CoreError> {
+        let page = self.client()?.community_reports(
+            &community_id,
+            state.into(),
+            after.as_deref(),
+            limit,
+        )?;
+        Ok(ReportPage {
+            reports: page.reports.into_iter().map(Into::into).collect(),
+            next: page.next,
+        })
+    }
+
+    /// One moderator's action, which the community's log keeps with its
+    /// `reason`. `target_id` is the post's, the comment's or the account's
+    /// id; `report_id` the report it answers, if one; `until` (Unix
+    /// milliseconds) only with `MuteMember`, none muting until lifted.
+    pub fn moderate(
+        &self,
+        community_id: String,
+        action: ModerationAction,
+        target_id: String,
+        reason: String,
+        report_id: Option<String>,
+        until: Option<u64>,
+    ) -> Result<(), CoreError> {
+        let moderation = api::Moderation {
+            action: action.into(),
+            target_id,
+            reason,
+            report_id,
+            until,
+        };
+        Ok(self.client()?.moderate(&community_id, &moderation)?)
+    }
+
+    /// Closes a report with what was done about it.
+    pub fn close_report(&self, report_id: String, resolution: String) -> Result<(), CoreError> {
+        Ok(self.client()?.close_report(&report_id, &resolution)?)
+    }
+
+    /// What each reference shows, one card each in their order: at most 50.
+    pub fn cards(&self, refs: Vec<CardRef>) -> Result<Vec<Card>, CoreError> {
+        let refs: Vec<api::Ref> = refs.into_iter().map(Into::into).collect();
+        Ok(self
+            .client()?
+            .cards(&refs)?
+            .into_iter()
+            .map(Into::into)
+            .collect())
+    }
+}
+
+/// Notifications.
+#[uniffi::export]
+impl CoreClient {
+    /// A page of this account's notifications, newest first; `before` is
+    /// the `next` of the page before. At most 50 a page.
+    pub fn notifications(
+        &self,
+        before: Option<String>,
+        limit: u32,
+    ) -> Result<SocialNotificationPage, CoreError> {
+        let page = self.client()?.notifications(before.as_deref(), limit)?;
+        Ok(SocialNotificationPage {
+            notifications: page.notifications.into_iter().map(Into::into).collect(),
+            unread: page.unread,
+            next: page.next,
+        })
+    }
+
+    /// Marks read every notification made at or before `up_to`: the
+    /// `created_at` of the newest one shown.
+    pub fn read_notifications(&self, up_to: u64) -> Result<(), CoreError> {
+        Ok(self.client()?.read_notifications(up_to)?)
+    }
+}

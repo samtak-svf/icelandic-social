@@ -12,6 +12,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use spjall_envelope as envelope;
 
 pub mod client;
+pub mod social;
 
 uniffi::setup_scaffolding!();
 

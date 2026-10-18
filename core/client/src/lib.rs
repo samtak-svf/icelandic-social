@@ -30,6 +30,7 @@ mod notice;
 mod photo;
 pub mod place;
 mod read;
+mod social;
 mod timeline;
 mod view;
 
@@ -47,6 +48,7 @@ pub use notice::{Notice, NoticeKind, Notices};
 pub use photo::MAX_PHOTO;
 pub use read::Settings;
 use serde::Deserialize;
+pub use social::MAX_CARDS;
 use spjall_envelope::{Body, Envelope, EnvelopeError, is_place};
 use spjall_mls::group::{
     Claimed, Device, Group, GroupError, Identity, Received, generate_device_key, is_commit,

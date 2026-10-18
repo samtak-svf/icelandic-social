@@ -17,6 +17,11 @@ use spjall_core::client::{
     ItemStatus, Notice, NoticeKind, Platform, Settings, SignInProvider, SignedIn, Transport,
     TransportError, invite_token,
 };
+use spjall_core::social::{
+    Author, Card, CardCommunity, CardKind, CardRef, CommunityAudience, CommunityRole,
+    ModerationAction, ModerationState, ReactionCount, ReactionKind, ReportReason, ReportTarget,
+    ReportTargetKind, SocialNotificationKind,
+};
 use spjall_core::{Body, CoreError};
 
 /// What an app's transport is, here backed by the relay, recording every
@@ -31,6 +36,9 @@ struct App {
     /// so on the channel `hold` returned.
     held: Mutex<Option<mpsc::Sender<()>>>,
     released: Condvar,
+    /// While not empty, a request is answered with the first of these, as
+    /// the Worker answers the social calls the relay does not have.
+    canned: Mutex<std::collections::VecDeque<HttpResponse>>,
 }
 
 impl App {
@@ -76,6 +84,9 @@ impl App {
             held = self.released.wait(held).unwrap();
         }
         drop(held);
+        if let Some(answer) = self.canned.lock().unwrap().pop_front() {
+            return Ok(answer);
+        }
         if std::mem::take(&mut *self.panics.lock().unwrap()) {
             panic!("the transport panicked");
         }
@@ -126,6 +137,7 @@ fn phone(relay: &Arc<Relay>, account: &str, device: &str) -> Phone {
         panics: Mutex::new(false),
         held: Mutex::new(None),
         released: Condvar::new(),
+        canned: Mutex::default(),
     });
     let client = CoreClient::open(
         dir.path().to_string_lossy().into_owned(),
@@ -321,6 +333,7 @@ fn an_account_is_run_through_the_exported_api() {
         panics: Mutex::new(false),
         held: Mutex::new(None),
         released: Condvar::new(),
+        canned: Mutex::default(),
     });
     let b1 = CoreClient::open(
         dir.path().to_string_lossy().into_owned(),
@@ -700,6 +713,7 @@ fn google_links_and_one_to_ones_cross_the_exported_api() {
         panics: Mutex::new(false),
         held: Mutex::new(None),
         released: Condvar::new(),
+        canned: Mutex::default(),
     });
     let c1 = CoreClient::open(
         dir.path().to_string_lossy().into_owned(),
@@ -737,4 +751,169 @@ fn google_links_and_one_to_ones_cross_the_exported_api() {
         ),
         Err(CoreError::Invalid { .. })
     ));
+}
+
+/// The social calls through the exported API: what each sends, and the
+/// records the app is handed back. The answers are canned, as the Worker
+/// would give them.
+#[test]
+fn the_social_calls_cross_the_exported_api() {
+    let relay = Relay::new();
+    let a1 = phone(&relay, "a", "a1");
+    let answer = |status: u16, body: &str| {
+        a1.app.canned.lock().unwrap().push_back(HttpResponse {
+            status,
+            body: body.into(),
+        });
+    };
+    a1.app.seen.lock().unwrap().clear();
+
+    let community = r#"{"communityId":"cm_1","name":"Kór","description":"","audience":"private",
+        "createdAt":1,"memberCount":3,"role":"owner","joinRequested":false,"invited":false,
+        "mutedUntil":null,"readOnly":false}"#;
+    answer(200, community);
+    let made = a1
+        .client
+        .create_community("Kór".into(), String::new(), CommunityAudience::Private)
+        .unwrap();
+    assert_eq!(
+        (made.audience, made.role, made.member_count),
+        (
+            CommunityAudience::Private,
+            Some(CommunityRole::Owner),
+            Some(3)
+        )
+    );
+
+    answer(
+        200,
+        r#"{"posts":[{"postId":"p_1","communityId":"cm_1",
+        "author":{"accountId":"a","name":null,"verified":false},"body":"Halló",
+        "media":[{"mediaId":"sm_1","width":4,"height":3}],"createdAt":2,
+        "reactions":[{"kind":"laugh","count":2}],"myReaction":null,"commentCount":0,
+        "state":"removed"}],"next":"2"}"#,
+    );
+    let page = a1.client.community_posts("cm_1".into(), None, 10).unwrap();
+    let post = &page.posts[0];
+    assert_eq!(page.next.as_deref(), Some("2"));
+    assert_eq!(
+        post.author,
+        Author {
+            account_id: "a".into(),
+            name: None,
+            verified: false
+        }
+    );
+    assert_eq!(
+        post.reactions,
+        [ReactionCount {
+            kind: ReactionKind::Laugh,
+            count: 2
+        }]
+    );
+    assert_eq!(
+        (post.images[0].width, post.state),
+        (4, ModerationState::Removed)
+    );
+
+    answer(204, "");
+    a1.client.react("p_1".into(), ReactionKind::Wow).unwrap();
+    answer(204, "");
+    a1.client
+        .report(
+            ReportTarget {
+                kind: ReportTargetKind::Account,
+                id: "b".into(),
+            },
+            ReportReason::Spam,
+            String::new(),
+            true,
+        )
+        .unwrap();
+    answer(204, "");
+    a1.client
+        .moderate(
+            "cm_1".into(),
+            ModerationAction::BanMember,
+            "b".into(),
+            "Ruslpóstur".into(),
+            None,
+            None,
+        )
+        .unwrap();
+
+    answer(
+        200,
+        r#"{"cards":[{"kind":"community","ref":{"kind":"community","id":"cm_1"},
+        "community":{"communityId":"cm_1","name":"Kór"},"description":"","audience":"open",
+        "memberCount":3}]}"#,
+    );
+    let reference = CardRef {
+        kind: CardKind::Community,
+        id: "cm_1".into(),
+    };
+    assert_eq!(
+        a1.client.cards(vec![reference.clone()]).unwrap(),
+        [Card::Community {
+            reference,
+            community: CardCommunity {
+                community_id: "cm_1".into(),
+                name: "Kór".into()
+            },
+            description: String::new(),
+            audience: CommunityAudience::Open,
+            member_count: Some(3),
+        }]
+    );
+
+    answer(
+        200,
+        r#"{"notifications":[{"notificationId":"n_1","kind":"join_approved","actor":null,
+        "communityId":"cm_1","postId":null,"commentId":null,"action":null,"createdAt":5,
+        "read":true}],"unread":0}"#,
+    );
+    let notifications = a1.client.notifications(None, 50).unwrap();
+    assert_eq!(
+        (
+            notifications.notifications[0].kind,
+            notifications.unread,
+            notifications.next
+        ),
+        (SocialNotificationKind::JoinApproved, 0, None)
+    );
+
+    answer(403, r#"{"error":"not_moderator","requestId":"r"}"#);
+    assert!(matches!(
+        a1.client.close_report("r_1".into(), "Lokið".into()),
+        Err(CoreError::Refused { status: 403, .. })
+    ));
+    assert!(matches!(
+        a1.client.post("../x".into()),
+        Err(CoreError::Invalid { .. })
+    ));
+
+    let seen: Vec<_> = a1
+        .app
+        .seen
+        .lock()
+        .unwrap()
+        .drain(..)
+        .map(|r| (r.method, r.path))
+        .collect();
+    assert_eq!(
+        seen,
+        [
+            (HttpMethod::Post, "/v1/communities".to_string()),
+            (
+                HttpMethod::Get,
+                "/v1/communities/cm_1/posts?limit=10".into()
+            ),
+            (HttpMethod::Put, "/v1/posts/p_1/reaction".into()),
+            (HttpMethod::Post, "/v1/reports".into()),
+            (HttpMethod::Post, "/v1/communities/cm_1/actions".into()),
+            (HttpMethod::Post, "/v1/cards".into()),
+            (HttpMethod::Get, "/v1/notifications?limit=50".into()),
+            (HttpMethod::Post, "/v1/reports/r_1/close".into()),
+        ]
+    );
 }
