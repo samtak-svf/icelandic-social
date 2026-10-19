@@ -19,6 +19,7 @@ final class FakeSocial: Social, @unchecked Sendable {
     private var _cards: [String: Card] = [:]
     private var _notifications: [SocialNotification] = []
     private var _joins: [String: JoinState] = [:]
+    private var _requests: [String: [JoinRequest]] = [:]
     private var _refuseImage: Error?
     private var made = 0
 
@@ -86,6 +87,12 @@ final class FakeSocial: Social, @unchecked Sendable {
     var joins: [String: JoinState] {
         get { lock.withLock { _joins } }
         set { lock.withLock { _joins = newValue } }
+    }
+
+    /// The join requests that wait in each community, oldest first.
+    var requests: [String: [JoinRequest]] {
+        get { lock.withLock { _requests } }
+        set { lock.withLock { _requests = newValue } }
     }
 
     /// What `uploadPostImage` throws, each time, while this is set.
@@ -182,6 +189,28 @@ final class FakeSocial: Social, @unchecked Sendable {
         guard var found = communities[id] else { throw notFound }
         found.joinRequested = false
         communities[id] = found
+    }
+
+    func joinRequests(_ community: String) throws -> [JoinRequest] {
+        try call("joinRequests \(community)")
+        return requests[community] ?? []
+    }
+
+    func approveJoinRequest(_ community: String, account: String) throws {
+        try call("approveJoinRequest \(community) \(account)")
+        requests[community]?.removeAll { $0.accountId == account }
+    }
+
+    func declineJoinRequest(_ community: String, account: String) throws {
+        try call("declineJoinRequest \(community) \(account)")
+        requests[community]?.removeAll { $0.accountId == account }
+    }
+
+    func deleteCommunity(_ id: String) throws {
+        try call("deleteCommunity \(id)")
+        guard communities[id] != nil else { throw notFound }
+        communities[id] = nil
+        mine.removeAll { $0 == id }
     }
 
     func communityPosts(_ community: String, before: String?, limit: UInt32) throws -> PostPage {

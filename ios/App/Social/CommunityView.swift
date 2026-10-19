@@ -9,11 +9,15 @@ struct CommunityView: View {
     let model: CommunityModel
     let social: Social
 
+    @Environment(\.dismiss) private var dismiss
+
     @State private var reporting: Reporting?
     /// The screen has been left for a post and come back to, so the posts are asked for again.
     @State private var away = false
     /// The own post waiting for the delete to be confirmed.
     @State private var deleting: String?
+    /// The owner is being asked to confirm the deletion of the community.
+    @State private var deletingCommunity = false
     @State private var picking = false
     @State private var photos: [PhotosPickerItem] = []
 
@@ -87,6 +91,16 @@ struct CommunityView: View {
             Button("delete", role: .destructive) { Task { await model.delete(postId) } }
             Button("cancel", role: .cancel) {}
         }
+        .alert(
+            Text(verbatim: localized("community_delete_confirm", model.community?.name ?? "")),
+            isPresented: $deletingCommunity
+        ) {
+            Button("community_delete", role: .destructive) { Task { await model.deleteCommunity() } }
+            Button("cancel", role: .cancel) {}
+        }
+        .onChange(of: model.deleted) { _, deleted in
+            if deleted { dismiss() }
+        }
         .environment(\.postImages, PostImages(social: social))
         .sheet(item: $reporting) { reporting in
             ReportSheet(social: social, target: reporting.target)
@@ -139,6 +153,23 @@ struct CommunityView: View {
                 }
                 membership(community)
                 if model.moderates {
+                    if community.audience == .private {
+                        NavigationLink(value: SocialRoute.requests(model.communityId)) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "person.crop.circle.badge.questionmark")
+                                    .accessibilityHidden(true)
+                                Text(verbatim: requestsLabel)
+                                    .font(.sans(13.5, black: true))
+                                Spacer(minLength: 8)
+                                Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold))
+                                    .accessibilityHidden(true)
+                            }
+                            .foregroundStyle(BrandTokens.Colors.primary)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
                     NavigationLink(value: SocialRoute.reports(model.communityId)) {
                         HStack(spacing: 8) {
                             Image(systemName: "tray").accessibilityHidden(true)
@@ -158,6 +189,12 @@ struct CommunityView: View {
         }
     }
 
+    /// The link to the join requests: how many wait when some do, else the plain title.
+    private var requestsLabel: String {
+        model.pendingRequests > 0
+            ? plural("join_requests_waiting", model.pendingRequests) : localized("join_requests_title")
+    }
+
     /// Join, ask to join, take back the request waiting, or leave; an owner does not leave the community it holds.
     @ViewBuilder private func membership(_ community: Community) -> some View {
         if community.joinRequested {
@@ -169,6 +206,11 @@ struct CommunityView: View {
             }
             .buttonStyle(.plain)
             .disabled(model.busy)
+        } else if community.role == nil, let until = model.declinedUntil {
+            SocialNote(text: "community_join_declined")
+            Text(verbatim: localized("community_join_again", calendarDate(until)))
+                .font(TypeStyle.meta)
+                .foregroundStyle(BrandTokens.Colors.mutedFg)
         } else if community.role == nil {
             Button {
                 Task { await model.join() }
@@ -188,6 +230,21 @@ struct CommunityView: View {
         }
         if model.muted {
             SocialNote(text: "community_muted")
+        }
+        if model.owns {
+            Button {
+                deletingCommunity = true
+            } label: {
+                Text("community_delete")
+                    .font(.sans(12.5, black: true))
+                    .foregroundStyle(BrandTokens.Colors.danger)
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 40)
+                    .overlay { Capsule().strokeBorder(BrandTokens.Colors.danger, lineWidth: 1) }
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(model.busy)
         }
     }
 

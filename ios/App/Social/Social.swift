@@ -20,6 +20,14 @@ protocol Social: Sendable {
     func leaveCommunity(_ id: String) throws
     /// Takes back a request to join that waits; no error when none does.
     func withdrawJoinRequest(_ id: String) throws
+    /// The join requests that wait in a community, for its moderators (#354).
+    func joinRequests(_ community: String) throws -> [JoinRequest]
+    /// Takes the requesting account in as a member.
+    func approveJoinRequest(_ community: String, account: String) throws
+    /// Declines the request; the account may ask again after 30 days (decision 0070).
+    func declineJoinRequest(_ community: String, account: String) throws
+    /// Deletes a community, which its owner may do (#364); it can be restored for 30 days.
+    func deleteCommunity(_ id: String) throws
     /// A page of a community's posts, newest first.
     func communityPosts(_ community: String, before: String?, limit: UInt32) throws -> PostPage
     /// A post of text, up to four images from `uploadPostImage` by their media ids (decision 0065), or both.
@@ -77,6 +85,20 @@ extension CoreAccount: Social {
     func leaveCommunity(_ id: String) throws { try core().leaveCommunity(communityId: id) }
 
     func withdrawJoinRequest(_ id: String) throws { try core().withdrawJoinRequest(communityId: id) }
+
+    func joinRequests(_ community: String) throws -> [JoinRequest] {
+        try core().joinRequests(communityId: community)
+    }
+
+    func approveJoinRequest(_ community: String, account: String) throws {
+        try core().approveJoinRequest(communityId: community, accountId: account)
+    }
+
+    func declineJoinRequest(_ community: String, account: String) throws {
+        try core().declineJoinRequest(communityId: community, accountId: account)
+    }
+
+    func deleteCommunity(_ id: String) throws { try core().deleteCommunity(communityId: id) }
 
     func communityPosts(_ community: String, before: String?, limit: UInt32) throws -> PostPage {
         try core().communityPosts(communityId: community, before: before, limit: limit)
@@ -146,6 +168,7 @@ enum SocialRoute: Hashable {
     case community(String)
     case post(String)
     case reports(String)
+    case requests(String)
 }
 
 /// The five reactions a post takes, in the order they are offered.
@@ -320,6 +343,47 @@ func moderation(_ report: Report, _ verb: ModerationVerb) -> ModerationAction? {
         case .comment: return verb == .hide ? .hideComment : verb == .remove ? .removeComment : .restoreComment
         case .community, .account: return nil
         }
+    }
+}
+
+/// The verbs a report offers for its target as it stands now (#361): a post or comment that is visible may be
+/// hidden or removed, one hidden or removed restored; its author, by standing, muted, unmuted, banned or
+/// unbanned. A state or standing the server did not give, or one a later server adds, offers every verb on
+/// that side. Closing without acting is offered on an open report only.
+func offeredVerbs(_ report: Report) -> Set<ModerationVerb> {
+    var offered: Set<ModerationVerb> = []
+    let state = report.targetState ?? .unknown
+    let standing = report.targetStanding ?? .unknown
+    if state == .unknown || state == .visible { offered.insert(.hide) }
+    if state == .unknown || state == .visible || state == .hidden { offered.insert(.remove) }
+    if state == .unknown || state == .hidden || state == .removed { offered.insert(.restore) }
+    if standing == .unknown || standing == .member { offered.insert(.mute) }
+    if standing == .unknown || standing == .muted { offered.insert(.unmute) }
+    if standing == .unknown || standing == .member || standing == .muted || standing == .notMember {
+        offered.insert(.ban)
+    }
+    if standing == .unknown || standing == .banned { offered.insert(.unban) }
+    if report.state == .open { offered.insert(.dismiss) }
+    return offered
+}
+
+/// The words for what closed a report.
+func decisionLabel(_ decision: ReportDecision) -> String? {
+    switch decision {
+    case .hidePost: localized("moderation_decision_hide_post")
+    case .removePost: localized("moderation_decision_remove_post")
+    case .restorePost: localized("moderation_decision_restore_post")
+    case .hideComment: localized("moderation_decision_hide_comment")
+    case .removeComment: localized("moderation_decision_remove_comment")
+    case .restoreComment: localized("moderation_decision_restore_comment")
+    case .muteMember: localized("moderation_decision_mute_member")
+    case .unmuteMember: localized("moderation_decision_unmute_member")
+    case .removeMember: localized("moderation_decision_remove_member")
+    case .banMember: localized("moderation_decision_ban_member")
+    case .unbanMember: localized("moderation_decision_unban_member")
+    case .dismissed: localized("moderation_decision_dismissed")
+    case .communityDeleted: localized("moderation_decision_community_deleted")
+    case .unknown: nil
     }
 }
 

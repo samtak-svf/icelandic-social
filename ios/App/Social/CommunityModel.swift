@@ -25,6 +25,8 @@ final class CommunityModel {
     /// This account's id: its own posts can be deleted. Nil until it is known, when none is.
     private(set) var me: String?
     private(set) var busy = false
+    /// The owner deleted the community from here, so the screen leaves it.
+    private(set) var deleted = false
     private(set) var problem: Problem?
 
     private let social: Social
@@ -65,6 +67,22 @@ final class CommunityModel {
 
     /// This account moderates here, and sees the report queue.
     var moderates: Bool { community?.role == .owner || community?.role == .moderator }
+
+    /// This account owns the community, and may delete it (#364).
+    var owns: Bool { community?.role == .owner }
+
+    /// A moderator declined this account's join request, and it may not ask again yet (decision 0070): until
+    /// when, in Unix milliseconds; nil when it may.
+    var declinedUntil: UInt64? {
+        guard let until = community?.joinDeclinedUntil, until > now() else { return nil }
+        return until
+    }
+
+    /// The join requests that wait, for a moderator; zero when none, or when this account does not moderate.
+    var pendingRequests: Int {
+        guard moderates else { return 0 }
+        return Int(community?.pendingJoinRequests ?? 0)
+    }
 
     /// The draft may be sent: something written, an image picked, or both, and the text not over the limit.
     var sendable: Bool {
@@ -152,6 +170,18 @@ final class CommunityModel {
             }
             self.community = community
             try await self.first()
+        }
+    }
+
+    /// Deletes the community, which only its owner may do; it can be restored for 30 days. The screen then
+    /// leaves it.
+    func deleteCommunity() async {
+        guard owns else { return }
+        let social = social
+        let id = communityId
+        await perform(again: { await self.deleteCommunity() }) {
+            try await offMain { try social.deleteCommunity(id) }
+            self.deleted = true
         }
     }
 

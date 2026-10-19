@@ -88,6 +88,10 @@ private struct ReportCard: View {
     /// A post or a comment, which a moderator may hide, remove or restore.
     private var content: Bool { moderation(report, .hide) != nil }
     private var open: Bool { report.state == .open }
+    /// What may be done about the target as it stands now (#361).
+    private var offered: Set<ModerationVerb> { offeredVerbs(report) }
+    private var memberVerbs: Bool { member(report) != nil && offered.contains { $0.onMember } }
+    private var contentVerbs: Bool { content && offered.contains { !$0.onMember && $0 != .dismiss } }
 
     var body: some View {
         Panel {
@@ -108,6 +112,7 @@ private struct ReportCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 excerpt
+                decision
                 TextField("report_reason", text: $reason, axis: .vertical)
                     .font(.sans(14))
                     .lineLimit(1...4)
@@ -119,11 +124,19 @@ private struct ReportCard: View {
                             reason = String(text.prefix(ReportsModel.reasonLimit))
                         }
                     }
-                ViewThatFits {
-                    HStack(spacing: 8) { actions }
-                    VStack(spacing: 8) { actions }
+                if !ReportsModel.valid(reason) {
+                    Text("moderation_reason_required")
+                        .font(TypeStyle.meta)
+                        .foregroundStyle(BrandTokens.Colors.mutedFg)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                if member(report) != nil {
+                if contentVerbs || open {
+                    ViewThatFits {
+                        HStack(spacing: 8) { actions }
+                        VStack(spacing: 8) { actions }
+                    }
+                }
+                if memberVerbs {
                     Text("moderation_member")
                         .font(.sans(13.5, black: true))
                         .foregroundStyle(BrandTokens.Colors.fg)
@@ -155,8 +168,36 @@ private struct ReportCard: View {
         }
     }
 
+    /// What a closed report came to: the decision, its reason, and who closed it and when (#360).
+    @ViewBuilder private var decision: some View {
+        if !open {
+            VStack(alignment: .leading, spacing: 4) {
+                if let chosen = report.decision, let words = decisionLabel(chosen) {
+                    Text(verbatim: words).font(.sans(13.5, black: true))
+                }
+                if let resolution = report.resolution, !resolution.isEmpty {
+                    Text(verbatim: resolution).font(.sans(13.5)).fixedSize(horizontal: false, vertical: true)
+                }
+                if let closedAt = report.closedAt {
+                    Text(verbatim: closedLine(closedAt))
+                        .font(TypeStyle.meta)
+                        .foregroundStyle(BrandTokens.Colors.mutedFg)
+                }
+            }
+            .foregroundStyle(BrandTokens.Colors.fg)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    /// Who closed the report and when, or only when no account is named.
+    private func closedLine(_ closedAt: UInt64) -> String {
+        guard let by = report.closedBy else { return localized("moderation_closed_at", calendarDate(closedAt)) }
+        return localized("moderation_closed_by", authorName(by), calendarDate(closedAt))
+    }
+
     @ViewBuilder private var actions: some View {
-        if content {
+        if content && offered.contains(.hide) {
             Button {
                 Task { await model.act(report, .hide, reason: reason) }
             } label: {
@@ -164,6 +205,8 @@ private struct ReportCard: View {
             }
             .buttonStyle(.plain)
             .disabled(!ready)
+        }
+        if content && offered.contains(.remove) {
             Button {
                 Task { await model.act(report, .remove, reason: reason) }
             } label: {
@@ -177,12 +220,11 @@ private struct ReportCard: View {
             }
             .buttonStyle(.plain)
             .disabled(!ready)
-            // A closed report's content may be hidden or removed; the card does not say, so restoring is offered.
-            if !open {
-                verb("moderation_restore", .restore)
-            }
         }
-        if open {
+        if content && offered.contains(.restore) {
+            verb("moderation_restore", .restore)
+        }
+        if offered.contains(.dismiss) {
             verb("moderation_dismiss", .dismiss)
         }
     }
@@ -190,6 +232,21 @@ private struct ReportCard: View {
     /// What may be done to the author of what the report names: mute for a time, unmute, ban (asked first) or
     /// unban.
     @ViewBuilder private var memberActions: some View {
+        if offered.contains(.mute) {
+            muteMenu
+        }
+        if offered.contains(.unmute) {
+            verb("moderation_unmute", .unmute)
+        }
+        if offered.contains(.ban) {
+            banButton
+        }
+        if offered.contains(.unban) {
+            verb("moderation_unban", .unban)
+        }
+    }
+
+    private var muteMenu: some View {
         Menu {
             Section {
                 ForEach(MutePeriod.allCases, id: \.self) { period in
@@ -205,7 +262,9 @@ private struct ReportCard: View {
         }
         .buttonStyle(.plain)
         .disabled(!ready)
-        verb("moderation_unmute", .unmute)
+    }
+
+    private var banButton: some View {
         Button {
             onBan(reason)
         } label: {
@@ -219,7 +278,6 @@ private struct ReportCard: View {
         }
         .buttonStyle(.plain)
         .disabled(!ready)
-        verb("moderation_unban", .unban)
     }
 
     /// One of the moderator's plain answers, as an outlined pill.

@@ -297,6 +297,7 @@ private struct SocialDestination: View {
         case .community(let id): CommunityRoute(id: id, social: social).id(route)
         case .post(let id): PostRoute(id: id, social: social).id(route)
         case .reports(let id): ReportsRoute(id: id, social: social).id(route)
+        case .requests(let id): RequestsRoute(id: id, social: social).id(route)
         }
     }
 }
@@ -326,6 +327,18 @@ private struct PostRoute: View {
 
     var body: some View {
         PostView(model: model, social: social)
+    }
+}
+
+private struct RequestsRoute: View {
+    @State private var model: JoinRequestsModel
+
+    init(id: String, social: Social) {
+        _model = State(initialValue: JoinRequestsModel(social: social, communityId: id))
+    }
+
+    var body: some View {
+        JoinRequestsView(model: model)
     }
 }
 

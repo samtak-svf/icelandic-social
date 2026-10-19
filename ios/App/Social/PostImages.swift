@@ -49,7 +49,7 @@ struct PostImageGrid: View {
     var body: some View {
         if let single = post.images.first, post.images.count == 1 {
             let ratio = single.height > 0 ? CGFloat(single.width) / CGFloat(single.height) : 1
-            PostImageView(postId: post.postId, image: single, ratio: min(max(ratio, 0.75), 2))
+            PostImageView(postId: post.postId, image: single, ratio: min(max(ratio, 0.75), 2), number: 1, count: 1)
         } else if !post.images.isEmpty {
             let rows = stride(from: 0, to: post.images.count, by: 2).map {
                 Array(post.images[$0..<min($0 + 2, post.images.count)])
@@ -58,7 +58,10 @@ struct PostImageGrid: View {
                 ForEach(rows, id: \.first?.mediaId) { row in
                     HStack(spacing: 6) {
                         ForEach(row, id: \.mediaId) { image in
-                            PostImageView(postId: post.postId, image: image, ratio: 1)
+                            PostImageView(
+                                postId: post.postId, image: image, ratio: 1,
+                                number: (post.images.firstIndex { $0.mediaId == image.mediaId } ?? 0) + 1,
+                                count: post.images.count)
                         }
                         if row.count == 1 { Color.clear.aspectRatio(1, contentMode: .fit) }
                     }
@@ -73,6 +76,9 @@ private struct PostImageView: View {
     let postId: String
     let image: PostImage
     let ratio: CGFloat
+    /// Which of the post's images this is, counting from 1, and how many there are (#355).
+    let number: Int
+    let count: Int
 
     @Environment(\.postImages) private var images
     @Environment(\.displayScale) private var scale
@@ -90,12 +96,17 @@ private struct PostImageView: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .accessibilityElement()
-            .accessibilityLabel(Text("post_image_alt"))
+            .accessibilityLabel(label)
             .accessibilityAddTraits(.isImage)
             .task(id: image.mediaId) {
                 guard loaded == nil, let images else { return }
                 loaded = await images.load(postId, image.mediaId, side: Int(480 * scale))
             }
+    }
+
+    /// The image's label, numbered when the post has more than one.
+    private var label: Text {
+        count > 1 ? Text(verbatim: localized("post_image_alt_numbered", number, count)) : Text("post_image_alt")
     }
 }
 

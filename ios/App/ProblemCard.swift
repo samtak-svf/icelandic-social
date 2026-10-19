@@ -47,6 +47,9 @@ struct ProblemCard: View {
         case .unreachable: "error_unreachable"
         case .identityTaken: "identity_taken"
         case .tooLarge: "media_too_large"
+        case .notPermitted: "problem_not_permitted"
+        case .notFound: "problem_not_found"
+        case .joinDeclined: "problem_join_declined"
         case .generic: "error_generic"
         }
     }

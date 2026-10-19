@@ -10,6 +10,12 @@ enum Problem: Equatable, Sendable {
     case identityTaken(requestId: String? = nil)
     /// A photo or file over the 25 MB limit (decision 0023): trying again cannot help.
     case tooLarge
+    /// The server refused it with `not_permitted` (#362): this account may not do that; trying again cannot help.
+    case notPermitted
+    /// The server refused it with `not_found`: what was asked for is gone.
+    case notFound
+    /// The server refused a join request because a moderator declined it (decision 0070).
+    case joinDeclined
     /// Anything else.
     case generic(requestId: String? = nil, code: String? = nil)
 
@@ -17,6 +23,9 @@ enum Problem: Equatable, Sendable {
         switch error {
         case CoreError.Unreachable: self = .unreachable
         case CoreError.Refused(_, "identity_taken", let requestId): self = .identityTaken(requestId: requestId)
+        case CoreError.Refused(_, "not_permitted", _): self = .notPermitted
+        case CoreError.Refused(_, "not_found", _): self = .notFound
+        case CoreError.Refused(_, "join_declined", _): self = .joinDeclined
         case CoreError.Refused(_, _, let requestId): self = .generic(requestId: requestId)
         case let error as CoreError: self = .generic(code: error.code())
         default: self = .generic()
@@ -27,7 +36,7 @@ enum Problem: Equatable, Sendable {
     var requestId: String? {
         switch self {
         case let .identityTaken(requestId), let .generic(requestId, _): requestId
-        case .unreachable, .tooLarge: nil
+        case .unreachable, .tooLarge, .notPermitted, .notFound, .joinDeclined: nil
         }
     }
 
@@ -40,7 +49,7 @@ enum Problem: Equatable, Sendable {
     /// Trying again cannot free a kennitala another account holds, nor shrink a file.
     var canRetry: Bool {
         switch self {
-        case .identityTaken, .tooLarge: false
+        case .identityTaken, .tooLarge, .notPermitted, .notFound, .joinDeclined: false
         case .unreachable, .generic: true
         }
     }
