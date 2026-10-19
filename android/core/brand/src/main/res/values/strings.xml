@@ -559,4 +559,67 @@
     <string name="post_image_alt">Mynd í póstinum</string>
     <!-- Confirmation before a moderator bans an author (#343). -->
     <string name="moderation_ban_confirm">Útiloka meðliminn? Hann sér þá ekkert í samfélaginu og getur ekki gengið í það aftur fyrr en honum er hleypt aftur inn.</string>
+    <!-- Title of the join-request list a community's moderators see (#354, decision 0070). -->
+    <string name="join_requests_title">Beiðnir um aðild</string>
+    <!-- How many join requests wait, shown to moderators on the community and as the link to the list (#354). -->
+    <plurals name="join_requests_waiting">
+        <item quantity="one">%1$d beiðni um aðild bíður</item>
+        <item quantity="other">%1$d beiðnir um aðild bíða</item>
+    </plurals>
+    <!-- The join-request list when none waits. -->
+    <string name="join_requests_empty">Engin beiðni bíður.</string>
+    <!-- Approves a join request. -->
+    <string name="join_request_approve">Samþykkja</string>
+    <!-- Declines a join request; the person may ask again after 30 days (decision 0070). -->
+    <string name="join_request_decline">Hafna</string>
+    <!-- On the community page, to an account whose join request was declined (decision 0070). -->
+    <string name="community_join_declined">Stjórnandi hafnaði beiðni þinni um inngöngu.</string>
+    <!-- Under community_join_declined: when the account may ask again; {date} is a formatted date. -->
+    <string name="community_join_again">Þú getur beðið aftur %1$s.</string>
+    <!-- The owner's action that deletes a community, and its confirm button (#364). -->
+    <string name="community_delete">Eyða samfélaginu</string>
+    <!-- Confirmation before the owner deletes a community, naming it and what is lost (decision 0070). -->
+    <string name="community_delete_confirm">Eyða samfélaginu „%1$s“? Það hverfur strax öllum meðlimum, og eftir 30 daga er póstum þess, athugasemdum og myndum eytt fyrir fullt og allt.</string>
+    <!-- Supporting text under the reason field of a report: the actions need it (#359). -->
+    <string name="moderation_reason_required">Skrifaðu ástæðu fyrst. Hún er skráð með aðgerðinni.</string>
+    <!-- A closed report's decision (#360). -->
+    <string name="moderation_decision_hide_post">Pósturinn var falinn.</string>
+    <!-- A closed report's decision. -->
+    <string name="moderation_decision_remove_post">Pósturinn var fjarlægður.</string>
+    <!-- A closed report's decision. -->
+    <string name="moderation_decision_restore_post">Pósturinn var birtur aftur.</string>
+    <!-- A closed report's decision. -->
+    <string name="moderation_decision_hide_comment">Athugasemdin var falin.</string>
+    <!-- A closed report's decision. -->
+    <string name="moderation_decision_remove_comment">Athugasemdin var fjarlægð.</string>
+    <!-- A closed report's decision. -->
+    <string name="moderation_decision_restore_comment">Athugasemdin var birt aftur.</string>
+    <!-- A closed report's decision. -->
+    <string name="moderation_decision_mute_member">Þaggað var niður í meðlimnum.</string>
+    <!-- A closed report's decision. -->
+    <string name="moderation_decision_unmute_member">Meðlimurinn mátti skrifa aftur.</string>
+    <!-- A closed report's decision. -->
+    <string name="moderation_decision_remove_member">Meðlimurinn var tekinn úr samfélaginu.</string>
+    <!-- A closed report's decision. -->
+    <string name="moderation_decision_ban_member">Meðlimurinn var útilokaður.</string>
+    <!-- A closed report's decision. -->
+    <string name="moderation_decision_unban_member">Meðlimnum var hleypt aftur inn.</string>
+    <!-- A closed report's decision: closed without acting. -->
+    <string name="moderation_decision_dismissed">Lokað án aðgerðar.</string>
+    <!-- A closed report's decision: the community's deletion closed it (decision 0070). -->
+    <string name="moderation_decision_community_deleted">Lokað þegar samfélaginu var eytt.</string>
+    <!-- Who closed a report and when; {date} is a formatted date. -->
+    <string name="moderation_closed_by">%1$s afgreiddi tilkynninguna %2$s.</string>
+    <!-- When a report was closed, when no account is named. -->
+    <string name="moderation_closed_at">Tilkynningin var afgreidd %1$s.</string>
+    <!-- A refusal with code not_permitted, shown without a retry (#362). -->
+    <string name="problem_not_permitted">Þú hefur ekki heimild til þessarar aðgerðar.</string>
+    <!-- A refusal with code not_found, shown without a retry (#362). -->
+    <string name="problem_not_found">Þetta er ekki lengur til.</string>
+    <!-- A refusal with code join_declined (decision 0070). -->
+    <string name="problem_join_declined">Stjórnandi hafnaði beiðninni. Þú getur beðið aftur eftir 30 daga.</string>
+    <!-- Text alternative of an image in a post with several, so a screen reader tells them apart (#355). -->
+    <string name="post_image_alt_numbered">Mynd %1$d af %2$d</string>
+    <!-- Title of the post screen's top bar (#356). -->
+    <string name="post_title">Póstur</string>
 </resources>

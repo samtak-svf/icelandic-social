@@ -285,4 +285,75 @@ export const strings = {
   post_image_failed: "Ekki tókst að setja inn myndina. Veldu mynd á sniðinu JPEG, PNG, WebP, GIF eða AVIF.",
   /** Text alternative of an image in a post. */
   post_image_alt: "Mynd í póstinum",
+  /** Title of the join-request list a community's moderators see (#354, decision 0070). */
+  join_requests_title: "Beiðnir um aðild",
+  /** How many join requests wait, shown to moderators on the community and as the link to the list (#354). */
+  join_requests_waiting: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " beiðni um aðild bíður"
+      : String(args.count) + " beiðnir um aðild bíða",
+  /** The join-request list when none waits. */
+  join_requests_empty: "Engin beiðni bíður.",
+  /** Approves a join request. */
+  join_request_approve: "Samþykkja",
+  /** Declines a join request; the person may ask again after 30 days (decision 0070). */
+  join_request_decline: "Hafna",
+  /** On the community page, to an account whose join request was declined (decision 0070). */
+  community_join_declined: "Stjórnandi hafnaði beiðni þinni um inngöngu.",
+  /** Under community_join_declined: when the account may ask again; {date} is a formatted date. */
+  community_join_again: (args: { date: string }): string =>
+    "Þú getur beðið aftur " + args.date + ".",
+  /** The owner's action that deletes a community, and its confirm button (#364). */
+  community_delete: "Eyða samfélaginu",
+  /** Confirmation before the owner deletes a community, naming it and what is lost (decision 0070). */
+  community_delete_confirm: (args: { name: string }): string =>
+    "Eyða samfélaginu „" + args.name + "“? Það hverfur strax öllum meðlimum, og eftir 30 daga er póstum þess, athugasemdum og myndum eytt fyrir fullt og allt.",
+  /** To a platform moderator viewing a deleted community; {date} is when it is purged (decision 0070). */
+  community_deleted_notice: (args: { date: string }): string =>
+    "Samfélaginu var eytt. Það má endurheimta til " + args.date + ".",
+  /** A platform moderator restores a deleted community (decision 0070). */
+  community_restore: "Endurheimta samfélagið",
+  /** Supporting text under the reason field of a report: the actions need it (#359). */
+  moderation_reason_required: "Skrifaðu ástæðu fyrst. Hún er skráð með aðgerðinni.",
+  /** A closed report's decision (#360). */
+  moderation_decision_hide_post: "Pósturinn var falinn.",
+  /** A closed report's decision. */
+  moderation_decision_remove_post: "Pósturinn var fjarlægður.",
+  /** A closed report's decision. */
+  moderation_decision_restore_post: "Pósturinn var birtur aftur.",
+  /** A closed report's decision. */
+  moderation_decision_hide_comment: "Athugasemdin var falin.",
+  /** A closed report's decision. */
+  moderation_decision_remove_comment: "Athugasemdin var fjarlægð.",
+  /** A closed report's decision. */
+  moderation_decision_restore_comment: "Athugasemdin var birt aftur.",
+  /** A closed report's decision. */
+  moderation_decision_mute_member: "Þaggað var niður í meðlimnum.",
+  /** A closed report's decision. */
+  moderation_decision_unmute_member: "Meðlimurinn mátti skrifa aftur.",
+  /** A closed report's decision. */
+  moderation_decision_remove_member: "Meðlimurinn var tekinn úr samfélaginu.",
+  /** A closed report's decision. */
+  moderation_decision_ban_member: "Meðlimurinn var útilokaður.",
+  /** A closed report's decision. */
+  moderation_decision_unban_member: "Meðlimnum var hleypt aftur inn.",
+  /** A closed report's decision: closed without acting. */
+  moderation_decision_dismissed: "Lokað án aðgerðar.",
+  /** A closed report's decision: the community's deletion closed it (decision 0070). */
+  moderation_decision_community_deleted: "Lokað þegar samfélaginu var eytt.",
+  /** Who closed a report and when; {date} is a formatted date. */
+  moderation_closed_by: (args: { name: string; date: string }): string =>
+    args.name + " afgreiddi tilkynninguna " + args.date + ".",
+  /** When a report was closed, when no account is named. */
+  moderation_closed_at: (args: { date: string }): string =>
+    "Tilkynningin var afgreidd " + args.date + ".",
+  /** A refusal with code not_permitted, shown without a retry (#362). */
+  problem_not_permitted: "Þú hefur ekki heimild til þessarar aðgerðar.",
+  /** A refusal with code not_found, shown without a retry (#362). */
+  problem_not_found: "Þetta er ekki lengur til.",
+  /** A refusal with code join_declined (decision 0070). */
+  problem_join_declined: "Stjórnandi hafnaði beiðninni. Þú getur beðið aftur eftir 30 daga.",
+  /** Text alternative of an image in a post with several, so a screen reader tells them apart (#355). */
+  post_image_alt_numbered: (args: { n: number; count: number }): string =>
+    "Mynd " + String(args.n) + " af " + String(args.count),
 } as const;

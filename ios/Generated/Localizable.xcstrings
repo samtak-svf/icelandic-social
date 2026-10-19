@@ -3276,6 +3276,378 @@
           }
         }
       }
+    },
+    "join_requests_title": {
+      "comment": "Title of the join-request list a community's moderators see (#354, decision 0070).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beiðnir um aðild"
+          }
+        }
+      }
+    },
+    "join_requests_waiting": {
+      "comment": "How many join requests wait, shown to moderators on the community and as the link to the list (#354).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld beiðni um aðild bíður"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld beiðnir um aðild bíða"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "join_requests_empty": {
+      "comment": "The join-request list when none waits.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engin beiðni bíður."
+          }
+        }
+      }
+    },
+    "join_request_approve": {
+      "comment": "Approves a join request.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Samþykkja"
+          }
+        }
+      }
+    },
+    "join_request_decline": {
+      "comment": "Declines a join request; the person may ask again after 30 days (decision 0070).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hafna"
+          }
+        }
+      }
+    },
+    "community_join_declined": {
+      "comment": "On the community page, to an account whose join request was declined (decision 0070).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stjórnandi hafnaði beiðni þinni um inngöngu."
+          }
+        }
+      }
+    },
+    "community_join_again": {
+      "comment": "Under community_join_declined: when the account may ask again; {date} is a formatted date.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þú getur beðið aftur %1$@."
+          }
+        }
+      }
+    },
+    "community_delete": {
+      "comment": "The owner's action that deletes a community, and its confirm button (#364).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eyða samfélaginu"
+          }
+        }
+      }
+    },
+    "community_delete_confirm": {
+      "comment": "Confirmation before the owner deletes a community, naming it and what is lost (decision 0070).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eyða samfélaginu „%1$@“? Það hverfur strax öllum meðlimum, og eftir 30 daga er póstum þess, athugasemdum og myndum eytt fyrir fullt og allt."
+          }
+        }
+      }
+    },
+    "moderation_reason_required": {
+      "comment": "Supporting text under the reason field of a report: the actions need it (#359).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrifaðu ástæðu fyrst. Hún er skráð með aðgerðinni."
+          }
+        }
+      }
+    },
+    "moderation_decision_hide_post": {
+      "comment": "A closed report's decision (#360).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pósturinn var falinn."
+          }
+        }
+      }
+    },
+    "moderation_decision_remove_post": {
+      "comment": "A closed report's decision.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pósturinn var fjarlægður."
+          }
+        }
+      }
+    },
+    "moderation_decision_restore_post": {
+      "comment": "A closed report's decision.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pósturinn var birtur aftur."
+          }
+        }
+      }
+    },
+    "moderation_decision_hide_comment": {
+      "comment": "A closed report's decision.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Athugasemdin var falin."
+          }
+        }
+      }
+    },
+    "moderation_decision_remove_comment": {
+      "comment": "A closed report's decision.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Athugasemdin var fjarlægð."
+          }
+        }
+      }
+    },
+    "moderation_decision_restore_comment": {
+      "comment": "A closed report's decision.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Athugasemdin var birt aftur."
+          }
+        }
+      }
+    },
+    "moderation_decision_mute_member": {
+      "comment": "A closed report's decision.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þaggað var niður í meðlimnum."
+          }
+        }
+      }
+    },
+    "moderation_decision_unmute_member": {
+      "comment": "A closed report's decision.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meðlimurinn mátti skrifa aftur."
+          }
+        }
+      }
+    },
+    "moderation_decision_remove_member": {
+      "comment": "A closed report's decision.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meðlimurinn var tekinn úr samfélaginu."
+          }
+        }
+      }
+    },
+    "moderation_decision_ban_member": {
+      "comment": "A closed report's decision.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meðlimurinn var útilokaður."
+          }
+        }
+      }
+    },
+    "moderation_decision_unban_member": {
+      "comment": "A closed report's decision.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meðlimnum var hleypt aftur inn."
+          }
+        }
+      }
+    },
+    "moderation_decision_dismissed": {
+      "comment": "A closed report's decision: closed without acting.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokað án aðgerðar."
+          }
+        }
+      }
+    },
+    "moderation_decision_community_deleted": {
+      "comment": "A closed report's decision: the community's deletion closed it (decision 0070).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokað þegar samfélaginu var eytt."
+          }
+        }
+      }
+    },
+    "moderation_closed_by": {
+      "comment": "Who closed a report and when; {date} is a formatted date.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ afgreiddi tilkynninguna %2$@."
+          }
+        }
+      }
+    },
+    "moderation_closed_at": {
+      "comment": "When a report was closed, when no account is named.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tilkynningin var afgreidd %1$@."
+          }
+        }
+      }
+    },
+    "problem_not_permitted": {
+      "comment": "A refusal with code not_permitted, shown without a retry (#362).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þú hefur ekki heimild til þessarar aðgerðar."
+          }
+        }
+      }
+    },
+    "problem_not_found": {
+      "comment": "A refusal with code not_found, shown without a retry (#362).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þetta er ekki lengur til."
+          }
+        }
+      }
+    },
+    "problem_join_declined": {
+      "comment": "A refusal with code join_declined (decision 0070).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stjórnandi hafnaði beiðninni. Þú getur beðið aftur eftir 30 daga."
+          }
+        }
+      }
+    },
+    "post_image_alt_numbered": {
+      "comment": "Text alternative of an image in a post with several, so a screen reader tells them apart (#355).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mynd %1$lld af %2$lld"
+          }
+        }
+      }
+    },
+    "post_title": {
+      "comment": "Title of the post screen's top bar (#356).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Póstur"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
