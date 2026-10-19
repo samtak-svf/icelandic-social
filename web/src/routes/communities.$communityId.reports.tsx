@@ -15,9 +15,11 @@ import { outcome, useLoad, when } from "../social/outcome.ts";
 import { authorName } from "../social/post.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 
-// A community's report queue (decision 0066), oldest first: what was
-// reported, as a card, and why; the moderator hides or removes it, with a
-// reason that is logged, or closes the report without acting.
+// A community's report queue (decision 0066), oldest first, open or closed:
+// what was reported, as a card, and why. The moderator hides, removes or
+// restores the content, mutes, unmutes, bans or unbans the member it is
+// about, with a reason that is logged, or closes the report without acting.
+// An action on an open report closes it; on a closed one it acts alone.
 export const Route = createFileRoute("/communities/$communityId/reports")({ component: Reports });
 
 const REASONS = {
@@ -27,12 +29,31 @@ const REASONS = {
   other: strings.report_reason_other,
 } as const;
 
+const DAY = 24 * 60 * 60 * 1000;
+
+/** How long a mute lasts, in days, as the moderator chooses it. */
+const MUTES = [
+  [1, strings.moderation_mute_day],
+  [7, strings.moderation_mute_week],
+  [30, strings.moderation_mute_month],
+] as const;
+
+type Queue = "open" | "closed";
+
 function Reports() {
   const { communityId } = Route.useParams();
+  const [state, setState] = useState<Queue>("open");
   const [queue, reload] = useLoad(
-    useCallback(() => outcome(communityReports({ path: { communityId } }), 200), [communityId]),
+    useCallback(async () => {
+      const page = await outcome(
+        communityReports({ path: { communityId }, query: { state } }),
+        200,
+      );
+      return page.ok ? { ok: true as const, data: { ...page.data, state } } : page;
+    }, [communityId, state]),
   );
-  const cards = useCards(queue?.ok ? queue.data.reports : []);
+  // A queue is shown only once it is the one chosen, not the one before.
+  const shown = queue?.ok && queue.data.state === state ? queue.data.reports : null;
   return (
     <>
       <Link
@@ -43,30 +64,63 @@ function Reports() {
         {strings.post_back}
       </Link>
       <h1 className="font-headline text-3xl">{strings.moderation_queue}</h1>
-      {queue === null && <Status>{strings.loading}</Status>}
-      {queue?.ok === false && (
+      <div role="group" aria-label={strings.moderation_queue} className="mt-4 flex gap-2">
+        {(
+          [
+            ["open", strings.moderation_open],
+            ["closed", strings.moderation_closed],
+          ] as const
+        ).map(([value, label]) => (
+          <Button
+            key={value}
+            aria-pressed={state === value}
+            className="aria-pressed:border-primary aria-pressed:bg-muted"
+            onClick={() => setState(value)}
+          >
+            {label}
+          </Button>
+        ))}
+      </div>
+      {queue?.ok === false ? (
         <Status>
           <ProblemText problem={queue.problem} />
         </Status>
-      )}
-      {queue?.ok && queue.data.reports.length === 0 && (
-        <p className="mt-4 text-muted-fg">{strings.moderation_queue_empty}</p>
-      )}
-      {queue?.ok && (
-        <ul className="mt-4 flex flex-col gap-4">
-          {queue.data.reports.map((r) => (
-            <li key={r.reportId}>
-              <ReportItem
-                report={r}
-                card={cards.get(r.target.id)}
-                communityId={communityId}
-                done={reload}
-              />
-            </li>
-          ))}
-        </ul>
+      ) : shown === null ? (
+        <Status>{strings.loading}</Status>
+      ) : (
+        <ReportList reports={shown} state={state} communityId={communityId} done={reload} />
       )}
     </>
+  );
+}
+
+function ReportList({
+  reports,
+  state,
+  communityId,
+  done,
+}: Readonly<{ reports: Report[]; state: Queue; communityId: string; done: () => void }>) {
+  const cards = useCards(reports);
+  if (reports.length === 0) {
+    return (
+      <p className="mt-4 text-muted-fg">
+        {state === "open" ? strings.moderation_queue_empty : strings.moderation_closed_empty}
+      </p>
+    );
+  }
+  return (
+    <ul className="mt-4 flex flex-col gap-4">
+      {reports.map((r) => (
+        <li key={r.reportId}>
+          <ReportItem
+            report={r}
+            card={cards.get(r.target.id)}
+            communityId={communityId}
+            done={done}
+          />
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -98,6 +152,8 @@ function useCards(reports: Report[]): Map<string, Card> {
   return cards;
 }
 
+type Action = Parameters<typeof moderate>[0]["body"]["action"];
+
 function ReportItem({
   report,
   card,
@@ -106,28 +162,37 @@ function ReportItem({
 }: Readonly<{ report: Report; card: Card | undefined; communityId: string; done: () => void }>) {
   const id = useId();
   const [reason, setReason] = useState("");
+  const [days, setDays] = useState<number>(MUTES[0][0]);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
+  const [acted, setActed] = useState(false);
   const { target } = report;
+  const open = report.state === "open";
+  const member = report.targetAccount;
 
   async function act(pending: Promise<{ ok: true } | { ok: false; problem: Problem }>) {
     setBusy(true);
     setProblem(null);
+    setActed(false);
     const result = await pending;
     setBusy(false);
-    if (result.ok) done();
-    else setProblem(result.problem);
+    if (result.ok) {
+      setActed(true);
+      done();
+    } else setProblem(result.problem);
   }
-  const action = (content: Content, verb: "hide" | "remove") =>
+  const action = (verb: Action, targetId: string, until?: number) =>
     act(
       outcome(
         moderate({
           path: { communityId },
           body: {
-            action: `${verb}_${content.kind}`,
-            targetId: content.id,
+            action: verb,
+            targetId,
             reason: reason.trim(),
-            reportId: report.reportId,
+            ...(until === undefined ? {} : { until }),
+            // A closed report is closed already; the action stands alone.
+            ...(open ? { reportId: report.reportId } : {}),
           },
         }),
         204,
@@ -140,6 +205,7 @@ function ReportItem({
         204,
       ),
     );
+  const blocked = busy || reason.trim() === "";
 
   return (
     <article
@@ -171,25 +237,84 @@ function ReportItem({
         {isContent(target) && (
           <>
             <Button
-              disabled={busy || reason.trim() === ""}
-              onClick={() => void action(target, "hide")}
+              disabled={blocked}
+              onClick={() => void action(`hide_${target.kind}`, target.id)}
             >
               {strings.moderation_hide}
             </Button>
             <Button
               tone="danger"
-              disabled={busy || reason.trim() === ""}
-              onClick={() => void action(target, "remove")}
+              disabled={blocked}
+              onClick={() => void action(`remove_${target.kind}`, target.id)}
             >
               {strings.moderation_remove}
             </Button>
+            <Button
+              disabled={blocked}
+              onClick={() => void action(`restore_${target.kind}`, target.id)}
+            >
+              {strings.moderation_restore}
+            </Button>
           </>
         )}
-        <Button disabled={busy || reason.trim() === ""} onClick={() => void dismiss()}>
-          {strings.moderation_dismiss}
-        </Button>
+        {open && (
+          <Button disabled={blocked} onClick={() => void dismiss()}>
+            {strings.moderation_dismiss}
+          </Button>
+        )}
       </div>
-      <Status>{problem && <ProblemText problem={problem} />}</Status>
+      {member !== null && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="font-semibold">
+            {strings.moderation_member}: {authorName(member)}
+          </legend>
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor={`${id}-days`}>{strings.moderation_mute_for}</label>
+            <select
+              id={`${id}-days`}
+              value={days}
+              onChange={(event) => setDays(Number(event.target.value))}
+              className="min-h-11 rounded-md border border-border-strong bg-surface px-3"
+            >
+              {MUTES.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <Button
+              disabled={blocked}
+              onClick={() => void action("mute_member", member.accountId, Date.now() + days * DAY)}
+            >
+              {strings.moderation_mute}
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={blocked}
+              onClick={() => void action("unmute_member", member.accountId)}
+            >
+              {strings.moderation_unmute}
+            </Button>
+            <Button
+              tone="danger"
+              disabled={blocked}
+              onClick={() => void action("ban_member", member.accountId)}
+            >
+              {strings.moderation_ban}
+            </Button>
+            <Button
+              disabled={blocked}
+              onClick={() => void action("unban_member", member.accountId)}
+            >
+              {strings.moderation_unban}
+            </Button>
+          </div>
+        </fieldset>
+      )}
+      <Status>
+        {problem ? <ProblemText problem={problem} /> : acted && strings.moderation_done}
+      </Status>
     </article>
   );
 }

@@ -693,7 +693,7 @@
       "description": "The one line beside the photo buttons on Ég: every signed-in account sees the profile photo, which is not end-to-end encrypted (docs/decisions/0039)."
     },
     "delete": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Deletes one's own post or reply, in its menu and its confirmation."
     },
     "identity_taken": {
@@ -1209,6 +1209,94 @@
     "moderation_done": {
       "surfaces": ["android", "ios", "web"],
       "description": "Confirmation after a moderator acts; every action is logged (decision 0066)."
+    },
+    "post_delete_confirm": {
+      "surfaces": ["web"],
+      "description": "Asks before the author deletes their own post: its comments, reactions and images go with it."
+    },
+    "comment_delete_confirm": {
+      "surfaces": ["web"],
+      "description": "Asks before the author deletes their own comment."
+    },
+    "community_withdraw_request": {
+      "surfaces": ["web"],
+      "description": "Button: withdraw the person's own waiting join request to a private community."
+    },
+    "moderation_restore": {
+      "surfaces": ["web"],
+      "description": "Moderator action: show a hidden or removed post or comment again."
+    },
+    "moderation_member": {
+      "surfaces": ["web"],
+      "description": "Heading of the moderator's actions on the member a report is about."
+    },
+    "moderation_mute": {
+      "surfaces": ["web"],
+      "description": "Moderator action: mute the member, who reads but does not write until the time chosen."
+    },
+    "moderation_mute_for": {
+      "surfaces": ["web"],
+      "description": "Label of how long a moderator mutes a member."
+    },
+    "moderation_mute_day": {
+      "surfaces": ["web"],
+      "description": "How long a mute lasts: one day."
+    },
+    "moderation_mute_week": {
+      "surfaces": ["web"],
+      "description": "How long a mute lasts: seven days."
+    },
+    "moderation_mute_month": {
+      "surfaces": ["web"],
+      "description": "How long a mute lasts: thirty days."
+    },
+    "moderation_unmute": {
+      "surfaces": ["web"],
+      "description": "Moderator action: end a member's mute."
+    },
+    "moderation_ban": {
+      "surfaces": ["web"],
+      "description": "Moderator action: ban the member, who may not join again or read."
+    },
+    "moderation_unban": {
+      "surfaces": ["web"],
+      "description": "Moderator action: lift a member's ban."
+    },
+    "moderation_open": {
+      "surfaces": ["web"],
+      "description": "Switch in the report queue: the reports that wait."
+    },
+    "moderation_closed": {
+      "surfaces": ["web"],
+      "description": "Switch in the report queue: the reports already closed."
+    },
+    "moderation_closed_empty": {
+      "surfaces": ["web"],
+      "description": "The closed side of the report queue when it is empty."
+    },
+    "post_add_images": {
+      "surfaces": ["web"],
+      "description": "Opens the picker for images to add to a post being written (decision 0065)."
+    },
+    "post_image_remove": {
+      "surfaces": ["web"],
+      "description": "Button: take a chosen image out of the post being written."
+    },
+    "post_images_too_many": {
+      "surfaces": ["web"],
+      "description": "Refuses an image past the fourth on one post, before any upload (decision 0065)."
+    },
+    "post_image_too_large": {
+      "surfaces": ["web"],
+      "description": "Refuses an image larger than 10 MB, before any upload (decision 0065)."
+    },
+    "post_image_failed": {
+      "surfaces": ["web"],
+      "description": "The server refused an image: not an image it reads (decision 0065)."
+    },
+    "post_image_alt": {
+      "surfaces": ["web"],
+      "description": "Text alternative of an image in a post."
     }
   }
 }

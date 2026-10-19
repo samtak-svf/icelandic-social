@@ -1,5 +1,6 @@
 import type { Browser, Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
+import { png } from "./images.ts";
 import { expect, serveOrigin, test, WEB } from "./origin.ts";
 import { newKennitala } from "./people.ts";
 
@@ -37,6 +38,26 @@ async function write(page: Page, label: string, action: string, text: string) {
 }
 
 const post = (page: Page, text: string) => page.getByRole("article").filter({ hasText: text });
+
+/** Creates a community as `owner`, who is left on its page; its address. */
+async function found(owner: Page, audience: "open" | "private"): Promise<string> {
+  const name = `Garðyrkjufélagið ${crypto.randomUUID().slice(0, 8)}`;
+  await owner.getByRole("link", { name: strings.tab_communities }).click();
+  await owner.getByLabel(strings.community_name).fill(name);
+  if (audience === "private") {
+    await owner.getByRole("radio", { name: new RegExp(strings.community_private_hint) }).check();
+  }
+  await owner.getByRole("button", { name: strings.community_create }).click();
+  await expect(owner.getByRole("heading", { name })).toBeVisible();
+  return owner.url();
+}
+
+/** Joins the open community at `address` as `page`. */
+async function join(page: Page, address: string) {
+  await page.goto(address);
+  await page.getByRole("button", { name: strings.community_join }).click();
+  await expect(page.getByRole("button", { name: strings.community_leave })).toBeVisible();
+}
 
 test("a member joins, posts, comments, reacts, is told and reports; a moderator acts", async ({
   browser,
@@ -119,4 +140,131 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
   await runJobs();
   await spammer.getByRole("link", { name: new RegExp(strings.tab_notifications) }).click();
   await expect(spammer.getByText(strings.notice_moderated)).toBeVisible();
+});
+
+test("a member posts images, deletes a comment and the post, and withdraws a join request", async ({
+  browser,
+}) => {
+  const owner = await person(browser, "Eigandi Myndadóttir");
+  const member = await person(browser, "Meðlimur Myndason");
+  const open = await found(owner, "open");
+  await join(member, open);
+
+  // Five images, or one over 10 MB, are refused before any upload.
+  const image = { name: "mynd.png", mimeType: "image/png", buffer: await png(member) };
+  const pick = member.getByLabel(strings.post_add_images);
+  await pick.setInputFiles([1, 2, 3, 4, 5].map((n) => ({ ...image, name: `mynd${n}.png` })));
+  await expect(member.getByText(strings.post_images_too_many)).toBeVisible();
+  const large = Buffer.alloc(10 * 1024 * 1024 + 1);
+  await pick.setInputFiles({ name: "stor.png", mimeType: "image/png", buffer: large });
+  await expect(member.getByText(strings.post_image_too_large)).toBeVisible();
+
+  // Two are taken, uploaded with the post and shown in it.
+  await pick.setInputFiles([image, { ...image, name: "mynd2.png" }]);
+  await expect(member.getByText("mynd2.png")).toBeVisible();
+  await expect(member.getByText(strings.post_image_too_large)).toHaveCount(0);
+  await write(member, strings.post_compose, strings.post_publish, "Myndir úr garðinum.");
+  await expect(member.getByText("mynd2.png")).toHaveCount(0);
+  const mine = post(member, "Myndir úr garðinum");
+  const images = mine.getByRole("img", { name: strings.post_image_alt });
+  await expect(images).toHaveCount(2);
+  for (const one of await images.all()) {
+    await expect
+      .poll(() => one.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth))
+      .toBeGreaterThan(0);
+  }
+  // Someone else sees them too, and has no delete on another's post.
+  await owner.goto(open);
+  await expect(post(owner, "Myndir úr garðinum").getByRole("img")).toHaveCount(2);
+  await expect(
+    post(owner, "Myndir úr garðinum").getByRole("button", { name: strings.delete }),
+  ).toHaveCount(0);
+
+  // The member comments, then deletes the comment and the post, after confirming.
+  await mine.getByRole("link", { name: strings.post_comments({ count: 0 }) }).click();
+  await write(member, strings.comment_compose, strings.comment_publish, "Gleymdi einu.");
+  const comment = post(member, "Gleymdi einu.");
+  member.once("dialog", (dialog) => void dialog.accept());
+  await comment.getByRole("button", { name: strings.delete }).click();
+  await expect(comment).toHaveCount(0);
+  await expect(member.getByText(strings.comments_empty)).toBeVisible();
+  member.once("dialog", (dialog) => void dialog.accept());
+  await post(member, "Myndir úr garðinum").getByRole("button", { name: strings.delete }).click();
+  await member.waitForURL(open);
+  await expect(member.getByText(strings.posts_empty)).toBeVisible();
+
+  // A request to join a private community is withdrawn.
+  const closed = await found(owner, "private");
+  await member.goto(closed);
+  await member.getByRole("button", { name: strings.community_request_join }).click();
+  await expect(member.getByText(strings.community_join_requested)).toBeVisible();
+  await member.getByRole("button", { name: strings.community_withdraw_request }).click();
+  await expect(member.getByText(strings.community_join_requested)).toHaveCount(0);
+  await expect(member.getByRole("button", { name: strings.community_request_join })).toBeVisible();
+});
+
+test("a moderator hides, then restores and mutes and unmutes from the closed reports", async ({
+  browser,
+}) => {
+  const owner = await person(browser, "Eigandi Stjórnadóttir");
+  const writer = await person(browser, "Höfundur Stjórnason");
+  const reader = await person(browser, "Lesandi Stjórnason");
+  const community = await found(owner, "open");
+  await join(writer, community);
+  await join(reader, community);
+
+  await write(writer, strings.post_compose, strings.post_publish, "Kaupið ódýra áburðinn.");
+  await reader.reload();
+  const spam = post(reader, "ódýra áburðinn");
+  await spam.getByRole("button", { name: strings.report }).click();
+  await spam.getByLabel(strings.report_reason_spam).check();
+  await spam.getByRole("button", { name: strings.report_send }).click();
+  await expect(spam.getByText(strings.report_sent)).toBeVisible();
+
+  // Hiding closes the report; the closed side holds it.
+  await owner.goto(community);
+  await owner.getByRole("link", { name: strings.moderation_queue }).click();
+  const open = owner.getByRole("article", { name: strings.report_reason_spam });
+  await open.getByLabel(strings.report_reason).fill("Ruslpóstur");
+  await open.getByRole("button", { name: strings.moderation_hide }).click();
+  await expect(owner.getByText(strings.moderation_queue_empty)).toBeVisible();
+  await reader.reload();
+  await expect(post(reader, "ódýra áburðinn")).toHaveCount(0);
+
+  const closedSide = owner.getByRole("button", { name: strings.moderation_closed, exact: true });
+  await closedSide.click();
+  await expect(closedSide).toHaveAttribute("aria-pressed", "true");
+  const closed = owner.getByRole("article", { name: strings.report_reason_spam });
+  await expect(closed).toContainText("ódýra áburðinn");
+  await expect(closed.getByRole("button", { name: strings.moderation_dismiss })).toHaveCount(0);
+  await closed.getByLabel(strings.report_reason).fill("Ekki ruslpóstur eftir allt");
+
+  /** Presses a moderator's action and waits until the server has done it. */
+  const act = async (label: string) => {
+    const done = owner.waitForResponse(
+      (answer) => answer.url().endsWith("/actions") && answer.status() === 204,
+    );
+    await closed.getByRole("button", { name: label }).click();
+    await done;
+    await expect(closed.getByText(strings.moderation_done)).toBeVisible();
+  };
+
+  // Restored, the reader sees it again.
+  await act(strings.moderation_restore);
+  await reader.reload();
+  await expect(post(reader, "ódýra áburðinn")).toBeVisible();
+
+  // Muted, the writer reads but does not write; unmuted, writes again.
+  await act(strings.moderation_mute);
+  await writer.reload();
+  await expect(writer.getByText(strings.community_muted)).toBeVisible();
+  await expect(writer.getByLabel(strings.post_compose)).toHaveCount(0);
+  await act(strings.moderation_unmute);
+  await writer.reload();
+  await expect(writer.getByLabel(strings.post_compose)).toBeVisible();
+  await expect(writer.getByText(strings.community_muted)).toHaveCount(0);
+
+  // The open side is empty still.
+  await owner.getByRole("button", { name: strings.moderation_open, exact: true }).click();
+  await expect(owner.getByText(strings.moderation_queue_empty)).toBeVisible();
 });

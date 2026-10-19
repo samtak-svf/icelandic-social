@@ -28,6 +28,8 @@ export const strings = {
   photo_remove_confirm: "Fjarlægja myndina þína? Hún hverfur hjá öllum.",
   /** The one line beside the photo buttons on Ég: every signed-in account sees the profile photo, which is not end-to-end encrypted (docs/decisions/0039). */
   photo_seen_by_all: "Allir sem eru skráðir inn sjá myndina þína.",
+  /** Deletes one's own post or reply, in its menu and its confirmation. */
+  delete: "Eyða",
   /** The server could not be reached; the action can be tried again. */
   error_unreachable: "Ekki náðist samband við þjóninn. Reyndu aftur.",
   /** Something failed that the person cannot fix but may retry. */
@@ -217,4 +219,48 @@ export const strings = {
   moderation_dismiss: "Loka án aðgerðar",
   /** Confirmation after a moderator acts; every action is logged (decision 0066). */
   moderation_done: "Aðgerðin var skráð.",
+  /** Asks before the author deletes their own post: its comments, reactions and images go with it. */
+  post_delete_confirm: "Eyða póstinum? Athugasemdir við hann, viðbrögð og myndir hverfa líka.",
+  /** Asks before the author deletes their own comment. */
+  comment_delete_confirm: "Eyða athugasemdinni?",
+  /** Button: withdraw the person's own waiting join request to a private community. */
+  community_withdraw_request: "Draga beiðnina til baka",
+  /** Moderator action: show a hidden or removed post or comment again. */
+  moderation_restore: "Birta aftur",
+  /** Heading of the moderator's actions on the member a report is about. */
+  moderation_member: "Meðlimurinn",
+  /** Moderator action: mute the member, who reads but does not write until the time chosen. */
+  moderation_mute: "Þagga niður í meðlimnum",
+  /** Label of how long a moderator mutes a member. */
+  moderation_mute_for: "Hve lengi",
+  /** How long a mute lasts: one day. */
+  moderation_mute_day: "Í einn dag",
+  /** How long a mute lasts: seven days. */
+  moderation_mute_week: "Í viku",
+  /** How long a mute lasts: thirty days. */
+  moderation_mute_month: "Í 30 daga",
+  /** Moderator action: end a member's mute. */
+  moderation_unmute: "Leyfa meðlimnum að skrifa aftur",
+  /** Moderator action: ban the member, who may not join again or read. */
+  moderation_ban: "Útiloka meðliminn",
+  /** Moderator action: lift a member's ban. */
+  moderation_unban: "Hleypa meðlimnum aftur inn",
+  /** Switch in the report queue: the reports that wait. */
+  moderation_open: "Óafgreiddar",
+  /** Switch in the report queue: the reports already closed. */
+  moderation_closed: "Afgreiddar",
+  /** The closed side of the report queue when it is empty. */
+  moderation_closed_empty: "Engar afgreiddar tilkynningar.",
+  /** Opens the picker for images to add to a post being written (decision 0065). */
+  post_add_images: "Bæta við myndum",
+  /** Button: take a chosen image out of the post being written. */
+  post_image_remove: "Taka út",
+  /** Refuses an image past the fourth on one post, before any upload (decision 0065). */
+  post_images_too_many: "Póstur getur haft mest 4 myndir.",
+  /** Refuses an image larger than 10 MB, before any upload (decision 0065). */
+  post_image_too_large: "Hver mynd má vera mest 10 MB.",
+  /** The server refused an image: not an image it reads (decision 0065). */
+  post_image_failed: "Ekki tókst að setja inn myndina. Veldu mynd á sniðinu JPEG, PNG, WebP, GIF eða AVIF.",
+  /** Text alternative of an image in a post. */
+  post_image_alt: "Mynd í póstinum",
 } as const;

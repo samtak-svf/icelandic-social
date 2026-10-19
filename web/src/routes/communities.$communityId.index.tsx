@@ -2,21 +2,21 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import type { Problem } from "../account.tsx";
 import {
-  createPost,
   getCommunity,
   joinCommunity,
   leaveCommunity,
   listCommunityPosts,
+  withdrawJoinRequest,
   type Community,
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { Composer } from "../social/composer.tsx";
+import { PostComposer } from "../social/composer.tsx";
 import { outcome, useLoad } from "../social/outcome.ts";
 import { PostView } from "../social/post.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 
-// One community (decision 0063): its name and audience, joining or leaving,
-// writing a post, and its posts, newest first. Its moderators reach the
+// One community (decision 0063): its name and audience, joining, withdrawing
+// a join request or leaving, writing a post, and its posts, newest first. Its moderators reach the
 // reports from here.
 export const Route = createFileRoute("/communities/$communityId/")({ component: CommunityPage });
 
@@ -79,7 +79,17 @@ function Membership({
 
   let control = null;
   if (community.joinRequested) {
-    control = <p>{strings.community_join_requested}</p>;
+    control = (
+      <>
+        <p>{strings.community_join_requested}</p>
+        <Button
+          disabled={busy}
+          onClick={() => void change(outcome(withdrawJoinRequest({ path }), 204))}
+        >
+          {strings.community_withdraw_request}
+        </Button>
+      </>
+    );
   } else if (community.role === null) {
     const label =
       community.audience === "open" ? strings.community_join : strings.community_request_join;
@@ -116,16 +126,7 @@ function Posts({ community }: Readonly<{ community: Community }>) {
   return (
     <section className="mt-6 flex flex-col gap-4">
       {community.role !== null && !muted && (
-        <Composer
-          label={strings.post_compose}
-          action={strings.post_publish}
-          max={5000}
-          send={async (body) => {
-            const sent = await outcome(createPost({ path: { communityId }, body: { body } }), 200);
-            if (sent.ok) reload();
-            return sent;
-          }}
-        />
+        <PostComposer communityId={communityId} posted={reload} />
       )}
       {muted && <p>{strings.community_muted}</p>}
       {posts === null && <Status>{strings.loading}</Status>}
@@ -141,7 +142,7 @@ function Posts({ community }: Readonly<{ community: Community }>) {
         <ul className="flex flex-col gap-4">
           {posts.data.posts.map((post) => (
             <li key={post.postId}>
-              <PostView post={post} linked />
+              <PostView post={post} linked deleted={reload} />
             </li>
           ))}
         </ul>

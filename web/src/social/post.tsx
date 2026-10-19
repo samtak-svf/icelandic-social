@@ -1,13 +1,24 @@
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { react, unreact, type Author, type Post } from "../generated/api.ts";
+import { useEffect, useState } from "react";
+import { useAccount, type Problem } from "../account.tsx";
+import {
+  deletePost,
+  getPostMedia,
+  react,
+  unreact,
+  type Author,
+  type Post,
+  type SocialMedia,
+} from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { outcome, when } from "./outcome.ts";
+import { Button, ProblemText, Status } from "../ui/kit.tsx";
+import { outcome, when, type Outcome } from "./outcome.ts";
 import { ReportButton } from "./report.tsx";
 
 // A post as a community's feed and its own page show it: who wrote it and
-// when, its text, its reactions and its comment count. A moderator also sees
-// what a moderator hid or removed, marked as such.
+// when, its text and images, its reactions and its comment count. A
+// moderator also sees what a moderator hid or removed, marked as such. Its
+// author deletes it; everyone else reports it.
 
 const REACTIONS = [
   ["like", "👍", strings.reaction_like],
@@ -23,6 +34,39 @@ export function authorName(author: Author | null): string {
   return author.name ?? strings.person_unnamed;
 }
 
+/** Whether the person signed in wrote what `author` wrote. */
+export function useMine(author: Author | null): boolean {
+  const { state } = useAccount();
+  return author !== null && state.status === "signed-in" && state.me.accountId === author.accountId;
+}
+
+/** Deletes the author's own post or comment, once they confirm. */
+export function DeleteButton({
+  ask,
+  remove,
+  deleted,
+}: Readonly<{ ask: string; remove: () => Promise<Outcome<unknown>>; deleted: () => void }>) {
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<Problem | null>(null);
+  async function go() {
+    if (!confirm(ask)) return;
+    setBusy(true);
+    setProblem(null);
+    const done = await remove();
+    setBusy(false);
+    if (done.ok) deleted();
+    else setProblem(done.problem);
+  }
+  return (
+    <div className="flex flex-col items-end">
+      <Button tone="danger" className="text-sm" disabled={busy} onClick={() => void go()}>
+        {strings.delete}
+      </Button>
+      <Status>{problem && <ProblemText problem={problem} />}</Status>
+    </div>
+  );
+}
+
 /** The mark on content only a moderator sees, or nothing. */
 export function StateMark({ state }: Readonly<{ state: "visible" | "hidden" | "removed" }>) {
   if (state === "visible") return null;
@@ -33,7 +77,12 @@ export function StateMark({ state }: Readonly<{ state: "visible" | "hidden" | "r
   );
 }
 
-export function PostView({ post, linked }: Readonly<{ post: Post; linked: boolean }>) {
+export function PostView({
+  post,
+  linked,
+  deleted,
+}: Readonly<{ post: Post; linked: boolean; deleted: () => void }>) {
+  const mine = useMine(post.author);
   return (
     <article
       aria-label={authorName(post.author)}
@@ -46,7 +95,8 @@ export function PostView({ post, linked }: Readonly<{ post: Post; linked: boolea
           {when(post.createdAt)}
         </time>
       </header>
-      <p className="whitespace-pre-wrap">{post.body}</p>
+      {post.body !== "" && <p className="whitespace-pre-wrap">{post.body}</p>}
+      {post.media.length > 0 && <Images postId={post.postId} media={post.media} />}
       <Reactions post={post} />
       <footer className="flex flex-wrap items-center justify-between gap-2">
         {linked ? (
@@ -60,9 +110,63 @@ export function PostView({ post, linked }: Readonly<{ post: Post; linked: boolea
         ) : (
           <span>{strings.post_comments({ count: post.commentCount })}</span>
         )}
-        <ReportButton target={{ kind: "post", id: post.postId }} />
+        {mine ? (
+          <DeleteButton
+            ask={strings.post_delete_confirm}
+            remove={() => outcome(deletePost({ path: { postId: post.postId } }), 204)}
+            deleted={deleted}
+          />
+        ) : (
+          <ReportButton target={{ kind: "post", id: post.postId }} />
+        )}
       </footer>
     </article>
+  );
+}
+
+/** A post's images, up to four, two to a row when there are several. */
+function Images({ postId, media }: Readonly<{ postId: string; media: SocialMedia[] }>) {
+  return (
+    <div className={`grid gap-1 ${media.length > 1 ? "grid-cols-2" : ""}`}>
+      {media.map((m) => (
+        <Image key={m.mediaId} postId={postId} media={m} />
+      ))}
+    </div>
+  );
+}
+
+/** One image, fetched with the client header the API asks of every call. */
+function Image({ postId, media }: Readonly<{ postId: string; media: SocialMedia }>) {
+  const [src, setSrc] = useState<string | null>(null);
+  const { mediaId } = media;
+  useEffect(() => {
+    let url: string | null = null;
+    let live = true;
+    void getPostMedia({ path: { postId, mediaId } })
+      .then((answer) => {
+        if (!live || answer.status !== 200) return;
+        url = URL.createObjectURL(answer.data);
+        setSrc(url);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+      if (url !== null) URL.revokeObjectURL(url);
+      setSrc(null);
+    };
+  }, [postId, mediaId]);
+  const box = "w-full rounded-md bg-muted object-cover";
+  const ratio = { aspectRatio: `${media.width} / ${media.height}` };
+  if (src === null) return <div className={box} style={ratio} />;
+  return (
+    <img
+      src={src}
+      alt={strings.post_image_alt}
+      width={media.width}
+      height={media.height}
+      className={box}
+      style={ratio}
+    />
   );
 }
 
