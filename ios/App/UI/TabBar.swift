@@ -29,9 +29,12 @@ struct TabBar<Tab: Hashable>: View {
                             .overlay(alignment: .topTrailing) {
                                 if item.badge > 0 { Badge(count: item.badge) }
                             }
+                        // One line always: at a large text size the name gets smaller, never breaks inside the word.
                         Text(verbatim: item.label.capitals)
                             .font(.sans(9.5, black: true, relativeTo: .caption2))
                             .tracking(0.57)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
                     }
                     .foregroundStyle(selected ? BrandTokens.Colors.primary : BrandTokens.Colors.mutedFg)
                     .padding(.top, 10)

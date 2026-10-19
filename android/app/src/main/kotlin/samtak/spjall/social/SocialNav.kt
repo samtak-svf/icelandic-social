@@ -117,10 +117,17 @@ private fun CommunityEntry(
     val model: CommunityViewModel = viewModel(key = "community-$id") { CommunityViewModel(id, social) }
     val state by model.state.collectAsStateWithLifecycle()
     val back = rememberBack(nav)
-    // An image for the post, through the same picker as a photo in a conversation (decision 0048).
+    // Images for the post, through the same picker as a photo in a conversation (decision 0048): several at once
+    // while two or more fit, since the system picker refuses a multiple pick of fewer than two, else one.
     val image =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
             uri?.let { model.pick(files.pickedPhoto(it)) }
+        }
+    val images =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.PickMultipleVisualMedia(maxOf(2, IMAGES - state.images.size)),
+        ) { uris ->
+            model.pick(uris.map(files::pickedPhoto))
         }
     // Back from a post: its comment count and reactions may have changed there.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { model.load() }
@@ -145,11 +152,9 @@ private fun CommunityEntry(
                 override fun withdraw() = model.withdraw()
 
                 override fun addImage() {
-                    if (model.roomForImage()) {
-                        image.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                        )
-                    }
+                    if (!model.roomForImage()) return
+                    val request = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    if (model.room() > 1) images.launch(request) else image.launch(request)
                 }
 
                 override fun removeImage(path: String) = model.unpick(path)

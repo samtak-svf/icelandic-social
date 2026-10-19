@@ -4,12 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.semantics.getOrNull
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Assert.assertEquals
@@ -26,7 +22,7 @@ import samtak.spjall.core.Me
 import samtak.spjall.core.Platform
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.SpjallTheme
-import kotlin.math.ceil
+import samtak.spjall.ui.wordsCut
 
 /**
  * Ég with its larger photo that opens the picker and its settings below (decisions 0043,
@@ -76,29 +72,7 @@ class MeScreenshotTest {
     @Config(fontScale = 2f)
     fun noWordIsCutAtTwiceTheTextSize() {
         compose.setContent { SpjallTheme { MeScreen(everyButton, NoMeActions()) } }
-        // A box narrower than the text's longest word cuts that word, and one narrower than the whole
-        // text cuts it when the text may not wrap.
-        val cut =
-            compose.onAllNodes(hasText("", substring = true)).fetchSemanticsNodes().mapNotNull { node ->
-                val layouts = mutableListOf<TextLayoutResult>()
-                node.config
-                    .getOrNull(SemanticsActions.GetTextLayoutResult)
-                    ?.action
-                    ?.invoke(layouts)
-                val layout = layouts.firstOrNull() ?: return@mapNotNull null
-                val intrinsics = layout.multiParagraph.intrinsics
-                val needs =
-                    if (layout.layoutInput.maxLines ==
-                        1
-                    ) {
-                        intrinsics.maxIntrinsicWidth
-                    } else {
-                        intrinsics.minIntrinsicWidth
-                    }
-                layout.layoutInput.text.text
-                    .takeIf { node.size.width < ceil(needs) }
-            }
-        assertEquals(emptyList<String>(), cut)
+        assertEquals(emptyList<String>(), compose.wordsCut())
     }
 
     /** A photo, a link and two devices: every row of buttons Ég has. */

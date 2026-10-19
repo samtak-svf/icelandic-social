@@ -194,7 +194,12 @@ fun PostCard(
         if (post.body.isNotBlank()) Text(text = post.body, style = MaterialTheme.typography.bodyLarge)
         PostImageGrid(post)
         Reactions(post, reacting, onReact)
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // Side by side while both fit; at a large text size the second goes under the first instead of cutting it.
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            itemVerticalAlignment = Alignment.CenterVertically,
+        ) {
             val comments =
                 pluralStringResource(R.plurals.post_comments, post.commentCount.toInt(), post.commentCount.toLong())
             if (onOpen != null) {
@@ -202,9 +207,7 @@ fun PostCard(
             } else {
                 Text(text = comments, style = MaterialTheme.typography.bodyMedium, color = Palette.mutedFg)
             }
-            Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
-                if (onDelete != null) DeleteControl(onDelete) else ReportControl(reported, onReport)
-            }
+            if (onDelete != null) DeleteControl(onDelete) else ReportControl(reported, onReport)
         }
     }
 }

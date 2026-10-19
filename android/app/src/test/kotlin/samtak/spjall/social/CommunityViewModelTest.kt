@@ -283,6 +283,39 @@ class CommunityViewModelTest {
         }
 
     @Test
+    fun severalPickedAtOnceKeepTheirOrderAndStopAtFour() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.MEMBER)
+            val model = model()
+            model.pick(picked().second)
+            advanceUntilIdle()
+            assertEquals(IMAGES - 1, model.room())
+            val four = List(4) { picked() }
+            model.pick(four.map { it.second })
+            advanceUntilIdle()
+            assertEquals(IMAGES, model.state.value.images.size)
+            assertEquals(
+                four.take(3).map { it.first.path },
+                model.state.value.images
+                    .drop(1),
+            )
+            assertEquals(CommunityViewModel.ImageNotice.TooMany, model.state.value.imageNotice)
+            assertEquals(0, model.room())
+        }
+
+    @Test
+    fun aLargeOneAmongSeveralIsLeftOutAndNamed() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.MEMBER)
+            val model = model()
+            val small = picked()
+            model.pick(listOf(Picked("image/jpeg", IMAGE_LIMIT + 1) { error("not read") }, small.second))
+            advanceUntilIdle()
+            assertEquals(listOf(small.first.path), model.state.value.images)
+            assertEquals(CommunityViewModel.ImageNotice.TooLarge, model.state.value.imageNotice)
+        }
+
+    @Test
     fun anImageTooLargeIsNotTaken() =
         runTest(dispatcher) {
             social.communities["k1"] = community("k1", role = CommunityRole.MEMBER)

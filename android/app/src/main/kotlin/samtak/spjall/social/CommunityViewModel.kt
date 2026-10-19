@@ -70,7 +70,7 @@ class CommunityViewModel(
 
     /** Why an image did not go with the post. */
     enum class ImageNotice {
-        /** A fifth one was picked. */
+        /** More were picked than the four a post holds. */
         TooMany,
 
         /** Over the server's 10 MB. */
@@ -134,29 +134,40 @@ class CommunityViewModel(
         return room
     }
 
-    /** Adds the image picked to the post, copied off the main thread so it can be shown and sent. */
-    fun pick(picked: Picked) {
-        if (!roomForImage()) return
-        if ((picked.size ?: 0L) > IMAGE_LIMIT) {
-            _state.update { it.copy(imageNotice = ImageNotice.TooLarge) }
-            return
-        }
-        _state.update { it.copy(imageNotice = null) }
+    /** How many more images the post takes. */
+    fun room(): Int = (IMAGES - _state.value.images.size).coerceAtLeast(0)
+
+    /** Adds the image picked to the post. */
+    fun pick(picked: Picked) = pick(listOf(picked))
+
+    /**
+     * Adds the images picked to the post, in the order picked, copied one after another off the main thread so
+     * they can be shown and sent. Those past the fourth, or over the server's limit, are left out with a notice.
+     */
+    fun pick(picked: List<Picked>) {
+        if (picked.isEmpty() || !roomForImage()) return
+        val fits = picked.take(room())
+        val taken = fits.filter { (it.size ?: 0L) <= IMAGE_LIMIT }
+        val notice =
+            when {
+                taken.size < fits.size -> ImageNotice.TooLarge
+                fits.size < picked.size -> ImageNotice.TooMany
+                else -> null
+            }
+        _state.update { it.copy(imageNotice = notice) }
+        if (taken.isEmpty()) return
         viewModelScope.launch {
-            try {
-                val file = withContext(io) { picked.read() }
-                val added = _state.value.images.size < IMAGES
-                if (added) {
-                    _state.update {
-                        it.copy(
-                            images = it.images + file.path,
-                        )
+            for (one in taken) {
+                try {
+                    val file = withContext(io) { one.read() }
+                    if (_state.value.images.size < IMAGES) {
+                        _state.update { it.copy(images = it.images + file.path) }
+                    } else {
+                        withContext(io) { file.delete() }
                     }
-                } else {
-                    withContext(io) { file.delete() }
+                } catch (_: java.io.IOException) {
+                    _state.update { it.copy(imageNotice = ImageNotice.Invalid) }
                 }
-            } catch (_: java.io.IOException) {
-                _state.update { it.copy(imageNotice = ImageNotice.Invalid) }
             }
         }
     }

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.HorizontalDivider
@@ -22,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -83,7 +85,22 @@ fun TabBar(tabs: List<Tab>) {
                     ) {
                         Icon(tab.icon, contentDescription = null, tint = tint, modifier = Modifier.size(ICON.dp))
                     }
-                    Text(text = tab.label.capitals(), style = LABEL, color = tint)
+                    // One line always: at a large text size the name gets smaller, down to its size at the standard
+                    // text size, and never breaks inside the word.
+                    val scale = LocalDensity.current.fontScale
+                    Text(
+                        text = tab.label.capitals(),
+                        style = LABEL,
+                        color = tint,
+                        maxLines = 1,
+                        softWrap = false,
+                        autoSize =
+                            if (scale > 1f) {
+                                TextAutoSize.StepBased((LABEL_SIZE / scale).sp, LABEL_SIZE.sp, 0.25.sp)
+                            } else {
+                                null
+                            },
+                    )
                 }
             }
         }
@@ -93,6 +110,7 @@ fun TabBar(tabs: List<Tab>) {
 private const val HEIGHT = 56
 private const val ICON = 20
 private const val MAX = 99
+private const val LABEL_SIZE = 9.5f
 
 private val LABEL =
-    TextStyle(fontFamily = SansFamily, fontWeight = FontWeight.Black, fontSize = 9.5.sp, letterSpacing = 0.06.em)
+    TextStyle(fontFamily = SansFamily, fontWeight = FontWeight.Black, fontSize = LABEL_SIZE.sp, letterSpacing = 0.06.em)

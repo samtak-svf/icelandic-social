@@ -1,0 +1,189 @@
+package samtak.spjall.social
+
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onRoot
+import com.github.takahirom.roborazzi.captureRoboImage
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+import samtak.spjall.conversations.SCREENSHOT_DEVICE
+import samtak.spjall.conversations.SCREENSHOT_SDK
+import samtak.spjall.core.Card
+import samtak.spjall.core.CardCommunity
+import samtak.spjall.core.CardKind
+import samtak.spjall.core.CardRef
+import samtak.spjall.core.CommunityAudience
+import samtak.spjall.core.CommunityRole
+import samtak.spjall.core.PostImage
+import samtak.spjall.core.ReactionCount
+import samtak.spjall.core.ReactionKind
+import samtak.spjall.core.ReportTargetKind
+import samtak.spjall.ui.SpjallTheme
+import samtak.spjall.ui.wordsCut
+import java.lang.reflect.Proxy
+
+/**
+ * The social screens (decisions 0060, 0065): the list of communities, a community with a post of two images,
+ * a post with its comments, and the report queue. Each in light, dark and at twice the text size, where no
+ * word may be cut. See ConversationsScreenshotTest.
+ */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [SCREENSHOT_SDK], qualifiers = SCREENSHOT_DEVICE, fontScale = 1f)
+class SocialScreenshotTest {
+    @get:Rule val compose = createComposeRule()
+
+    private val choir = community("k1", role = CommunityRole.OWNER).copy(description = "Æfingar á þriðjudögum")
+    private val withImages =
+        post(
+            "p1",
+            body = "Myndir frá tónleikunum í gær",
+            reactions = listOf(ReactionCount(ReactionKind.LOVE, 3uL)),
+            mine = ReactionKind.LOVE,
+            comments = 2uL,
+        ).copy(images = listOf(PostImage("m1", 800u, 600u), PostImage("m2", 600u, 800u)))
+
+    private val communitiesState =
+        CommunitiesViewModel.State(
+            mine = listOf(choir, community("k2", name = "Garðyrkjufélagið", role = CommunityRole.MEMBER)),
+            found =
+                listOf(
+                    community("k3", name = "Hlauparar í Laugardal"),
+                    community("k4", name = "Foreldrafélagið", audience = CommunityAudience.PRIVATE),
+                ),
+            verified = true,
+            loaded = true,
+        )
+
+    private val communityState =
+        CommunityViewModel.State(
+            community = choir,
+            posts = listOf(withImages, post("p2", body = "Næsta æfing fellur niður", author = self)),
+            loaded = true,
+            me = self.accountId,
+            writes = true,
+        )
+
+    private val postState =
+        PostViewModel.State(
+            post = withImages,
+            comments =
+                listOf(
+                    comment("c1", "p1", body = "Takk fyrir frábært kvöld"),
+                    comment("c2", "p1", body = "Sammála", author = self),
+                ),
+            loaded = true,
+            me = self.accountId,
+        )
+
+    private val reportsState =
+        ReportsViewModel.State(
+            reports = listOf(report("r1", ReportTargetKind.POST, "p1"), report("r2", ReportTargetKind.COMMENT, "c1")),
+            cards =
+                mapOf(
+                    "p1" to
+                        Card.Post(
+                            CardRef(CardKind.POST, "p1"),
+                            CardCommunity("k1", choir.name),
+                            anna,
+                            "Kaupið ódýr úr á þessari síðu",
+                            null,
+                            1_700_000_000_000uL,
+                        ),
+                    "c1" to
+                        Card.Comment(
+                            CardRef(CardKind.COMMENT, "c1"),
+                            CardCommunity("k1", choir.name),
+                            "p1",
+                            anna,
+                            "Þetta er dónalegt",
+                            1_700_000_000_000uL,
+                        ),
+                ),
+            loaded = true,
+        )
+
+    private fun shoot(screen: @Composable () -> Unit) {
+        compose.setContent { SpjallTheme { screen() } }
+        compose.onRoot().captureRoboImage()
+    }
+
+    private fun noWordCut(screen: @Composable () -> Unit) {
+        compose.setContent { SpjallTheme { screen() } }
+        assertEquals(emptyList<String>(), compose.wordsCut())
+    }
+
+    private val communitiesScreen = @Composable { CommunitiesScreen(communitiesState, none<CommunitiesActions>()) }
+    private val communityScreen = @Composable { CommunityScreen(communityState, none<CommunityActions>()) }
+    private val postScreen = @Composable { PostScreen(postState, none<PostActions>()) }
+    private val reportsScreen = @Composable { ReportsScreen(reportsState, none<ReportsActions>()) }
+
+    @Test
+    fun communities() = shoot(communitiesScreen)
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun communitiesAtNight() = shoot(communitiesScreen)
+
+    @Test
+    @Config(fontScale = 2f)
+    fun communitiesLargeText() = shoot(communitiesScreen)
+
+    @Test
+    @Config(fontScale = 2f)
+    fun communitiesCutsNoWord() = noWordCut(communitiesScreen)
+
+    @Test
+    fun community() = shoot(communityScreen)
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun communityAtNight() = shoot(communityScreen)
+
+    @Test
+    @Config(fontScale = 2f)
+    fun communityLargeText() = shoot(communityScreen)
+
+    @Test
+    @Config(fontScale = 2f)
+    fun communityCutsNoWord() = noWordCut(communityScreen)
+
+    @Test
+    fun post() = shoot(postScreen)
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun postAtNight() = shoot(postScreen)
+
+    @Test
+    @Config(fontScale = 2f)
+    fun postLargeText() = shoot(postScreen)
+
+    @Test
+    @Config(fontScale = 2f)
+    fun postCutsNoWord() = noWordCut(postScreen)
+
+    @Test
+    fun reports() = shoot(reportsScreen)
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun reportsAtNight() = shoot(reportsScreen)
+
+    @Test
+    @Config(fontScale = 2f)
+    fun reportsLargeText() = shoot(reportsScreen)
+
+    @Test
+    @Config(fontScale = 2f)
+    fun reportsCutsNoWord() = noWordCut(reportsScreen)
+}
+
+/** Actions that do nothing: a screenshot only draws. */
+private inline fun <reified T> none(): T =
+    Proxy.newProxyInstance(T::class.java.classLoader, arrayOf(T::class.java)) { _, _, _ -> null } as T
