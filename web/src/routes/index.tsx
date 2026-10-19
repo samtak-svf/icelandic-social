@@ -5,10 +5,11 @@ import { getPhoto, removePhoto, setPhoto, type Me } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { squarePhoto } from "../photo.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
+import { VerifyCta } from "../ui/verify.tsx";
 
-// Ég (decisions 0034, 0039): the name, its mark and the photo. The photo is the
-// one thing here the person changes; the name comes from Google or from Kenni,
-// and is never typed (decision 0043).
+// Ég (decisions 0034, 0039): the name, its mark or the way to it (0069), and
+// the photo. The photo is the one thing here the person changes; the name
+// comes from Google or from Kenni, and is never typed (decision 0043).
 export const Route = createFileRoute("/")({ component: MePage });
 
 function MePage() {
@@ -29,6 +30,7 @@ function MePage() {
             {strings.verified_short}
           </p>
         )}
+        <VerifyCta />
       </section>
       <PhotoControls me={me} />
     </>

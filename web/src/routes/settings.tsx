@@ -4,6 +4,7 @@ import { refused, useAccount, type Problem } from "../account.tsx";
 import { endOtherSessions, endSession, listSessions, type SessionInfo } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
+import { VerifyCta } from "../ui/verify.tsx";
 
 // Settings: where this account is signed in, and signing out (decision 0061).
 // Ending another session signs that client out at once; a phone's device goes
@@ -76,6 +77,9 @@ function Settings() {
   return (
     <>
       <h1 className="font-headline text-3xl">{strings.settings_title}</h1>
+      <div className="mt-6">
+        <VerifyCta />
+      </div>
       <section aria-labelledby="sessions" className="mt-6">
         <h2 id="sessions" className="text-xl font-semibold">
           {strings.sessions_title}

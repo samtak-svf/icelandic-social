@@ -245,10 +245,20 @@ describe("POST /v1/me/identities with merge", () => {
     const older = await registered(await signIn({ kennitala, name: "Prófun Prófsdóttir" }));
     const sub = newSubject();
     const me = await registered(await withGoogle({ sub, name: "Gúgli" }));
+    const sessionOf = () =>
+      env.DB.prepare(
+        `SELECT s.session_id AS sessionId, s.account_id AS accountId
+           FROM devices d JOIN sessions s ON s.session_id = d.session_id WHERE d.device_id = ?`,
+      )
+        .bind(me.deviceId)
+        .first<{ sessionId: string; accountId: string }>();
+    const session = await sessionOf();
     const response = await merge(me, { kennitala, name: "Prófun Prófsdóttir" });
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ accountId: older.accountId });
     expect(await exists(me.accountId)).toBe(false);
+    // The phone's session moves with it rather than being healed as a new one (0069).
+    expect(await sessionOf()).toEqual({ ...session, accountId: older.accountId });
     expect((await identities(older.accountId)).map((i) => i.provider)).toEqual(["google", "kenni"]);
     const now = (await (await fetch("/v1/me", { headers: auth(me) })).json()) as {
       accountId: string;

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as CommunitiesIndexRouteImport } from './routes/communities.index'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as CommunitiesCommunityIdIndexRouteImport } from './routes/communities.$communityId.index'
@@ -30,6 +31,11 @@ const NotificationsRoute = NotificationsRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyRoute = VerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CommunitiesIndexRoute = CommunitiesIndexRouteImport.update({
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/notifications': typeof NotificationsRoute
   '/settings': typeof SettingsRoute
+  '/verify': typeof VerifyRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities/': typeof CommunitiesIndexRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
@@ -68,6 +75,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/notifications': typeof NotificationsRoute
   '/settings': typeof SettingsRoute
+  '/verify': typeof VerifyRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities': typeof CommunitiesIndexRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
@@ -78,6 +86,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/notifications': typeof NotificationsRoute
   '/settings': typeof SettingsRoute
+  '/verify': typeof VerifyRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities/': typeof CommunitiesIndexRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
@@ -89,6 +98,7 @@ export interface FileRouteTypes {
     | '/'
     | '/notifications'
     | '/settings'
+    | '/verify'
     | '/posts/$postId'
     | '/communities/'
     | '/communities/$communityId/reports'
@@ -98,6 +108,7 @@ export interface FileRouteTypes {
     | '/'
     | '/notifications'
     | '/settings'
+    | '/verify'
     | '/posts/$postId'
     | '/communities'
     | '/communities/$communityId/reports'
@@ -107,6 +118,7 @@ export interface FileRouteTypes {
     | '/'
     | '/notifications'
     | '/settings'
+    | '/verify'
     | '/posts/$postId'
     | '/communities/'
     | '/communities/$communityId/reports'
@@ -117,6 +129,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   NotificationsRoute: typeof NotificationsRoute
   SettingsRoute: typeof SettingsRoute
+  VerifyRoute: typeof VerifyRoute
   PostsPostIdRoute: typeof PostsPostIdRoute
   CommunitiesIndexRoute: typeof CommunitiesIndexRoute
   CommunitiesCommunityIdReportsRoute: typeof CommunitiesCommunityIdReportsRoute
@@ -144,6 +157,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify': {
+      id: '/verify'
+      path: '/verify'
+      fullPath: '/verify'
+      preLoaderRoute: typeof VerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/communities/': {
@@ -181,6 +201,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   NotificationsRoute: NotificationsRoute,
   SettingsRoute: SettingsRoute,
+  VerifyRoute: VerifyRoute,
   PostsPostIdRoute: PostsPostIdRoute,
   CommunitiesIndexRoute: CommunitiesIndexRoute,
   CommunitiesCommunityIdReportsRoute: CommunitiesCommunityIdReportsRoute,

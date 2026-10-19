@@ -2,7 +2,7 @@
 
 - Status: accepted; implemented in the backend (#322: the sign-in routes and callbacks on the
   web host, and the Kenni web client's secret); the web app at `/` comes with the first web
-  build
+  build; amended by 0069 (Kenni on the web links to a signed-in account and is no way in)
 - Date: 2026-10-17
 - Decided by: Guðröður Atli Jónsson
 - Builds on: [0027](0027-kenni-client-id-spjall.md) (the Kenni client),
@@ -10,6 +10,7 @@
   [0060](0060-a-social-platform-with-an-encrypted-messenger.md) (one Worker),
   [0061](0061-account-identity-session-and-device-are-separate.md) (the session cookie and
   web sign-in)
+- Amended by: [0069](0069-web-kenni-links-not-signs-in.md)
 - Amends: [0004](0004-frozen-identifiers-vs-brand.md) (`hosts.web`,
   `hosts.webSignInCallbacks` and `identity.kenniWebClientId` are frozen ids)
 

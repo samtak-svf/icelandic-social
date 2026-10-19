@@ -1,8 +1,8 @@
 import type { Browser, Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
 import { png } from "./images.ts";
-import { expect, serveOrigin, test, WEB } from "./origin.ts";
-import { newKennitala } from "./people.ts";
+import { expect, serveOrigin, test } from "./origin.ts";
+import { signInVerified } from "./accounts.ts";
 
 // The first social slice on the web (#291), through what a person sees: a
 // member finds and joins a community, posts, comments, reacts, is told of a
@@ -12,17 +12,11 @@ import { newKennitala } from "./people.ts";
 /** Where `cf dev` listens, for its dev-only paths. */
 const DEV = process.env.SPJALL_DEV_URL ?? "http://127.0.0.1:8787";
 
-/** A person in a browser of their own, signed in with Kenni as `name`. */
+/** A person in a browser of their own, signed in with Google and marked by Kenni as `name`. */
 async function person(browser: Browser, name: string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await serveOrigin(page);
-  await page.goto(`${WEB}/`);
-  await page.getByRole("link", { name: strings.sign_in_kenni }).click();
-  await page.locator('input[name="login_hint"]').fill(newKennitala());
-  await page.locator('input[name="x_name"]').fill(name);
-  await page.getByRole("button").click();
-  await page.waitForURL(`${WEB}/`);
-  await expect(page.getByText(name)).toBeVisible();
+  await signInVerified(page, name);
   return page;
 }
 

@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
 import { png } from "./images.ts";
 import { expect, serveOrigin, test, WEB } from "./origin.ts";
+import { addMark, signIn, signInVerified } from "./accounts.ts";
 import { newGoogleSubject, newKennitala } from "./people.ts";
 
 // The signed-in web app (#284): signing in from its own page, Ég, settings,
@@ -12,19 +13,6 @@ import { newGoogleSubject, newKennitala } from "./people.ts";
 
 const NAME = "Prófa Prófsdóttir";
 
-/** Signs in from the sign-in page as `person`, through the provider's fake. */
-async function signIn(page: Page, provider: "kenni" | "google", person: string) {
-  await page.goto(`${WEB}/`);
-  await page.getByRole("heading", { name: strings.sign_in_title }).waitFor();
-  const button = provider === "kenni" ? strings.sign_in_kenni : strings.sign_in_google;
-  await page.getByRole("link", { name: button }).click();
-  await page.locator('input[name="login_hint"]').fill(person);
-  await page.locator('input[name="x_name"]').fill(NAME);
-  await page.getByRole("button").click();
-  await page.waitForURL(`${WEB}/`);
-  await expect(page.getByText(NAME)).toBeVisible();
-}
-
 /** The account, as the API describes it to this browser. */
 async function me(page: Page): Promise<unknown> {
   return page.evaluate(async () => {
@@ -34,18 +22,42 @@ async function me(page: Page): Promise<unknown> {
   });
 }
 
-test("signs in with Kenni and shows the verified name on Ég", async ({ page }) => {
-  await signIn(page, "kenni", newKennitala());
-  await expect(page.getByText(strings.verified_short)).toBeVisible();
+test("offers only Google to sign in: Kenni is no way in", async ({ page }) => {
+  await page.goto(`${WEB}/`);
+  await page.getByRole("heading", { name: strings.sign_in_title }).waitFor();
+  await expect(page.getByRole("link")).toHaveCount(1);
+  await expect(page.getByRole("link", { name: strings.sign_in_google })).toBeVisible();
+  await expect(page.locator('a[href^="/auth/kenni"]')).toHaveCount(0);
+});
+
+test("adds the mark with Kenni from Ég and shows the verified name", async ({ page }) => {
+  await signInVerified(page, NAME);
+  await expect(page.getByRole("link", { name: strings.verify_cta })).toHaveCount(0);
   await expect(page.getByRole("link", { name: strings.tab_me })).toHaveAttribute(
     "aria-current",
     "page",
   );
-  expect(await me(page)).toMatchObject({ devices: [] });
+  expect(await me(page)).toMatchObject({ verified: true, devices: [] });
 });
 
+test("says when the kennitala already holds another account with Google", async ({
+  page,
+  browser,
+}) => {
+  const kennitala = newKennitala();
+  const other = await browser.newContext();
+  const first = await other.newPage();
+  await serveOrigin(first);
+  await signIn(first, NAME);
+  await addMark(first, NAME, kennitala);
+  await signIn(page, NAME);
+  await addMark(page, NAME, kennitala);
+  await expect(page.getByRole("alert")).toHaveText(strings.identity_taken);
+  expect(await me(page)).toMatchObject({ verified: false });
+  await other.close();
+});
 test("sets, changes and removes the photo on Ég", async ({ page }) => {
-  await signIn(page, "google", newGoogleSubject());
+  await signIn(page, NAME);
   await expect(page.getByText(strings.verified_short)).toHaveCount(0);
   const photo = page.getByRole("img", { name: strings.photo_own_alt });
   await expect(photo).toHaveCount(0);
@@ -70,12 +82,12 @@ test("sets, changes and removes the photo on Ég", async ({ page }) => {
 });
 
 test("ends another browser's session from settings", async ({ page, browser }) => {
-  const person = newKennitala();
+  const person = newGoogleSubject();
   const other = await browser.newContext();
   const elsewhere = await other.newPage();
   await serveOrigin(elsewhere);
-  await signIn(elsewhere, "kenni", person);
-  await signIn(page, "kenni", person);
+  await signIn(elsewhere, NAME, person);
+  await signIn(page, NAME, person);
 
   await page.getByRole("link", { name: strings.settings_title }).click();
   await expect(page.getByRole("heading", { name: strings.sessions_title })).toBeVisible();
@@ -97,7 +109,7 @@ test("ends another browser's session from settings", async ({ page, browser }) =
 });
 
 test("signs out from settings", async ({ page }) => {
-  await signIn(page, "google", newGoogleSubject());
+  await signIn(page, NAME);
   await page.getByRole("link", { name: strings.settings_title }).click();
   await page.getByRole("button", { name: strings.sign_out, exact: true }).click();
   await expect(page.getByRole("heading", { name: strings.sign_in_title })).toBeVisible();

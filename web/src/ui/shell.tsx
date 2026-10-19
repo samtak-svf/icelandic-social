@@ -86,28 +86,21 @@ function Frame({ children }: Readonly<{ children: ReactNode }>) {
 
 /**
  * Signing in is a full navigation to the Worker's start route, which sends the
- * browser to the provider and back with the session cookie (decision 0062).
+ * browser to Google and back with the session cookie (decision 0062). Google
+ * is the only way in; Kenni adds the mark afterwards (decision 0069).
  */
 function SignIn() {
   return (
     <Frame>
       <h1 className="font-headline text-4xl">{strings.app_name}</h1>
       <h2 className="mt-8 text-xl font-semibold">{strings.sign_in_title}</h2>
-      <div className="mt-4 flex flex-col gap-3">
-        <a
-          href="/auth/kenni/start"
-          className="flex min-h-11 items-center justify-center rounded-md bg-primary px-4 font-medium text-primary-fg"
-        >
-          {strings.sign_in_kenni}
-        </a>
-        <a
-          href="/auth/google/start"
-          className="flex min-h-11 items-center justify-center rounded-md border border-border-strong px-4 font-medium"
-        >
-          {strings.sign_in_google}
-        </a>
-      </div>
-      <p className="mt-4 text-sm text-muted-fg">{strings.sign_in_web_hint}</p>
+      <a
+        href="/auth/google/start"
+        className="mt-4 flex min-h-11 items-center justify-center rounded-md bg-primary px-4 font-medium text-primary-fg"
+      >
+        {strings.sign_in_google}
+      </a>
+      <p className="mt-4 text-sm text-muted-fg">{strings.sign_in_hint}</p>
       <p className="mt-8 text-sm text-muted-fg">{strings.residency_claim}</p>
     </Frame>
   );

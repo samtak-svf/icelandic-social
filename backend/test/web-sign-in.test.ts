@@ -1,11 +1,12 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/app.ts";
-import { newKennitala, newSubject } from "./oidc.ts";
+import { newKennitala, newSubject, signIn } from "./oidc.ts";
 import { worker } from "./main.ts";
 
-// Web sign-in (decisions 0061, 0062): the Worker runs the flow, and a browser
-// ends with a session cookie and no device.
+// Web sign-in (decisions 0061, 0062, 0069): the Worker runs the flow, and a
+// browser signs in with Google and ends with a session cookie and no device.
+// Kenni only adds the mark to the account a signed-in browser holds.
 
 const BASE = "https://spjall.test";
 const WEB = "https://spjall.samtak.is";
@@ -20,10 +21,11 @@ function cookieOf(response: Response, name: string) {
 }
 
 /** GET /auth/{provider}/start: the provider's URL and the flow cookie. */
-async function start(provider: Provider = "kenni", next?: string) {
+async function start(provider: Provider = "google", next?: string, session?: string) {
   const query = next === undefined ? "" : `?next=${encodeURIComponent(next)}`;
   const response = await worker.fetch(`${BASE}/auth/${provider}/start${query}`, {
     redirect: "manual",
+    headers: session ? { cookie: session } : {},
   });
   return {
     response,
@@ -43,20 +45,39 @@ async function atProvider(location: string, provider: Provider, person?: string)
   return new URL(redirect.headers.get("location") ?? "");
 }
 
-function callback(back: URL, cookie: string | undefined) {
+function callback(back: URL, ...cookies: (string | undefined)[]) {
+  const cookie = cookies.filter(Boolean).join("; ");
   return worker.fetch(`${BASE}${back.pathname}${back.search}`, {
     redirect: "manual",
     headers: { "user-agent": FIREFOX, ...(cookie ? { cookie } : {}) },
   });
 }
 
-/** A whole web sign-in: the callback's response. */
-async function webSignIn(
-  provider: Provider = "kenni",
-  { next, person }: { next?: string; person?: string } = {},
+/** A whole web sign-in with Google: the callback's response. */
+async function webSignIn({ next, person }: { next?: string; person?: string } = {}) {
+  const { location, flow } = await start("google", next);
+  return callback(await atProvider(location, "google", person), flow);
+}
+
+/** A signed-in browser: its session cookie and account. */
+async function browser(person?: string) {
+  const session = cookieOf(await webSignIn({ person }), "__Host-session")!;
+  return { session, accountId: (await meOf(session)).accountId };
+}
+
+async function meOf(session: string) {
+  const me = await worker.fetch(`${BASE}/v1/me`, { headers: { cookie: session } });
+  expect(me.status).toBe(200);
+  return (await me.json()) as { accountId: string; verified: boolean };
+}
+
+/** The signed-in browser adds the mark with Kenni: the callback's response. */
+async function addMark(
+  session: string,
+  { next, kennitala }: { next?: string; kennitala?: string } = {},
 ) {
-  const { location, flow } = await start(provider, next);
-  return callback(await atProvider(location, provider, person), flow);
+  const { location, flow } = await start("kenni", next, session);
+  return callback(await atProvider(location, "kenni", kennitala), flow, session);
 }
 
 const countOf = async (sql: string, ...bind: unknown[]) =>
@@ -66,7 +87,8 @@ const countOf = async (sql: string, ...bind: unknown[]) =>
 
 describe("the start", () => {
   it("sends the browser to the provider with PKCE, state and nonce, and seals the flow", async () => {
-    const { response, location, flow } = await start("kenni", "/c/abc");
+    const { session } = await browser();
+    const { response, location, flow } = await start("kenni", "/c/abc", session);
     expect(response.status).toBe(302);
     const url = new URL(location);
     expect(url.pathname).toBe("/dev/kenni/oidc/auth");
@@ -93,9 +115,17 @@ describe("the start", () => {
       "/a b",
       "",
     ]) {
-      expect((await start("kenni", next)).response.status).toBe(400);
+      expect((await start("google", next)).response.status).toBe(400);
     }
-    expect((await start("kenni", "/c/abc?x=1")).response.status).toBe(302);
+    expect((await start("google", "/c/abc?x=1")).response.status).toBe(302);
+  });
+
+  it("starts no Kenni flow without a signed-in session: Kenni is no way in", async () => {
+    for (const session of [undefined, `__Host-session=st_${"A".repeat(43)}`]) {
+      const { response, flow } = await start("kenni", "/", session);
+      expect(response.status).toBe(401);
+      expect(flow).toBeUndefined();
+    }
   });
 
   it("answers 503 for Kenni while its web client has no secret", async () => {
@@ -106,20 +136,16 @@ describe("the start", () => {
 });
 
 describe("the callback", () => {
-  for (const provider of ["kenni", "google"] as const) {
-    it(`signs in with ${provider}, sets the session cookie and returns to the asked path`, async () => {
-      const response = await webSignIn(provider, { next: "/c/abc?x=1" });
-      expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe("/c/abc?x=1");
-      const line = response.headers.getSetCookie().find((c) => c.startsWith("__Host-session="))!;
-      for (const attribute of ["HttpOnly", "Secure", "SameSite=Lax", "Path=/"])
-        expect(line).toContain(attribute);
-      expect(line).not.toContain("Domain");
-      const cookie = cookieOf(response, "__Host-session")!;
-      const me = await worker.fetch(`${BASE}/v1/me`, { headers: { cookie } });
-      expect(me.status).toBe(200);
-    });
-  }
+  it("signs in with Google, sets the session cookie and returns to the asked path", async () => {
+    const response = await webSignIn({ next: "/c/abc?x=1" });
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/c/abc?x=1");
+    const line = response.headers.getSetCookie().find((c) => c.startsWith("__Host-session="))!;
+    for (const attribute of ["HttpOnly", "Secure", "SameSite=Lax", "Path=/"])
+      expect(line).toContain(attribute);
+    expect(line).not.toContain("Domain");
+    await meOf(cookieOf(response, "__Host-session")!);
+  });
 
   it("makes a session and never a device, labelled by product names only", async () => {
     const devices = await countOf("SELECT count(*) AS n FROM devices");
@@ -141,24 +167,13 @@ describe("the callback", () => {
   });
 
   it("signs a returning person in to the account they have", async () => {
-    const person = newKennitala();
-    const ids = [];
-    for (const _ of [1, 2]) {
-      const cookie = cookieOf(await webSignIn("kenni", { person }), "__Host-session")!;
-      ids.push(
-        (
-          (await (await worker.fetch(`${BASE}/v1/me`, { headers: { cookie } })).json()) as {
-            accountId: string;
-          }
-        ).accountId,
-      );
-    }
-    expect(ids[0]).toBe(ids[1]);
+    const person = newSubject();
+    expect((await browser(person)).accountId).toBe((await browser(person)).accountId);
   });
 
   it("refuses a state other than its flow's", async () => {
     const { location, flow } = await start();
-    const back = await atProvider(location, "kenni");
+    const back = await atProvider(location, "google");
     back.searchParams.set("state", "A".repeat(43));
     const response = await callback(back, flow);
     expect(response.status).toBe(400);
@@ -167,14 +182,14 @@ describe("the callback", () => {
 
   it("refuses a callback without its flow cookie, so without its verifier", async () => {
     const { location } = await start();
-    const response = await callback(await atProvider(location, "kenni"), undefined);
+    const response = await callback(await atProvider(location, "google"), undefined);
     expect(response.status).toBe(400);
   });
 
   it("redeems with the flow's own verifier: another flow's cookie and state do not pass", async () => {
     const first = await start();
     const second = await start();
-    const back = await atProvider(first.location, "kenni");
+    const back = await atProvider(first.location, "google");
     back.searchParams.set("state", new URL(second.location).searchParams.get("state")!);
     const response = await callback(back, second.flow);
     expect(response.status).toBe(403);
@@ -182,7 +197,7 @@ describe("the callback", () => {
   });
 
   it("refuses a flow cookie for the other provider, or one it did not seal", async () => {
-    const { location, flow } = await start("google");
+    const { location, flow } = await start();
     const back = await atProvider(location, "google");
     const kenni = new URL(`${WEB}/auth/kenni/callback${back.search}`);
     expect((await callback(kenni, flow)).status).toBe(400);
@@ -192,7 +207,7 @@ describe("the callback", () => {
 
   it("spends the flow: the cookie is cleared, and a replayed callback is refused", async () => {
     const { location, flow } = await start();
-    const back = await atProvider(location, "kenni");
+    const back = await atProvider(location, "google");
     const first = await callback(back, flow);
     expect(first.status).toBe(303);
     const cleared = first.headers.getSetCookie().find((c) => c.startsWith("__Host-sign-in="))!;
@@ -211,5 +226,71 @@ describe("the callback", () => {
     expect((await post("https://evil.example")).status).toBe(403);
     expect((await post()).status).toBe(403);
     expect((await post(WEB)).status).toBe(200);
+  });
+});
+
+describe("the Kenni callback", () => {
+  const accounts = () => countOf("SELECT count(*) AS n FROM accounts");
+  const providers = async (accountId: string) =>
+    (
+      await env.DB.prepare("SELECT provider FROM identities WHERE account_id = ? ORDER BY provider")
+        .bind(accountId)
+        .all<{ provider: string }>()
+    ).results.map((r) => r.provider);
+
+  it("adds the mark to the signed-in account and returns with verify=linked", async () => {
+    const { session, accountId } = await browser();
+    const before = await accounts();
+    const response = await addMark(session, { next: "/me?tab=1" });
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/me?tab=1&verify=linked");
+    expect(cookieOf(response, "__Host-session")).toBeUndefined();
+    expect(await accounts()).toBe(before);
+    expect(await providers(accountId)).toEqual(["google", "kenni"]);
+    expect(await meOf(session)).toMatchObject({ accountId, verified: true });
+  });
+
+  it("joins an older Kenni account, and the browser's session moves with it", async () => {
+    const kennitala = newKennitala();
+    const older = await signIn({ kennitala });
+    const { accountId: olderId } = (await older.json()) as { accountId: string };
+    const { session, accountId } = await browser();
+    const response = await addMark(session, { kennitala });
+    expect(response.headers.get("location")).toBe("/?verify=merged");
+    expect(await meOf(session)).toMatchObject({ accountId: olderId, verified: true });
+    expect(await providers(olderId)).toEqual(["google", "kenni"]);
+    expect(
+      await countOf("SELECT count(*) AS n FROM accounts WHERE account_id = ?", accountId),
+    ).toBe(0);
+  });
+
+  it("returns with verify=taken when another account with Google holds the kennitala", async () => {
+    const kennitala = newKennitala();
+    const first = await browser();
+    expect((await addMark(first.session, { kennitala })).headers.get("location")).toBe(
+      "/?verify=linked",
+    );
+    const second = await browser();
+    expect((await addMark(second.session, { kennitala })).headers.get("location")).toBe(
+      "/?verify=taken",
+    );
+    expect(await meOf(second.session)).toMatchObject({
+      accountId: second.accountId,
+      verified: false,
+    });
+  });
+
+  it("makes no account, and acts for no other session than the one that started it", async () => {
+    const { session } = await browser();
+    const other = await browser();
+    const before = await accounts();
+    const { location, flow } = await start("kenni", "/", session);
+    const back = await atProvider(location, "kenni");
+    expect((await callback(back, flow)).status).toBe(401);
+    const again = await start("kenni", "/", session);
+    const backAgain = await atProvider(again.location, "kenni");
+    expect((await callback(backAgain, again.flow, other.session)).status).toBe(401);
+    expect(await accounts()).toBe(before);
+    expect(await providers(other.accountId)).toEqual(["google"]);
   });
 });

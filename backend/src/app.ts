@@ -1,6 +1,7 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { createMiddleware } from "hono/factory";
 import { deleteAccount } from "./account-deletion.ts";
+import { linkOrJoin } from "./account-linking.ts";
 import {
   createConversationRoute,
   getConversationDevicesRoute,
@@ -45,7 +46,6 @@ import {
   inviteRoutes,
   sessionRoutes,
   linkHost,
-  linkIdentity,
   me,
   ownsLeaf,
   registerDevice,
@@ -161,7 +161,6 @@ export function createApp() {
   });
 
   app.openapi(linkIdentityRoute, async (c) => {
-    const { accountId } = c.var.device;
     const body = c.req.valid("json");
     const person = await authorized(c.env, body);
     if ("error" in person) {
@@ -169,24 +168,9 @@ export function createApp() {
         ? fail(c, 403, person.error)
         : fail(c, 503, person.error);
     }
-    const linked = await linkIdentity(c.env, c.var.device, person.ok, { merge: body.merge });
-    if ("error" in linked) {
-      log("identity.link_refused", {
-        accountId,
-        code: linked.error,
-        provider: body.provider,
-        requestId: c.var.requestId,
-      });
-      return fail(c, 409, linked.error);
-    }
-    // A join leaves the calling account empty; it goes as DELETE /v1/me (0035).
-    if (linked.ok.merged) await deleteAccount(c.env, accountId);
-    const into = { accountId: linked.ok.accountId, deviceId: c.var.device.deviceId };
-    if (linked.ok.merged) log("account.merged_away", { accountId });
-    log(linked.ok.merged ? "identity.merged" : "identity.linked", {
-      ...into,
-      provider: body.provider,
-    });
+    const caller = { ...c.var.session, deviceId: c.var.device.deviceId };
+    const linked = await linkOrJoin(c.env, caller, person.ok, c.var.requestId, body.merge ?? false);
+    if ("error" in linked) return fail(c, 409, linked.error);
     // A client that may be moved hears where it now is (decision 0035).
     return body.merge ? c.json({ accountId: linked.ok.accountId }, 200) : c.body(null, 204);
   });
@@ -452,7 +436,7 @@ export function createApp() {
 
   // The link host shares the Worker but not the contract.
   app.route("/", linkHost());
-  app.route("/", webSignInRoutes());
+  app.route("/", webSignInRoutes(linkOrJoin));
 
   return app;
 }

@@ -9,7 +9,6 @@ export {
   type Device,
   dropAccount,
   dropDeadPushToken,
-  linkIdentity,
   me,
   orphans,
   type PushTarget,
@@ -30,6 +29,7 @@ export {
   unblock,
 } from "./blocks.ts";
 export { inviteRoutes } from "./invites.ts";
+export { type Caller, linkIdentity } from "./linking.ts";
 export { sessionRoutes } from "./session-routes.ts";
 export { claim, expireKeyPackages, ownsLeaf, upload } from "./key-packages.ts";
 export { linkHost } from "./link.ts";
@@ -42,5 +42,5 @@ export {
   sessionCookie,
   sessionForSecret,
 } from "./sessions.ts";
-export { authorized, signInConfig, unavailable } from "./providers.ts";
+export { authorized, type Person, signInConfig, unavailable } from "./providers.ts";
 export { webSignInRoutes } from "./web-sign-in.ts";

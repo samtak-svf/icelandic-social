@@ -12,13 +12,16 @@ import {
 import { fail } from "../errors.ts";
 import { log } from "../log.ts";
 import { enrol, randomToken } from "./accounts.ts";
-import { authorizationUrl, unavailable, webAuthorized } from "./providers.ts";
+import type { Caller, Linked } from "./linking.ts";
+import { authorizationUrl, type Person, unavailable, webAuthorized } from "./providers.ts";
 import {
   browserSession,
   IDLE_MS,
   newBrowserSession,
   SESSION_COOKIE,
+  SESSION_SECRET,
   sessionCookie,
+  sessionForSecret,
   sessionLabel,
 } from "./sessions.ts";
 
@@ -26,9 +29,12 @@ import {
 // code flow, so the browser never sees a code verifier or an ID token. The
 // start route keeps the request's state, nonce and verifier in a sealed
 // `__Host-` cookie and sends the browser to the provider; the callback on the
-// web host checks the cookie against what came back, redeems the code, signs
-// the person in by the same rules as the apps and sets the session cookie.
-// A browser gets a session and never a device.
+// web host checks the cookie against what came back and redeems the code.
+// Google signs the person in by the same rules as the apps and sets the
+// session cookie; a browser gets a session and never a device. Kenni is no
+// way in (decisions 0035, 0069): it links to the account of the signed-in
+// session that started the flow, and joins an older Kenni account as the
+// apps' link does.
 
 /** The cookie that holds one sign-in's flow until its callback. */
 const FLOW_COOKIE = "sign-in";
@@ -37,6 +43,8 @@ const FLOW_MS = 10 * 60 * 1000;
 
 type Flow = {
   provider: ProviderName;
+  /** The browser session a Kenni flow links for; a Google flow has none. */
+  sessionId?: string;
   state: string;
   nonce: string;
   verifier: string;
@@ -110,6 +118,29 @@ async function unseal(env: Env, cookie: string): Promise<Flow | null> {
  */
 const SAME_ORIGIN_PATH = /^\/(?![/\\])[\x21-\x7e]*$/;
 
+/**
+ * Links a Kenni person to the caller's account, joining an older account as
+ * POST /v1/me/identities with merge does, and deletes the account a join
+ * leaves empty. The app passes it in, since deleting an account reaches every
+ * module and lives above them.
+ */
+export type LinkOrJoin = (
+  env: Env,
+  caller: Caller,
+  person: Person,
+  requestId: string,
+) => Promise<{ ok: Linked } | { error: "identity_taken" | "already_linked" }>;
+
+/** The browser's live session, or null; a renewal reaches the cookie too. */
+async function signedIn(c: Context<AppEnv>) {
+  const secret = getCookie(c, SESSION_COOKIE, "host");
+  if (!secret || !SESSION_SECRET.test(secret)) return null;
+  const found = await sessionForSecret(c.env, secret);
+  if (!found) return null;
+  if (found.renewed) setCookie(c, SESSION_COOKIE, secret, sessionCookie(found.renewed));
+  return found.session;
+}
+
 async function challenge(verifier: string) {
   const digest = await crypto.subtle.digest("SHA-256", encoder.encode(verifier));
   return base64url(new Uint8Array(digest));
@@ -120,8 +151,12 @@ async function start(c: Context<AppEnv>, name: ProviderName) {
   if (!SAME_ORIGIN_PATH.test(next)) return fail(c, 400, "invalid_request");
   const idp = webIdentityProvider(c.env, name);
   if (!idp) return fail(c, 503, unavailable(name));
+  // Kenni only adds the mark to a signed-in account (decision 0069).
+  const session = name === "kenni" ? await signedIn(c) : null;
+  if (name === "kenni" && !session) return fail(c, 401, "unauthorized");
   const flow: Flow = {
     provider: name,
+    ...(session ? { sessionId: session.sessionId } : {}),
     state: randomToken(""),
     nonce: randomToken(""),
     verifier: randomToken(""),
@@ -155,7 +190,7 @@ async function flowOf(c: Context<AppEnv>, name: ProviderName) {
  * in. A code is redeemed only for the flow whose cookie came back with its
  * `state`, with that flow's verifier and nonce.
  */
-async function callback(c: Context<AppEnv>, name: ProviderName) {
+async function callback(c: Context<AppEnv>, name: ProviderName, link: LinkOrJoin) {
   const address = c.req.header("cf-connecting-ip");
   if (address && !(await withinLimit(c.env, "public", address))) {
     log("request.rate_limited", { code: "public", requestId: c.var.requestId });
@@ -169,11 +204,23 @@ async function callback(c: Context<AppEnv>, name: ProviderName) {
   }
   const idp = webIdentityProvider(c.env, name);
   if (!idp) return fail(c, 503, unavailable(name));
+  // The session that started a Kenni flow must still be the browser's.
+  const caller = name === "kenni" ? await signedIn(c) : null;
+  if (name === "kenni" && caller?.sessionId !== flow.sessionId) {
+    log("sign_in.failed", { code: "session_mismatch", provider: name, requestId: c.var.requestId });
+    return fail(c, 401, "unauthorized");
+  }
   const person = await webAuthorized(idp, { code, verifier: flow.verifier, nonce: flow.nonce });
   if ("error" in person) {
     return person.error === "sign_in_failed"
       ? fail(c, 403, person.error)
       : fail(c, 503, person.error);
+  }
+  if (caller) {
+    const linked = await link(c.env, caller, person.ok, c.var.requestId);
+    const verify = "error" in linked ? "taken" : linked.ok.merged ? "merged" : "linked";
+    c.header("cache-control", "no-store");
+    return c.redirect(withQuery(flow.next, "verify", verify), 303);
   }
   const session = {
     ...(await newBrowserSession()),
@@ -188,12 +235,19 @@ async function callback(c: Context<AppEnv>, name: ProviderName) {
   return c.redirect(flow.next, 303);
 }
 
+/** A same-origin path with one more query parameter. */
+function withQuery(path: string, key: string, value: string) {
+  const url = new URL(path, "https://web.invalid");
+  url.searchParams.set(key, value);
+  return `${url.pathname}${url.search}`;
+}
+
 /** The web's sign-in routes, outside the API and its contract. */
-export function webSignInRoutes() {
+export function webSignInRoutes(link: LinkOrJoin) {
   const routes = new Hono<AppEnv>();
   for (const name of ["kenni", "google"] as const) {
     routes.get(`/auth/${name}/start`, (c) => start(c, name));
-    routes.get(ids.hosts.webSignInCallbacks[name], (c) => callback(c, name));
+    routes.get(ids.hosts.webSignInCallbacks[name], (c) => callback(c, name, link));
   }
   return routes;
 }

@@ -16,8 +16,32 @@ export const strings = {
   react: "Bregðast við",
   /** Title of the sheet listing who reacted to a message (docs/decisions/0045). */
   reactions_title: "Viðbrögð",
+  /** Under the sign-in button: what Google is asked for, and that Kenni can verify later. */
+  sign_in_hint: "Við biðjum Google aðeins um nafn og netfang. Þú getur síðar staðfest auðkenni með rafrænum skilríkjum.",
   /** Primary sign-in button: signs in with Google (docs/decisions/0033). */
   sign_in_google: "Halda áfram með Google",
+  /** Heading of the screen that links Kenni to the account (docs/decisions/0033). */
+  verify_title: "Fáðu staðfestingarmerki",
+  /** What verifying with Kenni gives the person. */
+  verify_body: "Staðfestu hver þú ert með rafrænum skilríkjum. Þá birtist skjöldur við nafnið þitt og aðrir vita að nafnið er rétt.",
+  /** Verify screen: the registry name replaces the account's name. */
+  verify_point_name: "Nafnið þitt verður nafnið sem stendur í Þjóðskrá.",
+  /** Verify screen: the kennitala is kept only as an HMAC (docs/decisions/0019). */
+  verify_point_kennitala: "Kennitalan er aldrei sýnd öðrum. Þjónninn geymir hana ekki, aðeins óafturkræft fingrafar hennar.",
+  /** Verify screen: verifying is optional. */
+  verify_point_optional: "Valfrjálst. Þú getur notað Hjal áfram án þess.",
+  /** Point on the verify screen: a kennitala that already holds an older account takes this sign-in to it, with its conversations (docs/decisions/0035). */
+  verify_point_older: "Ef þú skráðir þig áður inn með rafrænum skilríkjum færðu gamla aðganginn aftur, með samtölunum hans.",
+  /** Verify screen: opens Kenni to link it to the account. */
+  verify_action: "Staðfesta með rafrænum skilríkjum",
+  /** Verify screen: leaves without verifying. */
+  verify_later: "Seinna",
+  /** On Ég and in settings for an account Kenni has not verified: opens the verify screen. */
+  verify_cta: "Fá staðfestingarmerki",
+  /** Web verify page, after Kenni linked to this account: the name now carries the mark (docs/decisions/0069). */
+  verify_linked: "Nafnið þitt er staðfest.",
+  /** Web verify page, after Kenni joined this sign-in into the older account its kennitala held (docs/decisions/0035, 0069). */
+  verify_merged: "Þú ert aftur í eldri aðganginum þínum, með samtölunum hans.",
   /** On Ég for an account with no profile photo: opens the photo picker to set one (docs/decisions/0039). */
   photo_choose: "Setja inn mynd",
   /** On Ég for an account with a profile photo: opens the photo picker to put another in its place (docs/decisions/0039). */
@@ -30,6 +54,8 @@ export const strings = {
   photo_seen_by_all: "Allir sem eru skráðir inn sjá myndina þína.",
   /** Deletes one's own post or reply, in its menu and its confirmation. */
   delete: "Eyða",
+  /** Kenni verified a person whose kennitala is on another account (409 identity_taken). */
+  identity_taken: "Þessi rafrænu skilríki eru þegar tengd öðrum aðgangi.",
   /** The server could not be reached; the action can be tried again. */
   error_unreachable: "Ekki náðist samband við þjóninn. Reyndu aftur.",
   /** Something failed that the person cannot fix but may retry. */
@@ -49,10 +75,6 @@ export const strings = {
   loading: "Hleður…",
   /** Heading of the web's sign-in page (decision 0062). */
   sign_in_title: "Skráðu þig inn",
-  /** Web sign-in button: signs in with Kenni, which verifies the name (decisions 0035, 0062). */
-  sign_in_kenni: "Skrá inn með rafrænum skilríkjum",
-  /** Line under the web's two sign-in buttons: what each provider gives. */
-  sign_in_web_hint: "Google gefur aðeins nafn og netfang. Með rafrænum skilríkjum fær nafnið þitt staðfestingarmerki.",
   /** The web's settings page: its heading and its link in the navigation. */
   settings_title: "Stillingar",
   /** Accessible name of the web's main navigation. */
