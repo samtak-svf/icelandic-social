@@ -1,17 +1,29 @@
 //! Communities, posts, comments, reactions, reports, moderation and
 //! notifications (0063), over the API. Social content is hosted, not
 //! end-to-end encrypted, so it is fetched each time and never kept: none of
-//! it goes into the store beside the conversations.
+//! it goes into the store beside the conversations. A post's images (0065)
+//! are the one exception, kept as files beside the photos.
+
+#![allow(clippy::disallowed_methods)] // a post's images are files
+
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use crate::api::{
     Audience, Card, Comment, CommentPage, Community, CommunityPage, JoinState, Moderation,
-    NewReport, NotificationPage, Post, PostPage, ReactionKind, Ref, ReportPage, ReportState,
-    Transport,
+    ModerationAction, NewReport, NotificationPage, Post, PostPage, ReactionKind, Ref, ReportPage,
+    ReportState, SocialMedia, Transport,
 };
-use crate::{Client, ClientError, authed, is_id};
+use crate::{Client, ClientError, MediaError, authed, is_id};
 
 /// The most references one `cards` call resolves; the server refuses more.
 pub const MAX_CARDS: usize = 50;
+
+/// The most images a post holds (0065); the server refuses more.
+pub const MAX_POST_MEDIA: usize = 4;
+
+/// The largest image the server takes for a post, in bytes (0065).
+pub const MAX_POST_IMAGE: u64 = 10 * 1024 * 1024;
 
 fn id(text: &str, what: &'static str) -> Result<(), ClientError> {
     if is_id(text) {
@@ -100,12 +112,68 @@ impl<T: Transport> Client<T> {
         Ok(api.community_posts(community, before, size.clamp(1, 50))?)
     }
 
-    pub fn create_post(&self, community: &str, body: &str) -> Result<Post, ClientError> {
+    /// Posts a text, images `upload_social_media` returned, or both.
+    pub fn create_post(
+        &self,
+        community: &str,
+        body: &str,
+        media: &[String],
+    ) -> Result<Post, ClientError> {
         id(community, "community id")?;
-        if body.trim().is_empty() {
+        if body.trim().is_empty() && media.is_empty() {
             return Err(ClientError::Invalid("an empty post"));
         }
-        Ok(authed(&self.transport, &self.token, &self.client)?.create_post(community, body)?)
+        if media.len() > MAX_POST_MEDIA {
+            return Err(ClientError::Invalid("over 4 images in a post"));
+        }
+        for m in media {
+            id(m, "media id")?;
+        }
+        Ok(authed(&self.transport, &self.token, &self.client)?
+            .create_post(community, body, media)?)
+    }
+
+    /// Uploads the image at `path` for a post in `community` (0065). The
+    /// server re-encodes it to WebP; the id goes in `create_post` within a
+    /// day, or the image is deleted.
+    pub fn upload_social_media(
+        &self,
+        community: &str,
+        path: &Path,
+    ) -> Result<SocialMedia, ClientError> {
+        id(community, "community id")?;
+        let size = fs::metadata(path).map_err(MediaError::from)?.len();
+        if size == 0 {
+            return Err(ClientError::Invalid("an empty image"));
+        }
+        if size > MAX_POST_IMAGE {
+            return Err(ClientError::Invalid("an image over 10 MB"));
+        }
+        Ok(authed(&self.transport, &self.token, &self.client)?
+            .upload_social_media(community, path)?)
+    }
+
+    /// The file of a post's image: kept from an earlier call, since an
+    /// image never changes under its id, else fetched now. The images go
+    /// with the media files when the store is forgotten.
+    pub fn post_media(&self, post: &str, media: &str) -> Result<PathBuf, ClientError> {
+        id(post, "post id")?;
+        id(media, "media id")?;
+        let dir = self.media.join("posts").join(post);
+        let kept = dir.join(format!("{media}.webp"));
+        if kept.exists() {
+            return Ok(kept);
+        }
+        fs::create_dir_all(&dir).map_err(MediaError::from)?;
+        let part = dir.join(format!("{media}.part"));
+        let fetched =
+            authed(&self.transport, &self.token, &self.client)?.get_post_media(post, media, &part);
+        if let Err(error) = fetched {
+            let _ = fs::remove_file(&part);
+            return Err(error.into());
+        }
+        fs::rename(&part, &kept).map_err(MediaError::from)?;
+        Ok(kept)
     }
 
     pub fn post(&self, post: &str) -> Result<Post, ClientError> {
@@ -187,6 +255,13 @@ impl<T: Transport> Client<T> {
         }
         if moderation.reason.trim().is_empty() {
             return Err(ClientError::Invalid("a moderation needs a reason"));
+        }
+        // A mute is for a time (0063): the server refuses one without an
+        // end, and an end on anything else.
+        if (moderation.action == ModerationAction::MuteMember) != moderation.until.is_some() {
+            return Err(ClientError::Invalid(
+                "an end with a mute, and only with a mute",
+            ));
         }
         let api = authed(&self.transport, &self.token, &self.client)?;
         Ok(api.moderate(community, moderation)?)

@@ -40,7 +40,11 @@ const SOCIAL: [&str; 7] = [
 struct Canned {
     answers: VecDeque<Response>,
     seen: Vec<Request>,
+    uploaded: Vec<Vec<u8>>,
 }
+
+/// The bytes a canned image download writes.
+const IMAGE: &[u8] = b"RIFF\0\0\0\0WEBPVP8 ";
 
 /// The relay for sign-in, and the canned answers for the social calls.
 struct Hosted {
@@ -59,11 +63,28 @@ impl Transport for Hosted {
     }
 
     fn upload(&self, request: Request, file: &Path) -> Result<Response, Unreachable> {
-        self.link.upload(request, file)
+        if !SOCIAL.iter().any(|p| request.path.starts_with(p)) {
+            return self.link.upload(request, file);
+        }
+        let mut canned = self.canned.lock().unwrap();
+        canned.uploaded.push(std::fs::read(file).unwrap());
+        canned.seen.push(request);
+        Ok(canned.answers.pop_front().expect("an answer was queued"))
     }
 
+    /// A social download gets the queued answer, and on 200 the bytes
+    /// `IMAGE` in the file.
     fn download(&self, request: Request, to: &Path) -> Result<Response, Unreachable> {
-        self.link.download(request, to)
+        if !SOCIAL.iter().any(|p| request.path.starts_with(p)) {
+            return self.link.download(request, to);
+        }
+        let mut canned = self.canned.lock().unwrap();
+        canned.seen.push(request);
+        let answer = canned.answers.pop_front().expect("an answer was queued");
+        if answer.status == 200 {
+            std::fs::write(to, IMAGE).unwrap();
+        }
+        Ok(answer)
     }
 }
 
@@ -287,7 +308,7 @@ fn posts_comments_and_reactions_go_by_their_ids() {
     );
 
     phone.answer(200, post("p_2"));
-    c.create_post("cm_1", "Æfing fellur niður í kvöld.")
+    c.create_post("cm_1", "Æfing fellur niður í kvöld.", &[])
         .unwrap();
     phone.answer(200, post("p_1"));
     c.post("p_1").unwrap();
@@ -322,7 +343,7 @@ fn posts_comments_and_reactions_go_by_their_ids() {
             (
                 Method::Post,
                 "/v1/communities/cm_1/posts".into(),
-                json!({ "body": "Æfing fellur niður í kvöld." })
+                json!({ "body": "Æfing fellur niður í kvöld.", "media": [] })
             ),
             (Method::Get, "/v1/posts/p_1".into(), Value::Null),
             (Method::Delete, "/v1/posts/p_2".into(), Value::Null),
@@ -649,6 +670,14 @@ fn a_refusal_keeps_its_code_and_a_bad_id_is_never_sent() {
         c.create_comment("p_1", "  ").map(drop),
         c.close_report("r_1", " ").map(drop),
         c.create_community(" ", "", Audience::Open).map(drop),
+        c.moderate("cm_1", &mute(None)),
+        c.moderate(
+            "cm_1",
+            &Moderation {
+                action: ModerationAction::BanMember,
+                ..mute(Some(1_760_086_400_000))
+            },
+        ),
     ] {
         assert!(matches!(refused, Err(ClientError::Invalid(_))));
     }
@@ -666,4 +695,103 @@ fn a_refusal_keeps_its_code_and_a_bad_id_is_never_sent() {
         signed_out.my_communities(),
         Err(ClientError::NotRegistered)
     ));
+}
+
+#[test]
+fn a_post_takes_images_uploaded_first() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+    let dir = tempfile::tempdir().unwrap();
+    let photo = dir.path().join("kor.jpg");
+    std::fs::write(&photo, b"\xff\xd8\xff\xe0 a jpeg").unwrap();
+
+    phone.answer(
+        200,
+        json!({ "mediaId": "sm_1", "width": 2048, "height": 1536 }),
+    );
+    let image = c.upload_social_media("cm_1", &photo).unwrap();
+    assert_eq!(
+        image,
+        SocialMedia {
+            media_id: "sm_1".into(),
+            width: 2048,
+            height: 1536
+        }
+    );
+    phone.answer(200, post("p_1"));
+    c.create_post("cm_1", "", &["sm_1".into()]).unwrap();
+
+    phone.answer(200, Value::Null);
+    let kept = c.post_media("p_1", "sm_1").unwrap();
+    assert_eq!(std::fs::read(&kept).unwrap(), IMAGE);
+    // Kept: the second call asks nothing.
+    assert_eq!(c.post_media("p_1", "sm_1").unwrap(), kept);
+
+    phone.answer(404, json!({ "error": "not_found" }));
+    assert!(matches!(
+        c.post_media("p_1", "sm_2"),
+        Err(ClientError::Transport(ApiError::Refused {
+            status: 404,
+            ..
+        }))
+    ));
+    assert!(!kept.with_file_name("sm_2.part").exists());
+
+    assert_eq!(
+        phone.canned.lock().unwrap().uploaded,
+        [b"\xff\xd8\xff\xe0 a jpeg".to_vec()]
+    );
+    assert_eq!(
+        phone.sent(),
+        [
+            (
+                Method::Post,
+                "/v1/communities/cm_1/media".into(),
+                Value::Null
+            ),
+            (
+                Method::Post,
+                "/v1/communities/cm_1/posts".into(),
+                json!({ "body": "", "media": ["sm_1"] })
+            ),
+            (Method::Get, "/v1/posts/p_1/media/sm_1".into(), Value::Null),
+            (Method::Get, "/v1/posts/p_1/media/sm_2".into(), Value::Null),
+        ]
+    );
+}
+
+#[test]
+fn images_are_refused_before_they_are_sent() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+    let dir = tempfile::tempdir().unwrap();
+    let empty = dir.path().join("empty.png");
+    std::fs::write(&empty, b"").unwrap();
+    let big = dir.path().join("big.png");
+    std::fs::File::create(&big)
+        .unwrap()
+        .set_len(spjall_client::MAX_POST_IMAGE + 1)
+        .unwrap();
+
+    let refused = |r: Result<_, ClientError>| matches!(r, Err(ClientError::Invalid(_)));
+    assert!(refused(c.upload_social_media("cm_1", &empty).map(drop)));
+    assert!(refused(c.upload_social_media("cm_1", &big).map(drop)));
+    let five: Vec<String> = (1..=5).map(|i| format!("sm_{i}")).collect();
+    assert!(refused(c.create_post("cm_1", "Myndir", &five).map(drop)));
+    assert!(refused(c.create_post("cm_1", "  ", &[]).map(drop)));
+    assert!(refused(
+        c.create_post("cm_1", "", &["../x".into()]).map(drop)
+    ));
+    assert!(refused(c.post_media("p_1", "../../x").map(drop)));
+    assert!(phone.sent().is_empty());
+}
+
+fn mute(until: Option<u64>) -> Moderation {
+    Moderation {
+        action: ModerationAction::MuteMember,
+        target_id: "acc_c".into(),
+        reason: "Áreitni".into(),
+        report_id: None,
+        until,
+    }
 }

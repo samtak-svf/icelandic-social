@@ -1,12 +1,15 @@
 //! Communities, posts, comments, reactions, reports, moderation and
 //! notifications (0063) as the apps see them. The core builds each request
 //! and the app's `Transport` carries it (0018). Nothing here is stored on
-//! the device: each call asks the server, and may block on the network.
+//! the device but a post's images, kept as files: each call asks the
+//! server, and may block on the network.
+
+use std::path::Path;
 
 use spjall_client::api;
 
 use crate::CoreError;
-use crate::client::CoreClient;
+use crate::client::{CoreClient, path_string};
 
 /// Who wrote a post or a comment, did what a notification tells, or is
 /// reported. Its photo is not named here; `profile` gives it.
@@ -793,9 +796,39 @@ impl CoreClient {
         })
     }
 
-    /// Posts text to a community. `Invalid` for a blank one.
-    pub fn create_post(&self, community_id: String, body: String) -> Result<Post, CoreError> {
-        Ok(self.client()?.create_post(&community_id, &body)?.into())
+    /// Posts a text, up to 4 images from `upload_post_image`, or both, to a
+    /// community. `Invalid` for neither, or for over 4 images.
+    pub fn create_post(
+        &self,
+        community_id: String,
+        body: String,
+        media: Vec<String>,
+    ) -> Result<Post, CoreError> {
+        Ok(self
+            .client()?
+            .create_post(&community_id, &body, &media)?
+            .into())
+    }
+
+    /// Uploads the image at `path` for a post in the community (0065): a
+    /// JPEG, PNG, WebP, GIF or AVIF of at most 10 MB, which the server
+    /// re-encodes to WebP. Its `media_id` goes in `create_post` within a day.
+    pub fn upload_post_image(
+        &self,
+        community_id: String,
+        path: String,
+    ) -> Result<PostImage, CoreError> {
+        Ok(self
+            .client()?
+            .upload_social_media(&community_id, Path::new(&path))?
+            .into())
+    }
+
+    /// The path of a post's image, a WebP: fetched once and kept by the core.
+    pub fn post_image(&self, post_id: String, media_id: String) -> Result<String, CoreError> {
+        Ok(path_string(
+            &self.client()?.post_media(&post_id, &media_id)?,
+        ))
     }
 
     pub fn post(&self, post_id: String) -> Result<Post, CoreError> {
@@ -888,7 +921,8 @@ impl CoreClient {
     /// One moderator's action, which the community's log keeps with its
     /// `reason`. `target_id` is the post's, the comment's or the account's
     /// id; `report_id` the report it answers, if one; `until` (Unix
-    /// milliseconds) only with `MuteMember`, none muting until lifted.
+    /// milliseconds) with `MuteMember` and only with it, since a mute is
+    /// for a time (0063). `Invalid` otherwise.
     pub fn moderate(
         &self,
         community_id: String,

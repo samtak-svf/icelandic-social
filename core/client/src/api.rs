@@ -1426,9 +1426,33 @@ impl<T: Transport + ?Sized> Api<'_, T> {
         self.call(Method::Get, path, None, "listCommunityPosts")
     }
 
-    /// `createPost`: a text post, no images.
-    pub fn create_post(&self, community: &str, body: &str) -> Result<Post, ApiError> {
-        let body = serde_json::json!({ "body": body });
+    /// `uploadSocialMedia` (0065): the image at `file`, which the server
+    /// re-encodes to WebP and keeps for a day unless a post takes it.
+    pub fn upload_social_media(
+        &self,
+        community: &str,
+        file: &Path,
+    ) -> Result<SocialMedia, ApiError> {
+        let path = format!("/v1/communities/{community}/media");
+        let request = self.request(Method::Post, path, None);
+        let response = Self::checked(self.transport.upload(request, file)?)?;
+        serde_json::from_str(&response.body).map_err(|_| ApiError::Malformed("uploadSocialMedia"))
+    }
+
+    /// `getPostMedia`: the image, a WebP, written to `to`.
+    pub fn get_post_media(&self, post: &str, media: &str, to: &Path) -> Result<(), ApiError> {
+        let request = self.request(Method::Get, format!("/v1/posts/{post}/media/{media}"), None);
+        Self::checked(self.transport.download(request, to)?).map(drop)
+    }
+
+    /// `createPost`: a text, images uploaded to the community, or both.
+    pub fn create_post(
+        &self,
+        community: &str,
+        body: &str,
+        media: &[String],
+    ) -> Result<Post, ApiError> {
+        let body = serde_json::json!({ "body": body, "media": media });
         self.call(
             Method::Post,
             format!("/v1/communities/{community}/posts"),

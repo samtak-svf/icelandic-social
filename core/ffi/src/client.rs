@@ -102,7 +102,7 @@ fn api_response(
     }
 }
 
-fn path_string(path: &Path) -> String {
+pub(crate) fn path_string(path: &Path) -> String {
     path.to_string_lossy().into_owned()
 }
 
