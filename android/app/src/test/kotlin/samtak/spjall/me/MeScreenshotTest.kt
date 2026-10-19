@@ -57,6 +57,14 @@ class MeScreenshotTest {
         compose.onRoot().captureRoboImage()
     }
 
+    /** With a photo and a link in dark mode: the outlined buttons read as buttons, not disabled (#353). */
+    @Test
+    @Config(qualifiers = "+night")
+    fun everyButtonAtNight() {
+        compose.setContent { SpjallTheme { MeScreen(everyButton, NoMeActions()) } }
+        compose.onRoot().captureRoboImage()
+    }
+
     /**
      * At twice the text size (0053): the title stays in its band and the initials in their circle, and
      * the buttons that sit side by side go one under the other instead of cutting their words.

@@ -85,6 +85,12 @@
       "level": "nonText",
       "use": "input and control outlines"
     },
+    {
+      "fg": "border-strong over bg",
+      "bg": "bg",
+      "level": "nonText",
+      "use": "outlined buttons on the account screen's band (#353)"
+    },
     { "fg": "verified-mark", "bg": "surface", "level": "nonText", "use": "verification dot" },
     {
       "fg": "verified-mark",

@@ -41,10 +41,12 @@ import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Card
 import samtak.spjall.core.Report
+import samtak.spjall.core.ReportDecision
 import samtak.spjall.core.ReportState
 import samtak.spjall.me.Confirm
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
+import samtak.spjall.ui.calendarDate
 import samtak.spjall.ui.listStamp
 
 /**
@@ -128,13 +130,15 @@ private fun ReportCard(
             value = reason,
             onValueChange = { actions.reason(report.reportId, it) },
             label = { Text(stringResource(R.string.report_reason)) },
+            supportingText = { Text(stringResource(R.string.moderation_reason_required)) },
             modifier = Modifier.fillMaxWidth(),
         )
         val ready = !busy && reason.isNotBlank()
-        val open = report.state == ReportState.OPEN
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (report.action(ReportsViewModel.Verb.Hide) != null) {
+            if (report.offers(ReportsViewModel.Verb.Hide)) {
                 Verb(R.string.moderation_hide, ready) { actions.act(report, ReportsViewModel.Verb.Hide) }
+            }
+            if (report.offers(ReportsViewModel.Verb.Remove)) {
                 Button(
                     onClick = { actions.act(report, ReportsViewModel.Verb.Remove) },
                     enabled = ready,
@@ -145,19 +149,70 @@ private fun ReportCard(
                         ),
                     modifier = Modifier.heightIn(min = 44.dp),
                 ) { Text(stringResource(R.string.moderation_remove)) }
-                // A closed report's content may be hidden or removed; the card does not say, so restoring is offered.
-                if (!open) {
-                    Verb(
-                        R.string.moderation_restore,
-                        ready,
-                    ) { actions.act(report, ReportsViewModel.Verb.Restore) }
-                }
             }
-            if (open) Verb(R.string.moderation_dismiss, ready) { actions.act(report, ReportsViewModel.Verb.Dismiss) }
+            if (report.offers(ReportsViewModel.Verb.Restore)) {
+                Verb(R.string.moderation_restore, ready) { actions.act(report, ReportsViewModel.Verb.Restore) }
+            }
+            if (report.offers(ReportsViewModel.Verb.Dismiss)) {
+                Verb(R.string.moderation_dismiss, ready) { actions.act(report, ReportsViewModel.Verb.Dismiss) }
+            }
         }
-        if (report.member() != null) AuthorVerbs(report, ready, actions, onBan)
+        if (MEMBER_ACTIONS.any(report::offers)) AuthorVerbs(report, ready, actions, onBan)
+        if (report.state == ReportState.CLOSED) Outcome(report)
     }
 }
+
+/** What a closed report came to (#360): the decision, its reason, and who closed it and when. */
+@Composable
+private fun Outcome(report: Report) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        report.decision?.let { decision ->
+            DECISIONS[decision]?.let { Text(text = stringResource(it), style = MaterialTheme.typography.titleSmall) }
+        }
+        report.resolution?.takeIf { it.isNotBlank() }?.let {
+            Text(text = it, style = MaterialTheme.typography.bodyMedium)
+        }
+        report.closedAt?.let { at ->
+            val date = calendarDate(at)
+            val closer = report.closedBy
+            Text(
+                text =
+                    if (closer == null) {
+                        stringResource(R.string.moderation_closed_at, date)
+                    } else {
+                        stringResource(R.string.moderation_closed_by, closer.shownName(), date)
+                    },
+                style = MaterialTheme.typography.bodySmall,
+                color = Palette.mutedFg,
+            )
+        }
+    }
+}
+
+private val MEMBER_ACTIONS =
+    listOf(
+        ReportsViewModel.Verb.Mute,
+        ReportsViewModel.Verb.Unmute,
+        ReportsViewModel.Verb.Ban,
+        ReportsViewModel.Verb.Unban,
+    )
+
+private val DECISIONS =
+    mapOf(
+        ReportDecision.HIDE_POST to R.string.moderation_decision_hide_post,
+        ReportDecision.REMOVE_POST to R.string.moderation_decision_remove_post,
+        ReportDecision.RESTORE_POST to R.string.moderation_decision_restore_post,
+        ReportDecision.HIDE_COMMENT to R.string.moderation_decision_hide_comment,
+        ReportDecision.REMOVE_COMMENT to R.string.moderation_decision_remove_comment,
+        ReportDecision.RESTORE_COMMENT to R.string.moderation_decision_restore_comment,
+        ReportDecision.MUTE_MEMBER to R.string.moderation_decision_mute_member,
+        ReportDecision.UNMUTE_MEMBER to R.string.moderation_decision_unmute_member,
+        ReportDecision.REMOVE_MEMBER to R.string.moderation_decision_remove_member,
+        ReportDecision.BAN_MEMBER to R.string.moderation_decision_ban_member,
+        ReportDecision.UNBAN_MEMBER to R.string.moderation_decision_unban_member,
+        ReportDecision.DISMISSED to R.string.moderation_decision_dismissed,
+        ReportDecision.COMMUNITY_DELETED to R.string.moderation_decision_community_deleted,
+    )
 
 /** What may be done to the author of what a report names: mute, unmute, ban (asked first) or unban. */
 @Composable
@@ -169,10 +224,14 @@ private fun AuthorVerbs(
 ) {
     Text(text = stringResource(R.string.moderation_member), style = MaterialTheme.typography.titleSmall)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        MuteVerb(ready) { actions.mute(report, it) }
-        Verb(R.string.moderation_unmute, ready) { actions.act(report, ReportsViewModel.Verb.Unmute) }
-        Verb(R.string.moderation_ban, ready, onBan)
-        Verb(R.string.moderation_unban, ready) { actions.act(report, ReportsViewModel.Verb.Unban) }
+        if (report.offers(ReportsViewModel.Verb.Mute)) MuteVerb(ready) { actions.mute(report, it) }
+        if (report.offers(ReportsViewModel.Verb.Unmute)) {
+            Verb(R.string.moderation_unmute, ready) { actions.act(report, ReportsViewModel.Verb.Unmute) }
+        }
+        if (report.offers(ReportsViewModel.Verb.Ban)) Verb(R.string.moderation_ban, ready, onBan)
+        if (report.offers(ReportsViewModel.Verb.Unban)) {
+            Verb(R.string.moderation_unban, ready) { actions.act(report, ReportsViewModel.Verb.Unban) }
+        }
     }
 }
 

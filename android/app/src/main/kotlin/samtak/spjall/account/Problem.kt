@@ -31,6 +31,15 @@ sealed interface Problem {
     /** The person refused the app their location (0059): only the phone's settings can change it. */
     data object LocationDenied : Problem
 
+    /** Refused as not this account's to do (`not_permitted`, #362): trying again cannot help. */
+    data object NotPermitted : Problem
+
+    /** What was asked for is gone (`not_found`, #362): trying again cannot help. */
+    data object NotFound : Problem
+
+    /** A moderator declined this account's join request, which it may repeat after 30 days (`join_declined`). */
+    data object JoinDeclined : Problem
+
     /** Anything else. */
     data class Generic(
         override val requestId: String? = null,
@@ -42,6 +51,9 @@ fun Throwable.problem(): Problem =
     when {
         this is CoreException.Unreachable -> Problem.Unreachable
         this is CoreException.Refused && code == "identity_taken" -> Problem.IdentityTaken(requestId)
+        this is CoreException.Refused && code == "not_permitted" -> Problem.NotPermitted
+        this is CoreException.Refused && code == "not_found" -> Problem.NotFound
+        this is CoreException.Refused && code == "join_declined" -> Problem.JoinDeclined
         this is CoreException.Refused -> Problem.Generic(requestId)
         this is CoreException -> Problem.Generic(code = localCode())
         else -> Problem.Generic()

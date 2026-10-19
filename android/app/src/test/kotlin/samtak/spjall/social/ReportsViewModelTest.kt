@@ -198,4 +198,48 @@ class ReportsViewModelTest {
             advanceUntilIdle()
             assertTrue("moderate k1 RESTORE_COMMENT c1 mistök null" in social.calls)
         }
+
+    @Test
+    fun aVerbThatDoesNotApplyToTheTargetIsNotSent() =
+        runTest(dispatcher) {
+            social.reports["k1"] =
+                mutableListOf(
+                    report("r1", ReportTargetKind.POST, "p1", targetState = samtak.spjall.core.TargetState.REMOVED),
+                )
+            val model = model()
+            model.reason("r1", "Því")
+            model.act(model.state.value.reports[0], ReportsViewModel.Verb.Hide)
+            advanceUntilIdle()
+            assertFalse(social.calls.any { it.startsWith("moderate") })
+            model.act(model.state.value.reports[0], ReportsViewModel.Verb.Restore)
+            advanceUntilIdle()
+            assertTrue(social.calls.any { it.startsWith("moderate k1 RESTORE_POST p1") })
+        }
+
+    @Test
+    fun aClosedReportKeepsItsDecisionAndWhoClosedIt() =
+        runTest(dispatcher) {
+            social.reports["k1"] =
+                mutableListOf(
+                    report(
+                        "r9",
+                        ReportTargetKind.POST,
+                        "p1",
+                        state = ReportState.CLOSED,
+                        decision = samtak.spjall.core.ReportDecision.HIDE_POST,
+                        resolution = "Spam",
+                        closedBy = self,
+                        closedAt = 1_700_000_000_000uL,
+                    ),
+                )
+            val model = model()
+            model.show(ReportState.CLOSED)
+            advanceUntilIdle()
+            val closed =
+                model.state.value.reports
+                    .single()
+            assertEquals(samtak.spjall.core.ReportDecision.HIDE_POST, closed.decision)
+            assertEquals("Spam", closed.resolution)
+            assertEquals(self, closed.closedBy)
+        }
 }

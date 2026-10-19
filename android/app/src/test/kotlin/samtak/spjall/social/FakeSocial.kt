@@ -13,6 +13,7 @@ import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityPage
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.JoinRequest
 import samtak.spjall.core.JoinState
 import samtak.spjall.core.ModerationAction
 import samtak.spjall.core.ModerationState
@@ -21,6 +22,7 @@ import samtak.spjall.core.PostImage
 import samtak.spjall.core.PostPage
 import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.Report
+import samtak.spjall.core.ReportDecision
 import samtak.spjall.core.ReportPage
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportState
@@ -29,6 +31,8 @@ import samtak.spjall.core.ReportTargetKind
 import samtak.spjall.core.SocialNotification
 import samtak.spjall.core.SocialNotificationKind
 import samtak.spjall.core.SocialNotificationPage
+import samtak.spjall.core.TargetStanding
+import samtak.spjall.core.TargetState
 
 /**
  * The server's communities as the view models see them, in memory. [failNext] makes the next call throw
@@ -57,6 +61,9 @@ class FakeSocial : Social {
 
     /** Each community's reports, open and closed. */
     val reports = mutableMapOf<String, MutableList<Report>>()
+
+    /** Each community's waiting join requests, oldest first. */
+    val requests = mutableMapOf<String, MutableList<JoinRequest>>()
 
     /** This account's id. */
     var me = "a1"
@@ -140,6 +147,42 @@ class FakeSocial : Social {
     override fun withdrawJoinRequest(id: String) {
         call("withdrawJoinRequest $id")
         communities[id] = communities.getValue(id).copy(joinRequested = false)
+    }
+
+    override fun joinRequests(communityId: String): List<JoinRequest> {
+        call("joinRequests $communityId")
+        return requests[communityId].orEmpty().toList()
+    }
+
+    override fun approveJoinRequest(
+        communityId: String,
+        accountId: String,
+    ) {
+        call("approveJoinRequest $communityId $accountId")
+        answered(communityId, accountId)
+    }
+
+    override fun declineJoinRequest(
+        communityId: String,
+        accountId: String,
+    ) {
+        call("declineJoinRequest $communityId $accountId")
+        answered(communityId, accountId)
+    }
+
+    private fun answered(
+        communityId: String,
+        accountId: String,
+    ) {
+        val list = requests[communityId] ?: throw notFound()
+        if (!list.removeAll { it.accountId == accountId }) throw notFound()
+        val community = communities.getValue(communityId)
+        communities[communityId] = community.copy(pendingJoinRequests = list.size.toULong())
+    }
+
+    override fun deleteCommunity(communityId: String) {
+        call("deleteCommunity $communityId")
+        communities.remove(communityId) ?: throw notFound()
     }
 
     override fun me(): String {
@@ -318,6 +361,8 @@ fun community(
     audience: CommunityAudience = CommunityAudience.OPEN,
     role: CommunityRole? = null,
     mutedUntil: ULong? = null,
+    joinDeclinedUntil: ULong? = null,
+    pendingJoinRequests: ULong? = null,
 ) = Community(
     communityId = id,
     name = name,
@@ -331,8 +376,8 @@ fun community(
     mutedUntil = mutedUntil,
     readOnly = false,
     deletedAt = null,
-    joinDeclinedUntil = null,
-    pendingJoinRequests = null,
+    joinDeclinedUntil = joinDeclinedUntil,
+    pendingJoinRequests = pendingJoinRequests,
 )
 
 fun post(
@@ -393,6 +438,12 @@ fun report(
     targetId: String,
     author: Author? = anna,
     state: ReportState = ReportState.OPEN,
+    targetState: TargetState? = null,
+    targetStanding: TargetStanding? = null,
+    decision: ReportDecision? = null,
+    resolution: String? = null,
+    closedBy: Author? = null,
+    closedAt: ULong? = null,
 ) = Report(
     reportId = id,
     communityId = "k1",
@@ -402,12 +453,12 @@ fun report(
     note = "",
     state = state,
     createdAt = 1_700_000_000_000uL,
-    closedAt = null,
-    decision = null,
-    resolution = null,
-    closedBy = null,
-    targetStanding = null,
-    targetState = null,
+    closedAt = closedAt,
+    decision = decision,
+    resolution = resolution,
+    closedBy = closedBy,
+    targetStanding = targetStanding,
+    targetState = targetState,
 )
 
 fun notFound() = CoreException.Refused(404u, "not_found", null)

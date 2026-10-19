@@ -22,6 +22,12 @@ interface CommunityActions {
     /** The report queue, for the owner and moderators. */
     fun reports()
 
+    /** The join requests that wait, for the owner and moderators. */
+    fun requests()
+
+    /** Deletes the community, once its owner confirmed. */
+    fun deleteCommunity()
+
     fun draft(text: String)
 
     fun publish()

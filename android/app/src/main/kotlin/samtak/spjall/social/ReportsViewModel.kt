@@ -142,7 +142,8 @@ class ReportsViewModel(
         val mute = action == ModerationAction.MUTE_MEMBER
         val until = if (mute) period?.let { (now() + it.days * DAY).toULong() } else null
         val timed = !mute || until != null
-        return if (action == null || target == null || !timed) {
+        val applies = timed && report.offers(verb)
+        return if (action == null || target == null || !applies) {
             null
         } else {
             { social.moderate(communityId, action, target, reason, report.reportId.takeIf { open }, until) }

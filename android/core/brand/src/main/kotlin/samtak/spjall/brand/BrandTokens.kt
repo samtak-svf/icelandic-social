@@ -73,7 +73,7 @@ object BrandTokens {
         /** Decorative dividers only. */
         const val BORDER: Long = 0x29F2EEE6L
         /** Boundaries that identify a control. */
-        const val BORDER_STRONG: Long = 0x73F2EEE6L
+        const val BORDER_STRONG: Long = 0xA6F2EEE6L
         /** Crimson: destructive actions and failures. Hue 20 against primary's 32, so blocking or deleting never looks like the main action; brand-check holds the distance. */
         const val DANGER: Long = 0xFFFF7C84L
         const val DANGER_FG: Long = 0xFF15110CL

@@ -30,7 +30,7 @@ enum BrandTokens {
         /// Decorative dividers only.
         static let border = Color("Brand/border", bundle: .main) // #0713072E, dark #F2EEE629
         /// Boundaries that identify a control.
-        static let borderStrong = Color("Brand/border-strong", bundle: .main) // #07130780, dark #F2EEE673
+        static let borderStrong = Color("Brand/border-strong", bundle: .main) // #07130780, dark #F2EEE6A6
         /// Crimson: destructive actions and failures. Hue 20 against primary's 32, so blocking or deleting never looks like the main action; brand-check holds the distance.
         static let danger = Color("Brand/danger", bundle: .main) // #B30029, dark #FF7C84
         static let dangerFg = Color("Brand/danger-fg", bundle: .main) // #FFFFFF, dark #15110C

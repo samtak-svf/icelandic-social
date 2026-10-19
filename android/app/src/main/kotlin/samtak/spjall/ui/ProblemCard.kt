@@ -38,6 +38,9 @@ fun ProblemCard(
                             Problem.TooLarge -> R.string.media_too_large
                             Problem.LocationNotFound -> R.string.location_not_found
                             Problem.LocationDenied -> R.string.location_denied
+                            Problem.NotPermitted -> R.string.problem_not_permitted
+                            Problem.NotFound -> R.string.problem_not_found
+                            Problem.JoinDeclined -> R.string.problem_join_declined
                             is Problem.Generic -> R.string.error_generic
                         },
                     ),
@@ -62,7 +65,7 @@ fun ProblemCard(
             }
             // The same kennitala stays on the other account, and the same file stays too large. A
             // location is looked for again from the attach menu, so the card offers nothing.
-            if (problem !is Problem.IdentityTaken && problem !in FINAL) {
+            if (problem.canRetry()) {
                 TextButton(onClick = onRetry) { Text(stringResource(R.string.try_again)) }
             }
         }
@@ -71,3 +74,11 @@ fun ProblemCard(
 
 /** Problems trying again cannot help with, or that have their own way back. */
 private val FINAL = setOf(Problem.TooLarge, Problem.LocationNotFound, Problem.LocationDenied)
+
+/** Whether the same call may work if asked again: not a refusal the server will repeat. */
+private fun Problem.canRetry() =
+    this !is Problem.IdentityTaken &&
+        this != Problem.NotPermitted &&
+        this != Problem.NotFound &&
+        this != Problem.JoinDeclined &&
+        this !in FINAL

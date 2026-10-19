@@ -4,9 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -62,6 +65,8 @@ class CommunityViewModel(
         val writes: Boolean = false,
         /** A moderator muted this account here. */
         val muted: Boolean = false,
+        /** Until when (Unix ms) a moderator's decline keeps this account from asking again; null when it may ask. */
+        val declinedUntil: ULong? = null,
         val problem: Problem? = null,
     ) {
         /** Whether there is something to post: text, images, or both. */
@@ -82,6 +87,11 @@ class CommunityViewModel(
 
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
+
+    private val _deleted = Channel<Unit>(Channel.BUFFERED)
+
+    /** The owner deleted the community: back to the list. */
+    val deleted: Flow<Unit> = _deleted.receiveAsFlow()
 
     private var failed: (() -> Unit)? = null
 
@@ -120,6 +130,14 @@ class CommunityViewModel(
         perform(::withdraw) {
             social.withdrawJoinRequest(id)
             reload()
+        }
+    }
+
+    /** Deletes the community (#364, decision 0070); [deleted] then takes the screen back to the list. */
+    fun deleteCommunity() {
+        perform(::deleteCommunity) {
+            social.deleteCommunity(id)
+            _deleted.trySend(Unit)
         }
     }
 
@@ -313,6 +331,7 @@ class CommunityViewModel(
                 next = page?.next,
                 writes = community.writes(now()),
                 muted = community.muted(now()),
+                declinedUntil = community.joinDeclinedUntil?.takeIf { it.toLong() > now() },
             )
         }
     }

@@ -56,7 +56,7 @@ fun PostScreen(
     val post = state.post
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
-            SubHeader(stringResource(R.string.post_back)) { post?.let { actions.community(it.communityId) } }
+            SubHeader(stringResource(R.string.post_title)) { post?.let { actions.community(it.communityId) } }
             if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             LazyColumn(
                 modifier = Modifier.weight(1f).imePadding(),

@@ -50,6 +50,9 @@ fun NavGraphBuilder.socialScreens(
     composable("${SocialRoutes.REPORTS}/{id}") { entry ->
         entry.arguments?.getString("id")?.let { Reports(it, social, nav) }
     }
+    composable("${SocialRoutes.REQUESTS}/{id}") { entry ->
+        entry.arguments?.getString("id")?.let { JoinRequests(it, social, nav) }
+    }
 }
 
 @Composable
@@ -129,6 +132,8 @@ private fun CommunityEntry(
         ) { uris ->
             model.pick(uris.map(files::pickedPhoto))
         }
+    // The community is gone: back to the list, where it no longer is.
+    LaunchedEffect(model) { model.deleted.collect { nav.popBackStack(SocialRoutes.COMMUNITIES, inclusive = false) } }
     // Back from a post: its comment count and reactions may have changed there.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { model.load() }
     WithPostImages(social) {
@@ -144,6 +149,10 @@ private fun CommunityEntry(
                 override fun open(postId: String) = nav.navigate(SocialRoutes.post(postId))
 
                 override fun reports() = nav.navigate(SocialRoutes.reports(id))
+
+                override fun requests() = nav.navigate(SocialRoutes.requests(id))
+
+                override fun deleteCommunity() = model.deleteCommunity()
 
                 override fun draft(text: String) = model.draft(text)
 
@@ -249,6 +258,30 @@ private fun PostEntry(
             },
         )
     }
+}
+
+@Composable
+private fun JoinRequests(
+    communityId: String,
+    social: Social,
+    nav: NavController,
+) {
+    val model: JoinRequestsViewModel =
+        viewModel(key = "requests-$communityId") { JoinRequestsViewModel(communityId, social) }
+    val state by model.state.collectAsStateWithLifecycle()
+    val back = rememberBack(nav)
+    JoinRequestsScreen(
+        state,
+        object : JoinRequestsActions {
+            override fun back() = back()
+
+            override fun approve(accountId: String) = model.approve(accountId)
+
+            override fun decline(accountId: String) = model.decline(accountId)
+
+            override fun retry() = model.retry()
+        },
+    )
 }
 
 @Composable

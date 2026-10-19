@@ -19,6 +19,7 @@ import samtak.spjall.core.CardKind
 import samtak.spjall.core.CardRef
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityRole
+import samtak.spjall.core.JoinRequest
 import samtak.spjall.core.PostImage
 import samtak.spjall.core.ReactionCount
 import samtak.spjall.core.ReactionKind
@@ -108,6 +109,24 @@ class SocialScreenshotTest {
             loaded = true,
         )
 
+    private val requestsState =
+        JoinRequestsViewModel.State(
+            requests =
+                listOf(
+                    JoinRequest("a2", "Anna", true, 1_700_000_000_000uL),
+                    JoinRequest("a3", null, false, 1_700_100_000_000uL),
+                ),
+            loaded = true,
+        )
+
+    private val declinedState =
+        communityState.copy(
+            community = community("k5", audience = CommunityAudience.PRIVATE),
+            posts = emptyList(),
+            writes = false,
+            declinedUntil = 1_800_000_000_000uL,
+        )
+
     private fun shoot(screen: @Composable () -> Unit) {
         compose.setContent { SpjallTheme { screen() } }
         compose.onRoot().captureRoboImage()
@@ -121,6 +140,8 @@ class SocialScreenshotTest {
     private val communitiesScreen = @Composable { CommunitiesScreen(communitiesState, none<CommunitiesActions>()) }
     private val communityScreen = @Composable { CommunityScreen(communityState, none<CommunityActions>()) }
     private val postScreen = @Composable { PostScreen(postState, none<PostActions>()) }
+    private val requestsScreen = @Composable { JoinRequestsScreen(requestsState, none<JoinRequestsActions>()) }
+    private val declinedScreen = @Composable { CommunityScreen(declinedState, none<CommunityActions>()) }
     private val reportsScreen = @Composable { ReportsScreen(reportsState, none<ReportsActions>()) }
 
     @Test
@@ -167,6 +188,24 @@ class SocialScreenshotTest {
     @Test
     @Config(fontScale = 2f)
     fun postCutsNoWord() = noWordCut(postScreen)
+
+    @Test
+    fun joinRequests() = shoot(requestsScreen)
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun joinRequestsAtNight() = shoot(requestsScreen)
+
+    @Test
+    @Config(fontScale = 2f)
+    fun joinRequestsCutsNoWord() = noWordCut(requestsScreen)
+
+    @Test
+    fun declined() = shoot(declinedScreen)
+
+    @Test
+    @Config(fontScale = 2f)
+    fun declinedCutsNoWord() = noWordCut(declinedScreen)
 
     @Test
     fun reports() = shoot(reportsScreen)

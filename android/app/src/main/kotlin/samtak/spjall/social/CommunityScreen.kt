@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -28,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
@@ -36,8 +38,10 @@ import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
+import samtak.spjall.me.Confirm
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
+import samtak.spjall.ui.calendarDate
 
 /**
  * One community: its name, audience and description, joining or leaving, the box to post in for a member who is
@@ -53,6 +57,8 @@ fun CommunityScreen(
     if (reporting in state.reported) reporting = null
     // This account's own post it asked to delete, until it confirms or cancels.
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
+    // The owner asked to delete the whole community, until it confirms or cancels.
+    var deletingCommunity by rememberSaveable { mutableStateOf(false) }
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
             SubHeader(state.community?.name.orEmpty(), actions::back)
@@ -63,7 +69,11 @@ fun CommunityScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 state.problem?.let { problem -> item(key = "problem") { ProblemCard(problem) { actions.retry() } } }
-                state.community?.let { community -> item(key = "about") { About(community, state, actions) } }
+                state.community?.let { community ->
+                    item(key = "about") {
+                        About(community, state, actions) { deletingCommunity = true }
+                    }
+                }
                 if (state.writes) {
                     item(key = "composer") { PostComposer(state, actions) }
                 }
@@ -89,10 +99,15 @@ fun CommunityScreen(
             }
         }
     }
-    reporting?.let { postId ->
-        ReportDialog(
-            onSend = { reason, note -> actions.report(ReportTarget(ReportTargetKind.POST, postId), reason, note) },
-            onDismiss = { reporting = null },
+    reporting?.let { postId -> ReportPostDialog(postId, actions) { reporting = null } }
+    if (deletingCommunity) {
+        DeleteCommunityConfirm(
+            name = state.community?.name.orEmpty(),
+            onConfirm = {
+                deletingCommunity = false
+                actions.deleteCommunity()
+            },
+            onDismiss = { deletingCommunity = false },
         )
     }
     deleting?.let { postId ->
@@ -151,45 +166,34 @@ private fun About(
     community: Community,
     state: CommunityViewModel.State,
     actions: CommunityActions,
+    onDelete: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         CommunityLine(community)
         if (community.description.isNotBlank()) {
             Text(text = community.description, style = MaterialTheme.typography.bodyLarge)
         }
-        when {
-            community.joinRequested ->
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Muted(stringResource(R.string.community_join_requested))
-                    OutlinedButton(
-                        onClick = actions::withdraw,
-                        enabled = !state.busy,
-                        modifier = Modifier.heightIn(min = 44.dp),
-                    ) { Text(stringResource(R.string.community_withdraw_request)) }
-                }
-            community.role == null ->
-                Button(onClick = actions::join, enabled = !state.busy, modifier = Modifier.heightIn(min = 44.dp)) {
-                    Text(
-                        stringResource(
-                            if (community.audience == CommunityAudience.OPEN) {
-                                R.string.community_join
-                            } else {
-                                R.string.community_request_join
-                            },
-                        ),
-                    )
-                }
-            community.role != CommunityRole.OWNER ->
-                OutlinedButton(
-                    onClick = actions::leave,
-                    enabled = !state.busy,
-                    modifier = Modifier.heightIn(min = 44.dp),
-                ) {
-                    Text(stringResource(R.string.community_leave))
-                }
-        }
+        JoinPart(community, state, actions)
         if (community.moderates) {
             TextButton(onClick = actions::reports) { Text(stringResource(R.string.moderation_queue)) }
+            val waiting = community.pendingJoinRequests?.toInt() ?: 0
+            TextButton(onClick = actions::requests) {
+                Text(
+                    if (waiting > 0) {
+                        pluralStringResource(R.plurals.join_requests_waiting, waiting, waiting)
+                    } else {
+                        stringResource(R.string.join_requests_title)
+                    },
+                )
+            }
+        }
+        if (community.role == CommunityRole.OWNER) {
+            OutlinedButton(
+                onClick = onDelete,
+                enabled = !state.busy,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Palette.danger),
+                modifier = Modifier.heightIn(min = 44.dp),
+            ) { Text(stringResource(R.string.community_delete)) }
         }
         if (state.muted) Muted(stringResource(R.string.community_muted))
     }
@@ -198,4 +202,75 @@ private fun About(
 @Composable
 internal fun Muted(text: String) {
     Text(text = text, style = MaterialTheme.typography.bodyMedium, color = Palette.mutedFg)
+}
+
+/** Joining, asking again after a decline, waiting for an answer, or leaving: whichever applies to this account. */
+@Composable
+private fun JoinPart(
+    community: Community,
+    state: CommunityViewModel.State,
+    actions: CommunityActions,
+) {
+    when {
+        community.joinRequested ->
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Muted(stringResource(R.string.community_join_requested))
+                OutlinedButton(
+                    onClick = actions::withdraw,
+                    enabled = !state.busy,
+                    modifier = Modifier.heightIn(min = 44.dp),
+                ) { Text(stringResource(R.string.community_withdraw_request)) }
+            }
+        community.role == null && state.declinedUntil != null ->
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Muted(stringResource(R.string.community_join_declined))
+                Muted(stringResource(R.string.community_join_again, calendarDate(state.declinedUntil)))
+            }
+        community.role == null ->
+            Button(onClick = actions::join, enabled = !state.busy, modifier = Modifier.heightIn(min = 44.dp)) {
+                Text(
+                    stringResource(
+                        if (community.audience == CommunityAudience.OPEN) {
+                            R.string.community_join
+                        } else {
+                            R.string.community_request_join
+                        },
+                    ),
+                )
+            }
+        community.role != CommunityRole.OWNER ->
+            OutlinedButton(
+                onClick = actions::leave,
+                enabled = !state.busy,
+                modifier = Modifier.heightIn(min = 44.dp),
+            ) {
+                Text(stringResource(R.string.community_leave))
+            }
+    }
+}
+
+@Composable
+private fun DeleteCommunityConfirm(
+    name: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Confirm(
+        text = stringResource(R.string.community_delete_confirm, name),
+        confirm = stringResource(R.string.community_delete),
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+    )
+}
+
+@Composable
+private fun ReportPostDialog(
+    postId: String,
+    actions: CommunityActions,
+    onDismiss: () -> Unit,
+) {
+    ReportDialog(
+        onSend = { reason, note -> actions.report(ReportTarget(ReportTargetKind.POST, postId), reason, note) },
+        onDismiss = onDismiss,
+    )
 }

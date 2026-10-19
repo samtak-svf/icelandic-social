@@ -2,6 +2,7 @@ package samtak.spjall.social
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -363,4 +364,46 @@ class CommunityViewModelTest {
         )
         advanceUntilIdle()
     }
+
+    @Test
+    fun aDeclinedRequestInTheFutureBlocksAskingAgainUntilItsDate() =
+        runTest(dispatcher) {
+            val until = (now + 86_400_000L).toULong()
+            social.communities["k1"] =
+                community("k1", audience = CommunityAudience.PRIVATE, joinDeclinedUntil = until)
+            assertEquals(until, model().state.value.declinedUntil)
+        }
+
+    @Test
+    fun aDeclineThatHasPassedLeavesTheJoinButton() =
+        runTest(dispatcher) {
+            social.communities["k1"] =
+                community("k1", audience = CommunityAudience.PRIVATE, joinDeclinedUntil = (now - 1).toULong())
+            assertNull(model().state.value.declinedUntil)
+        }
+
+    @Test
+    fun theOwnerDeletesTheCommunityAndTheScreenIsToldToLeave() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.OWNER)
+            val model = model()
+            val told = mutableListOf<Unit>()
+            val job = backgroundScope.launch(dispatcher) { model.deleted.collect { told += it } }
+            model.deleteCommunity()
+            advanceUntilIdle()
+            assertTrue("deleteCommunity k1" in social.calls)
+            assertEquals(1, told.size)
+            job.cancel()
+        }
+
+    @Test
+    fun aRefusedDeleteShowsTheNamedProblemAndStays() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.MODERATOR)
+            val model = model()
+            social.failNext = CoreException.Refused(403u, "not_permitted", null)
+            model.deleteCommunity()
+            advanceUntilIdle()
+            assertEquals(Problem.NotPermitted, model.state.value.problem)
+        }
 }

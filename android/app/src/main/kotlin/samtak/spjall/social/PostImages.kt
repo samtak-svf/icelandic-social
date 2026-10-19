@@ -57,14 +57,22 @@ fun PostImageGrid(post: Post) {
     val single = images.singleOrNull()
     if (single != null) {
         val ratio = if (single.height > 0u) single.width.toFloat() / single.height.toFloat() else 1f
-        PostImageView(post.postId, single, Modifier.fillMaxWidth().aspectRatio(ratio.coerceIn(MIN_RATIO, MAX_RATIO)))
+        PostImageView(
+            post.postId,
+            single,
+            stringResource(R.string.post_image_alt),
+            Modifier.fillMaxWidth().aspectRatio(ratio.coerceIn(MIN_RATIO, MAX_RATIO)),
+        )
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(GAP.dp)) {
-        images.chunked(2).forEach { row ->
+        images.chunked(2).forEachIndexed { rowIndex, row ->
             Row(horizontalArrangement = Arrangement.spacedBy(GAP.dp)) {
-                row.forEach { image ->
-                    PostImageView(post.postId, image, Modifier.weight(1f).aspectRatio(1f))
+                row.forEachIndexed { column, image ->
+                    // Several images are told apart for TalkBack (#355): "Mynd 2 af 3".
+                    val description =
+                        stringResource(R.string.post_image_alt_numbered, rowIndex * 2 + column + 1, images.size)
+                    PostImageView(post.postId, image, description, Modifier.weight(1f).aspectRatio(1f))
                 }
                 if (row.size == 1) Box(modifier = Modifier.weight(1f))
             }
@@ -76,6 +84,7 @@ fun PostImageGrid(post: Post) {
 private fun PostImageView(
     postId: String,
     image: PostImage,
+    description: String,
     modifier: Modifier,
 ) {
     val images = LocalPostImages.current
@@ -89,7 +98,7 @@ private fun PostImageView(
     bitmap?.let {
         Image(
             bitmap = it,
-            contentDescription = stringResource(R.string.post_image_alt),
+            contentDescription = description,
             contentScale = ContentScale.Crop,
             modifier = shaped,
         )

@@ -8,10 +8,13 @@ object SocialRoutes {
     const val COMMUNITY = "community"
     const val POST = "post"
     const val REPORTS = "reports"
+    const val REQUESTS = "requests"
 
     fun community(id: String) = "$COMMUNITY/$id"
 
     fun post(id: String) = "$POST/$id"
 
     fun reports(id: String) = "$REPORTS/$id"
+
+    fun requests(id: String) = "$REQUESTS/$id"
 }
