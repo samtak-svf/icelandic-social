@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useId, useState, type ChangeEvent } from "react";
-import { refused, useAccount, type Problem } from "../account.tsx";
+import { useAccount } from "../account.tsx";
+import { refused, type Problem } from "../problem.ts";
 import { getPhoto, removePhoto, setPhoto, type Me } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { squarePhoto } from "../photo.ts";
-import { Button, ProblemText, Status } from "../ui/kit.tsx";
+import { Button, ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
 import { VerifyCta } from "../ui/verify.tsx";
 
 // Ég (decisions 0034, 0039): the name, its mark or the way to it (0069), and
@@ -23,11 +24,8 @@ function MePage() {
         <Avatar me={me} />
         <p className="text-2xl font-semibold">{me.name ?? strings.person_unnamed}</p>
         {me.verified && (
-          <p className="inline-flex items-center gap-1 font-medium text-verified-mark">
-            <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4 fill-current">
-              <path d="M8 0l2 2.3 3-.3.3 3L16 8l-2.7 3 .3 3-3-.3L8 16l-2-2.3-3 .3-.3-3L0 8l2.3-2-.3-3 3 .3z" />
-            </svg>
-            {strings.verified_short}
+          <p>
+            <VerifiedMark />
           </p>
         )}
         <VerifyCta />

@@ -25,9 +25,13 @@ import { OPERATOR_INVITE_PATH, operatorInvite } from "../scripts/operator-invite
 //   and answers its link (scripts/invite-operator.ts --local), since cf has no
 //   local `d1 query`;
 // - a POST to /dev/jobs runs the minute cron once (decision 0067), since local
-//   cf dev fires no cron, so a test sees its notification at once.
+//   cf dev fires no cron, so a test sees its notification at once;
+// - a POST to /dev/platform-moderator?account=<id> makes that account a
+//   platform moderator (decision 0063), which in production is a row the
+//   maintainer writes by hand.
 
 const JOBS_PATH = "/dev/jobs";
+const PLATFORM_MODERATOR_PATH = "/dev/platform-moderator";
 
 function local(namespace: DurableObjectNamespace): DurableObjectNamespace {
   return new Proxy(namespace, {
@@ -80,6 +84,16 @@ export default {
       const { link, sql } = await operatorInvite();
       await env.DB.prepare(sql).run();
       return new Response(link);
+    }
+    if (url.pathname === PLATFORM_MODERATOR_PATH && request.method === "POST") {
+      const account = url.searchParams.get("account");
+      if (account === null) return new Response(null, { status: 400 });
+      await env.DB.prepare(
+        "INSERT OR IGNORE INTO platform_moderators (account_id, added_at) VALUES (?, ?)",
+      )
+        .bind(account, Date.now())
+        .run();
+      return new Response(null, { status: 204 });
     }
     if (url.pathname === JOBS_PATH && request.method === "POST") {
       const cron = { cron: "* * * * *", scheduledTime: Date.now(), noRetry() {} };

@@ -10,7 +10,14 @@ import {
 import { strings } from "../generated/brand/strings.ts";
 import { Composer } from "../social/composer.tsx";
 import { outcome, useLoad, when } from "../social/outcome.ts";
-import { authorName, DeleteButton, PostView, StateMark, useMine } from "../social/post.tsx";
+import {
+  AuthorName,
+  authorName,
+  DeleteButton,
+  PostView,
+  StateMark,
+  useMine,
+} from "../social/post.tsx";
 import { ReportButton } from "../social/report.tsx";
 import { ProblemText, Status } from "../ui/kit.tsx";
 
@@ -96,7 +103,7 @@ function CommentView({ comment, deleted }: Readonly<{ comment: Comment; deleted:
     >
       <StateMark state={comment.state} />
       <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="font-semibold">{authorName(comment.author)}</span>
+        <AuthorName author={comment.author} />
         <time
           dateTime={new Date(comment.createdAt).toISOString()}
           className="text-sm text-muted-fg"

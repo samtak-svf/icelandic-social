@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useAccount, type Problem } from "../account.tsx";
+import { useAccount } from "../account.tsx";
+import type { Problem } from "../problem.ts";
 import {
   deletePost,
   getPostMedia,
@@ -11,7 +12,7 @@ import {
   type SocialMedia,
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { Button, ProblemText, Status } from "../ui/kit.tsx";
+import { Button, ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
 import { outcome, when, type Outcome } from "./outcome.ts";
 import { ReportButton } from "./report.tsx";
 
@@ -32,6 +33,16 @@ type Kind = (typeof REACTIONS)[number][0];
 export function authorName(author: Author | null): string {
   if (author === null) return strings.person_deleted;
   return author.name ?? strings.person_unnamed;
+}
+
+/** The author's name, with the verified mark when Kenni vouches for them (#358). */
+export function AuthorName({ author }: Readonly<{ author: Author | null }>) {
+  return (
+    <span className="inline-flex flex-wrap items-baseline gap-x-2 font-semibold">
+      {authorName(author)}
+      {author?.verified === true && <VerifiedMark className="text-sm" />}
+    </span>
+  );
 }
 
 /** Whether the person signed in wrote what `author` wrote. */
@@ -90,7 +101,7 @@ export function PostView({
     >
       <StateMark state={post.state} />
       <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="font-semibold">{authorName(post.author)}</span>
+        <AuthorName author={post.author} />
         <time dateTime={new Date(post.createdAt).toISOString()} className="text-sm text-muted-fg">
           {when(post.createdAt)}
         </time>
@@ -128,15 +139,28 @@ export function PostView({
 function Images({ postId, media }: Readonly<{ postId: string; media: SocialMedia[] }>) {
   return (
     <div className={`grid gap-1 ${media.length > 1 ? "grid-cols-2" : ""}`}>
-      {media.map((m) => (
-        <Image key={m.mediaId} postId={postId} media={m} />
+      {media.map((m, i) => (
+        <Image
+          key={m.mediaId}
+          postId={postId}
+          media={m}
+          alt={
+            media.length > 1
+              ? strings.post_image_alt_numbered({ n: i + 1, count: media.length })
+              : strings.post_image_alt
+          }
+        />
       ))}
     </div>
   );
 }
 
 /** One image, fetched with the client header the API asks of every call. */
-function Image({ postId, media }: Readonly<{ postId: string; media: SocialMedia }>) {
+function Image({
+  postId,
+  media,
+  alt,
+}: Readonly<{ postId: string; media: SocialMedia; alt: string }>) {
   const [src, setSrc] = useState<string | null>(null);
   const { mediaId } = media;
   useEffect(() => {
@@ -161,7 +185,7 @@ function Image({ postId, media }: Readonly<{ postId: string; media: SocialMedia 
   return (
     <img
       src={src}
-      alt={strings.post_image_alt}
+      alt={alt}
       width={media.width}
       height={media.height}
       className={box}

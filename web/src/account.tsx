@@ -1,13 +1,11 @@
 import { createContext, use, useCallback, useEffect, useState, type ReactNode } from "react";
 import { getMe, type Me } from "./generated/api.ts";
+import { refused, type Problem } from "./problem.ts";
 
 // Who is signed in, as the API says (GET /v1/me). The cookie is HttpOnly, so
 // the page cannot see it: it asks, and a 401 is "signed out". The answer is
 // asked for in the browser, never while rendering on the server, which holds
 // no cookie of its own to send (decision 0062).
-
-/** What a failed call left to show: the server's request id, if it answered. */
-export type Problem = { kind: "unreachable" } | { kind: "refused"; requestId: string | null };
 
 export type AccountState =
   | { status: "loading" }
@@ -26,18 +24,6 @@ interface AccountValue {
 }
 
 const AccountContext = createContext<AccountValue | null>(null);
-
-/** The problem a refusal carries, read from its ApiError body when there is one. */
-export function refused(data: unknown): Problem {
-  const requestId =
-    typeof data === "object" &&
-    data !== null &&
-    "requestId" in data &&
-    typeof data.requestId === "string"
-      ? data.requestId
-      : null;
-  return { kind: "refused", requestId };
-}
 
 async function ask(): Promise<AccountState> {
   try {

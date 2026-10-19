@@ -17,6 +17,7 @@ import { Route as CommunitiesIndexRouteImport } from './routes/communities.index
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as CommunitiesCommunityIdIndexRouteImport } from './routes/communities.$communityId.index'
 import { Route as CommunitiesCommunityIdReportsRouteImport } from './routes/communities.$communityId.reports'
+import { Route as CommunitiesCommunityIdRequestsRouteImport } from './routes/communities.$communityId.requests'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -60,6 +61,12 @@ const CommunitiesCommunityIdReportsRoute =
     path: '/communities/$communityId/reports',
     getParentRoute: () => rootRouteImport,
   } as any)
+const CommunitiesCommunityIdRequestsRoute =
+  CommunitiesCommunityIdRequestsRouteImport.update({
+    id: '/communities/$communityId/requests',
+    path: '/communities/$communityId/requests',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -69,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities/': typeof CommunitiesIndexRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
+  '/communities/$communityId/requests': typeof CommunitiesCommunityIdRequestsRoute
   '/communities/$communityId/': typeof CommunitiesCommunityIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -79,6 +87,7 @@ export interface FileRoutesByTo {
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities': typeof CommunitiesIndexRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
+  '/communities/$communityId/requests': typeof CommunitiesCommunityIdRequestsRoute
   '/communities/$communityId': typeof CommunitiesCommunityIdIndexRoute
 }
 export interface FileRoutesById {
@@ -90,6 +99,7 @@ export interface FileRoutesById {
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities/': typeof CommunitiesIndexRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
+  '/communities/$communityId/requests': typeof CommunitiesCommunityIdRequestsRoute
   '/communities/$communityId/': typeof CommunitiesCommunityIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -102,6 +112,7 @@ export interface FileRouteTypes {
     | '/posts/$postId'
     | '/communities/'
     | '/communities/$communityId/reports'
+    | '/communities/$communityId/requests'
     | '/communities/$communityId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -112,6 +123,7 @@ export interface FileRouteTypes {
     | '/posts/$postId'
     | '/communities'
     | '/communities/$communityId/reports'
+    | '/communities/$communityId/requests'
     | '/communities/$communityId'
   id:
     | '__root__'
@@ -122,6 +134,7 @@ export interface FileRouteTypes {
     | '/posts/$postId'
     | '/communities/'
     | '/communities/$communityId/reports'
+    | '/communities/$communityId/requests'
     | '/communities/$communityId/'
   fileRoutesById: FileRoutesById
 }
@@ -133,6 +146,7 @@ export interface RootRouteChildren {
   PostsPostIdRoute: typeof PostsPostIdRoute
   CommunitiesIndexRoute: typeof CommunitiesIndexRoute
   CommunitiesCommunityIdReportsRoute: typeof CommunitiesCommunityIdReportsRoute
+  CommunitiesCommunityIdRequestsRoute: typeof CommunitiesCommunityIdRequestsRoute
   CommunitiesCommunityIdIndexRoute: typeof CommunitiesCommunityIdIndexRoute
 }
 
@@ -194,6 +208,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CommunitiesCommunityIdReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/communities/$communityId/requests': {
+      id: '/communities/$communityId/requests'
+      path: '/communities/$communityId/requests'
+      fullPath: '/communities/$communityId/requests'
+      preLoaderRoute: typeof CommunitiesCommunityIdRequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -205,6 +226,7 @@ const rootRouteChildren: RootRouteChildren = {
   PostsPostIdRoute: PostsPostIdRoute,
   CommunitiesIndexRoute: CommunitiesIndexRoute,
   CommunitiesCommunityIdReportsRoute: CommunitiesCommunityIdReportsRoute,
+  CommunitiesCommunityIdRequestsRoute: CommunitiesCommunityIdRequestsRoute,
   CommunitiesCommunityIdIndexRoute: CommunitiesCommunityIdIndexRoute,
 }
 export const routeTree = rootRouteImport

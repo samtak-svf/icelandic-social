@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import type { Problem } from "../account.tsx";
+import { describe, type Problem } from "../problem.ts";
 import { strings } from "../generated/brand/strings.ts";
 
 // The few pieces every page is built from. Colours are brand tokens
@@ -25,16 +25,29 @@ export function Button({
   );
 }
 
-/** What went wrong, read out as it appears; with the request id when the server gave one. */
+/** What went wrong, read out as it appears; with the request id when it helps (#362). */
 export function ProblemText({ problem }: Readonly<{ problem: Problem }>) {
+  const { message, requestId } = describe(problem);
   return (
     <span>
-      {problem.kind === "unreachable" ? strings.error_unreachable : strings.error_generic}
-      {problem.kind === "refused" && problem.requestId !== null && (
+      {message}
+      {requestId !== null && (
         <span className="block text-sm text-muted-fg">
-          {strings.problem_request_id({ id: problem.requestId })}
+          {strings.problem_request_id({ id: requestId })}
         </span>
       )}
+    </span>
+  );
+}
+
+/** The mark Kenni gives a verified account, with its word so it is read out too (#358). */
+export function VerifiedMark({ className = "" }: Readonly<{ className?: string }>) {
+  return (
+    <span className={`inline-flex items-center gap-1 font-medium text-verified-mark ${className}`}>
+      <svg aria-hidden="true" viewBox="0 0 16 16" className="size-[1em] fill-current">
+        <path d="M8 0l2 2.3 3-.3.3 3L16 8l-2.7 3 .3 3-3-.3L8 16l-2-2.3-3 .3-.3-3L0 8l2.3-2-.3-3 3 .3z" />
+      </svg>
+      {strings.verified_short}
     </span>
   );
 }

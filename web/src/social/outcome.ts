@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { refused, useAccount, type Problem } from "../account.tsx";
+import { useAccount } from "../account.tsx";
+import { refused, type Problem } from "../problem.ts";
+import { formatIsDateTime } from "../lib/is-format.ts";
 
 // What a call to the API came to, for the pages of the social slice: the body
 // of the status the page waits for, or what went wrong. A 401 means this
@@ -47,9 +49,7 @@ export function useLoad<T>(load: () => Promise<Outcome<T>>): [Outcome<T> | null,
   return [state, () => setRound((n) => n + 1)];
 }
 
-const WHEN = new Intl.DateTimeFormat("is", { dateStyle: "medium", timeStyle: "short" });
-
 /** A moment, as a person in Iceland reads it. */
 export function when(ms: number): string {
-  return WHEN.format(ms);
+  return formatIsDateTime(ms);
 }

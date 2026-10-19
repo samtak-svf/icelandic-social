@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from "react";
-import type { Problem } from "../account.tsx";
+import type { Problem } from "../problem.ts";
 import { report, type ReportTarget } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";

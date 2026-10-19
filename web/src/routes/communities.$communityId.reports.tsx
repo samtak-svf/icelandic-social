@@ -1,25 +1,29 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useId, useState } from "react";
-import type { Problem } from "../account.tsx";
+import type { Problem } from "../problem.ts";
 import {
   closeReport,
   communityReports,
   moderate,
   resolveCards,
+  type Author,
   type Card,
   type Report,
   type ReportTarget,
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { outcome, useLoad, when } from "../social/outcome.ts";
-import { authorName } from "../social/post.tsx";
+import { AuthorName, authorName } from "../social/post.tsx";
+import { verbs } from "../social/verbs.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 
 // A community's report queue (decision 0066), oldest first, open or closed:
 // what was reported, as a card, and why. The moderator hides, removes or
 // restores the content, mutes, unmutes, bans or unbans the member it is
 // about, with a reason that is logged, or closes the report without acting.
-// An action on an open report closes it; on a closed one it acts alone.
+// An action on an open report closes it; on a closed one it acts alone. Only
+// the verbs that apply to the target as it stands now are offered (#361), and
+// a closed report says what was decided, by whom and when (#360).
 export const Route = createFileRoute("/communities/$communityId/reports")({ component: Reports });
 
 const REASONS = {
@@ -28,6 +32,22 @@ const REASONS = {
   spam: strings.report_reason_spam,
   other: strings.report_reason_other,
 } as const;
+
+const DECISIONS: Record<NonNullable<Report["decision"]>, string> = {
+  hide_post: strings.moderation_decision_hide_post,
+  remove_post: strings.moderation_decision_remove_post,
+  restore_post: strings.moderation_decision_restore_post,
+  hide_comment: strings.moderation_decision_hide_comment,
+  remove_comment: strings.moderation_decision_remove_comment,
+  restore_comment: strings.moderation_decision_restore_comment,
+  mute_member: strings.moderation_decision_mute_member,
+  unmute_member: strings.moderation_decision_unmute_member,
+  remove_member: strings.moderation_decision_remove_member,
+  ban_member: strings.moderation_decision_ban_member,
+  unban_member: strings.moderation_decision_unban_member,
+  dismissed: strings.moderation_decision_dismissed,
+  community_deleted: strings.moderation_decision_community_deleted,
+};
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -162,7 +182,6 @@ function ReportItem({
 }: Readonly<{ report: Report; card: Card | undefined; communityId: string; done: () => void }>) {
   const id = useId();
   const [reason, setReason] = useState("");
-  const [days, setDays] = useState<number>(MUTES[0][0]);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [acted, setActed] = useState(false);
@@ -206,6 +225,7 @@ function ReportItem({
       ),
     );
   const blocked = busy || reason.trim() === "";
+  const can = verbs(report);
 
   return (
     <article
@@ -219,43 +239,30 @@ function ReportItem({
         </time>
       </header>
       {report.note !== "" && <p className="whitespace-pre-wrap">{report.note}</p>}
+      {!open && <Decision report={report} />}
       {card && card.kind !== "unavailable" && card.kind !== "community" && (
         <blockquote className="rounded-md bg-muted p-3">
-          <p className="font-semibold">{authorName(card.author)}</p>
+          <p>
+            <AuthorName author={card.author} />
+          </p>
           <p className="whitespace-pre-wrap">{card.excerpt}</p>
         </blockquote>
       )}
       <label htmlFor={`${id}-reason`}>{strings.report_reason}</label>
       <input
         id={`${id}-reason`}
+        aria-describedby={`${id}-reason-help`}
         value={reason}
         maxLength={500}
         onChange={(event) => setReason(event.target.value)}
         className="min-h-11 rounded-md border border-border-strong bg-surface px-3"
       />
+      <p id={`${id}-reason-help`} className="text-sm text-muted-fg">
+        {strings.moderation_reason_required}
+      </p>
       <div className="flex flex-wrap gap-2">
         {isContent(target) && (
-          <>
-            <Button
-              disabled={blocked}
-              onClick={() => void action(`hide_${target.kind}`, target.id)}
-            >
-              {strings.moderation_hide}
-            </Button>
-            <Button
-              tone="danger"
-              disabled={blocked}
-              onClick={() => void action(`remove_${target.kind}`, target.id)}
-            >
-              {strings.moderation_remove}
-            </Button>
-            <Button
-              disabled={blocked}
-              onClick={() => void action(`restore_${target.kind}`, target.id)}
-            >
-              {strings.moderation_restore}
-            </Button>
-          </>
+          <ContentActions target={target} can={can} blocked={blocked} action={action} />
         )}
         {open && (
           <Button disabled={blocked} onClick={() => void dismiss()}>
@@ -264,57 +271,129 @@ function ReportItem({
         )}
       </div>
       {member !== null && (
-        <fieldset className="flex flex-col gap-2">
-          <legend className="font-semibold">
-            {strings.moderation_member}: {authorName(member)}
-          </legend>
-          <div className="flex flex-wrap items-center gap-2">
-            <label htmlFor={`${id}-days`}>{strings.moderation_mute_for}</label>
-            <select
-              id={`${id}-days`}
-              value={days}
-              onChange={(event) => setDays(Number(event.target.value))}
-              className="min-h-11 rounded-md border border-border-strong bg-surface px-3"
-            >
-              {MUTES.map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <Button
-              disabled={blocked}
-              onClick={() => void action("mute_member", member.accountId, Date.now() + days * DAY)}
-            >
-              {strings.moderation_mute}
-            </Button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              disabled={blocked}
-              onClick={() => void action("unmute_member", member.accountId)}
-            >
-              {strings.moderation_unmute}
-            </Button>
-            <Button
-              tone="danger"
-              disabled={blocked}
-              onClick={() => void action("ban_member", member.accountId)}
-            >
-              {strings.moderation_ban}
-            </Button>
-            <Button
-              disabled={blocked}
-              onClick={() => void action("unban_member", member.accountId)}
-            >
-              {strings.moderation_unban}
-            </Button>
-          </div>
-        </fieldset>
+        <MemberActions member={member} can={can} blocked={blocked} action={action} />
       )}
       <Status>
         {problem ? <ProblemText problem={problem} /> : acted && strings.moderation_done}
       </Status>
     </article>
+  );
+}
+
+/** What a closed report came to: the decision, its reason, who and when (#360). */
+function Decision({ report }: Readonly<{ report: Report }>) {
+  const date = report.closedAt === null ? null : when(report.closedAt);
+  return (
+    <div className="flex flex-col gap-1 rounded-md bg-muted p-3">
+      {report.decision !== null && <p className="font-semibold">{DECISIONS[report.decision]}</p>}
+      {report.resolution !== null && report.resolution !== "" && (
+        <p className="whitespace-pre-wrap">{report.resolution}</p>
+      )}
+      {date !== null && (
+        <p className="text-sm text-muted-fg">
+          {report.closedBy === null
+            ? strings.moderation_closed_at({ date })
+            : strings.moderation_closed_by({ name: authorName(report.closedBy), date })}
+        </p>
+      )}
+    </div>
+  );
+}
+
+type Act = (verb: Action, targetId: string, until?: number) => Promise<void>;
+type Verbs = ReturnType<typeof verbs>;
+
+/** The verbs on a post or comment that apply to it as it stands. */
+function ContentActions({
+  target,
+  can,
+  blocked,
+  action,
+}: Readonly<{ target: Content; can: Verbs; blocked: boolean; action: Act }>) {
+  return (
+    <>
+      {can.hide && (
+        <Button disabled={blocked} onClick={() => void action(`hide_${target.kind}`, target.id)}>
+          {strings.moderation_hide}
+        </Button>
+      )}
+      {can.remove && (
+        <Button
+          tone="danger"
+          disabled={blocked}
+          onClick={() => void action(`remove_${target.kind}`, target.id)}
+        >
+          {strings.moderation_remove}
+        </Button>
+      )}
+      {can.restore && (
+        <Button disabled={blocked} onClick={() => void action(`restore_${target.kind}`, target.id)}>
+          {strings.moderation_restore}
+        </Button>
+      )}
+    </>
+  );
+}
+
+/** The verbs on the reported account that apply to its standing, if any do. */
+function MemberActions({
+  member,
+  can,
+  blocked,
+  action,
+}: Readonly<{ member: Author; can: Verbs; blocked: boolean; action: Act }>) {
+  const id = useId();
+  const [days, setDays] = useState<number>(MUTES[0][0]);
+  if (!(can.mute || can.unmute || can.ban || can.unban)) return null;
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="font-semibold">
+        {strings.moderation_member}: {authorName(member)}
+      </legend>
+      {can.mute && (
+        <div className="flex flex-wrap items-center gap-2">
+          <label htmlFor={`${id}-days`}>{strings.moderation_mute_for}</label>
+          <select
+            id={`${id}-days`}
+            value={days}
+            onChange={(event) => setDays(Number(event.target.value))}
+            className="min-h-11 rounded-md border border-border-strong bg-surface px-3"
+          >
+            {MUTES.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <Button
+            disabled={blocked}
+            onClick={() => void action("mute_member", member.accountId, Date.now() + days * DAY)}
+          >
+            {strings.moderation_mute}
+          </Button>
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {can.unmute && (
+          <Button disabled={blocked} onClick={() => void action("unmute_member", member.accountId)}>
+            {strings.moderation_unmute}
+          </Button>
+        )}
+        {can.ban && (
+          <Button
+            tone="danger"
+            disabled={blocked}
+            onClick={() => void action("ban_member", member.accountId)}
+          >
+            {strings.moderation_ban}
+          </Button>
+        )}
+        {can.unban && (
+          <Button disabled={blocked} onClick={() => void action("unban_member", member.accountId)}>
+            {strings.moderation_unban}
+          </Button>
+        )}
+      </div>
+    </fieldset>
   );
 }

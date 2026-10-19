@@ -46,6 +46,20 @@ async function found(owner: Page, audience: "open" | "private"): Promise<string>
   return owner.url();
 }
 
+/** Makes the person in `page` a platform moderator, through the dev Worker. */
+async function platformModerator(page: Page) {
+  const accountId = await page.evaluate(async () => {
+    const answer = await fetch("/v1/me", { headers: { "spjall-client": "web/0.1.0" } });
+    const body: unknown = await answer.json();
+    return typeof body === "object" && body !== null && "accountId" in body
+      ? String(body.accountId)
+      : "";
+  });
+  expect(accountId).not.toBe("");
+  const url = `${DEV}/dev/platform-moderator?account=${encodeURIComponent(accountId)}`;
+  expect((await fetch(url, { method: "POST" })).status).toBe(204);
+}
+
 /** Joins the open community at `address` as `page`. */
 async function join(page: Page, address: string) {
   await page.goto(address);
@@ -163,8 +177,14 @@ test("a member posts images, deletes a comment and the post, and withdraws a joi
   await write(member, strings.post_compose, strings.post_publish, "Myndir úr garðinum.");
   await expect(member.getByText("mynd2.png")).toHaveCount(0);
   const mine = post(member, "Myndir úr garðinum");
-  const images = mine.getByRole("img", { name: strings.post_image_alt });
+  // Two are told apart by their number (#355).
+  const images = mine.getByRole("img");
   await expect(images).toHaveCount(2);
+  for (const n of [1, 2]) {
+    await expect(
+      mine.getByRole("img", { name: strings.post_image_alt_numbered({ n, count: 2 }) }),
+    ).toBeVisible();
+  }
   for (const one of await images.all()) {
     await expect
       .poll(() => one.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth))
@@ -234,6 +254,12 @@ test("a moderator hides, then restores and mutes and unmutes from the closed rep
   const closed = owner.getByRole("article", { name: strings.report_reason_spam });
   await expect(closed).toContainText("ódýra áburðinn");
   await expect(closed.getByRole("button", { name: strings.moderation_dismiss })).toHaveCount(0);
+  // It says what was decided, why and by whom (#360), and offers no second hide (#361).
+  await expect(closed.getByText(strings.moderation_decision_hide_post)).toBeVisible();
+  await expect(closed.getByText("Ruslpóstur", { exact: true })).toBeVisible();
+  await expect(closed.getByText(/^Eigandi Stjórnadóttir afgreiddi tilkynninguna /)).toBeVisible();
+  await expect(closed.getByRole("button", { name: strings.moderation_hide })).toHaveCount(0);
+  await expect(closed.getByRole("button", { name: strings.moderation_unmute })).toHaveCount(0);
   await closed.getByLabel(strings.report_reason).fill("Ekki ruslpóstur eftir allt");
 
   /** Presses a moderator's action and waits until the server has done it. */
@@ -264,4 +290,72 @@ test("a moderator hides, then restores and mutes and unmutes from the closed rep
   // The open side is empty still.
   await owner.getByRole("button", { name: strings.moderation_open, exact: true }).click();
   await expect(owner.getByText(strings.moderation_queue_empty)).toBeVisible();
+});
+
+test("a moderator approves one join request and declines another, who must wait", async ({
+  browser,
+}) => {
+  test.slow();
+  const owner = await person(browser, "Eigandi Beiðnadóttir");
+  const welcome = await person(browser, "Velkomin Beiðnadóttir");
+  const refused = await person(browser, "Hafnað Beiðnason");
+  const community = await found(owner, "private");
+  for (const one of [welcome, refused]) {
+    await one.goto(community);
+    await one.getByRole("button", { name: strings.community_request_join }).click();
+    await expect(one.getByText(strings.community_join_requested)).toBeVisible();
+  }
+
+  // The owner sees how many wait, and answers each.
+  await owner.reload();
+  await owner.getByRole("link", { name: strings.join_requests_waiting({ count: 2 }) }).click();
+  await expect(owner.getByRole("heading", { name: strings.join_requests_title })).toBeVisible();
+  const request = (name: string) => owner.getByRole("article").filter({ hasText: name });
+  await expect(request("Velkomin").getByText(strings.verified_short)).toBeVisible();
+  await request("Velkomin").getByRole("button", { name: strings.join_request_approve }).click();
+  await expect(request("Velkomin")).toHaveCount(0);
+  await request("Hafnað").getByRole("button", { name: strings.join_request_decline }).click();
+  await expect(owner.getByText(strings.join_requests_empty)).toBeVisible();
+
+  // One is a member; the other is told, and offered no way to ask again yet.
+  await welcome.reload();
+  await expect(welcome.getByRole("button", { name: strings.community_leave })).toBeVisible();
+  await refused.reload();
+  await expect(refused.getByText(strings.community_join_declined)).toBeVisible();
+  await expect(refused.getByText(/^Þú getur beðið aftur \d+\. \p{L}+ \d{4}\.$/u)).toBeVisible();
+  await expect(refused.getByRole("button", { name: strings.community_request_join })).toHaveCount(
+    0,
+  );
+});
+
+test("the owner deletes a community, and a platform moderator restores it", async ({ browser }) => {
+  test.slow();
+  const owner = await person(browser, "Eigandi Eyðingardóttir");
+  const platform = await person(browser, "Umsjón Eyðingarson");
+  await platformModerator(platform);
+  const community = await found(owner, "open");
+  const name = (await owner.getByRole("heading", { level: 1 }).textContent()) ?? "";
+  await write(owner, strings.post_compose, strings.post_publish, "Síðasti pósturinn.");
+
+  // The confirmation names it; once accepted, it is gone for the owner.
+  let asked = "";
+  owner.once("dialog", (dialog) => {
+    asked = dialog.message();
+    void dialog.accept();
+  });
+  await owner.getByRole("button", { name: strings.community_delete }).click();
+  await owner.waitForURL(/\/communities$/);
+  expect(asked).toBe(strings.community_delete_confirm({ name }));
+  await expect(owner.getByRole("link", { name })).toHaveCount(0);
+  await owner.goto(community);
+  await expect(owner.getByRole("heading", { name })).toHaveCount(0);
+
+  // A platform moderator sees it deleted, with its last day, and restores it.
+  await platform.goto(community);
+  await expect(platform.getByText(/^Samfélaginu var eytt\. Það má endurheimta til /)).toBeVisible();
+  await expect(platform.getByText("Síðasti pósturinn.")).toHaveCount(0);
+  await platform.getByRole("button", { name: strings.community_restore }).click();
+  await expect(platform.getByRole("button", { name: strings.community_join })).toBeVisible();
+  await owner.goto(community);
+  await expect(post(owner, "Síðasti pósturinn.")).toBeVisible();
 });

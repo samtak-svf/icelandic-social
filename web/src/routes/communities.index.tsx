@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useId, useState, type FormEvent } from "react";
-import { useAccount, type Problem } from "../account.tsx";
+import { useAccount } from "../account.tsx";
+import type { Problem } from "../problem.ts";
 import {
   createCommunity,
   listCommunities,

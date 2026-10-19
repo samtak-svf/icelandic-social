@@ -1,8 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { refused, useAccount, type Problem } from "../account.tsx";
+import { useAccount } from "../account.tsx";
+import { refused, type Problem } from "../problem.ts";
 import { endOtherSessions, endSession, listSessions, type SessionInfo } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
+import { formatIsDate } from "../lib/is-format.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 import { VerifyCta } from "../ui/verify.tsx";
 
@@ -10,8 +12,6 @@ import { VerifyCta } from "../ui/verify.tsx";
 // Ending another session signs that client out at once; a phone's device goes
 // with its session. Signing out is ending this one.
 export const Route = createFileRoute("/settings")({ component: Settings });
-
-const DAY = new Intl.DateTimeFormat("is", { dateStyle: "long" });
 
 type Sessions = { status: "loading" } | { status: "ready"; sessions: SessionInfo[] };
 
@@ -158,7 +158,7 @@ function name(session: SessionInfo): string {
 }
 
 function when(session: SessionInfo): string {
-  const date = DAY.format(session.lastSeenAt);
+  const date = formatIsDate(session.lastSeenAt);
   return session.kind === "web"
     ? strings.session_last_seen({ date })
     : strings.session_signed_in({ date });
