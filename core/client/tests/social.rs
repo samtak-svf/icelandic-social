@@ -18,8 +18,9 @@ use serde_json::{Value, json};
 use spjall_client::api::{
     ApiError, Audience, Author, Card, CardCommunity, JoinState, Method, Moderation,
     ModerationAction, ModerationState, NewReport, NotificationKind, Platform, Provider,
-    ReactionCount, ReactionKind, Ref, RefKind, ReportReason, ReportState, Request, Response, Role,
-    SocialMedia, Target, TargetKind, Transport, Unreachable,
+    ReactionCount, ReactionKind, Ref, RefKind, ReportDecision, ReportReason, ReportState, Request,
+    Response, Role, SocialMedia, Target, TargetKind, TargetStanding, TargetState, Transport,
+    Unreachable,
 };
 use spjall_client::{Client, ClientError};
 use tempfile::TempDir;
@@ -166,6 +167,9 @@ fn community(id: &str, audience: &str) -> Value {
         "invited": false,
         "mutedUntil": null,
         "readOnly": false,
+        "deletedAt": null,
+        "joinDeclinedUntil": null,
+        "pendingJoinRequests": 3,
     })
 }
 
@@ -398,6 +402,11 @@ fn reports_moderation_and_cards() {
                 "state": "open",
                 "createdAt": 1_760_000_300_000u64,
                 "closedAt": null,
+                "decision": null,
+                "resolution": null,
+                "closedBy": null,
+                "targetStanding": null,
+                "targetState": null,
             }],
             "next": null,
         }),
@@ -794,4 +803,145 @@ fn mute(until: Option<u64>) -> Moderation {
         report_id: None,
         until,
     }
+}
+
+#[test]
+fn the_lifecycle_calls_go_to_their_paths_and_decode() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+
+    phone.answer(
+        200,
+        json!({ "requests": [{
+            "accountId": "acc_r",
+            "name": null,
+            "verified": false,
+            "requestedAt": 1_760_000_500_000u64,
+        }] }),
+    );
+    let waiting = c.join_requests("cm_1").unwrap();
+    assert_eq!(waiting.len(), 1);
+    assert_eq!(waiting[0].account_id, "acc_r");
+    assert_eq!(waiting[0].name, None);
+    assert_eq!(waiting[0].requested_at, 1_760_000_500_000);
+
+    phone.ok();
+    c.approve_join_request("cm_1", "acc_r").unwrap();
+    phone.ok();
+    c.decline_join_request("cm_1", "acc_s").unwrap();
+    phone.ok();
+    c.delete_community("cm_1").unwrap();
+    phone.answer(200, community("cm_1", "open"));
+    let restored = c.restore_community("cm_1").unwrap();
+    assert_eq!(restored.community_id, "cm_1");
+
+    assert_eq!(
+        phone.sent(),
+        [
+            (
+                Method::Get,
+                "/v1/communities/cm_1/join-requests".into(),
+                Value::Null
+            ),
+            (
+                Method::Post,
+                "/v1/communities/cm_1/join-requests/acc_r".into(),
+                json!({})
+            ),
+            (
+                Method::Delete,
+                "/v1/communities/cm_1/join-requests/acc_s".into(),
+                Value::Null
+            ),
+            (Method::Delete, "/v1/communities/cm_1".into(), Value::Null),
+            (
+                Method::Post,
+                "/v1/communities/cm_1/restore".into(),
+                json!({})
+            ),
+        ]
+    );
+
+    for refused in [
+        c.join_requests("../x").map(drop),
+        c.approve_join_request("cm_1", "a/b"),
+        c.decline_join_request("", "acc_r"),
+        c.delete_community("cm 1"),
+        c.restore_community("cm_1?x").map(drop),
+    ] {
+        assert!(
+            matches!(refused, Err(ClientError::Invalid(_))),
+            "{refused:?}"
+        );
+    }
+    assert!(phone.sent().is_empty());
+}
+
+#[test]
+fn a_community_with_lifecycle_fields_decodes() {
+    let phone = Phone::signed_in();
+    let mut body = community("cm_1", "private");
+    body["deletedAt"] = json!(1_760_000_900_000u64);
+    body["joinDeclinedUntil"] = json!(1_760_100_000_000u64);
+    body["pendingJoinRequests"] = json!(4);
+    phone.answer(200, body);
+    let got = phone.client.community("cm_1").unwrap();
+    assert_eq!(got.deleted_at, Some(1_760_000_900_000));
+    assert_eq!(got.join_declined_until, Some(1_760_100_000_000));
+    assert_eq!(got.pending_join_requests, Some(4));
+}
+
+#[test]
+fn a_closed_report_decodes_and_unknown_values_fall_back() {
+    let phone = Phone::signed_in();
+    let closed = |decision: &str, standing: &str, state: &str| {
+        json!({
+            "reportId": "r_1",
+            "communityId": "cm_1",
+            "target": { "kind": "post", "id": "p_1" },
+            "targetAccount": author("acc_c"),
+            "reason": "spam",
+            "note": "",
+            "state": "closed",
+            "createdAt": 1_760_000_300_000u64,
+            "closedAt": 1_760_000_400_000u64,
+            "decision": decision,
+            "resolution": "Falið",
+            "closedBy": author("acc_m"),
+            "targetStanding": standing,
+            "targetState": state,
+        })
+    };
+    phone.answer(
+        200,
+        json!({ "reports": [
+            closed("hide_post", "muted", "hidden"),
+            closed("something_new", "exiled", "frozen"),
+        ], "next": null }),
+    );
+    let queue = phone
+        .client
+        .community_reports("cm_1", ReportState::Closed, None, 20)
+        .unwrap();
+    let known = &queue.reports[0];
+    assert_eq!(known.decision, Some(ReportDecision::HidePost));
+    assert_eq!(known.resolution.as_deref(), Some("Falið"));
+    assert_eq!(known.closed_by.as_ref().unwrap().account_id, "acc_m");
+    assert_eq!(known.target_standing, Some(TargetStanding::Muted));
+    assert_eq!(known.target_state, Some(TargetState::Hidden));
+    let unknown = &queue.reports[1];
+    assert_eq!(unknown.decision, Some(ReportDecision::Unknown));
+    assert_eq!(unknown.target_standing, Some(TargetStanding::Unknown));
+    assert_eq!(unknown.target_state, Some(TargetState::Unknown));
+}
+
+#[test]
+fn a_declined_join_keeps_its_code() {
+    let phone = Phone::signed_in();
+    phone.answer(409, json!({ "error": "join_declined" }));
+    assert!(matches!(
+        phone.client.join_community("cm_1"),
+        Err(ClientError::Transport(ApiError::Refused { status: 409, code, .. }))
+            if code == "join_declined"
+    ));
 }

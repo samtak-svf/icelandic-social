@@ -99,6 +99,36 @@ pub struct Community {
     /// Its owner's account was deleted and no moderator was left to take
     /// it over; it is deleted 90 days later.
     pub read_only: bool,
+    /// Unix milliseconds when it was deleted; it can be restored for 30
+    /// days after.
+    pub deleted_at: Option<u64>,
+    /// Unix milliseconds: this account's join request was declined, and it
+    /// may ask again from then.
+    pub join_declined_until: Option<u64>,
+    /// Join requests that wait; none unless this account moderates.
+    pub pending_join_requests: Option<u64>,
+}
+
+/// An account asking to join a private community.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct JoinRequest {
+    pub account_id: String,
+    /// None for an account that never gave one.
+    pub name: Option<String>,
+    pub verified: bool,
+    /// Unix milliseconds.
+    pub requested_at: u64,
+}
+
+impl From<api::JoinRequest> for JoinRequest {
+    fn from(request: api::JoinRequest) -> Self {
+        Self {
+            account_id: request.account_id,
+            name: request.name,
+            verified: request.verified,
+            requested_at: request.requested_at,
+        }
+    }
 }
 
 impl From<api::Community> for Community {
@@ -115,6 +145,9 @@ impl From<api::Community> for Community {
             invited: community.invited,
             muted_until: community.muted_until,
             read_only: community.read_only,
+            deleted_at: community.deleted_at,
+            join_declined_until: community.join_declined_until,
+            pending_join_requests: community.pending_join_requests,
         }
     }
 }
@@ -408,6 +441,100 @@ impl From<ReportState> for api::ReportState {
     }
 }
 
+/// What closed a report; `Unknown` for a value a later server adds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ReportDecision {
+    HidePost,
+    RemovePost,
+    RestorePost,
+    HideComment,
+    RemoveComment,
+    RestoreComment,
+    MuteMember,
+    UnmuteMember,
+    RemoveMember,
+    BanMember,
+    UnbanMember,
+    Dismissed,
+    CommunityDeleted,
+    Unknown,
+}
+
+impl From<api::ReportDecision> for ReportDecision {
+    fn from(decision: api::ReportDecision) -> Self {
+        use api::ReportDecision as D;
+        match decision {
+            D::HidePost => Self::HidePost,
+            D::RemovePost => Self::RemovePost,
+            D::RestorePost => Self::RestorePost,
+            D::HideComment => Self::HideComment,
+            D::RemoveComment => Self::RemoveComment,
+            D::RestoreComment => Self::RestoreComment,
+            D::MuteMember => Self::MuteMember,
+            D::UnmuteMember => Self::UnmuteMember,
+            D::RemoveMember => Self::RemoveMember,
+            D::BanMember => Self::BanMember,
+            D::UnbanMember => Self::UnbanMember,
+            D::Dismissed => Self::Dismissed,
+            D::CommunityDeleted => Self::CommunityDeleted,
+            D::Unknown => Self::Unknown,
+        }
+    }
+}
+
+/// The reported account's standing in the community now; `Unknown` for a
+/// value a later server adds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum TargetStanding {
+    Owner,
+    Moderator,
+    Member,
+    Muted,
+    Banned,
+    NotMember,
+    Gone,
+    Unknown,
+}
+
+impl From<api::TargetStanding> for TargetStanding {
+    fn from(standing: api::TargetStanding) -> Self {
+        use api::TargetStanding as S;
+        match standing {
+            S::Owner => Self::Owner,
+            S::Moderator => Self::Moderator,
+            S::Member => Self::Member,
+            S::Muted => Self::Muted,
+            S::Banned => Self::Banned,
+            S::NotMember => Self::NotMember,
+            S::Gone => Self::Gone,
+            S::Unknown => Self::Unknown,
+        }
+    }
+}
+
+/// The reported content's state now; `Unknown` for a value a later server
+/// adds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum TargetState {
+    Visible,
+    Hidden,
+    Removed,
+    Gone,
+    Unknown,
+}
+
+impl From<api::TargetState> for TargetState {
+    fn from(state: api::TargetState) -> Self {
+        match state {
+            api::TargetState::Visible => Self::Visible,
+            api::TargetState::Hidden => Self::Hidden,
+            api::TargetState::Removed => Self::Removed,
+            api::TargetState::Gone => Self::Gone,
+            api::TargetState::Unknown => Self::Unknown,
+        }
+    }
+}
+
 /// A report in a moderator's queue. The account that made it is never
 /// shown.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -424,6 +551,17 @@ pub struct Report {
     /// Unix milliseconds.
     pub created_at: u64,
     pub closed_at: Option<u64>,
+    /// What closed it; none while open.
+    pub decision: Option<ReportDecision>,
+    /// The reason the action gave, or the closing resolution.
+    pub resolution: Option<String>,
+    /// Who closed it; none while open, when the community's deletion did,
+    /// or once that account is deleted.
+    pub closed_by: Option<Author>,
+    /// The reported account's standing in the community now.
+    pub target_standing: Option<TargetStanding>,
+    /// The reported content's state now.
+    pub target_state: Option<TargetState>,
 }
 
 impl From<api::Report> for Report {
@@ -438,6 +576,11 @@ impl From<api::Report> for Report {
             state: report.state.into(),
             created_at: report.created_at,
             closed_at: report.closed_at,
+            decision: report.decision.map(Into::into),
+            resolution: report.resolution,
+            closed_by: report.closed_by.map(Into::into),
+            target_standing: report.target_standing.map(Into::into),
+            target_state: report.target_state.map(Into::into),
         }
     }
 }
@@ -768,6 +911,47 @@ impl CoreClient {
     /// Takes back a join request that waits; no error when none does.
     pub fn withdraw_join_request(&self, community_id: String) -> Result<(), CoreError> {
         Ok(self.client()?.withdraw_join_request(&community_id)?)
+    }
+
+    /// The join requests that wait; for a moderator of the community.
+    pub fn join_requests(&self, community_id: String) -> Result<Vec<JoinRequest>, CoreError> {
+        let requests = self.client()?.join_requests(&community_id)?;
+        Ok(requests.into_iter().map(Into::into).collect())
+    }
+
+    /// Takes the requesting account in as a member.
+    pub fn approve_join_request(
+        &self,
+        community_id: String,
+        account_id: String,
+    ) -> Result<(), CoreError> {
+        Ok(self
+            .client()?
+            .approve_join_request(&community_id, &account_id)?)
+    }
+
+    /// Declines a join request; the account sees the decline, and may ask
+    /// again only after 30 days or an invitation.
+    pub fn decline_join_request(
+        &self,
+        community_id: String,
+        account_id: String,
+    ) -> Result<(), CoreError> {
+        Ok(self
+            .client()?
+            .decline_join_request(&community_id, &account_id)?)
+    }
+
+    /// Deletes a community (its owner or a platform moderator); it can be
+    /// restored for 30 days.
+    pub fn delete_community(&self, community_id: String) -> Result<(), CoreError> {
+        Ok(self.client()?.delete_community(&community_id)?)
+    }
+
+    /// Restores a deleted community. `Refused` with 409 `purged` after the
+    /// 30 days.
+    pub fn restore_community(&self, community_id: String) -> Result<Community, CoreError> {
+        Ok(self.client()?.restore_community(&community_id)?.into())
     }
 
     /// Leaves a community. Its owner is `Refused` with 409.

@@ -512,6 +512,14 @@ pub struct Community {
     /// Its owner's account was deleted and no moderator was left to take it
     /// over; it is deleted 90 days later.
     pub read_only: bool,
+    /// Unix milliseconds when it was deleted; it can be restored for 30
+    /// days after.
+    pub deleted_at: Option<u64>,
+    /// Unix milliseconds: the caller's join request was declined, and it
+    /// may ask again from then.
+    pub join_declined_until: Option<u64>,
+    /// Join requests that wait; none unless the caller moderates.
+    pub pending_join_requests: Option<u64>,
 }
 
 /// A page of `listCommunities`, and the cursor of the next, none on the last.
@@ -533,6 +541,22 @@ struct Communities {
 pub enum JoinState {
     Member,
     Requested,
+}
+
+/// An account asking to join a private community.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JoinRequest {
+    pub account_id: String,
+    pub name: Option<String>,
+    pub verified: bool,
+    /// Unix milliseconds.
+    pub requested_at: u64,
+}
+
+#[derive(Deserialize)]
+struct JoinRequests {
+    requests: Vec<JoinRequest>,
 }
 
 #[derive(Deserialize)]
@@ -673,6 +697,56 @@ pub struct NewReport {
     pub to_platform: bool,
 }
 
+/// What closed a report. A value a later server adds reads as `Unknown`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReportDecision {
+    HidePost,
+    RemovePost,
+    RestorePost,
+    HideComment,
+    RemoveComment,
+    RestoreComment,
+    MuteMember,
+    UnmuteMember,
+    RemoveMember,
+    BanMember,
+    UnbanMember,
+    Dismissed,
+    CommunityDeleted,
+    #[serde(other)]
+    Unknown,
+}
+
+/// The reported account's standing in the community now. A value a later
+/// server adds reads as `Unknown`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TargetStanding {
+    Owner,
+    Moderator,
+    Member,
+    Muted,
+    Banned,
+    NotMember,
+    Gone,
+    #[serde(other)]
+    Unknown,
+}
+
+/// The reported content's state now. A value a later server adds reads as
+/// `Unknown`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TargetState {
+    Visible,
+    Hidden,
+    Removed,
+    Gone,
+    #[serde(other)]
+    Unknown,
+}
+
 /// A report in a moderator's queue, without the account that made it.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -689,6 +763,17 @@ pub struct Report {
     /// Unix milliseconds.
     pub created_at: u64,
     pub closed_at: Option<u64>,
+    /// What closed it; none while open.
+    pub decision: Option<ReportDecision>,
+    /// The reason the action gave, or the closing resolution.
+    pub resolution: Option<String>,
+    /// Who closed it; none while open, when the community's deletion did,
+    /// or once that account is deleted.
+    pub closed_by: Option<Author>,
+    /// The reported account's standing in the community now.
+    pub target_standing: Option<TargetStanding>,
+    /// The reported content's state now.
+    pub target_state: Option<TargetState>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -1405,6 +1490,45 @@ impl<T: Transport + ?Sized> Api<'_, T> {
     pub fn withdraw_join_request(&self, community: &str) -> Result<(), ApiError> {
         let path = format!("/v1/communities/{community}/join");
         self.done(Method::Delete, path, None)
+    }
+
+    /// `listJoinRequests`: the requests that wait, for a moderator.
+    pub fn join_requests(&self, community: &str) -> Result<Vec<JoinRequest>, ApiError> {
+        let listed: JoinRequests = self.call(
+            Method::Get,
+            format!("/v1/communities/{community}/join-requests"),
+            None,
+            "listJoinRequests",
+        )?;
+        Ok(listed.requests)
+    }
+
+    /// `approveJoinRequest`: the account becomes a member.
+    pub fn approve_join_request(&self, community: &str, account: &str) -> Result<(), ApiError> {
+        let path = format!("/v1/communities/{community}/join-requests/{account}");
+        self.done(Method::Post, path, Some("{}".into()))
+    }
+
+    /// `declineJoinRequest`: the account sees the decline, and may ask again
+    /// only after 30 days or an invitation.
+    pub fn decline_join_request(&self, community: &str, account: &str) -> Result<(), ApiError> {
+        let path = format!("/v1/communities/{community}/join-requests/{account}");
+        self.done(Method::Delete, path, None)
+    }
+
+    /// `deleteCommunity`: restorable for 30 days.
+    pub fn delete_community(&self, community: &str) -> Result<(), ApiError> {
+        self.done(Method::Delete, format!("/v1/communities/{community}"), None)
+    }
+
+    /// `restoreCommunity`: 409 `purged` after the purge.
+    pub fn restore_community(&self, community: &str) -> Result<Community, ApiError> {
+        self.call(
+            Method::Post,
+            format!("/v1/communities/{community}/restore"),
+            Some("{}".into()),
+            "restoreCommunity",
+        )
     }
 
     /// `leaveCommunity`: 409 for its owner.

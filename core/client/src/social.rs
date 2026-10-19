@@ -10,9 +10,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::api::{
-    Audience, Card, Comment, CommentPage, Community, CommunityPage, JoinState, Moderation,
-    ModerationAction, NewReport, NotificationPage, Post, PostPage, ReactionKind, Ref, ReportPage,
-    ReportState, SocialMedia, Transport,
+    Audience, Card, Comment, CommentPage, Community, CommunityPage, JoinRequest, JoinState,
+    Moderation, ModerationAction, NewReport, NotificationPage, Post, PostPage, ReactionKind, Ref,
+    ReportPage, ReportState, SocialMedia, Transport,
 };
 use crate::{Client, ClientError, MediaError, authed, is_id};
 
@@ -88,6 +88,42 @@ impl<T: Transport> Client<T> {
         id(community, "community id")?;
         let api = authed(&self.transport, &self.token, &self.client)?;
         Ok(api.withdraw_join_request(community)?)
+    }
+
+    /// The join requests that wait, for a moderator of the community.
+    pub fn join_requests(&self, community: &str) -> Result<Vec<JoinRequest>, ClientError> {
+        id(community, "community id")?;
+        Ok(authed(&self.transport, &self.token, &self.client)?.join_requests(community)?)
+    }
+
+    /// Takes the requesting account in as a member.
+    pub fn approve_join_request(&self, community: &str, account: &str) -> Result<(), ClientError> {
+        id(community, "community id")?;
+        id(account, "account id")?;
+        let api = authed(&self.transport, &self.token, &self.client)?;
+        Ok(api.approve_join_request(community, account)?)
+    }
+
+    /// Declines a join request; the account may ask again later.
+    pub fn decline_join_request(&self, community: &str, account: &str) -> Result<(), ClientError> {
+        id(community, "community id")?;
+        id(account, "account id")?;
+        let api = authed(&self.transport, &self.token, &self.client)?;
+        Ok(api.decline_join_request(community, account)?)
+    }
+
+    /// Deletes a community (its owner or a platform moderator); it can be
+    /// restored for 30 days.
+    pub fn delete_community(&self, community: &str) -> Result<(), ClientError> {
+        id(community, "community id")?;
+        Ok(authed(&self.transport, &self.token, &self.client)?.delete_community(community)?)
+    }
+
+    /// Restores a deleted community; `Refused` with 409 `purged` after the
+    /// 30 days.
+    pub fn restore_community(&self, community: &str) -> Result<Community, ClientError> {
+        id(community, "community id")?;
+        Ok(authed(&self.transport, &self.token, &self.client)?.restore_community(community)?)
     }
 
     /// Leaves a community; its owner cannot (409) until it hands it over.
