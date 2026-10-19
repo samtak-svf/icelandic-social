@@ -310,6 +310,14 @@ describe("moderation", () => {
       await owner.call("GET", `/v1/communities/${id}/reports?state=closed`),
     );
     expect(closed.reports.map((r) => r.reportId)).toEqual([spam]);
+    // A closed report says what was done, why, and by whom.
+    expect(closed.reports[0]).toMatchObject({
+      decision: "hide_post",
+      resolution: "Prófun",
+      closedBy: { accountId: owner.accountId },
+      targetState: "hidden",
+      targetStanding: "member",
+    });
     expect(
       (await platform.call("POST", `/v1/reports/${unlawful}/close`, { resolution: "Fjarlægt" }))
         .status,
@@ -319,6 +327,14 @@ describe("moderation", () => {
         .status,
     ).toBe(404);
     expect((await logOf(owner, id)).map((e) => e.action)).toEqual(["close_report", "hide_post"]);
+    const dismissed = (
+      await ok<Page>(await platform.call("GET", "/v1/moderation/reports?state=closed"))
+    ).reports.find((r) => r.reportId === unlawful);
+    expect(dismissed).toMatchObject({
+      decision: "dismissed",
+      resolution: "Fjarlægt",
+      closedBy: { accountId: platform.accountId },
+    });
     // A closed report is kept a year, an open one until it is closed.
     const closedAt = Date.now();
     expect(await expireReports(env, closedAt)).toBe(0);
@@ -364,5 +380,47 @@ describe("moderation", () => {
     await stub.moderateComment(commentId, "removed", at - REMOVED_KEPT_MS - 1);
     expect(await runDurableObjectAlarm(stub)).toBe(true);
     expect(await stub.comment(commentId)).toBeNull();
+  });
+
+  it("tells a report's queue where its target stands now (#359–#362)", async () => {
+    const [owner, author, reader] = [
+      await person("Eigandi"),
+      await person("Höfundur"),
+      await person("Lesandi"),
+    ];
+    const id = await community(owner, "open", author, reader);
+    const postId = await postBy(author, id);
+    await reader.call("POST", "/v1/reports", {
+      reason: "spam",
+      target: { kind: "post", id: postId },
+    });
+    type Standing = { targetStanding: string | null; targetState: string | null; decision: null };
+    const now = async () =>
+      (await ok<{ reports: Standing[] }>(await owner.call("GET", `/v1/communities/${id}/reports`)))
+        .reports[0];
+    expect(await now()).toMatchObject({
+      targetStanding: "member",
+      targetState: "visible",
+      decision: null,
+    });
+    expect((await act(owner, id, { action: "hide_post", targetId: postId })).status).toBe(204);
+    expect(await now()).toMatchObject({ targetState: "hidden" });
+    expect((await act(owner, id, { action: "restore_post", targetId: postId })).status).toBe(204);
+    expect(await now()).toMatchObject({ targetState: "visible" });
+    const on = (action: string, extra: Record<string, unknown> = {}) =>
+      act(owner, id, { action, targetId: author.accountId, ...extra });
+    expect((await on("mute_member", { until: Date.now() + DAY })).status).toBe(204);
+    expect(await now()).toMatchObject({ targetStanding: "muted" });
+    expect((await on("unmute_member")).status).toBe(204);
+    const role = `/v1/communities/${id}/members/${author.accountId}/role`;
+    expect((await owner.call("PUT", role, { role: "moderator" })).status).toBe(204);
+    expect(await now()).toMatchObject({ targetStanding: "moderator" });
+    expect((await owner.call("PUT", role, { role: "member" })).status).toBe(204);
+    expect((await on("remove_member")).status).toBe(204);
+    expect(await now()).toMatchObject({ targetStanding: "not_member" });
+    expect((await on("ban_member")).status).toBe(204);
+    expect(await now()).toMatchObject({ targetStanding: "banned" });
+    await env.DB.prepare("DELETE FROM accounts WHERE account_id = ?").bind(author.accountId).run();
+    expect(await now()).toMatchObject({ targetStanding: "gone" });
   });
 });

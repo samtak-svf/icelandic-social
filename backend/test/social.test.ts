@@ -1,6 +1,8 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { deleteAccount } from "../src/account-deletion.ts";
+import { communityLifecycle } from "../src/community-lifecycle.ts";
+import { expireCommunities } from "../src/modules/communities/index.ts";
 import { deleteUnattached } from "../src/modules/social/index.ts";
 import { feed } from "../src/modules/social/posts.ts";
 import { ascii, png } from "./images.ts";
@@ -282,7 +284,7 @@ describe("deleting", () => {
     expect(indexed?.n).toBe(0);
   });
 
-  it("a community removes its space and its images", async () => {
+  it("a community hides its posts at once, and its images go when it is purged", async () => {
     const owner = await person("Eigandi");
     const id = await community(owner, "open");
     const { mediaId } = await ok<{ mediaId: string }>(
@@ -291,6 +293,9 @@ describe("deleting", () => {
     const { postId } = await posted(owner, id, "Síðasti", [mediaId]);
     expect((await owner.call("DELETE", `/v1/communities/${id}`)).status).toBe(204);
     expect((await getPost(owner, postId)).status).toBe(404);
+    // Restorable for 30 days (decision 0070).
+    expect(await env.PROFILES.head(`social/${id}/${mediaId}`)).not.toBeNull();
+    await expireCommunities(euEnv(env), communityLifecycle, Date.now() + 31 * DAY_MS);
     expect(await env.PROFILES.head(`social/${id}/${mediaId}`)).toBeNull();
   });
 });

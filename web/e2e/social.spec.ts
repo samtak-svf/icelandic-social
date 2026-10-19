@@ -56,6 +56,9 @@ async function join(page: Page, address: string) {
 test("a member joins, posts, comments, reacts, is told and reports; a moderator acts", async ({
   browser,
 }) => {
+  // Three browsers through one story: it took 28.9 s of the default 30 on a
+  // healthy runner, so a slow one timed it out.
+  test.slow();
   const owner = await person(browser, "Eigandi Prófsdóttir");
   const member = await person(browser, "Meðlimur Prófsson");
   const spammer = await person(browser, "Ruslari Prófsson");

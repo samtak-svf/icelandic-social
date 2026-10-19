@@ -6,6 +6,9 @@ import { authors } from "../social/index.ts";
 /** A notification is kept this long. */
 const KEPT_MS = 90 * 24 * 60 * 60 * 1000;
 
+/** A deleted community's notifications are not shown, and go when it is purged (0070). */
+const LIVE = "EXISTS (SELECT 1 FROM live_communities c WHERE c.community_id = n.community_id)";
+
 type Row = {
   notification_id: string;
   kind: "comment" | "reaction" | "join_approved" | "moderated";
@@ -30,12 +33,16 @@ export async function notificationPage(
       .prepare(
         `SELECT notification_id, kind, actor_id, community_id, post_id, comment_id, action,
                 created_at, read_at
-           FROM notifications WHERE account_id = ?1 AND (?2 IS NULL OR created_at < ?2)
+           FROM notifications n WHERE account_id = ?1 AND (?2 IS NULL OR created_at < ?2)
+            AND ${LIVE}
           ORDER BY created_at DESC LIMIT ?3`,
       )
       .bind(accountId, before, limit + 1),
     db(env)
-      .prepare("SELECT COUNT(*) AS n FROM notifications WHERE account_id = ? AND read_at IS NULL")
+      .prepare(
+        `SELECT COUNT(*) AS n FROM notifications n
+          WHERE account_id = ? AND read_at IS NULL AND ${LIVE}`,
+      )
       .bind(accountId),
   ]);
   const rows = (page?.results ?? []) as Row[];
@@ -80,4 +87,9 @@ export async function expireNotifications(env: Env, now = Date.now()): Promise<n
     .bind(now - KEPT_MS)
     .run();
   return meta.changes;
+}
+
+/** Deletes a purged community's notifications (decision 0070). */
+export async function forgetCommunity(env: Env, communityId: string): Promise<void> {
+  await db(env).prepare("DELETE FROM notifications WHERE community_id = ?").bind(communityId).run();
 }

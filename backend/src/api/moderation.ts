@@ -30,6 +30,27 @@ export const ACTIONS = {
 } as const;
 export type Action = keyof typeof ACTIONS;
 
+/** How a report was closed: the action taken on its target, none, or its community deleted. */
+const DECISIONS = [
+  ...(Object.keys(ACTIONS) as [Action, ...Action[]]),
+  "dismissed",
+  "community_deleted",
+] as const;
+
+/** Where the account a report reaches stands in the report's community now. */
+export const TARGET_STANDINGS = [
+  "owner",
+  "moderator",
+  "member",
+  "muted",
+  "banned",
+  "not_member",
+  "gone",
+] as const;
+
+/** What has become of the post or comment a report is about. */
+export const TARGET_STATES = ["visible", "hidden", "removed", "gone"] as const;
+
 const CreatedAt = z.int().openapi({ description: "Unix milliseconds" });
 const Target = z
   .object({ kind: z.enum(REPORT_KINDS), id: OpaqueId })
@@ -47,6 +68,25 @@ const Report = z
     state: z.enum(["open", "closed"]),
     createdAt: CreatedAt,
     closedAt: z.int().nullable(),
+    // How it was closed, and the moderator who closed it; null while open (decision 0070).
+    decision: z.enum(DECISIONS).nullable().openapi({
+      description:
+        "How it was closed: the action taken, `dismissed`, or `community_deleted`; null while open",
+    }),
+    resolution: z.string().nullable().openapi({
+      description: "The reason the action gave, or the closing resolution; null while open",
+    }),
+    closedBy: z.union([Author, z.null()]).openapi({
+      description:
+        "Who closed it; null while open, when the community's deletion did, or once deleted",
+    }),
+    targetStanding: z.enum(TARGET_STANDINGS).nullable().openapi({
+      description:
+        "Where the account reported, or whose content was, stands in the community now: `gone` once the account is deleted; null for a community, or an account reported to Samtak",
+    }),
+    targetState: z.enum(TARGET_STATES).nullable().openapi({
+      description: "What the reported post or comment is now; null for a community or an account",
+    }),
   })
   .openapi("Report", { description: "A report, without the account that made it" });
 
@@ -64,7 +104,12 @@ const LogEntry = z
     // null once the actor's account is deleted.
     actor: z.union([Author, z.null()]),
     asPlatform: z.boolean().openapi({ description: "Done as one of Samtak's platform moderators" }),
-    action: z.enum([...(Object.keys(ACTIONS) as [Action, ...Action[]]), "close_report"]),
+    action: z.enum([
+      ...(Object.keys(ACTIONS) as [Action, ...Action[]]),
+      "close_report",
+      "delete_community",
+      "restore_community",
+    ]),
     target: z.object({ kind: z.enum([...REPORT_KINDS, "report"]), id: OpaqueId }),
     targetAccount: z.union([Author, z.null()]),
     reason: z.string(),

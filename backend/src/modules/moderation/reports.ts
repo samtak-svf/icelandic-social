@@ -1,7 +1,19 @@
 import { db } from "../../env/index.ts";
-import type { REPORT_KINDS, REPORT_REASONS } from "../../api/moderation.ts";
+import type {
+  Action,
+  REPORT_KINDS,
+  REPORT_REASONS,
+  TARGET_STANDINGS,
+  TARGET_STATES,
+} from "../../api/moderation.ts";
 import { standing } from "../communities/index.ts";
-import { authors, commentAccess, postAccess } from "../social/index.ts";
+import {
+  authors,
+  commentAccess,
+  commentContent,
+  postAccess,
+  postContent,
+} from "../social/index.ts";
 
 // Reports (decision 0063): what an account saw and reported, kept without
 // showing who reported it. A report goes to one queue, its community's or
@@ -86,7 +98,38 @@ type Row = {
   state: "open" | "closed";
   created_at: number;
   closed_at: number | null;
+  closed_by: string | null;
+  decision: Decision | null;
+  resolution: string | null;
 };
+
+/**
+ * Where the account a report reaches stands in its community now, so a
+ * moderator is offered only what still applies (decision 0070): `gone` once
+ * the account is deleted, null for a community, or an account reported to
+ * Samtak, which stands in no community.
+ */
+async function standingOf(
+  env: Env,
+  r: Row,
+  known: boolean,
+): Promise<(typeof TARGET_STANDINGS)[number] | null> {
+  if (r.target_kind === "community") return null;
+  // A deleted account's reports keep no account (ON DELETE SET NULL).
+  if (r.target_account === null || !known) return "gone";
+  if (r.community_id === null) return null;
+  const there = await standing(env, r.target_account, r.community_id, { deleted: true });
+  if (!there?.role) return there?.banned ? "banned" : "not_member";
+  if (there.role === "owner") return "owner";
+  return there.mutedUntil !== null && there.mutedUntil > Date.now() ? "muted" : there.role;
+}
+
+/** What has become of a reported post or comment; null for anything else. */
+async function stateOf(env: Env, r: Row): Promise<(typeof TARGET_STATES)[number] | null> {
+  if (r.target_kind !== "post" && r.target_kind !== "comment") return null;
+  const content = await (r.target_kind === "post" ? postContent : commentContent)(env, r.target_id);
+  return content?.state ?? "gone";
+}
 
 /** A page of a queue, oldest first: a community's, or with null Samtak's. */
 export async function reportPage(
@@ -103,7 +146,7 @@ export async function reportPage(
   const { results } = await db(env)
     .prepare(
       `SELECT report_id, community_id, target_kind, target_id, target_account, reason, note,
-              state, created_at, closed_at
+              state, created_at, closed_at, closed_by, decision, resolution
          FROM reports
         WHERE (CASE WHEN ?1 IS NULL THEN to_platform = 1
                     ELSE community_id = ?1 AND to_platform = 0 END)
@@ -122,21 +165,30 @@ export async function reportPage(
   const page = results.slice(0, query.limit);
   const names = await authors(
     env,
-    page.flatMap((r) => (r.target_account === null ? [] : [r.target_account])),
+    page.flatMap((r) => [r.target_account, r.closed_by].filter((id) => id !== null)),
   );
+  const named = (id: string | null) => (id === null ? null : (names.get(id) ?? null));
+  const known = (id: string | null) => id !== null && names.has(id);
   const last = page.at(-1);
   return {
-    reports: page.map((r) => ({
-      reportId: r.report_id,
-      communityId: r.community_id,
-      target: { kind: r.target_kind, id: r.target_id },
-      targetAccount: r.target_account === null ? null : (names.get(r.target_account) ?? null),
-      reason: r.reason,
-      note: r.note,
-      state: r.state,
-      createdAt: r.created_at,
-      closedAt: r.closed_at,
-    })),
+    reports: await Promise.all(
+      page.map(async (r) => ({
+        reportId: r.report_id,
+        communityId: r.community_id,
+        target: { kind: r.target_kind, id: r.target_id },
+        targetAccount: named(r.target_account),
+        reason: r.reason,
+        note: r.note,
+        state: r.state,
+        createdAt: r.created_at,
+        closedAt: r.closed_at,
+        decision: r.decision,
+        resolution: r.resolution,
+        closedBy: named(r.closed_by),
+        targetStanding: await standingOf(env, r, known(r.target_account)),
+        targetState: await stateOf(env, r),
+      })),
+    ),
     next: results.length > query.limit && last ? `${last.created_at}-${last.report_id}` : null,
   };
 }
@@ -164,14 +216,38 @@ export async function isPlatformModerator(env: Env, accountId: string): Promise<
   return row !== null;
 }
 
+/**
+ * How a report was closed (decision 0070): the action a moderator took on its
+ * target, `dismissed` when it took none, or `community_deleted`.
+ */
+export type Decision = Action | "dismissed" | "community_deleted";
+
 /** The statement that closes a report, for the batch of the action or entry with it. */
-export function closing(env: Env, reportId: string, by: string): D1PreparedStatement {
+export function closing(
+  env: Env,
+  reportId: string,
+  by: string,
+  decision: Decision,
+  resolution: string,
+): D1PreparedStatement {
   return db(env)
     .prepare(
-      `UPDATE reports SET state = 'closed', closed_at = ?, closed_by = ?
+      `UPDATE reports SET state = 'closed', closed_at = ?, closed_by = ?, decision = ?,
+                          resolution = ?
         WHERE report_id = ? AND state = 'open'`,
     )
-    .bind(Date.now(), by, reportId);
+    .bind(Date.now(), by, decision, resolution, reportId);
+}
+
+/** The statement that closes every open report on a community deleted by `by` (decision 0070). */
+export function closingAll(env: Env, communityId: string, by: string | null): D1PreparedStatement {
+  return db(env)
+    .prepare(
+      `UPDATE reports SET state = 'closed', closed_at = ?, closed_by = ?,
+                          decision = 'community_deleted', resolution = ''
+        WHERE community_id = ? AND state = 'open'`,
+    )
+    .bind(Date.now(), by, communityId);
 }
 
 /** A closed report is kept this long (decision 0063). */

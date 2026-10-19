@@ -1,5 +1,6 @@
 import { deleteOrphans } from "./account-deletion.ts";
 import { createApp } from "./app.ts";
+import { communityLifecycle } from "./community-lifecycle.ts";
 import { log } from "./log.ts";
 import { expireKeyPackages, expireSessions } from "./identity/index.ts";
 import { expireCommunities } from "./modules/communities/index.ts";
@@ -7,7 +8,7 @@ import { expireJobs, jobHealth, runJobs } from "./modules/jobs/index.ts";
 import { expireMedia, pushSender } from "./modules/messaging/index.ts";
 import { expireReports } from "./modules/moderation/index.ts";
 import { expireNotifications, jobHandlers } from "./modules/notifications/index.ts";
-import { deleteUnattached, dropSpace, purgeRemoved } from "./modules/social/index.ts";
+import { deleteUnattached, purgeRemoved } from "./modules/social/index.ts";
 
 export { Conversation, Inbox } from "./modules/messaging/objects.ts";
 export { Space } from "./modules/social/objects.ts";
@@ -20,7 +21,8 @@ export default {
   // The minute cron in cloudflare.config.ts runs the jobs that are due
   // (decision 0067). The daily one: media past its 30 days (decision 0023)
   // expired KeyPackages (0029), accounts a join left without an identity (0035),
-  // read-only communities past their 90 days (0063), images no post took
+  // deleted communities past their 30 days and read-only ones past their 90,
+  // and the rows of those deleted a year ago (0063, 0070), images no post took
   // within a day (0065), posts removed by a moderator 90 days ago and reports
   // closed a year ago (0066), and finished jobs and notifications past their
   // time (0067). It also counts, by kind, the jobs that failed for good that
@@ -35,7 +37,7 @@ export default {
     log("key_packages.expired", { count: await expireKeyPackages(env) });
     log("sessions.expired", { count: await expireSessions(env) });
     log("accounts.orphans_deleted", { count: await deleteOrphans(env) });
-    log("communities.expired", { count: await expireCommunities(env, dropSpace) });
+    log("communities.expired", { count: await expireCommunities(env, communityLifecycle) });
     log("social_media.expired", { count: await deleteUnattached(env, {}) });
     log("posts.purged", { count: await purgeRemoved(env) });
     log("reports.expired", { count: await expireReports(env) });

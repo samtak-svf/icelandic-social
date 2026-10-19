@@ -2,6 +2,7 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import { createMiddleware } from "hono/factory";
 import { deleteAccount } from "./account-deletion.ts";
 import { linkOrJoin } from "./account-linking.ts";
+import { communityLifecycle } from "./community-lifecycle.ts";
 import {
   createConversationRoute,
   getConversationDevicesRoute,
@@ -68,7 +69,7 @@ import {
 import { communityRoutes } from "./modules/communities/index.ts";
 import { moderationRoutes } from "./modules/moderation/index.ts";
 import { notificationRoutes } from "./modules/notifications/index.ts";
-import { dropSpace, socialRoutes } from "./modules/social/index.ts";
+import { socialRoutes } from "./modules/social/index.ts";
 import { accountRoutes, photoRoutes } from "./modules/profiles/index.ts";
 import { opsRoutes } from "./ops/index.ts";
 
@@ -409,7 +410,7 @@ export function createApp() {
   photoRoutes(app);
 
   // Communities and membership (decision 0063).
-  communityRoutes(app, { beforeDelete: dropSpace });
+  communityRoutes(app, communityLifecycle);
   socialRoutes(app);
   moderationRoutes(app);
   notificationRoutes(app);

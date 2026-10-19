@@ -127,8 +127,9 @@ export async function feed(
   const cursor = parseCursor(before) ?? { t: now, id: null };
   const { results, meta } = await db(env)
     .prepare(
-      `SELECT ${INDEXED} FROM community_members m JOIN post_index p
-           ON p.community_id = m.community_id
+      `SELECT ${INDEXED} FROM community_members m
+         JOIN live_communities c ON c.community_id = m.community_id
+         JOIN post_index p ON p.community_id = m.community_id
           AND p.created_at <= ?2 AND p.created_at > ?2 - ?3
         WHERE m.account_id = ?1 AND p.state = 'visible'
           AND (p.created_at < ?2 OR ?4 IS NULL OR p.post_id < ?4)
@@ -146,7 +147,7 @@ export async function feed(
     const oldest = await db(env)
       .prepare(
         `SELECT MIN(c.created_at) AS createdAt FROM community_members m
-           JOIN communities c ON c.community_id = m.community_id WHERE m.account_id = ?`,
+           JOIN live_communities c ON c.community_id = m.community_id WHERE m.account_id = ?`,
       )
       .bind(viewer)
       .first<{ createdAt: number | null }>();

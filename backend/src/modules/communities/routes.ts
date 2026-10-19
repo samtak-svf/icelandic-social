@@ -1,31 +1,32 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import {
-  approveJoinRequestRoute,
   createCommunityRoute,
-  declineJoinRequestRoute,
   deleteCommunityRoute,
   getCommunityRoute,
-  inviteMemberRoute,
   joinCommunityRoute,
   leaveCommunityRoute,
   listCommunitiesRoute,
-  listJoinRequestsRoute,
-  listMembersRoute,
   myCommunitiesRoute,
-  setRoleRoute,
-  transferOwnershipRoute,
+  restoreCommunityRoute,
   updateCommunityRoute,
   withdrawJoinRequestRoute,
 } from "../../api/communities.ts";
+import {
+  approveJoinRequestRoute,
+  declineJoinRequestRoute,
+  inviteMemberRoute,
+  listJoinRequestsRoute,
+  listMembersRoute,
+  setRoleRoute,
+  transferOwnershipRoute,
+} from "../../api/community-members.ts";
 import type { AppEnv } from "../../app.ts";
 import { fail } from "../../errors.ts";
 import { log } from "../../log.ts";
 import { canRead, moderates } from "./access.ts";
-import type { BeforeDelete } from "./expiry.ts";
 import {
   communitiesOf,
   createCommunity,
-  deleteCommunityRows,
   discover,
   isVerified,
   joinRequests,
@@ -45,14 +46,12 @@ import {
   transfer,
   withdraw,
 } from "./membership.ts";
+import { type LifecycleHooks, markDeleted, restore } from "./lifecycle.ts";
 
 // The routes of communities and membership (decision 0063). A log line
 // carries the account and the community's ids, never a name (0008).
 
-export function communityRoutes(
-  app: OpenAPIHono<AppEnv>,
-  hooks: { beforeDelete: BeforeDelete },
-): void {
+export function communityRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleHooks): void {
   app.openapi(createCommunityRoute, async (c) => {
     const { accountId } = c.var.session;
     if (!(await isVerified(c.env, accountId))) return fail(c, 403, "not_verified");
@@ -77,7 +76,8 @@ export function communityRoutes(
   );
 
   app.openapi(getCommunityRoute, async (c) => {
-    const found = await standing(c.env, c.var.session.accountId, c.req.valid("param").communityId);
+    const { communityId } = c.req.valid("param");
+    const found = await standing(c.env, c.var.session.accountId, communityId, { deleted: true });
     return found ? c.json(view(found), 200) : fail(c, 404, "not_found");
   });
 
@@ -102,11 +102,27 @@ export function communityRoutes(
     const { communityId } = c.req.valid("param");
     const found = await standing(c.env, accountId, communityId);
     if (!found) return fail(c, 404, "not_found");
-    if (found.role !== "owner") return fail(c, 403, "not_permitted");
-    await hooks.beforeDelete(c.env, communityId);
-    await deleteCommunityRows(c.env, communityId);
-    log("community.deleted", { accountId, communityId });
+    // The owner, or Samtak (decision 0063); either way it can be restored (0070).
+    if (found.role !== "owner" && !found.platformModerator) return fail(c, 403, "not_permitted");
+    if (await markDeleted(c.env, communityId, accountId, hooks)) {
+      log("community.deleted", { accountId, communityId });
+    }
     return c.body(null, 204);
+  });
+
+  app.openapi(restoreCommunityRoute, async (c) => {
+    const { accountId } = c.var.session;
+    const { communityId } = c.req.valid("param");
+    const found = await standing(c.env, accountId, communityId, { deleted: true });
+    if (!found) return fail(c, 404, "not_found");
+    if (!found.platformModerator) return fail(c, 403, "not_permitted");
+    if (found.deletedAt === null) return c.json(view(found), 200);
+    if (found.purged || !(await restore(c.env, communityId, accountId, hooks))) {
+      return fail(c, 409, "purged");
+    }
+    log("community.restored", { accountId, communityId });
+    const restored = await standing(c.env, accountId, communityId);
+    return restored ? c.json(view(restored), 200) : fail(c, 404, "not_found");
   });
 
   app.openapi(joinCommunityRoute, async (c) => {
@@ -117,6 +133,7 @@ export function communityRoutes(
     if (found.role) return c.json({ state: "member" as const }, 200);
     if (found.banned) return fail(c, 403, "banned");
     if (found.readOnly) return fail(c, 403, "read_only");
+    if (found.joinDeclinedUntil !== null && !found.invited) return fail(c, 409, "join_declined");
     if (found.audience === "open" || found.invited) {
       await addMember(c.env, communityId, accountId);
       log("community.joined", { accountId, communityId });

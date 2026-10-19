@@ -368,6 +368,12 @@ export interface Community {
   mutedUntil: number | null;
   /** Its owner's account was deleted and no moderator was left to take it over; it is deleted 90 days later */
   readOnly: boolean;
+  /** When it was deleted (Unix milliseconds); only a platform moderator sees a deleted community, and restores it within 30 days */
+  deletedAt: number | null;
+  /** A moderator declined the caller's join request: it may ask again from this time (Unix milliseconds) */
+  joinDeclinedUntil: number | null;
+  /** How many join requests wait; null unless the caller moderates the community */
+  pendingJoinRequests: number | null;
 }
 
 export interface CommunityPage {
@@ -520,6 +526,16 @@ export interface Report {
   /** Unix milliseconds */
   createdAt: number;
   closedAt: number | null;
+  /** How it was closed: the action taken, `dismissed`, or `community_deleted`; null while open */
+  decision: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "dismissed" | "community_deleted" | null;
+  /** The reason the action gave, or the closing resolution; null while open */
+  resolution: string | null;
+  /** Who closed it; null while open, when the community's deletion did, or once deleted */
+  closedBy: Author | null;
+  /** Where the account reported, or whose content was, stands in the community now: `gone` once the account is deleted; null for a community, or an account reported to Samtak */
+  targetStanding: "owner" | "moderator" | "member" | "muted" | "banned" | "not_member" | "gone" | null;
+  /** What the reported post or comment is now; null for a community or an account */
+  targetState: "visible" | "hidden" | "removed" | "gone" | null;
 }
 
 export interface ModerationLogPage {
@@ -534,7 +550,7 @@ export interface ModerationLogEntry {
   actor: Author | null;
   /** Done as one of Samtak's platform moderators */
   asPlatform: boolean;
-  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "close_report";
+  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "close_report" | "delete_community" | "restore_community";
   target: {
     kind: "post" | "comment" | "community" | "account" | "report";
     id: string;
@@ -898,7 +914,11 @@ export function getCommunity(args: {
   return call("GET", "/v1/communities/{communityId}", args, init);
 }
 
-/** Delete a community and everything in it */
+/**
+ * Delete a community and everything in it
+ *
+ * The owner, or a platform moderator. It is gone at once for everyone; a platform moderator can restore it for 30 days, then its content is deleted. Its moderation log and reports are kept a year (decision 0070).
+ */
 export function deleteCommunity(args: {
   path: {
     communityId: string;
@@ -942,6 +962,27 @@ export function updateCommunity(args: {
 }
 
 /**
+ * Restore a deleted community, within 30 days of its deletion
+ *
+ * Only a platform moderator (decision 0070). Restoring a live one is no error.
+ */
+export function restoreCommunity(args: {
+  path: {
+    communityId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Community }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/communities/{communityId}/restore", args, init);
+}
+
+/**
  * Join an open community, or ask to join a private one
  *
  * An open community, or a private one that invited the caller, is joined at once. Otherwise a join request waits for a moderator. Asking again is no error.
@@ -958,12 +999,17 @@ export function joinCommunity(args: {
   | { status: 401; data: ApiError }
   | { status: 403; data: ApiError }
   | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
   | { status: 426; data: ApiError }
 > {
   return call("POST", "/v1/communities/{communityId}/join", args, init);
 }
 
-/** Withdraw the caller's join request, or decline an invitation */
+/**
+ * Withdraw the caller's join request, or decline an invitation
+ *
+ * A request a moderator declined stays until its 30 days pass.
+ */
 export function withdrawJoinRequest(args: {
   path: {
     communityId: string;
@@ -1014,7 +1060,11 @@ export function listCommunityMembers(args: {
   return call("GET", "/v1/communities/{communityId}/members", args, init);
 }
 
-/** The join requests that wait, oldest first */
+/**
+ * The join requests that wait, oldest first
+ *
+ * Declined requests are not listed.
+ */
 export function listJoinRequests(args: {
   path: {
     communityId: string;
@@ -1049,7 +1099,11 @@ export function approveJoinRequest(args: {
   return call("POST", "/v1/communities/{communityId}/join-requests/{accountId}", args, init);
 }
 
-/** Decline a join request */
+/**
+ * Decline a join request
+ *
+ * The account sees that it was declined, and may ask again after 30 days; an invitation lifts the decline (decision 0070).
+ */
 export function declineJoinRequest(args: {
   path: {
     communityId: string;

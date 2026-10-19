@@ -31,7 +31,7 @@ export function moderationRoutes(app: OpenAPIHono<AppEnv>): void {
 
   app.openapi(communityReportsRoute, async (c) => {
     const { communityId } = c.req.valid("param");
-    const found = await actor(c.env, c.var.session.accountId, communityId);
+    const found = await actor(c.env, c.var.session.accountId, communityId, { deleted: true });
     if (found === "not_found") return fail(c, 404, "not_found");
     if (found === "not_permitted") return fail(c, 403, "not_permitted");
     return c.json(await reportPage(c.env, communityId, c.req.valid("query")), 200);
@@ -57,7 +57,7 @@ export function moderationRoutes(app: OpenAPIHono<AppEnv>): void {
     }
     const { resolution } = c.req.valid("json");
     await db(c.env).batch([
-      closing(c.env, report.reportId, accountId),
+      closing(c.env, report.reportId, accountId, "dismissed", resolution),
       entry(c.env, {
         communityId: report.communityId,
         actorId: accountId,
@@ -86,7 +86,7 @@ export function moderationRoutes(app: OpenAPIHono<AppEnv>): void {
 
   app.openapi(communityLogRoute, async (c) => {
     const { communityId } = c.req.valid("param");
-    const found = await actor(c.env, c.var.session.accountId, communityId);
+    const found = await actor(c.env, c.var.session.accountId, communityId, { deleted: true });
     if (found === "not_found") return fail(c, 404, "not_found");
     if (found === "not_permitted") return fail(c, 403, "not_permitted");
     const { before, limit } = c.req.valid("query");

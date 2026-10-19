@@ -1,8 +1,9 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../src/api/common.ts";
+import { communityLifecycle } from "../src/community-lifecycle.ts";
 import { expireCommunities } from "../src/modules/communities/index.ts";
-import { device } from "./support.ts";
+import { device, euEnv } from "./support.ts";
 import { worker } from "./main.ts";
 
 // Communities and membership (decision 0063): every audience rule, with a
@@ -22,6 +23,9 @@ type Community = {
   joinRequested: boolean;
   invited: boolean;
   readOnly: boolean;
+  deletedAt: number | null;
+  joinDeclinedUntil: number | null;
+  pendingJoinRequests: number | null;
 };
 
 async function person(name: string, verified = true) {
@@ -182,23 +186,67 @@ describe("a private community", () => {
     });
   });
 
-  it("can decline a request, and a request can be withdrawn", async () => {
+  it("can decline a request, which the asker sees and waits 30 days on (0070)", async () => {
     const owner = await person("Eigandi");
     const asker = await person("Umsækjandi");
     const { communityId } = await create(owner, "private");
     await join(asker, communityId);
+    expect(await get(owner, communityId)).toMatchObject({ pendingJoinRequests: 1 });
+    const declinedAt = Date.now();
     await owner.call("DELETE", `/v1/communities/${communityId}/join-requests/${asker.accountId}`);
-    expect(await get(asker, communityId)).toMatchObject({ joinRequested: false, role: null });
+    const seen = await get(asker, communityId);
+    expect(seen).toMatchObject({ joinRequested: false, role: null, pendingJoinRequests: null });
+    expect(seen.joinDeclinedUntil).toBeGreaterThanOrEqual(declinedAt + 30 * DAY_MS);
+    expect(await get(owner, communityId)).toMatchObject({ pendingJoinRequests: 0 });
+    const requests = await owner.call("GET", `/v1/communities/${communityId}/join-requests`);
+    expect(await requests.json()).toEqual({ requests: [] });
     // Approving a request that no longer waits finds nothing.
     const late = await owner.call(
       "POST",
       `/v1/communities/${communityId}/join-requests/${asker.accountId}`,
     );
     expect(late.status).toBe(404);
-
-    await join(asker, communityId);
+    // Asking again, or withdrawing, does not lift the decline.
+    expect(await join(asker, communityId)).toEqual({
+      status: 409,
+      body: expect.objectContaining({ error: "join_declined" }),
+    });
     await asker.call("DELETE", `/v1/communities/${communityId}/join`);
-    expect(await get(asker, communityId)).toMatchObject({ joinRequested: false });
+    expect((await get(asker, communityId)).joinDeclinedUntil).not.toBeNull();
+    // Its 30 days pass, and it may ask again.
+    await expireCommunities(euEnv(env), communityLifecycle, declinedAt + 31 * DAY_MS);
+    expect((await get(asker, communityId)).joinDeclinedUntil).toBeNull();
+    expect(await join(asker, communityId)).toEqual({ status: 200, body: { state: "requested" } });
+  });
+
+  it("lifts a decline with an invitation", async () => {
+    const owner = await person("Eigandi");
+    const asker = await person("Umsækjandi");
+    const { communityId } = await create(owner, "private");
+    await join(asker, communityId);
+    await owner.call("DELETE", `/v1/communities/${communityId}/join-requests/${asker.accountId}`);
+    await owner.call("PUT", `/v1/communities/${communityId}/invitations/${asker.accountId}`);
+    expect(await get(asker, communityId)).toMatchObject({ invited: true, joinDeclinedUntil: null });
+    expect(await join(asker, communityId)).toEqual({ status: 200, body: { state: "member" } });
+  });
+
+  it("lets a request be withdrawn, and shows the count only to moderators", async () => {
+    const owner = await person("Eigandi");
+    const asker = await person("Umsækjandi");
+    const member = await person("Meðlimur");
+    const { communityId } = await create(owner, "private");
+    await owner.call("PUT", `/v1/communities/${communityId}/invitations/${member.accountId}`);
+    await join(member, communityId);
+    await join(asker, communityId);
+    expect(await get(owner, communityId)).toMatchObject({ pendingJoinRequests: 1 });
+    expect(await get(member, communityId)).toMatchObject({ pendingJoinRequests: null });
+    expect(await get(asker, communityId)).toMatchObject({ pendingJoinRequests: null });
+    await asker.call("DELETE", `/v1/communities/${communityId}/join`);
+    expect(await get(asker, communityId)).toMatchObject({
+      joinRequested: false,
+      joinDeclinedUntil: null,
+    });
+    expect(await get(owner, communityId)).toMatchObject({ pendingJoinRequests: 0 });
   });
 
   it("is joined at once by an account a moderator invited", async () => {
@@ -377,9 +425,15 @@ describe("roles", () => {
     expect(await get(member, communityId)).toMatchObject({ role: null, memberCount: 1 });
   });
 
-  it("let only the owner delete the community", async () => {
+  it("let only the owner delete the community, of its members", async () => {
     const owner = await person("Eigandi");
+    const moderator = await person("Stjórnandi");
     const { communityId } = await create(owner, "open");
+    await join(moderator, communityId);
+    await owner.call("PUT", `/v1/communities/${communityId}/members/${moderator.accountId}/role`, {
+      role: "moderator",
+    });
+    expect((await moderator.call("DELETE", `/v1/communities/${communityId}`)).status).toBe(403);
     expect((await owner.call("DELETE", `/v1/communities/${communityId}`)).status).toBe(204);
     expect((await owner.call("GET", `/v1/communities/${communityId}`)).status).toBe(404);
   });
@@ -421,9 +475,9 @@ describe("deleting the owner's account", () => {
       status: 403,
       body: expect.objectContaining({ error: "read_only" }),
     });
-    await expireCommunities(env, async () => {}, Date.now() + 89 * DAY_MS);
+    await expireCommunities(euEnv(env), communityLifecycle, Date.now() + 89 * DAY_MS);
     expect((await member.call("GET", `/v1/communities/${communityId}`)).status).toBe(200);
-    await expireCommunities(env, async () => {}, Date.now() + 91 * DAY_MS);
+    await expireCommunities(euEnv(env), communityLifecycle, Date.now() + 91 * DAY_MS);
     expect((await member.call("GET", `/v1/communities/${communityId}`)).status).toBe(404);
   });
 });

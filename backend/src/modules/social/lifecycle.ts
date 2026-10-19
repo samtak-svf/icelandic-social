@@ -2,14 +2,19 @@ import { db, space } from "../../env/index.ts";
 import { deleteCommunityMedia, deleteKeys, deleteUnattached } from "./media.ts";
 import { unindex } from "./posts.ts";
 
-// What deleting a community or an account removes of the content (decision
-// 0063). The community's own rows cascade to the index; the space and the
-// images are not rows, so they are deleted here.
+// What deleting a community or an account removes of the content (decisions
+// 0063, 0070). A purged community's row stays a year for its log, so its
+// space, its images and its rows here are deleted when it is purged.
 
-/** Deletes a community's space and images; called before its rows go. */
+/** Deletes a community's space, images and index; called when it is purged. */
 export async function dropSpace(env: Env, communityId: string): Promise<void> {
   await space(env, communityId).drop();
   await deleteCommunityMedia(env, communityId);
+  await db(env).batch(
+    (["post_index", "social_media", "space_authors"] as const).map((table) =>
+      db(env).prepare(`DELETE FROM ${table} WHERE community_id = ?`).bind(communityId),
+    ),
+  );
 }
 
 /**

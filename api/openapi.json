@@ -1241,6 +1241,27 @@
           "readOnly": {
             "type": "boolean",
             "description": "Its owner's account was deleted and no moderator was left to take it over; it is deleted 90 days later"
+          },
+          "deletedAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "When it was deleted (Unix milliseconds); only a platform moderator sees a deleted community, and restores it within 30 days"
+          },
+          "joinDeclinedUntil": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "A moderator declined the caller's join request: it may ask again from this time (Unix milliseconds)"
+          },
+          "pendingJoinRequests": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "How many join requests wait; null unless the caller moderates the community"
           }
         },
         "required": [
@@ -1254,7 +1275,10 @@
           "joinRequested",
           "invited",
           "mutedUntil",
-          "readOnly"
+          "readOnly",
+          "deletedAt",
+          "joinDeclinedUntil",
+          "pendingJoinRequests"
         ]
       },
       "CommunityPage": {
@@ -1894,6 +1918,78 @@
               "integer",
               "null"
             ]
+          },
+          "decision": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "hide_post",
+              "remove_post",
+              "restore_post",
+              "hide_comment",
+              "remove_comment",
+              "restore_comment",
+              "mute_member",
+              "unmute_member",
+              "remove_member",
+              "ban_member",
+              "unban_member",
+              "dismissed",
+              "community_deleted",
+              null
+            ],
+            "description": "How it was closed: the action taken, `dismissed`, or `community_deleted`; null while open"
+          },
+          "resolution": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The reason the action gave, or the closing resolution; null while open"
+          },
+          "closedBy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Author"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who closed it; null while open, when the community's deletion did, or once deleted"
+          },
+          "targetStanding": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "owner",
+              "moderator",
+              "member",
+              "muted",
+              "banned",
+              "not_member",
+              "gone",
+              null
+            ],
+            "description": "Where the account reported, or whose content was, stands in the community now: `gone` once the account is deleted; null for a community, or an account reported to Samtak"
+          },
+          "targetState": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "visible",
+              "hidden",
+              "removed",
+              "gone",
+              null
+            ],
+            "description": "What the reported post or comment is now; null for a community or an account"
           }
         },
         "required": [
@@ -1905,7 +2001,12 @@
           "note",
           "state",
           "createdAt",
-          "closedAt"
+          "closedAt",
+          "decision",
+          "resolution",
+          "closedBy",
+          "targetStanding",
+          "targetState"
         ],
         "description": "A report, without the account that made it"
       },
@@ -1973,7 +2074,9 @@
               "remove_member",
               "ban_member",
               "unban_member",
-              "close_report"
+              "close_report",
+              "delete_community",
+              "restore_community"
             ]
           },
           "target": {
@@ -5319,6 +5422,7 @@
           "communities"
         ],
         "summary": "Delete a community and everything in it",
+        "description": "The owner, or a platform moderator. It is gone at once for everyone; a platform moderator can restore it for 30 days, then its content is deleted. Its moderation log and reports are kept a year (decision 0070).",
         "security": [
           {
             "deviceToken": []
@@ -5364,7 +5468,7 @@
             }
           },
           "403": {
-            "description": "not_permitted: only the community's owner may do this",
+            "description": "not_permitted: only the owner or a platform moderator may do this",
             "content": {
               "application/json": {
                 "schema": {
@@ -5375,6 +5479,108 @@
           },
           "404": {
             "description": "not_found: no such community",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/communities/{communityId}/restore": {
+      "post": {
+        "operationId": "restoreCommunity",
+        "tags": [
+          "communities"
+        ],
+        "summary": "Restore a deleted community, within 30 days of its deletion",
+        "description": "Only a platform moderator (decision 0070). Restoring a live one is no error.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "cm_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+            },
+            "required": true,
+            "name": "communityId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The community",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Community"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: only a platform moderator may do this",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such community",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "purged: its 30 days are past and its content is deleted",
             "content": {
               "application/json": {
                 "schema": {
@@ -5487,6 +5693,16 @@
               }
             }
           },
+          "409": {
+            "description": "join_declined: a moderator declined the caller's request; it may ask again at `joinDeclinedUntil`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "426": {
             "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
             "content": {
@@ -5505,6 +5721,7 @@
           "communities"
         ],
         "summary": "Withdraw the caller's join request, or decline an invitation",
+        "description": "A request a moderator declined stays until its 30 days pass.",
         "security": [
           {
             "deviceToken": []
@@ -5746,6 +5963,7 @@
           "communities"
         ],
         "summary": "The join requests that wait, oldest first",
+        "description": "Declined requests are not listed.",
         "security": [
           {
             "deviceToken": []
@@ -5940,6 +6158,7 @@
           "communities"
         ],
         "summary": "Decline a join request",
+        "description": "The account sees that it was declined, and may ask again after 30 days; an invitation lifts the decline (decision 0070).",
         "security": [
           {
             "deviceToken": []

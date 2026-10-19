@@ -34,8 +34,10 @@ export async function actor(
   env: Env,
   accountId: string,
   communityId: string,
+  options: { deleted?: boolean } = {},
 ): Promise<Standing | "not_found" | "not_permitted"> {
-  const found = await standing(env, accountId, communityId);
+  // Only reading a deleted community's log and reports passes `deleted` (0070).
+  const found = await standing(env, accountId, communityId, options);
   if (!found || !(canRead(found) || found.platformModerator)) return "not_found";
   return rank(found) > 0 ? found : "not_permitted";
 }
@@ -163,7 +165,7 @@ export async function act(
       targetAccount: target.targetAccount,
       reason: input.reason,
     }),
-    ...(report ? [closing(env, report.reportId, accountId)] : []),
+    ...(report ? [closing(env, report.reportId, accountId, input.action, input.reason)] : []),
     ...told(env, accountId, communityId, input, target),
   ];
   await apply(env, communityId, input, target, entries);

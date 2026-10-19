@@ -46,7 +46,7 @@ export function noticeHandler(sender: PushSender) {
                                       post_id, comment_id, action, created_at)
            SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?
             WHERE EXISTS (SELECT 1 FROM accounts WHERE account_id = ?2)
-              AND EXISTS (SELECT 1 FROM communities WHERE community_id = ?5)
+              AND EXISTS (SELECT 1 FROM live_communities WHERE community_id = ?5)
            ON CONFLICT DO NOTHING`,
         )
         .bind(

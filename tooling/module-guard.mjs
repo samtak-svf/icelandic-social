@@ -15,6 +15,9 @@
 // 4. Shared code touches no table at all.
 // 5. Every table the migrations leave standing has an owner, so a new table
 //    is assigned when it is created.
+// 6. A table with a view of its live rows (RAW) is read bare only in the
+//    files RAW names; everything else reads the view, so a deleted row
+//    cannot leak through a query that forgot the filter (decision 0070).
 //
 // SQL is found in string literals, imports in code with comments blanked
 // (tooling/lib/source.mjs). Tests are not scanned: they set up rows directly.
@@ -43,6 +46,7 @@ export const OWNERS = {
   conversation_rosters: "messaging",
   media: "messaging",
   communities: "communities",
+  live_communities: "communities",
   community_members: "communities",
   community_join_requests: "communities",
   community_invitations: "communities",
@@ -96,8 +100,8 @@ export const READS = [
   },
   {
     module: "social",
-    table: "communities",
-    why: "the feed ends at the oldest of the caller's communities",
+    table: "live_communities",
+    why: "the feed reads only live communities, and ends at the oldest of the caller's",
   },
   {
     module: "communities",
@@ -111,10 +115,24 @@ export const READS = [
   },
   {
     module: "notifications",
-    table: "communities",
-    why: "a notification is written only for a community that still exists",
+    table: "live_communities",
+    why: "a notification is written and shown only for a community that is not deleted",
   },
 ];
+
+/**
+ * The tables read through a view of their live rows, and the only files that
+ * read them bare: the owner's queries that must see deleted rows too.
+ */
+export const RAW = {
+  communities: {
+    view: "live_communities",
+    files: [
+      "backend/src/modules/communities/communities.ts",
+      "backend/src/modules/communities/lifecycle.ts",
+    ],
+  },
+};
 
 const WRITE =
   /\b(?:INSERT(?:\s+OR\s+[A-Z]+)?\s+INTO|REPLACE\s+INTO|UPDATE(?:\s+OR\s+[A-Z]+)?|DELETE\s+FROM)\s+([a-z_][a-z0-9_]*)/g;
@@ -124,7 +142,12 @@ const IMPORT =
 
 /**
  * @typedef {{ file: string, line: number, rule: string, message: string }} Violation
- * @typedef {{ owners: Record<string, string>, reads: { module: string, table: string }[] }} Rules
+ * @typedef {{ view: string, files: string[] }} Raw
+ * @typedef {{
+ *   owners: Record<string, string>,
+ *   reads: { module: string, table: string }[],
+ *   raw?: Record<string, Raw>,
+ * }} Rules
  */
 
 /**
@@ -172,14 +195,31 @@ function checkImports(file, module, source, add) {
 }
 
 /**
+ * A read of a table RAW names, outside the files allowed to read it bare.
+ *
+ * @param {string} file
+ * @param {string} table
+ * @param {number} at
+ * @param {NonNullable<Rules["raw"]>} raw
+ * @param {Add} add
+ */
+function checkRaw(file, table, at, raw, add) {
+  const bare = Object.hasOwn(raw, table) ? raw[table] : undefined;
+  if (bare && !bare.files.includes(file)) {
+    add(at, "raw-read", `reads ${table} bare; read ${bare.view}, which leaves out deleted rows`);
+  }
+}
+
+/**
  * The SQL in one string literal.
  *
+ * @param {string} file
  * @param {string | null} module
  * @param {{ text: string, offset: number }} literal
  * @param {Rules} rules
  * @param {Add} add
  */
-function checkSql(module, { text, offset }, { owners, reads }, add) {
+function checkSql(file, module, { text, offset }, { owners, reads, raw = {} }, add) {
   const owner = (/** @type {string} */ table) =>
     Object.hasOwn(owners, table) && owners[table] !== module ? owners[table] : undefined;
   for (const match of text.matchAll(WRITE)) {
@@ -196,6 +236,7 @@ function checkSql(module, { text, offset }, { owners, reads }, add) {
   }
   for (const match of text.matchAll(READ)) {
     const table = match[2] ?? match[3] ?? "";
+    if (!match[1]) checkRaw(file, table, offset + match.index, raw, add);
     const own = owner(table);
     // DELETE FROM is a write, reported above.
     if (match[1] || !own) continue;
@@ -221,7 +262,7 @@ function checkSql(module, { text, offset }, { owners, reads }, add) {
  * @param {Rules} [rules]
  * @returns {Violation[]}
  */
-export function findInSource(file, source, rules = { owners: OWNERS, reads: READS }) {
+export function findInSource(file, source, rules = { owners: OWNERS, reads: READS, raw: RAW }) {
   const module = moduleOf(file);
   /** @type {Violation[]} */
   const found = [];
@@ -229,7 +270,7 @@ export function findInSource(file, source, rules = { owners: OWNERS, reads: READ
   const add = (offset, rule, message) =>
     found.push({ file, line: lineOf(source, offset), rule, message });
   checkImports(file, module, source, add);
-  for (const literal of stringsOf(source)) checkSql(module, literal, rules, add);
+  for (const literal of stringsOf(source)) checkSql(file, module, literal, rules, add);
   return found;
 }
 
@@ -265,7 +306,7 @@ export function liveTables(migrations) {
  * @param {Rules} [rules]
  * @returns {{ files: number, violations: Violation[] }}
  */
-export function findViolations(root = ROOT, rules = { owners: OWNERS, reads: READS }) {
+export function findViolations(root = ROOT, rules = { owners: OWNERS, reads: READS, raw: RAW }) {
   const files = visibleFiles(root).filter((f) => f.startsWith(SRC) && /\.[cm]?[jt]s$/.test(f));
   const violations = files.flatMap((file) =>
     findInSource(file, readFileSync(join(root, file), "utf8"), rules),
@@ -310,8 +351,8 @@ function main() {
   console.error(`
 ${violations.length} module boundary violation(s). A module is imported
 through its index.ts, writes only the tables it owns, and reads another's
-only where tooling/module-guard.mjs READS says why. Shared code under
-${SRC} touches no table.`);
+only where tooling/module-guard.mjs READS says why, and reads a table RAW
+names through its view. Shared code under ${SRC} touches no table.`);
   process.exit(1);
 }
 

@@ -26,26 +26,46 @@ export type Standing = {
   mutedUntil: number | null;
   /** The viewer is on Samtak's list of platform moderators (decision 0063). */
   platformModerator: boolean;
+  /** When it was deleted; only a platform moderator sees a deleted one (decision 0070). */
+  deletedAt: number | null;
+  /** Its content is gone; it is kept only for its log, and cannot be restored. */
+  purged: boolean;
+  /** Until when the viewer's declined request keeps it from asking again, or null. */
+  joinDeclinedUntil: number | null;
+  /** How many join requests wait; null unless the viewer moderates. */
+  pendingJoinRequests: number | null;
 };
 
+const DAY_MS = 24 * 60 * 60 * 1000;
 /** A read-only community is deleted this long after its owner's account was (decision 0063). */
-const READ_ONLY_MS = 90 * 24 * 60 * 60 * 1000;
+export const READ_ONLY_MS = 90 * DAY_MS;
+/** A declined account may ask to join again this long after (decision 0070). */
+export const DECLINED_MS = 30 * DAY_MS;
 
 // ?1 is the viewer in every query that uses these.
 const COLUMNS = `c.community_id, c.name, c.description, c.audience, c.created_at,
-       c.read_only_since, m.role, m.muted_until,
+       c.read_only_since, c.deleted_at, c.purged_at, m.role, m.muted_until,
        EXISTS (SELECT 1 FROM platform_moderators p WHERE p.account_id = ?1) AS platform,
        EXISTS (SELECT 1 FROM community_bans x
                 WHERE x.community_id = c.community_id AND x.account_id = ?1) AS banned,
        EXISTS (SELECT 1 FROM community_join_requests r
-                WHERE r.community_id = c.community_id AND r.account_id = ?1) AS requested,
+                WHERE r.community_id = c.community_id AND r.account_id = ?1
+                  AND r.declined_at IS NULL) AS requested,
+       (SELECT r.declined_at FROM community_join_requests r
+         WHERE r.community_id = c.community_id AND r.account_id = ?1) AS declined_at,
+       CASE WHEN m.role IN ('owner', 'moderator')
+            THEN (SELECT COUNT(*) FROM community_join_requests r
+                   WHERE r.community_id = c.community_id AND r.declined_at IS NULL)
+       END AS pending,
        EXISTS (SELECT 1 FROM community_invitations i
                 WHERE i.community_id = c.community_id AND i.account_id = ?1) AS invited,
        CASE WHEN c.audience = 'open' OR m.role IS NOT NULL
             THEN (SELECT COUNT(*) FROM community_members n WHERE n.community_id = c.community_id)
        END AS member_count`;
-const FROM = `communities c LEFT JOIN community_members m
+const MEMBERSHIP = `LEFT JOIN community_members m
          ON m.community_id = c.community_id AND m.account_id = ?1`;
+/** The communities that are not deleted, as every list reads them. */
+const FROM = `live_communities c ${MEMBERSHIP}`;
 
 type Row = {
   community_id: string;
@@ -54,12 +74,16 @@ type Row = {
   audience: Audience;
   created_at: number;
   read_only_since: number | null;
+  deleted_at: number | null;
+  purged_at: number | null;
   role: Role | null;
   muted_until: number | null;
   platform: number;
   banned: number;
   requested: number;
   invited: number;
+  declined_at: number | null;
+  pending: number | null;
   member_count: number | null;
 };
 
@@ -78,27 +102,47 @@ function standingOf(row: Row): Standing {
     banned: row.banned === 1,
     mutedUntil: row.muted_until,
     platformModerator: row.platform === 1,
+    deletedAt: row.deleted_at,
+    purged: row.purged_at !== null,
+    joinDeclinedUntil:
+      row.declined_at !== null && row.declined_at + DECLINED_MS > Date.now()
+        ? row.declined_at + DECLINED_MS
+        : null,
+    pendingJoinRequests: row.pending,
   };
 }
 
-/** The community as `viewer` stands in it, or null when there is none. */
+/**
+ * The community as `viewer` stands in it, or null when there is none. A
+ * deleted one is none, except with `deleted` to a platform moderator, who
+ * restores it and reads its log for a year (decision 0070).
+ */
 export async function standing(
   env: Env,
   viewer: string,
   communityId: string,
+  options: { deleted?: boolean } = {},
 ): Promise<Standing | null> {
+  // The one read of the bare table: the view leaves deleted ones out.
   const row = await db(env)
-    .prepare(`SELECT ${COLUMNS} FROM ${FROM} WHERE c.community_id = ?2`)
-    .bind(viewer, communityId)
+    .prepare(
+      `SELECT ${COLUMNS} FROM communities c ${MEMBERSHIP}
+        WHERE c.community_id = ?2
+          AND (c.deleted_at IS NULL
+               OR (?3 = 1 AND EXISTS (SELECT 1 FROM platform_moderators p
+                                       WHERE p.account_id = ?1)))`,
+    )
+    .bind(viewer, communityId, options.deleted ? 1 : 0)
     .first<Row>();
   return row ? standingOf(row) : null;
 }
 
 /** The public face of a standing: the flags the contract does not carry are dropped. */
-export function view(s: Standing): Omit<Standing, "banned" | "platformModerator"> {
-  const { banned, platformModerator, ...community } = s;
+export function view(s: Standing): Omit<Standing, "banned" | "platformModerator" | "purged"> {
+  const { banned, platformModerator, purged, ...community } = s;
   void banned;
   void platformModerator;
+  void purged;
   return community;
 }
 
@@ -111,7 +155,7 @@ function newCommunityId(): string {
 /** Whether `communityId` exists, read-only or not. */
 export async function communityExists(env: Env, communityId: string): Promise<boolean> {
   const row = await db(env)
-    .prepare("SELECT 1 AS found FROM communities WHERE community_id = ?")
+    .prepare("SELECT 1 AS found FROM live_communities WHERE community_id = ?")
     .bind(communityId)
     .first<{ found: number }>();
   return row !== null;
@@ -160,6 +204,10 @@ export async function createCommunity(
     banned: false,
     mutedUntil: null,
     platformModerator: false,
+    deletedAt: null,
+    purged: false,
+    joinDeclinedUntil: null,
+    pendingJoinRequests: 0,
   };
 }
 
@@ -228,11 +276,6 @@ export async function updateCommunity(
     .run();
 }
 
-/** Deletes a community's graph: its members, requests, invitations and bans go with it. */
-export async function deleteCommunityRows(env: Env, communityId: string): Promise<void> {
-  await db(env).prepare("DELETE FROM communities WHERE community_id = ?").bind(communityId).run();
-}
-
 export type Member = {
   accountId: string;
   name: string | null;
@@ -276,7 +319,8 @@ export async function joinRequests(env: Env, communityId: string): Promise<JoinR
       `SELECT r.account_id AS accountId, a.display_name AS name, a.verified,
               r.created_at AS requestedAt
          FROM community_join_requests r JOIN accounts a ON a.account_id = r.account_id
-        WHERE r.community_id = ? ORDER BY r.created_at, r.account_id`,
+        WHERE r.community_id = ? AND r.declined_at IS NULL
+        ORDER BY r.created_at, r.account_id`,
     )
     .bind(communityId)
     .all<Omit<JoinRequest, "verified"> & { verified: number }>();
@@ -309,13 +353,4 @@ export async function handOverCommunities(env: Env, accountId: string): Promise<
         .run();
     }
   }
-}
-
-/** The read-only communities past their 90 days, for the daily cron to delete. */
-export async function expiredReadOnly(env: Env, now = Date.now()): Promise<string[]> {
-  const { results } = await db(env)
-    .prepare("SELECT community_id FROM communities WHERE read_only_since <= ?")
-    .bind(now - READ_ONLY_MS)
-    .all<{ community_id: string }>();
-  return results.map((r) => r.community_id);
 }

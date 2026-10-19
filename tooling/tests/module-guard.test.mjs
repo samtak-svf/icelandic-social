@@ -1,5 +1,5 @@
 // @ts-check
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -8,8 +8,10 @@ import {
   liveTables,
   moduleOf,
   OWNERS,
+  RAW,
   READS,
 } from "../module-guard.mjs";
+import { ROOT } from "../lib/repo.mjs";
 import { copyRepo, initRepo } from "./helpers.mjs";
 
 const RULES = {
@@ -95,6 +97,32 @@ describe("module-guard", () => {
     expect(
       rules("backend/src/modules/messaging/rosters.ts", '"SELECT * FROM x JOIN accounts a"'),
     ).toEqual(["foreign-read:1"]);
+  });
+
+  it("fails on a bare read of a table RAW names, outside the files it names", () => {
+    const raw = {
+      accounts: { view: "live_accounts", files: ["backend/src/identity/accounts.ts"] },
+    };
+    const found = (/** @type {string} */ file, /** @type {string} */ source) =>
+      findInSource(file, source, { ...RULES, raw }).map((v) => `${v.rule}:${v.line}`);
+    expect(found(PROFILES, '"SELECT 1 FROM accounts a"')).toEqual(["raw-read:1"]);
+    expect(found(PROFILES, '"SELECT 1 FROM media m JOIN accounts a"')).toEqual([
+      "foreign-read:1",
+      "raw-read:1",
+    ]);
+    expect(found("backend/src/identity/accounts.ts", '"SELECT 1 FROM accounts"')).toEqual([]);
+    expect(found("backend/src/identity/sessions.ts", '"SELECT 1 FROM accounts"')).toEqual([
+      "raw-read:1",
+    ]);
+    expect(found(PROFILES, '"SELECT 1 FROM live_accounts a"')).toEqual([]);
+    // A delete writes the table; the write rule decides it.
+    expect(found("backend/src/identity/sessions.ts", '"DELETE FROM accounts"')).toEqual([]);
+  });
+
+  it("names only files that exist in RAW, each reading its table bare", () => {
+    for (const { files } of Object.values(RAW)) {
+      for (const file of files) expect(existsSync(join(ROOT, file)), file).toBe(true);
+    }
   });
 
   it("fails on shared code that touches a table", () => {

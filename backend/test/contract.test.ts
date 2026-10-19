@@ -90,6 +90,7 @@ describe("the delivery contract", () => {
       "post /v1/communities/{communityId}/leave leaveCommunity",
       "post /v1/communities/{communityId}/media uploadSocialMedia",
       "post /v1/communities/{communityId}/posts createPost",
+      "post /v1/communities/{communityId}/restore restoreCommunity",
       "post /v1/conversations createConversation",
       "post /v1/conversations/{conversationId}/messages sendMessage",
       "post /v1/devices registerDevice",

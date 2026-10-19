@@ -1,0 +1,32 @@
+import { standing } from "../communities/index.ts";
+import { entry } from "./log.ts";
+import { closingAll } from "./reports.ts";
+
+// What a community's deletion writes here (decision 0070): an entry for its
+// deletion and its restoring, so the log kept a year after says who did
+// them, and the closing of the reports still open on it.
+
+/** The statements moderation writes with a community's deletion, restoring or purge. */
+export async function lifecycleRecord(
+  env: Env,
+  communityId: string,
+  by: string | null,
+  event: "delete" | "restore" | "purge",
+): Promise<D1PreparedStatement[]> {
+  const closed = event === "restore" ? [] : [closingAll(env, communityId, by)];
+  if (by === null || event === "purge") return closed;
+  const found = await standing(env, by, communityId, { deleted: true });
+  return [
+    entry(env, {
+      communityId,
+      actorId: by,
+      asPlatform: found?.role !== "owner",
+      action: event === "delete" ? "delete_community" : "restore_community",
+      targetKind: "community",
+      targetId: communityId,
+      targetAccount: null,
+      reason: "",
+    }),
+    ...closed,
+  ];
+}
