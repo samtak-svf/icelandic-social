@@ -1,22 +1,41 @@
 import SpjallCore
 import SwiftUI
 
-/// A community's open reports, for its moderators (decision 0063): why each was made and what it reported,
-/// then a reason, which goes in the log, and hide, remove or close.
+/// A community's open or closed reports, for its moderators (decision 0063): why each was made and what it
+/// reported, then a reason, which goes in the log, and the moderator's answers to it and to its author. A ban
+/// asks first.
 struct ReportsView: View {
     let model: ReportsModel
+
+    /// The report whose author a ban is asked for, with the reason, until it is confirmed or cancelled.
+    @State private var banning: Banning?
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
+                Picker(
+                    "moderation_queue",
+                    selection: Binding(
+                        get: { model.showing },
+                        set: { state in Task { await model.show(state) } })
+                ) {
+                    Text("moderation_open").tag(ReportState.open)
+                    Text("moderation_closed").tag(ReportState.closed)
+                }
+                .pickerStyle(.segmented)
+                .disabled(model.busy)
                 if model.done {
                     SocialNote(text: "moderation_done")
                 }
                 if model.loaded && model.reports.isEmpty && model.problem == nil {
-                    EmptyState(systemImage: "tray", text: "moderation_queue_empty")
+                    EmptyState(
+                        systemImage: "tray",
+                        text: model.showing == .open ? "moderation_queue_empty" : "moderation_closed_empty")
                 }
                 ForEach(model.reports, id: \.reportId) { report in
-                    ReportCard(report: report, card: model.cards[report.target.id], model: model)
+                    ReportCard(
+                        report: report, card: model.cards[report.target.id], model: model,
+                        onBan: { reason in banning = Banning(report: report, reason: reason) })
                 }
                 if model.next != nil {
                     Color.clear.frame(height: 1).task(id: model.next) { await model.more() }
@@ -34,7 +53,24 @@ struct ReportsView: View {
             }
         }
         .task { await model.load() }
+        .confirmationDialog(
+            "moderation_ban_confirm",
+            isPresented: Binding(get: { banning != nil }, set: { if !$0 { banning = nil } }),
+            titleVisibility: .visible,
+            presenting: banning
+        ) { banning in
+            Button("moderation_ban", role: .destructive) {
+                Task { await model.act(banning.report, .ban, reason: banning.reason) }
+            }
+            Button("cancel", role: .cancel) {}
+        }
     }
+}
+
+/// A ban waiting for the moderator to confirm it.
+private struct Banning {
+    let report: Report
+    let reason: String
 }
 
 /// One report: its reason, when, the reporter's note, an excerpt of what it reported, and the moderator's
@@ -43,12 +79,15 @@ private struct ReportCard: View {
     let report: Report
     let card: Card?
     let model: ReportsModel
+    /// A ban asks first, with the reason written.
+    let onBan: (String) -> Void
 
     @State private var reason = ""
 
     private var ready: Bool { ReportsModel.valid(reason) && !model.busy }
-    /// A post or a comment, which a moderator may hide or remove; anything else is only closed.
-    private var content: Bool { moderation(report.target.kind, remove: false) != nil }
+    /// A post or a comment, which a moderator may hide, remove or restore.
+    private var content: Bool { moderation(report, .hide) != nil }
+    private var open: Bool { report.state == .open }
 
     var body: some View {
         Panel {
@@ -84,6 +123,16 @@ private struct ReportCard: View {
                     HStack(spacing: 8) { actions }
                     VStack(spacing: 8) { actions }
                 }
+                if member(report) != nil {
+                    Text("moderation_member")
+                        .font(.sans(13.5, black: true))
+                        .foregroundStyle(BrandTokens.Colors.fg)
+                        .accessibilityAddTraits(.isHeader)
+                    ViewThatFits {
+                        HStack(spacing: 8) { memberActions }
+                        VStack(spacing: 8) { memberActions }
+                    }
+                }
             }
             .padding(14)
         }
@@ -109,14 +158,14 @@ private struct ReportCard: View {
     @ViewBuilder private var actions: some View {
         if content {
             Button {
-                Task { await model.act(report, remove: false, reason: reason) }
+                Task { await model.act(report, .hide, reason: reason) }
             } label: {
                 PillLabel(text: "moderation_hide", filled: true, wide: false)
             }
             .buttonStyle(.plain)
             .disabled(!ready)
             Button {
-                Task { await model.act(report, remove: true, reason: reason) }
+                Task { await model.act(report, .remove, reason: reason) }
             } label: {
                 Text("moderation_remove")
                     .font(.sans(12.5, black: true))
@@ -128,13 +177,67 @@ private struct ReportCard: View {
             }
             .buttonStyle(.plain)
             .disabled(!ready)
+            // A closed report's content may be hidden or removed; the card does not say, so restoring is offered.
+            if !open {
+                verb("moderation_restore", .restore)
+            }
         }
-        Button {
-            Task { await model.dismiss(report, reason: reason) }
+        if open {
+            verb("moderation_dismiss", .dismiss)
+        }
+    }
+
+    /// What may be done to the author of what the report names: mute for a time, unmute, ban (asked first) or
+    /// unban.
+    @ViewBuilder private var memberActions: some View {
+        Menu {
+            Section {
+                ForEach(MutePeriod.allCases, id: \.self) { period in
+                    Button(periodLabel(period)) {
+                        Task { await model.act(report, .mute, reason: reason, period: period) }
+                    }
+                }
+            } header: {
+                Text("moderation_mute_for")
+            }
         } label: {
-            PillLabel(text: "moderation_dismiss", filled: false, wide: false)
+            PillLabel(text: "moderation_mute", filled: false, wide: false)
         }
         .buttonStyle(.plain)
         .disabled(!ready)
+        verb("moderation_unmute", .unmute)
+        Button {
+            onBan(reason)
+        } label: {
+            Text("moderation_ban")
+                .font(.sans(12.5, black: true))
+                .foregroundStyle(BrandTokens.Colors.danger)
+                .padding(.horizontal, 16)
+                .frame(minHeight: 40)
+                .overlay { Capsule().strokeBorder(BrandTokens.Colors.danger, lineWidth: 1) }
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(!ready)
+        verb("moderation_unban", .unban)
+    }
+
+    /// One of the moderator's plain answers, as an outlined pill.
+    private func verb(_ label: LocalizedStringKey, _ action: ModerationVerb) -> some View {
+        Button {
+            Task { await model.act(report, action, reason: reason) }
+        } label: {
+            PillLabel(text: label, filled: false, wide: false)
+        }
+        .buttonStyle(.plain)
+        .disabled(!ready)
+    }
+
+    private func periodLabel(_ period: MutePeriod) -> LocalizedStringKey {
+        switch period {
+        case .day: "moderation_mute_day"
+        case .week: "moderation_mute_week"
+        case .month: "moderation_mute_month"
+        }
     }
 }

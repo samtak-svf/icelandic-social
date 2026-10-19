@@ -104,26 +104,31 @@ struct ReactionBar: View {
     }
 }
 
-/// A post as a community's list and its own screen show it: who wrote it and when, its text, its reactions,
-/// and its comment count, which opens it when `linked`, and a report.
+/// A post as a community's list and its own screen show it: who wrote it and when, its text and images, its
+/// reactions, and its comment count, which opens it when `linked`, and a report; this account's own also has
+/// a delete, `onDelete`, which asks first.
 struct PostCard: View {
     let post: Post
     let linked: Bool
     let writes: Bool
     let onReact: (ReactionKind) -> Void
     let onReport: () -> Void
+    var onDelete: (() -> Void)?
 
     var body: some View {
         Panel {
             VStack(alignment: .leading, spacing: 10) {
                 StateMark(state: post.state)
                 Byline(author: post.author, createdAt: post.createdAt)
-                Text(verbatim: post.body)
-                    .font(TypeStyle.bubble)
-                    .foregroundStyle(BrandTokens.Colors.fg)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
+                if !post.body.isEmpty {
+                    Text(verbatim: post.body)
+                        .font(TypeStyle.bubble)
+                        .foregroundStyle(BrandTokens.Colors.fg)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                }
+                PostImageGrid(post: post)
                 ReactionBar(post: post, enabled: writes, onReact: onReact)
                 HStack {
                     let comments = Text(verbatim: plural("post_comments", Int(post.commentCount)))
@@ -139,6 +144,7 @@ struct PostCard: View {
                         comments.foregroundStyle(BrandTokens.Colors.mutedFg)
                     }
                     Spacer(minLength: 8)
+                    if let onDelete { DeleteButton(action: onDelete) }
                     ReportButton(action: onReport)
                 }
             }
@@ -147,16 +153,18 @@ struct PostCard: View {
     }
 }
 
-/// A comment, oldest first under its post.
+/// A comment, oldest first under its post; this account's own has a delete, `onDelete`, which asks first.
 struct CommentCard: View {
     let comment: Comment
     let onReport: () -> Void
+    var onDelete: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             StateMark(state: comment.state)
             HStack(alignment: .top) {
                 Byline(author: comment.author, createdAt: comment.createdAt)
+                if let onDelete { DeleteButton(action: onDelete) }
                 ReportButton(action: onReport)
             }
             Text(verbatim: comment.body)
@@ -187,21 +195,57 @@ struct ReportButton: View {
     }
 }
 
-/// A box to write a post or a comment in, and its send button, at the foot of the screen.
-struct SocialComposer: View {
+/// The small bin on this account's own post or comment, which asks before it deletes.
+struct DeleteButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "trash")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(BrandTokens.Colors.danger)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text("delete"))
+    }
+}
+
+/// A box to write a post or a comment in, and its send button, at the foot of the screen; `above` goes over
+/// the box (a post's picked images) and `leading` before it (the button that adds them).
+struct SocialComposer<Above: View, Leading: View>: View {
     let placeholder: LocalizedStringKey
     let send: LocalizedStringKey
     @Binding var draft: String
     let limit: Int
     let enabled: Bool
     let onSend: () -> Void
+    let above: Above
+    let leading: Leading
 
     @FocusState private var focused: Bool
+
+    init(
+        placeholder: LocalizedStringKey, send: LocalizedStringKey, draft: Binding<String>, limit: Int, enabled: Bool,
+        onSend: @escaping () -> Void, @ViewBuilder above: () -> Above, @ViewBuilder leading: () -> Leading
+    ) {
+        self.placeholder = placeholder
+        self.send = send
+        _draft = draft
+        self.limit = limit
+        self.enabled = enabled
+        self.onSend = onSend
+        self.above = above()
+        self.leading = leading()
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             Divider()
+            above
             HStack(alignment: .bottom, spacing: 8) {
+                leading
                 TextField(placeholder, text: $draft, axis: .vertical)
                     .font(.sans(14))
                     .lineLimit(1...6)
@@ -228,6 +272,18 @@ struct SocialComposer: View {
             .padding(.vertical, 8)
         }
         .background(BrandTokens.Colors.surface)
+    }
+}
+
+extension SocialComposer where Above == EmptyView, Leading == EmptyView {
+    /// A box of text alone, as a comment's.
+    init(
+        placeholder: LocalizedStringKey, send: LocalizedStringKey, draft: Binding<String>, limit: Int, enabled: Bool,
+        onSend: @escaping () -> Void
+    ) {
+        self.init(
+            placeholder: placeholder, send: send, draft: draft, limit: limit, enabled: enabled, onSend: onSend,
+            above: { EmptyView() }, leading: { EmptyView() })
     }
 }
 

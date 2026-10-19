@@ -49,12 +49,17 @@ final class SocialTests: XCTestCase {
     }
 
     func testOnlyAPostOrACommentIsHiddenOrRemoved() {
-        XCTAssertEqual(moderation(.post, remove: false), .hidePost)
-        XCTAssertEqual(moderation(.post, remove: true), .removePost)
-        XCTAssertEqual(moderation(.comment, remove: false), .hideComment)
-        XCTAssertEqual(moderation(.comment, remove: true), .removeComment)
-        XCTAssertNil(moderation(.community, remove: false))
-        XCTAssertNil(moderation(.account, remove: true))
+        let post = makeReport("r1", in: "k1", .post, "p1")
+        let comment = makeReport("r2", in: "k1", .comment, "c1")
+        XCTAssertEqual(moderation(post, .hide), .hidePost)
+        XCTAssertEqual(moderation(post, .remove), .removePost)
+        XCTAssertEqual(moderation(post, .restore), .restorePost)
+        XCTAssertEqual(moderation(comment, .hide), .hideComment)
+        XCTAssertEqual(moderation(comment, .remove), .removeComment)
+        XCTAssertNil(moderation(makeReport("r3", in: "k1", .community, "k1"), .hide))
+        XCTAssertNil(moderation(makeReport("r4", in: "k1", .account, "a2"), .remove))
+        XCTAssertEqual(moderation(post, .mute), .muteMember)
+        XCTAssertEqual(moderation(post, .unban), .unbanMember)
         XCTAssertNil(cardRef(ReportTarget(kind: .account, id: "a2")))
         XCTAssertEqual(cardRef(ReportTarget(kind: .comment, id: "c1")), CardRef(kind: .comment, id: "c1"))
     }

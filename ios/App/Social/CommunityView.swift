@@ -1,8 +1,10 @@
+import PhotosUI
 import SpjallCore
 import SwiftUI
 
-/// One community (decision 0063): its name, audience and description, joining or leaving it, its report queue
-/// for a moderator, and its posts, newest first. A member who is not muted writes at the foot.
+/// One community (decision 0063): its name, audience and description, joining, taking a request back or leaving
+/// it, its report queue for a moderator, and its posts, newest first, this account's own with a delete. A member
+/// who is not muted writes at the foot, with up to four images (decision 0065).
 struct CommunityView: View {
     let model: CommunityModel
     let social: Social
@@ -10,6 +12,10 @@ struct CommunityView: View {
     @State private var reporting: Reporting?
     /// The screen has been left for a post and come back to, so the posts are asked for again.
     @State private var away = false
+    /// The own post waiting for the delete to be confirmed.
+    @State private var deleting: String?
+    @State private var picking = false
+    @State private var photos: [PhotosPickerItem] = []
 
     var body: some View {
         ScrollView {
@@ -49,9 +55,39 @@ struct CommunityView: View {
                     placeholder: "post_compose", send: "post_publish",
                     draft: Binding(get: { model.draft }, set: { model.draft = $0 }),
                     limit: CommunityModel.postLimit, enabled: model.sendable && !model.busy,
-                    onSend: { Task { await model.publish() } })
+                    onSend: { Task { await model.publish() } },
+                    above: { composerImages },
+                    leading: {
+                        RoundButton(
+                            systemImage: "photo.badge.plus", label: "post_add_images",
+                            fill: BrandTokens.Colors.muted, tint: BrandTokens.Colors.fg, size: 40,
+                            enabled: !model.busy
+                        ) {
+                            if model.roomForImage() { picking = true }
+                        }
+                    })
             }
         }
+        .photosPicker(
+            isPresented: $picking, selection: $photos, maxSelectionCount: max(1, model.imagesLeft),
+            matching: .images
+        )
+        .onChange(of: photos) { _, picked in
+            guard !picked.isEmpty else { return }
+            photos = []
+            Task {
+                for item in picked { await model.pick(Picked(photo: item)) }
+            }
+        }
+        .alert(
+            "post_delete_confirm",
+            isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+            presenting: deleting
+        ) { postId in
+            Button("delete", role: .destructive) { Task { await model.delete(postId) } }
+            Button("cancel", role: .cancel) {}
+        }
+        .environment(\.postImages, PostImages(social: social))
         .sheet(item: $reporting) { reporting in
             ReportSheet(social: social, target: reporting.target)
         }
@@ -62,6 +98,27 @@ struct CommunityView: View {
             Task { await model.refresh() }
         }
         .onDisappear { away = true }
+    }
+
+    /// The images picked for the post, and why the last one was not taken.
+    @ViewBuilder private var composerImages: some View {
+        if !model.images.isEmpty {
+            PickedImages(paths: model.images) { path in model.unpick(path) }
+        }
+        if let notice = model.imageNotice {
+            SocialNote(text: noticeText(notice))
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func noticeText(_ notice: CommunityModel.ImageNotice) -> LocalizedStringKey {
+        switch notice {
+        case .tooMany: "post_images_too_many"
+        case .tooLarge: "post_image_too_large"
+        case .invalid: "post_image_failed"
+        }
     }
 
     private func header(_ community: Community) -> some View {
@@ -101,10 +158,17 @@ struct CommunityView: View {
         }
     }
 
-    /// Join, ask to join, the request waiting, or leave; an owner does not leave the community it holds.
+    /// Join, ask to join, take back the request waiting, or leave; an owner does not leave the community it holds.
     @ViewBuilder private func membership(_ community: Community) -> some View {
         if community.joinRequested {
             SocialNote(text: "community_join_requested")
+            Button {
+                Task { await model.withdraw() }
+            } label: {
+                PillLabel(text: "community_withdraw_request", filled: false)
+            }
+            .buttonStyle(.plain)
+            .disabled(model.busy)
         } else if community.role == nil {
             Button {
                 Task { await model.join() }
@@ -135,7 +199,8 @@ struct CommunityView: View {
             PostCard(
                 post: post, linked: true, writes: model.writes,
                 onReact: { kind in Task { await model.react(post.postId, kind) } },
-                onReport: { reporting = Reporting(target: ReportTarget(kind: .post, id: post.postId)) })
+                onReport: { reporting = Reporting(target: ReportTarget(kind: .post, id: post.postId)) },
+                onDelete: model.mine(post.author) ? { deleting = post.postId } : nil)
         }
         if model.next != nil {
             Color.clear.frame(height: 1).task(id: model.next) { await model.more() }

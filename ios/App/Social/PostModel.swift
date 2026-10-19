@@ -3,7 +3,7 @@ import Observation
 import SpjallCore
 
 /// One post (decision 0063) and its comments, oldest first, with a reaction to toggle and a comment to write
-/// for a member of its community who is not muted.
+/// for a member of its community who is not muted. This account's own post and comments can be deleted.
 @MainActor @Observable
 final class PostModel {
     let postId: String
@@ -19,6 +19,10 @@ final class PostModel {
     private(set) var loaded = false
     /// The comment being written.
     var draft = ""
+    /// This account's id: its own post and comments can be deleted. Nil until it is known.
+    private(set) var me: String?
+    /// The post was deleted from here, so the screen goes back to its community.
+    private(set) var deleted = false
     private(set) var busy = false
     private(set) var problem: Problem?
 
@@ -42,6 +46,9 @@ final class PostModel {
     /// A moderator muted this account in the post's community.
     var muted: Bool { community.map { isMuted($0, now: now()) } ?? false }
 
+    /// The post or comment is this account's own, which it may delete.
+    func mine(_ author: Author) -> Bool { me != nil && author.accountId == me }
+
     /// The draft may be sent: something written, and not over the limit.
     var sendable: Bool {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -64,6 +71,30 @@ final class PostModel {
             self.comments = page.comments
             self.next = page.next
             self.loaded = true
+            if self.me == nil { self.me = try? await offMain { try social.me().accountId } }
+        }
+    }
+
+    /// Deletes this account's own post; the screen then goes back to its community.
+    func deletePost() async {
+        guard let post else { return }
+        let social = social
+        await perform(again: { await self.deletePost() }) {
+            try await offMain { try social.deletePost(post.postId) }
+            self.deleted = true
+        }
+    }
+
+    /// Deletes this account's own comment; it leaves the list, and the post counts one fewer.
+    func deleteComment(_ commentId: String) async {
+        let social = social
+        await perform(again: { await self.deleteComment(commentId) }) {
+            try await offMain { try social.deleteComment(commentId) }
+            let before = self.comments.count
+            self.comments.removeAll { $0.commentId == commentId }
+            if self.comments.count < before, let count = self.post?.commentCount, count > 0 {
+                self.post?.commentCount = count - 1
+            }
         }
     }
 

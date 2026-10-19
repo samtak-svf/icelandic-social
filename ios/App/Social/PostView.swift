@@ -2,12 +2,16 @@ import SpjallCore
 import SwiftUI
 
 /// One post (decision 0063), its reactions, and its comments oldest first; a member of its community who is
-/// not muted writes a comment at the foot.
+/// not muted writes a comment at the foot. This account's own post and comments have a delete, which asks first.
 struct PostView: View {
     let model: PostModel
     let social: Social
 
     @State private var reporting: Reporting?
+    @State private var deletingPost = false
+    /// The own comment waiting for the delete to be confirmed.
+    @State private var deletingComment: String?
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView {
@@ -16,7 +20,8 @@ struct PostView: View {
                     PostCard(
                         post: post, linked: false, writes: model.writes,
                         onReact: { kind in Task { await model.react(kind) } },
-                        onReport: { reporting = Reporting(target: ReportTarget(kind: .post, id: post.postId)) })
+                        onReport: { reporting = Reporting(target: ReportTarget(kind: .post, id: post.postId)) },
+                        onDelete: model.mine(post.author) ? { deletingPost = true } : nil)
                     if model.muted {
                         SocialNote(text: "community_muted")
                     }
@@ -45,6 +50,22 @@ struct PostView: View {
                     onSend: { Task { await model.publish() } })
             }
         }
+        .alert("post_delete_confirm", isPresented: $deletingPost) {
+            Button("delete", role: .destructive) { Task { await model.deletePost() } }
+            Button("cancel", role: .cancel) {}
+        }
+        .alert(
+            "comment_delete_confirm",
+            isPresented: Binding(get: { deletingComment != nil }, set: { if !$0 { deletingComment = nil } }),
+            presenting: deletingComment
+        ) { commentId in
+            Button("delete", role: .destructive) { Task { await model.deleteComment(commentId) } }
+            Button("cancel", role: .cancel) {}
+        }
+        .onChange(of: model.deleted) { _, deleted in
+            if deleted { dismiss() }
+        }
+        .environment(\.postImages, PostImages(social: social))
         .sheet(item: $reporting) { reporting in
             ReportSheet(social: social, target: reporting.target)
         }
@@ -59,9 +80,12 @@ struct PostView: View {
             Panel {
                 ForEach(Array(model.comments.enumerated()), id: \.element.commentId) { index, comment in
                     if index > 0 { Hairline() }
-                    CommentCard(comment: comment) {
-                        reporting = Reporting(target: ReportTarget(kind: .comment, id: comment.commentId))
-                    }
+                    CommentCard(
+                        comment: comment,
+                        onReport: {
+                            reporting = Reporting(target: ReportTarget(kind: .comment, id: comment.commentId))
+                        },
+                        onDelete: model.mine(comment.author) ? { deletingComment = comment.commentId } : nil)
                 }
             }
         }

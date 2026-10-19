@@ -130,4 +130,101 @@ final class CommunityModelTests: XCTestCase {
         XCTAssertEqual(model.posts.map(\.postId), ["p4", "p3", "p2"])
         XCTAssertEqual(model.posts[1].commentCount, 5)
     }
+
+    func testARequestToJoinIsTakenBack() async {
+        var waiting = makeCommunity("k1", "Fiskar", audience: .private)
+        waiting.joinRequested = true
+        let model = await model(waiting)
+        await model.withdraw()
+        XCTAssertTrue(social.calls.contains("withdrawJoinRequest k1"))
+        XCTAssertEqual(model.community?.joinRequested, false)
+        XCTAssertNil(model.problem)
+    }
+
+    func testOnlyThisAccountsOwnPostIsDeletedAndLeavesTheList() async {
+        let community = makeCommunity("k1", "Fuglar", role: .member)
+        social.communities = ["k1": community]
+        social.posts = ["k1": [makePost("p2", "k1", author: jon), makePost("p1", "k1")]]
+        let model = CommunityModel(social: social, communityId: "k1", now: { FakeAccount.now })
+        await model.load()
+        XCTAssertTrue(model.mine(model.posts[0].author))
+        XCTAssertFalse(model.mine(model.posts[1].author))
+        await model.delete("p2")
+        XCTAssertTrue(social.calls.contains("deletePost p2"))
+        XCTAssertEqual(model.posts.map(\.postId), ["p1"])
+    }
+
+    func testAPostDeletedElsewhereLeavesOnRefresh() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        await model.more()
+        social.posts = ["k1": [makePost("p3", "k1"), makePost("p1", "k1")]]
+        await model.refresh()
+        XCTAssertEqual(model.posts.map(\.postId), ["p3", "p1"])
+    }
+
+    /// An image picked, as a file of its own, the size the picker says.
+    private func image(_ model: CommunityModel, _ name: String = UUID().uuidString) async throws -> String {
+        let file = FileManager.default.temporaryDirectory.appending(path: name)
+        try Data("jpeg".utf8).write(to: file)
+        await model.pick(Picked(mime: "image/jpeg", size: 4) { file })
+        return file.path
+    }
+
+    func testPickedImagesAreUploadedAndGoWithThePost() async throws {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        let first = try await image(model, "fyrsta.jpg")
+        let second = try await image(model, "onnur.jpg")
+        XCTAssertEqual(model.images, [first, second])
+        model.draft = "Lóan"
+        await model.publish()
+        XCTAssertTrue(social.calls.contains("uploadPostImage k1 fyrsta.jpg"))
+        XCTAssertTrue(social.calls.contains("uploadPostImage k1 onnur.jpg"))
+        XCTAssertTrue(social.calls.contains("createPost k1 Lóan m-fyrsta.jpg,m-onnur.jpg"))
+        XCTAssertEqual(model.posts.first?.images.map(\.mediaId), ["m-fyrsta.jpg", "m-onnur.jpg"])
+        XCTAssertEqual(model.images, [])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: first))
+    }
+
+    func testAPostOfAnImageAloneIsSent() async throws {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        XCTAssertFalse(model.sendable)
+        _ = try await image(model, "ein.jpg")
+        XCTAssertTrue(model.sendable)
+        await model.publish()
+        XCTAssertTrue(social.calls.contains("createPost k1  m-ein.jpg"))
+    }
+
+    func testAFifthImageIsRefused() async throws {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        for _ in 0..<CommunityModel.imageCount { _ = try await image(model) }
+        XCTAssertEqual(model.images.count, 4)
+        XCTAssertNil(model.imageNotice)
+        XCTAssertEqual(model.imagesLeft, 0)
+        XCTAssertFalse(model.roomForImage())
+        XCTAssertEqual(model.imageNotice, .tooMany)
+        await model.pick(Picked(mime: "image/jpeg", size: 4) { throw CancellationError() })
+        XCTAssertEqual(model.images.count, 4)
+        model.unpick(model.images[0])
+        XCTAssertEqual(model.images.count, 3)
+        XCTAssertNil(model.imageNotice)
+        XCTAssertTrue(model.roomForImage())
+    }
+
+    func testAnImageOverTenMegabytesIsRefusedBeforeItIsRead() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        await model.pick(Picked(mime: "image/jpeg", size: CommunityModel.imageLimit + 1) { throw CancellationError() })
+        XCTAssertEqual(model.imageNotice, .tooLarge)
+        XCTAssertEqual(model.images, [])
+    }
+
+    func testAnImageTheServerRefusesIsNamedAndNothingIsPosted() async throws {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        _ = try await image(model)
+        social.refuseImage = CoreError.Refused(status: 415, code: "invalid_image", requestId: nil)
+        await model.publish()
+        XCTAssertEqual(model.imageNotice, .invalid)
+        XCTAssertNil(model.problem)
+        XCTAssertEqual(model.images.count, 1)
+        XCTAssertFalse(social.calls.contains { $0.hasPrefix("createPost") })
+    }
 }

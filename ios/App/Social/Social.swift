@@ -18,24 +18,38 @@ protocol Social: Sendable {
     /// Joins an open community at once, or asks a private one's moderators.
     func joinCommunity(_ id: String) throws -> JoinState
     func leaveCommunity(_ id: String) throws
+    /// Takes back a request to join that waits; no error when none does.
+    func withdrawJoinRequest(_ id: String) throws
     /// A page of a community's posts, newest first.
     func communityPosts(_ community: String, before: String?, limit: UInt32) throws -> PostPage
-    func createPost(_ community: String, body: String) throws -> Post
+    /// A post of text, up to four images from `uploadPostImage` by their media ids (decision 0065), or both.
+    func createPost(_ community: String, body: String, media: [String]) throws -> Post
+    /// Uploads the image file at `path` for a post in the community; its media id goes in `createPost`.
+    func uploadPostImage(_ community: String, path: String) throws -> PostImage
+    /// The path of a post's image, a WebP the core fetched once and keeps.
+    func postImage(_ post: String, media: String) throws -> String
     func post(_ id: String) throws -> Post
+    /// Deletes this account's own post.
+    func deletePost(_ id: String) throws
     /// Sets this account's one reaction on a post, in place of any other.
     func react(_ post: String, kind: ReactionKind) throws
     func unreact(_ post: String) throws
     /// A page of a post's comments, oldest first.
     func comments(_ post: String, after: String?, limit: UInt32) throws -> CommentPage
     func createComment(_ post: String, body: String) throws -> Comment
+    /// Deletes this account's own comment.
+    func deleteComment(_ id: String) throws
     /// Reports to the moderators, who are never told who reported; the server sends what is unlawful to the
     /// platform's own.
     func report(_ target: ReportTarget, reason: ReportReason, note: String) throws
-    /// A page of a community's open reports, for its moderators.
-    func openReports(_ community: String, after: String?, limit: UInt32) throws -> ReportPage
-    /// One moderator's action on a post or a comment, answering `report` when there is one.
-    func moderate(_ community: String, action: ModerationAction, target: String, reason: String, report: String?)
-        throws
+    /// A page of a community's reports in `state`, open or closed, for its moderators.
+    func reports(_ community: String, state: ReportState, after: String?, limit: UInt32) throws -> ReportPage
+    /// One moderator's action on a post, a comment or a member, answering `report` when there is one. `until`
+    /// (Unix milliseconds) goes with a mute and nothing else (0063).
+    func moderate(
+        _ community: String, action: ModerationAction, target: String, reason: String, report: String?,
+        until: UInt64?
+    ) throws
     func closeReport(_ report: String, resolution: String) throws
     /// What each reference shows, one card each in their order.
     func cards(_ refs: [CardRef]) throws -> [Card]
@@ -62,15 +76,27 @@ extension CoreAccount: Social {
 
     func leaveCommunity(_ id: String) throws { try core().leaveCommunity(communityId: id) }
 
+    func withdrawJoinRequest(_ id: String) throws { try core().withdrawJoinRequest(communityId: id) }
+
     func communityPosts(_ community: String, before: String?, limit: UInt32) throws -> PostPage {
         try core().communityPosts(communityId: community, before: before, limit: limit)
     }
 
-    func createPost(_ community: String, body: String) throws -> Post {
-        try core().createPost(communityId: community, body: body, media: [])
+    func createPost(_ community: String, body: String, media: [String]) throws -> Post {
+        try core().createPost(communityId: community, body: body, media: media)
+    }
+
+    func uploadPostImage(_ community: String, path: String) throws -> PostImage {
+        try core().uploadPostImage(communityId: community, path: path)
+    }
+
+    func postImage(_ post: String, media: String) throws -> String {
+        try core().postImage(postId: post, mediaId: media)
     }
 
     func post(_ id: String) throws -> Post { try core().post(postId: id) }
+
+    func deletePost(_ id: String) throws { try core().deletePost(postId: id) }
 
     func react(_ post: String, kind: ReactionKind) throws { try core().react(postId: post, kind: kind) }
 
@@ -84,19 +110,22 @@ extension CoreAccount: Social {
         try core().createComment(postId: post, body: body)
     }
 
+    func deleteComment(_ id: String) throws { try core().deleteComment(commentId: id) }
+
     func report(_ target: ReportTarget, reason: ReportReason, note: String) throws {
         try core().report(target: target, reason: reason, note: note, toPlatform: false)
     }
 
-    func openReports(_ community: String, after: String?, limit: UInt32) throws -> ReportPage {
-        try core().communityReports(communityId: community, state: .open, after: after, limit: limit)
+    func reports(_ community: String, state: ReportState, after: String?, limit: UInt32) throws -> ReportPage {
+        try core().communityReports(communityId: community, state: state, after: after, limit: limit)
     }
 
-    func moderate(_ community: String, action: ModerationAction, target: String, reason: String, report: String?)
-        throws
-    {
+    func moderate(
+        _ community: String, action: ModerationAction, target: String, reason: String, report: String?,
+        until: UInt64?
+    ) throws {
         try core().moderate(
-            communityId: community, action: action, targetId: target, reason: reason, reportId: report, until: nil)
+            communityId: community, action: action, targetId: target, reason: reason, reportId: report, until: until)
     }
 
     func closeReport(_ report: String, resolution: String) throws {
@@ -240,13 +269,57 @@ func postedAt(_ millis: UInt64) -> String {
     timeLine(Dates.at(millis))
 }
 
-/// What hiding (or, with `remove`, removing) a reported target is, for a post or a comment; nil for anything
-/// else, which a moderator only closes.
-func moderation(_ kind: ReportTargetKind, remove: Bool) -> ModerationAction? {
-    switch kind {
-    case .post: remove ? .removePost : .hidePost
-    case .comment: remove ? .removeComment : .hideComment
-    case .community, .account: nil
+/// What a moderator may do about a report: the first three to the post or comment it names, the next one to the
+/// report alone, the last four to its author.
+enum ModerationVerb: Sendable, CaseIterable {
+    case hide, remove, restore, dismiss, mute, unmute, ban, unban
+
+    /// The verb acts on the author of what was reported, rather than on the content.
+    var onMember: Bool { [.mute, .unmute, .ban, .unban].contains(self) }
+}
+
+/// How long a moderator mutes an author (decision 0063): a mute is always for a time.
+enum MutePeriod: Sendable, CaseIterable {
+    case day, week, month
+
+    var days: UInt64 {
+        switch self {
+        case .day: 1
+        case .week: 7
+        case .month: 30
+        }
+    }
+
+    /// When a mute that starts at `now` (Unix milliseconds) ends.
+    func until(_ now: UInt64) -> UInt64 { now + days * 86_400_000 }
+}
+
+/// The account a report's member verbs act on: whose content it is, or the account reported; none once deleted.
+func member(_ report: Report) -> String? {
+    report.targetAccount?.accountId ?? (report.target.kind == .account ? report.target.id : nil)
+}
+
+/// What `verb` does about `report`: to the post or comment it names, or to its author. A community is not
+/// moderated here, an account's content is not hidden, a deleted author is not muted or banned, and closing a
+/// report is no moderation at all.
+func moderation(_ report: Report, _ verb: ModerationVerb) -> ModerationAction? {
+    switch verb {
+    case .mute, .unmute, .ban, .unban:
+        guard member(report) != nil else { return nil }
+        switch verb {
+        case .mute: return .muteMember
+        case .unmute: return .unmuteMember
+        case .ban: return .banMember
+        default: return .unbanMember
+        }
+    case .dismiss:
+        return nil
+    case .hide, .remove, .restore:
+        switch report.target.kind {
+        case .post: return verb == .hide ? .hidePost : verb == .remove ? .removePost : .restorePost
+        case .comment: return verb == .hide ? .hideComment : verb == .remove ? .removeComment : .restoreComment
+        case .community, .account: return nil
+        }
     }
 }
 

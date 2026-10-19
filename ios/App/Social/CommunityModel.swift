@@ -2,8 +2,9 @@ import Foundation
 import Observation
 import SpjallCore
 
-/// One community (decision 0063): who may read and write in it, joining, asking to join and leaving, and its
-/// posts, newest first, each with a reaction to toggle. A member who is not muted writes a post at the top.
+/// One community (decision 0063): who may read and write in it, joining, asking to join, taking the request
+/// back and leaving, and its posts, newest first, each with a reaction to toggle. A member who is not muted
+/// writes a post at the top, of text, up to four images (0065), or both; this account's own posts can be deleted.
 @MainActor @Observable
 final class CommunityModel {
     let communityId: String
@@ -17,6 +18,12 @@ final class CommunityModel {
     private(set) var loaded = false
     /// The post being written.
     var draft = ""
+    /// The images picked for it, as local copies, in their order.
+    private(set) var images: [String] = []
+    /// Why the last image picked or sent was not taken, until the next is picked or the post goes.
+    private(set) var imageNotice: ImageNotice?
+    /// This account's id: its own posts can be deleted. Nil until it is known, when none is.
+    private(set) var me: String?
     private(set) var busy = false
     private(set) var problem: Problem?
 
@@ -25,6 +32,18 @@ final class CommunityModel {
     private var failed: (() async -> Void)?
     /// The posts whose reaction is on its way, so a second tap waits for the first.
     private var reacting: Set<String> = []
+    /// The media id of each picked image already uploaded, by its local copy, so a retry does not send it again.
+    private var uploaded: [String: String] = [:]
+
+    /// Why an image did not go with the post.
+    enum ImageNotice: Equatable, Sendable {
+        /// A fifth one was picked.
+        case tooMany
+        /// Over the server's 10 MB.
+        case tooLarge
+        /// Not an image the server takes, or one that could not be read.
+        case invalid
+    }
 
     init(social: Social, communityId: String, now: @escaping @Sendable () -> UInt64 = nowMillis) {
         self.social = social
@@ -47,11 +66,14 @@ final class CommunityModel {
     /// This account moderates here, and sees the report queue.
     var moderates: Bool { community?.role == .owner || community?.role == .moderator }
 
-    /// The draft may be sent: something written, and not over the limit.
+    /// The draft may be sent: something written, an image picked, or both, and the text not over the limit.
     var sendable: Bool {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        return writes && !body.isEmpty && body.count <= Self.postLimit
+        return writes && (!body.isEmpty || !images.isEmpty) && body.count <= Self.postLimit
     }
+
+    /// The post or comment is this account's own, which it may delete.
+    func mine(_ author: Author) -> Bool { me != nil && author.accountId == me }
 
     func load() async {
         let social = social
@@ -61,7 +83,15 @@ final class CommunityModel {
             self.community = community
             try await self.first()
             self.loaded = true
+            await self.whoAmI()
         }
+    }
+
+    /// This account's id, once. Quiet: without it no post is offered for deleting.
+    private func whoAmI() async {
+        guard me == nil else { return }
+        let social = social
+        me = try? await offMain { try social.me().accountId }
     }
 
     /// The posts' next, older page, if there is one and none is on its way.
@@ -111,16 +141,119 @@ final class CommunityModel {
         }
     }
 
-    /// Publishes the draft at the top of the posts.
+    /// Takes back the request to join that waits; then the community as it is now.
+    func withdraw() async {
+        let social = social
+        let id = communityId
+        await perform(again: { await self.withdraw() }) {
+            let community = try await offMain { () -> Community in
+                try social.withdrawJoinRequest(id)
+                return try social.community(id)
+            }
+            self.community = community
+            try await self.first()
+        }
+    }
+
+    /// Whether another image fits in the post; when none does, says so instead of opening the picker.
+    func roomForImage() -> Bool {
+        let room = images.count < Self.imageCount
+        if !room { imageNotice = .tooMany }
+        return room
+    }
+
+    /// How many more images the post takes.
+    var imagesLeft: Int { max(0, Self.imageCount - images.count) }
+
+    /// Adds the image picked to the post, as a local copy that can be shown and sent. One over 10 MB, or past
+    /// the fourth, is refused with a sentence and its copy deleted.
+    func pick(_ picked: Picked) async {
+        guard roomForImage() else { return }
+        if (picked.size ?? 0) > Self.imageLimit {
+            imageNotice = .tooLarge
+            return
+        }
+        imageNotice = nil
+        do {
+            let file = try await picked.read()
+            let size = (try? FileManager.default.attributesOfItem(atPath: file.path)[.size] as? NSNumber)?
+                .int64Value
+            if (size ?? 0) > Self.imageLimit {
+                try? FileManager.default.removeItem(at: file)
+                imageNotice = .tooLarge
+                return
+            }
+            guard images.count < Self.imageCount else {
+                try? FileManager.default.removeItem(at: file)
+                imageNotice = .tooMany
+                return
+            }
+            images.append(file.path)
+        } catch {
+            imageNotice = .invalid
+        }
+    }
+
+    /// Takes a picked image out of the post, and deletes its copy.
+    func unpick(_ path: String) {
+        images.removeAll { $0 == path }
+        uploaded[path] = nil
+        imageNotice = nil
+        try? FileManager.default.removeItem(atPath: path)
+    }
+
+    /// Uploads each picked image not yet uploaded, then publishes the draft with them at the top of the posts;
+    /// the box empties. An image the server refuses is named, and nothing is posted.
     func publish() async {
-        guard sendable else { return }
+        guard sendable, !busy else { return }
         let social = social
         let id = communityId
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        await perform(again: { await self.publish() }) {
-            let post = try await offMain { try social.createPost(id, body: body) }
-            self.posts.insert(post, at: 0)
-            self.draft = ""
+        let picked = images
+        busy = true
+        problem = nil
+        imageNotice = nil
+        do {
+            for path in picked where uploaded[path] == nil {
+                uploaded[path] = try await offMain { try social.uploadPostImage(id, path: path).mediaId }
+            }
+            let media = picked.compactMap { uploaded[$0] }
+            let post = try await offMain { try social.createPost(id, body: body, media: media) }
+            for path in picked { try? FileManager.default.removeItem(atPath: path) }
+            uploaded = [:]
+            images = []
+            posts.insert(post, at: 0)
+            draft = ""
+            failed = nil
+        } catch {
+            // A media id the server no longer knows (over a day old): the next try uploads again.
+            if case CoreError.Refused(_, "invalid_media", _) = error { uploaded = [:] }
+            if let notice = Self.notice(for: error) {
+                failed = nil
+                imageNotice = notice
+            } else {
+                failed = { await self.publish() }
+                problem = Problem(error)
+            }
+        }
+        busy = false
+    }
+
+    /// What the server's refusal of an image says, or nil when it is not about an image.
+    private nonisolated static func notice(for error: Error) -> ImageNotice? {
+        switch error {
+        case CoreError.Refused(_, "too_large", _): .tooLarge
+        case CoreError.Refused(_, "invalid_image", _): .invalid
+        default: nil
+        }
+    }
+
+    /// Deletes this account's own post; it leaves the list.
+    func delete(_ postId: String) async {
+        let social = social
+        await perform(again: { await self.delete(postId) }) {
+            try await offMain { try social.deletePost(postId) }
+            self.posts.removeAll { $0.postId == postId }
         }
     }
 
@@ -158,11 +291,21 @@ final class CommunityModel {
         else { return }
         let fresh = Dictionary(page.posts.map { ($0.postId, $0) }, uniquingKeysWith: { first, _ in first })
         let shown = Set(posts.map(\.postId))
-        posts = page.posts.filter { !shown.contains($0.postId) } + posts.map { fresh[$0.postId] ?? $0 }
+        // A post shown in the span the newest page covers but missing from it was deleted since, as one deleted
+        // from its own screen is; the whole list when that page is the last.
+        let oldest = page.next == nil ? 0 : (page.posts.last?.createdAt ?? UInt64.max)
+        let kept = posts.filter { fresh[$0.postId] != nil || $0.createdAt <= oldest }
+        posts = page.posts.filter { !shown.contains($0.postId) } + kept.map { fresh[$0.postId] ?? $0 }
     }
 
     /// The longest post the server takes.
     nonisolated static let postLimit = 5_000
+
+    /// The most images one post holds (decision 0065).
+    nonisolated static let imageCount = 4
+
+    /// The largest image the server takes for a post, 10 MB.
+    nonisolated static let imageLimit: Int64 = 10 * 1_024 * 1_024
 
     /// The newest page of posts, when this account may read them; none otherwise.
     private func first() async throws {

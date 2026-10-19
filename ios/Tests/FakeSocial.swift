@@ -19,6 +19,7 @@ final class FakeSocial: Social, @unchecked Sendable {
     private var _cards: [String: Card] = [:]
     private var _notifications: [SocialNotification] = []
     private var _joins: [String: JoinState] = [:]
+    private var _refuseImage: Error?
     private var made = 0
 
     var calls: [String] { lock.withLock { _calls } }
@@ -63,7 +64,7 @@ final class FakeSocial: Social, @unchecked Sendable {
         set { lock.withLock { _comments = newValue } }
     }
 
-    /// Each community's open reports, oldest first.
+    /// Each community's reports, open and closed, oldest first.
     var reports: [String: [Report]] {
         get { lock.withLock { _reports } }
         set { lock.withLock { _reports = newValue } }
@@ -85,6 +86,12 @@ final class FakeSocial: Social, @unchecked Sendable {
     var joins: [String: JoinState] {
         get { lock.withLock { _joins } }
         set { lock.withLock { _joins = newValue } }
+    }
+
+    /// What `uploadPostImage` throws, each time, while this is set.
+    var refuseImage: Error? {
+        get { lock.withLock { _refuseImage } }
+        set { lock.withLock { _refuseImage = newValue } }
     }
 
     /// How long one page is here, so the tests see more than one without making dozens.
@@ -170,22 +177,47 @@ final class FakeSocial: Social, @unchecked Sendable {
         mine.removeAll { $0 == id }
     }
 
+    func withdrawJoinRequest(_ id: String) throws {
+        try call("withdrawJoinRequest \(id)")
+        guard var found = communities[id] else { throw notFound }
+        found.joinRequested = false
+        communities[id] = found
+    }
+
     func communityPosts(_ community: String, before: String?, limit: UInt32) throws -> PostPage {
         try call("communityPosts \(community) \(before ?? "-")")
         let (found, next) = page(posts[community] ?? [], after: before)
         return PostPage(posts: found, next: next)
     }
 
-    func createPost(_ community: String, body: String) throws -> Post {
-        try call("createPost \(community) \(body)")
+    func createPost(_ community: String, body: String, media: [String]) throws -> Post {
+        try call("createPost \(community) \(body)" + (media.isEmpty ? "" : " \(media.joined(separator: ","))"))
         let id = lock.withLock {
             made += 1
             return "p-made\(made)"
         }
         let me = Author(accountId: "a1", name: "Jón Jónsson", verified: true)
-        let created = makePost(id, community, body: body, author: me)
+        var created = makePost(id, community, body: body, author: me)
+        created.images = media.map { PostImage(mediaId: $0, width: 640, height: 480) }
         posts[community, default: []].insert(created, at: 0)
         return created
+    }
+
+    func uploadPostImage(_ community: String, path: String) throws -> PostImage {
+        let name = URL(filePath: path).lastPathComponent
+        try call("uploadPostImage \(community) \(name)")
+        if let refused = refuseImage { throw refused }
+        return PostImage(mediaId: "m-\(name)", width: 640, height: 480)
+    }
+
+    func postImage(_ post: String, media: String) throws -> String {
+        try call("postImage \(post) \(media)")
+        return "/images/\(media).webp"
+    }
+
+    func deletePost(_ id: String) throws {
+        try call("deletePost \(id)")
+        for community in posts.keys { posts[community]?.removeAll { $0.postId == id } }
     }
 
     func post(_ id: String) throws -> Post {
@@ -218,26 +250,47 @@ final class FakeSocial: Social, @unchecked Sendable {
         return created
     }
 
+    func deleteComment(_ id: String) throws {
+        try call("deleteComment \(id)")
+        for post in comments.keys { comments[post]?.removeAll { $0.commentId == id } }
+    }
+
     func report(_ target: ReportTarget, reason: ReportReason, note: String) throws {
         try call("report \(target.kind) \(target.id) \(reason) \(note)")
     }
 
-    func openReports(_ community: String, after: String?, limit: UInt32) throws -> ReportPage {
-        try call("openReports \(community) \(after ?? "-")")
-        let (found, next) = page(reports[community] ?? [], after: after)
+    func reports(_ community: String, state: ReportState, after: String?, limit: UInt32) throws -> ReportPage {
+        try call("reports \(community) \(state) \(after ?? "-")")
+        let (found, next) = page((reports[community] ?? []).filter { $0.state == state }, after: after)
         return ReportPage(reports: found, next: next)
     }
 
-    func moderate(_ community: String, action: ModerationAction, target: String, reason: String, report: String?)
-        throws
-    {
-        try call("moderate \(community) \(action) \(target) \(reason) \(report ?? "-")")
-        reports[community]?.removeAll { $0.reportId == report }
+    func moderate(
+        _ community: String, action: ModerationAction, target: String, reason: String, report: String?,
+        until: UInt64?
+    ) throws {
+        try call(
+            "moderate \(community) \(action) \(target) \(reason) \(report ?? "-")" + (until.map { " \($0)" } ?? ""))
+        if let report { close(report) }
     }
 
     func closeReport(_ report: String, resolution: String) throws {
         try call("closeReport \(report) \(resolution)")
-        for community in reports.keys { reports[community]?.removeAll { $0.reportId == report } }
+        close(report)
+    }
+
+    /// The report leaves the open queue for the closed one.
+    private func close(_ report: String) {
+        reports = reports.mapValues { all in
+            all.map { found in
+                var found = found
+                if found.reportId == report {
+                    found.state = .closed
+                    found.closedAt = FakeAccount.now
+                }
+                return found
+            }
+        }
     }
 
     func cards(_ refs: [CardRef]) throws -> [Card] {
@@ -287,16 +340,23 @@ func makePost(
 /// Someone else in the communities.
 let anna = Author(accountId: "a2", name: "Anna", verified: false)
 
-func makeComment(_ id: String, on post: String, body: String = "Já") -> Comment {
+/// This account, as its own posts and comments name it.
+let jon = Author(accountId: "a1", name: "Jón Jónsson", verified: true)
+
+func makeComment(_ id: String, on post: String, body: String = "Já", author: Author = anna) -> Comment {
     Comment(
-        commentId: id, postId: post, author: Author(accountId: "a2", name: "Anna", verified: false), body: body,
-        createdAt: FakeAccount.now, state: .visible)
+        commentId: id, postId: post, author: author, body: body, createdAt: FakeAccount.now, state: .visible)
 }
 
-func makeReport(_ id: String, in community: String, _ kind: ReportTargetKind, _ target: String) -> Report {
+/// A report on `target`; `author` is who wrote it, or the account itself, nil when that account is gone.
+func makeReport(
+    _ id: String, in community: String, _ kind: ReportTargetKind, _ target: String, author: Author? = anna,
+    state: ReportState = .open
+) -> Report {
     Report(
-        reportId: id, communityId: community, target: ReportTarget(kind: kind, id: target), targetAccount: nil,
-        reason: .spam, note: "", state: .open, createdAt: FakeAccount.now, closedAt: nil)
+        reportId: id, communityId: community, target: ReportTarget(kind: kind, id: target), targetAccount: author,
+        reason: .spam, note: "", state: state, createdAt: FakeAccount.now,
+        closedAt: state == .closed ? FakeAccount.now : nil)
 }
 
 func makeNotice(

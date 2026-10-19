@@ -78,4 +78,45 @@ final class PostModelTests: XCTestCase {
         XCTAssertNotNil(model.problem)
         XCTAssertTrue(model.loaded)
     }
+
+    func testThisAccountsOwnPostIsDeletedAndTheScreenGoesBack() async {
+        social.communities = ["k1": makeCommunity("k1", "Fuglar", role: .member)]
+        social.posts = ["k1": [makePost("p1", "k1", author: jon)]]
+        let model = PostModel(social: social, postId: "p1", now: { FakeAccount.now })
+        await model.load()
+        XCTAssertTrue(model.mine(jon))
+        XCTAssertFalse(model.mine(anna))
+        await model.deletePost()
+        XCTAssertTrue(social.calls.contains("deletePost p1"))
+        XCTAssertTrue(model.deleted)
+    }
+
+    func testAFailedDeleteStaysAndRetries() async {
+        let model = await model()
+        social.failNext = unreachable
+        await model.deletePost()
+        XCTAssertFalse(model.deleted)
+        XCTAssertEqual(model.problem, .unreachable)
+        await model.retry()
+        XCTAssertTrue(model.deleted)
+    }
+
+    func testADeletedCommentLeavesAndThePostCountsOneFewer() async {
+        social.comments = ["p1": [makeComment("c1", on: "p1", author: jon)]]
+        let model = await modelKeepingComments()
+        XCTAssertTrue(model.mine(model.comments[0].author))
+        await model.deleteComment("c1")
+        XCTAssertTrue(social.calls.contains("deleteComment c1"))
+        XCTAssertEqual(model.comments, [])
+        XCTAssertEqual(model.post?.commentCount, 2)
+    }
+
+    /// The post with three comments counted, and whichever comments the test set.
+    private func modelKeepingComments() async -> PostModel {
+        social.communities = ["k1": makeCommunity("k1", "Fuglar", role: .member)]
+        social.posts = ["k1": [makePost("p1", "k1", comments: 3)]]
+        let model = PostModel(social: social, postId: "p1", now: { FakeAccount.now })
+        await model.load()
+        return model
+    }
 }
