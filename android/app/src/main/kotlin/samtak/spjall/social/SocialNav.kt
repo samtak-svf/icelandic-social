@@ -1,8 +1,13 @@
 package samtak.spjall.social
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -12,11 +17,14 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import samtak.spjall.account.Account
 import samtak.spjall.core.CommunityAudience
+import samtak.spjall.core.CoreException
 import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.Report
 import samtak.spjall.core.ReportReason
+import samtak.spjall.core.ReportState
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.SocialNotification
+import samtak.spjall.media.Files
 import samtak.spjall.ui.rememberBack
 
 /**
@@ -26,6 +34,7 @@ import samtak.spjall.ui.rememberBack
 fun NavGraphBuilder.socialScreens(
     social: Social,
     account: Account,
+    files: Files,
     nav: NavController,
     read: () -> Unit,
 ) {
@@ -33,7 +42,7 @@ fun NavGraphBuilder.socialScreens(
     composable(SocialRoutes.NOTIFICATIONS) { Notifications(social, nav, read) }
     composable(SocialRoutes.NEW_COMMUNITY) { NewCommunity(social, nav) }
     composable("${SocialRoutes.COMMUNITY}/{id}") { entry ->
-        entry.arguments?.getString("id")?.let { CommunityEntry(it, social, nav) }
+        entry.arguments?.getString("id")?.let { CommunityEntry(it, social, files, nav) }
     }
     composable("${SocialRoutes.POST}/{id}") { entry ->
         entry.arguments?.getString("id")?.let { PostEntry(it, social, nav) }
@@ -102,46 +111,87 @@ private fun NewCommunity(
 private fun CommunityEntry(
     id: String,
     social: Social,
+    files: Files,
     nav: NavController,
 ) {
     val model: CommunityViewModel = viewModel(key = "community-$id") { CommunityViewModel(id, social) }
     val state by model.state.collectAsStateWithLifecycle()
     val back = rememberBack(nav)
+    // An image for the post, through the same picker as a photo in a conversation (decision 0048).
+    val image =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            uri?.let { model.pick(files.pickedPhoto(it)) }
+        }
     // Back from a post: its comment count and reactions may have changed there.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { model.load() }
-    CommunityScreen(
-        state,
-        object : CommunityActions {
-            override fun back() = back()
+    WithPostImages(social) {
+        CommunityScreen(
+            state,
+            object : CommunityActions {
+                override fun back() = back()
 
-            override fun join() = model.join()
+                override fun join() = model.join()
 
-            override fun leave() = model.leave()
+                override fun leave() = model.leave()
 
-            override fun open(postId: String) = nav.navigate(SocialRoutes.post(postId))
+                override fun open(postId: String) = nav.navigate(SocialRoutes.post(postId))
 
-            override fun reports() = nav.navigate(SocialRoutes.reports(id))
+                override fun reports() = nav.navigate(SocialRoutes.reports(id))
 
-            override fun draft(text: String) = model.draft(text)
+                override fun draft(text: String) = model.draft(text)
 
-            override fun publish() = model.publish()
+                override fun publish() = model.publish()
 
-            override fun react(
-                postId: String,
-                kind: ReactionKind,
-            ) = model.react(postId, kind)
+                override fun withdraw() = model.withdraw()
 
-            override fun report(
-                target: ReportTarget,
-                reason: ReportReason,
-                note: String,
-            ) = model.report(target, reason, note)
+                override fun addImage() {
+                    if (model.roomForImage()) {
+                        image.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                        )
+                    }
+                }
 
-            override fun more() = model.more()
+                override fun removeImage(path: String) = model.unpick(path)
 
-            override fun retry() = model.retry()
-        },
-    )
+                override fun delete(postId: String) = model.delete(postId)
+
+                override fun react(
+                    postId: String,
+                    kind: ReactionKind,
+                ) = model.react(postId, kind)
+
+                override fun report(
+                    target: ReportTarget,
+                    reason: ReportReason,
+                    note: String,
+                ) = model.report(target, reason, note)
+
+                override fun more() = model.more()
+
+                override fun retry() = model.retry()
+            },
+        )
+    }
+}
+
+/** Provides where a post's images come from to [content]; one the core cannot fetch now shows as a plain box. */
+@Composable
+private fun WithPostImages(
+    social: Social,
+    content: @Composable () -> Unit,
+) {
+    val images =
+        remember(social) {
+            PostImages { postId, mediaId ->
+                try {
+                    social.postImage(postId, mediaId)
+                } catch (_: CoreException) {
+                    null
+                }
+            }
+        }
+    CompositionLocalProvider(LocalPostImages provides images, content = content)
 }
 
 @Composable
@@ -152,36 +202,48 @@ private fun PostEntry(
 ) {
     val model: PostViewModel = viewModel(key = "post-$id") { PostViewModel(id, social) }
     val state by model.state.collectAsStateWithLifecycle()
-    PostScreen(
-        state,
-        object : PostActions {
-            // Back when the post was opened from its community, otherwise (a notification) into it.
-            override fun community(communityId: String) {
-                val route = SocialRoutes.community(communityId)
-                val previous = nav.previousBackStackEntry
-                val fromIt =
-                    previous?.destination?.route == "${SocialRoutes.COMMUNITY}/{id}" &&
-                        previous.arguments?.getString("id") == communityId
-                if (fromIt) nav.popBackStack() else nav.navigate(route)
-            }
+    // Back when the post was opened from its community, otherwise (a notification) into it, in place of the post.
+    val community: (String, Boolean) -> Unit = { communityId, gone ->
+        val route = SocialRoutes.community(communityId)
+        val previous = nav.previousBackStackEntry
+        val fromIt =
+            previous?.destination?.route == "${SocialRoutes.COMMUNITY}/{id}" &&
+                previous.arguments?.getString("id") == communityId
+        when {
+            fromIt -> nav.popBackStack()
+            gone -> nav.navigate(route) { popUpTo("${SocialRoutes.POST}/{id}") { inclusive = true } }
+            else -> nav.navigate(route)
+        }
+    }
+    LaunchedEffect(model) { model.deleted.collect { community(it, true) } }
+    WithPostImages(social) {
+        PostScreen(
+            state,
+            object : PostActions {
+                override fun community(communityId: String) = community(communityId, false)
 
-            override fun draft(text: String) = model.draft(text)
+                override fun deletePost() = model.deletePost()
 
-            override fun send() = model.send()
+                override fun deleteComment(commentId: String) = model.deleteComment(commentId)
 
-            override fun react(kind: ReactionKind) = model.react(kind)
+                override fun draft(text: String) = model.draft(text)
 
-            override fun report(
-                target: ReportTarget,
-                reason: ReportReason,
-                note: String,
-            ) = model.report(target, reason, note)
+                override fun send() = model.send()
 
-            override fun more() = model.more()
+                override fun react(kind: ReactionKind) = model.react(kind)
 
-            override fun retry() = model.retry()
-        },
-    )
+                override fun report(
+                    target: ReportTarget,
+                    reason: ReportReason,
+                    note: String,
+                ) = model.report(target, reason, note)
+
+                override fun more() = model.more()
+
+                override fun retry() = model.retry()
+            },
+        )
+    }
 }
 
 @Composable
@@ -198,6 +260,8 @@ private fun Reports(
         object : ReportsActions {
             override fun back() = back()
 
+            override fun show(state: ReportState) = model.show(state)
+
             override fun reason(
                 reportId: String,
                 text: String,
@@ -207,6 +271,11 @@ private fun Reports(
                 report: Report,
                 verb: ReportsViewModel.Verb,
             ) = model.act(report, verb)
+
+            override fun mute(
+                report: Report,
+                period: ReportsViewModel.MutePeriod,
+            ) = model.act(report, ReportsViewModel.Verb.Mute, period)
 
             override fun retry() = model.retry()
         },

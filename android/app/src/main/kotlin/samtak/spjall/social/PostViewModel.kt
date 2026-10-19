@@ -4,9 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -21,7 +24,7 @@ import samtak.spjall.core.ReportTarget
 
 /**
  * One post and its comments, oldest first, with the box to add one (decision 0063); the post and each comment
- * can be reported. One function per thing [PostActions] offers.
+ * can be reported, and this account's own deleted. One function per thing [PostActions] offers.
  */
 @Suppress("TooManyFunctions")
 class PostViewModel(
@@ -44,11 +47,18 @@ class PostViewModel(
         val reacting: Boolean = false,
         /** The post and comments this account reported from here. */
         val reported: Set<String> = emptySet(),
+        /** This account's id: its own post and comments can be deleted. */
+        val me: String? = null,
         val problem: Problem? = null,
     )
 
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
+
+    private val _deleted = Channel<String>(Channel.BUFFERED)
+
+    /** The post was deleted: back to its community, by id. */
+    val deleted: Flow<String> = _deleted.receiveAsFlow()
 
     private var failed: (() -> Unit)? = null
 
@@ -63,9 +73,17 @@ class PostViewModel(
             try {
                 val post = withContext(io) { social.post(id) }
                 val page = withContext(io) { social.comments(id, null, PAGE) }
+                val me = _state.value.me ?: withContext(io) { social.me() }
                 failed = null
                 _state.update {
-                    it.copy(post = post, comments = page.comments, next = page.next, loaded = true, busy = false)
+                    it.copy(
+                        post = post,
+                        comments = page.comments,
+                        next = page.next,
+                        me = me,
+                        loaded = true,
+                        busy = false,
+                    )
                 }
             } catch (e: CoreException) {
                 failed = ::load
@@ -130,6 +148,50 @@ class PostViewModel(
             try {
                 withContext(io) { social.report(target, reason, note.trim()) }
                 _state.update { it.copy(reported = it.reported + target.id) }
+            } catch (e: CoreException) {
+                _state.update { it.copy(problem = e.problem()) }
+            }
+        }
+    }
+
+    /** Deletes this account's own post; [deleted] then takes the screen back to its community. */
+    fun deletePost() {
+        val post = _state.value.post ?: return
+        if (_state.value.busy) return
+        _state.update { it.copy(busy = true, problem = null) }
+        viewModelScope.launch {
+            try {
+                withContext(io) { social.deletePost(post.postId) }
+                _state.update { it.copy(busy = false) }
+                _deleted.send(post.communityId)
+            } catch (e: CoreException) {
+                _state.update { it.copy(busy = false, problem = e.problem()) }
+            }
+        }
+    }
+
+    /** Deletes this account's own comment; it leaves the list, and the post counts one fewer. */
+    fun deleteComment(commentId: String) {
+        viewModelScope.launch {
+            try {
+                withContext(io) { social.deleteComment(commentId) }
+                _state.update { s ->
+                    val left = s.comments.filterNot { it.commentId == commentId }
+                    val gone = left.size < s.comments.size
+                    s.copy(
+                        comments = left,
+                        post =
+                            s.post?.let { post ->
+                                if (gone &&
+                                    post.commentCount > 0uL
+                                ) {
+                                    post.copy(commentCount = post.commentCount - 1uL)
+                                } else {
+                                    post
+                                }
+                            },
+                    )
+                }
             } catch (e: CoreException) {
                 _state.update { it.copy(problem = e.problem()) }
             }

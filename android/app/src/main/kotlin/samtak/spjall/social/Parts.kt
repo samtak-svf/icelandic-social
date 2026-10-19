@@ -174,8 +174,9 @@ fun Byline(
 }
 
 /**
- * A post as a community's feed and its own screen show it: the byline, its text, the five reactions and its
- * comment count, which opens it when [onOpen] is given.
+ * A post as a community's feed and its own screen show it: the byline, its text and images, the five reactions
+ * and its comment count, which opens it when [onOpen] is given. This account's own post offers [onDelete] in place
+ * of a report.
  */
 @Composable
 fun PostCard(
@@ -185,11 +186,13 @@ fun PostCard(
     onReact: (ReactionKind) -> Unit,
     onReport: () -> Unit,
     onOpen: (() -> Unit)?,
+    onDelete: (() -> Unit)? = null,
 ) {
     SocialCard {
         StateMark(post.state)
         Byline(post.author, post.createdAt)
-        Text(text = post.body, style = MaterialTheme.typography.bodyLarge)
+        if (post.body.isNotBlank()) Text(text = post.body, style = MaterialTheme.typography.bodyLarge)
+        PostImageGrid(post)
         Reactions(post, reacting, onReact)
         Row(verticalAlignment = Alignment.CenterVertically) {
             val comments =
@@ -200,7 +203,7 @@ fun PostCard(
                 Text(text = comments, style = MaterialTheme.typography.bodyMedium, color = Palette.mutedFg)
             }
             Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
-                ReportControl(reported, onReport)
+                if (onDelete != null) DeleteControl(onDelete) else ReportControl(reported, onReport)
             }
         }
     }
@@ -263,7 +266,10 @@ private fun Reactions(
     }
 }
 
-/** The box a post and a comment are both written in, with its button under it. */
+/**
+ * The box a post and a comment are both written in, with its button under it; [extra] goes between them (a
+ * post's images), and [ready] says whether there is something to send.
+ */
 @Composable
 fun Composer(
     label: String,
@@ -272,6 +278,8 @@ fun Composer(
     sending: Boolean,
     onText: (String) -> Unit,
     onSend: () -> Unit,
+    ready: Boolean = text.isNotBlank(),
+    extra: @Composable ColumnScope.() -> Unit = {},
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(
@@ -281,9 +289,10 @@ fun Composer(
             minLines = 2,
             modifier = Modifier.fillMaxWidth(),
         )
+        extra()
         Button(
             onClick = onSend,
-            enabled = !sending && text.isNotBlank(),
+            enabled = !sending && ready,
             modifier = Modifier.align(Alignment.End).heightIn(min = TOUCH.dp),
         ) { Text(action) }
     }

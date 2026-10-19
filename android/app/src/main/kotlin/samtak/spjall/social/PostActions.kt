@@ -15,6 +15,12 @@ interface PostActions {
 
     fun react(kind: ReactionKind)
 
+    /** Deletes this account's own post, once it confirmed. */
+    fun deletePost()
+
+    /** Deletes this account's own comment, once it confirmed. */
+    fun deleteComment(commentId: String)
+
     fun report(
         target: ReportTarget,
         reason: ReportReason,

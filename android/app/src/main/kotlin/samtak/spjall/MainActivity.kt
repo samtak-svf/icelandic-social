@@ -298,7 +298,7 @@ class MainActivity : ComponentActivity() {
             ) {
                 composable(LIST) { Conversations(list, nav) }
                 composable(ME) { Me(signIns, nav) }
-                socialScreens(graph.social, graph.account, nav, unread::refresh)
+                socialScreens(graph.social, graph.account, graph.files, nav, unread::refresh)
                 composable(VERIFY) { Verify(nav) }
                 composable(PEOPLE) { People(nav) }
                 composable("$CONVERSATION/{id}") { entry ->

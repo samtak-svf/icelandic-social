@@ -51,6 +51,8 @@ fun CommunityScreen(
     // The post being reported; the dialog closes once the report is sent.
     var reporting by rememberSaveable { mutableStateOf<String?>(null) }
     if (reporting in state.reported) reporting = null
+    // This account's own post it asked to delete, until it confirms or cancels.
+    var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
             SubHeader(state.community?.name.orEmpty(), actions::back)
@@ -63,16 +65,7 @@ fun CommunityScreen(
                 state.problem?.let { problem -> item(key = "problem") { ProblemCard(problem) { actions.retry() } } }
                 state.community?.let { community -> item(key = "about") { About(community, state, actions) } }
                 if (state.writes) {
-                    item(key = "composer") {
-                        Composer(
-                            label = stringResource(R.string.post_compose),
-                            action = stringResource(R.string.post_publish),
-                            text = state.draft,
-                            sending = state.publishing,
-                            onText = actions::draft,
-                            onSend = actions::publish,
-                        )
-                    }
+                    item(key = "composer") { PostComposer(state, actions) }
                 }
                 if (state.loaded && state.community?.reads == true && state.posts.isEmpty()) {
                     item(key = "empty") { Muted(stringResource(R.string.posts_empty)) }
@@ -85,6 +78,7 @@ fun CommunityScreen(
                         onReact = { actions.react(post.postId, it) },
                         onReport = { reporting = post.postId },
                         onOpen = { actions.open(post.postId) },
+                        onDelete = { deleting = post.postId }.takeIf { post.author.accountId == state.me },
                     )
                     if (index == state.posts.lastIndex &&
                         state.next != null
@@ -101,6 +95,54 @@ fun CommunityScreen(
             onDismiss = { reporting = null },
         )
     }
+    deleting?.let { postId ->
+        ConfirmDelete(R.string.post_delete_confirm, onDelete = { actions.delete(postId) }) { deleting = null }
+    }
+}
+
+/** The box to post in, with the images picked for the post. */
+@Composable
+private fun PostComposer(
+    state: CommunityViewModel.State,
+    actions: CommunityActions,
+) {
+    Composer(
+        label = stringResource(R.string.post_compose),
+        action = stringResource(R.string.post_publish),
+        text = state.draft,
+        sending = state.publishing,
+        onText = actions::draft,
+        onSend = actions::publish,
+        ready = state.postable,
+    ) { ImagesPicked(state, actions) }
+}
+
+/** The images picked for the post, the button that adds one, and why the last one was not taken. */
+@Composable
+private fun ImagesPicked(
+    state: CommunityViewModel.State,
+    actions: CommunityActions,
+) {
+    if (state.images.isNotEmpty()) PickedImages(state.images, actions::removeImage)
+    state.imageNotice?.let { notice ->
+        Text(
+            text =
+                stringResource(
+                    when (notice) {
+                        CommunityViewModel.ImageNotice.TooMany -> R.string.post_images_too_many
+                        CommunityViewModel.ImageNotice.TooLarge -> R.string.post_image_too_large
+                        CommunityViewModel.ImageNotice.Invalid -> R.string.post_image_failed
+                    },
+                ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = Palette.danger,
+        )
+    }
+    OutlinedButton(
+        onClick = actions::addImage,
+        enabled = !state.publishing,
+        modifier = Modifier.heightIn(min = 44.dp),
+    ) { Text(stringResource(R.string.post_add_images)) }
 }
 
 /** The community's line and description, what this account may do about joining, and the way to its reports. */
@@ -116,7 +158,15 @@ private fun About(
             Text(text = community.description, style = MaterialTheme.typography.bodyLarge)
         }
         when {
-            community.joinRequested -> Muted(stringResource(R.string.community_join_requested))
+            community.joinRequested ->
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Muted(stringResource(R.string.community_join_requested))
+                    OutlinedButton(
+                        onClick = actions::withdraw,
+                        enabled = !state.busy,
+                        modifier = Modifier.heightIn(min = 44.dp),
+                    ) { Text(stringResource(R.string.community_withdraw_request)) }
+                }
             community.role == null ->
                 Button(onClick = actions::join, enabled = !state.busy, modifier = Modifier.heightIn(min = 44.dp)) {
                     Text(

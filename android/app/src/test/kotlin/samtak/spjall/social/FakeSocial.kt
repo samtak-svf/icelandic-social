@@ -17,6 +17,7 @@ import samtak.spjall.core.JoinState
 import samtak.spjall.core.ModerationAction
 import samtak.spjall.core.ModerationState
 import samtak.spjall.core.Post
+import samtak.spjall.core.PostImage
 import samtak.spjall.core.PostPage
 import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.Report
@@ -54,8 +55,14 @@ class FakeSocial : Social {
     /** Up to which time the notifications are read. */
     var readUpTo: ULong = 0uL
 
-    /** Each community's open reports. */
+    /** Each community's reports, open and closed. */
     val reports = mutableMapOf<String, MutableList<Report>>()
+
+    /** This account's id. */
+    var me = "a1"
+
+    /** The server's refusal of the next image uploaded, none taking it. */
+    var refuseImage: CoreException? = null
 
     /** The size of a page when a call asks for more than this; small, to test paging. */
     var pageSize = Int.MAX_VALUE
@@ -130,6 +137,16 @@ class FakeSocial : Social {
         communities[id] = communities.getValue(id).copy(role = null)
     }
 
+    override fun withdrawJoinRequest(id: String) {
+        call("withdrawJoinRequest $id")
+        communities[id] = communities.getValue(id).copy(joinRequested = false)
+    }
+
+    override fun me(): String {
+        call("me")
+        return me
+    }
+
     override fun communityPosts(
         id: String,
         before: String?,
@@ -143,16 +160,43 @@ class FakeSocial : Social {
     override fun createPost(
         communityId: String,
         body: String,
+        media: List<String>,
     ): Post {
-        call("createPost $communityId $body")
-        val post = post("p-new${made++}", communityId, body)
+        call("createPost $communityId $body ${media.joinToString(",")}".trim())
+        val post =
+            post("p-new${made++}", communityId, body).copy(images = media.map { PostImage(it, 640u, 480u) })
         posts.getOrPut(communityId) { mutableListOf() }.add(0, post)
         return post
+    }
+
+    override fun uploadPostImage(
+        communityId: String,
+        path: String,
+    ): PostImage {
+        call("uploadPostImage $communityId $path")
+        refuseImage?.let {
+            refuseImage = null
+            throw it
+        }
+        return PostImage("m-${java.io.File(path).name}", 640u, 480u)
+    }
+
+    override fun postImage(
+        postId: String,
+        mediaId: String,
+    ): String {
+        call("postImage $postId $mediaId")
+        return "/images/$mediaId.webp"
     }
 
     override fun post(postId: String): Post {
         call("post $postId")
         return posts.values.flatten().firstOrNull { it.postId == postId } ?: throw notFound()
+    }
+
+    override fun deletePost(postId: String) {
+        call("deletePost $postId")
+        posts.values.forEach { list -> list.removeAll { it.postId == postId } }
     }
 
     override fun react(
@@ -182,6 +226,11 @@ class FakeSocial : Social {
         return comment
     }
 
+    override fun deleteComment(commentId: String) {
+        call("deleteComment $commentId")
+        comments.values.forEach { list -> list.removeAll { it.commentId == commentId } }
+    }
+
     override fun report(
         target: ReportTarget,
         reason: ReportReason,
@@ -190,11 +239,12 @@ class FakeSocial : Social {
 
     override fun communityReports(
         communityId: String,
+        state: ReportState,
         after: String?,
         limit: UInt,
     ): ReportPage {
-        call("communityReports $communityId")
-        val (items, next) = page(reports[communityId].orEmpty(), after, limit)
+        call("communityReports $communityId $state")
+        val (items, next) = page(reports[communityId].orEmpty().filter { it.state == state }, after, limit)
         return ReportPage(items, next)
     }
 
@@ -204,9 +254,16 @@ class FakeSocial : Social {
         targetId: String,
         reason: String,
         reportId: String?,
+        until: ULong?,
     ) {
-        call("moderate $communityId $action $targetId $reason $reportId")
-        reports[communityId]?.removeAll { it.reportId == reportId }
+        call("moderate $communityId $action $targetId $reason $reportId ${until ?: ""}".trim())
+        close(reportId)
+    }
+
+    private fun close(reportId: String?) {
+        reports.values.forEach { list ->
+            list.replaceAll { if (it.reportId == reportId) it.copy(state = ReportState.CLOSED) else it }
+        }
     }
 
     override fun closeReport(
@@ -214,7 +271,7 @@ class FakeSocial : Social {
         resolution: String,
     ) {
         call("closeReport $reportId $resolution")
-        reports.values.forEach { list -> list.removeAll { it.reportId == reportId } }
+        close(reportId)
     }
 
     override fun cards(refs: List<CardRef>): List<Card> {
@@ -252,6 +309,9 @@ class FakeSocial : Social {
 
 val anna = Author("a2", "Anna", verified = true)
 
+/** This account, as [FakeSocial.me] names it. */
+val self = Author("a1", "Ég", verified = true)
+
 fun community(
     id: String,
     name: String = "Kórinn",
@@ -279,10 +339,11 @@ fun post(
     reactions: List<samtak.spjall.core.ReactionCount> = emptyList(),
     mine: ReactionKind? = null,
     comments: ULong = 0uL,
+    author: Author = anna,
 ) = Post(
     postId = id,
     communityId = communityId,
-    author = anna,
+    author = author,
     body = body,
     images = emptyList(),
     createdAt = 1_700_000_000_000uL,
@@ -296,10 +357,11 @@ fun comment(
     id: String,
     postId: String,
     body: String = "Já",
+    author: Author = anna,
 ) = Comment(
     commentId = id,
     postId = postId,
-    author = anna,
+    author = author,
     body = body,
     createdAt = 1_700_000_000_000uL,
     state = ModerationState.VISIBLE,
@@ -326,14 +388,16 @@ fun report(
     id: String,
     kind: ReportTargetKind,
     targetId: String,
+    author: Author? = anna,
+    state: ReportState = ReportState.OPEN,
 ) = Report(
     reportId = id,
     communityId = "k1",
     target = ReportTarget(kind, targetId),
-    targetAccount = null,
+    targetAccount = author,
     reason = ReportReason.SPAM,
     note = "",
-    state = ReportState.OPEN,
+    state = state,
     createdAt = 1_700_000_000_000uL,
     closedAt = null,
 )

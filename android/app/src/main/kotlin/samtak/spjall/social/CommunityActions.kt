@@ -5,12 +5,16 @@ import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
 
 /** What [CommunityScreen] can ask for. */
+@Suppress("TooManyFunctions")
 interface CommunityActions {
     fun back()
 
     fun join()
 
     fun leave()
+
+    /** Takes back the request to join that waits. */
+    fun withdraw()
 
     /** Into the post and its comments. */
     fun open(postId: String)
@@ -21,6 +25,15 @@ interface CommunityActions {
     fun draft(text: String)
 
     fun publish()
+
+    /** Opens the picker for an image to go with the post, when another fits. */
+    fun addImage()
+
+    /** Takes a picked image out of the post. */
+    fun removeImage(path: String)
+
+    /** Deletes this account's own post, once it confirmed. */
+    fun delete(postId: String)
 
     fun react(
         postId: String,

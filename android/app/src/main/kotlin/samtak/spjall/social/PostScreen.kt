@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
+import samtak.spjall.core.Author
 import samtak.spjall.core.Comment
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
@@ -44,6 +45,14 @@ fun PostScreen(
     var reporting by rememberSaveable { mutableStateOf<String?>(null) }
     val target = reporting?.let(::target)
     if (target != null && target.id in state.reported) reporting = null
+    // This account's own post or comment it asked to delete, as reporting keys it, until it confirms or cancels.
+    var deleting by rememberSaveable { mutableStateOf<String?>(null) }
+    val delete: (String, Author) -> (() -> Unit)? = { key, author ->
+        { deleting = key }.takeIf {
+            author.accountId ==
+                state.me
+        }
+    }
     val post = state.post
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
@@ -64,6 +73,7 @@ fun PostScreen(
                             onReact = actions::react,
                             onReport = { reporting = "$POST:${post.postId}" },
                             onOpen = null,
+                            onDelete = delete("$POST:${post.postId}", post.author),
                         )
                     }
                 }
@@ -71,32 +81,59 @@ fun PostScreen(
                     item(key = "empty") { Muted(stringResource(R.string.comments_empty)) }
                 }
                 itemsIndexed(state.comments, key = { _, item -> item.commentId }) { index, comment ->
-                    CommentCard(comment, comment.commentId in state.reported) {
-                        reporting = "$COMMENT:${comment.commentId}"
-                    }
+                    CommentCard(
+                        comment = comment,
+                        reported = comment.commentId in state.reported,
+                        onReport = { reporting = "$COMMENT:${comment.commentId}" },
+                        onDelete = delete("$COMMENT:${comment.commentId}", comment.author),
+                    )
                     if (index == state.comments.lastIndex && state.next != null) {
                         LaunchedEffect(state.next) { actions.more() }
                     }
                 }
                 if (post != null) {
-                    item(key = "composer") {
-                        Composer(
-                            label = stringResource(R.string.comment_compose),
-                            action = stringResource(R.string.comment_publish),
-                            text = state.draft,
-                            sending = state.sending,
-                            onText = actions::draft,
-                            onSend = actions::send,
-                        )
-                    }
+                    item(key = "composer") { CommentComposer(state, actions) }
                 }
             }
         }
     }
-    target?.let {
-        ReportDialog(
-            onSend = { reason, note -> actions.report(it, reason, note) },
-            onDismiss = { reporting = null },
+    Dialogs(target, deleting?.let(::target), actions, onReported = { reporting = null }) { deleting = null }
+}
+
+/** The box to add a comment in. */
+@Composable
+private fun CommentComposer(
+    state: PostViewModel.State,
+    actions: PostActions,
+) {
+    Composer(
+        label = stringResource(R.string.comment_compose),
+        action = stringResource(R.string.comment_publish),
+        text = state.draft,
+        sending = state.sending,
+        onText = actions::draft,
+        onSend = actions::send,
+    )
+}
+
+/** The report being written, or the delete being asked about, for the post or one of its comments. */
+@Composable
+private fun Dialogs(
+    reporting: ReportTarget?,
+    deleting: ReportTarget?,
+    actions: PostActions,
+    onReported: () -> Unit,
+    onDeleted: () -> Unit,
+) {
+    reporting?.let {
+        ReportDialog(onSend = { reason, note -> actions.report(it, reason, note) }, onDismiss = onReported)
+    }
+    deleting?.let { doomed ->
+        val post = doomed.kind == ReportTargetKind.POST
+        ConfirmDelete(
+            if (post) R.string.post_delete_confirm else R.string.comment_delete_confirm,
+            onDelete = { if (post) actions.deletePost() else actions.deleteComment(doomed.id) },
+            onDismiss = onDeleted,
         )
     }
 }
@@ -106,13 +143,14 @@ private fun CommentCard(
     comment: Comment,
     reported: Boolean,
     onReport: () -> Unit,
+    onDelete: (() -> Unit)?,
 ) {
     SocialCard {
         StateMark(comment.state)
         Byline(comment.author, comment.createdAt)
         Text(text = comment.body, style = MaterialTheme.typography.bodyLarge)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            ReportControl(reported, onReport)
+            if (onDelete != null) DeleteControl(onDelete) else ReportControl(reported, onReport)
         }
     }
 }

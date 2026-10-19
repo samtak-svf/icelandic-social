@@ -513,4 +513,50 @@
     <string name="moderation_dismiss">Loka án aðgerðar</string>
     <!-- Confirmation after a moderator acts; every action is logged (decision 0066). -->
     <string name="moderation_done">Aðgerðin var skráð.</string>
+    <!-- Asks before the author deletes their own post: its comments, reactions and images go with it. -->
+    <string name="post_delete_confirm">Eyða póstinum? Athugasemdir við hann, viðbrögð og myndir hverfa líka.</string>
+    <!-- Asks before the author deletes their own comment. -->
+    <string name="comment_delete_confirm">Eyða athugasemdinni?</string>
+    <!-- Button: withdraw the person's own waiting join request to a private community. -->
+    <string name="community_withdraw_request">Draga beiðnina til baka</string>
+    <!-- Moderator action: show a hidden or removed post or comment again. -->
+    <string name="moderation_restore">Birta aftur</string>
+    <!-- Heading of the moderator's actions on the member a report is about. -->
+    <string name="moderation_member">Meðlimurinn</string>
+    <!-- Moderator action: mute the member, who reads but does not write until the time chosen. -->
+    <string name="moderation_mute">Þagga niður í meðlimnum</string>
+    <!-- Label of how long a moderator mutes a member. -->
+    <string name="moderation_mute_for">Hve lengi</string>
+    <!-- How long a mute lasts: one day. -->
+    <string name="moderation_mute_day">Í einn dag</string>
+    <!-- How long a mute lasts: seven days. -->
+    <string name="moderation_mute_week">Í viku</string>
+    <!-- How long a mute lasts: thirty days. -->
+    <string name="moderation_mute_month">Í 30 daga</string>
+    <!-- Moderator action: end a member's mute. -->
+    <string name="moderation_unmute">Leyfa meðlimnum að skrifa aftur</string>
+    <!-- Moderator action: ban the member, who may not join again or read. -->
+    <string name="moderation_ban">Útiloka meðliminn</string>
+    <!-- Moderator action: lift a member's ban. -->
+    <string name="moderation_unban">Hleypa meðlimnum aftur inn</string>
+    <!-- Switch in the report queue: the reports that wait. -->
+    <string name="moderation_open">Óafgreiddar</string>
+    <!-- Switch in the report queue: the reports already closed. -->
+    <string name="moderation_closed">Afgreiddar</string>
+    <!-- The closed side of the report queue when it is empty. -->
+    <string name="moderation_closed_empty">Engar afgreiddar tilkynningar.</string>
+    <!-- Opens the picker for images to add to a post being written (decision 0065). -->
+    <string name="post_add_images">Bæta við myndum</string>
+    <!-- Button: take a chosen image out of the post being written. -->
+    <string name="post_image_remove">Taka út</string>
+    <!-- Refuses an image past the fourth on one post, before any upload (decision 0065). -->
+    <string name="post_images_too_many">Póstur getur haft mest 4 myndir.</string>
+    <!-- Refuses an image larger than 10 MB, before any upload (decision 0065). -->
+    <string name="post_image_too_large">Hver mynd má vera mest 10 MB.</string>
+    <!-- The server refused an image: not an image it reads (decision 0065). -->
+    <string name="post_image_failed">Ekki tókst að setja inn myndina. Veldu mynd á sniðinu JPEG, PNG, WebP, GIF eða AVIF.</string>
+    <!-- Text alternative of an image in a post. -->
+    <string name="post_image_alt">Mynd í póstinum</string>
+    <!-- Confirmation before a moderator bans an author (#343). -->
+    <string name="moderation_ban_confirm">Útiloka meðliminn? Hann sér þá ekkert í samfélaginu og getur ekki gengið í það aftur fyrr en honum er hleypt aftur inn.</string>
 </resources>

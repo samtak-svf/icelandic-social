@@ -17,13 +17,16 @@ import org.junit.Before
 import org.junit.Test
 import samtak.spjall.account.Problem
 import samtak.spjall.account.unreachable
+import samtak.spjall.conversation.Picked
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityRole
+import samtak.spjall.core.CoreException
 import samtak.spjall.core.ReactionCount
 import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
+import java.io.File
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommunityViewModelTest {
@@ -182,4 +185,149 @@ class CommunityViewModelTest {
                     ?.communityId,
             )
         }
+
+    @Test
+    fun aRequestToJoinCanBeWithdrawn() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", audience = CommunityAudience.PRIVATE)
+            val model = model()
+            model.join()
+            advanceUntilIdle()
+            assertTrue(
+                model.state.value.community!!
+                    .joinRequested,
+            )
+            model.withdraw()
+            advanceUntilIdle()
+            assertTrue("withdrawJoinRequest k1" in social.calls)
+            assertFalse(
+                model.state.value.community!!
+                    .joinRequested,
+            )
+        }
+
+    @Test
+    fun onlyThisAccountsOwnPostIsDeleted() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.MEMBER)
+            social.posts["k1"] = mutableListOf(post("p2", author = self), post("p1"))
+            val model = model()
+            assertEquals("a1", model.state.value.me)
+            model.delete("p2")
+            advanceUntilIdle()
+            assertTrue("deletePost p2" in social.calls)
+            assertEquals(
+                listOf("p1"),
+                model.state.value.posts
+                    .map { it.postId },
+            )
+        }
+
+    @Test
+    fun pickedImagesAreUploadedAndPostedWithTheText() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.MEMBER)
+            val model = model()
+            val first = picked()
+            val second = picked()
+            model.pick(first.second)
+            model.pick(second.second)
+            advanceUntilIdle()
+            assertEquals(listOf(first.first.path, second.first.path), model.state.value.images)
+            model.draft("Myndir")
+            model.publish()
+            advanceUntilIdle()
+            assertTrue("createPost k1 Myndir m-${first.first.name},m-${second.first.name}" in social.calls)
+            val state = model.state.value
+            assertEquals(
+                2,
+                state.posts
+                    .first()
+                    .images.size,
+            )
+            assertTrue(state.images.isEmpty())
+            assertFalse(first.first.exists())
+        }
+
+    @Test
+    fun anImageAlonePostsWithoutText() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.MEMBER)
+            val model = model()
+            assertFalse(model.state.value.postable)
+            val image = picked()
+            model.pick(image.second)
+            advanceUntilIdle()
+            assertTrue(model.state.value.postable)
+            model.publish()
+            advanceUntilIdle()
+            assertTrue("createPost k1  m-${image.first.name}" in social.calls)
+        }
+
+    @Test
+    fun aFifthImageIsRefusedWithASentence() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.MEMBER)
+            val model = model()
+            repeat(IMAGES) { model.pick(picked().second) }
+            advanceUntilIdle()
+            assertNull(model.state.value.imageNotice)
+            assertFalse(model.roomForImage())
+            model.pick(picked().second)
+            advanceUntilIdle()
+            assertEquals(IMAGES, model.state.value.images.size)
+            assertEquals(CommunityViewModel.ImageNotice.TooMany, model.state.value.imageNotice)
+            removeOneFrom(model)
+            assertTrue(model.roomForImage())
+            assertNull(model.state.value.imageNotice)
+        }
+
+    @Test
+    fun anImageTooLargeIsNotTaken() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.MEMBER)
+            val model = model()
+            model.pick(Picked("image/jpeg", IMAGE_LIMIT + 1) { error("not read") })
+            advanceUntilIdle()
+            assertTrue(
+                model.state.value.images
+                    .isEmpty(),
+            )
+            assertEquals(CommunityViewModel.ImageNotice.TooLarge, model.state.value.imageNotice)
+        }
+
+    @Test
+    fun anImageTheServerRefusesIsNamedAndNothingIsPosted() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.MEMBER)
+            val model = model()
+            model.pick(picked().second)
+            advanceUntilIdle()
+            social.refuseImage = CoreException.Refused(422u, "invalid_image", null)
+            model.publish()
+            advanceUntilIdle()
+            assertEquals(CommunityViewModel.ImageNotice.Invalid, model.state.value.imageNotice)
+            assertNull(model.state.value.problem)
+            assertFalse(social.calls.any { it.startsWith("createPost") })
+            assertEquals(1, model.state.value.images.size)
+            social.refuseImage = CoreException.Refused(413u, "too_large", null)
+            model.publish()
+            advanceUntilIdle()
+            assertEquals(CommunityViewModel.ImageNotice.TooLarge, model.state.value.imageNotice)
+        }
+
+    /** A picked image whose copy is a real file in the temp folder. */
+    private fun picked(): Pair<File, Picked> {
+        val file = File.createTempFile("picked", ".jpg").apply { deleteOnExit() }
+        file.writeBytes(byteArrayOf(1, 2, 3))
+        return file to Picked("image/jpeg", file.length()) { file }
+    }
+
+    private fun TestScope.removeOneFrom(model: CommunityViewModel) {
+        model.unpick(
+            model.state.value.images
+                .last(),
+        )
+        advanceUntilIdle()
+    }
 }

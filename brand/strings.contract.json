@@ -1211,92 +1211,96 @@
       "description": "Confirmation after a moderator acts; every action is logged (decision 0066)."
     },
     "post_delete_confirm": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Asks before the author deletes their own post: its comments, reactions and images go with it."
     },
     "comment_delete_confirm": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Asks before the author deletes their own comment."
     },
     "community_withdraw_request": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Button: withdraw the person's own waiting join request to a private community."
     },
     "moderation_restore": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Moderator action: show a hidden or removed post or comment again."
     },
     "moderation_member": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Heading of the moderator's actions on the member a report is about."
     },
     "moderation_mute": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Moderator action: mute the member, who reads but does not write until the time chosen."
     },
     "moderation_mute_for": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Label of how long a moderator mutes a member."
     },
     "moderation_mute_day": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "How long a mute lasts: one day."
     },
     "moderation_mute_week": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "How long a mute lasts: seven days."
     },
     "moderation_mute_month": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "How long a mute lasts: thirty days."
     },
     "moderation_unmute": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Moderator action: end a member's mute."
     },
     "moderation_ban": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Moderator action: ban the member, who may not join again or read."
     },
     "moderation_unban": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Moderator action: lift a member's ban."
     },
     "moderation_open": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Switch in the report queue: the reports that wait."
     },
     "moderation_closed": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Switch in the report queue: the reports already closed."
     },
     "moderation_closed_empty": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "The closed side of the report queue when it is empty."
     },
     "post_add_images": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Opens the picker for images to add to a post being written (decision 0065)."
     },
     "post_image_remove": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Button: take a chosen image out of the post being written."
     },
     "post_images_too_many": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Refuses an image past the fourth on one post, before any upload (decision 0065)."
     },
     "post_image_too_large": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Refuses an image larger than 10 MB, before any upload (decision 0065)."
     },
     "post_image_failed": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "The server refused an image: not an image it reads (decision 0065)."
     },
     "post_image_alt": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Text alternative of an image in a post."
+    },
+    "moderation_ban_confirm": {
+      "surfaces": ["android", "ios"],
+      "description": "Confirmation before a moderator bans an author (#343)."
     }
   }
 }

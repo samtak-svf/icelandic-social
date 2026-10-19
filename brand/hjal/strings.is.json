@@ -317,5 +317,6 @@
   "post_images_too_many": "Póstur getur haft mest 4 myndir.",
   "post_image_too_large": "Hver mynd má vera mest 10 MB.",
   "post_image_failed": "Ekki tókst að setja inn myndina. Veldu mynd á sniðinu JPEG, PNG, WebP, GIF eða AVIF.",
-  "post_image_alt": "Mynd í póstinum"
+  "post_image_alt": "Mynd í póstinum",
+  "moderation_ban_confirm": "Útiloka meðliminn? Hann sér þá ekkert í samfélaginu og getur ekki gengið í það aftur fyrr en honum er hleypt aftur inn."
 }

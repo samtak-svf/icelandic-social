@@ -3000,6 +3000,282 @@
           }
         }
       }
+    },
+    "post_delete_confirm": {
+      "comment": "Asks before the author deletes their own post: its comments, reactions and images go with it.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eyða póstinum? Athugasemdir við hann, viðbrögð og myndir hverfa líka."
+          }
+        }
+      }
+    },
+    "comment_delete_confirm": {
+      "comment": "Asks before the author deletes their own comment.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eyða athugasemdinni?"
+          }
+        }
+      }
+    },
+    "community_withdraw_request": {
+      "comment": "Button: withdraw the person's own waiting join request to a private community.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Draga beiðnina til baka"
+          }
+        }
+      }
+    },
+    "moderation_restore": {
+      "comment": "Moderator action: show a hidden or removed post or comment again.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Birta aftur"
+          }
+        }
+      }
+    },
+    "moderation_member": {
+      "comment": "Heading of the moderator's actions on the member a report is about.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meðlimurinn"
+          }
+        }
+      }
+    },
+    "moderation_mute": {
+      "comment": "Moderator action: mute the member, who reads but does not write until the time chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þagga niður í meðlimnum"
+          }
+        }
+      }
+    },
+    "moderation_mute_for": {
+      "comment": "Label of how long a moderator mutes a member.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hve lengi"
+          }
+        }
+      }
+    },
+    "moderation_mute_day": {
+      "comment": "How long a mute lasts: one day.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Í einn dag"
+          }
+        }
+      }
+    },
+    "moderation_mute_week": {
+      "comment": "How long a mute lasts: seven days.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Í viku"
+          }
+        }
+      }
+    },
+    "moderation_mute_month": {
+      "comment": "How long a mute lasts: thirty days.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Í 30 daga"
+          }
+        }
+      }
+    },
+    "moderation_unmute": {
+      "comment": "Moderator action: end a member's mute.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leyfa meðlimnum að skrifa aftur"
+          }
+        }
+      }
+    },
+    "moderation_ban": {
+      "comment": "Moderator action: ban the member, who may not join again or read.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Útiloka meðliminn"
+          }
+        }
+      }
+    },
+    "moderation_unban": {
+      "comment": "Moderator action: lift a member's ban.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hleypa meðlimnum aftur inn"
+          }
+        }
+      }
+    },
+    "moderation_open": {
+      "comment": "Switch in the report queue: the reports that wait.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Óafgreiddar"
+          }
+        }
+      }
+    },
+    "moderation_closed": {
+      "comment": "Switch in the report queue: the reports already closed.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afgreiddar"
+          }
+        }
+      }
+    },
+    "moderation_closed_empty": {
+      "comment": "The closed side of the report queue when it is empty.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engar afgreiddar tilkynningar."
+          }
+        }
+      }
+    },
+    "post_add_images": {
+      "comment": "Opens the picker for images to add to a post being written (decision 0065).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bæta við myndum"
+          }
+        }
+      }
+    },
+    "post_image_remove": {
+      "comment": "Button: take a chosen image out of the post being written.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taka út"
+          }
+        }
+      }
+    },
+    "post_images_too_many": {
+      "comment": "Refuses an image past the fourth on one post, before any upload (decision 0065).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Póstur getur haft mest 4 myndir."
+          }
+        }
+      }
+    },
+    "post_image_too_large": {
+      "comment": "Refuses an image larger than 10 MB, before any upload (decision 0065).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hver mynd má vera mest 10 MB."
+          }
+        }
+      }
+    },
+    "post_image_failed": {
+      "comment": "The server refused an image: not an image it reads (decision 0065).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekki tókst að setja inn myndina. Veldu mynd á sniðinu JPEG, PNG, WebP, GIF eða AVIF."
+          }
+        }
+      }
+    },
+    "post_image_alt": {
+      "comment": "Text alternative of an image in a post.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mynd í póstinum"
+          }
+        }
+      }
+    },
+    "moderation_ban_confirm": {
+      "comment": "Confirmation before a moderator bans an author (#343).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Útiloka meðliminn? Hann sér þá ekkert í samfélaginu og getur ekki gengið í það aftur fyrr en honum er hleypt aftur inn."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -2,8 +2,11 @@ package samtak.spjall.social
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -150,5 +153,39 @@ class PostViewModelTest {
             model.retry()
             advanceUntilIdle()
             assertEquals("", model.state.value.draft)
+        }
+
+    @Test
+    fun deletingTheOwnPostGoesBackToItsCommunity() =
+        runTest(dispatcher) {
+            social.posts["k1"] = mutableListOf(post("p1", author = self))
+            val model = model()
+            assertEquals("a1", model.state.value.me)
+            val gone = mutableListOf<String>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { model.deleted.toList(gone) }
+            model.deletePost()
+            advanceUntilIdle()
+            assertTrue("deletePost p1" in social.calls)
+            assertEquals(listOf("k1"), gone)
+        }
+
+    @Test
+    fun aDeletedCommentLeavesTheListAndTheCount() =
+        runTest(dispatcher) {
+            social.comments["p1"] = mutableListOf(comment("c1", "p1", author = self), comment("c2", "p1"))
+            val model = model()
+            model.deleteComment("c1")
+            advanceUntilIdle()
+            assertTrue("deleteComment c1" in social.calls)
+            assertEquals(
+                listOf("c2"),
+                model.state.value.comments
+                    .map { it.commentId },
+            )
+            assertEquals(
+                1uL,
+                model.state.value.post
+                    ?.commentCount,
+            )
         }
 }

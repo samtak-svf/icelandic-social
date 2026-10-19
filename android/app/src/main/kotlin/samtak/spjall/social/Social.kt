@@ -11,6 +11,7 @@ import samtak.spjall.core.CoreClient
 import samtak.spjall.core.JoinState
 import samtak.spjall.core.ModerationAction
 import samtak.spjall.core.Post
+import samtak.spjall.core.PostImage
 import samtak.spjall.core.PostPage
 import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportPage
@@ -53,6 +54,12 @@ interface Social {
     /** Leaves a community; its owner is `Refused` 409. */
     fun leaveCommunity(id: String)
 
+    /** Takes back a join request that waits; no error when none does. */
+    fun withdrawJoinRequest(id: String)
+
+    /** This account's id, to tell its own posts and comments from others'. */
+    fun me(): String
+
     /** A page of a community's posts, newest first; [before] is the `next` of the page before. */
     fun communityPosts(
         communityId: String,
@@ -60,12 +67,29 @@ interface Social {
         limit: UInt,
     ): PostPage
 
+    /** A post of text, up to four images from [uploadPostImage] by their media ids, or both. */
     fun createPost(
         communityId: String,
         body: String,
+        media: List<String>,
     ): Post
 
+    /** Uploads the image file at [path] for a post in the community; its media id goes in [createPost]. */
+    fun uploadPostImage(
+        communityId: String,
+        path: String,
+    ): PostImage
+
+    /** The path of a post's image, a WebP the core fetched once and keeps. */
+    fun postImage(
+        postId: String,
+        mediaId: String,
+    ): String
+
     fun post(postId: String): Post
+
+    /** Deletes this account's own post. */
+    fun deletePost(postId: String)
 
     /** This account's one reaction on a post, in place of any other. */
     fun react(
@@ -88,6 +112,9 @@ interface Social {
         body: String,
     ): Comment
 
+    /** Deletes this account's own comment. */
+    fun deleteComment(commentId: String)
+
     /** Reports content to the community's moderators; the server sends unlawful content to the platform's. */
     fun report(
         target: ReportTarget,
@@ -95,20 +122,25 @@ interface Social {
         note: String,
     )
 
-    /** A page of a community's open reports, for its moderators. */
+    /** A page of a community's reports in [state], for its moderators. */
     fun communityReports(
         communityId: String,
+        state: ReportState,
         after: String?,
         limit: UInt,
     ): ReportPage
 
-    /** One moderator's action on [targetId], answering [reportId]; the community's log keeps the [reason]. */
+    /**
+     * One moderator's action on [targetId], answering [reportId]; the community's log keeps the [reason]. [until]
+     * (Unix milliseconds) goes with a mute and nothing else.
+     */
     fun moderate(
         communityId: String,
         action: ModerationAction,
         targetId: String,
         reason: String,
         reportId: String?,
+        until: ULong?,
     )
 
     /** Closes a report with what was done about it. */
@@ -157,6 +189,10 @@ class CoreSocial(
 
     override fun leaveCommunity(id: String) = client.leaveCommunity(id)
 
+    override fun withdrawJoinRequest(id: String) = client.withdrawJoinRequest(id)
+
+    override fun me() = client.me().accountId
+
     override fun communityPosts(
         communityId: String,
         before: String?,
@@ -166,9 +202,22 @@ class CoreSocial(
     override fun createPost(
         communityId: String,
         body: String,
-    ) = client.createPost(communityId, body)
+        media: List<String>,
+    ) = client.createPost(communityId, body, media)
+
+    override fun uploadPostImage(
+        communityId: String,
+        path: String,
+    ) = client.uploadPostImage(communityId, path)
+
+    override fun postImage(
+        postId: String,
+        mediaId: String,
+    ) = client.postImage(postId, mediaId)
 
     override fun post(postId: String) = client.post(postId)
+
+    override fun deletePost(postId: String) = client.deletePost(postId)
 
     override fun react(
         postId: String,
@@ -188,6 +237,8 @@ class CoreSocial(
         body: String,
     ) = client.createComment(postId, body)
 
+    override fun deleteComment(commentId: String) = client.deleteComment(commentId)
+
     override fun report(
         target: ReportTarget,
         reason: ReportReason,
@@ -196,9 +247,10 @@ class CoreSocial(
 
     override fun communityReports(
         communityId: String,
+        state: ReportState,
         after: String?,
         limit: UInt,
-    ) = client.communityReports(communityId, ReportState.OPEN, after, limit)
+    ) = client.communityReports(communityId, state, after, limit)
 
     override fun moderate(
         communityId: String,
@@ -206,7 +258,8 @@ class CoreSocial(
         targetId: String,
         reason: String,
         reportId: String?,
-    ) = client.moderate(communityId, action, targetId, reason, reportId, null)
+        until: ULong?,
+    ) = client.moderate(communityId, action, targetId, reason, reportId, until)
 
     override fun closeReport(
         reportId: String,

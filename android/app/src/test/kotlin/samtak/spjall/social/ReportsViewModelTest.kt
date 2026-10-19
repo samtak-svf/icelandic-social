@@ -19,6 +19,7 @@ import samtak.spjall.account.Problem
 import samtak.spjall.account.unreachable
 import samtak.spjall.core.Card
 import samtak.spjall.core.ModerationAction
+import samtak.spjall.core.ReportState
 import samtak.spjall.core.ReportTargetKind
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -41,7 +42,9 @@ class ReportsViewModelTest {
             )
     }
 
-    private fun TestScope.model() = ReportsViewModel("k1", social, dispatcher).also { advanceUntilIdle() }
+    private val now = 1_800_000_000_000L
+
+    private fun TestScope.model() = ReportsViewModel("k1", social, { now }, dispatcher).also { advanceUntilIdle() }
 
     @Test
     fun showsEachReportWithTheCardOfWhatItNames() =
@@ -130,5 +133,69 @@ class ReportsViewModelTest {
             model.retry()
             advanceUntilIdle()
             assertEquals(2, model.state.value.reports.size)
+        }
+
+    @Test
+    fun theAuthorIsMutedForAPeriodUnmutedAndBanned() =
+        runTest(dispatcher) {
+            val model = model()
+            model.reason("r1", "ítrekað")
+            model.act(model.state.value.reports[0], ReportsViewModel.Verb.Mute)
+            advanceUntilIdle()
+            assertFalse("a mute needs a period", social.calls.any { it.startsWith("moderate") })
+            model.act(model.state.value.reports[0], ReportsViewModel.Verb.Mute, ReportsViewModel.MutePeriod.Week)
+            advanceUntilIdle()
+            val week = now + 7L * 24 * 60 * 60 * 1000
+            assertTrue("moderate k1 MUTE_MEMBER a2 ítrekað r1 $week" in social.calls)
+            model.reason("r2", "aflétt")
+            model.act(model.state.value.reports[0], ReportsViewModel.Verb.Unmute)
+            model.reason("r3", "bann")
+            advanceUntilIdle()
+            model.act(
+                model.state.value.reports
+                    .single { it.reportId == "r3" },
+                ReportsViewModel.Verb.Ban,
+            )
+            advanceUntilIdle()
+            assertTrue("moderate k1 UNMUTE_MEMBER a2 aflétt r2" in social.calls)
+            assertTrue("moderate k1 BAN_MEMBER a2 bann r3" in social.calls)
+        }
+
+    @Test
+    fun anAccountReportActsOnTheAccountAndADeletedAuthorIsNotActedOn() {
+        val account = report("r3", ReportTargetKind.ACCOUNT, "a9", author = null)
+        assertEquals("a9", account.member())
+        assertEquals(ModerationAction.UNBAN_MEMBER, account.action(ReportsViewModel.Verb.Unban))
+        val orphan = report("r1", ReportTargetKind.POST, "p1", author = null)
+        assertNull(orphan.member())
+        assertNull(orphan.action(ReportsViewModel.Verb.Ban))
+        assertEquals(ModerationAction.RESTORE_POST, orphan.action(ReportsViewModel.Verb.Restore))
+    }
+
+    @Test
+    fun closedReportsAreShownAndRestoredWithoutNamingTheReport() =
+        runTest(dispatcher) {
+            social.reports.getValue("k1").add(report("r4", ReportTargetKind.COMMENT, "c1", state = ReportState.CLOSED))
+            val model = model()
+            assertEquals(
+                listOf("r1", "r2", "r3"),
+                model.state.value.reports
+                    .map { it.reportId },
+            )
+            model.show(ReportState.CLOSED)
+            advanceUntilIdle()
+            assertTrue("communityReports k1 CLOSED" in social.calls)
+            assertEquals(ReportState.CLOSED, model.state.value.showing)
+            val closed =
+                model.state.value.reports
+                    .single()
+            assertEquals("r4", closed.reportId)
+            model.reason("r4", "mistök")
+            model.act(closed, ReportsViewModel.Verb.Dismiss)
+            advanceUntilIdle()
+            assertFalse(social.calls.any { it.startsWith("closeReport") })
+            model.act(closed, ReportsViewModel.Verb.Restore)
+            advanceUntilIdle()
+            assertTrue("moderate k1 RESTORE_COMMENT c1 mistök null" in social.calls)
         }
 }

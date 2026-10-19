@@ -67,7 +67,7 @@ extension CoreAccount: Social {
     }
 
     func createPost(_ community: String, body: String) throws -> Post {
-        try core().createPost(communityId: community, body: body)
+        try core().createPost(communityId: community, body: body, media: [])
     }
 
     func post(_ id: String) throws -> Post { try core().post(postId: id) }
