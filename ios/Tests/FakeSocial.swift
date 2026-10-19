@@ -324,7 +324,7 @@ func makeCommunity(
     Community(
         communityId: id, name: name, description: description, audience: audience, createdAt: FakeAccount.now,
         memberCount: memberCount, role: role, joinRequested: false, invited: false, mutedUntil: mutedUntil,
-        readOnly: readOnly)
+        readOnly: readOnly, deletedAt: nil, joinDeclinedUntil: nil, pendingJoinRequests: nil)
 }
 
 func makePost(
@@ -356,7 +356,8 @@ func makeReport(
     Report(
         reportId: id, communityId: community, target: ReportTarget(kind: kind, id: target), targetAccount: author,
         reason: .spam, note: "", state: state, createdAt: FakeAccount.now,
-        closedAt: state == .closed ? FakeAccount.now : nil)
+        closedAt: state == .closed ? FakeAccount.now : nil, decision: nil, resolution: nil, closedBy: nil,
+        targetStanding: nil, targetState: nil)
 }
 
 func makeNotice(

@@ -330,6 +330,9 @@ fun community(
     invited = false,
     mutedUntil = mutedUntil,
     readOnly = false,
+    deletedAt = null,
+    joinDeclinedUntil = null,
+    pendingJoinRequests = null,
 )
 
 fun post(
@@ -400,6 +403,11 @@ fun report(
     state = state,
     createdAt = 1_700_000_000_000uL,
     closedAt = null,
+    decision = null,
+    resolution = null,
+    closedBy = null,
+    targetStanding = null,
+    targetState = null,
 )
 
 fun notFound() = CoreException.Refused(404u, "not_found", null)
