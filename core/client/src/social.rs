@@ -4,9 +4,6 @@
 //! it goes into the store beside the conversations. A post's images (0065)
 //! are the one exception, kept as files beside the photos.
 
-#![allow(clippy::disallowed_methods)] // a post's images are files
-
-use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::api::{
@@ -178,7 +175,7 @@ impl<T: Transport> Client<T> {
         path: &Path,
     ) -> Result<SocialMedia, ClientError> {
         id(community, "community id")?;
-        let size = fs::metadata(path).map_err(MediaError::from)?.len();
+        let size = self.blobs.len(path).map_err(MediaError::from)?;
         if size == 0 {
             return Err(ClientError::Invalid("an empty image"));
         }
@@ -197,18 +194,18 @@ impl<T: Transport> Client<T> {
         id(media, "media id")?;
         let dir = self.media.join("posts").join(post);
         let kept = dir.join(format!("{media}.webp"));
-        if kept.exists() {
+        if self.blobs.exists(&kept) {
             return Ok(kept);
         }
-        fs::create_dir_all(&dir).map_err(MediaError::from)?;
+        self.blobs.create_dir_all(&dir).map_err(MediaError::from)?;
         let part = dir.join(format!("{media}.part"));
         let fetched =
             authed(&self.transport, &self.token, &self.client)?.get_post_media(post, media, &part);
         if let Err(error) = fetched {
-            let _ = fs::remove_file(&part);
+            let _ = self.blobs.remove_file(&part);
             return Err(error.into());
         }
-        fs::rename(&part, &kept).map_err(MediaError::from)?;
+        self.blobs.rename(&part, &kept).map_err(MediaError::from)?;
         Ok(kept)
     }
 

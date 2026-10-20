@@ -8,11 +8,8 @@
 //! send keeps, and what `media()` decrypts. They go with their rows, by the
 //! disappearing purge or a delete for everyone.
 
-#![allow(clippy::disallowed_methods)] // the module that holds the files
-
 use std::collections::HashSet;
-use std::fs::{self, File};
-use std::io::{self, BufWriter, Read, Write};
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 
 use aes_gcm::aead::{AeadInOut, KeyInit};
@@ -24,6 +21,7 @@ use spjall_envelope::{Body, Envelope};
 use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 
 use crate::api::{Transport, base64, from_base64, group_id};
+use crate::blobs::BlobStore;
 use crate::{Client, ClientError, authed, conversation_state, open_conversation};
 
 /// The largest file sent, in plaintext bytes (0023).
@@ -93,13 +91,18 @@ fn chunks(
 
 /// Seals the file at `from` into `to`: its size, and the hex SHA-256 of
 /// what was written.
-pub(crate) fn seal(from: &Path, to: &Path, key: &[u8; 32]) -> Result<(u64, String), MediaError> {
-    let input = File::open(from)?;
-    if input.metadata()?.len() > MAX_SIZE {
+pub(crate) fn seal(
+    blobs: &dyn BlobStore,
+    from: &Path,
+    to: &Path,
+    key: &[u8; 32],
+) -> Result<(u64, String), MediaError> {
+    if blobs.len(from)? > MAX_SIZE {
         return Err(MediaError::TooLarge);
     }
+    let input = blobs.open_read(from)?;
     let cipher = Aes256Gcm::new(key.into());
-    let mut out = BufWriter::new(File::create(to)?);
+    let mut out = blobs.create_write(to)?;
     let mut hash = Sha256::new();
     let mut size = 0u64;
     chunks(input, SEGMENT, |segment, index, last| {
@@ -116,39 +119,49 @@ pub(crate) fn seal(from: &Path, to: &Path, key: &[u8; 32]) -> Result<(u64, Strin
         }
         Ok(())
     })?;
-    out.into_inner().map_err(|e| e.into_error())?.sync_all()?;
+    out.finish()?;
     Ok((size, hex(&hash.finalize())))
 }
 
 /// Opens the blob at `from` into `to`, checking each segment and the
 /// SHA-256 of the whole. On an error `to` may hold part of the file.
-pub(crate) fn open(from: &Path, to: &Path, key: &[u8], sha256: &str) -> Result<(), MediaError> {
+pub(crate) fn open(
+    blobs: &dyn BlobStore,
+    from: &Path,
+    to: &Path,
+    key: &[u8],
+    sha256: &str,
+) -> Result<(), MediaError> {
     let key: &[u8; 32] = key.try_into().map_err(|_| MediaError::Tampered)?;
     let cipher = Aes256Gcm::new(key.into());
-    let mut out = BufWriter::new(File::create(to)?);
+    let mut out = blobs.create_write(to)?;
     let mut hash = Sha256::new();
     let mut size = 0u64;
-    chunks(File::open(from)?, SEGMENT + TAG, |segment, index, last| {
-        hash.update(&*segment);
-        let Some(split) = segment.len().checked_sub(TAG) else {
-            return Err(MediaError::Tampered);
-        };
-        let (plain, tag) = segment.split_at_mut(split);
-        size += plain.len() as u64;
-        if size > MAX_SIZE {
-            return Err(MediaError::TooLarge);
-        }
-        let tag = Tag::try_from(&*tag).map_err(|_| MediaError::Tampered)?;
-        cipher
-            .decrypt_inout_detached(&nonce(index, last), b"", (&mut *plain).into(), &tag)
-            .map_err(|_| MediaError::Tampered)?;
-        out.write_all(plain)?;
-        Ok(())
-    })?;
+    chunks(
+        blobs.open_read(from)?,
+        SEGMENT + TAG,
+        |segment, index, last| {
+            hash.update(&*segment);
+            let Some(split) = segment.len().checked_sub(TAG) else {
+                return Err(MediaError::Tampered);
+            };
+            let (plain, tag) = segment.split_at_mut(split);
+            size += plain.len() as u64;
+            if size > MAX_SIZE {
+                return Err(MediaError::TooLarge);
+            }
+            let tag = Tag::try_from(&*tag).map_err(|_| MediaError::Tampered)?;
+            cipher
+                .decrypt_inout_detached(&nonce(index, last), b"", (&mut *plain).into(), &tag)
+                .map_err(|_| MediaError::Tampered)?;
+            out.write_all(plain)?;
+            Ok(())
+        },
+    )?;
     if hex(&hash.finalize()) != sha256.to_ascii_lowercase() {
         return Err(MediaError::Tampered);
     }
-    out.into_inner().map_err(|e| e.into_error())?.sync_all()?;
+    out.finish()?;
     Ok(())
 }
 
@@ -193,9 +206,9 @@ fn file_name(object: &str, mime: &str) -> String {
     format!("{object}.{extension}")
 }
 
-fn remove(path: &Path) {
+fn remove(blobs: &dyn BlobStore, path: &Path) {
     // Gone already is fine; anything else is retried by the next sweep.
-    let _ = fs::remove_file(path);
+    let _ = blobs.remove_file(path);
 }
 
 /// The objects this device may still show: in the timeline or the outbox.
@@ -264,19 +277,23 @@ impl<T: Transport> Client<T> {
         let group = group_id(conversation).ok_or(ClientError::UnknownConversation)?;
         self.store.try_write(|tx| open_conversation(tx, &group))?;
         let outgoing = self.media.join("out");
-        fs::create_dir_all(&outgoing).map_err(MediaError::from)?;
+        self.blobs
+            .create_dir_all(&outgoing)
+            .map_err(MediaError::from)?;
         let object = object_id();
         let sealed = outgoing.join(&object);
         let mut key = [0u8; 32];
         getrandom::fill(&mut key).expect("the OS has randomness");
         let sent = (|| {
-            let (size, sha256) = seal(path, &sealed, &key)?;
+            let (size, sha256) = seal(&*self.blobs, path, &sealed, &key)?;
             authed(&self.transport, &self.token, &self.client)?.put_media(
                 conversation,
                 &object,
                 &sealed,
             )?;
-            fs::copy(path, self.media.join(file_name(&object, mime))).map_err(MediaError::from)?;
+            self.blobs
+                .copy(path, &self.media.join(file_name(&object, mime)))
+                .map_err(MediaError::from)?;
             Ok::<_, ClientError>(Body::Media {
                 object,
                 mime: mime.to_owned(),
@@ -288,7 +305,7 @@ impl<T: Transport> Client<T> {
                 forwarded,
             })
         })();
-        remove(&sealed);
+        remove(&*self.blobs, &sealed);
         self.send(conversation, sent?)
     }
 
@@ -315,12 +332,14 @@ impl<T: Transport> Client<T> {
             return Err(MediaError::Tampered.into());
         }
         let kept = self.media.join(file_name(&object, &mime));
-        if kept.exists() {
+        if self.blobs.exists(&kept) {
             return Ok(kept);
         }
         let key = from_base64(&key).ok_or(MediaError::Tampered)?;
         let incoming = self.media.join("in");
-        fs::create_dir_all(&incoming).map_err(MediaError::from)?;
+        self.blobs
+            .create_dir_all(&incoming)
+            .map_err(MediaError::from)?;
         let (blob, plain) = (
             incoming.join(format!("{object}.blob")),
             incoming.join(&object),
@@ -331,26 +350,25 @@ impl<T: Transport> Client<T> {
                 &object,
                 &blob,
             )?;
-            open(&blob, &plain, &key, &sha256)?;
-            fs::rename(&plain, &kept).map_err(MediaError::from)?;
+            open(&*self.blobs, &blob, &plain, &key, &sha256)?;
+            self.blobs.rename(&plain, &kept).map_err(MediaError::from)?;
             Ok::<_, ClientError>(())
         })();
-        remove(&blob);
-        remove(&plain);
+        remove(&*self.blobs, &blob);
+        remove(&*self.blobs, &plain);
         opened.map(|()| kept)
     }
 
     /// Deletes the kept files no item or queued send names any more.
     pub(crate) fn sweep_media(&mut self) -> Result<(), ClientError> {
-        let Ok(entries) = fs::read_dir(&self.media) else {
+        let Ok(paths) = self.blobs.list_files(&self.media) else {
             return Ok(());
         };
         let kept = self.store.try_write(kept)?;
-        for entry in entries.flatten() {
-            let path = entry.path();
+        for path in paths {
             let object = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-            if path.is_file() && !kept.contains(object) {
-                remove(&path);
+            if !kept.contains(object) {
+                remove(&*self.blobs, &path);
             }
         }
         Ok(())
@@ -358,22 +376,24 @@ impl<T: Transport> Client<T> {
 
     /// Deletes the files of these objects.
     pub(crate) fn remove_media(&self, objects: &[String]) {
-        let Ok(entries) = fs::read_dir(&self.media) else {
+        let Ok(paths) = self.blobs.list_files(&self.media) else {
             return;
         };
-        for entry in entries.flatten() {
-            let path = entry.path();
+        for path in paths {
             let object = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
             if objects.iter().any(|o| o == object) {
-                remove(&path);
+                remove(&*self.blobs, &path);
             }
         }
     }
 }
 
 #[cfg(test)]
+#[allow(clippy::disallowed_methods)]
 mod tests {
     use super::*;
+    use crate::blobs::{FsBlobs, MemBlobs};
+    use std::fs::{self, File};
 
     struct Files(tempfile::TempDir);
 
@@ -389,9 +409,17 @@ mod tests {
         fn round_trip(&self, plain: &[u8]) -> Vec<u8> {
             let key = [7u8; 32];
             fs::write(self.path("plain"), plain).unwrap();
-            let (size, sha256) = seal(&self.path("plain"), &self.path("blob"), &key).unwrap();
+            let (size, sha256) =
+                seal(&FsBlobs, &self.path("plain"), &self.path("blob"), &key).unwrap();
             assert_eq!(size, plain.len() as u64);
-            open(&self.path("blob"), &self.path("out"), &key, &sha256).unwrap();
+            open(
+                &FsBlobs,
+                &self.path("blob"),
+                &self.path("out"),
+                &key,
+                &sha256,
+            )
+            .unwrap();
             fs::read(self.path("out")).unwrap()
         }
     }
@@ -413,12 +441,19 @@ mod tests {
         let key = [7u8; 32];
         let plain = vec![1u8; 2 * SEGMENT + 10];
         fs::write(files.path("plain"), &plain).unwrap();
-        let (_, sha256) = seal(&files.path("plain"), &files.path("blob"), &key).unwrap();
+        let (_, sha256) = seal(&FsBlobs, &files.path("plain"), &files.path("blob"), &key).unwrap();
         let blob = fs::read(files.path("blob")).unwrap();
         let whole = SEGMENT + TAG;
         let opens = |bytes: &[u8], sha256: &str| {
             fs::write(files.path("bad"), bytes).unwrap();
-            open(&files.path("bad"), &files.path("out"), &key, sha256).is_ok()
+            open(
+                &FsBlobs,
+                &files.path("bad"),
+                &files.path("out"),
+                &key,
+                sha256,
+            )
+            .is_ok()
         };
         assert!(opens(&blob, &sha256));
         // Each is checked with the hash it would need, so the segment
@@ -437,7 +472,16 @@ mod tests {
         assert!(!opens(&blob, &hex(&Sha256::digest(b"other"))));
         // Another key.
         fs::write(files.path("bad"), &blob).unwrap();
-        assert!(open(&files.path("bad"), &files.path("out"), &[8u8; 32], &sha256).is_err());
+        assert!(
+            open(
+                &FsBlobs,
+                &files.path("bad"),
+                &files.path("out"),
+                &[8u8; 32],
+                &sha256
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -446,7 +490,12 @@ mod tests {
         let file = File::create(files.path("big")).unwrap();
         file.set_len(MAX_SIZE + 1).unwrap();
         assert!(matches!(
-            seal(&files.path("big"), &files.path("blob"), &[0u8; 32]),
+            seal(
+                &FsBlobs,
+                &files.path("big"),
+                &files.path("blob"),
+                &[0u8; 32]
+            ),
             Err(MediaError::TooLarge)
         ));
     }
@@ -478,10 +527,24 @@ mod tests {
             .map(|i| (i % 251) as u8)
             .collect();
         std::fs::write(&from, &file).unwrap();
-        let (_, sha) = seal(&from, &to, &[7; 32]).unwrap();
+        let (_, sha) = seal(&FsBlobs, &from, &to, &[7; 32]).unwrap();
         assert_eq!(
             sha,
             "fdf931059e0548899ec4dcc3d12bb97e5c995459f5e98f47bfc991cb98fc109c"
         );
+        let mem = MemBlobs::new();
+        mem.put(Path::new("in"), file.clone());
+        let (mem_size, mem_sha) = seal(&mem, Path::new("in"), Path::new("out"), &[7; 32]).unwrap();
+        assert_eq!(mem_size, file.len() as u64);
+        assert_eq!(mem_sha, sha);
+        open(
+            &mem,
+            Path::new("out"),
+            Path::new("plain"),
+            &[7; 32],
+            &mem_sha,
+        )
+        .unwrap();
+        assert_eq!(mem.get(Path::new("plain")).unwrap(), file);
     }
 }

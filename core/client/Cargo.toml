@@ -7,6 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+default = ["sqlite3mc"]
+sqlite3mc = ["spjall-store/sqlite3mc"]
+
 [dependencies]
 aes-gcm.workspace = true
 base64.workspace = true

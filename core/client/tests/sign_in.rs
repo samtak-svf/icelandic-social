@@ -505,3 +505,20 @@ fn a_link_that_moves_nothing_keeps_the_account() {
     assert!(!a1.client.complete_link(&relay::kenni(&url)).unwrap().moved);
     assert_eq!(a1.client.signed_in().unwrap().unwrap().account, "a");
 }
+
+#[test]
+fn enrolling_a_linked_device_stores_its_identity_and_token() {
+    let relay = Relay::new();
+    let mut linked = Phone::new(&relay, "a", "w1");
+    assert!(linked.client.enrol_linked("", "w1", "tok").is_err());
+    assert!(linked.client.enrol_linked("a", "", "tok").is_err());
+    assert!(linked.client.enrol_linked("a", "w1", "").is_err());
+    let device = linked.client.enrol_linked("a", "w1", "tok_linked").unwrap();
+    assert_eq!(
+        (device.account.as_str(), device.device.as_str()),
+        ("a", "w1")
+    );
+    assert_eq!(linked.client.device_token(), Some("tok_linked"));
+    linked.reopen();
+    assert_eq!(linked.client.device_token(), Some("tok_linked"));
+}

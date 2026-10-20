@@ -72,6 +72,29 @@ pub trait Transport {
     fn download(&self, request: Request, to: &Path) -> Result<Response, Unreachable>;
 }
 
+/// An asynchronous HTTP boundary for a browser Web Worker (#298, decision
+/// 0064): same request and response semantics as [`Transport`], yielding to
+/// the worker event loop on network I/O so `View` reads (`0056`) run between
+/// requests without waiting on the network.
+pub trait AsyncTransport {
+    fn request(
+        &self,
+        request: Request,
+    ) -> impl std::future::Future<Output = Result<Response, Unreachable>>;
+
+    fn upload(
+        &self,
+        request: Request,
+        file: &Path,
+    ) -> impl std::future::Future<Output = Result<Response, Unreachable>>;
+
+    fn download(
+        &self,
+        request: Request,
+        to: &Path,
+    ) -> impl std::future::Future<Output = Result<Response, Unreachable>>;
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum ApiError {
     #[error(transparent)]

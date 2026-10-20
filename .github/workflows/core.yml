@@ -118,7 +118,9 @@ jobs:
           key: wasm32
 
       - name: Clippy for wasm32
-        run: cargo clippy --locked -p spjall-client --target wasm32-unknown-unknown -- -D warnings
+        run: |
+          cargo clippy --locked -p spjall-client --target wasm32-unknown-unknown -- -D warnings
+          cargo clippy --locked -p spjall-web-spike --features sqlite3mc --target wasm32-unknown-unknown -- -D warnings
 
   android:
     if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/core-v')

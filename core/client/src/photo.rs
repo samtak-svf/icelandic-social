@@ -6,12 +6,10 @@
 //! version changes; the folder goes with the media files when the store is
 //! forgotten.
 
-#![allow(clippy::disallowed_methods)] // the photos are files
-
-use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::api::{ApiError, Transport};
+use crate::blobs::BlobStore;
 use crate::members::store_photo;
 use crate::{Client, ClientError, MediaError, authed, is_id, this_device};
 
@@ -20,14 +18,13 @@ pub const MAX_PHOTO: u64 = 10 * 1024 * 1024;
 
 /// Removes every file in `dir` but `keep`. Gone already is fine; anything
 /// else is tried again on the next fetch.
-fn clear(dir: &Path, keep: Option<&Path>) {
-    let Ok(entries) = fs::read_dir(dir) else {
+fn clear(blobs: &dyn BlobStore, dir: &Path, keep: Option<&Path>) {
+    let Ok(paths) = blobs.list_files(dir) else {
         return;
     };
-    for entry in entries.flatten() {
-        let path = entry.path();
+    for path in paths {
         if Some(path.as_path()) != keep {
-            let _ = fs::remove_file(&path);
+            let _ = blobs.remove_file(&path);
         }
     }
 }
@@ -46,8 +43,8 @@ impl<T: Transport> Client<T> {
     /// withholds it.
     pub(crate) fn forget_photo(&self, account: &str) {
         if let Ok(dir) = self.photos_of(account) {
-            clear(&dir, None);
-            let _ = fs::remove_dir(&dir);
+            clear(&*self.blobs, &dir, None);
+            let _ = self.blobs.remove_dir(&dir);
         }
     }
 
@@ -56,7 +53,7 @@ impl<T: Transport> Client<T> {
     /// image's metadata, and keeps only that; this device fetches it back
     /// by the version returned, as anyone else does.
     pub fn set_photo(&mut self, path: &Path) -> Result<String, ClientError> {
-        let size = fs::metadata(path).map_err(MediaError::from)?.len();
+        let size = self.blobs.len(path).map_err(MediaError::from)?;
         if size == 0 {
             return Err(ClientError::Invalid("an empty photo"));
         }
@@ -96,16 +93,16 @@ impl<T: Transport> Client<T> {
             return Err(ClientError::Invalid("photo version"));
         }
         let kept = dir.join(format!("{version}.webp"));
-        if kept.exists() {
+        if self.blobs.exists(&kept) {
             return Ok(Some(kept));
         }
-        fs::create_dir_all(&dir).map_err(MediaError::from)?;
+        self.blobs.create_dir_all(&dir).map_err(MediaError::from)?;
         let part = dir.join(format!("{version}.part"));
         let fetched = authed(&self.transport, &self.token, &self.client)?.get_photo(account, &part);
         match fetched {
             Ok(()) => {
-                fs::rename(&part, &kept).map_err(MediaError::from)?;
-                clear(&dir, Some(&kept));
+                self.blobs.rename(&part, &kept).map_err(MediaError::from)?;
+                clear(&*self.blobs, &dir, Some(&kept));
                 Ok(Some(kept))
             }
             Err(ApiError::Refused { status: 404, .. }) => {
@@ -114,7 +111,7 @@ impl<T: Transport> Client<T> {
                 Ok(None)
             }
             Err(error) => {
-                let _ = fs::remove_file(&part);
+                let _ = self.blobs.remove_file(&part);
                 Err(error.into())
             }
         }

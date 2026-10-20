@@ -2519,6 +2519,7 @@ version = "0.31.0"
 dependencies = [
  "rusqlite",
  "serde_json",
+ "sqlite-wasm-rs",
  "tempfile",
 ]
 
@@ -2526,6 +2527,9 @@ dependencies = [
 name = "spjall-web-spike"
 version = "0.31.0"
 dependencies = [
+ "base64",
+ "serde_json",
+ "spjall-client",
  "spjall-envelope",
  "spjall-mls",
  "spjall-store",

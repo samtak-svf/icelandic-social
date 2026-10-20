@@ -462,6 +462,36 @@ impl<T: Transport> Client<T> {
         self.store.try_write(signed_in)
     }
 
+    /// Records the account, device id and token a linked-device enrolment
+    /// returned (decision 0064). Makes the device key first if there is none.
+    pub fn enrol_linked(
+        &mut self,
+        account_id: &str,
+        device_id: &str,
+        token: &str,
+    ) -> Result<SignedIn, ClientError> {
+        if !is_id(account_id) {
+            return Err(ClientError::Invalid("account id"));
+        }
+        if !is_id(device_id) {
+            return Err(ClientError::Invalid("device id"));
+        }
+        if token.is_empty() {
+            return Err(ClientError::Invalid("device token"));
+        }
+        self.device_key()?;
+        let device = Device::new(account_id, device_id)?;
+        self.store.write(|tx| {
+            tx.execute(
+                "UPDATE account SET account_id = ?1, device_id = ?2, device_token = ?3",
+                params![account_id, device_id, token],
+            )
+            .map(drop)
+        })?;
+        self.token = Some(token.to_owned());
+        Ok(device)
+    }
+
     /// The device token, for the WebSocket upgrade's `Authorization`.
     pub fn device_token(&self) -> Option<&str> {
         self.token.as_deref()
@@ -621,8 +651,7 @@ impl<T: Transport> Client<T> {
             )
         })?;
         self.token = None;
-        #[allow(clippy::disallowed_methods)] // the media folder goes with the store
-        match std::fs::remove_dir_all(&self.media) {
+        match self.blobs.remove_dir_all(&self.media) {
             Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
                 Err(crate::MediaError::from(error).into())
             }

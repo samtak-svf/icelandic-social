@@ -1,16 +1,31 @@
 // @ts-check
-// The spike's proof (docs/web-client-feasibility.md): spjall-mls compiled to
-// wasm32 joins a group a native spjall-mls made, and an envelope crosses
-// both ways. Run by core/web-spike/run.sh, which builds both sides first.
+// The spike's proof (docs/web-client-feasibility.md, #265, #298):
+// - without sqlite3mc, Store::open refuses plain SQLite (#265);
+// - with sqlite3mc, spjall-mls compiled to wasm32 joins a group a native
+//   spjall-mls made, an envelope crosses both ways, and spjall-client runs its
+//   worker suite over MemBlobs and Store::shared_reader (0056, 0064, #298) in
+//   a dedicated Worker thread.
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { Worker } from "node:worker_threads";
 import assert from "node:assert/strict";
 
 const [pkg, native, expect] = process.argv.slice(2);
-const spike = await import(pathToFileURL(resolve(pkg, "spjall_web_spike.js")).href);
+const moduleUrl = pathToFileURL(resolve(pkg, "spjall_web_spike.js")).href;
+const spike = await import(moduleUrl);
+
+if (expect !== "encrypted") {
+  assert.throws(
+    () => new spike.WebPeer("b", "d2"),
+    /this SQLite has no cipher, so the store would be plaintext/,
+  );
+  console.log("plain wasm SQLite refused without cipher (#265): ok");
+  process.exit(0);
+}
+
 const dir = mkdtempSync(join(tmpdir(), "spjall-web-spike-"));
 const file = (name) => join(dir, name);
 const run = (...args) =>
@@ -24,10 +39,10 @@ web.join(readFileSync(file("welcome")));
 console.log("browser joined the native group");
 const plaintext = spike.WebPeer.storeFileIsPlaintext();
 console.log("browser store file is plaintext:", plaintext);
-assert.equal(plaintext, expect !== "encrypted");
+assert.equal(plaintext, false);
 const wrongKey = spike.WebPeer.wrongKeyFails();
 console.log("browser store refuses a wrong key:", wrongKey);
-assert.equal(wrongKey, expect === "encrypted");
+assert.equal(wrongKey, true);
 
 writeFileSync(file("m1"), web.send("w1", Date.now(), "Halló úr vafranum"));
 const got = run("receive", file("m1")).trim();
@@ -39,6 +54,18 @@ const [sender, text] = web.receive(readFileSync(file("m2")));
 assert.equal(sender, "a/d1");
 assert.equal(text, "Halló úr Rust");
 console.log("browser read:", `${sender}\t${text}`);
+
+await new Promise((resolveWorker, rejectWorker) => {
+  const worker = new Worker(
+    `import(${JSON.stringify(moduleUrl)}).then((m) => { m.runClientWorkerSuite(); });`,
+    { eval: true },
+  );
+  worker.on("error", rejectWorker);
+  worker.on("exit", (code) =>
+    code === 0 ? resolveWorker(undefined) : rejectWorker(new Error(`worker exited ${code}`)),
+  );
+});
+console.log("client worker suite in Worker thread (sqlite3mc + MemBlobs + shared_reader): ok");
 console.log("interop: ok");
 
 // What spjall-client needs from std, last: a trap leaves the module unusable.

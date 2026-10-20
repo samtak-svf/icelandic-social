@@ -19,6 +19,7 @@
 
 mod account;
 pub mod api;
+pub mod blobs;
 mod block;
 mod clock;
 mod directory;
@@ -40,6 +41,7 @@ use std::time::Duration;
 
 pub use account::{Linked, SignedIn, invite_token};
 use api::{Api, ApiError, Outgoing, Platform, Profile, Transport, conversation_id, group_id};
+pub use blobs::{BlobStore, BlobWrite, FsBlobs, MemBlobs};
 pub use directory::{Directory, ListSearch, MAX_QUERY, blank, fold_name};
 pub use media::{MAX_SIZE, MediaError};
 pub use members::Person;
@@ -738,6 +740,9 @@ pub struct Client<T> {
     typed: HashMap<Vec<u8>, Instant>,
     /// The store's folder for decrypted and sent files.
     media: PathBuf,
+    /// Where media, photos and social images are stored (`FsBlobs` on native,
+    /// `MemBlobs` or OPFS in a browser worker).
+    blobs: Box<dyn BlobStore>,
     /// This build as `Spjall-Client` names it (0030); none until the app
     /// sets it, which the server reads as the oldest build.
     client: Option<String>,
@@ -748,6 +753,17 @@ pub struct Client<T> {
 
 impl<T: Transport> Client<T> {
     pub fn open(dir: &Path, key: &Key, transport: T) -> Result<Self, ClientError> {
+        Self::open_with_blobs(dir, key, transport, Box::new(FsBlobs))
+    }
+
+    /// Opens the client over a custom [`BlobStore`] (#298, decision 0064):
+    /// for a browser Web Worker where `std::fs` is unavailable.
+    pub fn open_with_blobs(
+        dir: &Path,
+        key: &Key,
+        transport: T,
+        blobs: Box<dyn BlobStore>,
+    ) -> Result<Self, ClientError> {
         let mut store = Store::open(dir, key)?;
         let media = store
             .path()
@@ -767,6 +783,7 @@ impl<T: Transport> Client<T> {
             outcome: Outcome::default(),
             typed: HashMap::new(),
             media,
+            blobs,
             client: None,
             reads: None,
         })
