@@ -337,7 +337,7 @@ export async function me(env: Env, accountId: string) {
       .bind(accountId),
     db(env)
       .prepare(
-        `SELECT device_id AS deviceId, platform, created_at AS createdAt FROM devices
+        `SELECT device_id AS deviceId, platform, kind, created_at AS createdAt FROM devices
           WHERE account_id = ? AND revoked_at IS NULL ORDER BY created_at, device_id`,
       )
       .bind(accountId),
@@ -352,6 +352,7 @@ export async function me(env: Env, accountId: string) {
     devices: (devices?.results ?? []) as {
       deviceId: string;
       platform: Platform;
+      kind: "phone" | "web";
       createdAt: number;
     }[],
   };
@@ -361,9 +362,10 @@ export async function me(env: Env, accountId: string) {
  * Revokes one device of this account, so its token fails at once, and drops
  * its KeyPackages so no one adds it to a group again (decision 0019). A
  * phone's session ends with its device; the session of a browser it was
- * linked from does not (decision 0061). A device already revoked is revoked
- * again, keeping its time, so a revoke that failed after this step can be
- * retried. False when the account has no such device.
+ * linked from does not (decision 0061), and the server's store-key share is
+ * wiped first (decision 0064). A device already revoked is revoked again,
+ * keeping its time, so a revoke that failed after this step can be retried.
+ * False when the account has no such device.
  */
 export async function revokeDevice(
   env: Env,
@@ -379,8 +381,9 @@ export async function revokeDevice(
       .bind(deviceId, accountId),
     db(env)
       .prepare(
-        `UPDATE devices SET revoked_at = coalesce(revoked_at, ?), push_token = NULL
-         WHERE device_id = ? AND account_id = ?`,
+        `UPDATE devices
+            SET revoked_at = coalesce(revoked_at, ?), push_token = NULL, store_key_share = NULL
+          WHERE device_id = ? AND account_id = ?`,
       )
       .bind(Date.now(), deviceId, accountId),
     db(env)
@@ -401,7 +404,8 @@ export async function revokeAllDevices(env: Env, accountId: string): Promise<voi
   await db(env).batch([
     db(env)
       .prepare(
-        "UPDATE devices SET revoked_at = ?, push_token = NULL WHERE account_id = ? AND revoked_at IS NULL",
+        `UPDATE devices SET revoked_at = ?, push_token = NULL, store_key_share = NULL
+          WHERE account_id = ? AND revoked_at IS NULL`,
       )
       .bind(Date.now(), accountId),
     db(env).prepare("DELETE FROM sessions WHERE account_id = ?").bind(accountId),

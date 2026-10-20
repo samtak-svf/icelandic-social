@@ -1,6 +1,7 @@
 import { db } from "../env/index.ts";
 import type { Platform } from "../platforms.ts";
 import { type Device, randomToken, tokenHash } from "./accounts.ts";
+import { touchLinkedDevice } from "./linked-devices.ts";
 
 // Sessions (decision 0061): one sign-in on one client. A browser proves its
 // session with the secret in its cookie; a phone with its device's token,
@@ -188,6 +189,7 @@ export async function deviceForToken(
       Device & { platform: Platform; sessionId: string | null; kind: Session["kind"] | null }
     >();
   if (!row) return null;
+  if (row.kind === "web" && !(await touchLinkedDevice(env, row.deviceId))) return null;
   const { accountId, deviceId } = row;
   const sessionId = row.sessionId ?? (await healSession(env, row));
   return {
@@ -243,7 +245,7 @@ export async function endSessions(
       .bind(accountId, id),
     db(env)
       .prepare(
-        `UPDATE devices SET revoked_at = ?, push_token = NULL
+        `UPDATE devices SET revoked_at = ?, push_token = NULL, store_key_share = NULL
           WHERE revoked_at IS NULL AND session_id IN (${ending}) RETURNING device_id AS deviceId`,
       )
       .bind(Date.now(), accountId, id),

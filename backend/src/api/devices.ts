@@ -282,6 +282,9 @@ const Me = z
       z.object({
         deviceId: OpaqueId,
         platform: z.enum(PLATFORMS),
+        kind: z
+          .enum(["phone", "web"])
+          .openapi({ description: "Whether this is a phone or a linked browser (decision 0064)" }),
         createdAt: z.int().openapi({ description: "Milliseconds since the epoch" }),
         current: z.boolean().openapi({ description: "The device that asked" }),
       }),

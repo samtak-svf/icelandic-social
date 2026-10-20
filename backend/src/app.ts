@@ -45,6 +45,7 @@ import {
   clearPushToken,
   type Device,
   inviteRoutes,
+  linkedDeviceRoutes,
   sessionRoutes,
   linkHost,
   me,
@@ -187,15 +188,17 @@ export function createApp() {
 
   inviteRoutes(app);
   sessionRoutes(app);
+  linkedDeviceRoutes(app);
 
   // Decision 0014: in the contract now, built in phase 1.
   app.openapi(revokeDeviceRoute, async (c) => {
-    const { accountId } = c.var.session;
+    const { accountId, kind } = c.var.session;
     const { deviceId } = c.req.valid("param");
     if (!(await revokeDevice(c.env, accountId, deviceId))) {
       return fail(c, 404, "not_found");
     }
     await inbox(c.env, accountId).closeDevice(deviceId);
+    if (kind === "web") c.header("clear-site-data", '"storage"');
     log("device.revoked", { accountId, deviceId });
     return c.body(null, 204);
   });

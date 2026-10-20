@@ -152,6 +152,8 @@ export interface Me {
   devices: Array<{
     deviceId: string;
     platform: "android" | "ios";
+    /** Whether this is a phone or a linked browser (decision 0064) */
+    kind: "phone" | "web";
     /** Milliseconds since the epoch */
     createdAt: number;
     /** The device that asked */
@@ -194,6 +196,53 @@ export interface SessionInfo {
   expiresAt: number | null;
   /** The session that asked */
   current: boolean;
+}
+
+export interface CreatedDeviceLinkRequest {
+  linkId: string;
+  /** Milliseconds since the epoch */
+  expiresAt: number;
+}
+
+export interface CreateDeviceLinkRequest {
+  /** The linked browser's Ed25519 public key (decision 0064) */
+  deviceKey: string;
+  /** The one-time X25519 public key for the optional history transfer (decision 0064) */
+  historyKey: string;
+}
+
+export interface DeviceLinkRequestInfo {
+  linkId: string;
+  sessionId: string;
+  browser: string | null;
+  os: string | null;
+  /** Base64, at most 32 bytes decoded */
+  deviceKey: string;
+  /** Base64, at most 32 bytes decoded */
+  historyKey: string;
+  expiresAt: number;
+  approved: boolean;
+}
+
+export interface ApproveDeviceLinkRequest {
+  /** 64-byte Ed25519 signature by this phone's device key over the new device's 32-byte deviceKey (decision 0064) */
+  signature: string;
+}
+
+export interface LinkedDeviceEnrolled {
+  accountId: string;
+  deviceId: string;
+  sessionId: string;
+  /** The device token, shown once; send it as Bearer */
+  token: string;
+  /** The server's 32-byte half of the browser's two-part store key (decision 0064) */
+  storeKeyShare: string;
+}
+
+export interface LinkedStoreKey {
+  deviceId: string;
+  /** Base64, at most 32 bytes decoded */
+  storeKeyShare: string;
 }
 
 export interface PushToken {
@@ -707,6 +756,61 @@ export function endOtherSessions(init?: CallInit): Promise<
   | { status: 426; data: ApiError }
 > {
   return call("POST", "/v1/me/sessions/end-others", undefined, init);
+}
+
+/** Start linking this browser session as an MLS device (decision 0064) */
+export function createDeviceLinkRequest(args: {
+  body: CreateDeviceLinkRequest;
+}, init?: CallInit): Promise<
+  | { status: 200; data: CreatedDeviceLinkRequest }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/devices/link-requests", args, init);
+}
+
+/** Inspect a pending device link request of this account (decision 0064) */
+export function getDeviceLinkRequest(args: {
+  path: {
+    linkId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: DeviceLinkRequestInfo }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/devices/link-requests/{linkId}", args, init);
+}
+
+/** Finish enrolling a linked browser device after phone approval (decision 0064) */
+export function completeDeviceLinkRequest(args: {
+  path: {
+    linkId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: LinkedDeviceEnrolled }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/devices/link-requests/{linkId}/complete", args, init);
+}
+
+/** Fetch the server's half of the browser store key for this session's linked device (decision 0064) */
+export function getLinkedStoreKey(init?: CallInit): Promise<
+  | { status: 200; data: LinkedStoreKey }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/devices/me/store-key", undefined, init);
 }
 
 /**

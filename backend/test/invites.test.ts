@@ -47,6 +47,7 @@ describe("GET /v1/me", () => {
         {
           deviceId: alice.deviceId,
           platform: "android",
+          kind: "phone",
           createdAt: expect.any(Number),
           current: true,
         },

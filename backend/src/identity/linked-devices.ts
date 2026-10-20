@@ -1,0 +1,395 @@
+import type { OpenAPIHono } from "@hono/zod-openapi";
+import type { AppEnv } from "../app.ts";
+import {
+  approveDeviceLinkRoute,
+  completeDeviceLinkRoute,
+  createDeviceLinkRoute,
+  getDeviceLinkRoute,
+  getLinkedStoreKeyRoute,
+} from "../api/linked-devices.ts";
+import { fromBase64, toBase64 } from "../bytes.ts";
+import { db, inbox } from "../env/index.ts";
+import { fail } from "../errors.ts";
+import { log } from "../log.ts";
+import type { Platform } from "../platforms.ts";
+import { type Device, randomToken, tokenHash } from "./accounts.ts";
+import type { Session } from "./sessions.ts";
+
+// Enrolling a linked non-phone device from a browser session (decision 0064,
+// #299): the browser starts a link request with its Ed25519 device key and a
+// one-time X25519 history key; an active phone of the same account approves it
+// by signing the new device's key with its own Ed25519 key; the browser
+// completes enrolment and receives its device token and the server's 32-byte
+// half of its two-part store key. A linked device expires after 45 days without
+// use, and revoking it leaves its browser session signed in.
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** A linked device is removed after 45 days without an authenticated request (decision 0064). */
+export const LINKED_IDLE_MS = 45 * DAY_MS;
+/** A pending QR link request expires after 10 minutes. */
+const LINK_REQUEST_MS = 10 * 60 * 1000;
+
+async function createLinkRequest(
+  env: Env,
+  session: Session,
+  keys: { deviceKey: Uint8Array; historyKey: Uint8Array },
+  now = Date.now(),
+): Promise<
+  | { ok: { linkId: string; expiresAt: number } }
+  | { error: "no_phone_device" | "device_key_taken" | "session_already_linked" }
+> {
+  const [phone, existingDevice, keyTaken] = await db(env).batch([
+    db(env)
+      .prepare(
+        "SELECT 1 FROM devices WHERE account_id = ? AND kind = 'phone' AND revoked_at IS NULL LIMIT 1",
+      )
+      .bind(session.accountId),
+    db(env)
+      .prepare("SELECT 1 FROM devices WHERE session_id = ? AND revoked_at IS NULL LIMIT 1")
+      .bind(session.sessionId),
+    db(env).prepare("SELECT 1 FROM devices WHERE device_key = ? LIMIT 1").bind(keys.deviceKey),
+  ]);
+  if ((phone?.results.length ?? 0) === 0) return { error: "no_phone_device" };
+  if ((existingDevice?.results.length ?? 0) > 0) return { error: "session_already_linked" };
+  if ((keyTaken?.results.length ?? 0) > 0) return { error: "device_key_taken" };
+
+  const linkId = randomToken("dl_");
+  const expiresAt = now + LINK_REQUEST_MS;
+  await db(env).batch([
+    db(env)
+      .prepare("DELETE FROM device_link_requests WHERE session_id = ?")
+      .bind(session.sessionId),
+    db(env)
+      .prepare(
+        `INSERT INTO device_link_requests
+           (link_id, session_id, account_id, device_key, history_key, created_at, expires_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        linkId,
+        session.sessionId,
+        session.accountId,
+        keys.deviceKey,
+        keys.historyKey,
+        now,
+        expiresAt,
+      ),
+  ]);
+  return { ok: { linkId, expiresAt } };
+}
+
+async function getLinkRequest(env: Env, accountId: string, linkId: string, now = Date.now()) {
+  const row = await db(env)
+    .prepare(
+      `SELECT r.link_id AS linkId, r.session_id AS sessionId, s.browser, s.os,
+              r.device_key AS deviceKey, r.history_key AS historyKey,
+              r.expires_at AS expiresAt, r.approved_by_device_id AS approvedBy
+         FROM device_link_requests r
+         JOIN sessions s ON s.session_id = r.session_id
+        WHERE r.link_id = ? AND r.account_id = ? AND r.expires_at > ?`,
+    )
+    .bind(linkId, accountId, now)
+    .first<{
+      linkId: string;
+      sessionId: string;
+      browser: string | null;
+      os: string | null;
+      deviceKey: ArrayBuffer;
+      historyKey: ArrayBuffer;
+      expiresAt: number;
+      approvedBy: string | null;
+    }>();
+  if (!row) return null;
+  return {
+    linkId: row.linkId,
+    sessionId: row.sessionId,
+    browser: row.browser,
+    os: row.os,
+    deviceKey: toBase64(new Uint8Array(row.deviceKey)),
+    historyKey: toBase64(new Uint8Array(row.historyKey)),
+    expiresAt: row.expiresAt,
+    approved: row.approvedBy !== null,
+  };
+}
+
+async function approveLinkRequest(
+  env: Env,
+  approver: Device,
+  linkId: string,
+  signature: Uint8Array,
+  now = Date.now(),
+): Promise<{ ok: true } | { error: "not_found" | "phone_required" | "invalid_signature" }> {
+  const [phoneRow, reqRow] = await db(env).batch([
+    db(env)
+      .prepare(
+        `SELECT device_key AS deviceKey, kind FROM devices
+          WHERE device_id = ? AND account_id = ? AND revoked_at IS NULL`,
+      )
+      .bind(approver.deviceId, approver.accountId),
+    db(env)
+      .prepare(
+        `SELECT device_key AS deviceKey FROM device_link_requests
+          WHERE link_id = ? AND account_id = ? AND expires_at > ?`,
+      )
+      .bind(linkId, approver.accountId, now),
+  ]);
+  const phone = phoneRow?.results[0] as { deviceKey: ArrayBuffer; kind: string } | undefined;
+  if (!phone || phone.kind !== "phone") return { error: "phone_required" };
+  const req = reqRow?.results[0] as { deviceKey: ArrayBuffer } | undefined;
+  if (!req) return { error: "not_found" };
+
+  let valid = false;
+  try {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new Uint8Array(phone.deviceKey),
+      { name: "Ed25519" },
+      false,
+      ["verify"],
+    );
+    valid = await crypto.subtle.verify("Ed25519", key, signature, new Uint8Array(req.deviceKey));
+  } catch {
+    valid = false;
+  }
+  if (!valid) return { error: "invalid_signature" };
+
+  await db(env)
+    .prepare(
+      `UPDATE device_link_requests
+          SET approved_by_device_id = ?, approval_signature = ?, approved_at = ?
+        WHERE link_id = ? AND account_id = ?`,
+    )
+    .bind(approver.deviceId, signature, now, linkId, approver.accountId)
+    .run();
+  return { ok: true };
+}
+
+async function completeLinkRequest(
+  env: Env,
+  session: Session,
+  linkId: string,
+  now = Date.now(),
+): Promise<
+  | {
+      ok: {
+        accountId: string;
+        deviceId: string;
+        sessionId: string;
+        token: string;
+        storeKeyShare: string;
+      };
+    }
+  | { error: "not_found" | "not_approved" | "device_key_taken" }
+> {
+  const row = await db(env)
+    .prepare(
+      `SELECT r.device_key AS deviceKey, r.approved_by_device_id AS approvedBy,
+              p.platform AS phonePlatform, p.revoked_at AS phoneRevokedAt
+         FROM device_link_requests r
+         LEFT JOIN devices p ON p.device_id = r.approved_by_device_id
+                AND p.account_id = r.account_id AND p.kind = 'phone'
+        WHERE r.link_id = ? AND r.session_id = ? AND r.account_id = ? AND r.expires_at > ?`,
+    )
+    .bind(linkId, session.sessionId, session.accountId, now)
+    .first<{
+      deviceKey: ArrayBuffer;
+      approvedBy: string | null;
+      phonePlatform: Platform | null;
+      phoneRevokedAt: number | null;
+    }>();
+  if (!row) return { error: "not_found" };
+  if (!row.approvedBy || !row.phonePlatform || row.phoneRevokedAt !== null) {
+    return { error: "not_approved" };
+  }
+  const deviceKey = new Uint8Array(row.deviceKey);
+  const taken = await db(env)
+    .prepare("SELECT 1 FROM devices WHERE device_key = ?")
+    .bind(deviceKey)
+    .first();
+  if (taken) return { error: "device_key_taken" };
+
+  const deviceId = randomToken("d_");
+  const token = randomToken("dt_");
+  const hash = await tokenHash(token);
+  const share = crypto.getRandomValues(new Uint8Array(32));
+  await db(env).batch([
+    db(env)
+      .prepare(
+        `INSERT INTO devices
+           (device_id, account_id, platform, kind, device_key, token_hash, created_at,
+            session_id, last_seen_at, store_key_share)
+         VALUES (?, ?, ?, 'web', ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        deviceId,
+        session.accountId,
+        row.phonePlatform,
+        deviceKey,
+        hash,
+        now,
+        session.sessionId,
+        now,
+        share,
+      ),
+    db(env).prepare("DELETE FROM device_link_requests WHERE link_id = ?").bind(linkId),
+  ]);
+  return {
+    ok: {
+      accountId: session.accountId,
+      deviceId,
+      sessionId: session.sessionId,
+      token,
+      storeKeyShare: toBase64(share),
+    },
+  };
+}
+
+/** The server's 32-byte store-key share for the active linked device of this web session. */
+async function storeKeyShareForSession(
+  env: Env,
+  session: Session,
+  now = Date.now(),
+): Promise<{ deviceId: string; storeKeyShare: string } | null> {
+  const row = await db(env)
+    .prepare(
+      `SELECT device_id AS deviceId, store_key_share AS storeKeyShare, last_seen_at AS lastSeenAt
+         FROM devices
+        WHERE session_id = ? AND account_id = ? AND kind != 'phone' AND revoked_at IS NULL`,
+    )
+    .bind(session.sessionId, session.accountId)
+    .first<{
+      deviceId: string;
+      storeKeyShare: ArrayBuffer | null;
+      lastSeenAt: number | null;
+    }>();
+  if (!row || !row.storeKeyShare) return null;
+  if (row.lastSeenAt !== null && row.lastSeenAt + LINKED_IDLE_MS <= now) return null;
+  return {
+    deviceId: row.deviceId,
+    storeKeyShare: toBase64(new Uint8Array(row.storeKeyShare)),
+  };
+}
+
+/**
+ * Checks whether a linked non-phone device is still within its 45-day activity
+ * window and updates `last_seen_at` at most once a day (decision 0064).
+ */
+export async function touchLinkedDevice(
+  env: Env,
+  deviceId: string,
+  now = Date.now(),
+): Promise<boolean> {
+  const row = await db(env)
+    .prepare("SELECT last_seen_at AS lastSeenAt FROM devices WHERE device_id = ?")
+    .bind(deviceId)
+    .first<{ lastSeenAt: number | null }>();
+  if (!row) return false;
+  if (row.lastSeenAt !== null && row.lastSeenAt + LINKED_IDLE_MS <= now) return false;
+  if (row.lastSeenAt === null || now - row.lastSeenAt >= DAY_MS) {
+    await db(env)
+      .prepare("UPDATE devices SET last_seen_at = ? WHERE device_id = ?")
+      .bind(now, deviceId)
+      .run();
+  }
+  return true;
+}
+
+/**
+ * Revokes linked non-phone devices that have made no authenticated request in
+ * 45 days (decision 0064) and deletes expired link requests. The web session
+ * survives the device's removal, and remaining devices remove the expired
+ * device's MLS leaves per decision 0028.
+ */
+export async function expireLinkedDevices(env: Env, now = Date.now()): Promise<number> {
+  const cutoff = now - LINKED_IDLE_MS;
+  const [, , revoked] = await db(env).batch<{ accountId: string; deviceId: string }>([
+    db(env).prepare("DELETE FROM device_link_requests WHERE expires_at <= ?").bind(now),
+    db(env)
+      .prepare(
+        `DELETE FROM key_packages WHERE device_id IN
+           (SELECT device_id FROM devices
+             WHERE kind != 'phone' AND revoked_at IS NULL AND last_seen_at <= ?)`,
+      )
+      .bind(cutoff),
+    db(env)
+      .prepare(
+        `UPDATE devices SET revoked_at = ?, push_token = NULL, store_key_share = NULL
+          WHERE kind != 'phone' AND revoked_at IS NULL AND last_seen_at <= ?
+          RETURNING account_id AS accountId, device_id AS deviceId`,
+      )
+      .bind(now, cutoff),
+  ]);
+  const list = revoked?.results ?? [];
+  for (const { accountId, deviceId } of list) {
+    await inbox(env, accountId).closeDevice(deviceId);
+  }
+  return list.length;
+}
+
+export function linkedDeviceRoutes(app: OpenAPIHono<AppEnv>): void {
+  app.openapi(createDeviceLinkRoute, async (c) => {
+    const { session } = c.var;
+    const body = c.req.valid("json");
+    const created = await createLinkRequest(c.env, session, {
+      deviceKey: fromBase64(body.deviceKey),
+      historyKey: fromBase64(body.historyKey),
+    });
+    if ("error" in created) {
+      return created.error === "no_phone_device"
+        ? fail(c, 403, created.error)
+        : fail(c, 409, created.error);
+    }
+    return c.json(created.ok, 200);
+  });
+
+  app.openapi(getDeviceLinkRoute, async (c) => {
+    const { accountId } = c.var.session;
+    const { linkId } = c.req.valid("param");
+    const found = await getLinkRequest(c.env, accountId, linkId);
+    if (!found) return fail(c, 404, "not_found");
+    return c.json(found, 200);
+  });
+
+  app.openapi(approveDeviceLinkRoute, async (c) => {
+    const { linkId } = c.req.valid("param");
+    const { signature } = c.req.valid("json");
+    const approved = await approveLinkRequest(c.env, c.var.device, linkId, fromBase64(signature));
+    if ("error" in approved) {
+      return approved.error === "not_found"
+        ? fail(c, 404, approved.error)
+        : fail(c, 403, approved.error);
+    }
+    log("device.link_approved", {
+      accountId: c.var.device.accountId,
+      deviceId: c.var.device.deviceId,
+    });
+    return c.body(null, 204);
+  });
+
+  app.openapi(completeDeviceLinkRoute, async (c) => {
+    const { session } = c.var;
+    const { linkId } = c.req.valid("param");
+    const completed = await completeLinkRequest(c.env, session, linkId);
+    if ("error" in completed) {
+      return completed.error === "not_found"
+        ? fail(c, 404, completed.error)
+        : fail(c, 409, completed.error);
+    }
+    log("device.linked", {
+      accountId: completed.ok.accountId,
+      deviceId: completed.ok.deviceId,
+      sessionId: completed.ok.sessionId,
+    });
+    return c.json(completed.ok, 200);
+  });
+
+  app.openapi(getLinkedStoreKeyRoute, async (c) => {
+    const { session } = c.var;
+    const found = await storeKeyShareForSession(c.env, session);
+    if (!found) {
+      c.header("clear-site-data", '"storage"');
+      return fail(c, 404, "not_found");
+    }
+    return c.json(found, 200);
+  });
+}

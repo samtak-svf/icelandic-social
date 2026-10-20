@@ -2,7 +2,7 @@ import { deleteOrphans } from "./account-deletion.ts";
 import { createApp } from "./app.ts";
 import { communityLifecycle } from "./community-lifecycle.ts";
 import { log } from "./log.ts";
-import { expireKeyPackages, expireSessions } from "./identity/index.ts";
+import { expireKeyPackages, expireLinkedDevices, expireSessions } from "./identity/index.ts";
 import { expireCommunities } from "./modules/communities/index.ts";
 import { expireJobs, jobHealth, runJobs } from "./modules/jobs/index.ts";
 import { expireMedia, pushSender } from "./modules/messaging/index.ts";
@@ -36,6 +36,7 @@ export default {
     log("media.expired", { count: await expireMedia(env) });
     log("key_packages.expired", { count: await expireKeyPackages(env) });
     log("sessions.expired", { count: await expireSessions(env) });
+    log("linked_devices.expired", { count: await expireLinkedDevices(env) });
     log("accounts.orphans_deleted", { count: await deleteOrphans(env) });
     log("communities.expired", { count: await expireCommunities(env, communityLifecycle) });
     log("social_media.expired", { count: await deleteUnattached(env, {}) });

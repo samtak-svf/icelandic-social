@@ -99,5 +99,8 @@ export const DEVICE_TOKEN: Security = [{ deviceToken: [] }];
 /** A route that takes a device token or a browser's session: the account, profiles, blocks. */
 export const ACCOUNT: Security = [{ deviceToken: [] }, { session: [] }];
 
+/** A route that only a browser's session calls: linking a browser as a device (decision 0064). */
+export const SESSION_ONLY: Security = [{ session: [] }];
+
 /** A route reached before signing in. */
 export const PUBLIC: Security = [];

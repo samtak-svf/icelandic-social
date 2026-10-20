@@ -36,6 +36,7 @@ export const OWNERS = {
   accounts: "identity",
   blocks: "identity",
   devices: "identity",
+  device_link_requests: "identity",
   identities: "identity",
   invites: "identity",
   // A device's KeyPackages live and die with it: revoking, merging and
