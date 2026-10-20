@@ -2,7 +2,7 @@
 
 - Status: accepted; implemented in the backend (#321: sessions and the scheme each route
   declares, #322: web sign-in, #323: listing and ending sessions, #324: `web` in the version
-  floor, as a client in `CLIENTS` beside the device platforms); the web app is not yet built
+  floor, as a client in `CLIENTS` beside the device platforms) and the web (#305, #328)
 - Date: 2026-10-17
 - Decided by: Guðröður Atli Jónsson
 - Builds on: [0002](0002-mls-end-to-end-encryption.md) (a device is an MLS member),

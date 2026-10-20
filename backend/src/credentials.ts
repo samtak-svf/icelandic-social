@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import type { OpenAPIHono } from "@hono/zod-openapi";
-import { getCookie, setCookie } from "hono/cookie";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
 import ids from "../../identifiers/ids.json" with { type: "json" };
 import type { AppEnv } from "./app.ts";
@@ -125,7 +125,10 @@ export function guards(app: OpenAPIHono<AppEnv>) {
       return (await byToken(c, token)) ? next() : fail(c, 401, "unauthorized");
     }
     if (secret && SESSION_SECRET.test(secret) && takes("session")) {
-      return (await bySession(c, secret)) ? next() : fail(c, 401, "unauthorized");
+      if (await bySession(c, secret)) return next();
+      deleteCookie(c, SESSION_COOKIE, sessionCookie(0));
+      c.header("clear-site-data", '"storage"');
+      return fail(c, 401, "unauthorized");
     }
     return fail(c, 401, "unauthorized");
   });

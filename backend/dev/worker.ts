@@ -101,6 +101,11 @@ export default {
       return new Response(null, { status: 204 });
     }
     if (!API_PATHS.test(url.pathname)) return web(request);
-    return worker.fetch(request, { ...devEnv(env), ...fakes.env }, ctx);
+    // Vite's cf dev sets cf-connecting-ip to loopback on every local request;
+    // strip it here so the interop and Playwright suites are not rate-limited
+    // as one address (credentials.ts).
+    const headers = new Headers(request.headers);
+    headers.delete("cf-connecting-ip");
+    return worker.fetch(new Request(request, { headers }), { ...devEnv(env), ...fakes.env }, ctx);
   },
 } satisfies ExportedHandler<Env>;

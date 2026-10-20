@@ -147,6 +147,11 @@ async function challenge(verifier: string) {
 }
 
 async function start(c: Context<AppEnv>, name: ProviderName) {
+  const address = c.req.header("cf-connecting-ip");
+  if (address && !(await withinLimit(c.env, "public", address))) {
+    log("request.rate_limited", { code: "public", requestId: c.var.requestId });
+    return fail(c, 429, "rate_limited");
+  }
   const next = c.req.query("next") ?? "/";
   if (!SAME_ORIGIN_PATH.test(next)) return fail(c, 400, "invalid_request");
   const idp = webIdentityProvider(c.env, name);

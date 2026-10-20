@@ -125,6 +125,7 @@ describe("the profile photo (decision 0039)", () => {
     const fetched = await photoOf(reader, owner);
     expect(fetched.status).toBe(200);
     expect(fetched.headers.get("content-type")).toBe("image/webp");
+    expect(fetched.headers.get("cache-control")).toBe("private, max-age=3600");
     const stored = new Uint8Array(await fetched.arrayBuffer());
     expect(new TextDecoder().decode(stored.subarray(0, 4))).toBe("RIFF");
     expect(new TextDecoder().decode(stored.subarray(8, 12))).toBe("WEBP");

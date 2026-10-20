@@ -46,13 +46,17 @@ describe("the public routes", burst, () => {
     expect((await from("192.0.2.2")()).status).toBe(404);
   });
 
-  it("count every public route against the same address", async () => {
+  it("count every public route against the same address, including /auth/{provider}/start", async () => {
     await oneWindow();
     await statuses(30, from("192.0.2.3"));
     const signIn = await worker.fetch(`${BASE}/v1/sign-in`, {
       headers: { "cf-connecting-ip": "192.0.2.3" },
     });
     expect(signIn.status).toBe(429);
+    const webStart = await worker.fetch(`${BASE}/auth/google/start`, {
+      headers: { "cf-connecting-ip": "192.0.2.3" },
+    });
+    expect(webStart.status).toBe(429);
   });
 });
 

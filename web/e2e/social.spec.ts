@@ -396,3 +396,15 @@ test("renders the shell while /v1/me waits, fits a 390px screen on /communities,
     .click();
   await expect(member.getByRole("heading", { level: 1, name: strings.post_title })).toBeAttached();
 });
+
+test("serves public /privacy and /support pages without signing in and from settings", async ({
+  page,
+}) => {
+  await page.goto(WEB);
+  await page.getByRole("link", { name: strings.privacy_title }).click();
+  await expect(page.getByRole("heading", { level: 1, name: strings.privacy_title })).toBeVisible();
+  await expect(page.getByText(strings.residency_claim)).toBeVisible();
+  await page.getByRole("link", { name: strings.support_title }).click();
+  await expect(page.getByRole("heading", { level: 1, name: strings.support_title })).toBeVisible();
+  await expect(page.getByText(strings.support_contact_body)).toBeVisible();
+});

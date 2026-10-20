@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useAccount } from "../account.tsx";
 import { strings } from "../generated/brand/strings.ts";
@@ -7,11 +7,33 @@ import { UnreadBadge } from "./unread.tsx";
 
 // Every page sits in this: the signed-in pages behind the navigation, and in
 // place of them the sign-in page, a reload request or a failure with a retry.
+// The privacy policy and support pages (/privacy, /support) are public so
+// anyone and any store listing can read them without signing in (#383).
+
+const PUBLIC_PATHS = new Set(["/privacy", "/support"]);
 
 export function Shell({ children }: Readonly<{ children: ReactNode }>) {
   const { state, refresh } = useAccount();
+  const pathname = useLocation({ select: (l) => l.pathname });
   switch (state.status) {
     case "signed-out":
+      if (PUBLIC_PATHS.has(pathname)) {
+        return (
+          <>
+            <header className="border-b border-border">
+              <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-2 px-4 py-3">
+                <Link to="/" className="font-headline text-2xl">
+                  {strings.app_name}
+                </Link>
+                <Link to="/" className="inline-flex min-h-11 items-center rounded-md px-3 text-sm">
+                  {strings.sign_in_title}
+                </Link>
+              </div>
+            </header>
+            <main className="mx-auto max-w-2xl px-4 py-6">{children}</main>
+          </>
+        );
+      }
       return <SignIn />;
     case "outdated":
       return (
@@ -99,6 +121,14 @@ function SignIn() {
       </a>
       <p className="mt-4 text-sm text-muted-fg">{strings.sign_in_hint}</p>
       <p className="mt-8 text-sm text-muted-fg">{strings.residency_claim}</p>
+      <p className="mt-4 flex flex-wrap gap-4 text-sm text-muted-fg">
+        <Link to="/privacy" className="underline">
+          {strings.privacy_title}
+        </Link>
+        <Link to="/support" className="underline">
+          {strings.support_title}
+        </Link>
+      </p>
     </Frame>
   );
 }

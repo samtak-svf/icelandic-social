@@ -358,4 +358,34 @@ export const strings = {
     "Mynd " + String(args.n) + " af " + String(args.count),
   /** Title of the post screen's top bar (#356). */
   post_title: "Póstur",
+  /** Title and link label of the public privacy policy page (/privacy, decision 0009, #383). */
+  privacy_title: "Persónuverndarstefna",
+  /** Section heading on /privacy: who operates the service and acts as data controller. */
+  privacy_controller_heading: "Ábyrgðaraðili",
+  /** Body on /privacy naming Samtak svf. as the operator and data controller and how to reach it. */
+  privacy_controller_body: "Samtak svf. rekur Hjal og er ábyrgðaraðili að vinnslu persónuupplýsinga í þjónustunni. Hægt er að hafa samband í tölvupósti á samtak@samtak.is.",
+  /** Section heading on /privacy: what personal data is processed. */
+  privacy_data_heading: "Hvaða gögn eru unnin",
+  /** Body on /privacy describing sign-in identities, Kenni HMAC, E2EE messages, profile photos and community content (decisions 0002, 0008, 0033, 0039, 0063, 0065). */
+  privacy_data_body: "Við innskráningu með Google tekur þjónninn við nafni og staðfestu auðkenni frá Google. Ef þú staðfestir auðkenni með rafrænum skilríkjum í gegnum Kenni fær þjónninn skráð nafn þitt úr Þjóðskrá, en kennitalan sjálf er aldrei geymd í gagnagrunni heldur aðeins óafturkræft dulritunarlegt fingrafar hennar (HMAC). Einkasamtöl og hópsamtöl í símaöppunum eru dulkóðuð enda á milli (MLS) þannig að þjónninn getur hvorki lesið skilaboð né viðhengi þeirra. Mynd sem þú setur á aðganginn þinn og efni í samfélögum (póstar, athugasemdir, myndir og viðbrögð) eru hýst á þjóninum án lýsigagna (EXIF) og eru ekki dulkóðuð enda á milli.",
+  /** Section heading on /privacy: where data is stored and how long it is kept. */
+  privacy_retention_heading: "Varðveisla og geymslutími",
+  /** Body on /privacy describing retention periods (encrypted media 30 days, removed posts 90 days, moderation logs and closed reports 1 year, no PII in logs; decisions 0001, 0008, 0023, 0066, 0070). */
+  privacy_retention_body: "Dulkóðuð viðhengi í samtölum geymast á þjóninum í allt að 30 daga á meðan tæki sækja þau. Ef samfélagi er eytt má endurheimta það í 30 daga áður en póstum, athugasemdum og myndum þess er eytt varanlega. Póstum og athugasemdum sem stjórnandi fjarlægir er eytt eftir 90 daga, og lokuðum tilkynningum og aðgerðaskrá stjórnenda er eytt eftir eitt ár. Atburðaskrár þjónsins geyma engin nöfn, kennitölur, símanúmer né innihald skilaboða.",
+  /** Section heading on /privacy: account deletion and user rights. */
+  privacy_rights_heading: "Eyðing aðgangs og réttindi þín",
+  /** Body on /privacy describing immediate account deletion in the app and how to contact the controller. */
+  privacy_rights_body: "Þú getur hvenær sem er skráð út einstaka vafra og tæki í stillingum eða eytt aðganginum þínum í appinu. Þegar aðgangi er eytt lokast allar innskráningar og lyklar strax, mynd og upplýsingar aðgangsins eyðast af þjóninum og reikningurinn er tekinn úr öllum samtölum og samfélögum. Fyrirspurnir um persónuvernd má senda á samtak@samtak.is.",
+  /** Title and link label of the public support page (/support, decision 0009, #383). */
+  support_title: "Aðstoð",
+  /** Introductory paragraph on /support explaining how to get help. */
+  support_intro: "Hér finnur þú upplýsingar um hvernig þú færð aðstoð við Hjal og hvernig þú stýrir aðganginum þínum.",
+  /** Section heading on /support: how to contact support. */
+  support_contact_heading: "Hafa samband",
+  /** Body on /support explaining how to email support and include the request id when an action fails (decision 0037). */
+  support_contact_body: "Sendu erindi eða ábendingar í tölvupósti á samtak@samtak.is. Ef aðgerð í appinu eða á vefnum mistekst og sýnir villunúmer (til dæmis „Villunúmer: req_...“), láttu það fylgja með svo hægt sé að rekja atvikið í atburðaskrá án þess að persónuupplýsingar séu skráðar.",
+  /** Section heading on /support: sessions, devices and account deletion. */
+  support_account_heading: "Innskráningar, tæki og eyðing aðgangs",
+  /** Body on /support explaining where to manage sessions, unlink devices and delete an account. */
+  support_account_body: "Í Stillingum getur þú séð alla vafra og síma þar sem aðgangurinn þinn er skráður inn og skráð út úr þeim. Í símaappinu undir Ég getur þú einnig aftengt einstök tæki eða valið „Eyða aðgangi“ til að eyða aðganginum og öllum gögnum hans af þjóninum.",
 } as const;

@@ -87,12 +87,15 @@ describe("ending a session", () => {
     expect((await fetch("/v1/me", { headers: mobile.auth })).status).toBe(200);
   });
 
-  it("of the browser that asks is signing out, and clears its cookie", async () => {
+  it("of the browser that asks is signing out, clears its cookie and wipes site storage (0064)", async () => {
     const browser = await webSession();
     const response = await remove(`/v1/sessions/${browser.sessionId}`, browser.web);
     expect(response.status).toBe(204);
     expect(response.headers.get("set-cookie")).toMatch(/^__Host-session=;.*Max-Age=0/i);
-    expect((await fetch("/v1/me", { headers: browser.web })).status).toBe(401);
+    expect(response.headers.get("clear-site-data")).toBe('"storage"');
+    const later = await fetch("/v1/me", { headers: browser.web });
+    expect(later.status).toBe(401);
+    expect(later.headers.get("clear-site-data")).toBe('"storage"');
   });
 
   it("is refused for another account's session, which stays", async () => {

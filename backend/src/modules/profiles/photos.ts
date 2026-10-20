@@ -137,6 +137,7 @@ export function photoRoutes(app: OpenAPIHono<AppEnv>): void {
     return c.body(object.body, 200, {
       "content-type": "image/webp",
       "content-length": String(object.size),
+      "cache-control": "private, max-age=3600",
     });
   });
 }

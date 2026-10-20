@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SupportRouteImport } from './routes/support'
 import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as CommunitiesIndexRouteImport } from './routes/communities.index'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
@@ -29,9 +31,19 @@ const NotificationsRoute = NotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VerifyRoute = VerifyRouteImport.update({
@@ -71,7 +83,9 @@ const CommunitiesCommunityIdRequestsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/notifications': typeof NotificationsRoute
+  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
   '/verify': typeof VerifyRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities/': typeof CommunitiesIndexRoute
@@ -82,7 +96,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/notifications': typeof NotificationsRoute
+  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
   '/verify': typeof VerifyRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities': typeof CommunitiesIndexRoute
@@ -94,7 +110,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/notifications': typeof NotificationsRoute
+  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
   '/verify': typeof VerifyRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities/': typeof CommunitiesIndexRoute
@@ -107,7 +125,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/notifications'
+    | '/privacy'
     | '/settings'
+    | '/support'
     | '/verify'
     | '/posts/$postId'
     | '/communities/'
@@ -118,7 +138,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/notifications'
+    | '/privacy'
     | '/settings'
+    | '/support'
     | '/verify'
     | '/posts/$postId'
     | '/communities'
@@ -129,7 +151,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/notifications'
+    | '/privacy'
     | '/settings'
+    | '/support'
     | '/verify'
     | '/posts/$postId'
     | '/communities/'
@@ -141,7 +165,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   NotificationsRoute: typeof NotificationsRoute
+  PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
+  SupportRoute: typeof SupportRoute
   VerifyRoute: typeof VerifyRoute
   PostsPostIdRoute: typeof PostsPostIdRoute
   CommunitiesIndexRoute: typeof CommunitiesIndexRoute
@@ -166,11 +192,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/verify': {
@@ -221,7 +261,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   NotificationsRoute: NotificationsRoute,
+  PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,
+  SupportRoute: SupportRoute,
   VerifyRoute: VerifyRoute,
   PostsPostIdRoute: PostsPostIdRoute,
   CommunitiesIndexRoute: CommunitiesIndexRoute,

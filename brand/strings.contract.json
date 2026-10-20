@@ -1453,6 +1453,66 @@
     "post_title": {
       "surfaces": ["android", "ios", "web"],
       "description": "Title of the post screen's top bar (#356)."
+    },
+    "privacy_title": {
+      "surfaces": ["web"],
+      "description": "Title and link label of the public privacy policy page (/privacy, decision 0009, #383)."
+    },
+    "privacy_controller_heading": {
+      "surfaces": ["web"],
+      "description": "Section heading on /privacy: who operates the service and acts as data controller."
+    },
+    "privacy_controller_body": {
+      "surfaces": ["web"],
+      "description": "Body on /privacy naming Samtak svf. as the operator and data controller and how to reach it."
+    },
+    "privacy_data_heading": {
+      "surfaces": ["web"],
+      "description": "Section heading on /privacy: what personal data is processed."
+    },
+    "privacy_data_body": {
+      "surfaces": ["web"],
+      "description": "Body on /privacy describing sign-in identities, Kenni HMAC, E2EE messages, profile photos and community content (decisions 0002, 0008, 0033, 0039, 0063, 0065)."
+    },
+    "privacy_retention_heading": {
+      "surfaces": ["web"],
+      "description": "Section heading on /privacy: where data is stored and how long it is kept."
+    },
+    "privacy_retention_body": {
+      "surfaces": ["web"],
+      "description": "Body on /privacy describing retention periods (encrypted media 30 days, removed posts 90 days, moderation logs and closed reports 1 year, no PII in logs; decisions 0001, 0008, 0023, 0066, 0070)."
+    },
+    "privacy_rights_heading": {
+      "surfaces": ["web"],
+      "description": "Section heading on /privacy: account deletion and user rights."
+    },
+    "privacy_rights_body": {
+      "surfaces": ["web"],
+      "description": "Body on /privacy describing immediate account deletion in the app and how to contact the controller."
+    },
+    "support_title": {
+      "surfaces": ["web"],
+      "description": "Title and link label of the public support page (/support, decision 0009, #383)."
+    },
+    "support_intro": {
+      "surfaces": ["web"],
+      "description": "Introductory paragraph on /support explaining how to get help."
+    },
+    "support_contact_heading": {
+      "surfaces": ["web"],
+      "description": "Section heading on /support: how to contact support."
+    },
+    "support_contact_body": {
+      "surfaces": ["web"],
+      "description": "Body on /support explaining how to email support and include the request id when an action fails (decision 0037)."
+    },
+    "support_account_heading": {
+      "surfaces": ["web"],
+      "description": "Section heading on /support: sessions, devices and account deletion."
+    },
+    "support_account_body": {
+      "surfaces": ["web"],
+      "description": "Body on /support explaining where to manage sessions, unlink devices and delete an account."
     }
   }
 }

@@ -26,7 +26,10 @@ export function sessionRoutes(app: OpenAPIHono<AppEnv>): void {
     const { ended, devices } = await endSessions(c.env, accountId, { only: sessionId });
     if (ended === 0) return fail(c, 404, "not_found");
     for (const deviceId of devices) await inbox(c.env, accountId).closeDevice(deviceId);
-    if (sessionId === current) deleteCookie(c, SESSION_COOKIE, sessionCookie(0));
+    if (sessionId === current) {
+      deleteCookie(c, SESSION_COOKIE, sessionCookie(0));
+      c.header("clear-site-data", '"storage"');
+    }
     log("session.ended", { accountId, sessionId, count: devices.length });
     return c.body(null, 204);
   });

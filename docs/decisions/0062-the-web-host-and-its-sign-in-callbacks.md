@@ -1,8 +1,8 @@
 # 0062. The web is served on the API's host, and signs in through its own callbacks
 
 - Status: accepted; implemented in the backend (#322: the sign-in routes and callbacks on the
-  web host, and the Kenni web client's secret); the web app at `/` comes with the first web
-  build; amended by 0069 (Kenni on the web links to a signed-in account and is no way in)
+  web host, and the Kenni web client's secret) and the web (#328: the web app at `/`); amended
+  by 0069 (Kenni on the web links to a signed-in account and is no way in)
 - Date: 2026-10-17
 - Decided by: Guðröður Atli Jónsson
 - Builds on: [0027](0027-kenni-client-id-spjall.md) (the Kenni client),

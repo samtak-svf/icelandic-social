@@ -25,9 +25,11 @@ async function me(page: Page): Promise<unknown> {
 test("offers only Google to sign in: Kenni is no way in", async ({ page }) => {
   await page.goto(`${WEB}/`);
   await page.getByRole("heading", { name: strings.sign_in_title }).waitFor();
-  await expect(page.getByRole("link")).toHaveCount(1);
+  await expect(page.locator('a[href^="/auth/"]')).toHaveCount(1);
   await expect(page.getByRole("link", { name: strings.sign_in_google })).toBeVisible();
   await expect(page.locator('a[href^="/auth/kenni"]')).toHaveCount(0);
+  await expect(page.getByRole("link", { name: strings.privacy_title })).toBeVisible();
+  await expect(page.getByRole("link", { name: strings.support_title })).toBeVisible();
 });
 
 test("adds the mark with Kenni from Ég and shows the verified name", async ({ page }) => {

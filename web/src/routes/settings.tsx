@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { useAccount } from "../account.tsx";
 import { refused, type Problem } from "../problem.ts";
@@ -143,6 +143,14 @@ function Settings() {
           {strings.sign_out}
         </Button>
       </section>
+      <p className="mt-8 flex flex-wrap gap-4 text-sm text-muted-fg">
+        <Link to="/privacy" className="underline">
+          {strings.privacy_title}
+        </Link>
+        <Link to="/support" className="underline">
+          {strings.support_title}
+        </Link>
+      </p>
       <Status>{problem !== null && <ProblemText problem={problem} />}</Status>
     </>
   );
