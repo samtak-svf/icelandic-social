@@ -15,7 +15,14 @@ export const Route = createFileRoute("/")({ component: MePage });
 
 function MePage() {
   const { state } = useAccount();
-  if (state.status !== "signed-in") return null;
+  if (state.status !== "signed-in") {
+    return (
+      <>
+        <h1 className="sr-only">{strings.tab_me}</h1>
+        <Status>{strings.loading}</Status>
+      </>
+    );
+  }
   const { me } = state;
   return (
     <>

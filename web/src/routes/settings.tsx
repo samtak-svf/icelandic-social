@@ -16,7 +16,7 @@ export const Route = createFileRoute("/settings")({ component: Settings });
 type Sessions = { status: "loading" } | { status: "ready"; sessions: SessionInfo[] };
 
 function Settings() {
-  const { state, refresh, signedOut } = useAccount();
+  const { refresh, signedOut } = useAccount();
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<Sessions>({ status: "loading" });
   const [busy, setBusy] = useState(false);
@@ -69,7 +69,6 @@ function Settings() {
     }
   }
 
-  if (state.status !== "signed-in") return null;
   const list = sessions.status === "ready" ? sessions.sessions : [];
   const current = list.find((session) => session.current);
   const others = list.filter((session) => !session.current);

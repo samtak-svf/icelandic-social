@@ -1,6 +1,6 @@
 # AGENTS.md: samtak-spjall
 
-A native Android + iOS messenger for Iceland, built by Samtak svf.
+A community social platform and end-to-end encrypted messenger for Iceland on Android, iOS and the web, built by Samtak svf.
 (`samtak-svf/icelandic-messenger`, AGPL-3.0). The product ships under a **brand** ("Hjal" today) that is
 designed to be renamed cheaply; nothing outside `brand/` may depend on it.
 

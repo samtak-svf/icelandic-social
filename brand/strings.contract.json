@@ -1451,7 +1451,7 @@
       }
     },
     "post_title": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Title of the post screen's top bar (#356)."
     }
   }

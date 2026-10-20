@@ -356,4 +356,6 @@ export const strings = {
   /** Text alternative of an image in a post with several, so a screen reader tells them apart (#355). */
   post_image_alt_numbered: (args: { n: number; count: number }): string =>
     "Mynd " + String(args.n) + " af " + String(args.count),
+  /** Title of the post screen's top bar (#356). */
+  post_title: "Póstur",
 } as const;

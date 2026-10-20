@@ -1,7 +1,7 @@
 import type { Browser, Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
 import { png } from "./images.ts";
-import { expect, serveOrigin, test } from "./origin.ts";
+import { expect, serveOrigin, test, WEB } from "./origin.ts";
 import { signInVerified } from "./accounts.ts";
 
 // The first social slice on the web (#291), through what a person sees: a
@@ -358,4 +358,41 @@ test("the owner deletes a community, and a platform moderator restores it", asyn
   await expect(platform.getByRole("button", { name: strings.community_join })).toBeVisible();
   await owner.goto(community);
   await expect(post(owner, "Síðasti pósturinn.")).toBeVisible();
+});
+
+test("renders the shell while /v1/me waits, fits a 390px screen on /communities, and headings /posts", async ({
+  browser,
+}) => {
+  const member = await person(browser, "Símasjá Skoðunardóttir");
+  const community = await found(member, "open");
+  await write(member, strings.post_compose, strings.post_publish, "Póstur á litlum skjá.");
+  await member.setViewportSize({ width: 390, height: 844 });
+
+  let releaseMe!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    releaseMe = resolve;
+  });
+  await member.route("**/v1/me", async (route) => {
+    await gate;
+    await route.fallback();
+  });
+
+  await member.goto(`${WEB}/communities`);
+  await expect(member.getByRole("navigation", { name: strings.main_navigation })).toBeVisible();
+  await expect(
+    member.getByRole("heading", { level: 1, name: strings.tab_communities }),
+  ).toBeVisible();
+  releaseMe();
+  await member.unroute("**/v1/me");
+
+  const overflow = await member.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+
+  await member.goto(community);
+  await post(member, "Póstur á litlum skjá.")
+    .getByRole("link", { name: strings.post_comments({ count: 0 }) })
+    .click();
+  await expect(member.getByRole("heading", { level: 1, name: strings.post_title })).toBeAttached();
 });

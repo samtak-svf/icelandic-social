@@ -11,12 +11,6 @@ import { UnreadBadge } from "./unread.tsx";
 export function Shell({ children }: Readonly<{ children: ReactNode }>) {
   const { state, refresh } = useAccount();
   switch (state.status) {
-    case "loading":
-      return (
-        <Frame>
-          <p role="status">{strings.loading}</p>
-        </Frame>
-      );
     case "signed-out":
       return <SignIn />;
     case "outdated":
@@ -39,6 +33,9 @@ export function Shell({ children }: Readonly<{ children: ReactNode }>) {
           </Button>
         </Frame>
       );
+    case "loading":
+    case "signed-in":
+      break;
   }
   return (
     <>

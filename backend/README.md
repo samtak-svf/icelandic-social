@@ -19,8 +19,11 @@ create a missing one without it, and a jurisdiction can never be added afterward
 
    The lifecycle rule (31 days) is the backstop behind the Worker's daily media expiry (decision 0023).
 
-   The profile photos (decision 0039) have a bucket of their own, also in the EU, with **no**
-   lifecycle rule: a photo stays until its owner replaces or removes it, or deletes the account.
+   The profile photos (decision 0039) and community post images (decision 0065) have a bucket
+   of their own, also in the EU, with **no** lifecycle rule: a photo stays until its owner
+   replaces or removes it or deletes the account, and a post image stays until the post, its
+   author's account or its community is deleted (or the daily cron drops an upload no post
+   took within a day).
 
    ```bash
    cf r2 buckets create --name spjall-profiles --cf-r2-jurisdiction eu

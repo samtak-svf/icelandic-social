@@ -137,6 +137,29 @@ A job fails after its last attempt, and its `error` says why. Fix the cause and 
 a retry runs the same handler again. A job is stuck when it has been due for more than an hour,
 which means the cron has not run: look at the Worker's Cron Triggers in the dashboard.
 
+## Platform moderators
+
+A platform moderator reads the platform report queue, reads the moderation log and reports of a
+deleted community for a year, and can restore a deleted community within its first 30 days
+([decision 0063](decisions/0063-communities-audiences-and-moderation.md),
+[decision 0066](decisions/0066-moderation-in-d1.md),
+[decision 0070](decisions/0070-community-deletion-and-declined-requests.md)). The role is never
+granted by a route:
+
+```bash
+# Grant the role to an account:
+cf d1 execute spjall-db --remote --command \
+  "INSERT INTO platform_moderators (account_id, added_at) VALUES ('<accountId>', $(date +%s%3N))"
+
+# Remove the role:
+cf d1 execute spjall-db --remote --command \
+  "DELETE FROM platform_moderators WHERE account_id = '<accountId>'"
+
+# List current platform moderators:
+cf d1 execute spjall-db --remote --command \
+  "SELECT account_id, added_at FROM platform_moderators ORDER BY added_at"
+```
+
 ## Monitoring
 
 The daily cron logs these with counts only (decision 0008):

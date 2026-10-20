@@ -34,12 +34,22 @@ function PostPage() {
   const [comments, reloadComments] = useLoad(
     useCallback(() => outcome(listComments({ path: { postId } }), 200), [postId]),
   );
-  if (post === null) return <Status>{strings.loading}</Status>;
+  if (post === null) {
+    return (
+      <>
+        <h1 className="sr-only">{strings.post_title}</h1>
+        <Status>{strings.loading}</Status>
+      </>
+    );
+  }
   if (!post.ok) {
     return (
-      <Status>
-        <ProblemText problem={post.problem} />
-      </Status>
+      <>
+        <h1 className="sr-only">{strings.post_title}</h1>
+        <Status>
+          <ProblemText problem={post.problem} />
+        </Status>
+      </>
     );
   }
   const { communityId } = post.data;
@@ -49,6 +59,7 @@ function PostPage() {
   };
   return (
     <>
+      <h1 className="sr-only">{strings.post_title}</h1>
       <Link
         to="/communities/$communityId"
         params={{ communityId }}

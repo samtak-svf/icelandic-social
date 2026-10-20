@@ -19,7 +19,6 @@ export const Route = createFileRoute("/communities/")({ component: Communities }
 function Communities() {
   const { state } = useAccount();
   const [mine] = useLoad(useCallback(() => outcome(myCommunities(), 200), []));
-  if (state.status !== "signed-in") return null;
   return (
     <>
       <h1 className="font-headline text-3xl">{strings.tab_communities}</h1>
@@ -39,7 +38,7 @@ function Communities() {
         {mine?.ok && <CommunityList communities={mine.data.communities} />}
       </section>
       <Find />
-      {state.me.verified && <Create />}
+      {state.status === "signed-in" && state.me.verified && <Create />}
     </>
   );
 }
@@ -97,7 +96,7 @@ function Find() {
           aria-label={strings.communities_find}
           value={q}
           onChange={(event) => setQ(event.target.value)}
-          className="min-h-11 flex-1 rounded-md border border-border-strong bg-surface px-3"
+          className="min-h-11 min-w-0 flex-1 rounded-md border border-border-strong bg-surface px-3"
         />
         <Button tone="primary" type="submit">
           {strings.communities_find}

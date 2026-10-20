@@ -21,14 +21,13 @@ export const Route = createFileRoute("/verify")({
 const START = `/auth/kenni/start?next=${encodeURIComponent("/verify")}`;
 
 function Verify() {
-  const { state, refresh } = useAccount();
+  const { refresh } = useAccount();
   const { verify } = Route.useSearch();
 
   useEffect(() => {
     if (verify === "linked" || verify === "merged") void refresh();
   }, [verify, refresh]);
 
-  if (state.status !== "signed-in") return null;
   if (verify === "linked" || verify === "merged") {
     return (
       <>
