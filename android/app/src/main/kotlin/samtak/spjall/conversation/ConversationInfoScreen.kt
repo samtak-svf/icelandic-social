@@ -84,7 +84,14 @@ fun ConversationInfoScreen(
         }
     }
     LaunchedEffect(nearEnd, shared?.items?.size) { if (nearEnd && shared?.more == true) actions.more() }
-    Column(modifier = Modifier.fillMaxSize().background(Palette.bg)) {
+    val sides = WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(Palette.bg)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(sides)),
+    ) {
         InfoBar(actions)
         state.problem?.let { Box(Modifier.padding(16.dp)) { ProblemCard(it, actions::retry) } }
         if (conversation == null) return@Column

@@ -1,8 +1,12 @@
 package samtak.spjall.social
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -24,6 +28,7 @@ import samtak.spjall.core.PostImage
 import samtak.spjall.core.ReactionCount
 import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportTargetKind
+import samtak.spjall.core.SocialNotificationKind
 import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.wordsCut
 import java.lang.reflect.Proxy
@@ -127,6 +132,16 @@ class SocialScreenshotTest {
             declinedUntil = 1_800_000_000_000uL,
         )
 
+    private val notificationsState =
+        NotificationsViewModel.State(
+            notifications =
+                listOf(
+                    notification("n1", SocialNotificationKind.COMMENT, 1_700_000_000_000uL),
+                    notification("n2", SocialNotificationKind.JOIN_APPROVED, 1_700_000_000_000uL).copy(read = true),
+                ),
+            loaded = true,
+        )
+
     private fun shoot(screen: @Composable () -> Unit) {
         compose.setContent { SpjallTheme { screen() } }
         compose.onRoot().captureRoboImage()
@@ -143,6 +158,8 @@ class SocialScreenshotTest {
     private val requestsScreen = @Composable { JoinRequestsScreen(requestsState, none<JoinRequestsActions>()) }
     private val declinedScreen = @Composable { CommunityScreen(declinedState, none<CommunityActions>()) }
     private val reportsScreen = @Composable { ReportsScreen(reportsState, none<ReportsActions>()) }
+    private val notificationsScreen =
+        @Composable { NotificationsScreen(notificationsState, none<NotificationsActions>()) }
 
     @Test
     fun communities() = shoot(communitiesScreen)
@@ -221,6 +238,27 @@ class SocialScreenshotTest {
     @Test
     @Config(fontScale = 2f)
     fun reportsCutsNoWord() = noWordCut(reportsScreen)
+
+    @Test
+    fun notifications() = shoot(notificationsScreen)
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun notificationsAtNight() = shoot(notificationsScreen)
+
+    @Test
+    @Config(fontScale = 2f)
+    fun notificationsLargeText() = shoot(notificationsScreen)
+
+    @Test
+    @Config(fontScale = 2f)
+    fun notificationsCutsNoWord() = noWordCut(notificationsScreen)
+
+    @Test
+    fun subScreensPadForBottomNavigationBar() {
+        assertEquals(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom, SUB_SCREEN_SIDES)
+        assertEquals(120, WindowInsets(bottom = 120).only(SUB_SCREEN_SIDES).getBottom(Density(1f)))
+    }
 }
 
 /** Actions that do nothing: a screenshot only draws. */

@@ -56,6 +56,9 @@ import samtak.spjall.ui.listStamp
 // What the community screens share. Their content is hosted, not end-to-end encrypted (decision 0060), so
 // they never look like a conversation: no bubbles, each post and comment a bordered card on the cream ground.
 
+/** The safe-drawing sides a non-tab social screen pads for; [SubHeader] pads for the top. */
+val SUB_SCREEN_SIDES = WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
+
 /** Who wrote something: a deleted account has no author, an account without a name is unnamed. */
 @Composable
 fun Author?.shownName(): String =
