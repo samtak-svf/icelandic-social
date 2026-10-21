@@ -10,6 +10,7 @@ use spjall_mls::group::{Claimed, Device, Group, Identity, Received, generate_dev
 use spjall_mls::storage::Provider;
 use spjall_store::{Store, rusqlite};
 
+pub mod relay;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 mod web;
 
@@ -149,4 +150,95 @@ impl Peer {
             _ => Err("not a text".into()),
         }
     }
+}
+
+/// The text the history export carries, for the browser to find.
+pub const HISTORY_TEXT: &str = "Saga úr Rust";
+/// The photo it carries.
+pub const HISTORY_PHOTO: &[u8] = b"mynd sem fylgir sogunni";
+
+fn client(
+    relay: &std::sync::Arc<std::sync::Mutex<relay::MiniRelay>>,
+    store: &str,
+    account: &str,
+    device: &str,
+) -> Result<
+    (
+        spjall_client::Client<relay::WorkerTransport>,
+        spjall_client::MemBlobs,
+    ),
+    Error,
+> {
+    let blobs = spjall_client::MemBlobs::new();
+    let transport = relay::WorkerTransport {
+        account: account.into(),
+        device: device.into(),
+        blobs: blobs.clone(),
+        relay: std::sync::Arc::clone(relay),
+    };
+    let mut client = spjall_client::Client::open_with_blobs(
+        Path::new(store),
+        &KEY,
+        transport,
+        Box::new(blobs.clone()),
+    )?;
+    client.enrol_linked(account, device, &format!("tok_{device}"))?;
+    Ok((client, blobs))
+}
+
+/// The phone's half of 0064: `a_alice` talks with `a_bob`, sends a text and
+/// a photo, and seals that history to `recipient`. Returns the sealed bytes.
+pub fn export_history(dir: &Path, recipient: &[u8]) -> Result<Vec<u8>, Error> {
+    let relay = std::sync::Arc::default();
+    let at = |name: &str| dir.join(name).to_string_lossy().into_owned();
+    let (mut alice, blobs) = client(&relay, &at("alice"), "a_alice", "d_1")?;
+    let (mut bob, _) = client(&relay, &at("bob"), "a_bob", "d_2")?;
+    bob.stock_key_packages(2)?;
+    let conversation = alice.create_conversation(&["a_bob".into()])?;
+    alice.send(
+        &conversation,
+        Body::Text {
+            text: HISTORY_TEXT.into(),
+            forwarded: false,
+        },
+    )?;
+    let photo = Path::new("upload/mynd.webp");
+    blobs.put(photo, HISTORY_PHOTO.to_vec());
+    alice.send_media(&conversation, photo, "image/webp", None, None)?;
+    alice.sync()?;
+    let out = Path::new("history");
+    alice.export_history(None, recipient, out)?;
+    Ok(blobs.get(out).ok_or("no history written")?)
+}
+
+/// The linked device's half: a new `a_alice` device with nothing on the
+/// relay opens `sealed` and shows the conversation. Returns the texts and
+/// whether the photo opened from the history alone.
+pub fn import_history(
+    dir: &Path,
+    sealed: &[u8],
+    private: &[u8],
+) -> Result<(Vec<String>, bool), Error> {
+    let relay = std::sync::Arc::default();
+    let (mut client, blobs) = client(&relay, &dir.to_string_lossy(), "a_alice", "d_9")?;
+    let from = Path::new("history");
+    blobs.put(from, sealed.to_vec());
+    let imported = client.import_history(from, private)?;
+    if imported.conversations != 1 || imported.files != 1 {
+        return Err(format!("imported {imported:?}").into());
+    }
+    let conversation = client.conversations()?.remove(0).id;
+    let mut texts = Vec::new();
+    let mut photo = false;
+    for item in client.view()?.timeline(&conversation, None, 20)? {
+        match item.content {
+            spjall_client::Content::Text { text, .. } => texts.push(text),
+            spjall_client::Content::Media { .. } => {
+                let path = client.media(&conversation, item.seq.ok_or("no seq")?)?;
+                photo = blobs.get(&path).as_deref() == Some(HISTORY_PHOTO);
+            }
+            _ => {}
+        }
+    }
+    Ok((texts, photo))
 }

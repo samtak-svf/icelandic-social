@@ -1,9 +1,11 @@
 //! MLS for the core (0002). Phase 0 pins the ciphersuite and proves, on every
 //! target the apps ship, that two members can form a group and read each
 //! other's messages. `storage` keeps MLS state in the core's encrypted store;
-//! `group` is a device's identity and its groups (0018).
+//! `group` is a device's identity and its groups (0018); `hpke` seals the
+//! key of a history transfer (0074).
 
 pub mod group;
+pub mod hpke;
 pub mod storage;
 
 use openmls::prelude::tls_codec::Deserialize as _;

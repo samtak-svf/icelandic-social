@@ -12,8 +12,8 @@ use std::sync::Arc;
 use relay::{Link, Relay};
 use spjall_client::api::{ApiError, Platform, Provider};
 use spjall_client::{
-    Client, ClientError, Content, Event, Item, MediaError, Mute, MuteFor, NoticeKind, Settings,
-    State, Status, Unforwardable,
+    Client, ClientError, Content, Event, HistoryError, Imported, Item, MediaError, Mute, MuteFor,
+    NoticeKind, Settings, State, Status, Unforwardable, history_key,
 };
 use spjall_envelope::Body;
 use spjall_mls::group::{GroupError, forge};
@@ -3087,4 +3087,185 @@ fn a_location_is_not_edited_is_quoted_as_one_and_forwards_as_the_same_place() {
     let item = items(&mut c1, &with_c).pop().unwrap();
     assert!(item.forwarded);
     assert_eq!(item.sender.account, "a");
+}
+
+/// The texts of a conversation's timeline, cards left out.
+fn timeline_texts(phone: &mut Phone, conversation: &str) -> Vec<String> {
+    items(phone, conversation)
+        .into_iter()
+        .filter_map(|item| match item.content {
+            Content::Text { text, .. } => Some(text),
+            _ => None,
+        })
+        .collect()
+}
+
+/// `a1` talks with `b1` and sends a photo; `a2` is linked after.
+fn a_history(relay: &Arc<Relay>) -> (Phone, Phone, Phone, String, Vec<u8>) {
+    let mut a1 = Phone::new(relay, "a", "a1");
+    let mut b1 = Phone::new(relay, "b", "b1");
+    let conversation = conversation(&mut a1, &mut b1);
+    a1.send(&conversation, "fyrir");
+    a1.sync();
+    b1.deliver();
+    b1.send(&conversation, "svar");
+    b1.sync();
+    a1.deliver();
+    let files = tempfile::tempdir().unwrap();
+    let (path, bytes) = photo(&files);
+    a1.client
+        .send_media(&conversation, &path, "image/png", None, None)
+        .unwrap();
+    a1.sync();
+    b1.deliver();
+    let a2 = Phone::new(relay, "a", "a2");
+    (a1, b1, a2, conversation, bytes)
+}
+
+#[test]
+fn a_linked_device_starts_with_its_siblings_history() {
+    let relay = Relay::new();
+    let (mut a1, mut b1, mut a2, conversation, bytes) = a_history(&relay);
+    let key = history_key().unwrap();
+    let blob = a1.dir.path().join("history");
+    a1.client.export_history(None, &key.public, &blob).unwrap();
+    // The blob holds neither a text nor the photo in the clear.
+    let sealed = std::fs::read(&blob).unwrap();
+    assert_eq!(&sealed[..4], b"SPJH");
+    assert!(!sealed.windows(5).any(|w| w == b"fyrir"));
+    assert!(!sealed.windows(64).any(|w| w == &bytes[..64]));
+
+    let imported = a2.client.import_history(&blob, &key.private).unwrap();
+    assert_eq!((imported.conversations, imported.files), (1, 1));
+    assert!(imported.items >= 3);
+    assert_eq!(timeline_texts(&mut a2, &conversation), ["fyrir", "svar"]);
+    let photo = items(&mut a2, &conversation).pop().unwrap();
+    let file = a2.client.media(&conversation, photo.seq.unwrap()).unwrap();
+    assert_eq!(std::fs::read(file).unwrap(), bytes);
+    assert_eq!(media_gets(&relay, "a2"), 0);
+    // Old messages raise no notices.
+    assert!(a2.client.notices().unwrap().shown.is_empty());
+
+    // Imported again: nothing new.
+    assert_eq!(
+        a2.client.import_history(&blob, &key.private).unwrap(),
+        Imported::default()
+    );
+
+    // It joins the group, and the history goes on from there.
+    assert_eq!(joined(&a2.sync()), vec![conversation.clone()]);
+    b1.deliver();
+    b1.send(&conversation, "velkomin");
+    b1.sync();
+    assert_eq!(texts(&a2.deliver()), strings(&["velkomin"]));
+    assert_eq!(
+        timeline_texts(&mut a2, &conversation),
+        ["fyrir", "svar", "velkomin"]
+    );
+}
+
+#[test]
+fn a_history_opens_only_whole_and_only_with_its_key() {
+    let relay = Relay::new();
+    let (mut a1, _b1, mut a2, _conversation, _) = a_history(&relay);
+    let key = history_key().unwrap();
+    let blob = a1.dir.path().join("history");
+    a1.client.export_history(None, &key.public, &blob).unwrap();
+    let sealed = std::fs::read(&blob).unwrap();
+    let other = history_key().unwrap();
+    let broken = a2.dir.path().join("broken");
+    let tampered = |result: Result<Imported, ClientError>| {
+        matches!(result, Err(ClientError::History(HistoryError::Tampered)))
+    };
+
+    assert!(tampered(a2.client.import_history(&blob, &other.private)));
+    for bytes in [
+        sealed[..sealed.len() - 1].to_vec(),
+        sealed[..sealed.len() - 64 * 1024].to_vec(),
+        {
+            let mut flipped = sealed.clone();
+            flipped[100] ^= 1;
+            flipped
+        },
+        {
+            let mut grown = sealed.clone();
+            grown.push(0);
+            grown
+        },
+    ] {
+        std::fs::write(&broken, bytes).unwrap();
+        assert!(tampered(a2.client.import_history(&broken, &key.private)));
+    }
+    // Nothing of it was written.
+    assert!(a2.client.conversations().unwrap().is_empty());
+    assert!(media_files(&a2).is_empty());
+}
+
+#[test]
+fn a_history_since_a_time_leaves_older_messages_out() {
+    let relay = Relay::new();
+    let (mut a1, _b1, mut a2, conversation, _) = a_history(&relay);
+    let key = history_key().unwrap();
+    let blob = a1.dir.path().join("history");
+    let tomorrow = items(&mut a1, &conversation).pop().unwrap().ts + 86_400_000;
+    a1.client
+        .export_history(Some(tomorrow), &key.public, &blob)
+        .unwrap();
+    let imported = a2.client.import_history(&blob, &key.private).unwrap();
+    assert_eq!((imported.conversations, imported.items), (1, 0));
+    assert!(items(&mut a2, &conversation).is_empty());
+}
+
+#[test]
+fn an_imported_conversation_survives_a_refused_join_and_a_removal_stays() {
+    let relay = Relay::new();
+    let (mut a1, mut b1, mut a2, talk, _) = a_history(&relay);
+    let mut c1 = Phone::new(&relay, "c", "c1");
+    let gone = conversation(&mut a1, &mut c1);
+    // As a commit removing this account leaves it.
+    let group = spjall_client::api::group_id(&gone).unwrap();
+    let mut store = spjall_store::Store::open(a1.dir.path(), &KEY).unwrap();
+    store
+        .write(|tx| {
+            tx.execute(
+                "UPDATE conversations SET state = 'removed' WHERE group_id = ?1",
+                [&group],
+            )
+        })
+        .unwrap();
+    drop(store);
+    let key = history_key().unwrap();
+    let blob = a1.dir.path().join("history");
+    a1.client.export_history(None, &key.public, &blob).unwrap();
+    a2.client.import_history(&blob, &key.private).unwrap();
+
+    relay.refuse_sends("a2", 1);
+    a2.sync();
+    let state = |a2: &mut Phone, id: &str| {
+        a2.client
+            .conversations()
+            .unwrap()
+            .into_iter()
+            .find(|c| c.id == id)
+            .map(|c| c.state)
+    };
+    assert_eq!(state(&mut a2, &talk), Some(State::Stale));
+    assert_eq!(timeline_texts(&mut a2, &talk), ["fyrir", "svar"]);
+    assert_eq!(state(&mut a2, &gone), Some(State::Removed));
+
+    let mut store = spjall_store::Store::open(a2.dir.path(), &KEY).unwrap();
+    store
+        .write(|tx| {
+            tx.execute(
+                "UPDATE conversations SET join_refused_at = join_refused_at - 3600000",
+                [],
+            )
+        })
+        .unwrap();
+    drop(store);
+    assert_eq!(joined(&a2.sync()), vec![talk.clone()]);
+    b1.deliver();
+    b1.send(&talk, "aftur");
+    b1.sync();
+    assert_eq!(texts(&a2.deliver()), strings(&["aftur"]));
 }

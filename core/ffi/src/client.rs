@@ -5,7 +5,7 @@
 use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use spjall_client::{self as core, ClientError, MediaError, api};
+use spjall_client::{self as core, ClientError, HistoryError, MediaError, api};
 
 use crate::{Body, CoreError, Envelope, store_code};
 
@@ -193,6 +193,11 @@ impl From<ClientError> for CoreError {
             ClientError::Media(MediaError::File(error)) => Self::File {
                 detail: format!("{:?}", error.kind()),
             },
+            ClientError::History(HistoryError::TooLarge) => Self::TooLarge,
+            ClientError::History(HistoryError::Tampered) => Self::Tampered,
+            ClientError::History(HistoryError::File(error)) => Self::File {
+                detail: format!("{:?}", error.kind()),
+            },
             ClientError::CannotForward(reason) => Self::CannotForward {
                 reason: reason.into(),
             },
@@ -312,6 +317,48 @@ pub struct Inviter {
 
 /// The invite token in a link from the link host or the app's scheme, or
 /// none for any other URL.
+/// A one-time key pair for receiving a history (0064): the public half
+/// goes in the link QR, the private half never leaves the new device.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct HistoryKey {
+    pub private: Vec<u8>,
+    pub public: Vec<u8>,
+}
+
+/// The private half stays out of logs.
+impl std::fmt::Debug for HistoryKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HistoryKey").finish_non_exhaustive()
+    }
+}
+
+#[uniffi::export]
+pub fn history_key() -> Result<HistoryKey, CoreError> {
+    let key = core::history_key().map_err(ClientError::from)?;
+    Ok(HistoryKey {
+        private: key.private,
+        public: key.public,
+    })
+}
+
+/// What an import added.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ImportedHistory {
+    pub conversations: u32,
+    pub items: u32,
+    pub files: u32,
+}
+
+impl From<core::Imported> for ImportedHistory {
+    fn from(imported: core::Imported) -> Self {
+        Self {
+            conversations: imported.conversations,
+            items: imported.items,
+            files: imported.files,
+        }
+    }
+}
+
 #[uniffi::export]
 pub fn invite_token(link: String) -> Option<String> {
     core::invite_token(&link)
@@ -988,6 +1035,37 @@ impl CoreClient {
     /// session again. It ends as `complete_sign_in` does.
     pub fn complete_link(&self, callback: String) -> Result<bool, CoreError> {
         Ok(self.client()?.complete_link(&callback)?.moved)
+    }
+
+    /// Seals this device's history since `since` (ms; none for all of it)
+    /// to a linked device's one-time public key, into the file at `to`
+    /// (0064). Media go newest first while the whole stays under 1 GiB;
+    /// the rest travel as references. Returns the file's size; over the
+    /// cap with the messages alone is `TooLarge`.
+    pub fn export_history(
+        &self,
+        since: Option<u64>,
+        recipient: Vec<u8>,
+        to: String,
+    ) -> Result<u64, CoreError> {
+        Ok(self
+            .client()?
+            .export_history(since, &recipient, Path::new(&to))?)
+    }
+
+    /// Opens a history sealed to `private` and adds it to this store: the
+    /// conversations show their messages before this device joins them.
+    /// All or nothing; a file that is not whole is `Tampered`, and the
+    /// same file twice adds nothing the second time.
+    pub fn import_history(
+        &self,
+        from: String,
+        private: Vec<u8>,
+    ) -> Result<ImportedHistory, CoreError> {
+        Ok(self
+            .client()?
+            .import_history(Path::new(&from), &private)?
+            .into())
     }
 
     /// The account and device this store is signed in as, if it is. Read

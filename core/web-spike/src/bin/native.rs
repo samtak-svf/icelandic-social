@@ -5,6 +5,7 @@
 //!   native invite <dir> <key-package-file> <welcome-out>
 //!   native receive <dir> <message-file>          prints "<sender>\t<text>"
 //!   native send <dir> <text> <message-out>
+//!   native history <dir> <public-key-file> <history-out>
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> Result<(), spjall_web_spike::Error> {
@@ -24,6 +25,14 @@ fn main() -> Result<(), spjall_web_spike::Error> {
 
     let args: Vec<String> = std::env::args().collect();
     let dir = Path::new(&args[2]);
+    if args[1] == "history" {
+        for store in ["alice", "bob"] {
+            fs::create_dir_all(dir.join(store))?;
+        }
+        let sealed = spjall_web_spike::export_history(dir, &fs::read(&args[3])?)?;
+        fs::write(&args[4], sealed)?;
+        return Ok(());
+    }
     let state = dir.join("state");
     let mut peer = if args[1] == "invite" {
         Peer::create(dir, "a", "d1")?

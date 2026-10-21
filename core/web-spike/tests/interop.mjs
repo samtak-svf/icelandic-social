@@ -4,7 +4,9 @@
 // - with sqlite3mc, spjall-mls compiled to wasm32 joins a group a native
 //   spjall-mls made, an envelope crosses both ways, and spjall-client runs its
 //   worker suite over MemBlobs and Store::shared_reader (0056, 0064, #298) in
-//   a dedicated Worker thread.
+//   a dedicated Worker thread;
+// - a history the native spjall-client sealed to a one-time key opens in
+//   the browser's spjall-client, its photo included (0064, #300).
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -66,6 +68,16 @@ await new Promise((resolveWorker, rejectWorker) => {
   );
 });
 console.log("client worker suite in Worker thread (sqlite3mc + MemBlobs + shared_reader): ok");
+
+const key = spike.historyKey();
+writeFileSync(file("history-key"), key.slice(32));
+run("history", file("history-key"), file("history"));
+const sealed = readFileSync(file("history"));
+assert.equal(sealed.subarray(0, 4).toString(), "SPJH");
+assert.equal(sealed.includes("Saga úr Rust"), false);
+assert.deepEqual(spike.importHistory(sealed, key.slice(0, 32)), ["Saga úr Rust"]);
+assert.throws(() => spike.importHistory(sealed, spike.historyKey().slice(0, 32)));
+console.log("browser opened a native history, photo included (0064): ok");
 console.log("interop: ok");
 
 // What spjall-client needs from std, last: a trap leaves the module unusable.

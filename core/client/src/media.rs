@@ -9,7 +9,7 @@
 //! disappearing purge or a delete for everyone.
 
 use std::collections::HashSet;
-use std::io::{self, Read, Write};
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
 use aes_gcm::aead::{AeadInOut, KeyInit};
@@ -61,31 +61,192 @@ fn fill(reader: &mut impl Read, buf: &mut [u8]) -> io::Result<usize> {
     Ok(n)
 }
 
-/// Hands `each` the reader's chunks of `size` bytes in order, with their
-/// number and whether each is the last. An empty reader is one empty chunk.
-fn chunks(
-    mut reader: impl Read,
-    size: usize,
-    mut each: impl FnMut(&mut [u8], u64, bool) -> Result<(), MediaError>,
-) -> Result<(), MediaError> {
-    let mut current = vec![0; size];
-    let mut next = vec![0; size];
-    let mut len = fill(&mut reader, &mut current)?;
-    let mut index = 0;
-    loop {
-        let next_len = if len == size {
-            fill(&mut reader, &mut next)?
+/// A reader's chunks of one size in order, each with its number and
+/// whether it is the last. An empty reader is one empty chunk.
+struct Chunks<R> {
+    reader: R,
+    current: Vec<u8>,
+    next: Vec<u8>,
+    /// How much of `next` was read ahead; `None` before the first chunk.
+    ahead: Option<usize>,
+    index: u64,
+    done: bool,
+}
+
+impl<R: Read> Chunks<R> {
+    fn new(reader: R, size: usize) -> Self {
+        Self {
+            reader,
+            current: vec![0; size],
+            next: vec![0; size],
+            ahead: None,
+            index: 0,
+            done: false,
+        }
+    }
+
+    fn advance(&mut self) -> io::Result<Option<(&mut [u8], u64, bool)>> {
+        if self.done {
+            return Ok(None);
+        }
+        let len = match self.ahead {
+            None => fill(&mut self.reader, &mut self.current)?,
+            Some(len) => {
+                std::mem::swap(&mut self.current, &mut self.next);
+                len
+            }
+        };
+        let next_len = if len == self.current.len() {
+            fill(&mut self.reader, &mut self.next)?
         } else {
             0
         };
         let last = next_len == 0;
-        each(&mut current[..len], index, last)?;
-        if last {
-            return Ok(());
+        self.done = last;
+        self.ahead = Some(next_len);
+        let index = self.index;
+        self.index += 1;
+        Ok(Some((&mut self.current[..len], index, last)))
+    }
+}
+
+/// A `MediaError` carried through `Read`, and taken out again.
+fn carried(error: MediaError) -> io::Error {
+    io::Error::other(error)
+}
+
+pub(crate) fn uncarried(error: io::Error) -> MediaError {
+    if error
+        .get_ref()
+        .is_some_and(|inner| inner.is::<MediaError>())
+    {
+        *error
+            .into_inner()
+            .and_then(|inner| inner.downcast().ok())
+            .expect("checked above")
+    } else {
+        MediaError::File(error)
+    }
+}
+
+/// The sealed form of what `inner` reads: each segment of plaintext and
+/// its tag. Reading past `cap` plaintext bytes fails with `TooLarge`.
+pub(crate) struct Sealer<R> {
+    chunks: Chunks<R>,
+    cipher: Aes256Gcm,
+    cap: u64,
+    size: u64,
+    hash: Sha256,
+    out: Vec<u8>,
+    at: usize,
+}
+
+impl<R: Read> Sealer<R> {
+    pub(crate) fn new(inner: R, key: &[u8; 32], cap: u64) -> Self {
+        Self {
+            chunks: Chunks::new(inner, SEGMENT),
+            cipher: Aes256Gcm::new(key.into()),
+            cap,
+            size: 0,
+            hash: Sha256::new(),
+            out: Vec::with_capacity(SEGMENT + TAG),
+            at: 0,
         }
-        std::mem::swap(&mut current, &mut next);
-        len = next_len;
-        index += 1;
+    }
+
+    /// The plaintext size and the hex SHA-256 of what was read.
+    pub(crate) fn finish(self) -> (u64, String) {
+        (self.size, hex(&self.hash.finalize()))
+    }
+}
+
+impl<R: Read> Read for Sealer<R> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        while self.at == self.out.len() {
+            let Some((segment, index, last)) = self.chunks.advance()? else {
+                return Ok(0);
+            };
+            self.size += segment.len() as u64;
+            if self.size > self.cap {
+                return Err(carried(MediaError::TooLarge));
+            }
+            let tag = self
+                .cipher
+                .encrypt_inout_detached(&nonce(index, last), b"", (&mut *segment).into())
+                .expect("a segment is far below the AES-GCM limit");
+            self.out.clear();
+            self.out.extend_from_slice(segment);
+            self.out.extend_from_slice(&tag);
+            self.hash.update(&self.out);
+            self.at = 0;
+        }
+        let n = buf.len().min(self.out.len() - self.at);
+        buf[..n].copy_from_slice(&self.out[self.at..self.at + n]);
+        self.at += n;
+        Ok(n)
+    }
+}
+
+/// The plaintext of what `inner` reads, each segment checked before any of
+/// it is given out. A segment that does not open fails with `Tampered`,
+/// reading past `cap` plaintext bytes with `TooLarge`. Only a read that
+/// ends (`Ok(0)`) has checked the last segment.
+pub(crate) struct Opener<R> {
+    chunks: Chunks<R>,
+    cipher: Aes256Gcm,
+    cap: u64,
+    size: u64,
+    hash: Sha256,
+    out: Vec<u8>,
+    at: usize,
+}
+
+impl<R: Read> Opener<R> {
+    pub(crate) fn new(inner: R, key: &[u8; 32], cap: u64) -> Self {
+        Self {
+            chunks: Chunks::new(inner, SEGMENT + TAG),
+            cipher: Aes256Gcm::new(key.into()),
+            cap,
+            size: 0,
+            hash: Sha256::new(),
+            out: Vec::with_capacity(SEGMENT),
+            at: 0,
+        }
+    }
+
+    /// The hex SHA-256 of the sealed bytes read.
+    pub(crate) fn sha256(self) -> String {
+        hex(&self.hash.finalize())
+    }
+}
+
+impl<R: Read> Read for Opener<R> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        while self.at == self.out.len() {
+            let Some((segment, index, last)) = self.chunks.advance()? else {
+                return Ok(0);
+            };
+            self.hash.update(&*segment);
+            let Some(split) = segment.len().checked_sub(TAG) else {
+                return Err(carried(MediaError::Tampered));
+            };
+            let (plain, tag) = segment.split_at_mut(split);
+            self.size += plain.len() as u64;
+            if self.size > self.cap {
+                return Err(carried(MediaError::TooLarge));
+            }
+            let tag = Tag::try_from(&*tag).map_err(|_| carried(MediaError::Tampered))?;
+            self.cipher
+                .decrypt_inout_detached(&nonce(index, last), b"", (&mut *plain).into(), &tag)
+                .map_err(|_| carried(MediaError::Tampered))?;
+            self.out.clear();
+            self.out.extend_from_slice(plain);
+            self.at = 0;
+        }
+        let n = buf.len().min(self.out.len() - self.at);
+        buf[..n].copy_from_slice(&self.out[self.at..self.at + n]);
+        self.at += n;
+        Ok(n)
     }
 }
 
@@ -100,27 +261,11 @@ pub(crate) fn seal(
     if blobs.len(from)? > MAX_SIZE {
         return Err(MediaError::TooLarge);
     }
-    let input = blobs.open_read(from)?;
-    let cipher = Aes256Gcm::new(key.into());
+    let mut sealer = Sealer::new(blobs.open_read(from)?, key, MAX_SIZE);
     let mut out = blobs.create_write(to)?;
-    let mut hash = Sha256::new();
-    let mut size = 0u64;
-    chunks(input, SEGMENT, |segment, index, last| {
-        size += segment.len() as u64;
-        if size > MAX_SIZE {
-            return Err(MediaError::TooLarge);
-        }
-        let tag = cipher
-            .encrypt_inout_detached(&nonce(index, last), b"", (&mut *segment).into())
-            .expect("a segment is far below the AES-GCM limit");
-        for part in [&*segment, tag.as_slice()] {
-            hash.update(part);
-            out.write_all(part)?;
-        }
-        Ok(())
-    })?;
+    io::copy(&mut sealer, &mut out).map_err(uncarried)?;
     out.finish()?;
-    Ok((size, hex(&hash.finalize())))
+    Ok(sealer.finish())
 }
 
 /// Opens the blob at `from` into `to`, checking each segment and the
@@ -133,32 +278,10 @@ pub(crate) fn open(
     sha256: &str,
 ) -> Result<(), MediaError> {
     let key: &[u8; 32] = key.try_into().map_err(|_| MediaError::Tampered)?;
-    let cipher = Aes256Gcm::new(key.into());
+    let mut opener = Opener::new(blobs.open_read(from)?, key, MAX_SIZE);
     let mut out = blobs.create_write(to)?;
-    let mut hash = Sha256::new();
-    let mut size = 0u64;
-    chunks(
-        blobs.open_read(from)?,
-        SEGMENT + TAG,
-        |segment, index, last| {
-            hash.update(&*segment);
-            let Some(split) = segment.len().checked_sub(TAG) else {
-                return Err(MediaError::Tampered);
-            };
-            let (plain, tag) = segment.split_at_mut(split);
-            size += plain.len() as u64;
-            if size > MAX_SIZE {
-                return Err(MediaError::TooLarge);
-            }
-            let tag = Tag::try_from(&*tag).map_err(|_| MediaError::Tampered)?;
-            cipher
-                .decrypt_inout_detached(&nonce(index, last), b"", (&mut *plain).into(), &tag)
-                .map_err(|_| MediaError::Tampered)?;
-            out.write_all(plain)?;
-            Ok(())
-        },
-    )?;
-    if hex(&hash.finalize()) != sha256.to_ascii_lowercase() {
+    io::copy(&mut opener, &mut out).map_err(uncarried)?;
+    if opener.sha256() != sha256.to_ascii_lowercase() {
         return Err(MediaError::Tampered);
     }
     out.finish()?;
@@ -177,7 +300,7 @@ fn object_id() -> String {
 }
 
 /// An id another member chose is checked before it names a file.
-fn is_object(id: &str) -> bool {
+pub(crate) fn is_object(id: &str) -> bool {
     id.len() == 22
         && id
             .bytes()
@@ -186,7 +309,7 @@ fn is_object(id: &str) -> bool {
 
 /// The name a file is kept under: its object id, with an extension the
 /// apps' viewers know it by. The extension comes from this list only.
-fn file_name(object: &str, mime: &str) -> String {
+pub(crate) fn file_name(object: &str, mime: &str) -> String {
     let extension = match mime.to_ascii_lowercase().as_str() {
         "image/jpeg" => "jpg",
         "image/png" => "png",
