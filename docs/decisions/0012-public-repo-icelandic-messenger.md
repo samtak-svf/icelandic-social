@@ -1,6 +1,6 @@
 # 0012. The code is public in a new repo, samtak-svf/icelandic-messenger
 
-- Status: accepted
+- Status: accepted; amended by 0075 (the repo is now samtak-svf/icelandic-social)
 - Date: 2026-10-05
 - Decided by: Guðröður
 

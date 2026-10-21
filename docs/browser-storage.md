@@ -1,7 +1,7 @@
 # Browser storage: sqlite3mc in OPFS against encrypted IndexedDB
 
-The measurement asked for by [#297](https://github.com/samtak-svf/icelandic-messenger/issues/297),
-for the store decision in [#271](https://github.com/samtak-svf/icelandic-messenger/issues/271).
+The measurement asked for by [#39](https://github.com/samtak-svf/icelandic-social/issues/39),
+for the store decision in [#13](https://github.com/samtak-svf/icelandic-social/issues/13).
 It follows point 2 of [the web client feasibility note](web-client-feasibility.md).
 
 ## Question
