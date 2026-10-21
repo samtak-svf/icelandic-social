@@ -69,12 +69,8 @@ export const SECRETS = [
   // The maintainer's bearer token for /ops (decision 0068). Unset, the routes
   // answer 404; shorter than 32 characters, they do too.
   { name: "OPS_TOKEN", vault: "ops-token", when: "now" },
-  {
-    name: "ANTHROPIC_API_KEY",
-    vault: "anthropic-api-key",
-    when: "later",
-    reason: "the testers' assistant's key, set once the maintainer stores it (decision 0076)",
-  },
+  // The testers' assistant's model key (decision 0076).
+  { name: "ANTHROPIC_API_KEY", vault: "anthropic-api-key", when: "now" },
 ];
 
 /**

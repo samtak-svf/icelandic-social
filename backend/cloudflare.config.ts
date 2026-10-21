@@ -101,7 +101,9 @@ export default defineConfig(({ mode }) => ({
       ASSISTANT_MONTHLY_CAP_USD: bindings.text("10"),
       // The open Google Group linked to the internal track, which Android
       // testers join themselves; empty, they give their address instead.
-      ASSISTANT_ANDROID_GROUP_URL: bindings.text(""),
+      ASSISTANT_ANDROID_GROUP_URL: bindings.text(
+        mode === "interop" ? "" : "https://groups.google.com/g/samtak-spjall-profarar",
+      ),
       // Migrations are backend/migrations/, applied by
       // `cf d1 migrations apply <id> --dir migrations` (scripts/d1.ts).
       DB: bindings.d1({ name: "spjall-db", id: "7d38bae5-7ee1-4ff4-af95-49a1afbbdbbb" }),
