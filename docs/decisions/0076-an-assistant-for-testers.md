@@ -12,17 +12,18 @@ The product has testers, not users, and every tester is recruited through one co
 An automated account answers there, and code with no model in it puts testers on the lists.
 
 - **One community, named by a var.** `ASSISTANT_COMMUNITY_ID` names the community the assistant
-  answers in. It is a var, not a frozen id. A comment anywhere else reaches no model, and an
+  answers in. It is a var, not a frozen id. A post or comment anywhere else reaches no model, and an
   empty var turns the assistant off.
 - **An account of its own kind.** `accounts.kind` is `person` or `assistant`, and at most one
   account is the assistant (a partial unique index). It holds no identity, so no sign-in reaches
   it, and the sweep of accounts without one (`orphans`) skips it. `POST /ops/assistant/account`
   creates it once and makes it a member of the community. Its display name says it is automated.
-- **The model answers; it does not decide.** A comment wakes a job (`assistant`, keyed by the
-  comment id, decision 0067). The job finds an address in the comment with a parser, and the
+- **The model answers; it does not decide.** A comment, or a post by a member who is not one of
+  the community's moderators (theirs are announcements), wakes a job (`assistant`, keyed by its
+  id, decision 0067). The job finds an address in it with a parser, and the
   parser alone queues it in `tester_requests`. The model is then given the thread with every
   address masked and may answer once, or reply `ÞÖGN` to stay silent. It has no tools: nothing it
-  writes adds, removes or reaches anyone. Each answered comment is recorded in
+  writes adds, removes or reaches anyone. Each answered post or comment is recorded in
   `assistant_answers` in the batch that posts the answer, so a job run twice answers once. The
   assistant's own comments wake no job.
 - **The model is Claude Sonnet, within a monthly cap.** The Worker calls the Claude API with

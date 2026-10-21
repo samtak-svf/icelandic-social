@@ -1,15 +1,11 @@
 import { assistantCommunity } from "../../env/index.ts";
 import { job } from "./queue.ts";
 
-// The job that has the testers' assistant read a comment (decision 0076).
-// The route that writes a comment writes it; the assistant module runs it.
+// The job that has the testers' assistant read a post or a comment (decision
+// 0076). The route that writes it writes the job; the assistant module runs it.
 
-/** The job of a comment in the assistant's community, keyed by the comment: none elsewhere. */
-export function askAssistant(
-  env: Env,
-  communityId: string,
-  commentId: string,
-): D1PreparedStatement[] {
+/** The job of a post or comment in the assistant's community, keyed by its id: none elsewhere. */
+export function askAssistant(env: Env, communityId: string, saidId: string): D1PreparedStatement[] {
   if (communityId !== assistantCommunity(env)) return [];
-  return [job(env, { kind: "assistant", key: `assistant:${commentId}`, payload: { commentId } })];
+  return [job(env, { kind: "assistant", key: `assistant:${saidId}`, payload: { saidId } })];
 }

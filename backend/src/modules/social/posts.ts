@@ -27,6 +27,9 @@ const hex = (n: number) =>
 const newPostId = () => `p_${hex(16)}`;
 const newCommentId = (postId: string) => `${postId}-${hex(8)}`;
 
+/** The post a post id or a comment id names. */
+export const postOf = (id: string) => id.split("-")[0]!;
+
 /** The names and marks of `ids`; an account deleted since is left out. */
 export async function authors(env: Env, ids: string[]): Promise<Map<string, Author>> {
   const unique = [...new Set(ids)];
@@ -188,6 +191,7 @@ export async function createPost(
   communityId: string,
   author: string,
   input: { body: string; media: string[] },
+  also: (postId: string) => D1PreparedStatement[] = () => [],
 ): Promise<PostContent | "invalid_media"> {
   const media = await unattached(env, communityId, author, input.media);
   if (!media) return "invalid_media";
@@ -208,6 +212,7 @@ export async function createPost(
     db(env)
       .prepare("INSERT OR IGNORE INTO space_authors (community_id, account_id) VALUES (?, ?)")
       .bind(communityId, author),
+    ...also(postId),
   ]);
   const content = { postId, author, body: input.body, media, createdAt };
   await space(env, communityId).createPost(content);
@@ -274,25 +279,38 @@ export async function writeComment(
   return comment ? { comment, post } : null;
 }
 
+/** What someone said in a space: a post, or a comment on one. */
+export type Said = { id: string; author: string; body: string; visible: boolean };
+
 /**
- * A comment with its post and the post's first comments, as `reader` sees
- * them: what the testers' assistant answers (decision 0076). Null when the
- * comment or its post is gone.
+ * A post or a comment, with the post and its first comments, as `reader` sees
+ * them: what the testers' assistant answers (decision 0076). Null when it or
+ * its post is gone.
  */
-export async function commentThread(
+export async function thread(
   env: Env,
   communityId: string,
-  commentId: string,
+  saidId: string,
   reader: string,
-): Promise<{ comment: CommentContent; post: PostContent; comments: CommentContent[] } | null> {
+): Promise<{ said: Said; post: PostContent; comments: CommentContent[] } | null> {
   const stub = space(env, communityId);
-  const comment = await stub.comment(commentId);
-  if (!comment) return null;
+  const postId = postOf(saidId);
   const viewer: Viewer = { account: reader, hidden: [], moderator: false };
-  const [post] = await stub.posts([comment.postId], viewer);
+  const [post] = await stub.posts([postId], viewer);
   if (!post) return null;
-  const comments = await stub.comments(comment.postId, viewer, null, THREAD_LIMIT);
-  return { comment, post, comments };
+  const comment = saidId === postId ? null : await stub.comment(saidId);
+  const said: Said | null =
+    saidId === postId
+      ? { id: postId, author: post.author, body: post.body, visible: true }
+      : comment && {
+          id: comment.commentId,
+          author: comment.author,
+          body: comment.body,
+          visible: comment.state === "visible",
+        };
+  if (!said) return null;
+  const comments = await stub.comments(postId, viewer, null, THREAD_LIMIT);
+  return { said, post, comments };
 }
 
 /** The most comments of a post the assistant reads before answering. */

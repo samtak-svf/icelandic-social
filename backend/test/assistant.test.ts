@@ -161,6 +161,35 @@ describe("the assistant", () => {
     ).toBe(404);
   });
 
+  it("answers a tester's own post under it, and the queue replies there", async () => {
+    const { tester, communityId, on, assistant } = await scene();
+    const address = `prufa.${crypto.randomUUID().slice(0, 8)}@example.com`;
+    const { postId } = await ok<{ postId: string }>(
+      await as(tester, on, "POST", `/v1/communities/${communityId}/posts`, {
+        body: `Ég vil prófa á iPhone: ${address}`,
+        media: [],
+      }),
+    );
+    const { model, seen } = fakeModel();
+    await run(on, model);
+
+    const [request] = await pending(on);
+    expect(request).toMatchObject({ platform: "ios", address });
+    // The owner's post in the scene woke nothing: only the tester's was read.
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toContain("The post, by tester 1 [ANSWER THIS ONE]");
+    expect(seen[0]).not.toContain(address);
+    let thread = await comments(tester, on, postId);
+    expect(thread.map((c) => c.author.accountId)).toEqual([assistant]);
+
+    await call(on, "POST", `/ops/testers/${request!.requestId}`, { outcome: "done" });
+    thread = await comments(tester, on, postId);
+    expect(thread.at(-1)).toMatchObject({
+      body: brandStrings.assistant_added_ios,
+      author: { accountId: assistant },
+    });
+  });
+
   it("answers no comment of its own, and none outside its community", async () => {
     const { owner, tester, on, postId } = await scene();
     const elsewhere = await community(owner, "open", tester);

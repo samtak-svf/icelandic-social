@@ -64,7 +64,10 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     if (refused) return fail(c, 403, refused);
     const input = c.req.valid("json");
     if (input.body === "" && input.media.length === 0) return fail(c, 400, "invalid_request");
-    const created = await createPost(c.env, communityId, accountId, input);
+    // A moderator's post is an announcement: only a member's wakes the assistant.
+    const created = await createPost(c.env, communityId, accountId, input, (postId) =>
+      access.moderator ? [] : askAssistant(c.env, communityId, postId),
+    );
     if (created === "invalid_media") return fail(c, 400, "invalid_media");
     const author = (await authors(c.env, [accountId])).get(accountId);
     if (!author) return fail(c, 404, "not_found");

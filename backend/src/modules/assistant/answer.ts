@@ -2,16 +2,16 @@ import { brandStrings } from "../../brand.gen.ts";
 import { androidTesterGroup, assistantCommunity, assistantModel, db } from "../../env/index.ts";
 import { assistantAccount } from "../../identity/index.ts";
 import { log } from "../../log.ts";
-import { commentThread, writeComment } from "../social/index.ts";
+import { type Said, thread, writeComment } from "../social/index.ts";
 import { maskAddresses, parseAddress, platformOf } from "./address.ts";
 import type { Model } from "./model.ts";
 import { recordCall, recordRefusal, usage } from "./usage.ts";
 
-// The assistant job's handler (decision 0076): a comment in the assistant's
-// community queues the address it gives, then the model may answer it. The
-// queueing is the parser's alone, so what the model writes adds no one.
-// An answered comment is recorded with the answer, so a job run twice posts
-// one answer.
+// The assistant job's handler (decision 0076): a post or comment in the
+// assistant's community queues the address it gives, then the model may answer
+// it. The queueing is the parser's alone, so what the model writes adds no
+// one. An answered post or comment is recorded with the answer, so a job run
+// twice posts one answer.
 
 /** What an address is replaced with before a thread reaches the model. */
 const MASK = "[netfang]";
@@ -20,7 +20,7 @@ const MASK = "[netfang]";
 async function queue(
   env: Env,
   accountId: string,
-  commentId: string,
+  saidId: string,
   text: string,
   platform: "ios" | "android",
 ): Promise<boolean> {
@@ -32,7 +32,7 @@ async function queue(
       `INSERT INTO tester_requests (request_id, platform, address, account_id, comment_id, created_at)
        VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
     )
-    .bind(`tr_${crypto.randomUUID()}`, platform, address, accountId, commentId, Date.now())
+    .bind(`tr_${crypto.randomUUID()}`, platform, address, accountId, saidId, Date.now())
     .run();
   return true;
 }
@@ -49,22 +49,23 @@ function systemPrompt(env: Env): string {
 /** The handler of the assistant job, answering with `model`. */
 export function answerHandler(model: Model) {
   return async (env: Env, _key: string, payload: Record<string, unknown>): Promise<void> => {
-    const commentId = String(payload.commentId);
+    // A job queued before posts woke the assistant names a comment.
+    const saidId = String(payload.saidId ?? payload.commentId);
     const communityId = assistantCommunity(env);
     const assistant = await assistantAccount(env);
     if (!communityId || !assistant) return;
-    const thread = await commentThread(env, communityId, commentId, assistant);
-    if (!thread) return;
-    const { comment, post, comments } = thread;
-    if (comment.author === assistant || comment.state !== "visible") return;
+    const found = await thread(env, communityId, saidId, assistant);
+    if (!found) return;
+    const { said, post, comments } = found;
+    if (said.author === assistant || !said.visible) return;
 
-    const own = comments.filter((c) => c.author === comment.author).map((c) => c.body);
-    const platform = platformOf([...own, comment.body]);
-    const queued = await queue(env, comment.author, commentId, comment.body, platform);
+    const own = comments.filter((c) => c.author === said.author).map((c) => c.body);
+    const platform = platformOf([...own, said.body]);
+    const queued = await queue(env, said.author, saidId, said.body, platform);
 
     const answered = await db(env)
       .prepare("SELECT 1 FROM assistant_answers WHERE comment_id = ?")
-      .bind(commentId)
+      .bind(saidId)
       .first();
     if (answered) return;
     const key = assistantModel(env);
@@ -79,7 +80,7 @@ export function answerHandler(model: Model) {
     const answer = await model(
       key.apiKey,
       systemPrompt(env),
-      describe(post.body, comments, comment, assistant, queued),
+      describe(post, comments, said, assistant, queued),
     );
     await recordCall(env, answer.inputTokens, answer.outputTokens);
     const text = answer.text;
@@ -92,7 +93,7 @@ export function answerHandler(model: Model) {
         .prepare(
           "INSERT INTO assistant_answers (comment_id, created_at) VALUES (?, ?) ON CONFLICT DO NOTHING",
         )
-        .bind(commentId, Date.now()),
+        .bind(saidId, Date.now()),
     ]);
     log("assistant.answered", {
       communityId,
@@ -102,12 +103,12 @@ export function answerHandler(model: Model) {
   };
 }
 
-type Said = { commentId: string; author: string; body: string };
+type Written = { author: string; body: string };
 
 /** The thread as the model reads it: no names and no addresses, only who is who. */
 function describe(
-  postBody: string,
-  comments: Said[],
+  post: Written & { postId: string },
+  comments: (Written & { commentId: string })[],
   answering: Said,
   assistant: string,
   queued: boolean,
@@ -118,12 +119,21 @@ function describe(
     if (!testers.has(author)) testers.set(author, testers.size + 1);
     return `tester ${testers.get(author)}`;
   };
-  const lines = [`The post:\n${maskAddresses(postBody, MASK)}`, "", "Its comments, oldest first:"];
+  // The post's author is named only when the post is what the model answers.
+  const heading =
+    post.postId === answering.id
+      ? `The post, by ${who(post.author)} [ANSWER THIS ONE]`
+      : "The post";
+  const lines = [
+    `${heading}:\n${maskAddresses(post.body, MASK)}`,
+    "",
+    "Its comments, oldest first:",
+  ];
   for (const c of comments) {
-    const mark = c.commentId === answering.commentId ? " [ANSWER THIS ONE]" : "";
+    const mark = c.commentId === answering.id ? " [ANSWER THIS ONE]" : "";
     lines.push(`- ${who(c.author)}${mark}: ${maskAddresses(c.body, MASK)}`);
   }
-  if (!comments.some((c) => c.commentId === answering.commentId)) {
+  if (post.postId !== answering.id && !comments.some((c) => c.commentId === answering.id)) {
     lines.push(
       `- ${who(answering.author)} [ANSWER THIS ONE]: ${maskAddresses(answering.body, MASK)}`,
     );
@@ -131,8 +141,8 @@ function describe(
   lines.push(
     "",
     queued
-      ? "An address was found in the comment to answer and has been queued."
-      : "No address was found in the comment to answer.",
+      ? "An address was found in what you answer and has been queued."
+      : "No address was found in what you answer.",
   );
   return lines.join("\n");
 }
