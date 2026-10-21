@@ -3164,6 +3164,121 @@ fn a_linked_device_starts_with_its_siblings_history() {
     );
 }
 
+/// Whether the server refused the call with `status`.
+fn refused(error: Option<ClientError>, status: u16) -> bool {
+    matches!(error, Some(ClientError::Transport(ApiError::Refused { status: s, .. })) if s == status)
+}
+
+/// A device's working files for a history, none of which may outlast a call.
+fn history_files(phone: &Phone) -> Vec<std::path::PathBuf> {
+    let media = phone.dir.path().join("media");
+    ["out/history", "out/history.part", "in/history"]
+        .iter()
+        .map(|p| media.join(p))
+        .filter(|p| p.exists())
+        .collect()
+}
+
+#[test]
+fn a_history_travels_through_the_server_in_parts() {
+    let relay = Relay::new();
+    let (mut a1, _b1, mut a2, conversation, bytes) = a_history(&relay);
+    relay.approve_link("lnk_1", "a1", "a2");
+    // Small parts, so this history spans several and ends on a short one.
+    relay.set_history_part(64 * 1024);
+    let key = history_key().unwrap();
+
+    let size = a1.client.send_history("lnk_1", None, &key.public).unwrap();
+    let stored = relay.history("lnk_1").unwrap();
+    assert_eq!(stored.len() as u64, size);
+    assert_eq!(&stored[..4], b"SPJH");
+    assert!(!stored.windows(5).any(|w| w == b"fyrir"));
+    let parts = relay
+        .requests("a1")
+        .iter()
+        .filter(|r| r.path.contains("/history/parts/"))
+        .count() as u64;
+    assert_eq!(parts, size.div_ceil(64 * 1024));
+    assert!(parts > 1 && size % (64 * 1024) != 0);
+    assert!(history_files(&a1).is_empty());
+
+    let imported = a2.client.receive_history("lnk_1", &key.private).unwrap();
+    assert_eq!((imported.conversations, imported.files), (1, 1));
+    assert_eq!(timeline_texts(&mut a2, &conversation), ["fyrir", "svar"]);
+    let photo = items(&mut a2, &conversation).pop().unwrap();
+    let file = a2.client.media(&conversation, photo.seq.unwrap()).unwrap();
+    assert_eq!(std::fs::read(file).unwrap(), bytes);
+    // Deleted from the server once it is in the store.
+    assert!(!relay.holds_history("lnk_1"));
+    assert!(history_files(&a2).is_empty());
+}
+
+#[test]
+fn a_history_goes_only_from_the_approver_to_the_linked_device() {
+    let relay = Relay::new();
+    let (mut a1, mut b1, mut a2, _conversation, _) = a_history(&relay);
+    relay.approve_link("lnk_1", "a1", "a2");
+    let key = history_key().unwrap();
+
+    // Not the phone that approved it.
+    assert!(refused(
+        b1.client.send_history("lnk_1", None, &key.public).err(),
+        403
+    ));
+    assert!(history_files(&b1).is_empty());
+    // Nothing to receive yet.
+    assert!(refused(
+        a2.client.receive_history("lnk_1", &key.private).err(),
+        404
+    ));
+
+    a1.client.send_history("lnk_1", None, &key.public).unwrap();
+    // Once per link.
+    assert!(refused(
+        a1.client.send_history("lnk_1", None, &key.public).err(),
+        409
+    ));
+    // Only the device the link made downloads it.
+    assert!(refused(
+        b1.client.receive_history("lnk_1", &key.private).err(),
+        403
+    ));
+
+    // A history that does not open stays on the server, and the right key
+    // still opens it.
+    let other = history_key().unwrap();
+    assert!(matches!(
+        a2.client.receive_history("lnk_1", &other.private),
+        Err(ClientError::History(HistoryError::Tampered))
+    ));
+    assert!(relay.history("lnk_1").is_some());
+    assert!(history_files(&a2).is_empty());
+    assert_eq!(
+        a2.client
+            .receive_history("lnk_1", &key.private)
+            .unwrap()
+            .conversations,
+        1
+    );
+    assert!(!relay.holds_history("lnk_1"));
+}
+
+#[test]
+fn a_history_upload_that_breaks_leaves_nothing_on_the_phone() {
+    let relay = Relay::new();
+    let (mut a1, _b1, _a2, _conversation, _) = a_history(&relay);
+    relay.approve_link("lnk_1", "a1", "a2");
+    relay.set_history_part(64 * 1024);
+    let key = history_key().unwrap();
+    relay.lose_history_part(2);
+    assert!(matches!(
+        a1.client.send_history("lnk_1", None, &key.public),
+        Err(ClientError::Transport(ApiError::Unreachable(_)))
+    ));
+    assert!(history_files(&a1).is_empty());
+    assert!(relay.history("lnk_1").is_none());
+}
+
 #[test]
 fn a_history_opens_only_whole_and_only_with_its_key() {
     let relay = Relay::new();

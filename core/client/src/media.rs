@@ -329,7 +329,7 @@ pub(crate) fn file_name(object: &str, mime: &str) -> String {
     format!("{object}.{extension}")
 }
 
-fn remove(blobs: &dyn BlobStore, path: &Path) {
+pub(crate) fn remove(blobs: &dyn BlobStore, path: &Path) {
     // Gone already is fine; anything else is retried by the next sweep.
     let _ = blobs.remove_file(path);
 }

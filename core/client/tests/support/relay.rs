@@ -116,6 +116,22 @@ struct State {
     clock: Option<u64>,
     /// Lists messages as a server older than 0048 did, without `storedAt`.
     no_stored_at: bool,
+    /// link id → the device that approved it and the device it made (0074).
+    approved_links: BTreeMap<String, (String, String)>,
+    /// link id → its history transfer.
+    histories: BTreeMap<String, History>,
+    /// The part size the server names; 64 MiB unless a test sets it.
+    history_part: Option<u64>,
+    /// The history part whose upload never reaches the server.
+    lost_history_part: Option<u64>,
+}
+
+/// A history transfer as the server keeps it (0074).
+struct History {
+    size: u64,
+    parts: BTreeMap<u64, Vec<u8>>,
+    /// The parts joined, once complete.
+    blob: Option<Vec<u8>>,
 }
 
 pub struct Relay(Mutex<State>);
@@ -195,6 +211,36 @@ impl Relay {
             account: account.into(),
             device: device.into(),
         }
+    }
+
+    /// `approver` approved the link `link`, which made `device` (0063).
+    pub fn approve_link(&self, link: &str, approver: &str, device: &str) {
+        self.state()
+            .approved_links
+            .insert(link.into(), (approver.into(), device.into()));
+    }
+
+    /// Names `bytes` as the history part size, so a small history spans parts.
+    pub fn set_history_part(&self, bytes: u64) {
+        self.state().history_part = Some(bytes);
+    }
+
+    /// The upload of history part `part` never reaches the server.
+    pub fn lose_history_part(&self, part: u64) {
+        self.state().lost_history_part = Some(part);
+    }
+
+    /// The completed history on `link`, as stored.
+    pub fn history(&self, link: &str) -> Option<Vec<u8>> {
+        self.state()
+            .histories
+            .get(link)
+            .and_then(|h| h.blob.clone())
+    }
+
+    /// Whether the server holds anything of a history on `link`.
+    pub fn holds_history(&self, link: &str) -> bool {
+        self.state().histories.contains_key(link)
     }
 
     /// The next `n` requests from this device never reach the server.
@@ -504,6 +550,15 @@ impl State {
             );
         }
         match (request.method, parts.as_slice()) {
+            (Method::Post, ["devices", "link-requests", link, "history"]) => {
+                self.create_history(device, link, &body)
+            }
+            (Method::Post, ["devices", "link-requests", link, "history", "complete"]) => {
+                self.complete_history(device, link)
+            }
+            (Method::Delete, ["devices", "link-requests", link, "history"]) => {
+                self.delete_history(device, link)
+            }
             (Method::Get, ["sign-in"]) if query == "provider=google" => answer(
                 200,
                 json!({
@@ -1015,6 +1070,114 @@ impl State {
         answer(204, Value::Null)
     }
 
+    /// The link's approver and the device it made, or 404.
+    fn approved(&self, link: &str) -> Result<(String, String), Response> {
+        self.approved_links
+            .get(link)
+            .cloned()
+            .ok_or_else(|| refuse(404, "not_found"))
+    }
+
+    /// `createHistoryTransfer`: the approving phone, once per link.
+    fn create_history(&mut self, device: &str, link: &str, body: &Value) -> Response {
+        let (approver, _) = match self.approved(link) {
+            Ok(link) => link,
+            Err(refused) => return refused,
+        };
+        if approver != device {
+            return refuse(403, "not_this_device");
+        }
+        if self.histories.contains_key(link) {
+            return refuse(409, "conflict");
+        }
+        let size = body["size"].as_u64().unwrap();
+        let part = self.history_part.unwrap_or(64 * 1024 * 1024);
+        self.histories.insert(
+            link.into(),
+            History {
+                size,
+                parts: BTreeMap::new(),
+                blob: None,
+            },
+        );
+        answer(
+            201,
+            json!({ "partSize": part, "parts": size.div_ceil(part), "expiresAt": 0 }),
+        )
+    }
+
+    /// `putHistoryPart`: exactly the part's length.
+    fn put_history_part(&mut self, device: &str, request: &Request, blob: Vec<u8>) -> Response {
+        let parts: Vec<&str> = request.path.split('/').skip(2).collect();
+        let ["devices", "link-requests", link, "history", "parts", number] = parts.as_slice()
+        else {
+            return refuse(404, "not_found");
+        };
+        let number: u64 = number.parse().unwrap();
+        match self.approved(link) {
+            Ok((approver, _)) if approver == device => {}
+            Ok(_) => return refuse(403, "not_this_device"),
+            Err(refused) => return refused,
+        }
+        let part = self.history_part.unwrap_or(64 * 1024 * 1024);
+        let Some(history) = self.histories.get_mut(*link) else {
+            return refuse(404, "not_found");
+        };
+        let count = history.size.div_ceil(part);
+        let expected = if number < count {
+            part
+        } else {
+            history.size - part * (count - 1)
+        };
+        if number == 0 || number > count || blob.len() as u64 != expected {
+            return refuse(400, "invalid_request");
+        }
+        history.parts.insert(number, blob);
+        answer(204, Value::Null)
+    }
+
+    /// `completeHistoryTransfer`: every part is in.
+    fn complete_history(&mut self, device: &str, link: &str) -> Response {
+        match self.approved(link) {
+            Ok((approver, _)) if approver == device => {}
+            Ok(_) => return refuse(403, "not_this_device"),
+            Err(refused) => return refused,
+        }
+        let part = self.history_part.unwrap_or(64 * 1024 * 1024);
+        let Some(history) = self.histories.get_mut(link) else {
+            return refuse(404, "not_found");
+        };
+        if history.parts.len() as u64 != history.size.div_ceil(part) {
+            return refuse(409, "incomplete");
+        }
+        history.blob = Some(history.parts.values().flatten().copied().collect());
+        answer(204, Value::Null)
+    }
+
+    /// `getHistory`: the device the link made, once complete.
+    fn get_history(&self, device: &str, link: &str) -> (Response, Option<Vec<u8>>) {
+        match self.approved(link) {
+            Ok((_, made)) if made == device => {}
+            Ok(_) => return (refuse(403, "not_this_device"), None),
+            Err(refused) => return (refused, None),
+        }
+        match self.histories.get(link).and_then(|h| h.blob.clone()) {
+            Some(blob) => (answer(200, Value::Null), Some(blob)),
+            None => (refuse(404, "not_found"), None),
+        }
+    }
+
+    /// `deleteHistory`: either side.
+    fn delete_history(&mut self, device: &str, link: &str) -> Response {
+        match self.approved(link) {
+            Ok((approver, made)) if approver == device || made == device => {}
+            Ok(_) => return refuse(403, "not_this_device"),
+            Err(refused) => return refused,
+        }
+        self.histories.remove(link);
+        answer(204, Value::Null)
+    }
+
     /// `setPhoto`: an image of at most 10 MB, "re-encoded" by a prefix.
     fn put_photo(&mut self, account: &str, blob: &[u8]) -> Response {
         if blob.len() > 10 * 1024 * 1024 {
@@ -1227,10 +1390,17 @@ impl Transport for Link {
 
     fn upload(&self, request: Request, file: &Path) -> Result<Response, Unreachable> {
         assert_eq!(request.method, Method::Put);
+        let lost = self.relay.state().lost_history_part;
+        if lost.is_some_and(|n| request.path.ends_with(&format!("/history/parts/{n}"))) {
+            return Err(Unreachable("the request was lost".into()));
+        }
         let blob = std::fs::read(file).unwrap();
         self.through(request, |state, account, device, request| {
             if request.path == "/v1/me/photo" {
                 return state.put_photo(account, &blob);
+            }
+            if request.path.contains("/history/parts/") {
+                return state.put_history_part(device, &request, blob);
             }
             state.put_media(account, device, &request, blob)
         })
@@ -1243,9 +1413,14 @@ impl Transport for Link {
                 .path
                 .strip_prefix("/v1/accounts/")
                 .and_then(|p| p.strip_suffix("/photo"));
-            let (response, blob) = match photo {
-                Some(id) => state.get_photo(account, id),
-                None => state.get_media(account, device, &request),
+            let history = request
+                .path
+                .strip_prefix("/v1/devices/link-requests/")
+                .and_then(|p| p.strip_suffix("/history"));
+            let (response, blob) = match (photo, history) {
+                (Some(id), _) => state.get_photo(account, id),
+                (None, Some(link)) => state.get_history(device, link),
+                (None, None) => state.get_media(account, device, &request),
             };
             if let Some(blob) = blob {
                 std::fs::write(to, blob).unwrap();

@@ -1,7 +1,7 @@
 # 0064. A device that is not a phone is linked from a session and approved on a phone
 
-- Status: accepted; implemented in the core seams and the backend enrolment (#298, #299);
-  history from a sibling device and the web client not yet (#300, #301)
+- Status: accepted; implemented in the core seams, the backend enrolment and history from a
+  sibling device (#298, #299, #300; the format and upload are 0074); the web client not yet (#301)
 - Date: 2026-10-17
 - Decided by: Guðröður Atli Jónsson
 - Builds on: [0002](0002-mls-end-to-end-encryption.md), [0014](0014-accounts-devices-and-auth.md)
@@ -9,6 +9,7 @@
   external commit), [0028](0028-removing-a-device-from-its-groups.md) (removing a device's
   leaves), [0061](0061-account-identity-session-and-device-are-separate.md) (sessions),
   [0062](0062-the-web-host-and-its-sign-in-callbacks.md) (the web host)
+- Amended by: [0074](0074-history-transfer-format-and-upload.md)
 - Amends: 0006 (a linked device may receive history from the phone that approved it), 0016
   (the store in a browser)
 

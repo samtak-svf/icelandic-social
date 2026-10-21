@@ -124,6 +124,12 @@ Media and profile photos are written once under a new key and never overwritten.
 away by the media bucket's 31-day lifecycle rule, by its owner, or with a deleted post, account
 or community, and nothing brings it back. A backup bucket would be a decision of its own.
 
+A history transfer (`history/<linkId>` in the media bucket, decision 0074) lives at most 24
+hours: the linked device deletes it once it has imported it, the minute cron deletes every
+transfer past its 24 hours (`history.expired` in the logs, with a count), and the bucket's
+1-day `history/` rule is the backstop. A transfer that is gone is sent again from the phone by
+linking again.
+
 ## Jobs
 
 ```bash

@@ -28,8 +28,8 @@ use spjall_store::rusqlite::{self, Transaction, params};
 use crate::api::{Transport, base64, from_base64};
 use crate::blobs::BlobStore;
 use crate::clock::now;
-use crate::media::{MediaError, Opener, Sealer, file_name, is_object, uncarried};
-use crate::{Client, ClientError};
+use crate::media::{MediaError, Opener, Sealer, file_name, is_object, remove, uncarried};
+use crate::{Client, ClientError, authed};
 
 /// The largest history, in plaintext bytes (0064).
 pub const MAX_HISTORY: u64 = 1024 * 1024 * 1024;
@@ -683,6 +683,62 @@ impl<T: Transport> Client<T> {
         })();
         let _ = self.blobs.remove_dir_all(&staging);
         result
+    }
+
+    /// Sends this device's history since `since` to the device the link
+    /// `link` makes, sealed to `recipient`, the link's one-time public key:
+    /// exported, then uploaded in the parts the server asks for (0074).
+    /// Only the phone that approved the link may. Returns the sealed size.
+    pub fn send_history(
+        &mut self,
+        link: &str,
+        since: Option<u64>,
+        recipient: &[u8],
+    ) -> Result<u64, ClientError> {
+        let outgoing = self.media.join("out");
+        self.blobs
+            .create_dir_all(&outgoing)
+            .map_err(HistoryError::from)?;
+        let (sealed, part) = (outgoing.join("history"), outgoing.join("history.part"));
+        let sent = (|| {
+            let size = self.export_history(since, recipient, &sealed)?;
+            let api = authed(&self.transport, &self.token, &self.client)?;
+            let transfer = api.create_history_transfer(link, size)?;
+            let mut reader = self.blobs.open_read(&sealed).map_err(HistoryError::from)?;
+            for number in 1..=transfer.parts {
+                let mut out = self.blobs.create_write(&part).map_err(HistoryError::from)?;
+                io::copy(&mut (&mut reader).take(transfer.part_size), &mut out)
+                    .map_err(HistoryError::from)?;
+                out.finish().map_err(HistoryError::from)?;
+                api.put_history_part(link, number, &part)?;
+            }
+            api.complete_history_transfer(link)?;
+            Ok::<_, ClientError>(size)
+        })();
+        remove(&*self.blobs, &part);
+        remove(&*self.blobs, &sealed);
+        sent
+    }
+
+    /// Receives the history the phone that approved `link` sent this
+    /// device, opens it with the private half of the link's one-time key,
+    /// and then deletes it from the server (0074).
+    pub fn receive_history(&mut self, link: &str, private: &[u8]) -> Result<Imported, ClientError> {
+        let incoming = self.media.join("in");
+        self.blobs
+            .create_dir_all(&incoming)
+            .map_err(HistoryError::from)?;
+        let blob = incoming.join("history");
+        let received = (|| {
+            authed(&self.transport, &self.token, &self.client)?.get_history(link, &blob)?;
+            let imported = self.import_history(&blob, private)?;
+            // Kept on a failure: the server deletes it after 24 hours, and
+            // it opens only with the key this device drops.
+            let _ = authed(&self.transport, &self.token, &self.client)?.delete_history(link);
+            Ok::<_, ClientError>(imported)
+        })();
+        remove(&*self.blobs, &blob);
+        received
     }
 }
 

@@ -14,10 +14,22 @@ create a missing one without it, and a jurisdiction can never be added afterward
    cf d1 create --name spjall-db --jurisdiction eu
    cf r2 buckets create --name spjall-media --cf-r2-jurisdiction eu
    cf r2 buckets lifecycle update spjall-media --cf-r2-jurisdiction eu --rules \
-     '[{"id":"expire-media","enabled":true,"conditions":{"prefix":""},"deleteObjectsTransition":{"condition":{"type":"Age","maxAge":2678400}}}]'
+     '[{"id":"Default Multipart Abort Rule","enabled":true,"conditions":{"prefix":""},"abortMultipartUploadsTransition":{"condition":{"type":"Age","maxAge":604800}}},
+       {"id":"expire-media","enabled":true,"conditions":{"prefix":""},"deleteObjectsTransition":{"condition":{"type":"Age","maxAge":2678400}}},
+       {"id":"expire-history","enabled":true,"conditions":{"prefix":"history/"},"deleteObjectsTransition":{"condition":{"type":"Age","maxAge":86400}},"abortMultipartUploadsTransition":{"condition":{"type":"Age","maxAge":86400}}}]'
    ```
 
-   The lifecycle rule (31 days) is the backstop behind the Worker's daily media expiry (decision 0023).
+   The `expire-media` rule (31 days) is the backstop behind the Worker's daily media expiry (decision 0023).
+   The `history/` rule (1 day, unfinished uploads included) is the backstop behind the minute cron's
+   deletion of history transfers past 24 hours (decision 0074). The first rule is the one R2 gives
+   every new bucket (unfinished uploads aborted after 7 days). `--rules` replaces the bucket's
+   whole rule set, so the command names all three; on a bucket that already has the others, add
+   the one rule instead:
+
+   ```bash
+   npx wrangler r2 bucket lifecycle add spjall-media expire-history history/ \
+     --expire-days 1 --abort-multipart-days 1 --jurisdiction eu
+   ```
 
    The profile photos (decision 0039) and community post images (decision 0065) have a bucket
    of their own, also in the EU, with **no** lifecycle rule: a photo stays until its owner

@@ -1068,6 +1068,29 @@ impl CoreClient {
             .into())
     }
 
+    /// Seals this device's history since `since` to `recipient` and
+    /// uploads it for the device the link `link` makes (0074). Only the
+    /// phone that approved the link may, once. Returns the sealed size.
+    pub fn send_history(
+        &self,
+        link: String,
+        since: Option<u64>,
+        recipient: Vec<u8>,
+    ) -> Result<u64, CoreError> {
+        Ok(self.client()?.send_history(&link, since, &recipient)?)
+    }
+
+    /// Downloads the history sent for the link that made this device,
+    /// adds it to this store, and deletes it from the server (0074). A
+    /// history that does not open stays there for another try.
+    pub fn receive_history(
+        &self,
+        link: String,
+        private: Vec<u8>,
+    ) -> Result<ImportedHistory, CoreError> {
+        Ok(self.client()?.receive_history(&link, &private)?.into())
+    }
+
     /// The account and device this store is signed in as, if it is. Read
     /// from the store, so a sync in progress does not hold up a start.
     pub fn signed_in(&self) -> Result<Option<SignedIn>, CoreError> {

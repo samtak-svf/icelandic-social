@@ -451,6 +451,16 @@ pub struct PeoplePage {
     pub next: Option<String>,
 }
 
+/// `createHistoryTransfer`'s answer (0074): every part but the last is
+/// `part_size` bytes, numbered from 1.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryTransfer {
+    pub part_size: u64,
+    pub parts: u64,
+    pub expires_at: u64,
+}
+
 /// `setPhoto`'s answer: the new version (0039).
 #[derive(Deserialize)]
 struct PhotoSet {
@@ -1347,6 +1357,62 @@ impl<T: Transport + ?Sized> Api<'_, T> {
             None,
         );
         Self::checked(self.transport.download(request, to)?).map(drop)
+    }
+
+    /// `createHistoryTransfer` (0074): starts the upload of a sealed
+    /// history of `size` bytes for the device link `link` makes.
+    pub fn create_history_transfer(
+        &self,
+        link: &str,
+        size: u64,
+    ) -> Result<HistoryTransfer, ApiError> {
+        let body = serde_json::json!({ "size": size });
+        self.call(
+            Method::Post,
+            format!("/v1/devices/link-requests/{link}/history"),
+            Self::json(&body),
+            "createHistoryTransfer",
+        )
+    }
+
+    /// `putHistoryPart`: part `part` (from 1), the file at `file`.
+    pub fn put_history_part(&self, link: &str, part: u64, file: &Path) -> Result<(), ApiError> {
+        let request = self.request(
+            Method::Put,
+            format!("/v1/devices/link-requests/{link}/history/parts/{part}"),
+            None,
+        );
+        Self::checked(self.transport.upload(request, file)?).map(drop)
+    }
+
+    /// `completeHistoryTransfer`: every part is in.
+    pub fn complete_history_transfer(&self, link: &str) -> Result<(), ApiError> {
+        self.send(
+            Method::Post,
+            format!("/v1/devices/link-requests/{link}/history/complete"),
+            None,
+        )
+        .map(drop)
+    }
+
+    /// `getHistory`: the sealed history, written to `to`.
+    pub fn get_history(&self, link: &str, to: &Path) -> Result<(), ApiError> {
+        let request = self.request(
+            Method::Get,
+            format!("/v1/devices/link-requests/{link}/history"),
+            None,
+        );
+        Self::checked(self.transport.download(request, to)?).map(drop)
+    }
+
+    /// `deleteHistory`: the linked device has it, or the phone cancels.
+    pub fn delete_history(&self, link: &str) -> Result<(), ApiError> {
+        self.send(
+            Method::Delete,
+            format!("/v1/devices/link-requests/{link}/history"),
+            None,
+        )
+        .map(drop)
     }
 
     /// `setPhoto` (0039): the image at `file`, which the server re-encodes
