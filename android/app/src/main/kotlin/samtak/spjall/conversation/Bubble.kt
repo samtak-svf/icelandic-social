@@ -3,7 +3,6 @@ package samtak.spjall.conversation
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -152,15 +151,13 @@ private fun Message(
         horizontalAlignment = if (item.own) Alignment.End else Alignment.Start,
     ) {
         quote?.let { QuoteAbove(it, item.own) }
-        Box(modifier = Modifier.padding(bottom = if (pill != null) (PILL_HEIGHT - PILL_OVERLAP).dp else 0.dp)) {
+        WithPill(pill, item.own, onReactions) {
             Surface(
                 color = bubbleColor(item, media),
                 contentColor = foreground,
                 shape = bubbleShape(item.own),
                 modifier =
                     Modifier
-                        // An own bubble narrower than its pill stays flush with the far edge.
-                        .align(if (item.own) Alignment.TopEnd else Alignment.TopStart)
                         .onGloballyPositioned { at = it }
                         .semantics(mergeDescendants = true) {
                             customActions = custom
@@ -176,7 +173,6 @@ private fun Message(
             ) {
                 Inside(item, media, foreground, actions, onTap = { tap?.invoke() ?: onTime() }, onLongPress = lift)
             }
-            pill?.let { HangingPill(it, onReactions) }
         }
     }
 }

@@ -2,31 +2,33 @@ package samtak.spjall.conversation
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Item
@@ -102,22 +104,46 @@ internal fun spokenWith(
         pill?.let { pluralStringResource(R.plurals.reaction_count, it.count, it.count) },
     ).joinToString(", ")
 
-/** Under the bubble's trailing corner, as in the messengers people know, never over its text. */
+/**
+ * The bubble with its pill under the trailing corner, as in the messengers people know (0045).
+ * The pill's top reaches [PILL_OVERLAP] over the bubble's foot however tall a larger font makes
+ * it, so it grows downwards and never onto the text; the row is as tall and wide as both need.
+ */
 @Composable
-internal fun BoxScope.HangingPill(
-    pill: Pill,
+internal fun WithPill(
+    pill: Pill?,
+    own: Boolean,
     onClick: () -> Unit,
+    bubble: @Composable () -> Unit,
 ) {
-    ReactionPill(
-        pill,
-        onClick = onClick,
-        modifier =
-            Modifier
-                .align(Alignment.BottomEnd)
-                .offset(y = (PILL_HEIGHT - PILL_OVERLAP).dp)
-                // Padding, not an offset, so a bubble narrower than its pill widens the row instead.
-                .padding(end = PILL_INSET.dp),
-    )
+    Layout(
+        content = {
+            bubble()
+            // The pill is laid out at the size it is drawn, so its top is where it shows; a tap
+            // still finds it within the minimum touch target, which hit testing extends.
+            pill?.let {
+                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                    ReactionPill(it, onClick = onClick)
+                }
+            }
+        },
+    ) { measurables, constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val body = measurables[0].measure(loose)
+        val hanging = measurables.getOrNull(1)?.measure(loose)
+        val inset = PILL_INSET.dp.roundToPx()
+        val top = body.height - PILL_OVERLAP.dp.roundToPx()
+        // A bubble narrower than its pill widens the row rather than pushing the pill off it.
+        val width =
+            maxOf(body.width, hanging?.let { it.width + inset } ?: 0)
+                .coerceIn(constraints.minWidth, constraints.maxWidth)
+        val height = maxOf(body.height, hanging?.let { top + it.height } ?: 0)
+        layout(width, height) {
+            // An own bubble narrower than its pill stays flush with the far edge.
+            body.placeRelative(if (own) width - body.width else 0, 0)
+            hanging?.placeRelative(width - inset - hanging.width, top)
+        }
+    }
 }
 
 /**
@@ -218,10 +244,10 @@ internal fun ReactionsSheet(
     }
 }
 
-internal const val PILL_HEIGHT = 24
+private const val PILL_HEIGHT = 24
 
 /** How far the pill reaches up over the bubble's foot. */
-internal const val PILL_OVERLAP = 6
+private const val PILL_OVERLAP = 6
 private const val PILL_INSET = 8
 private const val PILL_BORDER = 2
 private const val PILL_EMOJI = 3

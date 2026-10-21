@@ -275,6 +275,20 @@ class ConversationScreenshotTest {
         compose.onRoot().captureRoboImage()
     }
 
+    /**
+     * At a large font the pill is taller than at the default, and it grows downwards: its top
+     * stays the same small step over the bubble's foot, clear of a single emoji's glyph.
+     */
+    @Test
+    @Config(fontScale = 1.3f)
+    fun aTallerPillGrowsDownwardsAtALargeFont() {
+        show(
+            item(1u, Content.Text("farðu að sofa!!!!", null), reactions = listOf(Reaction("❤️", true, listOf(me)))),
+            item(2u, Content.Text("😑", null), reactions = listOf(Reaction("🙏", true, listOf(me)))),
+        )
+        compose.onRoot().captureRoboImage()
+    }
+
     /** A sent place (0059): a pin, the coordinates with the hemisphere's letter, the accuracy; no map. */
     @Test
     fun aLocationIsACardWithoutAMap() {
