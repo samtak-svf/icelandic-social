@@ -27,7 +27,7 @@ tempfile = "3"
 thiserror = "2"
 uniffi = "0.32.2"
 ureq = "3"
-zip = { version = "8.6", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+zip = { version = "9.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
