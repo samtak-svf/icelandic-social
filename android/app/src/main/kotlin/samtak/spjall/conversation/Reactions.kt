@@ -2,10 +2,12 @@ package samtak.spjall.conversation
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -99,6 +101,24 @@ internal fun spokenWith(
         pill?.let { pluralStringResource(R.plurals.reaction_count, it.count, it.count) },
     ).joinToString(", ")
 
+/** Under the bubble's trailing corner, as in the messengers people know, never over its text. */
+@Composable
+internal fun BoxScope.HangingPill(
+    pill: Pill,
+    onClick: () -> Unit,
+) {
+    ReactionPill(
+        pill,
+        onClick = onClick,
+        modifier =
+            Modifier
+                .align(Alignment.BottomEnd)
+                .offset(y = (PILL_HEIGHT - PILL_OVERLAP).dp)
+                // Padding, not an offset, so a bubble narrower than its pill widens the row instead.
+                .padding(end = PILL_INSET.dp),
+    )
+}
+
 /** The pill on the bubble's bottom edge; the bubble's own element speaks for it. */
 @Composable
 internal fun ReactionPill(
@@ -191,6 +211,10 @@ internal fun ReactionsSheet(
 }
 
 internal const val PILL_HEIGHT = 24
+
+/** How far the pill reaches up over the bubble's foot. */
+internal const val PILL_OVERLAP = 6
+private const val PILL_INSET = 8
 private const val PILL_BORDER = 2
 private const val PILL_EMOJI = 3
 private const val LINE = 56

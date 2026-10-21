@@ -37,6 +37,7 @@ import samtak.spjall.core.Mute
 import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
 import samtak.spjall.core.PlaceLinks
+import samtak.spjall.core.Quote
 import samtak.spjall.core.Reaction
 import samtak.spjall.media.LocalPhotoDecoding
 import samtak.spjall.ui.SpjallTheme
@@ -236,6 +237,40 @@ class ConversationScreenshotTest {
             item(2u, Content.Text("Hæ", null), own = true, reactions = listOf(Reaction("😂", false, listOf(anna)))),
         )
         compose.onNodeWithText("Hæ").performClick()
+        compose.onRoot().captureRoboImage()
+    }
+
+    /**
+     * A reply in each direction: the message it answers is a quiet bubble of
+     * its own above it, under the arrow and its writer's name, and the reply
+     * overlaps its foot. Nothing of the quote is inside the reply's bubble.
+     */
+    @Test
+    fun aReplyQuotesAboveItsBubble() {
+        val asked = "Virkar núna að senda hlekk? Ég sé enga smámynd, hvorki á símanum né í vafranum"
+        show(
+            item(1u, Content.Text(asked, null)),
+            item(2u, Content.Text("Já, það virkar", Quote("e1", anna, asked, null, false)), own = true),
+            item(3u, Content.Text("Gott að heyra", Quote("e2", me, "Já, það virkar", null, false))),
+        )
+        compose.onRoot().captureRoboImage()
+    }
+
+    /**
+     * A pill hangs under the bubble's trailing corner on both sides, never over
+     * its text, even when the bubble is a single emoji narrower than the pill.
+     */
+    @Test
+    fun aPillHangsUnderTheTrailingCorner() {
+        show(
+            item(1u, Content.Text("farðu að sofa!!!!", null), reactions = listOf(Reaction("❤️", true, listOf(me)))),
+            item(2u, Content.Text("hæ", null), own = true, reactions = listOf(Reaction("😂", false, listOf(anna)))),
+            item(
+                3u,
+                Content.Text("😑", null),
+                reactions = listOf(Reaction("🙏", true, listOf(me)), Reaction("👍", false, listOf(anna))),
+            ),
+        )
         compose.onRoot().captureRoboImage()
     }
 

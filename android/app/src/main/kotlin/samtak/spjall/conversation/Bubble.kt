@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -111,7 +110,10 @@ internal fun Bubble(
     }
 }
 
-/** The bubble itself, its long-press menu, and the reaction pill on its bottom edge (0045). */
+/**
+ * The bubble itself, its long-press menu, and the reaction pill hanging under
+ * its trailing corner (0045). A reply has the message it answers above it.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Message(
@@ -144,42 +146,37 @@ private fun Message(
                 },
             )
     val spoken = spokenWith(item, pill)
-    Box(
-        modifier =
-            Modifier
-                .atMost(BUBBLE_SHARE)
-                .padding(bottom = if (pill != null) (PILL_HEIGHT / 2).dp else 0.dp),
+    val quote = (item.content as? Content.Text)?.replyTo
+    Column(
+        modifier = Modifier.atMost(BUBBLE_SHARE),
+        horizontalAlignment = if (item.own) Alignment.End else Alignment.Start,
     ) {
-        Surface(
-            color = bubbleColor(item, media),
-            contentColor = foreground,
-            shape = bubbleShape(item.own),
-            modifier =
-                Modifier
-                    .onGloballyPositioned { at = it }
-                    .semantics(mergeDescendants = true) {
-                        customActions = custom
-                        stateDescription = spoken
-                    }.combinedClickable(
-                        onClickLabel = null,
-                        // A photo or a file opens; anything else shows or hides its time.
-                        onClick = { tap?.invoke() ?: onTime() },
-                        onLongClickLabel = stringResource(R.string.react),
-                        // Its haptic (0043) is combinedClickable's own, as the system setting allows.
-                        onLongClick = lift,
-                    ),
-        ) {
-            Inside(item, media, foreground, actions, onTap = { tap?.invoke() ?: onTime() }, onLongPress = lift)
-        }
-        pill?.let {
-            ReactionPill(
-                it,
-                onClick = onReactions,
+        quote?.let { QuoteAbove(it, item.own) }
+        Box(modifier = Modifier.padding(bottom = if (pill != null) (PILL_HEIGHT - PILL_OVERLAP).dp else 0.dp)) {
+            Surface(
+                color = bubbleColor(item, media),
+                contentColor = foreground,
+                shape = bubbleShape(item.own),
                 modifier =
                     Modifier
-                        .align(if (item.own) Alignment.BottomStart else Alignment.BottomEnd)
-                        .offset(x = if (item.own) -PILL_INSET.dp else PILL_INSET.dp, y = (PILL_HEIGHT / 2).dp),
-            )
+                        // An own bubble narrower than its pill stays flush with the far edge.
+                        .align(if (item.own) Alignment.TopEnd else Alignment.TopStart)
+                        .onGloballyPositioned { at = it }
+                        .semantics(mergeDescendants = true) {
+                            customActions = custom
+                            stateDescription = spoken
+                        }.combinedClickable(
+                            onClickLabel = null,
+                            // A photo or a file opens; anything else shows or hides its time.
+                            onClick = { tap?.invoke() ?: onTime() },
+                            onLongClickLabel = stringResource(R.string.react),
+                            // Its haptic (0043) is combinedClickable's own, as the system setting allows.
+                            onLongClick = lift,
+                        ),
+            ) {
+                Inside(item, media, foreground, actions, onTap = { tap?.invoke() ?: onTime() }, onLongPress = lift)
+            }
+            pill?.let { HangingPill(it, onReactions) }
         }
     }
 }
@@ -269,7 +266,7 @@ internal fun Body(
 ) {
     when (val content = item.content) {
         is Content.Text -> {
-            content.replyTo?.let { Quoted(it, foreground) }
+            // A reply's quote is drawn above the bubble, by Message.
             LinkedText(content.text, foreground, onTap, onLongPress)
         }
         // Drawn by Bubble as a line of its own.
@@ -356,5 +353,4 @@ internal const val PAD_X = 14
 internal const val PAD_Y = 11
 private const val TAIL_RADIUS = 5
 private const val BUBBLE_SHARE = 0.76f
-private const val PILL_INSET = 4
 private const val CLOCK = 12
