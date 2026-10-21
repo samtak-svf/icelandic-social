@@ -461,6 +461,20 @@ pub struct HistoryTransfer {
     pub expires_at: u64,
 }
 
+/// `getDeviceLinkRequest`'s answer (0064): a pending link request of this
+/// account, with the keys the new device sent.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeviceLinkRequestInfo {
+    pub link_id: String,
+    pub browser: Option<String>,
+    pub os: Option<String>,
+    pub device_key: String,
+    pub history_key: String,
+    pub expires_at: i64,
+    pub approved: bool,
+}
+
 /// `setPhoto`'s answer: the new version (0039).
 #[derive(Deserialize)]
 struct PhotoSet {
@@ -1357,6 +1371,32 @@ impl<T: Transport + ?Sized> Api<'_, T> {
             None,
         );
         Self::checked(self.transport.download(request, to)?).map(drop)
+    }
+
+    /// `getDeviceLinkRequest` (0064): the pending link request `link`.
+    pub fn get_device_link_request(&self, link: &str) -> Result<DeviceLinkRequestInfo, ApiError> {
+        self.call(
+            Method::Get,
+            format!("/v1/devices/link-requests/{link}"),
+            None,
+            "getDeviceLinkRequest",
+        )
+    }
+
+    /// `approveDeviceLinkRequest` (0077): this phone's `signature` over
+    /// the approval message of `link`.
+    pub fn approve_device_link_request(
+        &self,
+        link: &str,
+        signature: &[u8],
+    ) -> Result<(), ApiError> {
+        let body = serde_json::json!({ "signature": base64(signature) });
+        self.send(
+            Method::Post,
+            format!("/v1/devices/link-requests/{link}/approve"),
+            Self::json(&body),
+        )
+        .map(drop)
     }
 
     /// `createHistoryTransfer` (0074): starts the upload of a sealed

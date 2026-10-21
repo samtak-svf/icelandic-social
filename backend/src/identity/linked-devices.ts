@@ -13,14 +13,15 @@ import { fail } from "../errors.ts";
 import { log } from "../log.ts";
 import type { Platform } from "../platforms.ts";
 import { type Device, randomToken, tokenHash } from "./accounts.ts";
+import { approvalMessage } from "./link-approval.ts";
 import type { Session } from "./sessions.ts";
 
 // Enrolling a linked non-phone device from a browser session (decision 0064,
 // #299): the browser starts a link request with its Ed25519 device key and a
 // one-time X25519 history key; an active phone of the same account approves it
-// by signing the new device's key with its own Ed25519 key; the browser
-// completes enrolment and receives its device token and the server's 32-byte
-// half of its two-part store key. A linked device expires after 45 days without
+// once, signing the link id and the new device's key (decision 0077); the
+// browser completes enrolment and receives its device token and the server's
+// 32-byte half of its two-part store key. A linked device expires after 45 days without
 // use, and revoking it leaves its browser session signed in.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -28,7 +29,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const LINKED_IDLE_MS = 45 * DAY_MS;
 /** A pending QR link request expires after 10 minutes. */
 const LINK_REQUEST_MS = 10 * 60 * 1000;
-
 async function createLinkRequest(
   env: Env,
   session: Session,
@@ -118,7 +118,10 @@ async function approveLinkRequest(
   linkId: string,
   signature: Uint8Array,
   now = Date.now(),
-): Promise<{ ok: true } | { error: "not_found" | "phone_required" | "invalid_signature" }> {
+): Promise<
+  | { ok: true }
+  | { error: "not_found" | "phone_required" | "invalid_signature" | "already_approved" }
+> {
   const [phoneRow, reqRow] = await db(env).batch([
     db(env)
       .prepare(
@@ -128,15 +131,19 @@ async function approveLinkRequest(
       .bind(approver.deviceId, approver.accountId),
     db(env)
       .prepare(
-        `SELECT device_key AS deviceKey FROM device_link_requests
+        `SELECT device_key AS deviceKey, approved_by_device_id AS approvedBy
+           FROM device_link_requests
           WHERE link_id = ? AND account_id = ? AND expires_at > ?`,
       )
       .bind(linkId, approver.accountId, now),
   ]);
   const phone = phoneRow?.results[0] as { deviceKey: ArrayBuffer; kind: string } | undefined;
   if (!phone || phone.kind !== "phone") return { error: "phone_required" };
-  const req = reqRow?.results[0] as { deviceKey: ArrayBuffer } | undefined;
+  const req = reqRow?.results[0] as
+    | { deviceKey: ArrayBuffer; approvedBy: string | null }
+    | undefined;
   if (!req) return { error: "not_found" };
+  if (req.approvedBy !== null) return { error: "already_approved" };
 
   let valid = false;
   try {
@@ -147,21 +154,23 @@ async function approveLinkRequest(
       false,
       ["verify"],
     );
-    valid = await crypto.subtle.verify("Ed25519", key, signature, new Uint8Array(req.deviceKey));
+    const message = approvalMessage(linkId, new Uint8Array(req.deviceKey));
+    valid = await crypto.subtle.verify("Ed25519", key, signature, message);
   } catch {
     valid = false;
   }
   if (!valid) return { error: "invalid_signature" };
 
-  await db(env)
+  // The guard on approved_by_device_id makes a race between two phones approve once.
+  const updated = await db(env)
     .prepare(
       `UPDATE device_link_requests
           SET approved_by_device_id = ?, approval_signature = ?, approved_at = ?
-        WHERE link_id = ? AND account_id = ?`,
+        WHERE link_id = ? AND account_id = ? AND approved_by_device_id IS NULL`,
     )
     .bind(approver.deviceId, signature, now, linkId, approver.accountId)
     .run();
-  return { ok: true };
+  return updated.meta.changes === 1 ? { ok: true } : { error: "already_approved" };
 }
 
 async function completeLinkRequest(
@@ -402,9 +411,8 @@ export function linkedDeviceRoutes(app: OpenAPIHono<AppEnv>): void {
     const { signature } = c.req.valid("json");
     const approved = await approveLinkRequest(c.env, c.var.device, linkId, fromBase64(signature));
     if ("error" in approved) {
-      return approved.error === "not_found"
-        ? fail(c, 404, approved.error)
-        : fail(c, 403, approved.error);
+      const { error } = approved;
+      return fail(c, error === "not_found" ? 404 : error === "already_approved" ? 409 : 403, error);
     }
     log("device.link_approved", {
       accountId: c.var.device.accountId,

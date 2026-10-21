@@ -9,6 +9,7 @@ use crate::storage::{Provider, StorageError};
 use openmls::prelude::tls_codec::{Deserialize as _, Serialize as _};
 use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
+use openmls_traits::signatures::Signer as _;
 use openmls_traits::types::AeadType;
 
 /// How many epochs back a member can still read an application message. The
@@ -23,6 +24,10 @@ const GROUP_ID_LEN: usize = 32;
 pub const KEY_PACKAGE_LIFETIME_SECS: u64 = 60 * 60 * 24 * 84;
 
 const TYPING_LABEL: &str = "spjall typing";
+/// What a phone's approval of a link request begins with (0077), so the
+/// signature means nothing else: an MLS signature begins with the length of
+/// its own label.
+const LINK_APPROVAL_LABEL: &[u8] = b"spjall device link v1\0";
 const TYPING_KEY_LEN: usize = 16;
 const TYPING_NONCE_LEN: usize = 12;
 
@@ -115,6 +120,31 @@ pub fn generate_device_key(provider: &Provider) -> Result<Vec<u8>, GroupError> {
     Ok(signer.to_public_vec())
 }
 
+/// What a phone signs to approve the link request `link_id` for the new
+/// device whose key is `device_key` (0077): the label, the link id in UTF-8,
+/// then the key.
+pub fn link_approval_message(link_id: &str, device_key: &[u8]) -> Vec<u8> {
+    [LINK_APPROVAL_LABEL, link_id.as_bytes(), device_key].concat()
+}
+
+/// Whether `signature` is the approval of `link_id` for `device_key` by the
+/// device whose Ed25519 key is `approver_key` (0077), as the server checks it.
+pub fn verify_link_approval(
+    link_id: &str,
+    device_key: &[u8],
+    approver_key: &[u8],
+    signature: &[u8],
+) -> bool {
+    openmls_rust_crypto::RustCrypto::default()
+        .verify_signature(
+            SignatureScheme::ED25519,
+            &link_approval_message(link_id, device_key),
+            approver_key,
+            signature,
+        )
+        .is_ok()
+}
+
 /// This device: its key pair and the credential the server registered.
 pub struct Identity {
     signer: SignatureKeyPair,
@@ -138,6 +168,19 @@ impl Identity {
 
     pub fn device(&self) -> &Device {
         &self.device
+    }
+
+    /// This device's approval of the link request `link_id` for the new
+    /// device whose key is `device_key` (0077): the device key's signature
+    /// over `link_approval_message`, and over nothing a caller chooses.
+    pub fn sign_link_approval(
+        &self,
+        link_id: &str,
+        device_key: &[u8],
+    ) -> Result<Vec<u8>, GroupError> {
+        self.signer
+            .sign(&link_approval_message(link_id, device_key))
+            .map_err(at("link approval"))
     }
 
     fn credential(&self) -> CredentialWithKey {

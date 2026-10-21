@@ -23,6 +23,9 @@
 //! client below its floor (0030). It can refuse a send as malformed. Every
 //! refusal names a request id, as the Worker's do (0037); a floor refusal
 //! names none, which the client ignores.
+//!
+//! A phone inspects and approves a pending link request (0064) with its
+//! device key's signature over the 0077 message, once; a browser cannot.
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::Path;
@@ -35,7 +38,7 @@ use openmls::prelude::tls_codec::Deserialize as _;
 use openmls::prelude::{ContentType, MlsMessageBodyIn, MlsMessageIn, ProtocolMessage, Sender};
 use serde_json::{Value, json};
 use spjall_client::api::{Method, Request, Response, Transport, Unreachable};
-use spjall_mls::group::claim_of;
+use spjall_mls::group::{claim_of, verify_link_approval};
 
 struct Stored {
     seq: u64,
@@ -116,6 +119,12 @@ struct State {
     clock: Option<u64>,
     /// Lists messages as a server older than 0048 did, without `storedAt`.
     no_stored_at: bool,
+    /// device → the key it registered with.
+    device_keys: BTreeMap<String, Vec<u8>>,
+    /// Devices that are browsers, which approve no link (0064).
+    browsers: BTreeSet<String>,
+    /// link id → its pending request (0064).
+    link_requests: BTreeMap<String, LinkRequest>,
     /// link id → the device that approved it and the device it made (0074).
     approved_links: BTreeMap<String, (String, String)>,
     /// link id → its history transfer.
@@ -124,6 +133,14 @@ struct State {
     history_part: Option<u64>,
     /// The history part whose upload never reaches the server.
     lost_history_part: Option<u64>,
+}
+
+/// A pending link request as the server keeps it (0064).
+struct LinkRequest {
+    account: String,
+    device_key: Vec<u8>,
+    history_key: Vec<u8>,
+    expires_at: u64,
 }
 
 /// A history transfer as the server keeps it (0074).
@@ -218,6 +235,40 @@ impl Relay {
         self.state()
             .approved_links
             .insert(link.into(), (approver.into(), device.into()));
+    }
+
+    /// A browser of `account` asks to be linked as `link` (0064), with the
+    /// device and history keys it made, until `expires_at`.
+    pub fn request_link(
+        &self,
+        account: &str,
+        link: &str,
+        device_key: &[u8],
+        history_key: &[u8],
+        expires_at: u64,
+    ) {
+        self.state().link_requests.insert(
+            link.into(),
+            LinkRequest {
+                account: account.into(),
+                device_key: device_key.to_vec(),
+                history_key: history_key.to_vec(),
+                expires_at,
+            },
+        );
+    }
+
+    /// `device` is a browser from now on.
+    pub fn make_browser(&self, device: &str) {
+        self.state().browsers.insert(device.into());
+    }
+
+    /// Whether `link` is approved, and by whom.
+    pub fn link_approver(&self, link: &str) -> Option<String> {
+        self.state()
+            .approved_links
+            .get(link)
+            .map(|(approver, _)| approver.clone())
     }
 
     /// Names `bytes` as the history part size, so a small history spans parts.
@@ -550,6 +601,12 @@ impl State {
             );
         }
         match (request.method, parts.as_slice()) {
+            (Method::Get, ["devices", "link-requests", link]) => {
+                self.get_link_request(account, link)
+            }
+            (Method::Post, ["devices", "link-requests", link, "approve"]) => {
+                self.approve_link_request(account, device, link, &body)
+            }
             (Method::Post, ["devices", "link-requests", link, "history"]) => {
                 self.create_history(device, link, &body)
             }
@@ -592,6 +649,12 @@ impl State {
                     .or_default()
                     .insert(body["provider"].as_str().unwrap().into());
                 self.devices.insert(device.into(), account.into());
+                self.device_keys.insert(
+                    device.into(),
+                    STANDARD
+                        .decode(body["deviceKey"].as_str().unwrap())
+                        .unwrap(),
+                );
                 self.tokens.insert(device.into(), token.clone());
                 answer(
                     200,
@@ -1067,6 +1130,76 @@ impl State {
             return refuse(409, "conflict");
         }
         self.media.insert(key, blob);
+        answer(204, Value::Null)
+    }
+
+    /// The pending link request `link` of `account`, or 404.
+    fn pending_link(&self, account: &str, link: &str) -> Result<&LinkRequest, Response> {
+        self.link_requests
+            .get(link)
+            .filter(|r| r.account == account && r.expires_at > self.clock.unwrap_or_else(now))
+            .ok_or_else(|| refuse(404, "not_found"))
+    }
+
+    /// `getDeviceLinkRequest` (0064).
+    fn get_link_request(&self, account: &str, link: &str) -> Response {
+        let request = match self.pending_link(account, link) {
+            Ok(request) => request,
+            Err(refused) => return refused,
+        };
+        answer(
+            200,
+            json!({
+                "linkId": link,
+                "sessionId": format!("ses_{link}"),
+                "browser": "Firefox",
+                "os": "Linux",
+                "deviceKey": STANDARD.encode(&request.device_key),
+                "historyKey": STANDARD.encode(&request.history_key),
+                "expiresAt": request.expires_at,
+                "approved": self.approved_links.contains_key(link),
+            }),
+        )
+    }
+
+    /// `approveDeviceLinkRequest` (0077): a phone's signature over the
+    /// approval message, once per link.
+    fn approve_link_request(
+        &mut self,
+        account: &str,
+        device: &str,
+        link: &str,
+        body: &Value,
+    ) -> Response {
+        let request = match self.pending_link(account, link) {
+            Ok(request) => request,
+            Err(refused) => return refused,
+        };
+        if self.browsers.contains(device) {
+            return refuse(403, "phone_required");
+        }
+        if self.approved_links.contains_key(link) {
+            return refuse(409, "already_approved");
+        }
+        let signature = STANDARD
+            .decode(body["signature"].as_str().unwrap_or_default())
+            .unwrap_or_default();
+        if !verify_link_approval(
+            link,
+            &request.device_key,
+            &self.device_keys[device],
+            &signature,
+        ) {
+            return refuse(403, "invalid_signature");
+        }
+        // The browser that completes it becomes the device with its key.
+        let made = self
+            .device_keys
+            .iter()
+            .find(|(_, k)| **k == request.device_key)
+            .map_or_else(|| format!("dev_{link}"), |(d, _)| d.clone());
+        self.approved_links
+            .insert(link.into(), (device.into(), made));
         answer(204, Value::Null)
     }
 

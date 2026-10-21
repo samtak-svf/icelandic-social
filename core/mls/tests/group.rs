@@ -720,3 +720,53 @@ fn a_key_package_carries_the_lifetime_of_0029() {
         "{not_after}"
     );
 }
+
+/// A phone's approval of a link request (0077) is its device key's Ed25519
+/// signature over the label, the link id and the new device's key, so it
+/// verifies for that link and that key only.
+#[test]
+fn a_link_approval_signs_the_0077_message_for_that_link_only() {
+    use openmls_traits::crypto::OpenMlsCrypto as _;
+    let mut d1 = Dev::new("a", "d1");
+    let new_key = [9u8; 32];
+    let signature = d1.with(|_, identity| identity.sign_link_approval("lnk_1", &new_key).unwrap());
+    let mut message = b"spjall device link v1\0".to_vec();
+    message.extend_from_slice(b"lnk_1");
+    message.extend_from_slice(&new_key);
+    assert_eq!(link_approval_message("lnk_1", &new_key), message);
+    let provider = openmls_rust_crypto::OpenMlsRustCrypto::default();
+    let verify = |message: &[u8]| {
+        provider.crypto().verify_signature(
+            SignatureScheme::ED25519,
+            message,
+            &d1.public_key,
+            &signature,
+        )
+    };
+    verify(&message).unwrap();
+    assert!(verify(&link_approval_message("lnk_2", &new_key)).is_err());
+    assert!(verify(&new_key).is_err());
+    assert_eq!(signature.len(), 64);
+    // The server's check agrees.
+    assert!(verify_link_approval(
+        "lnk_1",
+        &new_key,
+        &d1.public_key,
+        &signature
+    ));
+    assert!(!verify_link_approval(
+        "lnk_2",
+        &new_key,
+        &d1.public_key,
+        &signature
+    ));
+    assert!(!verify_link_approval(
+        "lnk_1",
+        &[8u8; 32],
+        &d1.public_key,
+        &signature
+    ));
+    assert!(!verify_link_approval(
+        "lnk_1", &new_key, &[0u8; 32], &signature
+    ));
+}

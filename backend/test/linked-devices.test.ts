@@ -6,8 +6,8 @@ import { euEnv, phoneWithKey, webSession } from "./support.ts";
 import { worker } from "./main.ts";
 
 // Linked non-phone devices (decision 0064, #299): enrolled from a web session
-// only after an active phone of the same account approves by signing the new
-// device's Ed25519 key; holds the server's 32-byte store-key share for its
+// only after an active phone of the same account approves by signing the link
+// id and the new device's Ed25519 key (decision 0077); holds the server's 32-byte store-key share for its
 // owning session; expires after 45 days without use; and revoking the device
 // leaves the web session signed in, whereas ending the session revokes the
 // device.
@@ -67,7 +67,7 @@ describe("enrolling a linked device from a session (decision 0064, #299)", () =>
     expect(await badApprove.json()).toMatchObject({ error: "invalid_signature" });
 
     const strangerPhone = await phoneWithKey();
-    const strangerSig = await strangerPhone.sign(newDeviceKey);
+    const strangerSig = await strangerPhone.approve(linkId, newDeviceKey);
     const strangerApprove = await fetch(`/v1/devices/link-requests/${linkId}/approve`, {
       method: "POST",
       headers: { ...strangerPhone.auth, "content-type": "application/json" },
@@ -86,7 +86,7 @@ describe("enrolling a linked device from a session (decision 0064, #299)", () =>
       approved: false,
     });
 
-    const validSig = await phone.sign(newDeviceKey);
+    const validSig = await phone.approve(linkId, newDeviceKey);
     const approveRes = await fetch(`/v1/devices/link-requests/${linkId}/approve`, {
       method: "POST",
       headers: { ...phone.auth, "content-type": "application/json" },
@@ -154,6 +154,46 @@ describe("enrolling a linked device from a session (decision 0064, #299)", () =>
     expect(await linkedApprove.json()).toMatchObject({ error: "phone_required" });
   });
 
+  it("accepts only a signature over the 0077 message for this link, and only once (decision 0077)", async () => {
+    const phone = await phoneWithKey();
+    // A session holds one pending request, so each link starts from its own session.
+    const start = async (deviceKey: Uint8Array) => {
+      const browser = await webSession({ accountId: phone.accountId });
+      const res = await fetch("/v1/devices/link-requests", {
+        method: "POST",
+        headers: { ...browser.web, "content-type": "application/json" },
+        body: JSON.stringify({ deviceKey: toBase64(deviceKey), historyKey: randomKeyBase64() }),
+      });
+      return ((await res.json()) as { linkId: string }).linkId;
+    };
+    const approve = (linkId: string, signature: Uint8Array) =>
+      fetch(`/v1/devices/link-requests/${linkId}/approve`, {
+        method: "POST",
+        headers: { ...phone.auth, "content-type": "application/json" },
+        body: JSON.stringify({ signature: toBase64(signature) }),
+      });
+    const keyA = crypto.getRandomValues(new Uint8Array(32));
+    const keyB = crypto.getRandomValues(new Uint8Array(32));
+    const linkA = await start(keyA);
+    const linkB = await start(keyB);
+
+    // A signature over the bare device key, the 0064 form, is refused.
+    const bare = await approve(linkA, await phone.sign(keyA));
+    expect(bare.status).toBe(403);
+    expect(await bare.json()).toMatchObject({ error: "invalid_signature" });
+
+    // An approval of link A is not an approval of link B, even for B's key.
+    const crossed = await approve(linkB, await phone.approve(linkA, keyB));
+    expect(crossed.status).toBe(403);
+    expect(await crossed.json()).toMatchObject({ error: "invalid_signature" });
+
+    // The right signature approves, and a second approval is refused with 409.
+    expect((await approve(linkA, await phone.approve(linkA, keyA))).status).toBe(204);
+    const again = await approve(linkA, await phone.approve(linkA, keyA));
+    expect(again.status).toBe(409);
+    expect(await again.json()).toMatchObject({ error: "already_approved" });
+  });
+
   it("removes a linked device after 45 days of inactivity while keeping phones and the web session", async () => {
     const phone = await phoneWithKey();
     const browser = await webSession({ accountId: phone.accountId });
@@ -167,7 +207,7 @@ describe("enrolling a linked device from a session (decision 0064, #299)", () =>
       }),
     });
     const { linkId } = (await startRes.json()) as { linkId: string };
-    const sig = await phone.sign(newDeviceKey);
+    const sig = await phone.approve(linkId, newDeviceKey);
     await fetch(`/v1/devices/link-requests/${linkId}/approve`, {
       method: "POST",
       headers: { ...phone.auth, "content-type": "application/json" },
@@ -226,7 +266,7 @@ describe("enrolling a linked device from a session (decision 0064, #299)", () =>
     await fetch(`/v1/devices/link-requests/${String(link1)}/approve`, {
       method: "POST",
       headers: { ...phone.auth, "content-type": "application/json" },
-      body: JSON.stringify({ signature: toBase64(await phone.sign(firstKey)) }),
+      body: JSON.stringify({ signature: toBase64(await phone.approve(String(link1), firstKey)) }),
     });
     const enrolled1 = (await (
       await fetch(`/v1/devices/link-requests/${String(link1)}/complete`, {
@@ -262,7 +302,7 @@ describe("enrolling a linked device from a session (decision 0064, #299)", () =>
     await fetch(`/v1/devices/link-requests/${link2}/approve`, {
       method: "POST",
       headers: { ...phone.auth, "content-type": "application/json" },
-      body: JSON.stringify({ signature: toBase64(await phone.sign(secondKey)) }),
+      body: JSON.stringify({ signature: toBase64(await phone.approve(link2, secondKey)) }),
     });
     const enrolled2 = (await (
       await fetch(`/v1/devices/link-requests/${link2}/complete`, {

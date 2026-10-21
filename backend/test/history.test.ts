@@ -59,7 +59,7 @@ async function approvedLink({ complete = true } = {}) {
   const approved = await fetch(`/v1/devices/link-requests/${linkId}/approve`, {
     method: "POST",
     headers: { ...phone.auth, "content-type": "application/json" },
-    body: JSON.stringify({ signature: toBase64(await phone.sign(deviceKey)) }),
+    body: JSON.stringify({ signature: toBase64(await phone.approve(linkId, deviceKey)) }),
   });
   expect(approved.status).toBe(204);
   if (!complete) return { phone, browser, linkId, linked: null };

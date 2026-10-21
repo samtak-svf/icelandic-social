@@ -94,7 +94,7 @@ const ApproveDeviceLinkRequest = z
   .object({
     signature: base64(64).openapi({
       description:
-        "64-byte Ed25519 signature by this phone's device key over the new device's 32-byte deviceKey (decision 0064)",
+        "64-byte Ed25519 signature by this phone's device key over the UTF-8 bytes `spjall device link v1` and a zero byte, then the UTF-8 linkId, then the new device's 32-byte deviceKey (decision 0077)",
     }),
   })
   .openapi("ApproveDeviceLinkRequest");
@@ -122,6 +122,7 @@ export const approveDeviceLinkRoute = createRoute({
       "phone_required: only an active phone may approve a linked device; invalid_signature: the signature did not verify under this phone's key",
     ),
     404: errorResponse("not_found: no such pending link request on this account"),
+    409: errorResponse("already_approved: a phone has already approved this request"),
   },
 });
 

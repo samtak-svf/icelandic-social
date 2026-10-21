@@ -804,7 +804,7 @@
             "minLength": 1,
             "maxLength": 88,
             "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
-            "description": "64-byte Ed25519 signature by this phone's device key over the new device's 32-byte deviceKey (decision 0064)"
+            "description": "64-byte Ed25519 signature by this phone's device key over the UTF-8 bytes `spjall device link v1` and a zero byte, then the UTF-8 linkId, then the new device's 32-byte deviceKey (decision 0077)"
           }
         },
         "required": [
@@ -3422,6 +3422,16 @@
           },
           "404": {
             "description": "not_found: no such pending link request on this account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "already_approved: a phone has already approved this request",
             "content": {
               "application/json": {
                 "schema": {

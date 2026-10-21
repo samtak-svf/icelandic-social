@@ -225,7 +225,7 @@ export interface DeviceLinkRequestInfo {
 }
 
 export interface ApproveDeviceLinkRequest {
-  /** 64-byte Ed25519 signature by this phone's device key over the new device's 32-byte deviceKey (decision 0064) */
+  /** 64-byte Ed25519 signature by this phone's device key over the UTF-8 bytes `spjall device link v1` and a zero byte, then the UTF-8 linkId, then the new device's 32-byte deviceKey (decision 0077) */
   signature: string;
 }
 
