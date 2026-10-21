@@ -55,13 +55,11 @@ pre-commit:
 pre-push:
   parallel: true
   commands:
+    # Refuses any push that updates or deletes refs/heads/main on the remote,
+    # read from the refs git hands the hook, not from the checked-out branch.
     block-main:
-      run: |
-        BRANCH=$(git rev-parse --abbrev-ref HEAD)
-        if [ "$BRANCH" = "main" ]; then
-          echo "❌ Direct pushes to main are not allowed. Use a PR."
-          exit 1
-        fi
+      use_stdin: true
+      run: node tooling/push-guard.mjs
 
     # The frozen ids: equal to the lock, and a lock change since main carries
     # a decision record (docs/decisions/0004).
