@@ -1,12 +1,19 @@
 const WEIGHTS = [3, 2, 7, 6, 5, 4, 3, 2];
-let people = Math.floor(Math.random() * 10_000);
+/** Day, month and serial give 28 × 12 × 80 people, split into one band per parallel worker. */
+const SPACE = 28 * 12 * 80;
+const BANDS = 8;
+const BAND = SPACE / BANDS;
+const slot = Number(process.env.TEST_PARALLEL_INDEX ?? 0) % BANDS;
+let people = slot * BAND + Math.floor(Math.random() * (BAND - 1000));
 
 /**
  * A new person's kennitala, born on a day in 2099: structurally valid, so it
  * passes as Kenni's, and nobody's. Computed rather than written out, because
  * tooling/pii-guard.mjs refuses a valid kennitala in any file (as in
- * backend/test/oidc.ts). The start is random, so a rerun against the same
- * `cf dev` state is a new person too.
+ * backend/test/oidc.ts). Each parallel worker counts in a band of its own,
+ * so two workers never make the same person (1000 numbers each); the start
+ * within the band is random, so a rerun against the same `cf dev` state is
+ * a new person too.
  */
 export function newKennitala(): string {
   for (;;) {
