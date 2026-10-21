@@ -1,11 +1,12 @@
 // @ts-check
 // Web outputs of the brand, all under web/src/generated/brand/ (decision 0062): the
 // strings as a typed module, the tokens as Tailwind theme variables with a
-// dark mode, the bundled fonts with their licences, and the icons.
+// dark mode, the bundled fonts as WOFF2 with their licences, and the icons.
 
 import { brandColors, fontFamilies, hex2, radii } from "./color.mjs";
 import { renderOpaquePng, squareFrame } from "./icon.mjs";
 import { keysFor } from "./strings.mjs";
+import { woff2 } from "./woff2.mjs";
 
 /**
  * @typedef {import("./strings.mjs").BrandInput} BrandInput
@@ -14,6 +15,9 @@ import { keysFor } from "./strings.mjs";
  */
 
 const DIR = "web/src/generated/brand";
+
+/** @param {string} fileName a font's TTF name, `GothicA1-Medium.ttf` */
+const woff2Name = (fileName) => fileName.replace(/\.ttf$/, ".woff2");
 
 /** @param {{ r: number, g: number, b: number, a: number }} c */
 function hex(c) {
@@ -124,7 +128,7 @@ function themeCss(brand) {
       `  font-family: ${cssFamily(family)};`,
       `  font-weight: ${font.weight};`,
       "  font-display: swap;",
-      `  src: url("./fonts/${font.fileName}") format("truetype");`,
+      `  src: url("./fonts/${woff2Name(font.fileName)}") format("woff2");`,
       "}",
       "",
     ];
@@ -158,7 +162,7 @@ function themeCss(brand) {
 }
 
 /**
- * The font files, and each licence beside them.
+ * The font files as WOFF2, and each licence beside them.
  *
  * @param {BrandInput} brand
  * @returns {OutputFile[]}
@@ -167,7 +171,8 @@ function fontFiles(brand) {
   /** @type {Map<string, OutputFile>} */
   const files = new Map();
   for (const font of brand.fonts) {
-    files.set(font.fileName, { path: `${DIR}/fonts/${font.fileName}`, content: font.bytes });
+    const name = woff2Name(font.fileName);
+    files.set(name, { path: `${DIR}/fonts/${name}`, content: woff2(font.bytes) });
     files.set(font.licenseName, {
       path: `${DIR}/fonts/${font.licenseName}`,
       content: `${font.license.trimEnd()}\n`,

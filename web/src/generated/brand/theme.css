@@ -77,19 +77,19 @@
   font-family: "Gothic A1";
   font-weight: 500;
   font-display: swap;
-  src: url("./fonts/GothicA1-Medium.ttf") format("truetype");
+  src: url("./fonts/GothicA1-Medium.woff2") format("woff2");
 }
 
 @font-face {
   font-family: "Gothic A1";
   font-weight: 900;
   font-display: swap;
-  src: url("./fonts/GothicA1-Black.ttf") format("truetype");
+  src: url("./fonts/GothicA1-Black.woff2") format("woff2");
 }
 
 @font-face {
   font-family: "Archivo Condensed";
   font-weight: 800;
   font-display: swap;
-  src: url("./fonts/ArchivoCondensed-ExtraBold.ttf") format("truetype");
+  src: url("./fonts/ArchivoCondensed-ExtraBold.woff2") format("woff2");
 }

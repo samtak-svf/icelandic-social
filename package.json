@@ -42,7 +42,8 @@
     "oxlint": "^1",
     "oxlint-tsgolint": "^7.0.2004",
     "typescript": "^7",
-    "vitest": "^5"
+    "vitest": "^5",
+    "wawoff2": "2.0.1"
   },
   "engines": {
     "node": ">=24.2"

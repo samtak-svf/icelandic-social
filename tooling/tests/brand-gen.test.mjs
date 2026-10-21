@@ -322,7 +322,7 @@ describe("brand-gen", () => {
     }
   });
 
-  it("bundles each font byte for byte on every platform, with its licence", () => {
+  it("bundles each font byte for byte in the apps and as WOFF2 on the web, with its licence", () => {
     const manifest = readJson(`brand/${BRAND}/brand.json`);
     const files = generate(BRAND).files;
     /** @param {string} path */
@@ -336,10 +336,20 @@ describe("brand-gen", () => {
       const license = readFileSync(join(ROOT, "brand", BRAND, font.license), "utf8").trimEnd();
       expect(bytes(`${RES}/raw/font_licenses.txt`)?.toString()).toContain(license);
       expect(output(ROOT, KOTLIN)).toContain(`R.font.${fontResource(font)} to ${font.weight}`);
-      const name = font.file.split("/").pop();
+      const name = font.file
+        .split("/")
+        .pop()
+        .replace(/\.ttf$/, ".woff2");
       const web = bytes(`${WEB}/fonts/${name}`);
-      expect(Buffer.isBuffer(web) && source.equals(web)).toBe(true);
-      expect(output(ROOT, `${WEB}/theme.css`)).toContain(`url("./fonts/${name}")`);
+      // A WOFF2 of the same font: the signature, the source's flavour and
+      // table count, and fewer bytes than the TTF.
+      expect(Buffer.isBuffer(web)).toBe(true);
+      const woff = /** @type {Buffer} */ (web);
+      expect(woff.subarray(0, 4).toString("latin1")).toBe("wOF2");
+      expect(woff.readUInt32BE(4)).toBe(source.readUInt32BE(0));
+      expect(woff.readUInt16BE(12)).toBe(source.readUInt16BE(4));
+      expect(woff.length).toBeLessThan(source.length * 0.4);
+      expect(output(ROOT, `${WEB}/theme.css`)).toContain(`url("./fonts/${name}") format("woff2")`);
       const webLicense = bytes(`${WEB}/fonts/${font.license.split("/").pop()}`)?.toString();
       expect(webLicense).toContain(license);
     }

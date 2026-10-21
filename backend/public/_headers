@@ -1,0 +1,6 @@
+# Workers static assets read this file (it is not served). Every file under
+# /assets/ carries a content hash in its name, so a browser keeps it for a year
+# and never asks again; a new build is new names. Without this rule each one
+# is revalidated on every visit (max-age=0, must-revalidate).
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
