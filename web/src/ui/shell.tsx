@@ -2,6 +2,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useAccount } from "../account.tsx";
 import { strings } from "../generated/brand/strings.ts";
+import { signInHref } from "../lib/sign-in-href.ts";
 import { Button, ProblemText } from "./kit.tsx";
 import { UnreadBadge } from "./unread.tsx";
 
@@ -106,15 +107,17 @@ function Frame({ children }: Readonly<{ children: ReactNode }>) {
 /**
  * Signing in is a full navigation to the Worker's start route, which sends the
  * browser to Google and back with the session cookie (decision 0062). Google
- * is the only way in; Kenni adds the mark afterwards (decision 0069).
+ * is the only way in; Kenni adds the mark afterwards (decision 0069). It comes
+ * back to the page that asked, so a shared link survives signing in.
  */
 function SignIn() {
+  const href = useLocation({ select: (l) => l.href });
   return (
     <Frame>
       <h1 className="font-headline text-4xl">{strings.app_name}</h1>
       <h2 className="mt-8 text-xl font-semibold">{strings.sign_in_title}</h2>
       <a
-        href="/auth/google/start"
+        href={signInHref(href)}
         className="mt-4 flex min-h-11 items-center justify-center rounded-md bg-primary px-4 font-medium text-primary-fg"
       >
         {strings.sign_in_google}
