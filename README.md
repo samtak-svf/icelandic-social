@@ -20,9 +20,10 @@ the system implements:
   ([decision 0002](docs/decisions/0002-mls-end-to-end-encryption.md)): text, photos, files and
   a location ([decision 0059](docs/decisions/0059-send-a-location.md)), with replies, edits,
   deletes, forwarding, copying, reactions, read receipts, typing indicators and disappearing
-  messages (encrypted chat on linked browser devices is designed in
-  [decision 0064](docs/decisions/0064-non-phone-devices-are-linked-devices.md) and not built
-  yet);
+  messages (encrypted chat on linked browser devices follows
+  [decision 0064](docs/decisions/0064-non-phone-devices-are-linked-devices.md): the core seams
+  and the backend enrolment with phone approval are built, history from a sibling device and
+  the web client are not yet);
 - **Communities and discussions** on Android, iOS and the web
   ([decision 0060](docs/decisions/0060-a-social-platform-with-an-encrypted-messenger.md),
   [decision 0063](docs/decisions/0063-communities-audiences-and-moderation.md),
