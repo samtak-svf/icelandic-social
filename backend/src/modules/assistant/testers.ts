@@ -2,7 +2,7 @@ import { brandStrings } from "../../brand.gen.ts";
 import { assistantCommunity, db } from "../../env/index.ts";
 import { addMember } from "../communities/index.ts";
 import { assistantAccount, makeAssistant } from "../../identity/index.ts";
-import { commentThread, writeComment } from "../social/index.ts";
+import { postOf, writeComment } from "../social/index.ts";
 
 // The testers' queue (decision 0076): the addresses the assistant found,
 // taken by the maintainer's machine, which adds each to its store's test and
@@ -55,18 +55,10 @@ export async function markTester(
   if (row.platform === "ios") {
     const text =
       outcome === "done" ? brandStrings.assistant_added_ios : brandStrings.assistant_failed_ios;
-    await replyUnder(env, row.commentId, text);
+    // comment_id is the post's own id when the address came in a post.
+    await replyAsAssistant(env, postOf(row.commentId), text);
   }
   return true;
-}
-
-/** Posts `text` as the assistant on the post `commentId` is under; whether it was posted. */
-async function replyUnder(env: Env, commentId: string, text: string): Promise<boolean> {
-  const communityId = assistantCommunity(env);
-  const assistant = await assistantAccount(env);
-  if (!communityId || !assistant) return false;
-  const thread = await commentThread(env, communityId, commentId, assistant);
-  return !!thread && (await replyAsAssistant(env, thread.post.postId, text));
 }
 
 /** Posts `text` as the assistant on `postId`; false where it may not comment. */

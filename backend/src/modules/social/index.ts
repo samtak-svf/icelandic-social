@@ -13,6 +13,6 @@ export {
   purgeRemoved,
   type Content,
 } from "./moderation.ts";
-export { authors, commentThread, writeComment } from "./posts.ts";
+export { authors, postOf, type Said, thread, writeComment } from "./posts.ts";
 export { reconcileSpace, restoreSpace, type Moderated } from "./restore.ts";
 export { socialRoutes } from "./routes.ts";
