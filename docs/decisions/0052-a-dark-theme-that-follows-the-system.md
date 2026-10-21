@@ -31,7 +31,7 @@
 ## Why
 
 The S23 used for the UX round runs in dark mode, and the app was the one bright screen on it;
-Both established messengers we compared follow the system. 0043 deferred a dark theme only because it needs
+The established messengers follow the system. 0043 deferred a dark theme only because it needs
 its own tokens and contrast pairs, which is what this record sets.
 
 ## What it rules out

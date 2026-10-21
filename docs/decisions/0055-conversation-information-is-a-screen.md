@@ -23,7 +23,7 @@
 ## Why
 
 In 0.7.3 the information is a short sheet: the mute row does not say whether the conversation
-is muted, and the photos and files sent in it can only be found by scrolling. Established
+is muted, and the photos and files sent in it can only be found by scrolling. The established
 messengers open a screen with the person, the settings and the shared media.
 
 ## What it rules out

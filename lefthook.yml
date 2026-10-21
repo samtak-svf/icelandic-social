@@ -37,6 +37,11 @@ pre-commit:
     pii:
       run: node tooling/pii-guard.mjs --staged
 
+    # Other messengers' names (decision 0073). Pre-commit for the same reason
+    # as pii: once a name is in a commit, removing it means rewriting history.
+    peer-names:
+      run: node tooling/peer-name-guard.mjs --staged
+
     format:
       glob: "*.{js,mjs,ts,json,jsonc,toml,yml,yaml,md}"
       run: pnpm exec oxfmt --write {staged_files}
@@ -129,3 +134,6 @@ commit-msg:
           echo "❌ AI authorship marker in commit message — commits list only human authors"
           exit 1
         fi
+
+    peer-names:
+      run: node tooling/peer-name-guard.mjs --message {1}

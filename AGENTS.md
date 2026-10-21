@@ -55,7 +55,7 @@ Consequences, all enforced by `tooling/brand-leak-guard.mjs`:
 ```bash
 pnpm install           # also installs the lefthook hooks
 pnpm check             # lint, types, format, ids, critical rules, drills, quarantine, brand, brand-gen, brand-leak,
-                       # þankastrik, PII, seams, modules, jurisdiction, migrations, core lock, ws-kotlin, web-api,
+                       # þankastrik, PII, peer names, seams, modules, jurisdiction, migrations, core lock, ws-kotlin, web-api,
                        # workflows, knip
 pnpm brand:gen         # regenerate the platform files from brand/$BRAND
 pnpm test              # guard tests (vitest); each guard is proven to fail when it should
@@ -130,6 +130,14 @@ runtime in tests so the file itself holds none. Real data goes in the gitignored
 **No PII in logs** (decision 0008): Workers Logs are processed outside the EU boundary, so a
 log line carries ids and counts, never a kennitala, a phone number, a name, a message or a
 push token.
+
+## Public repository
+
+**No other messenger app is named here** (decision 0073): not in files, commit messages, PR
+titles and bodies, or issues. Write "an established messenger" or describe the behaviour. A
+named comparison lives only in the gitignored `private/comparison/`. `tooling/peer-name-guard.mjs`
+checks staged files, commit messages, the whole tree and every PR; a new name goes into
+`tooling/peer-names.json` as the hash `node tooling/peer-name-guard.mjs --hash <name>` prints.
 
 ## Icelandic text
 

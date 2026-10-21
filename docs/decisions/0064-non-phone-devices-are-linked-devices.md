@@ -90,8 +90,8 @@ The measurement ([`docs/browser-storage.md`](../browser-storage.md), #297) sets 
   reader to their conversations without their phone.
 - A browser's key protection is the weakest of any client. The two-part key and the 45-day
   removal bound what a forgotten or copied browser can expose.
-- History from a sibling is what makes a linked device useful (an established messenger does the same since
-  2025), and encrypting it to a one-time key keeps 0002's promise: the server never holds
+- History from a sibling is what makes a linked device useful (an established messenger
+  does the same since 2025), and encrypting it to a one-time key keeps 0002's promise: the server never holds
   readable history or a key that opens it.
 - One store design across clients means the browser runs the core's own schema and tests, not
   a second implementation.

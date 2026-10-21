@@ -56,12 +56,12 @@
 
 The 0.5.0 review put the conversation next to two established messengers. A time under every run is
 what made it look long and heavy. A test conversation spread over a day showed a time under
-every bubble, because no two came within 5 minutes. An established messenger puts the time between messages,
+every bubble, because no two came within 5 minutes. One of them puts the time between messages,
 only where there is a gap, and that is what Icelandic users know best. A time line also answers
 the out-of-order case. 0022 orders by arrival, and #200 kept the day lines from going back.
 Even so, a message from 23:01 yesterday showed under "Í dag", next to a shared post from 00:00.
 
-One pill per bubble, sitting on it, is what both established messengers do. Chips on their own
+One pill per bubble, sitting on it, is what both of them do. Chips on their own
 line under the bubble added a row per reacted message. Listing who reacted needs the sheet,
 because a pill no longer shows a count per emoji.
 
@@ -69,5 +69,5 @@ because a pill no longer shows a count per emoji.
 
 - Reordering the timeline by the sender's clock. Clocks differ, and `seq` is the id the read
   marks and the lazy list rely on (0022).
-- Swipe to reveal times, as in one established messenger. 0043 rules out swipe actions on bubbles.
+- Swipe to reveal times, as one established messenger does. 0043 rules out swipe actions on bubbles.
 - A time under every bubble, or under every run, as a setting.

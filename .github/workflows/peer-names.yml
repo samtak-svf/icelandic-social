@@ -1,0 +1,43 @@
+# The public repository names no other messenger (decision 0073).
+#
+# The lefthook checks are local, and a squash merge writes the PR's title and
+# body into main's history, so this checks what no hook sees: the title, the
+# body and every commit message in the PR. `edited` matters, because a name can
+# be added to the body after the PR is opened. The tree itself is checked by
+# `pnpm check` in ci.yml.
+name: peer-names
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    # GUARD_RUNNER_LABELS: hosted unless set, and only ever set to the ephemeral GCP lane,
+    # never to a workstation label: a guard checks out and runs a PR's contents.
+    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.GUARD_RUNNER_LABELS || '["ubuntu-latest"]') }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Commit messages
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: node tooling/peer-name-guard.mjs --range "$BASE..$HEAD"
+
+      - name: Title and body
+        env:
+          # Via env, never interpolated into the script: PR text is untrusted input.
+          TITLE: ${{ github.event.pull_request.title }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: printf '%s\n\n%s\n' "$TITLE" "${BODY:-}" | node tooling/peer-name-guard.mjs --stdin

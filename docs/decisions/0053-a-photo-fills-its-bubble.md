@@ -21,7 +21,7 @@
 ## Why
 
 In 0.7.3 a photo sits inside a thick frame of the bubble colour, which reads as a border round
-a picture rather than a picture sent; established messengers draw it to the edge. At 170 % text
+a picture rather than a picture sent; the established messengers draw it to the edge. At 170 % text
 the initials spill out of their circle, Ég starts at the status bar with no title, and an empty
 list of blocked people takes as much room as the settings above it.
 

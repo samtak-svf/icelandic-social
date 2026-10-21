@@ -26,8 +26,8 @@
 ## Why
 
 In 0.7.3 the menu is a plain list that covers the next message, so it is not clear which
-message it acts on, and deleting for everyone looks like any other action. Established messengers
-both lift the message and mark the destructive action.
+message it acts on, and deleting for everyone looks like any other action. The established
+messengers lift the message and mark the destructive action.
 
 ## What it rules out
 

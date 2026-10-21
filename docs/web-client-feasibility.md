@@ -60,25 +60,23 @@ would make Node load the output as an ES module.
 
 ## What other E2EE messengers do in a browser
 
-Many messengers have a web client, but each one gives up something. They solve the
-problem in one of four ways:
+Many messengers have a web client, but each one gives up something. The established ones
+solve the problem in one of four ways:
 
-| Product          | Browser E2EE                                                                                                | How history and keys reach the browser                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| ---------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Discord          | Text: no. Calls: yes ([DAVE](https://discord.com/blog/meet-dave-e2ee-for-audio-video), MLS in every client) | The browser has no encrypted history to keep. Call keys are ephemeral.                                                                                                                                                                                                                                                                                                                                                                                             |
-| Peer A | (the named comparison is kept privately) | (the named comparison is kept privately) |
-| Peer B | (the named comparison is kept privately) | (the named comparison is kept privately) |
-| Peer C | (the named comparison is kept privately) | (the named comparison is kept privately) |
-| Peer D | (the named comparison is kept privately) | (the named comparison is kept privately) |
-| Peer E | (the named comparison is kept privately) | (the named comparison is kept privately) |
+1. **No encrypted history in the browser.** Text is not end-to-end encrypted there at all;
+   only calls are, with MLS in every client and ephemeral keys.
+2. **A second key system that holds encrypted history on the server.** A new device
+   restores history with a PIN (HSM-backed) or a recovery key, or with a code from another
+   device. The browser is treated as an ephemeral device.
+3. **A browser linked to a primary phone that transfers history to it.** The browser is a
+   linked device with its own identity, the phone sends it history encrypted to it, and
+   the link expires after inactivity. One established messenger has no browser client by
+   choice and ships only a desktop app linked this way.
+4. **Accepted loss, plus a manual backup.** Records live in IndexedDB under a WebCrypto
+   key (MLS, a Rust crypto core in wasm), and history is lost when browser data is
+   cleared.
 
-The four patterns:
-
-1. no encrypted history in the browser (Discord text);
-2. a second key system that holds encrypted history on the server (peers A and E);
-3. a browser linked to a primary phone that transfers history to it (peers B and C
-   desktop);
-4. accepted loss, plus a manual backup (peer D).
+The named comparison, with sources, is kept outside this repository.
 
 No one ships "history is device-local, full stop" in a browser and is satisfied with it.
 The hard part of a browser client is persistence and code delivery, not MLS.
@@ -136,9 +134,8 @@ The hard part of a browser client is persistence and code delivery, not MLS.
   same effect. The dead device keeps its D1 row, and under
   [0028](decisions/0028-removing-a-device-from-its-groups.md) its leaf stays in every
   group until a sibling device revokes it. Members keep encrypting to it, and the Inbox
-  keeps a cursor for it. A non-phone device needs server-side inactivity expiry (one established messenger
-  unlinks a linked device
-  after 45 days, another after 14).
+  keeps a cursor for it. A non-phone device needs server-side inactivity expiry (established
+  messengers unlink a linked device after between 14 and 45 days).
 - **History.** Under 0006 a new device sees only future messages. In a browser that means
   an empty client after every eviction. The cheapest of the four patterns that keeps
   history off the server is the linked device: the phone transfers history to the new
@@ -157,7 +154,8 @@ the key. Other options:
 
 **Code delivery is the deeper weakness.** On every visit the server can send one user
 different JavaScript, and that server would be the same Worker that relays the
-ciphertext. This is why one established messenger has no browser client and why another built code verification. No
+ciphertext. This is why one established messenger has no browser client and why another built a
+browser extension that verifies the served code. No
 cheap fix exists (reproducible builds, SRI, a published hash and a verifying extension
 each help only partly). A web record must say plainly that a browser is a weaker device
 than a phone, on both counts, and require a strict CSP and no third-party script.
@@ -201,7 +199,7 @@ than a phone, on both counts, and require a strict CSP and no third-party script
   one-connection constraint until the move to the web.
 - **A PWA** is a way to deliver the web client, not an alternative to it. It gives
   installability, Web Push on iOS, and exemption from Safari's 7-day cap.
-- **A phone-tethered proxy** (one established messenger in 2015) needs the phone online, which is a dead
+- **A phone-tethered proxy** (how one established messenger began its web client) needs the phone online, which is a dead
   end.
 
 ### For the maintainer, not an agent

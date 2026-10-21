@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "prepare": "lefthook install",
-    "check": "pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run check:ids && pnpm run check:critical-rules && pnpm run check:drills && pnpm run check:quarantine && pnpm run check:brand && pnpm run check:brand-gen && pnpm run check:brand-leak && pnpm run check:thankastrik && pnpm run check:pii && pnpm run check:seams && pnpm run check:modules && pnpm run check:jurisdiction && pnpm run check:migrations && pnpm run check:core && pnpm run check:ws-kotlin && pnpm run check:web-api && pnpm run check:workflows && pnpm run knip",
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run check:ids && pnpm run check:critical-rules && pnpm run check:drills && pnpm run check:quarantine && pnpm run check:brand && pnpm run check:brand-gen && pnpm run check:brand-leak && pnpm run check:thankastrik && pnpm run check:pii && pnpm run check:peer-names && pnpm run check:seams && pnpm run check:modules && pnpm run check:jurisdiction && pnpm run check:migrations && pnpm run check:core && pnpm run check:ws-kotlin && pnpm run check:web-api && pnpm run check:workflows && pnpm run knip",
     "lint": "oxlint && oxlint --type-aware web",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p web/tsconfig.json && tsc --noEmit -p web/e2e/tsconfig.json",
     "format": "oxfmt --write .",
@@ -21,6 +21,7 @@
     "check:brand-leak": "node tooling/brand-leak-guard.mjs",
     "check:thankastrik": "node tooling/thankastrik.mjs",
     "check:pii": "node tooling/pii-guard.mjs",
+    "check:peer-names": "node tooling/peer-name-guard.mjs",
     "check:seams": "node tooling/seam-guard.mjs",
     "check:modules": "node tooling/module-guard.mjs",
     "check:jurisdiction": "node tooling/jurisdiction-check.mjs",
