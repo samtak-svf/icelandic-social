@@ -5,7 +5,7 @@
 use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use spjall_client::{self as core, ClientError, HistoryError, MediaError, api};
+use spjall_client::{self as core, ClientError, HistoryError, LinkError, MediaError, api};
 
 use crate::{Body, CoreError, Envelope, store_code};
 
@@ -201,6 +201,10 @@ impl From<ClientError> for CoreError {
             ClientError::CannotForward(reason) => Self::CannotForward {
                 reason: reason.into(),
             },
+            ClientError::Link(LinkError::InvalidCode) => Self::LinkCodeInvalid,
+            ClientError::Link(LinkError::KeyMismatch) => Self::LinkKeyMismatch,
+            ClientError::Link(LinkError::Gone) => Self::LinkExpired,
+            ClientError::Link(LinkError::AlreadyApproved) => Self::LinkAlreadyApproved,
         }
     }
 }
@@ -355,6 +359,35 @@ impl From<core::Imported> for ImportedHistory {
             conversations: imported.conversations,
             items: imported.items,
             files: imported.files,
+        }
+    }
+}
+
+/// Whether `text`, read off a QR code, is a link code a browser shows
+/// (0077), so a scanner can stop at the first one.
+#[uniffi::export]
+pub fn is_link_code(text: String) -> bool {
+    core::LinkCode::parse(&text).is_some()
+}
+
+/// A browser's pending request to be linked to this account (0064), as the
+/// phone shows it before approving: `browser` and `os` as the server read
+/// them, and when it expires, in milliseconds.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct LinkRequest {
+    pub browser: Option<String>,
+    pub os: Option<String>,
+    pub expires_at: i64,
+    pub approved: bool,
+}
+
+impl From<core::LinkRequest> for LinkRequest {
+    fn from(request: core::LinkRequest) -> Self {
+        Self {
+            browser: request.browser,
+            os: request.os,
+            expires_at: request.expires_at,
+            approved: request.approved,
         }
     }
 }
@@ -1078,6 +1111,25 @@ impl CoreClient {
         recipient: Vec<u8>,
     ) -> Result<u64, CoreError> {
         Ok(self.client()?.send_history(&link, since, &recipient)?)
+    }
+
+    /// The pending link request the code `code` names, once its keys are
+    /// checked against the code's (0077).
+    pub fn inspect_link(&self, code: String) -> Result<LinkRequest, CoreError> {
+        Ok(self.client()?.inspect_link(&code)?.into())
+    }
+
+    /// Approves the link request the code `code` names with this phone's
+    /// signature (0077), then, when `send` is set, sends this device's
+    /// history since `since` to the new device. Returns the sealed size,
+    /// or 0 when nothing was sent.
+    pub fn approve_link(
+        &self,
+        code: String,
+        since: Option<u64>,
+        send: bool,
+    ) -> Result<u64, CoreError> {
+        Ok(self.client()?.approve_link(&code, since, send)?)
     }
 
     /// Downloads the history sent for the link that made this device,

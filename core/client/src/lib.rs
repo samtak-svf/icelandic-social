@@ -25,6 +25,7 @@ mod clock;
 mod directory;
 mod forward;
 mod history;
+mod link;
 mod media;
 mod members;
 mod mute;
@@ -45,6 +46,7 @@ use api::{Api, ApiError, Outgoing, Platform, Profile, Transport, conversation_id
 pub use blobs::{BlobStore, BlobWrite, FsBlobs, MemBlobs};
 pub use directory::{Directory, ListSearch, MAX_QUERY, blank, fold_name};
 pub use history::{HistoryError, HistoryKey, Imported, MAX_HISTORY, history_key};
+pub use link::{LinkCode, LinkError, LinkRequest};
 pub use media::{MAX_SIZE, MediaError};
 pub use members::Person;
 pub use mute::{Mute, MuteFor};
@@ -96,6 +98,8 @@ pub enum ClientError {
     Media(#[from] MediaError),
     #[error(transparent)]
     History(#[from] HistoryError),
+    #[error(transparent)]
+    Link(#[from] LinkError),
     /// The message cannot be forwarded (0041).
     #[error("this message cannot be forwarded: {0:?}")]
     CannotForward(Unforwardable),

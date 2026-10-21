@@ -74,6 +74,19 @@ pub enum CoreError {
     /// only where it can, so this is a race with a delete or a timer.
     #[error("this message cannot be forwarded")]
     CannotForward { reason: Unforwardable },
+    /// The text scanned is not a link code (0077).
+    #[error("not a link code")]
+    LinkCodeInvalid,
+    /// The server's link request names other keys than the code shown on
+    /// the screen, so it is refused unsigned (0077).
+    #[error("the link request is not the one on the screen")]
+    LinkKeyMismatch,
+    /// The link request expired, or is not this account's.
+    #[error("the link request has expired")]
+    LinkExpired,
+    /// The link request was approved already, by this phone or another.
+    #[error("the link request is already approved")]
+    LinkAlreadyApproved,
 }
 
 /// Why a message cannot be forwarded (0041).
@@ -428,6 +441,10 @@ impl CoreError {
             Self::Tampered => "tampered".into(),
             Self::File { detail } => format!("file/{detail}"),
             Self::CannotForward { reason } => format!("cannot-forward/{reason:?}"),
+            Self::LinkCodeInvalid => "link/invalid-code".into(),
+            Self::LinkKeyMismatch => "link/key-mismatch".into(),
+            Self::LinkExpired => "link/expired".into(),
+            Self::LinkAlreadyApproved => "link/already-approved".into(),
         })
     }
 }

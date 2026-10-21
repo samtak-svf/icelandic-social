@@ -95,7 +95,28 @@ export async function phoneWithKey(accountId?: string) {
     publicKey,
     sign: async (message: Uint8Array) =>
       new Uint8Array(await crypto.subtle.sign("Ed25519", pair.privateKey, message)),
+    /** The approval of `linkId` for `deviceKey`, signed as decision 0077 says. */
+    approve: async (linkId: string, deviceKey: Uint8Array) =>
+      new Uint8Array(
+        await crypto.subtle.sign("Ed25519", pair.privateKey, approvalMessage(linkId, deviceKey)),
+      ),
   };
+}
+
+/** What a phone signs to approve a link (decision 0077), built here apart from the server's copy. */
+function approvalMessage(linkId: string, deviceKey: Uint8Array): Uint8Array {
+  const parts = [
+    new TextEncoder().encode("spjall device link v1\0"),
+    new TextEncoder().encode(linkId),
+    deviceKey,
+  ];
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let at = 0;
+  for (const part of parts) {
+    out.set(part, at);
+    at += part.length;
+  }
+  return out;
 }
 
 /** Revokes a seeded device's token. */
