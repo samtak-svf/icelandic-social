@@ -188,7 +188,13 @@ const PATHS: Path[] = [
   },
 ];
 
-describe("who reaches a community's content (decision 0063)", () => {
+/**
+ * Each case builds a world, then makes 91 table requests and the list reads in sequence: 1 s
+ * locally, 2 s on a CI runner with coverage, and past vitest's default 5 s on a busy one.
+ */
+const table = { timeout: 20_000 };
+
+describe("who reaches a community's content (decision 0063)", table, () => {
   for (const audience of ["open", "private"] as const) {
     it(`holds the table in a ${audience} community`, async () => {
       const w = await world(audience);
