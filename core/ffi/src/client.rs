@@ -202,6 +202,8 @@ impl From<ClientError> for CoreError {
                 reason: reason.into(),
             },
             ClientError::Link(LinkError::InvalidCode) => Self::LinkCodeInvalid,
+            ClientError::NameInvalid => Self::NameInvalid,
+            ClientError::NotAGroup => Self::NotAGroup,
             ClientError::Link(LinkError::KeyMismatch) => Self::LinkKeyMismatch,
             ClientError::Link(LinkError::Gone) => Self::LinkExpired,
             ClientError::Link(LinkError::AlreadyApproved) => Self::LinkAlreadyApproved,
@@ -407,6 +409,9 @@ pub enum ConversationState {
     Excluded,
     /// A commit removed this account.
     Removed,
+    /// This account left (0078); a commit that adds it again makes it
+    /// `Active`.
+    Left,
     /// This device missed what it needed to follow the group; it joins
     /// again on the next sync or notify (0021).
     Stale,
@@ -419,6 +424,7 @@ impl From<core::State> for ConversationState {
             core::State::Active => Self::Active,
             core::State::Excluded => Self::Excluded,
             core::State::Removed => Self::Removed,
+            core::State::Left => Self::Left,
             core::State::Stale => Self::Stale,
         }
     }
@@ -552,6 +558,11 @@ impl From<core::Notices> for Notices {
 pub struct Conversation {
     pub id: String,
     pub state: ConversationState,
+    /// The group's name (0078); none for a conversation of two, and for a
+    /// group whose name was never set or was cleared. The title is then
+    /// the members' names.
+    #[uniffi(default = None)]
+    pub name: Option<String>,
     /// Everyone here but this account, named ones first.
     pub members: Vec<Person>,
     /// The newest item, if any.
@@ -608,6 +619,7 @@ impl From<core::Conversation> for Conversation {
         Self {
             id: conversation.id,
             state: conversation.state.into(),
+            name: conversation.name,
             members: people(conversation.members),
             last: conversation.last.map(Into::into),
             unread: conversation.unread,
@@ -677,6 +689,8 @@ pub enum Content {
     },
     /// The disappearing timer was set, or turned off.
     Timer { seconds: Option<u32> },
+    /// The group was named, or its name cleared (0078).
+    Name { name: Option<String> },
     /// A post shared here under 0040: only its id. Since 0044 nothing
     /// fetches it: the card, the list's last line and a notice each show
     /// a fixed sentence.
@@ -729,6 +743,7 @@ impl From<core::Content> for Content {
                 devices: people(devices),
             },
             C::Timer { seconds } => Self::Timer { seconds },
+            C::Name { name } => Self::Name { name },
             C::Post { post_id } => Self::Post { post_id },
             C::Location {
                 lat_e6,
@@ -1223,6 +1238,21 @@ impl CoreClient {
         accounts: Vec<String>,
     ) -> Result<(), CoreError> {
         Ok(self.client()?.remove_accounts(&conversation, &accounts)?)
+    }
+
+    /// Names a group, or clears its name with none (0078); queued like a
+    /// message, and returns its envelope id. `NotAGroup` for a
+    /// conversation of two, `NameInvalid` past 64 characters or with a
+    /// control character.
+    pub fn rename(&self, conversation: String, name: Option<String>) -> Result<String, CoreError> {
+        Ok(self.client()?.rename(&conversation, name)?)
+    }
+
+    /// Leaves a group (0078): the server stops listing this account, the
+    /// others remove it on their next sync, and here it is `Left`. Done
+    /// once is done.
+    pub fn leave(&self, conversation: String) -> Result<(), CoreError> {
+        Ok(self.client()?.leave(&conversation)?)
     }
 
     /// Queues a message; it is sent on the next `sync`. Returns the

@@ -10,6 +10,7 @@
   composer's one action)
 - Builds on: [0039](0039-profile-photo.md) (the photo buttons), [0022](0022-the-conversation-surfaces.md) (the conversation's menu and information),
   [0023](0023-media-as-encrypted-blobs.md) (photos as encrypted blobs)
+- Amended by: [0078](0078-a-group-name-leaving-and-who-changes-members.md) (a group name is in scope; the photo is not)
 
 ## Decision
 

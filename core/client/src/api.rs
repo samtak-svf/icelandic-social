@@ -1115,6 +1115,18 @@ impl<'a, T: Transport + ?Sized> Api<'a, T> {
         .map(drop)
     }
 
+    /// `leaveConversation` (0078): the server stops listing this account's
+    /// devices, and the first member to check removes them. Done once is
+    /// done; a second call answers the same.
+    pub fn leave_conversation(&self, conversation: &str) -> Result<(), ApiError> {
+        self.send(
+            Method::Post,
+            format!("/v1/conversations/{conversation}/leave"),
+            None,
+        )
+        .map(drop)
+    }
+
     /// `sendMessage`: the seq the message was stored at, the same on a retry.
     pub fn send_message(&self, conversation: &str, out: &Outgoing) -> Result<u64, ApiError> {
         let body = SendBody {

@@ -124,6 +124,22 @@ pub enum Body {
         #[serde(default, skip_serializing_if = "is_false")]
         forwarded: bool,
     },
+    /// Names the group, or clears its name with `None` (0078). Groups only:
+    /// a 1:1 conversation is titled by the other person.
+    Name {
+        name: Option<String>,
+    },
+    /// The group's settings as the sender holds them, sent to whoever joined
+    /// since (0078): a new account after an add, a new device after an
+    /// external join. Folding one that changes nothing shows nothing.
+    Settings {
+        name: Option<String>,
+        timer: Option<u32>,
+    },
+    /// The sender's account is leaving the group (0078); the server stops
+    /// listing it, and the next member to check the devices removes its
+    /// leaves.
+    Leave {},
     /// A kind this client does not know. Never encoded.
     #[serde(skip)]
     Unknown {
@@ -153,6 +169,9 @@ const KNOWN_KINDS: &[&str] = &[
     "typing",
     "post",
     "location",
+    "name",
+    "settings",
+    "leave",
 ];
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -287,6 +306,12 @@ mod tests {
                 accuracy: None,
                 forwarded: false,
             },
+            Body::Name { name: None },
+            Body::Settings {
+                name: None,
+                timer: None,
+            },
+            Body::Leave {},
         ];
         let kinds: Vec<String> = samples
             .iter()
@@ -596,6 +621,13 @@ mod tests {
                     accuracy,
                     forwarded,
                 }),
+            proptest::option::of(s()).prop_map(|name| Body::Name { name }),
+            (
+                proptest::option::of(s()),
+                proptest::option::of(any::<u32>())
+            )
+                .prop_map(|(name, timer)| Body::Settings { name, timer }),
+            Just(Body::Leave {}),
         ]
     }
 

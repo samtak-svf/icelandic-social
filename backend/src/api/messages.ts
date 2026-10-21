@@ -89,7 +89,7 @@ export const sendMessageRoute = createRoute({
     ),
     404: MEMBER[404],
     409: errorResponse(
-      "epoch_conflict: this epoch already has a commit; re-propose on the new one. claim_names_departed: the claim names a deleted account; check the conversation's devices (decision 0028)",
+      "epoch_conflict: this epoch already has a commit; re-propose on the new one. claim_names_departed: the claim names a deleted account (decision 0028) or one that left (0078); check the conversation's devices",
     ),
     ...AUTHED,
   },

@@ -9,6 +9,7 @@
   [0018](0018-the-client-engine-in-the-core.md) (device-level group changes),
   [0019](0019-sign-in-and-invites.md) (a revoked device's leaves),
   [0020](0020-membership-bound-to-commits.md) (the claim when a sibling device leaves)
+- Amended by: [0078](0078-a-group-name-leaving-and-who-changes-members.md) (leaving a group, by the same removal)
 
 ## Decision
 

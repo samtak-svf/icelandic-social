@@ -68,6 +68,8 @@ pub enum Content {
     },
     /// The disappearing timer was set, or turned off.
     Timer { seconds: Option<u32> },
+    /// The group was named, or its name cleared (0078).
+    Name { name: Option<String> },
     /// A post shared here under 0040: only its id. Since 0044 the post is
     /// gone and nothing fetches it; the app shows a fixed line.
     Post { post_id: String },
@@ -176,6 +178,23 @@ struct TimerCard {
     seconds: Option<u32>,
 }
 
+#[derive(Serialize, Deserialize)]
+struct NameCard {
+    name: Option<String>,
+}
+
+/// A group's name as it is kept (0078): trimmed, 1 to 64 characters, no
+/// control characters. `Some(None)` for a blank one, which clears the
+/// name; `None` for a name that is not allowed.
+pub(crate) fn group_name(sent: &str) -> Option<Option<String>> {
+    let name = sent.trim();
+    if name.is_empty() {
+        return Some(None);
+    }
+    (name.chars().count() <= 64 && !name.chars().any(char::is_control))
+        .then(|| Some(name.to_owned()))
+}
+
 /// A file name a peer sent, as a name and never a path: the last component,
 /// without control characters, at most 120 characters. `None` when nothing
 /// usable is left.
@@ -188,6 +207,45 @@ pub(crate) fn file_name(sent: &str) -> Option<String> {
 
 fn json(value: &impl Serialize) -> String {
     serde_json::to_string(value).expect("cards serialize")
+}
+
+fn is_group(tx: &Transaction, group: &[u8]) -> rusqlite::Result<bool> {
+    Ok(crate::members::members(tx, group)?.len() > 2)
+}
+
+fn set_name(tx: &Transaction, group: &[u8], name: &Option<String>) -> rusqlite::Result<()> {
+    tx.execute(
+        "UPDATE conversations SET name = ?2 WHERE group_id = ?1",
+        params![group, name],
+    )
+    .map(drop)
+}
+
+/// A card a settings envelope writes: no envelope id, so it takes no
+/// reaction, receipt or expiry.
+fn card(
+    tx: &Transaction,
+    group: &[u8],
+    seq: u64,
+    sender: &Device,
+    ts: u64,
+    kind: &'static str,
+    detail: String,
+) -> rusqlite::Result<()> {
+    insert(
+        tx,
+        group,
+        seq,
+        Row {
+            kind,
+            sender,
+            envelope_id: None,
+            ts,
+            text: None,
+            reply_to: None,
+            detail: Some(detail),
+        },
+    )
 }
 
 /// A message row of this account addressed by an edit or a delete.
@@ -434,6 +492,70 @@ pub(crate) fn fold(
                 r.get::<_, i64>(0).map(|s| s as u64)
             })?;
             rows.collect::<rusqlite::Result<_>>()?
+        }
+        Body::Name { name } => {
+            let Some(name) = name.as_deref().map_or(Some(None), group_name) else {
+                return Ok(None);
+            };
+            if !is_group(tx, group)? {
+                return Ok(None);
+            }
+            set_name(tx, group, &name)?;
+            card(
+                tx,
+                group,
+                seq,
+                sender,
+                envelope.ts,
+                "name",
+                json(&NameCard { name }),
+            )?;
+            vec![seq]
+        }
+        // A snapshot for whoever joined (0078): what it changes takes, and
+        // a card shows the name if it changed, else the timer. One that
+        // changes nothing writes nothing.
+        Body::Settings { name, timer } => {
+            let Some(name) = name.as_deref().map_or(Some(None), group_name) else {
+                return Ok(None);
+            };
+            let timer = timer.filter(|s| *s > 0);
+            let (was_name, was_timer): (Option<String>, Option<u32>) = tx.query_row(
+                "SELECT name, timer FROM conversations WHERE group_id = ?1",
+                [group],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )?;
+            let renamed = name != was_name && is_group(tx, group)?;
+            let retimed = timer != was_timer;
+            if renamed {
+                set_name(tx, group, &name)?;
+            }
+            if retimed {
+                tx.execute(
+                    "UPDATE conversations SET timer = ?2 WHERE group_id = ?1",
+                    params![group, timer],
+                )?;
+            }
+            let (kind, detail) = if renamed {
+                ("name", json(&NameCard { name }))
+            } else if retimed {
+                ("timer", json(&TimerCard { seconds: timer }))
+            } else {
+                return Ok(None);
+            };
+            card(tx, group, seq, sender, envelope.ts, kind, detail)?;
+            vec![seq]
+        }
+        // The leaver's devices are no longer served: the next check
+        // removes them, and its commit writes the card (0078).
+        Body::Leave {} => {
+            if sender.account != me {
+                tx.execute(
+                    "UPDATE conversations SET devices_checked_at = NULL WHERE group_id = ?1",
+                    [group],
+                )?;
+            }
+            return Ok(None);
         }
         Body::Typing { .. } | Body::Unknown { .. } => return Ok(None),
     };
@@ -741,6 +863,13 @@ fn stored(
                     Some(card) => Content::Timer {
                         seconds: card.seconds,
                     },
+                    None => Content::unreadable("a stored card"),
+                },
+                "name" => match detail
+                    .as_deref()
+                    .and_then(|d| serde_json::from_str::<NameCard>(d).ok())
+                {
+                    Some(card) => Content::Name { name: card.name },
                     None => Content::unreadable("a stored card"),
                 },
                 _ => Content::Text {

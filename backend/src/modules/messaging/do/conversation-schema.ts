@@ -41,4 +41,5 @@ export const SCHEMA = `
     message BLOB NOT NULL
   );
   CREATE TABLE IF NOT EXISTS departed (account TEXT PRIMARY KEY, at INTEGER NOT NULL);
+  CREATE TABLE IF NOT EXISTS left_accounts (account TEXT PRIMARY KEY, at INTEGER NOT NULL);
 `;
