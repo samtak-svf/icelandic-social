@@ -39,7 +39,7 @@
     "ajv": "^8",
     "knip": "^6",
     "lefthook": "^2",
-    "oxfmt": "^0.72",
+    "oxfmt": "^0.73",
     "oxlint": "^1",
     "oxlint-tsgolint": "^7.0.2004",
     "typescript": "^7",
