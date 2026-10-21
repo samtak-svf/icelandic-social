@@ -58,8 +58,10 @@ fun env(name: String): String? = providers.environmentVariable(name).orNull?.tak
 
 val uploadStoreFile: String? = env("SPJALL_UPLOAD_STORE_FILE")
 
-// Above the hand-set codes of the builds before the Play lane.
-val playVersionCodeOffset = 100
+// Above every code Play has seen: the hand-set ones before the Play lane, then
+// run + 100 in the first repo, up to 129. The run count restarted at 1 when the
+// repo was recreated (decision 0075).
+val playVersionCodeOffset = 200
 
 android {
     // Not the application id: `is` is a Kotlin keyword (decision 0004).

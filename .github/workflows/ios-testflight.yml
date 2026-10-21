@@ -127,10 +127,15 @@ jobs:
           api-key-id: ${{ secrets.ASC_API_KEY_ID }}
           api-private-key: ${{ secrets.ASC_API_KEY_P8 }}
 
-      # The run number is the build number: TestFlight refuses a repeated one.
+      # The run number plus an offset is the build number: TestFlight refuses a
+      # repeated one. The first repo's runs reached 34, and the count restarted
+      # at 1 when the repo was recreated (decision 0075).
       # -skipPackagePluginValidation: see ios.yml.
       - name: Archive (Interim)
         working-directory: ios
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+          BUILD_NUMBER_OFFSET: 100
         run: |
           set -o pipefail
           xcodebuild archive \
@@ -140,7 +145,7 @@ jobs:
             -destination 'generic/platform=iOS' \
             -archivePath build/Spjall.xcarchive \
             -skipPackagePluginValidation \
-            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            CURRENT_PROJECT_VERSION=$((RUN_NUMBER + BUILD_NUMBER_OFFSET)) \
             2>&1 | tee "$RUNNER_TEMP/archive.log" | xcpretty
 
       - name: Archive log on failure
