@@ -34,6 +34,26 @@ export const SAMTAK_ACCOUNT = "af4d4a9c4527ce1e46d0c2dc1165e801";
 const API = "https://api.cloudflare.com/client/v4";
 
 /**
+ * The cloud regions inside the EU a targeted placement may name. London
+ * (aws:eu-west-2, gcp:europe-west2) and Zurich (aws:eu-central-2,
+ * gcp:europe-west6) carry "eu" or "europe" in their names and are outside it.
+ */
+const EU_REGIONS = new Set([
+  "aws:eu-central-1",
+  "aws:eu-west-1",
+  "aws:eu-west-3",
+  "aws:eu-south-1",
+  "aws:eu-south-2",
+  "aws:eu-north-1",
+  "gcp:europe-west1",
+  "gcp:europe-west3",
+  "gcp:europe-west4",
+  "gcp:europe-west8",
+  "gcp:europe-west9",
+  "gcp:europe-north1",
+]);
+
+/**
  * @typedef {import("./lib/worker-config.mjs").WorkerConfig} WorkerConfig
  */
 
@@ -94,6 +114,15 @@ export function checkConfig(config, cloudflare) {
   for (const c of live) expect(c.storage, "sqlite", `DO ${c.className} storage`);
 
   if (config.queues) problems.push("Queues have no jurisdiction and are ruled out (decision 0001)");
+
+  // The Worker runs in a named cloud region next to D1 (decision 0056), and
+  // only in one inside the EU: Smart Placement may leave it at the edge.
+  const region = /** @type {any} */ (config.placement)?.region;
+  if (!EU_REGIONS.has(region)) {
+    problems.push(
+      `placement is ${JSON.stringify(config.placement)}, expected { region } in the EU, next to D1`,
+    );
+  }
   return problems;
 }
 

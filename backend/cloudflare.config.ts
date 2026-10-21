@@ -26,11 +26,14 @@ export default defineConfig(({ mode }) => ({
     // src/index.ts; `jurisdiction-check.mjs` holds that.
     entrypoint: mode === "interop" ? "dev/worker.ts" : "src/index.ts",
     observability: { enabled: true },
-    // Every authenticated request makes two or more D1 round trips, and D1
-    // runs in the EU (EEUR). Smart Placement runs the Worker next to D1, so
-    // the client pays one long hop instead of several (decision 0056). It
-    // moves only where the code runs, on Cloudflare's network; no data moves.
-    placement: { mode: "smart" },
+    // Every authenticated request makes two or more D1 round trips, and D1's
+    // primary answers from Milan (EEUR, colo MXP). The Worker runs in the
+    // cloud region next to it, so the client pays one long hop instead of
+    // several (decision 0056). Smart Placement kept a quiet Worker at the
+    // edge (`cf-placement: local-KEF`, ~65 ms per D1 query), so the region is
+    // named. It moves only where the code runs, on Cloudflare's network; no
+    // data moves. `jurisdiction-check.mjs` holds it to an EU region.
+    placement: { region: "aws:eu-south-1" },
     // The Worker answers only on the frozen API host (ids.json hosts.api), as
     // a custom domain on the samtak.is zone; workers.dev stays off so there is
     // one public address. `jurisdiction-check.mjs --deploy` holds both.

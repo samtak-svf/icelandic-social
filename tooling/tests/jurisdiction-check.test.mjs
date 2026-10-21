@@ -79,6 +79,22 @@ describe("jurisdiction-check, config", () => {
     expect(checkConfig(c, cloudflare)).toHaveLength(3);
   });
 
+  it("fails on Smart Placement, no placement, or a region outside the EU", () => {
+    for (const placement of [
+      { mode: "smart" },
+      undefined,
+      { region: "aws:us-east-1" },
+      { region: "aws:eu-west-2" },
+      { region: "aws:eu-central-2" },
+    ]) {
+      const c = config();
+      c.placement = placement;
+      expect(checkConfig(c, cloudflare).join()).toMatch(
+        /placement is .*expected \{ region \} in the EU/,
+      );
+    }
+  });
+
   it("fails on another Cloudflare account", () => {
     const c = config();
     c.accountId = "0".repeat(32);

@@ -36,13 +36,14 @@ const CONFIG_FILE = "backend/cloudflare.config.ts";
  *   vars: Record<string, unknown>,
  *   crons: string[],
  *   queues: boolean,
+ *   placement: unknown,
  * }} WorkerConfig
  */
 
 /** Top-level keys. */
 const ROOT_KEYS = new Set(["accountId", "worker"]);
 /** Worker keys that carry no binding and nothing a guard checks. */
-const INERT = new Set(["compatibilityDate", "compatibilityFlags", "observability", "placement"]);
+const INERT = new Set(["compatibilityDate", "compatibilityFlags", "observability"]);
 /** Worker keys the model reads. */
 const READ = new Set([
   "name",
@@ -53,6 +54,7 @@ const READ = new Set([
   "triggers",
   "env",
   "exports",
+  "placement",
 ]);
 
 /**
@@ -164,6 +166,7 @@ export function normalise(raw, file = CONFIG_FILE) {
     vars: {},
     crons: [],
     queues: false,
+    placement: worker.placement,
   };
 
   const unknownTypes = Object.entries(worker.env ?? {})

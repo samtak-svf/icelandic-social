@@ -30,8 +30,11 @@
   - The purge that deletes it runs in `sync()` and `expire()`, which the apps already call.
   - `notices()` records what it has announced, so it stays a write.
 - **The Worker runs next to D1.**
-  - Smart Placement is on (`backend/cloudflare.config.ts`), because every authenticated request
-    makes two or more D1 round trips and D1 runs in EEUR.
+  - The Worker is placed in the cloud region next to D1's primary (`backend/cloudflare.config.ts`,
+    `placement.region`), because every authenticated request makes two or more D1 round trips
+    and D1 runs in EEUR. Smart Placement was on until 2026-10-21 and kept the low-traffic Worker
+    at the edge (`cf-placement: local-KEF`, ~65 ms for each D1 query); `jurisdiction-check.mjs`
+    now refuses a config without a region inside the EU.
   - Only where the code runs changes; no data moves.
   - The device-token lookup logs its duration (`auth.token_checked`), so the round trip each
     request pays can be read from Workers Logs.
