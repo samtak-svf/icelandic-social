@@ -45,6 +45,9 @@ jobs:
       - name: The Worker builds, with the web app
         run: pnpm --filter spjall-backend build
 
+      - name: Every page preloads the modules it loads
+        run: node tooling/preload-check.mjs
+
       - name: Unit tests
         run: pnpm --filter spjall-web test
 
