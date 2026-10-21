@@ -5,10 +5,12 @@
 export {
   activeDevices,
   activeDevicesOf,
+  assistantAccount,
   clearPushToken,
   type Device,
   dropAccount,
   dropDeadPushToken,
+  makeAssistant,
   me,
   orphans,
   type PushTarget,

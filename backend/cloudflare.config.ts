@@ -92,6 +92,16 @@ export default defineConfig(({ mode }) => ({
       // exists (decision 0011); `jurisdiction-check.mjs` holds them to ids.json.
       APNS_TEAM_ID: bindings.text("B4724Z74TM"),
       APNS_TOPIC: bindings.text("is.samtak.spjall.beta"),
+      // The testers' assistant (decision 0076): the one community whose comments
+      // it reads, and what its model may cost a month in dollars. Empty, it
+      // reads nothing; ANTHROPIC_API_KEY unset, it answers nothing.
+      ASSISTANT_COMMUNITY_ID: bindings.text(
+        mode === "interop" ? "" : "cm_88e920fc6e322fe66260a8781f8fd734",
+      ),
+      ASSISTANT_MONTHLY_CAP_USD: bindings.text("10"),
+      // The open Google Group linked to the internal track, which Android
+      // testers join themselves; empty, they give their address instead.
+      ASSISTANT_ANDROID_GROUP_URL: bindings.text(""),
       // Migrations are backend/migrations/, applied by
       // `cf d1 migrations apply <id> --dir migrations` (scripts/d1.ts).
       DB: bindings.d1({ name: "spjall-db", id: "7d38bae5-7ee1-4ff4-af95-49a1afbbdbbb" }),
@@ -132,6 +142,7 @@ export default defineConfig(({ mode }) => ({
       //   FCM_SERVICE_ACCOUNT  the FCM service account's JSON key (decision 0025)
       //   APNS_KEY_P8          the APNs auth key (.p8), and APNS_KEY_ID its key id
       //   OPS_TOKEN            the maintainer's token for /ops (decision 0068)
+      //   ANTHROPIC_API_KEY    the testers' assistant's model key (decision 0076)
     },
     // Durable Object classes, declared (decision 0032). Conversation and Inbox
     // were created as sqlite classes under the old `migrations` tag v1 and were

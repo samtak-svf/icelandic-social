@@ -314,17 +314,51 @@ export async function registerDevice(
 /**
  * The accounts that hold no identity, which no sign-in can reach: a join
  * whose deletion failed part way (decision 0035). Every account is made with
- * an identity in one transaction, and none loses its last otherwise.
+ * an identity in one transaction, and none loses its last otherwise; the
+ * assistant (decision 0076) is made without one and is not an orphan.
  */
 export async function orphans(env: Env): Promise<string[]> {
   const { results } = await db(env)
     .prepare(
       `SELECT account_id AS accountId FROM accounts a
         WHERE NOT EXISTS (SELECT 1 FROM identities i WHERE i.account_id = a.account_id)
-          AND a.kennitala_hmac IS NULL`,
+          AND a.kennitala_hmac IS NULL AND a.kind = 'person'`,
     )
     .all<{ accountId: string }>();
   return results.map((r) => r.accountId);
+}
+
+/** The assistant's account (decision 0076), or null before it is made. */
+export async function assistantAccount(env: Env): Promise<string | null> {
+  const row = await db(env)
+    .prepare("SELECT account_id AS accountId FROM accounts WHERE kind = 'assistant'")
+    .first<{ accountId: string }>();
+  return row?.accountId ?? null;
+}
+
+/**
+ * Makes the assistant's account named `name`, or renames the one there is.
+ * It holds no identity, so nothing signs in to it, and it is never verified.
+ */
+export async function makeAssistant(env: Env, name: string): Promise<string> {
+  const known = await assistantAccount(env);
+  if (known) {
+    await db(env)
+      .prepare("UPDATE accounts SET display_name = ? WHERE account_id = ?")
+      .bind(name, known)
+      .run();
+    return known;
+  }
+  const accountId = randomToken("a_");
+  await db(env)
+    .prepare(
+      `INSERT INTO accounts (account_id, display_name, verified, created_at, kind)
+       VALUES (?, ?, 0, ?, 'assistant') ON CONFLICT DO NOTHING`,
+    )
+    .bind(accountId, name, Date.now())
+    .run();
+  // Two makes at once: the unique index keeps the first one's.
+  return (await assistantAccount(env)) as string;
 }
 
 /** The account as its owner sees it: name, mark, photo version and active devices. */

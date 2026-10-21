@@ -1,7 +1,8 @@
 import { db, space } from "../../env/index.ts";
 import { UNBLOCKED } from "../../identity/index.ts";
-import type { MediaRef, PostContent, Viewer } from "./do/space.ts";
-import type { IndexedPost } from "./access.ts";
+import { notice } from "../jobs/index.ts";
+import type { CommentContent, MediaRef, PostContent, Viewer } from "./do/space.ts";
+import { type IndexedPost, postAccess, replyRefusal } from "./access.ts";
 
 // Posts across D1 and the space (decision 0060): D1's post_index is what the
 // feed and the access checks read, the Space object holds what was written.
@@ -24,7 +25,7 @@ const hex = (n: number) =>
   ).join("");
 
 const newPostId = () => `p_${hex(16)}`;
-export const newCommentId = (postId: string) => `${postId}-${hex(8)}`;
+const newCommentId = (postId: string) => `${postId}-${hex(8)}`;
 
 /** The names and marks of `ids`; an account deleted since is left out. */
 export async function authors(env: Env, ids: string[]): Promise<Map<string, Author>> {
@@ -227,6 +228,75 @@ export async function noteAuthor(
     ...jobs,
   ]);
 }
+
+/**
+ * Comments `body` on `postId` as `author`, when it may reply there: the one
+ * way a comment is written, from the route and from the assistant (decision
+ * 0076). The post's author is told, and `also` adds the jobs of the comment's
+ * id to that batch. The notice is written first; its job finds no comment to
+ * tell of if the space then fails to take it.
+ */
+export async function writeComment(
+  env: Env,
+  author: string,
+  postId: string,
+  body: string,
+  also: (post: IndexedPost, commentId: string) => D1PreparedStatement[] = () => [],
+): Promise<
+  | { comment: CommentContent; post: IndexedPost }
+  | { refused: NonNullable<ReturnType<typeof replyRefusal>> }
+  | null
+> {
+  const found = await postAccess(env, author, postId);
+  if (!found) return null;
+  const refused = replyRefusal(found.access, found.post);
+  if (refused) return { refused };
+  const { post } = found;
+  const commentId = newCommentId(postId);
+  await noteAuthor(env, post.communityId, author, [
+    notice(env, commentId, {
+      kind: "comment",
+      accountId: post.authorId,
+      actorId: author,
+      communityId: post.communityId,
+      postId,
+      commentId,
+    }),
+    ...also(post, commentId),
+  ]);
+  const comment = await space(env, post.communityId).addComment({
+    commentId,
+    postId,
+    author,
+    body,
+    createdAt: Date.now(),
+  });
+  return comment ? { comment, post } : null;
+}
+
+/**
+ * A comment with its post and the post's first comments, as `reader` sees
+ * them: what the testers' assistant answers (decision 0076). Null when the
+ * comment or its post is gone.
+ */
+export async function commentThread(
+  env: Env,
+  communityId: string,
+  commentId: string,
+  reader: string,
+): Promise<{ comment: CommentContent; post: PostContent; comments: CommentContent[] } | null> {
+  const stub = space(env, communityId);
+  const comment = await stub.comment(commentId);
+  if (!comment) return null;
+  const viewer: Viewer = { account: reader, hidden: [], moderator: false };
+  const [post] = await stub.posts([comment.postId], viewer);
+  if (!post) return null;
+  const comments = await stub.comments(comment.postId, viewer, null, THREAD_LIMIT);
+  return { comment, post, comments };
+}
+
+/** The most comments of a post the assistant reads before answering. */
+const THREAD_LIMIT = 50;
 
 /** Drops posts from the index, with their images' rows; the R2 keys to delete. */
 export async function unindex(env: Env, communityId: string, postIds: string[]): Promise<string[]> {

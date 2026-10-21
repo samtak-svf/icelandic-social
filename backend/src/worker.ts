@@ -1,14 +1,15 @@
 import { deleteOrphans } from "./account-deletion.ts";
 import { createApp } from "./app.ts";
 import { communityLifecycle } from "./community-lifecycle.ts";
+import { jobHandlers } from "./job-handlers.ts";
 import { log } from "./log.ts";
 import { expireKeyPackages, expireLinkedDevices, expireSessions } from "./identity/index.ts";
 import { expireCommunities } from "./modules/communities/index.ts";
 import { expireHistory } from "./modules/history/index.ts";
 import { expireJobs, jobHealth, runJobs } from "./modules/jobs/index.ts";
-import { expireMedia, pushSender } from "./modules/messaging/index.ts";
+import { expireMedia } from "./modules/messaging/index.ts";
 import { expireReports } from "./modules/moderation/index.ts";
-import { expireNotifications, jobHandlers } from "./modules/notifications/index.ts";
+import { expireNotifications } from "./modules/notifications/index.ts";
 import { deleteUnattached, purgeRemoved } from "./modules/social/index.ts";
 
 export { Conversation, Inbox } from "./modules/messaging/objects.ts";
@@ -31,7 +32,7 @@ export default {
   // day and the ones the minute cron has stopped taking (0068).
   async scheduled(controller, env) {
     if (controller.cron === JOBS_SCHEDULE) {
-      const ran = await runJobs(env, jobHandlers(pushSender(env)));
+      const ran = await runJobs(env, jobHandlers(env));
       if (ran.done + ran.retried + ran.failed > 0) log("jobs.ran", { count: ran.done });
       const expired = await expireHistory(env);
       if (expired > 0) log("history.expired", { count: expired });
