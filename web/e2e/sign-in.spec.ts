@@ -1,3 +1,4 @@
+import { strings } from "../src/generated/brand/strings.ts";
 import { expect, test, WEB } from "./origin.ts";
 import { newGoogleSubject } from "./people.ts";
 
@@ -32,6 +33,16 @@ test("signs in with Google and the API knows the session", async ({ page }) => {
     body: { sessions: [{ kind: "web", deviceId: null }] },
   });
   expect(sessions.body).toEqual({ sessions: [expect.anything()] });
+});
+
+test("a link opened signed out comes back to its page after signing in", async ({ page }) => {
+  await page.goto(`${WEB}/communities?from=link`);
+  await page.getByRole("link", { name: strings.sign_in_google }).click();
+  await page.locator('input[name="login_hint"]').fill(newGoogleSubject());
+  await page.locator('input[name="x_name"]').fill("Prófa Prófsdóttir");
+  await page.getByRole("button").click();
+  await page.waitForURL(`${WEB}/communities?from=link`);
+  await expect(page.getByRole("link", { name: strings.tab_communities })).toBeVisible();
 });
 
 test("starts no Kenni flow without a session", async ({ page }) => {
