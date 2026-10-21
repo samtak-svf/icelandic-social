@@ -1,7 +1,7 @@
 # 0064. A device that is not a phone is linked from a session and approved on a phone
 
 - Status: accepted; implemented in the core seams, the backend enrolment and history from a
-  sibling device (#298, #299, #300; the format and upload are 0074); the web client not yet (#301)
+  sibling device (#40, #41, #42; the format and upload are 0074); the web client not yet (#43; the phone that approves it is #82)
 - Date: 2026-10-17
 - Decided by: Guðröður Atli Jónsson
 - Builds on: [0002](0002-mls-end-to-end-encryption.md), [0014](0014-accounts-devices-and-auth.md)

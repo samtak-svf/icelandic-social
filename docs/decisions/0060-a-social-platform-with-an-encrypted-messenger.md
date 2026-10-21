@@ -1,7 +1,7 @@
 # 0060. The product is a social platform with an encrypted messenger, in one Worker
 
-- Status: accepted; implemented in the backend, the core, the apps and the web (#303–#306, #351);
-  news (#307) and linked-device browser chat (#308) in progress
+- Status: accepted; implemented in the backend, the core, the apps and the web (phases 1–4 and 7: #45, #47, #48, #49, #58);
+  news (#50) and linked-device browser chat (#51) in progress
 - Date: 2026-10-17
 - Decided by: Guðröður Atli Jónsson
 - Builds on: [0001](0001-eu-storage-and-residency-wording.md) (EU storage),

@@ -1,6 +1,6 @@
 # 0050. A store gets its columns whatever its history
 
-- Status: accepted; implemented in the core (#232, core 0.21.1), released as 0.7.3
+- Status: accepted; implemented in the core (495dcdf, core 0.21.1), released as 0.7.3
 - Date: 2026-10-15
 - Decided by: the maintainer, after 0.7.2 showed `store/sql-input` on the conversation list of a
   phone upgraded from 0.6

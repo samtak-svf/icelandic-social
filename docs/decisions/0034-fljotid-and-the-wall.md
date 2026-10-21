@@ -1,6 +1,6 @@
 # 0034. Fljótið: a public feed every account is in, and each account's wall
 
-- Status: accepted; implemented in the backend (#131), the core (#132, 0.11.0) and the apps (#135); the feed, the wall
+- Status: accepted; implemented in the backend (3694684), the core (015fdbe, 0.11.0) and the apps (315f77e); the feed, the wall
   and posts removed by 0044
 - Date: 2026-10-09
 - Decided by: the maintainer, approving the plan for Google sign-in, Kenni verification and

@@ -1,6 +1,6 @@
 # 0068. Rollback is code only; D1 and a community's space have a way back in time
 
-- Status: accepted; implemented in the backend, deploy.yml and docs/operations.md (#296)
+- Status: accepted; implemented in the backend, deploy.yml and docs/operations.md (#38)
 - Date: 2026-10-18
 - Decided by: Guðröður Atli Jónsson (phase 5, #307)
 - Builds on: [0001](0001-eu-storage-and-residency-wording.md) (EU jurisdiction), [0008](0008-no-pii-in-logs.md)

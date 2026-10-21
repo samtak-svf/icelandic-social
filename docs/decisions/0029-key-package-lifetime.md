@@ -1,6 +1,6 @@
 # 0029. KeyPackages have a lifetime the server reads and the core keeps ahead of
 
-- Status: accepted; implemented in the backend (#103) and the core (0.10.0: the lifetime
+- Status: accepted; implemented in the backend (ee8ba0a) and the core (0.10.0: the lifetime
   constant, restocking from `sync()`, `Expired`)
 - Date: 2026-10-09
 - Decided by: the maintainer, approving the plan that acted on architecture review #100

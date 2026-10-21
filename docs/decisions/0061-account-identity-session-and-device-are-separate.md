@@ -1,8 +1,8 @@
 # 0061. Account, login identity, session and messaging device are four things
 
-- Status: accepted; implemented in the backend (#321: sessions and the scheme each route
-  declares, #322: web sign-in, #323: listing and ending sessions, #324: `web` in the version
-  floor, as a client in `CLIENTS` beside the device platforms) and the web (#305, #328)
+- Status: accepted; implemented in the backend (d2c7d54: sessions and the scheme each route
+  declares, db71338: web sign-in, be27558: listing and ending sessions, 47b15a5: `web` in the version
+  floor, as a client in `CLIENTS` beside the device platforms) and the web (bbe651d, 2d9d0d5)
 - Date: 2026-10-17
 - Decided by: Guðröður Atli Jónsson
 - Builds on: [0002](0002-mls-end-to-end-encryption.md) (a device is an MLS member),

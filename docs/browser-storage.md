@@ -130,7 +130,7 @@ part of the core graph and does not run in CI.
    WebKit, and Firefox shows a prompt that nobody answers. WebKit's quota is 1000 MiB, the
    other engines' 10 GiB.
 
-## Recommendation for #271
+## Recommendation for #13
 
 - **Store: A, sqlite3mc in OPFS (`opfs-sahpool`) in a dedicated worker.** It is the core's
   store and schema with a different VFS, so the core needs no second storage

@@ -1,7 +1,7 @@
 # 0074. A history travels as one sealed file, uploaded in parts and deleted on receipt
 
-- Status: accepted; implemented in the core and the backend (#300); the approve screen and
-  the web client that call it not yet (#301)
+- Status: accepted; implemented in the core and the backend (#42); the approve screen and
+  the web client that call it not yet (#82, #43)
 - Date: 2026-10-21
 - Decided by: Guðröður Atli Jónsson
 - Builds on: [0064](0064-non-phone-devices-are-linked-devices.md) (history from the approving

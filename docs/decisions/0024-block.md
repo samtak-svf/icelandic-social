@@ -1,7 +1,7 @@
 # 0024. Block is per account: the server refuses new contact, the core hides the rest
 
-- Status: accepted; implemented in the backend (#55) and the core (#58); the apps offer it
-  since #64 and #67; a roster claim without a Welcome refused since #222;
+- Status: accepted; implemented in the backend (ccccd11) and the core (0094e67); the apps offer it
+  since e062505 and afb3ba6; a roster claim without a Welcome refused since 1dc71fa;
   amended by 0063
 - Date: 2026-10-07
 - Decided by: the maintainer, approving the plan for the conversation UI

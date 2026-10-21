@@ -1,6 +1,6 @@
 # 0066. Reports and the moderation log are in D1; an action and its entry are one write
 
-- Status: accepted; implemented in the backend (#289); amended by [0067](0067-jobs-and-notifications.md)
+- Status: accepted; implemented in the backend (#31); amended by [0067](0067-jobs-and-notifications.md)
 - Date: 2026-10-18
 - Decided by: Guðröður Atli Jónsson (phase 4, #306)
 - Builds on: [0063](0063-communities-audiences-and-moderation.md) (roles, reports, the log,

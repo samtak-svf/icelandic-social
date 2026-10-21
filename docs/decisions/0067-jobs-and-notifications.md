@@ -1,6 +1,6 @@
 # 0067. Jobs are D1 rows written with their cause; notifications are rows for one account
 
-- Status: accepted; implemented in the backend (#290)
+- Status: accepted; implemented in the backend (#32)
 - Date: 2026-10-18
 - Decided by: Guðröður Atli Jónsson (phase 4, #306)
 - Builds on: [0025](0025-push-without-ids.md) (a push names nothing),

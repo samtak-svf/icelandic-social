@@ -1,6 +1,6 @@
 # 0044. Fljótið and the wall leave v1: two tabs, and the posts are deleted
 
-- Status: accepted; implemented in the core (#203), the apps (#204) and the backend (#202);
+- Status: accepted; implemented in the core (0fd556e), the apps (6f58f15) and the backend (b3765d2);
   amended by 0060
 - Date: 2026-10-11
 - Decided by: the maintainer, after asking what Fljótið is for once 0036 had shipped

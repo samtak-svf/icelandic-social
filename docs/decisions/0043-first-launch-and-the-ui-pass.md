@@ -1,6 +1,6 @@
 # 0043. A first launch that asks before it prompts, and a UI pass within 0022
 
-- Status: accepted; implemented in the apps (#190, #191, #192, #193, #194, #197, #198); the Fljótið parts
+- Status: accepted; implemented in the apps (df78c41, e5389c9, 420f4f5, 2b0a934, 90cfee0, e415101, 28089b3); the Fljótið parts
   amended by 0044
 - Date: 2026-10-10
 - Decided by: the maintainer, approving the plan for the UI pass after the 0.3.0 hand test
