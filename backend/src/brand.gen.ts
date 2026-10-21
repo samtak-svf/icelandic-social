@@ -18,4 +18,18 @@ export const brandStrings = {
   link_expired: "Þessi hlekkur er ekki lengur í gildi. Biddu um nýjan.",
   /** The only permitted statement about where data lives (docs/decisions/0001). */
   residency_claim: "Gögnin eru geymd varanlega innan ESB; unnin á netkerfi Cloudflare.",
+  /** Display name of the testers' assistant, the automated account that answers in the testers' community (docs/decisions/0076). It says that it is automated. */
+  assistant_name: "Sjálfvirkur aðstoðarmaður",
+  /** The testers' assistant's instructions to its model (docs/decisions/0076): who it is, what it answers, how one becomes a tester. {android} is assistant_android_group or assistant_android_manual. The model answers with assistant_silence when a comment needs no answer. */
+  assistant_prompt: "Þú ert sjálfvirkur aðstoðarmaður í samfélaginu Prófarar í Hjal, samfélagsappi og dulkóðuðu spjalli sem Samtak svf. smíðar og er í lokuðum prófunum. Þú svarar athugasemdum við færslur í þessu samfélagi. Svaraðu á íslensku, stutt og vinsamlega, í einni til fjórum setningum, í hreinum texta án sniðs. Þú svarar aðeins um það hvernig fólk gerist prófarar og um notkun appsins. Um allt annað segirðu að umsjónarmaður líti á það. Lofaðu aldrei dagsetningum. Biddu aldrei um kennitölu, símanúmer eða lykilorð. Svona gerist fólk prófarar. Á iPhone: svaraðu færslunni með netfanginu sem Apple ID er skráð á. Sjálfvirkt skref bætir því við prófanir í TestFlight innan nokkurra mínútna og boð berst þá í tölvupósti; opnaðu það á iPhone og settu upp TestFlight. {android} Ef fram kemur að netfang hafi fundist í athugasemdinni, segðu að því verði bætt við og boðið berist bráðum. Svör hér eru sjálfvirk og texti athugasemda í þessu samfélagi er sendur til gervigreindarþjónustu til að semja svarið. Ef athugasemd kallar ekki á svar, til dæmis þakkir, svaraðu þá aðeins með orðinu ÞÖGN.",
+  /** The one word the testers' assistant's model answers with when a comment needs no answer; nothing is posted then (docs/decisions/0076). assistant_prompt names it. */
+  assistant_silence: "ÞÖGN",
+  /** How one becomes an Android tester when the open tester group exists, for assistant_prompt (docs/decisions/0076). {group_url} is the group's address. */
+  assistant_android_group: "Á Android: gakktu í Google hópinn {group_url} með Gmail netfanginu sem er á símanum, opnaðu svo https://play.google.com/apps/internaltest/4701643324608289838 á símanum og samþykktu boðið. Enginn þarf að bæta þér við.",
+  /** How one becomes an Android tester before the open tester group exists, for assistant_prompt (docs/decisions/0076). */
+  assistant_android_manual: "Á Android: svaraðu færslunni með Gmail netfanginu sem er á símanum. Umsjónarmaður bætir því við og þá opnarðu https://play.google.com/apps/internaltest/4701643324608289838 á símanum og samþykktir boðið.",
+  /** The testers' assistant's fixed reply once the Apple ID a tester gave is added to the iPhone test (docs/decisions/0076). Never repeats the address. */
+  assistant_added_ios: "Þér hefur verið bætt við prófanir á iPhone. Boð frá TestFlight berst í tölvupósti á netfangið sem þú gafst upp. Opnaðu það á iPhone og settu upp TestFlight.",
+  /** The testers' assistant's fixed reply when the Apple ID a tester gave could not be added to the iPhone test (docs/decisions/0076). Never repeats the address. */
+  assistant_failed_ios: "Ekki tókst að bæta netfanginu sjálfkrafa við prófanir á iPhone. Umsjónarmaður lítur á það.",
 } as const;

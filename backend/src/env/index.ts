@@ -105,7 +105,36 @@ type Secrets = {
   APNS_KEY_P8?: string;
   APNS_KEY_ID?: string;
   OPS_TOKEN?: string;
+  ANTHROPIC_API_KEY?: string;
 };
+
+/**
+ * The community the testers' assistant answers in (decision 0076); null when
+ * unset, and then no comment is given to it.
+ */
+export function assistantCommunity(env: Env): string | null {
+  return env.ASSISTANT_COMMUNITY_ID.trim() || null;
+}
+
+/**
+ * The Google Group Android testers join to be on the internal track (decision
+ * 0076); null while there is none, and then they give their address instead.
+ */
+export function androidTesterGroup(env: Env): string | null {
+  return env.ASSISTANT_ANDROID_GROUP_URL.trim() || null;
+}
+
+/**
+ * What the assistant may spend on its model in a calendar month, in
+ * millionths of a dollar, and its key; null without a key or a cap, and then
+ * it answers nothing (decision 0076).
+ */
+export function assistantModel(env: Env): { apiKey: string; capMicroUsd: number } | null {
+  const apiKey = (env as Env & Secrets).ANTHROPIC_API_KEY;
+  const cap = Number(env.ASSISTANT_MONTHLY_CAP_USD.trim());
+  if (!apiKey || !Number.isFinite(cap) || cap <= 0) return null;
+  return { apiKey, capMicroUsd: Math.round(cap * 1_000_000) };
+}
 
 /**
  * The maintainer's token for the /ops routes (decision 0068); undefined when

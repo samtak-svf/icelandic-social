@@ -1,6 +1,6 @@
 # 0009. The first release is chat only, for a closed test group
 
-- Status: accepted; amended by 0033, 0034, 0036, 0039, 0040, 0041, 0042, 0044, 0046, 0059, 0060, 0063 and 0071
+- Status: accepted; amended by 0033, 0034, 0036, 0039, 0040, 0041, 0042, 0044, 0046, 0059, 0060, 0063, 0071 and 0076
 - Date: 2026-10-05
 - Decided by: Guðröður (the scope questions); the implementation choices below follow from them
 - Amended by: [0033](0033-google-sign-in-and-kenni-verification.md) (the invite is no longer the beta gate),
@@ -15,7 +15,8 @@
   [0059](0059-send-a-location.md) (a location, sent once and opened on map.is or a map app),
   [0060](0060-a-social-platform-with-an-encrypted-messenger.md) (a social platform beside the messenger, and the web as a client),
   [0063](0063-communities-audiences-and-moderation.md) (report and moderation for communities),
-  [0071](0071-comment-replies-and-reactions.md) (one-level replies to comments; no reactions on comments)
+  [0071](0071-comment-replies-and-reactions.md) (one-level replies to comments; no reactions on comments),
+  [0076](0076-an-assistant-for-testers.md) (an automated assistant for the testers' community)
 - Built on by: [0022](0022-the-conversation-surfaces.md) (the list, the conversation, the
   toggles), [0023](0023-media-as-encrypted-blobs.md) (photos and files),
   [0024](0024-block.md) (block)

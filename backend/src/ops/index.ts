@@ -4,12 +4,18 @@ import { createMiddleware } from "hono/factory";
 import type { AppEnv } from "../app.ts";
 import { fail } from "../errors.ts";
 import { opsToken } from "../env/index.ts";
+import { jobHandlers } from "../job-handlers.ts";
 import { log } from "../log.ts";
+import {
+  markTester,
+  mcpResponse,
+  pendingTesters,
+  setUpAssistant,
+  usage,
+} from "../modules/assistant/index.ts";
 import { communityExists } from "../modules/communities/index.ts";
 import { drainJobs, jobsOverview, retryJobs } from "../modules/jobs/index.ts";
-import { pushSender } from "../modules/messaging/index.ts";
 import { commentModeration } from "../modules/moderation/index.ts";
-import { jobHandlers } from "../modules/notifications/index.ts";
 import { restoreSpace } from "../modules/social/index.ts";
 
 // The maintainer's routes (decision 0068): the jobs and the restore of one
@@ -39,6 +45,12 @@ const Retry = z.union([
   z.object({ jobIds: z.array(z.number().int().positive()).min(1).max(1000) }).strict(),
   z.object({ allFailed: z.literal(true) }).strict(),
 ]);
+
+const Mark = z
+  .object({ outcome: z.enum(["done", "failed"]), error: z.string().max(200).optional() })
+  .strict();
+
+const Platform = z.enum(["ios", "android"]).optional();
 
 const Restore = z
   .object({
@@ -72,10 +84,38 @@ export function opsRoutes(app: OpenAPIHono<AppEnv>) {
   });
 
   app.post("/ops/jobs/drain", async (c) => {
-    const ran = await drainJobs(c.env, jobHandlers(pushSender(c.env)));
+    const ran = await drainJobs(c.env, jobHandlers(c.env));
     log("ops.jobs_drained", { count: ran.done, requestId: c.var.requestId });
     return c.json(ran, 200);
   });
+
+  // The testers' assistant (decision 0076): its account, its queue for the
+  // maintainer's machine, its spending, and the same as MCP tools.
+  app.post("/ops/assistant/account", async (c) => {
+    const accountId = await setUpAssistant(c.env);
+    if (!accountId) return fail(c, 404, "not_found");
+    log("ops.assistant_set_up", { accountId, requestId: c.var.requestId });
+    return c.json({ accountId }, 200);
+  });
+
+  app.get("/ops/assistant/usage", async (c) => c.json(await usage(c.env), 200));
+
+  app.get("/ops/testers/pending", async (c) => {
+    const platform = Platform.safeParse(c.req.query("platform"));
+    if (!platform.success) return fail(c, 400, "invalid_request");
+    return c.json({ requests: await pendingTesters(c.env, platform.data) }, 200);
+  });
+
+  app.post("/ops/testers/:requestId", async (c) => {
+    const input = await body(c, Mark);
+    if (!input) return fail(c, 400, "invalid_request");
+    const marked = await markTester(c.env, c.req.param("requestId"), input.outcome, input.error);
+    if (!marked) return fail(c, 404, "not_found");
+    log("ops.tester_marked", { code: input.outcome, requestId: c.var.requestId });
+    return c.json({ marked }, 200);
+  });
+
+  app.all("/ops/mcp", async (c) => mcpResponse(c.env, c.req.raw));
 
   app.post("/ops/restore", async (c) => {
     const input = await body(c, Restore);

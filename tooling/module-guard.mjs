@@ -62,6 +62,9 @@ export const OWNERS = {
   notifications: "notifications",
   history_transfers: "history",
   history_transfer_parts: "history",
+  tester_requests: "assistant",
+  assistant_usage: "assistant",
+  assistant_answers: "assistant",
 };
 
 /** The reads of another module's table, each with its reason. */

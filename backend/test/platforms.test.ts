@@ -50,9 +50,11 @@ describe("the platform list", () => {
 
   it("is the D1 CHECK on devices.platform, as the latest migration that sets it leaves it", () => {
     const { TEST_MIGRATIONS } = env as unknown as { TEST_MIGRATIONS: D1Migration[] };
-    const checks = TEST_MIGRATIONS.flatMap((m) => m.queries).flatMap((query) => [
-      ...query.matchAll(/CHECK\s*\(\s*platform\s+IN\s*\(([^)]*)\)\s*\)/gi),
-    ]);
+    // Only the statements that build devices: another table may check a
+    // column of the same name (tester_requests, 0021).
+    const checks = TEST_MIGRATIONS.flatMap((m) => m.queries)
+      .filter((query) => /\bdevices(_new)?\s*\(/i.test(query))
+      .flatMap((query) => [...query.matchAll(/CHECK\s*\(\s*platform\s+IN\s*\(([^)]*)\)\s*\)/gi)]);
     const latest = checks.at(-1)?.[1];
     expect(latest?.split(",").map((name) => name.trim().replaceAll("'", ""))).toEqual([
       ...PLATFORMS,

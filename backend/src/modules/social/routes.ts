@@ -19,7 +19,7 @@ import { space, withinLimit } from "../../env/index.ts";
 import { blockedEither } from "../../identity/index.ts";
 import { fail } from "../../errors.ts";
 import { log } from "../../log.ts";
-import { notice } from "../jobs/index.ts";
+import { askAssistant, notice } from "../jobs/index.ts";
 import { cardRoutes } from "./cards.ts";
 import { commentAccess, postAccess, refusal, replyRefusal, spaceAccess } from "./access.ts";
 import type { CommentContent } from "./do/space.ts";
@@ -29,11 +29,11 @@ import {
   communityPosts,
   createPost,
   feed,
-  newCommentId,
   noteAuthor,
   parseCursor,
   render,
   unindex,
+  writeComment,
 } from "./posts.ts";
 
 // The routes of a community's content (decisions 0060, 0063). Each asks
@@ -178,34 +178,17 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(createCommentRoute, async (c) => {
     const { accountId } = c.var.session;
     const { postId } = c.req.valid("param");
-    const found = await postAccess(c.env, accountId, postId);
-    if (!found) return fail(c, 404, "not_found");
-    const refused = replyRefusal(found.access, found.post);
-    if (refused) return fail(c, 403, refused);
-    const { communityId } = found.post;
-    // The author's notice is written first; its job finds no comment to tell
-    // of if the space then fails to take it.
-    const commentId = newCommentId(postId);
-    await noteAuthor(c.env, communityId, accountId, [
-      notice(c.env, commentId, {
-        kind: "comment",
-        accountId: found.post.authorId,
-        actorId: accountId,
-        communityId,
-        postId,
-        commentId,
-      }),
-    ]);
-    const added = await space(c.env, communityId).addComment({
-      commentId,
+    const written = await writeComment(
+      c.env,
+      accountId,
       postId,
-      author: accountId,
-      body: c.req.valid("json").body,
-      createdAt: Date.now(),
-    });
-    const [comment] = added ? await named(c.env, [added]) : [];
-    if (!comment) return fail(c, 404, "not_found");
-    log("comment.created", { accountId, communityId, postId });
+      c.req.valid("json").body,
+      (post, commentId) => askAssistant(c.env, post.communityId, commentId),
+    );
+    if (written && "refused" in written) return fail(c, 403, written.refused);
+    const [comment] = written ? await named(c.env, [written.comment]) : [];
+    if (!written || !comment) return fail(c, 404, "not_found");
+    log("comment.created", { accountId, communityId: written.post.communityId, postId });
     return c.json(comment, 200);
   });
 
