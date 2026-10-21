@@ -99,9 +99,23 @@ async function asc(method: string, path: string, token: string, body?: unknown) 
   });
 }
 
+/** Whether the group lists `address` as a tester. */
+async function inGroup(address: string, groupId: string, token: string): Promise<boolean> {
+  const response = await asc(
+    "GET",
+    `/v1/betaTesters?filter[email]=${encodeURIComponent(address)}&filter[betaGroups]=${groupId}&limit=1`,
+    token,
+  );
+  if (!response.ok) return false;
+  return ((await response.json()) as { data: unknown[] }).data.length > 0;
+}
+
 /**
- * Adds `address` to the group: done when it is added, or is already a tester
- * (409); otherwise the reason, which the Worker keeps.
+ * Adds `address` to the group: done when it is added, or is in the group
+ * already; otherwise the reason, which the Worker keeps. A 409 is not proof:
+ * App Store Connect answers 409 both when the address is a tester already and
+ * when it cannot be assigned at all (an internal group takes only members of
+ * the team who can see the app), so a 409 is done only when the group lists it.
  */
 async function addTester(address: string, groupId: string, token: string): Promise<string | null> {
   const response = await asc("POST", "/v1/betaTesters", token, {
@@ -111,7 +125,8 @@ async function addTester(address: string, groupId: string, token: string): Promi
       relationships: { betaGroups: { data: [{ type: "betaGroups", id: groupId }] } },
     },
   });
-  if (response.status === 201 || response.status === 409) return null;
+  if (response.status === 201) return null;
+  if (response.status === 409 && (await inGroup(address, groupId, token))) return null;
   const { errors } = (await response.json().catch(() => ({}))) as {
     errors?: { code?: string; detail?: string }[];
   };
