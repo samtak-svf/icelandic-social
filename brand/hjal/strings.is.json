@@ -109,6 +109,8 @@
   "item_unreadable": "Ekki tókst að lesa þessi skilaboð.",
   "post_gone": "Færslan er ekki lengur til",
   "react": "Bregðast við",
+  "react_any": "Fleiri tjámyndir",
+  "more": "Meira",
   "reactions_title": "Viðbrögð",
   "reaction_count": {
     "one": "{count} viðbragð",

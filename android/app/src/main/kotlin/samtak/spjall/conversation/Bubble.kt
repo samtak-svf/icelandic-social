@@ -199,6 +199,11 @@ private fun lifter(
                     at = coordinates,
                     own = item.own,
                     reactions = if (offer.react) EMOJI else emptyList(),
+                    chosen =
+                        item.reactions
+                            .filter { it.own }
+                            .map { it.emoji }
+                            .toSet(),
                     onReact = { actions.react(item, it) },
                     actions = entries,
                 ) {

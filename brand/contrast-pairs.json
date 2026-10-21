@@ -94,6 +94,12 @@
     { "fg": "verified-mark", "bg": "surface", "level": "nonText", "use": "verification dot" },
     {
       "fg": "verified-mark",
+      "bg": "secondary-subtle over surface",
+      "level": "nonText",
+      "use": "the ring around an emoji the reader has given, in the long-press row"
+    },
+    {
+      "fg": "verified-mark",
       "bg": "bg",
       "level": "nonText",
       "use": "verification dot on the cream band"

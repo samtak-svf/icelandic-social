@@ -17,6 +17,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.github.takahirom.roborazzi.captureScreenRoboImage
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -354,16 +355,24 @@ class ConversationScreenshotTest {
         compose.onRoot().captureRoboImage()
     }
 
-    /** A long press on one's own message (0054): it lifts over a dimmed screen, reactions above, actions below. */
-    private fun menu() {
+    /**
+     * A long press (0054, 0072): the message lifts over a dimmed screen, the emoji row above it ends
+     * in "+", and the actions are a bar at the foot. On one's own message by default.
+     */
+    private fun menu(
+        pressed: String = "Já, rétt í þessu",
+        given: List<Reaction> = emptyList(),
+        then: () -> Unit = {},
+    ) {
         show(
             item(1u, Content.Text("Sæl, ertu komin heim?", null)),
-            item(2u, Content.Text("Já, rétt í þessu", null), own = true),
+            item(2u, Content.Text("Já, rétt í þessu", null), own = true, reactions = given),
             item(3u, Content.Text("Gott að heyra", null)),
         )
-        compose.onNodeWithText("Já, rétt í þessu", substring = true).performTouchInput { longClick() }
+        compose.onNodeWithText(pressed, substring = true).performTouchInput { longClick() }
         compose.waitForIdle()
-        compose.onRoot().captureRoboImage()
+        then()
+        captureScreenRoboImage()
     }
 
     @Test
@@ -372,6 +381,22 @@ class ConversationScreenshotTest {
     @Test
     @Config(qualifiers = "+night")
     fun aLongPressLiftsTheMessageAtNight() = menu()
+
+    /** Someone else's text has reply, copy and forward, which fit the bar without "more". */
+    @Test
+    fun aLongPressOnAnothersMessageHasNoMore() = menu(pressed = "Gott að heyra")
+
+    /** "More" on one's own text opens a sheet with forward and edit. */
+    @Test
+    fun moreOpensTheRest() =
+        menu {
+            compose.onNodeWithText("Meira").performClick()
+            compose.waitForIdle()
+        }
+
+    /** An emoji the reader already gave is marked in the row, so a tap takes it back. */
+    @Test
+    fun anEmojiAlreadyGivenIsMarked() = menu(given = listOf(Reaction("👍", true, listOf(me))))
 
     @Test
     fun sharedPostSaysItIsGone() {

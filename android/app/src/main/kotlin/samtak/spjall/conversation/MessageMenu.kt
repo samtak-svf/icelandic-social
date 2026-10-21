@@ -6,34 +6,23 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -46,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -57,6 +47,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.unit.Constraints
@@ -107,8 +98,12 @@ internal fun placeMenu(
     )
 }
 
-/** One action under the lifted message: its icon, its words, and whether it destroys something. */
+/** Which action a [MenuAction] is, so the bar can order them (0072). */
+internal enum class MenuKind { Reply, Copy, Forward, Edit, Delete }
+
+/** One action on the lifted message: its icon, its words, and whether it destroys something. */
 internal class MenuAction(
+    val kind: MenuKind,
     @StringRes val label: Int,
     val icon: ImageVector,
     val danger: Boolean = false,
@@ -159,12 +154,26 @@ internal fun menuActions(
     onCopy: (String) -> Unit,
 ): List<MenuAction> =
     listOfNotNull(
-        if (offer.reply) MenuAction(R.string.reply, AppIcons.Reply) { actions.reply(offer.item) } else null,
-        offer.copy?.let { text -> MenuAction(R.string.copy, AppIcons.Copy) { onCopy(text()) } },
-        if (offer.forward) MenuAction(R.string.forward, AppIcons.Forward) { actions.forward(offer.item) } else null,
-        if (offer.edit) MenuAction(R.string.edit, AppIcons.Edit) { actions.edit(offer.item) } else null,
+        if (offer.reply) {
+            MenuAction(
+                MenuKind.Reply,
+                R.string.reply,
+                AppIcons.Reply,
+            ) { actions.reply(offer.item) }
+        } else {
+            null
+        },
+        offer.copy?.let { text -> MenuAction(MenuKind.Copy, R.string.copy, AppIcons.Copy) { onCopy(text()) } },
+        if (offer.forward) {
+            MenuAction(MenuKind.Forward, R.string.forward, AppIcons.Forward) { actions.forward(offer.item) }
+        } else {
+            null
+        },
+        if (offer.edit) MenuAction(MenuKind.Edit, R.string.edit, AppIcons.Edit) { actions.edit(offer.item) } else null,
         if (offer.delete) {
-            MenuAction(R.string.delete_for_everyone, AppIcons.Trash, danger = true) { onDelete(offer.item) }
+            MenuAction(MenuKind.Delete, R.string.delete_for_everyone, AppIcons.Trash, danger = true) {
+                onDelete(offer.item)
+            }
         } else {
             null
         },
@@ -175,14 +184,22 @@ internal class MenuRequest(
     val at: LayoutCoordinates,
     val own: Boolean,
     val reactions: List<String>,
+    /** The emoji the reader already gave this message, marked in the row (0072). */
+    val chosen: Set<String>,
     val onReact: (String) -> Unit,
     val actions: List<MenuAction>,
     val bubble: @Composable () -> Unit,
 )
 
-/** The conversation's one open message menu, if any. */
+/** The conversation's one open message menu, if any, and the sheet it handed on to. */
 internal class MessageMenuState {
     var open by mutableStateOf<MenuRequest?>(null)
+
+    /** What did not fit in the bar, once "more" is tapped. */
+    var more by mutableStateOf<List<MenuAction>?>(null)
+
+    /** Where an emoji from the full picker goes, once "+" is tapped. */
+    var picker by mutableStateOf<((String) -> Unit)?>(null)
 }
 
 /** The menu a bubble opens; null outside [MessageMenuHost], where a long press offers nothing. */
@@ -201,8 +218,10 @@ internal fun MessageMenuHost(
         val request = state.open
         val origin = host
         if (request != null && origin != null && request.at.isAttached) {
-            MessageMenu(request, origin) { state.open = null }
+            MessageMenu(request, origin, state) { state.open = null }
         }
+        state.more?.let { MoreSheet(it) { state.more = null } }
+        state.picker?.let { onReact -> EmojiPickerSheet(onReact) { state.picker = null } }
     }
 }
 
@@ -210,6 +229,7 @@ internal fun MessageMenuHost(
 private fun MessageMenu(
     request: MenuRequest,
     host: LayoutCoordinates,
+    state: MessageMenuState,
     onDismiss: () -> Unit,
 ) {
     BackHandler(onBack = onDismiss)
@@ -220,30 +240,45 @@ private fun MessageMenu(
     val density = LocalDensity.current
     val insets = WindowInsets.safeDrawing
     val windowTop = insets.getTop(density)
-    val windowBottomInset = insets.getBottom(density)
     val close = stringResource(R.string.cancel)
     Layout(
         modifier = Modifier.fillMaxSize().graphicsLayer { alpha = lift.value }.scrim(close, onDismiss),
         content = {
             Box(Modifier.semantics { traversalIndex = 0f }) {
                 if (request.reactions.isNotEmpty()) {
-                    ReactionsCard(request.reactions) {
-                        onDismiss()
-                        request.onReact(it)
-                    }
+                    ReactionsCard(
+                        request.reactions,
+                        request.chosen,
+                        onPick = {
+                            onDismiss()
+                            request.onReact(it)
+                        },
+                        onMore = {
+                            onDismiss()
+                            state.picker = request.onReact
+                        },
+                    )
                 }
             }
             Lifted(request.bubble, bounds.height.toInt(), lift.value)
             Box(Modifier.semantics { traversalIndex = 1f }) {
                 if (request.actions.isNotEmpty()) {
-                    ActionsCard(request.actions) {
-                        onDismiss()
-                        it.act()
-                    }
+                    val bar = barActions(request.actions)
+                    ActionBar(
+                        bar,
+                        onPick = {
+                            onDismiss()
+                            it.act()
+                        },
+                        onMore = {
+                            onDismiss()
+                            state.more = bar.more
+                        },
+                    )
                 }
             }
         },
-        measurePolicy = menuPolicy(bounds, request.own, windowTop, windowBottomInset),
+        measurePolicy = menuPolicy(bounds, request.own, windowTop),
     )
 }
 
@@ -268,28 +303,30 @@ private fun Modifier.scrim(
         }
     }
 
-/** Measures the reactions, the lifted bubble and the actions, and puts them where [placeMenu] says. */
+/**
+ * Measures the bar at the foot first, then puts the reactions and the lifted bubble where
+ * [placeMenu] says in the room above it (0072).
+ */
 private fun menuPolicy(
     bounds: Rect,
     own: Boolean,
     windowTop: Int,
-    windowBottomInset: Int,
 ) = MeasurePolicy { measurables, constraints ->
-    val (reactionsM, bubbleM, actionsM) = measurables
+    val (reactionsM, bubbleM, barM) = measurables
     val width = constraints.maxWidth
     val height = constraints.maxHeight
     val loose = constraints.copy(minWidth = 0, minHeight = 0)
     val reactions = reactionsM.measure(loose)
-    val actions = actionsM.measure(loose)
+    val bar = barM.measure(loose.copy(minWidth = width))
     val place =
         placeMenu(
             bubbleTop = bounds.top.toInt(),
             bubbleHeight = bounds.height.toInt(),
             reactions = reactions.height,
-            actions = actions.height,
+            actions = 0,
             gap = GAP.dp.roundToPx(),
             windowTop = windowTop,
-            windowBottom = height - windowBottomInset,
+            windowBottom = height - bar.height,
         )
     val bubble = bubbleM.measure(Constraints.fixed(bounds.width.toInt(), place.bubbleHeight))
     val margin = MARGIN.dp.roundToPx()
@@ -301,7 +338,7 @@ private fun menuPolicy(
     layout(width, height) {
         reactions.place(x(reactions.width), place.reactionsTop)
         bubble.place(bounds.left.toInt(), place.bubbleTop)
-        actions.place(x(actions.width), place.actionsTop)
+        bar.place(0, height - bar.height)
     }
 }
 
@@ -329,47 +366,36 @@ private fun Lifted(
     }
 }
 
+/** The emoji row, ending in "+" for every other emoji; one the reader already gave is marked (0072). */
 @Composable
 private fun ReactionsCard(
     emoji: List<String>,
+    chosen: Set<String>,
     onPick: (String) -> Unit,
+    onMore: () -> Unit,
 ) {
     Surface(shape = CircleShape, color = Palette.surface, border = edge(), shadowElevation = 6.dp) {
-        Row(modifier = Modifier.padding(horizontal = 6.dp)) {
+        Row(modifier = Modifier.padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             emoji.forEach { e ->
-                TextButton(onClick = { onPick(e) }) { Text(e, style = MaterialTheme.typography.titleLarge) }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ActionsCard(
-    actions: List<MenuAction>,
-    onPick: (MenuAction) -> Unit,
-) {
-    Surface(
-        shape = RoundedCornerShape(CARD_RADIUS.dp),
-        color = Palette.surface,
-        border = edge(),
-        shadowElevation = 6.dp,
-    ) {
-        Column(modifier = Modifier.widthIn(min = CARD_WIDTH.dp).width(IntrinsicSize.Max)) {
-            actions.forEachIndexed { index, action ->
-                if (index > 0) HorizontalDivider(color = Palette.border)
-                val tint = if (action.danger) Palette.danger else Palette.fg
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { onPick(action) }
-                            .heightIn(min = 48.dp)
-                            .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                Surface(
+                    onClick = { onPick(e) },
+                    shape = CircleShape,
+                    color = if (e in chosen) ownWash() else Color.Transparent,
+                    border = if (e in chosen) BorderStroke(RING.dp, Palette.verifiedMark) else null,
+                    modifier = Modifier.size(EMOJI.dp).semantics { selected = e in chosen },
                 ) {
-                    Icon(action.icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
-                    Text(stringResource(action.label), style = MaterialTheme.typography.bodyLarge, color = tint)
+                    Box(contentAlignment = Alignment.Center) { Text(e, style = MaterialTheme.typography.titleLarge) }
+                }
+            }
+            Surface(
+                onClick = onMore,
+                shape = CircleShape,
+                color = Palette.muted,
+                contentColor = Palette.fg,
+                modifier = Modifier.padding(start = 4.dp, end = 2.dp).size(PLUS.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(AppIcons.Plus, contentDescription = stringResource(R.string.react_any))
                 }
             }
         }
@@ -382,8 +408,9 @@ private fun edge() = BorderStroke(1.dp, Palette.border)
 
 private const val GAP = 8
 private const val MARGIN = 12
-private const val CARD_RADIUS = 14
-private const val CARD_WIDTH = 220
+private const val EMOJI = 44
+private const val RING = 1.5f
+private const val PLUS = 40
 private const val SCRIM = 0.45f
 private const val LIFT_MS = 160
 private const val LIFT_SCALE = 0.03f

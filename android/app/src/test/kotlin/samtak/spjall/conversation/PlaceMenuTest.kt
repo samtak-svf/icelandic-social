@@ -61,4 +61,21 @@ class PlaceMenuTest {
             place(50, 80, reactions = 0),
         )
     }
+
+    @Test
+    fun withTheBarAtTheFootAMessageNearItMovesUpAboveIt() {
+        // The bar takes the foot (0072): no actions card, and the room ends where the bar starts.
+        assertEquals(
+            MenuPlace(reactionsTop = 790, bubbleTop = 850, bubbleHeight = 80, actionsTop = 930),
+            placeMenu(
+                bubbleTop = 900,
+                bubbleHeight = 80,
+                reactions = 50,
+                actions = 0,
+                gap = 10,
+                windowTop = 100,
+                windowBottom = 1000 - 70,
+            ),
+        )
+    }
 }

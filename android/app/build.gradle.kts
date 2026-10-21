@@ -68,7 +68,7 @@ android {
     defaultConfig {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionCode = env("SPJALL_VERSION_CODE")?.toInt()?.plus(playVersionCodeOffset) ?: 2
-        versionName = "0.9.4"
+        versionName = "0.9.5"
         buildConfigField("String", "FIREBASE_APP_ID", "\"${firebase?.appId.orEmpty()}\"")
         buildConfigField("String", "FIREBASE_API_KEY", "\"${firebase?.apiKey.orEmpty()}\"")
         buildConfigField("String", "FIREBASE_SENDER_ID", "\"${firebase?.senderId.orEmpty()}\"")
@@ -125,6 +125,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.browser)
+    implementation(libs.androidx.emoji2.emojipicker)
     implementation(libs.androidx.material.icons.core)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.android)

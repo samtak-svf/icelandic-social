@@ -301,7 +301,7 @@ class ConversationScreenTest {
     fun deletingOwnMessageAsksFirst() {
         show(item(2u, Content.Text("Úps", null), own = true))
         compose.onNodeWithText("Úps", substring = true).performTouchInput { longClick() }
-        compose.onNodeWithText(text(R.string.edit)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.more)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.delete_for_everyone)).performClick()
         compose.onNodeWithText(text(R.string.delete_confirm)).assertIsDisplayed()
         assertEquals(emptyList<String>(), calls)
@@ -310,15 +310,20 @@ class ConversationScreenTest {
     }
 
     @Test
-    fun theLiftedMessagesActionsKeepTheirOrderWithDeletingLast() {
+    fun theLiftedMessagesBarPutsDeletingThirdAndTheRestBehindMore() {
         show(item(2u, Content.Text("Úps", null), own = true))
         compose.onNodeWithText("Úps", substring = true).performTouchInput { longClick() }
-        // Under the lifted message, top to bottom (0054); the copy drawn over the scrim is not a second node.
-        val tops =
-            listOf(R.string.reply, R.string.copy, R.string.forward, R.string.edit, R.string.delete_for_everyone)
-                .map { compose.onNodeWithText(text(it)).getBoundsInRoot().top }
-        assertEquals(tops.sorted(), tops)
+        // The bar at the foot, left to right (0072); the copy drawn over the scrim is not a second node.
+        val lefts =
+            listOf(R.string.reply, R.string.copy, R.string.delete_for_everyone, R.string.more)
+                .map { compose.onNodeWithText(text(it)).getBoundsInRoot().left }
+        assertEquals(lefts.sorted(), lefts)
         compose.onAllNodesWithText("Úps", substring = true).assertCountEquals(1)
+        compose.onNodeWithText(text(R.string.forward)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.more)).performClick()
+        compose.onNodeWithText(text(R.string.forward)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.edit)).performClick()
+        assertEquals(listOf("edit 2"), calls)
     }
 
     @Test
@@ -326,8 +331,9 @@ class ConversationScreenTest {
         show(item(1u, Content.Text("Sæl", null)))
         compose.onNodeWithText("Sæl", substring = true).performTouchInput { longClick() }
         compose.onNodeWithText(text(R.string.reply)).assertIsDisplayed()
-        // The camera button is behind the scrim: the tap closes the menu and goes no further.
-        compose.onNodeWithContentDescription(text(R.string.camera)).performClick()
+        // The back button is behind the scrim (the composer is under the bar): the tap closes the menu
+        // and goes no further.
+        compose.onNodeWithContentDescription(text(R.string.back)).performClick()
         compose.onNodeWithText(text(R.string.reply)).assertDoesNotExist()
         assertEquals(emptyList<String>(), calls)
     }

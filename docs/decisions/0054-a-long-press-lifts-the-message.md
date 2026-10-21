@@ -1,8 +1,9 @@
 # 0054. A long press lifts the message
 
-- Status: accepted; implemented in the apps, released as 0.8.2
+- Status: accepted; implemented in the apps, released as 0.8.2; amended by 0072 (the actions are a bar at the foot)
 - Date: 2026-10-15
 - Decided by: the maintainer, choosing from the UX round on 0.7.3
+- Amended by: [0072](0072-the-long-press-menu-is-a-bar-at-the-foot.md) (the actions are a bar at the foot)
 - Builds on: [0022](0022-the-conversation-surfaces.md) (long press opens the message menu),
   [0045](0045-times-between-messages-and-one-reaction-pill.md) (the reaction row),
   [0046](0046-copy-a-message-and-open-its-links.md) (Afrita)

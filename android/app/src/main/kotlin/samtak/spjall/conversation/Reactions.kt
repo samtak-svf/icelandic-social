@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -119,6 +120,13 @@ internal fun BoxScope.HangingPill(
     )
 }
 
+/**
+ * What marks the reader's own reaction: the gold wash, opaque so the bubble under a pill does not
+ * show through. A yellow emoji on solid gold could not be told apart (0072).
+ */
+@Composable
+internal fun ownWash() = Palette.secondarySubtle.compositeOver(Palette.surface)
+
 /** The pill on the bubble's bottom edge; the bubble's own element speaks for it. */
 @Composable
 internal fun ReactionPill(
@@ -129,9 +137,9 @@ internal fun ReactionPill(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(PILL_HEIGHT.dp),
-        color = if (pill.own) Palette.secondary else Palette.muted,
-        contentColor = if (pill.own) Palette.secondaryFg else Palette.fg,
-        border = BorderStroke(PILL_BORDER.dp, Palette.surface),
+        color = if (pill.own) ownWash() else Palette.muted,
+        contentColor = Palette.fg,
+        border = BorderStroke(PILL_BORDER.dp, if (pill.own) Palette.verifiedMark else Palette.surface),
         modifier = modifier.heightIn(min = PILL_HEIGHT.dp).clearAndSetSemantics { },
     ) {
         Row(

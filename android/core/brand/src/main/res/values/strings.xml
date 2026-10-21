@@ -204,6 +204,10 @@
     <string name="post_gone">Færslan er ekki lengur til</string>
     <!-- Add a reaction to a message. -->
     <string name="react">Bregðast við</string>
+    <!-- The "+" at the end of a long press's emoji row, and the title of the sheet with every emoji it opens (docs/decisions/0072). -->
+    <string name="react_any">Fleiri tjámyndir</string>
+    <!-- The last slot of the long-press bar when not every action fits; it opens a sheet with the rest (docs/decisions/0072). -->
+    <string name="more">Meira</string>
     <!-- Title of the sheet listing who reacted to a message (docs/decisions/0045). -->
     <string name="reactions_title">Viðbrögð</string>
     <!-- Screen-reader text of a bubble's reaction pill: how many reactions it holds (docs/decisions/0045). -->
