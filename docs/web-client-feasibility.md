@@ -3,7 +3,7 @@
 Status: research note from a spike, 2026-10-17, revised after two reviews the same day. It
 is not a decision and does not change v1 scope ([0009](decisions/0009-v1-scope.md)). The path
 chosen from it is the roadmap epic
-[#309](https://github.com/samtak-svf/icelandic-messenger/issues/309): a social platform with
+[#52](https://github.com/samtak-svf/icelandic-social/issues/52): a social platform with
 an encrypted messenger, web first as a plain web app whose sign-in makes a session, not an
 MLS device, and encrypted chat in the browser last. Each step there needs its own record
 before code.
@@ -86,7 +86,7 @@ The hard part of a browser client is persistence and code delivery, not MLS.
 ### In the core
 
 1. **A store must refuse to be plaintext.** Done in
-   [#265](https://github.com/samtak-svf/icelandic-messenger/pull/265). A wasm build without a
+   [6d3edf4](https://github.com/samtak-svf/icelandic-social/commit/6d3edf4). A wasm build without a
    cipher would have shipped history unencrypted with no error: `connect`
    (`core/store/src/lib.rs:631`) ran `PRAGMA key` and checked nothing after it. It now asks
    the probes in `CIPHER_PROBES` (`core/store/src/lib.rs:646`; SQLCipher answers
@@ -98,7 +98,7 @@ The hard part of a browser client is persistence and code delivery, not MLS.
    encrypted with a non-extractable WebCrypto key. IndexedDB serves several tabs and needs
    no C toolchain, but it gives up the store's SQL and its transactions. Which one wins is
    measured in a real browser before the record
-   ([#297](https://github.com/samtak-svf/icelandic-messenger/issues/297)). The result is
+   ([#39](https://github.com/samtak-svf/icelandic-social/issues/39)). The result is
    [browser-storage.md](browser-storage.md): sqlite3mc in OPFS, with one owning tab.
 3. **One thread, one connection.** sqlite-wasm-rs offers OPFS (`sahpool`, dedicated Worker
    only) and IndexedDB VFSes, and none of them supports several connections. `Store::reader`
@@ -180,7 +180,7 @@ than a phone, on both counts, and require a strict CSP and no third-party script
   host is a frozen-id change and a record.
 - **Platform `web`.** `android` and `ios` were written out in the zod schemas, the version
   header and its comparison, and the env types. Since
-  [#310](https://github.com/samtak-svf/icelandic-messenger/pull/310) they all read one list
+  [a8dec7e](https://github.com/samtak-svf/icelandic-social/commit/a8dec7e) they all read one list
   (`backend/src/platforms.ts:8`), and `backend/test/platforms.test.ts` shows a third platform
   is one entry. The D1 CHECK constraint (`backend/migrations/0001_accounts.sql:17`) and the
   core's enum (`core/client/src/api.rs:284-287`) still name the two, and `web` joins them
@@ -211,13 +211,13 @@ than a phone, on both counts, and require a strict CSP and no third-party script
 ## The chosen path
 
 The maintainer chose the social platform with an encrypted messenger, web first. The
-roadmap is [#309](https://github.com/samtak-svf/icelandic-messenger/issues/309). In short:
+roadmap is [#52](https://github.com/samtak-svf/icelandic-social/issues/52). In short:
 
 1. **Decisions:** the product scope (amends 0009 and 0044); account, login identity,
    session and device as four things (amends 0014); the web host; communities and
    moderation; and, last, non-phone devices as linked devices (amends 0006).
 2. **Groundwork beside the closed beta:** the core's web guards
-   ([#265](https://github.com/samtak-svf/icelandic-messenger/pull/265)), platforms from one
+   ([6d3edf4](https://github.com/samtak-svf/icelandic-social/commit/6d3edf4)), platforms from one
    list, backend modules with enforced boundaries, and a measured D1 social workload.
 3. **Sessions:** a `sessions` table, server-handled web sign-in, revocation, and `web` in
    the client-version contract.

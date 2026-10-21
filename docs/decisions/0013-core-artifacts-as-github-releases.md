@@ -1,6 +1,6 @@
 # 0013. The published core is a GitHub release, not an R2 object
 
-- Status: accepted
+- Status: accepted; amended by 0075 (the repo is now samtak-svf/icelandic-social)
 - Date: 2026-10-05
 - Decided by: Guðröður, approving the plan that acted on the phase-0 review (2026-10-06)
 

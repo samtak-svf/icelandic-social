@@ -147,21 +147,21 @@ describe("ids-freeze, history", () => {
   });
 });
 
-describe("ids-freeze, the repository it runs in (decision 0012)", () => {
-  const ids = { services: { githubSlug: "samtak-svf/icelandic-messenger" } };
+describe("ids-freeze, the repository it runs in (decisions 0012, 0075)", () => {
+  const ids = { services: { githubSlug: "samtak-svf/icelandic-social" } };
 
   it("passes in the repository the lock names", () => {
-    expect(checkRepository(ids, "samtak-svf/icelandic-messenger")).toEqual([]);
+    expect(checkRepository(ids, "samtak-svf/icelandic-social")).toEqual([]);
   });
 
-  it("fails in another repository of the same owner, such as the archived one", () => {
-    expect(checkRepository(ids, "samtak-svf/samtak-spjall").join()).toContain(
-      "/services/githubSlug",
-    );
+  it("fails in another repository of the same owner, such as the archived or the deleted one", () => {
+    for (const other of ["samtak-svf/samtak-spjall", "samtak-svf/icelandic-messenger"]) {
+      expect(checkRepository(ids, other).join()).toContain("/services/githubSlug");
+    }
   });
 
   it("leaves a fork under another owner alone, and a run outside CI", () => {
-    expect(checkRepository(ids, "someone/icelandic-messenger")).toEqual([]);
+    expect(checkRepository(ids, "someone/icelandic-social")).toEqual([]);
     expect(checkRepository(ids, undefined)).toEqual([]);
   });
 

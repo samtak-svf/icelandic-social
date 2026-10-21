@@ -1,4 +1,4 @@
-# icelandic-messenger
+# icelandic-social
 
 A community social platform and end-to-end encrypted messenger for Iceland, on Android, iOS
 and the web, built by Samtak svf.

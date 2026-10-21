@@ -1,7 +1,7 @@
 {
   "version": "0.31.0",
   "androidNdk": "30.0.16248370",
-  "baseUrl": "https://github.com/samtak-svf/icelandic-messenger/releases/download/core-v{version}",
+  "baseUrl": "https://github.com/samtak-svf/icelandic-social/releases/download/core-v{version}",
   "artifacts": {
     "android": {
       "file": "spjall-core-android.zip",
