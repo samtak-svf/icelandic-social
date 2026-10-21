@@ -1,6 +1,6 @@
 # 0032. The Worker moves to the cf CLI now, in two steps
 
-- Status: accepted; implemented, step 1 in #120 and step 2 in the PR that removed `wrangler.jsonc`
+- Status: accepted; implemented, step 1 in a158475 and step 2 in the PR that removed `wrangler.jsonc`
 - Date: 2026-10-09
 - Decided by: the maintainer, deciding #37
 

@@ -1,6 +1,6 @@
 # 0040. A Fljótið post is shared into a conversation by its id, never by a copy of its text
 
-- Status: accepted; implemented in the core (#173) and the apps (#178, #183); superseded
+- Status: accepted; implemented in the core (1e36d3c) and the apps (5dcbe78, bf7d824); superseded
   by 0044
 - Date: 2026-10-10
 - Decided by: the maintainer, choosing it from a comparison with an established messenger

@@ -8,11 +8,11 @@ The lessons below come from earlier 2026 enrollments of other apps.
 
 ## Status
 
-| Step            | State                                                                                                                                                                                                                                        |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D-U-N-S         | `500780159`. D&B already held Samtak svf., Gullengi 37, Reykjavik 112, so nothing was filed; Apple's lookup found it and emailed the number to `samtak@samtak.is` (2026-10-05).                                                              |
-| Play Console    | Organization account `Samtak`, id `7834777154486168621`, owner `samtak@samtak.is`, fee paid 2026-10-05. Payments profile on the D&B record; website verified. Identity submitted 2026-10-05, in review; phone verification follows approval. |
-| Apple Developer | Not started. The Account Holder Apple ID is still to be chosen.                                                                                                                                                                              |
+| Step            | State                                                                                                                                                                                                                                                               |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D-U-N-S         | `500780159`. D&B already held Samtak svf., Gullengi 37, Reykjavik 112, so nothing was filed; Apple's lookup found it and emailed the number to `samtak@samtak.is` (2026-10-05).                                                                                     |
+| Play Console    | Organization account `Samtak`, id `7834777154486168621`, owner `samtak@samtak.is`, fee paid 2026-10-05. Payments profile on the D&B record; website verified. Identity approved 2026-10-06, both phones verified; builds ship to internal testing since 2026-10-10. |
+| Apple Developer | Not enrolled; the Account Holder Apple ID is still to be chosen. TestFlight runs on an interim team (decision 0011, below).                                                                                                                                         |
 
 ## Order
 

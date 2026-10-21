@@ -1,6 +1,6 @@
 # 0028. A device the server no longer serves is removed from its groups
 
-- Status: accepted; implemented in the backend (#104: the conversation devices route and the
+- Status: accepted; implemented in the backend (c870b8b: the conversation devices route and the
   departed-account refusal) and the core (0.10.0: removing devices, the device check and the
   removal on revoke)
 - Date: 2026-10-09

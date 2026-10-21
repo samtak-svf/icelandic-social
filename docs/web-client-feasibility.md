@@ -109,7 +109,7 @@ The hard part of a browser client is persistence and code delivery, not MLS.
    the apps. A web client must either make the core async or keep a UI-side mirror of the
    lists, which 0056 rules out for the apps. **This is the first engineering decision for
    web, not a detail.**
-4. **One clock, agreeing with SQL.** Done in #265: `spjall-client` read `SystemTime` and
+4. **One clock, agreeing with SQL.** Done in 6d3edf4: `spjall-client` read `SystemTime` and
    `Instant` directly, and now reads them through `core/client/src/clock.rs`, with
    `web-time` on wasm. The `UNEXPIRED` views use SQLite's own `unixepoch()`
    (`core/store/src/lib.rs:605-609`), as does `migrate()` (`:683`), which the VFS serves on

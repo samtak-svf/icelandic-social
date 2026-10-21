@@ -1,6 +1,6 @@
 # 0057. A dead token signs the device out
 
-- Status: accepted; implemented in the core (#249, core 0.25.0) and the apps, released as 0.8.5
+- Status: accepted; implemented in the core (f1449c5, core 0.25.0) and the apps, released as 0.8.5
 - Date: 2026-10-15
 - Decided by: the maintainer, choosing how testers land after the beta database is wiped
 - Amends: [0019](0019-sign-in-and-invites.md) (signing out), [0022](0022-the-conversation-surfaces.md)

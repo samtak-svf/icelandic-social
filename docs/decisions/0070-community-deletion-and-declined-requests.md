@@ -1,6 +1,6 @@
 # 0070. A deleted community can be restored for 30 days, and its log is kept a year; a declined request waits 30 days
 
-- Status: accepted; implemented (#368–#370, #372–#376)
+- Status: accepted; implemented (c3826d2, 9b2f50d, ac37c3f, 265fa55, 84b9ba8, f76b34d, 3a613cb, 282cff7)
 - Date: 2026-10-19
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0063](0063-communities-audiences-and-moderation.md) (deleting a community, the

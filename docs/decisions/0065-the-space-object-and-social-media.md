@@ -1,6 +1,6 @@
 # 0065. A community's content is in a `Space` object, and its images in the profiles bucket
 
-- Status: accepted; implemented (#286)
+- Status: accepted; implemented (#28)
 - Date: 2026-10-18
 - Decided by: Guðröður Atli Jónsson (phase 4, #306)
 - Builds on: [0060](0060-a-social-platform-with-an-encrypted-messenger.md) (content in a

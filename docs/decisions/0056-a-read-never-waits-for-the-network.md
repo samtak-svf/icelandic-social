@@ -1,6 +1,6 @@
 # 0056. A read never waits for the network
 
-- Status: accepted; implemented in the backend (#238) and the core (#239, core 0.23.0), released as 0.7.5;
+- Status: accepted; implemented in the backend (6df9388) and the core (2fe45ec, core 0.23.0), released as 0.7.5;
   the start's reads moved in core 0.26.0, released as 0.8.6; a known push token starts no sync
   from core 0.27.0
 - Date: 2026-10-15

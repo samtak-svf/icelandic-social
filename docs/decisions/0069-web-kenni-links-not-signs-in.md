@@ -1,6 +1,6 @@
 # 0069. On the web, Kenni adds the mark to a signed-in account and is never a way in
 
-- Status: accepted; implemented in the backend and the web (#365)
+- Status: accepted; implemented in the backend and the web (#72)
 - Date: 2026-10-19
 - Decided by: Guðröður Atli Jónsson
 - Builds on: [0035](0035-google-only-sign-in-and-merge-on-kenni.md) (everyone signs in with

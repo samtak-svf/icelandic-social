@@ -1,7 +1,7 @@
 # A social workload on D1
 
-Would one D1 database hold the social platform the product decision describes (#267), with
-communities, audiences and moderation (#270)? D1 caps a database at 10 GB and has one writer.
+Would one D1 database hold the social platform the product decision describes (#9), with
+communities, audiences and moderation (#12)? D1 caps a database at 10 GB and has one writer.
 This page measures a hypothetical schema under named usage assumptions, so the records can be
 argued from numbers. Nothing here is a decision.
 
@@ -261,12 +261,12 @@ Every query plan above is an index search. No query scans a table.
 Not needed: an index on `posts (created_at)` alone. The windowed feed never reads all posts
 by time, and the one-scan feed is the one not to use.
 
-## For #267 and #270
+## For #9 and #12
 
-- **#267:** one D1 holds the social graph and every read and write path measured here. It
+- **#9:** one D1 holds the social graph and every read and write path measured here. It
   does not hold three years of content at these assumptions. The record should state where
   content lives once the single database is full: split per community, expiry, or R2.
-- **#270:** community pages and access checks (open, or a member) are cheap index lookups.
+- **#12:** community pages and access checks (open, or a member) are cheap index lookups.
   Private communities cost nothing extra to read. Community posts should reach members by
   reading, not by fan-out.
 
