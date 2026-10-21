@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { fromBase64, toBase64 } from "../src/bytes.ts";
 import { expireLinkedDevices, LINKED_IDLE_MS } from "../src/identity/index.ts";
-import { device, euEnv, webSession } from "./support.ts";
+import { euEnv, phoneWithKey, webSession } from "./support.ts";
 import { worker } from "./main.ts";
 
 // Linked non-phone devices (decision 0064, #299): enrolled from a web session
@@ -14,27 +14,6 @@ import { worker } from "./main.ts";
 
 const BASE = "https://spjall.test";
 const fetch = (path: string, init?: RequestInit) => worker.fetch(`${BASE}${path}`, init);
-
-/** A phone device backed by a real Ed25519 key pair so it can sign link approvals. */
-async function phoneWithKey(accountId?: string) {
-  const pair = (await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
-    "sign",
-    "verify",
-  ])) as CryptoKeyPair;
-  const publicKey = new Uint8Array(
-    (await crypto.subtle.exportKey("raw", pair.publicKey)) as ArrayBuffer,
-  );
-  const seeded = await device(accountId ? { accountId } : {});
-  await env.DB.prepare("UPDATE devices SET device_key = ? WHERE device_id = ?")
-    .bind(publicKey, seeded.deviceId)
-    .run();
-  return {
-    ...seeded,
-    publicKey,
-    sign: async (message: Uint8Array) =>
-      new Uint8Array(await crypto.subtle.sign("Ed25519", pair.privateKey, message)),
-  };
-}
 
 function randomKeyBase64() {
   return toBase64(crypto.getRandomValues(new Uint8Array(32)));

@@ -4,6 +4,7 @@ import { communityLifecycle } from "./community-lifecycle.ts";
 import { log } from "./log.ts";
 import { expireKeyPackages, expireLinkedDevices, expireSessions } from "./identity/index.ts";
 import { expireCommunities } from "./modules/communities/index.ts";
+import { expireHistory } from "./modules/history/index.ts";
 import { expireJobs, jobHealth, runJobs } from "./modules/jobs/index.ts";
 import { expireMedia, pushSender } from "./modules/messaging/index.ts";
 import { expireReports } from "./modules/moderation/index.ts";
@@ -19,7 +20,8 @@ const JOBS_SCHEDULE = "* * * * *";
 export default {
   fetch: createApp().fetch,
   // The minute cron in cloudflare.config.ts runs the jobs that are due
-  // (decision 0067). The daily one: media past its 30 days (decision 0023)
+  // (decision 0067) and deletes history transfers past their 24 hours, which
+  // a daily sweep would keep up to a day longer (0064). The daily one: media past its 30 days (decision 0023)
   // expired KeyPackages (0029), accounts a join left without an identity (0035),
   // deleted communities past their 30 days and read-only ones past their 90,
   // and the rows of those deleted a year ago (0063, 0070), images no post took
@@ -31,6 +33,8 @@ export default {
     if (controller.cron === JOBS_SCHEDULE) {
       const ran = await runJobs(env, jobHandlers(pushSender(env)));
       if (ran.done + ran.retried + ran.failed > 0) log("jobs.ran", { count: ran.done });
+      const expired = await expireHistory(env);
+      if (expired > 0) log("history.expired", { count: expired });
       return;
     }
     log("media.expired", { count: await expireMedia(env) });

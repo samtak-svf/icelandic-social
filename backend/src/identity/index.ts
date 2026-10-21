@@ -29,7 +29,13 @@ export {
   unblock,
 } from "./blocks.ts";
 export { inviteRoutes } from "./invites.ts";
-export { expireLinkedDevices, LINKED_IDLE_MS, linkedDeviceRoutes } from "./linked-devices.ts";
+export {
+  type ApprovedLink,
+  approvedLink,
+  expireLinkedDevices,
+  LINKED_IDLE_MS,
+  linkedDeviceRoutes,
+} from "./linked-devices.ts";
 export { type Caller, linkIdentity } from "./linking.ts";
 export { sessionRoutes } from "./session-routes.ts";
 export { claim, expireKeyPackages, ownsLeaf, upload } from "./key-packages.ts";

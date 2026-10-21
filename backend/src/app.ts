@@ -68,6 +68,7 @@ import {
   putMedia,
 } from "./modules/messaging/index.ts";
 import { communityRoutes } from "./modules/communities/index.ts";
+import { historyRoutes } from "./modules/history/index.ts";
 import { moderationRoutes } from "./modules/moderation/index.ts";
 import { notificationRoutes } from "./modules/notifications/index.ts";
 import { socialRoutes } from "./modules/social/index.ts";
@@ -189,6 +190,7 @@ export function createApp() {
   inviteRoutes(app);
   sessionRoutes(app);
   linkedDeviceRoutes(app);
+  historyRoutes(app);
 
   // Decision 0014: in the contract now, built in phase 1.
   app.openapi(revokeDeviceRoute, async (c) => {

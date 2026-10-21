@@ -217,8 +217,8 @@ async function completeLinkRequest(
       .prepare(
         `INSERT INTO devices
            (device_id, account_id, platform, kind, device_key, token_hash, created_at,
-            session_id, last_seen_at, store_key_share)
-         VALUES (?, ?, ?, 'web', ?, ?, ?, ?, ?, ?)`,
+            session_id, last_seen_at, store_key_share, link_id, linked_by_device_id)
+         VALUES (?, ?, ?, 'web', ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         deviceId,
@@ -230,6 +230,8 @@ async function completeLinkRequest(
         session.sessionId,
         now,
         share,
+        linkId,
+        row.approvedBy,
       ),
     db(env).prepare("DELETE FROM device_link_requests WHERE link_id = ?").bind(linkId),
   ]);
@@ -242,6 +244,51 @@ async function completeLinkRequest(
       storeKeyShare: toBase64(share),
     },
   };
+}
+
+/**
+ * A link an active phone approved: who approved it and when, and the device it
+ * made once completed (when it was made, for a completed one).
+ */
+export type ApprovedLink = {
+  accountId: string;
+  approvedBy: string;
+  approvedAt: number;
+  deviceId: string | null;
+};
+
+/**
+ * The approved link `linkId`, pending or completed (decision 0064, #300): a
+ * request an active phone approved and the browser has yet to complete, or
+ * the active linked device completing it made. Null for any other link, one
+ * whose approving phone is revoked, or one whose device is revoked.
+ */
+export async function approvedLink(
+  env: Env,
+  linkId: string,
+  now = Date.now(),
+): Promise<ApprovedLink | null> {
+  const [pending, completed] = await db(env).batch<ApprovedLink>([
+    db(env)
+      .prepare(
+        `SELECT r.account_id AS accountId, r.approved_by_device_id AS approvedBy,
+                r.approved_at AS approvedAt, NULL AS deviceId
+           FROM device_link_requests r
+           JOIN devices p ON p.device_id = r.approved_by_device_id AND p.revoked_at IS NULL
+          WHERE r.link_id = ? AND r.expires_at > ?`,
+      )
+      .bind(linkId, now),
+    db(env)
+      .prepare(
+        `SELECT d.account_id AS accountId, d.linked_by_device_id AS approvedBy,
+                d.created_at AS approvedAt, d.device_id AS deviceId
+           FROM devices d
+           JOIN devices p ON p.device_id = d.linked_by_device_id AND p.revoked_at IS NULL
+          WHERE d.link_id = ? AND d.revoked_at IS NULL`,
+      )
+      .bind(linkId),
+  ]);
+  return pending?.results[0] ?? completed?.results[0] ?? null;
 }
 
 /** The server's 32-byte store-key share for the active linked device of this web session. */

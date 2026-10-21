@@ -1,5 +1,6 @@
 import { dropAccount, orphans, revokeAllDevices } from "./identity/index.ts";
 import { handOverCommunities } from "./modules/communities/index.ts";
+import { deleteAccountHistory } from "./modules/history/index.ts";
 import { leaveConversations } from "./modules/messaging/index.ts";
 import { deleteAccountPhoto } from "./modules/profiles/index.ts";
 import { forgetAccount } from "./modules/social/index.ts";
@@ -21,6 +22,8 @@ export async function deleteAccount(env: Env, accountId: string): Promise<void> 
   // its memberships go with its row (0063).
   await forgetAccount(env, accountId);
   await handOverCommunities(env, accountId);
+  // A history transfer's row would go with the account, its bytes would not.
+  await deleteAccountHistory(env, accountId);
   await dropAccount(env, accountId);
 }
 

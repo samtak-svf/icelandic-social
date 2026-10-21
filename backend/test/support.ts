@@ -77,6 +77,27 @@ export async function device({
   };
 }
 
+/** A phone device backed by a real Ed25519 key pair so it can sign link approvals. */
+export async function phoneWithKey(accountId?: string) {
+  const pair = (await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
+    "sign",
+    "verify",
+  ])) as CryptoKeyPair;
+  const publicKey = new Uint8Array(
+    (await crypto.subtle.exportKey("raw", pair.publicKey)) as ArrayBuffer,
+  );
+  const phone = await device(accountId ? { accountId } : {});
+  await env.DB.prepare("UPDATE devices SET device_key = ? WHERE device_id = ?")
+    .bind(publicKey, phone.deviceId)
+    .run();
+  return {
+    ...phone,
+    publicKey,
+    sign: async (message: Uint8Array) =>
+      new Uint8Array(await crypto.subtle.sign("Ed25519", pair.privateKey, message)),
+  };
+}
+
 /** Revokes a seeded device's token. */
 export async function revoke(deviceId: string) {
   await env.DB.prepare("UPDATE devices SET revoked_at = ? WHERE device_id = ?")

@@ -80,7 +80,7 @@ export interface SignInConfig {
 }
 
 export interface ApiError {
-  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, invalid_media, muted, internal_error */
+  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, invalid_media, muted, expired, incomplete, internal_error */
   error: string;
   /** The request's id, also in the x-request-id header: opaque, for support to find the request by (decision 0037) */
   requestId: string;
@@ -243,6 +243,20 @@ export interface LinkedStoreKey {
   deviceId: string;
   /** Base64, at most 32 bytes decoded */
   storeKeyShare: string;
+}
+
+export interface HistoryTransfer {
+  /** Every part but the last is this many bytes; the last is the remainder */
+  partSize: number;
+  /** How many parts to upload, numbered from 1 */
+  parts: number;
+  /** Milliseconds since the epoch */
+  expiresAt: number;
+}
+
+export interface CreateHistoryTransfer {
+  /** The ciphertext's length in bytes */
+  size: number;
 }
 
 export interface PushToken {

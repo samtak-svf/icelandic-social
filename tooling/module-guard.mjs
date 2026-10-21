@@ -60,6 +60,8 @@ export const OWNERS = {
   moderation_log: "moderation",
   jobs: "jobs",
   notifications: "notifications",
+  history_transfers: "history",
+  history_transfer_parts: "history",
 };
 
 /** The reads of another module's table, each with its reason. */
