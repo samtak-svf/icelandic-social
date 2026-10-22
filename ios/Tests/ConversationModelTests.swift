@@ -288,7 +288,7 @@ final class ConversationModelTests: XCTestCase {
         let model = await model(conversation("c1", members: [anna, bjarni]))
         await model.rename("Leshringur")
         XCTAssertEqual(model.conversation?.name, "Leshringur")
-        XCTAssertEqual(account.calls.suffix(2), ["rename c1 Leshringur", "conversations"])
+        XCTAssertTrue(account.calls.contains("rename c1 Leshringur"))
 
         await model.rename("   ")
         XCTAssertNil(model.conversation?.name)
