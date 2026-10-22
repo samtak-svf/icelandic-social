@@ -13,7 +13,7 @@ export function unreadChanged(): void {
   for (const listener of listeners) listener();
 }
 
-export function UnreadBadge() {
+export function UnreadBadge({ className = "ml-1 px-2 text-sm" }: Readonly<{ className?: string }>) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [round, setRound] = useState(0);
   const [unread, setUnread] = useState(0);
@@ -35,7 +35,7 @@ export function UnreadBadge() {
   }, [path, round]);
   if (unread === 0) return null;
   return (
-    <span className="ml-1 rounded-full bg-primary px-2 text-sm text-primary-fg">
+    <span className={`rounded-full bg-primary text-primary-fg ${className}`}>
       <span aria-hidden="true">{unread}</span>
       <span className="sr-only">{strings.notifications_unread({ count: unread })}</span>
     </span>
