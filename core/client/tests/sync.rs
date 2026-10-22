@@ -643,7 +643,7 @@ fn a_build_below_the_floor_is_told_to_update() {
     relay.set_floor((0, 3, 0));
     assert!(matches!(
         a1.client.sync(),
-        Err(ClientError::Transport(ApiError::ClientTooOld { min })) if min == "0.3.0"
+        Err(ClientError::Transport(ApiError::ClientTooOld { min, .. })) if min == "0.3.0"
     ));
     a1.client
         .set_client_version(Platform::Android, "0.3.0")

@@ -174,8 +174,11 @@ impl From<ClientError> for CoreError {
                 code,
                 request_id,
             },
-            ClientError::Transport(api::ApiError::ClientTooOld { min }) => {
-                Self::ClientTooOld { min_version: min }
+            ClientError::Transport(api::ApiError::ClientTooOld { min, update_url }) => {
+                Self::ClientTooOld {
+                    min_version: min,
+                    update_url,
+                }
             }
             ClientError::Transport(api::ApiError::Malformed(what)) => Self::Protocol {
                 detail: format!("malformed answer to {what}"),

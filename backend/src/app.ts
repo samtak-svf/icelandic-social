@@ -1,5 +1,4 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
-import { createMiddleware } from "hono/factory";
 import { deleteAccount } from "./account-deletion.ts";
 import { linkOrJoin } from "./account-linking.ts";
 import { communityLifecycle } from "./community-lifecycle.ts";
@@ -27,7 +26,7 @@ import { getMediaRoute, putMediaRoute } from "./api/media.ts";
 import { listMessagesRoute, sendMessageRoute } from "./api/messages.ts";
 import { SOCKET_ACCOUNT, SOCKET_DEVICE, socketRoute } from "./api/socket.ts";
 import { fromBase64, toBase64 } from "./bytes.ts";
-import { belowFloor, CLIENT_HEADER } from "./client-version.ts";
+import { clientFloor } from "./client-version.ts";
 import { guards, registerSchemes } from "./credentials.ts";
 import { drainBody, fail, failed, requestId } from "./errors.ts";
 import {
@@ -35,6 +34,7 @@ import {
   identityProvider,
   inbox,
   minClientVersions,
+  updateUrls,
   withinLimit,
 } from "./env/index.ts";
 import {
@@ -92,15 +92,6 @@ export type AppEnv = {
   Variables: { session: Session; device: Device; requestId: string };
 };
 
-/** Every /v1 route refuses a build below its platform's floor (decision 0030). */
-const clientFloor = createMiddleware<AppEnv>(async (c, next) => {
-  const refusal = belowFloor(c.env, c.req.header(CLIENT_HEADER));
-  if (!refusal) return next();
-  return refusal.error === "invalid_request"
-    ? fail(c, 400, refusal.error)
-    : fail(c, 426, refusal.error, { minVersion: refusal.minVersion });
-});
-
 export function createApp() {
   const app = new OpenAPIHono<AppEnv>({
     defaultHook: (result, c) => {
@@ -119,7 +110,14 @@ export function createApp() {
   app.use("/v1/*", credentials);
 
   app.openapi(healthRoute, (c) =>
-    c.json({ status: "ok" as const, minClientVersion: minClientVersions(c.env) }, 200),
+    c.json(
+      {
+        status: "ok" as const,
+        minClientVersion: minClientVersions(c.env),
+        updateUrl: updateUrls(c.env),
+      },
+      200,
+    ),
   );
 
   // Sign-in (decision 0019). Routes are registered in the order

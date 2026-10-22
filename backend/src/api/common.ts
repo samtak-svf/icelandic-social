@@ -36,6 +36,9 @@ export const ApiError = z
       description: "With client_too_old: the lowest version this platform accepts (decision 0030)",
       example: "0.2.0",
     }),
+    updateUrl: z.string().optional().openapi({
+      description: "Where to get a current build when error === 'client_too_old' (decision 0030)",
+    }),
   })
   .openapi("ApiError");
 

@@ -420,6 +420,35 @@ fn errors_cross_as_records() {
     ));
 }
 
+#[test]
+fn client_too_old_crosses_with_its_update_url() {
+    let relay = Relay::new();
+    let a1 = phone(&relay, "a", "a1");
+    let answer = |body: &str| {
+        a1.app.canned.lock().unwrap().push_back(HttpResponse {
+            status: 426,
+            body: body.into(),
+        });
+    };
+
+    answer(
+        r#"{"error":"client_too_old","minVersion":"9.0.0","updateUrl":"https://play.google.com/apps/internaltest/4701643324608289838"}"#,
+    );
+    assert!(matches!(
+        a1.client.stock_key_packages(1),
+        Err(CoreError::ClientTooOld { min_version, update_url })
+            if min_version == "9.0.0"
+                && update_url.as_deref() == Some("https://play.google.com/apps/internaltest/4701643324608289838")
+    ));
+
+    answer(r#"{"error":"client_too_old","minVersion":"9.0.0"}"#);
+    assert!(matches!(
+        a1.client.stock_key_packages(1),
+        Err(CoreError::ClientTooOld { min_version, update_url })
+            if min_version == "9.0.0" && update_url.is_none()
+    ));
+}
+
 /// Runs `read` on a thread of its own and gives what it returned; panics
 /// when it has not returned within two seconds.
 fn promptly<T: Send + 'static>(read: impl FnOnce() -> T + Send + 'static) -> T {

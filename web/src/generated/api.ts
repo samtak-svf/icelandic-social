@@ -70,6 +70,10 @@ export interface Health {
     ios: string;
     web: string;
   };
+  updateUrl: {
+    android: string;
+    ios: string;
+  };
 }
 
 export interface SignInConfig {
@@ -86,6 +90,8 @@ export interface ApiError {
   requestId: string;
   /** With client_too_old: the lowest version this platform accepts (decision 0030) */
   minVersion?: string;
+  /** Where to get a current build when error === 'client_too_old' (decision 0030) */
+  updateUrl?: string;
 }
 
 /** kenni when left out */

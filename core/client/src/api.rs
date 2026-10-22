@@ -115,8 +115,11 @@ pub enum ApiError {
     Malformed(&'static str),
     /// This build is below the version floor; `min` is the lowest the
     /// server still serves on this platform (0030).
-    #[error("this build is too old; the server needs {min}")]
-    ClientTooOld { min: String },
+    #[error("client is older than the minimum version {min}")]
+    ClientTooOld {
+        min: String,
+        update_url: Option<String>,
+    },
 }
 
 impl ApiError {
@@ -272,6 +275,8 @@ struct ClaimedPackage {
 struct ErrorBody {
     error: String,
     min_version: Option<String>,
+    #[serde(default)]
+    update_url: Option<String>,
     /// Every error body names its request since 0037.
     request_id: Option<String>,
 }
@@ -1197,8 +1202,10 @@ impl<'a, T: Transport + ?Sized> Api<'a, T> {
         }
         let body = serde_json::from_str::<ErrorBody>(&response.body).ok();
         if response.status == 426 {
-            let min = body.and_then(|b| b.min_version).unwrap_or_default();
-            return Err(ApiError::ClientTooOld { min });
+            let (min, update_url) = body
+                .map(|b| (b.min_version.unwrap_or_default(), b.update_url))
+                .unwrap_or_default();
+            return Err(ApiError::ClientTooOld { min, update_url });
         }
         let (code, request_id) = body.map(|b| (b.error, b.request_id)).unwrap_or_default();
         Err(ApiError::Refused {
@@ -2121,10 +2128,42 @@ mod tests {
         assert_eq!(
             error,
             ApiError::ClientTooOld {
-                min: "0.3.0".into()
+                min: "0.3.0".into(),
+                update_url: None,
             }
         );
         assert_eq!(error.request_id(), None);
+    }
+
+    #[test]
+    fn too_old_includes_an_update_url_when_the_server_provides_one() {
+        let error = refusal(
+            426,
+            r#"{"error":"client_too_old","minVersion":"9.0.0","updateUrl":"https://play.google.com/apps/internaltest/4701643324608289838"}"#,
+        );
+
+        assert_eq!(
+            error,
+            ApiError::ClientTooOld {
+                min: "9.0.0".into(),
+                update_url: Some(
+                    "https://play.google.com/apps/internaltest/4701643324608289838".into()
+                ),
+            }
+        );
+    }
+
+    #[test]
+    fn too_old_without_an_update_url_has_none() {
+        let error = refusal(426, r#"{"error":"client_too_old","minVersion":"9.0.0"}"#);
+
+        assert_eq!(
+            error,
+            ApiError::ClientTooOld {
+                min: "9.0.0".into(),
+                update_url: None,
+            }
+        );
     }
 
     /// Each social enum holds exactly the values the contract names, so a

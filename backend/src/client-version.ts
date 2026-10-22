@@ -1,4 +1,6 @@
-import { minClientVersions } from "./env/index.ts";
+import { createMiddleware } from "hono/factory";
+import { minClientVersions, updateUrls } from "./env/index.ts";
+import { fail } from "./errors.ts";
 
 // The client version floor (decision 0030): every request names its build in
 // Spjall-Client, and a build below its platform's minimum is told to update.
@@ -23,33 +25,56 @@ function compare(a: string, b: string): number {
 
 export type FloorRefusal =
   | { error: "invalid_request" }
-  | { error: "client_too_old"; minVersion: string };
+  | { error: "client_too_old"; minVersion: string; updateUrl?: string };
+
+/** Where each mobile platform gets a current build (decision 0030). */
+export type UpdateUrls = { android: string; ios: string };
 
 /** Why a request with this Spjall-Client may not go on, or null. */
 export function belowFloor(env: Env, header: string | undefined): FloorRefusal | null {
-  return belowFloorOf(minClientVersions(env), header);
+  return belowFloorOf(minClientVersions(env), header, updateUrls(env));
 }
+
+/** Every /v1 route refuses a build below its platform's floor (decision 0030). */
+export const clientFloor = createMiddleware<{ Bindings: Env }>(async (c, next) => {
+  const refusal = belowFloor(c.env, c.req.header(CLIENT_HEADER));
+  if (!refusal) return next();
+  if (refusal.error === "invalid_request") return fail(c, 400, refusal.error);
+  return fail(c, 426, refusal.error, {
+    minVersion: refusal.minVersion,
+    ...(refusal.updateUrl ? { updateUrl: refusal.updateUrl } : {}),
+  });
+});
 
 /**
  * The same against any clients' floors: a header names one of them, and a
  * request without one is `UNNAMED` on whichever app floor is highest. Only
  * an app built before the header leaves it out; the web always sends it.
+ * A refusal names the platform's update URL when there is one (decision 0030).
  */
 export function belowFloorOf(
   floors: Readonly<Record<string, string>>,
   header: string | undefined,
+  urls?: UpdateUrls,
 ): FloorRefusal | null {
   let version = UNNAMED;
+  let platform: string | undefined;
   let floor = Object.entries(floors)
     .flatMap(([client, min]) => (client === "web" ? [] : [min]))
     .reduce((a, b) => (compare(a, b) >= 0 ? a : b));
   if (header !== undefined) {
     const slash = header.indexOf("/");
-    const platform = header.slice(0, slash);
+    platform = header.slice(0, slash);
     version = header.slice(slash + 1);
     if (slash < 0 || !Object.hasOwn(floors, platform) || !VERSION.test(version))
       return { error: "invalid_request" };
     floor = floors[platform]!;
   }
-  return compare(version, floor) < 0 ? { error: "client_too_old", minVersion: floor } : null;
+  if (compare(version, floor) >= 0) return null;
+  const updateUrl = platform === "android" || platform === "ios" ? urls?.[platform] : undefined;
+  return {
+    error: "client_too_old",
+    minVersion: floor,
+    ...(updateUrl ? { updateUrl } : {}),
+  };
 }

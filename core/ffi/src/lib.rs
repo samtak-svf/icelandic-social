@@ -68,8 +68,11 @@ pub enum CoreError {
     File { detail: String },
     /// This build is below the server's floor; the app asks the person to
     /// update to at least `min_version` (0030).
-    #[error("this build is too old; the server needs {min_version}")]
-    ClientTooOld { min_version: String },
+    #[error("client is older than the minimum version {min_version}")]
+    ClientTooOld {
+        min_version: String,
+        update_url: Option<String>,
+    },
     /// The message cannot be forwarded (0041); the app offers forwarding
     /// only where it can, so this is a race with a delete or a timer.
     #[error("this message cannot be forwarded")]
@@ -688,6 +691,7 @@ mod tests {
         assert_eq!(unreachable.code(), None);
         let too_old = CoreError::ClientTooOld {
             min_version: "0.5.0".into(),
+            update_url: None,
         };
         assert_eq!(too_old.code(), None);
     }
