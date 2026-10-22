@@ -39,7 +39,13 @@ struct RootView: View {
         Group {
             // Below the server's floor nothing else would work (decision 0030).
             if update.min != nil {
-                UpdateView(onUpdate: { openURL(Self.store) })
+                UpdateView(onUpdate: {
+                    if let raw = update.url, let url = URL(string: raw) {
+                        openURL(url)
+                    } else {
+                        openURL(Self.store)
+                    }
+                })
             } else {
                 screens
             }
@@ -59,7 +65,9 @@ struct RootView: View {
             case .signedOut:
                 SignInView(
                     model: signIn,
-                    onSignIn: { provider in Task { await signIn.signIn(provider: provider, browser: browser) } },
+                    onSignIn: { provider in
+                        Task { await signIn.signIn(provider: provider, browser: browser) }
+                    },
                     onRetry: { Task { await signIn.retry(browser: browser) } }
                 )
             case .signedIn:
@@ -99,5 +107,6 @@ struct RootView: View {
     }
 
     /// The scheme the providers' redirects come back to (identifiers/ids.json `urlScheme`).
-    private static let scheme = Bundle.main.object(forInfoDictionaryKey: "SpjallURLScheme") as? String ?? ""
+    private static let scheme =
+        Bundle.main.object(forInfoDictionaryKey: "SpjallURLScheme") as? String ?? ""
 }

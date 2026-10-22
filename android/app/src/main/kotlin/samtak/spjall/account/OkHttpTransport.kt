@@ -25,13 +25,13 @@ import java.io.IOException
  * core as one; only no answer at all is `Unreachable`. Nothing here logs: the
  * bearer is a device token, and paths can carry an invite token. Files
  * (decision 0023) go by path both ways and are streamed, never held whole.
- * A 426 also goes to [tooOld] with the minimum version (decision 0030), since
- * the core meets it on paths whose errors the app never sees.
+ * A 426 also goes to [tooOld] with the minimum version and optional update URL
+ * (decision 0030), since the core meets it on paths whose errors the app never sees.
  */
 class OkHttpTransport(
     baseUrl: String,
     private val http: OkHttpClient,
-    private val tooOld: (String) -> Unit = {},
+    private val tooOld: (String, String?) -> Unit = { _, _ -> },
 ) : Transport {
     private val base = baseUrl.trimEnd('/')
 
@@ -56,17 +56,27 @@ class OkHttpTransport(
 
     private fun answer(response: Response): HttpResponse {
         val body = response.body.string()
-        if (response.code == UPGRADE_REQUIRED) minVersion(body)?.let(tooOld)
+        if (response.code == UPGRADE_REQUIRED) {
+            upgradeInfo(body)?.let { (min, url) -> tooOld(min, url) }
+        }
         return HttpResponse(response.code.toUShort(), body)
     }
 
-    private fun minVersion(body: String): String? =
-        runCatching { Json.parseToJsonElement(body) }
-            .getOrNull()
-            .let { (it as? JsonObject)?.get("minVersion") as? JsonPrimitive }
-            ?.takeIf { it.isString }
-            ?.content
-            ?.ifEmpty { null }
+    private fun upgradeInfo(body: String): Pair<String, String?>? {
+        val obj = runCatching { Json.parseToJsonElement(body) }.getOrNull() as? JsonObject
+        val min =
+            (obj?.get("minVersion") as? JsonPrimitive)
+                ?.takeIf { it.isString }
+                ?.content
+                ?.ifEmpty { null }
+        val url =
+            (obj?.get("updateUrl") as? JsonPrimitive)
+                ?.takeIf { it.isString }
+                ?.content
+                ?.trim()
+                ?.ifEmpty { null }
+        return min?.let { it to url }
+    }
 
     private fun carry(
         request: HttpRequest,

@@ -8,17 +8,17 @@ import SpjallCore
 /// Nothing here logs: the bearer is a device token, and paths can carry an
 /// invite token. Files (decision 0023) go by path both ways and are
 /// streamed, never held whole. A 426 also goes to `tooOld` with the minimum
-/// version (decision 0030), since the core meets it on paths whose errors the
-/// app never sees.
+/// version and optional update URL (decision 0030), since the core meets it on
+/// paths whose errors the app never sees.
 final class URLSessionTransport: Transport, Sendable {
     private let base: String
     private let session: URLSession
-    private let tooOld: @Sendable (String) -> Void
+    private let tooOld: @Sendable (String, String?) -> Void
 
     init(
         baseURL: URL,
         session: URLSession = URLSession(configuration: .ephemeral),
-        tooOld: @escaping @Sendable (String) -> Void = { _ in }
+        tooOld: @escaping @Sendable (String, String?) -> Void = { _, _ in }
     ) {
         var base = baseURL.absoluteString
         while base.hasSuffix("/") { base.removeLast() }
@@ -98,13 +98,23 @@ final class URLSessionTransport: Transport, Sendable {
         }.resume()
         done.wait()
         let response = try answer.result()
-        if response.status == 426, let min = Self.minVersion(response.body) { tooOld(min) }
+        if response.status == 426, let update = Self.updateInfo(response.body) {
+            tooOld(update.min, update.url)
+        }
         return response
     }
 
-    private static func minVersion(_ body: String) -> String? {
-        let answer = try? JSONSerialization.jsonObject(with: Data(body.utf8)) as? [String: Any]
-        return (answer?["minVersion"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+    private static func updateInfo(_ body: String) -> (min: String, url: String?)? {
+        guard let data = body.data(using: .utf8),
+            let answer = try? JSONDecoder().decode(TooOldBody.self, from: data)
+        else { return nil }
+        guard !answer.minVersion.isEmpty else { return nil }
+        return (answer.minVersion, answer.updateUrl)
+    }
+
+    private struct TooOldBody: Decodable {
+        let minVersion: String
+        let updateUrl: String?
     }
 
     /// What came back, handed from URLSession's queue to the waiting thread.

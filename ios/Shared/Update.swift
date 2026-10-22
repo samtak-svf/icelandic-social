@@ -8,8 +8,11 @@ final class Update {
     static let shared = Update()
 
     private(set) var min: String?
+    private(set) var url: String?
 
-    func required(_ min: String) {
+    func required(_ min: String, url: String? = nil) {
         self.min = min
+        let trimmed = url?.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.url = trimmed?.isEmpty == false ? trimmed : nil
     }
 }

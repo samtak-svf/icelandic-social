@@ -158,23 +158,14 @@ class MainActivity : ComponentActivity() {
         startActivity(Intent.createChooser(send, null))
     }
 
-    /** The store's page for this app, or its web page where no store app is installed. */
-    private fun openStore() {
-        val page = "details?id=$packageName"
-        try {
-            startActivity(Intent(Intent.ACTION_VIEW, "market://$page".toUri()))
-        } catch (_: ActivityNotFoundException) {
-            startActivity(Intent(Intent.ACTION_VIEW, "https://play.google.com/store/apps/$page".toUri()))
-        }
-    }
-
     @Composable
     private fun App() {
         val state by signIn.state.collectAsStateWithLifecycle()
         val min by graph.update.min.collectAsStateWithLifecycle()
         // Below the server's floor nothing else would work (decision 0030).
         if (min != null) {
-            UpdateScreen(onUpdate = ::openStore)
+            val defaultUrl = stringResource(R.string.update_url_android)
+            UpdateScreen(onUpdate = { openBrowser(graph.update.link(defaultUrl)) })
             return
         }
         when (state.session) {

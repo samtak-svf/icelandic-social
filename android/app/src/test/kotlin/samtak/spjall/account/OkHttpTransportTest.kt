@@ -23,9 +23,10 @@ class OkHttpTransportTest {
 
     @After fun stop() = server.close()
 
-    private val floors = mutableListOf<String>()
+    private val updates = mutableListOf<Pair<String, String?>>()
 
-    private fun transport() = OkHttpTransport(server.url("/").toString(), OkHttpClient(), floors::add)
+    private fun transport() =
+        OkHttpTransport(server.url("/").toString(), OkHttpClient()) { min, url -> updates.add(min to url) }
 
     @Test
     fun sendsTheCoresRequestAsItIs() {
@@ -57,13 +58,26 @@ class OkHttpTransportTest {
     }
 
     @Test
-    fun aBuildBelowTheFloorIsAnAnswerAndIsHeard() {
-        server.enqueue(MockResponse(code = 426, body = """{"error":"client_too_old","minVersion":"0.3.0"}"""))
+    fun aBuildBelowTheFloorIncludesTheServerUpdateUrl() {
+        server.enqueue(
+            MockResponse(
+                code = 426,
+                body = """{"error":"client_too_old","minVersion":"0.9.0","updateUrl":"https://example.com/optin"}""",
+            ),
+        )
+        val response = transport().request(HttpRequest(HttpMethod.GET, "/v1/me", null, token, "android/0.2.0"))
+        assertEquals(426.toUShort(), response.status)
+        assertEquals(listOf("0.9.0" to "https://example.com/optin"), updates)
+    }
+
+    @Test
+    fun aBuildBelowTheFloorWithoutAnUpdateUrlIsStillHeard() {
+        server.enqueue(MockResponse(code = 426, body = """{"error":"client_too_old","minVersion":"0.9.0"}"""))
         server.enqueue(MockResponse(code = 426, body = "not json"))
         val response = transport().request(HttpRequest(HttpMethod.GET, "/v1/me", null, token, "android/0.2.0"))
         assertEquals(426.toUShort(), response.status)
         transport().request(HttpRequest(HttpMethod.GET, "/v1/me", null, token, "android/0.2.0"))
-        assertEquals(listOf("0.3.0"), floors)
+        assertEquals(listOf("0.9.0" to null), updates)
     }
 
     @Test
