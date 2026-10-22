@@ -34,6 +34,8 @@ export type Standing = {
   joinDeclinedUntil: number | null;
   /** How many join requests wait; null unless the viewer moderates. */
   pendingJoinRequests: number | null;
+  /** How many open reports wait; null unless the viewer moderates. */
+  openReports: number | null;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -57,6 +59,11 @@ const COLUMNS = `c.community_id, c.name, c.description, c.audience, c.created_at
             THEN (SELECT COUNT(*) FROM community_join_requests r
                    WHERE r.community_id = c.community_id AND r.declined_at IS NULL)
        END AS pending,
+       CASE WHEN m.role IN ('owner', 'moderator')
+            THEN (SELECT COUNT(*) FROM reports r
+                   WHERE r.community_id = c.community_id AND r.state = 'open'
+                     AND r.to_platform = 0)
+       END AS open_reports,
        EXISTS (SELECT 1 FROM community_invitations i
                 WHERE i.community_id = c.community_id AND i.account_id = ?1) AS invited,
        CASE WHEN c.audience = 'open' OR m.role IS NOT NULL
@@ -84,6 +91,7 @@ type Row = {
   invited: number;
   declined_at: number | null;
   pending: number | null;
+  open_reports: number | null;
   member_count: number | null;
 };
 
@@ -109,6 +117,7 @@ function standingOf(row: Row): Standing {
         ? row.declined_at + DECLINED_MS
         : null,
     pendingJoinRequests: row.pending,
+    openReports: row.open_reports,
   };
 }
 
@@ -208,6 +217,7 @@ export async function createCommunity(
     purged: false,
     joinDeclinedUntil: null,
     pendingJoinRequests: 0,
+    openReports: 0,
   };
 }
 

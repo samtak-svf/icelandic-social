@@ -26,6 +26,7 @@ type Community = {
   deletedAt: number | null;
   joinDeclinedUntil: number | null;
   pendingJoinRequests: number | null;
+  openReports: number | null;
 };
 
 async function person(name: string, verified = true) {
@@ -479,6 +480,65 @@ describe("deleting the owner's account", () => {
     expect((await member.call("GET", `/v1/communities/${communityId}`)).status).toBe(200);
     await expireCommunities(euEnv(env), communityLifecycle, Date.now() + 91 * DAY_MS);
     expect((await member.call("GET", `/v1/communities/${communityId}`)).status).toBe(404);
+  });
+});
+
+describe("an open report (decision 0063)", () => {
+  it("is counted for the community's moderators only, and goes when closed", async () => {
+    const [owner, member, reporter] = [
+      await person("Eigandi"),
+      await person("Meðlimur"),
+      await person("Kæri"),
+    ];
+    const { communityId } = await create(owner, "open");
+    await join(member, communityId);
+    const posted = await owner.call("POST", `/v1/communities/${communityId}/posts`, {
+      body: "Póstur",
+    });
+    expect(posted.status).toBe(200);
+    const { postId } = (await posted.json()) as { postId: string };
+
+    // Nothing waits, and nobody but a moderator is told how many.
+    expect(await get(member, communityId)).toMatchObject({
+      role: "member",
+      pendingJoinRequests: null,
+      openReports: null,
+    });
+    expect(await get(reporter, communityId)).toMatchObject({ role: null, openReports: null });
+    expect(await get(owner, communityId)).toMatchObject({
+      role: "owner",
+      openReports: 0,
+    });
+
+    const filed = await member.call("POST", "/v1/reports", {
+      reason: "spam",
+      target: { kind: "post", id: postId },
+    });
+    expect(filed.status).toBe(204);
+    expect(await get(owner, communityId)).toMatchObject({ openReports: 1 });
+    expect(await get(member, communityId)).toMatchObject({ openReports: null });
+
+    // A report to Samtak's own queue is not the community's to read (0063).
+    const platform = await reporter.call("POST", "/v1/reports", {
+      reason: "spam",
+      target: { kind: "post", id: postId },
+      toPlatform: true,
+    });
+    expect(platform.status).toBe(204);
+    expect(await get(owner, communityId)).toMatchObject({ openReports: 1 });
+
+    // A queue report goes when a moderator closes it; Samtak's stays open.
+    const queue = await owner.call("GET", `/v1/communities/${communityId}/reports`);
+    expect(queue.status).toBe(200);
+    const { reports } = (await queue.json()) as { reports: { reportId: string; state: string }[] };
+    expect(reports.map((r) => r.state)).toEqual(["open"]);
+    const closed = await owner.call("POST", `/v1/reports/${reports[0]!.reportId}/close`, {
+      resolution: "Augljóst",
+    });
+    expect(closed.status).toBe(204);
+    expect(await get(owner, communityId)).toMatchObject({ openReports: 0 });
+    // A member of the community moderates nothing in another's.
+    expect(await get(reporter, communityId)).toMatchObject({ openReports: null });
   });
 });
 

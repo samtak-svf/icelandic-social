@@ -59,6 +59,10 @@ const Comment = z
   .object({
     commentId: CommentId,
     postId: PostId,
+    parentCommentId: CommentId.nullable().openapi({
+      description:
+        "The top-level comment this replies to; null on a top-level comment (decision 0071)",
+    }),
     author: Author,
     body: z.string(),
     createdAt: z.int().openapi({ description: "Unix milliseconds" }),
@@ -184,8 +188,13 @@ export const communityPostsRoute = createRoute({
   operationId: "listCommunityPosts",
   tags,
   summary: "A community's posts, newest first",
+  description:
+    "`q` keeps the posts whose text contains it, without case, beside the pages: follow `next` with the same `q`.",
   security: ACCOUNT,
-  request: { params: z.object({ communityId: CommunityId }), query: z.object(page) },
+  request: {
+    params: z.object({ communityId: CommunityId }),
+    query: z.object({ ...page, q: z.string().trim().min(1).max(80).optional() }),
+  },
   responses: {
     200: json("A page", PostPage),
     ...INVALID,
@@ -277,13 +286,22 @@ export const createCommentRoute = createRoute({
   operationId: "createComment",
   tags,
   summary: "Comment on a post",
+  description:
+    "With `parentCommentId` the comment is a reply to a top-level comment on this post; " +
+    "a parent that is itself a reply, of another post, or not visible answers " +
+    "400 invalid_parent_comment (decision 0071).",
   security: ACCOUNT,
   request: {
     params: post,
     body: {
       required: true,
       content: {
-        "application/json": { schema: z.object({ body: z.string().trim().min(1).max(2000) }) },
+        "application/json": {
+          schema: z.object({
+            body: z.string().trim().min(1).max(2000),
+            parentCommentId: CommentId.nullable().optional(),
+          }),
+        },
       },
     },
   },

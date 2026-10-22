@@ -14,6 +14,7 @@ export const SCHEMA = `
   CREATE TABLE IF NOT EXISTS comments (
     comment_id TEXT PRIMARY KEY,
     post_id TEXT NOT NULL,
+    parent_comment_id TEXT,
     author TEXT NOT NULL,
     body TEXT NOT NULL,
     created_at INTEGER NOT NULL,

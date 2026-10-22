@@ -1478,6 +1478,13 @@
               "null"
             ],
             "description": "How many join requests wait; null unless the caller moderates the community"
+          },
+          "openReports": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "How many open reports wait; null unless the caller moderates the community"
           }
         },
         "required": [
@@ -1494,7 +1501,8 @@
           "readOnly",
           "deletedAt",
           "joinDeclinedUntil",
-          "pendingJoinRequests"
+          "pendingJoinRequests",
+          "openReports"
         ]
       },
       "CommunityPage": {
@@ -2002,6 +2010,15 @@
             "pattern": "^[A-Za-z0-9_-]{1,128}$",
             "example": "p_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
           },
+          "parentCommentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "p_3f9a1b2c3d4e5f60718293a4b5c6d7e8-0a1b2c3d4e5f6071",
+            "description": "The top-level comment this replies to; null on a top-level comment (decision 0071)"
+          },
           "author": {
             "$ref": "#/components/schemas/Author"
           },
@@ -2025,6 +2042,7 @@
         "required": [
           "commentId",
           "postId",
+          "parentCommentId",
           "author",
           "body",
           "createdAt",
@@ -8008,6 +8026,7 @@
           "social"
         ],
         "summary": "A community's posts, newest first",
+        "description": "`q` keeps the posts whose text contains it, without case, beside the pages: follow `next` with the same `q`.",
         "security": [
           {
             "deviceToken": []
@@ -8047,6 +8066,16 @@
             },
             "required": false,
             "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "required": false,
+            "name": "q",
             "in": "query"
           }
         ],
@@ -8674,6 +8703,7 @@
           "social"
         ],
         "summary": "Comment on a post",
+        "description": "With `parentCommentId` the comment is a reply to a top-level comment on this post; a parent that is itself a reply, of another post, or not visible answers 400 invalid_parent_comment (decision 0071).",
         "security": [
           {
             "deviceToken": []
@@ -8705,6 +8735,15 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 2000
+                  },
+                  "parentCommentId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                    "example": "p_3f9a1b2c3d4e5f60718293a4b5c6d7e8-0a1b2c3d4e5f6071",
+                    "description": "The post's id, a hyphen, and the comment's own part"
                   }
                 },
                 "required": [

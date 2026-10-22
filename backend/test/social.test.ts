@@ -25,7 +25,14 @@ type Post = {
   myReaction: string | null;
   commentCount: number;
 };
-type Comment = { commentId: string; body: string; author: { accountId: string } };
+type Comment = {
+  commentId: string;
+  parentCommentId: string | null;
+  body: string;
+  author: { accountId: string; name: string | null };
+  createdAt: number;
+  state: string;
+};
 
 const post = (by: Person, communityId: string, body: string, media: string[] = []) =>
   by.call("POST", `/v1/communities/${communityId}/posts`, { body, media });
@@ -37,6 +44,24 @@ const feedOf = async (by: Person, query = "") =>
   ok<{ posts: Post[]; next: string | null }>(await by.call("GET", `/v1/feed${query}`));
 
 const getPost = (by: Person, postId: string) => by.call("GET", `/v1/posts/${postId}`);
+
+const comment = (by: Person, postId: string, body: string, parentCommentId?: string | null) =>
+  by.call("POST", `/v1/posts/${postId}/comments`, {
+    body,
+    parentCommentId: parentCommentId ?? null,
+  });
+
+const commented = async (
+  by: Person,
+  postId: string,
+  body: string,
+  parentCommentId?: string | null,
+) => ok<Comment>(await comment(by, postId, body, parentCommentId));
+
+const commentsOf = async (by: Person, postId: string) =>
+  ok<{ comments: Comment[]; next: string | null }>(
+    await by.call("GET", `/v1/posts/${postId}/comments`),
+  );
 
 describe("posts", () => {
   it("are written by members, read by whoever may read the community", async () => {
@@ -183,6 +208,188 @@ describe("comments and reactions", () => {
     });
     const odd = await a.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "angry" });
     expect(odd.status).toBe(400);
+  });
+});
+
+describe("finding a post by its text (decision 0079)", () => {
+  it("keeps only the posts whose text contains q, without case, in pages", async () => {
+    const [owner, member] = [await person("Eigandi"), await person("Meðlimur")];
+    const id = await community(owner, "open", member);
+    const hit = await posted(member, id, "Þjóðlagasamkoma í febrúar");
+    await posted(member, id, "Annað sem enginn leitar að");
+    const otherHit = await posted(member, id, "Önnur þjóðlagasamkoma");
+    const found = (q: string, after?: string) =>
+      owner.call(
+        "GET",
+        `/v1/communities/${id}/posts?limit=1&q=${encodeURIComponent(q)}${after ? `&before=${after}` : ""}`,
+      );
+
+    const first = await ok<{ posts: Post[]; next: string }>(await found("þjóðlaga", undefined));
+    expect(first.posts.map((p) => p.postId)).toEqual([otherHit.postId]);
+    // A page named by the search, on the same cursor rules.
+    const second = await ok<{ posts: Post[]; next: string | null }>(
+      await found("þjóðlaga", first.next),
+    );
+    expect(second.posts.map((p) => p.postId)).toEqual([hit.postId]);
+    expect(second.next).toBeNull();
+
+    const none = await ok<{ posts: Post[]; next: string | null }>(
+      await found("kemst ekkert", undefined),
+    );
+    expect(none).toEqual({ posts: [], next: null });
+    // A search of what another account wrote too, and a page without one keeps everything.
+    const theirs = await ok<{ posts: Post[]; next: string | null }>(
+      await owner.call("GET", `/v1/communities/${id}/posts?q=samkoma í febrúar`),
+    );
+    expect(theirs.posts.map((p) => p.postId)).toEqual([hit.postId]);
+    const plain = await ok<{ posts: Post[] }>(
+      await owner.call("GET", `/v1/communities/${id}/posts`),
+    );
+    expect(plain.posts).toHaveLength(3);
+  });
+
+  it("hides the posts of a block and the community's private ones, a search same as not", async () => {
+    const [owner, writer, blocker] = [
+      await person("Eigandi"),
+      await person("Skrifari"),
+      await person("Lokari"),
+    ];
+    const id = await community(owner, "open", writer, blocker);
+    await posted(writer, id, "þjóðleg athugasemd");
+    await blocker.call("PUT", `/v1/blocks/${writer.accountId}`);
+    const listed = await ok<{ posts: Post[]; next: string | null }>(
+      await blocker.call("GET", `/v1/communities/${id}/posts?q=þjóð`),
+    );
+    expect(listed).toEqual({ posts: [], next: null });
+  });
+});
+
+describe("comment replies (decision 0071)", () => {
+  it("attach to a top-level comment only, and tell its author", async () => {
+    const [owner, member, another] = [
+      await person("Eigandi"),
+      await person("Meðlimur"),
+      await person("Útlagi af völdum tilfalla"),
+    ];
+    const id = await community(owner, "open", member, another);
+    const { postId } = await posted(owner, id, "Hver styður?");
+    const top = await commented(member, postId, "Ég");
+    const reply = await commented(another, postId, "Og ég með", top.commentId);
+    expect(reply).toMatchObject({
+      parentCommentId: top.commentId,
+      body: "Og ég með",
+      author: { accountId: another.accountId },
+      state: "visible",
+    });
+    // Every comment keeps its own parent in the list.
+    const page = await commentsOf(another, postId);
+    const byId = Object.fromEntries(page.comments.map((c) => [c.commentId, c]));
+    expect(byId[reply.commentId]?.parentCommentId).toBe(top.commentId);
+    expect(byId[top.commentId]?.parentCommentId).toBeNull();
+
+    // A reply to a reply is refused, and so is a parent of another post or none.
+    expect(await errorOf(await comment(member, postId, "Of djúpt", reply.commentId))).toBe(
+      "invalid_parent_comment",
+    );
+    const elsewhere = await posted(member, id, "Annað spjall");
+    expect((await comment(member, postId, "Rétt spjall", elsewhere.postId)).status).toBe(400);
+    expect((await comment(member, postId, "Ekkert slíkt", "p_nothing")).status).toBe(400);
+  });
+
+  it("tell the parent comment's author, deduplicated with the post's author", async () => {
+    const [author, reader] = [await person("Höfundur"), await person("Lesandi")];
+    const stranger = await person("Þriðji");
+    const id = await community(author, "open", reader, stranger);
+    const { postId } = await posted(author, id, "Póstur");
+    // Another's top-level comment: the reply tells the post's author and its own.
+    const top = await commented(stranger, postId, "Fyrstur");
+    const reply = await commented(reader, postId, "Vamos", top.commentId);
+    const job = async (key: string) => {
+      const row = await env.DB.prepare("SELECT kind, payload FROM jobs WHERE key = ?")
+        .bind(key)
+        .first<{ kind: string; payload: string }>();
+      return row === null
+        ? null
+        : { kind: row.kind, payload: JSON.parse(row.payload) as { accountId: string } };
+    };
+    expect(await job(`comment:${reply.commentId}`)).toMatchObject({
+      payload: { accountId: author.accountId },
+    });
+    expect(await job(`comment:${reply.commentId}:parent`)).toMatchObject({
+      payload: { accountId: stranger.accountId },
+    });
+
+    // A reply to the post author's own comment tells the account once.
+    const mine = await commented(author, postId, "Mitt eitt");
+    const own = await commented(reader, postId, "Til þín", mine.commentId);
+    expect(await job(`comment:${own.commentId}`)).toMatchObject({
+      payload: { accountId: author.accountId },
+    });
+    expect(await job(`comment:${own.commentId}:parent`)).toBeNull();
+  });
+
+  it("keep a tombstone in place while the parent has a visible reply", async () => {
+    const [owner, writer, reader] = [
+      await person("Eigandi"),
+      await person("Skrifari"),
+      await person("Lesandi"),
+    ];
+    const id = await community(owner, "open", writer, reader);
+    const { postId } = await posted(reader, id, "Kannabara");
+    const top = await commented(writer, postId, "Fyrra yfirlit");
+    const reply = await commented(reader, postId, "Fyrsta svar", top.commentId);
+
+    // The author deletes its parent: the reader keeps the slot and the reply.
+    await writer.call("DELETE", `/v1/comments/${top.commentId}`);
+    const page = await commentsOf(reader, postId);
+    expect(page.comments.map((c) => [c.state, c.body])).toEqual([
+      ["removed", ""],
+      ["visible", "Fyrsta svar"],
+    ]);
+    const tombstone = page.comments[0]!;
+    expect(tombstone).toMatchObject({
+      author: { accountId: "deleted", name: null },
+      parentCommentId: null,
+    });
+    expect(tombstone.createdAt).toBe(top.createdAt);
+    // The moderator still sees what stands: the blanked parent and its reply.
+    expect((await commentsOf(owner, postId)).comments.map((c) => [c.commentId, c.state])).toEqual([
+      [top.commentId, "removed"],
+      [reply.commentId, "visible"],
+    ]);
+    // The post's comment count counts what a member can read (one reply).
+    expect((await ok<Post>(await getPost(reader, postId))).commentCount).toBe(1);
+
+    // When the last visible reply is deleted, the empty tombstone goes with it.
+    await reader.call("DELETE", `/v1/comments/${reply.commentId}`);
+    expect(await commentsOf(owner, postId)).toEqual({ comments: [], next: null });
+  });
+
+  it("leave no tombstone when nothing stands under the parent", async () => {
+    const [owner, writer, reader] = [
+      await person("Eigandi"),
+      await person("Skrifari"),
+      await person("Lesandi"),
+    ];
+    const id = await community(owner, "open", writer, reader);
+    const { postId } = await posted(reader, id, "Aðeins yfirlit");
+    const gone = await commented(writer, postId, "Fjarlægt yfirlit");
+    await writer.call("DELETE", `/v1/comments/${gone.commentId}`);
+    // A parent with no reply vanishes, as it always did (0065).
+    expect(await commentsOf(reader, postId)).toEqual({ comments: [], next: null });
+    // A reply under a moderator's hidden parent keeps its tombstone too.
+    const under = await commented(writer, postId, "Fallið yfirlit");
+    await commented(reader, postId, "Svar við fallnum", under.commentId);
+    await owner.call("POST", `/v1/communities/${id}/actions`, {
+      action: "hide_comment",
+      targetId: under.commentId,
+      reason: "Prófun",
+    });
+    const page = await commentsOf(reader, postId);
+    expect(page.comments.map((c) => [c.state, c.body])).toEqual([
+      ["removed", ""],
+      ["visible", "Svar við fallnum"],
+    ]);
   });
 });
 

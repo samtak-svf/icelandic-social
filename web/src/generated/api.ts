@@ -437,6 +437,8 @@ export interface Community {
   joinDeclinedUntil: number | null;
   /** How many join requests wait; null unless the caller moderates the community */
   pendingJoinRequests: number | null;
+  /** How many open reports wait; null unless the caller moderates the community */
+  openReports: number | null;
 }
 
 export interface CommunityPage {
@@ -557,6 +559,8 @@ export interface Comment {
   /** The post's id, a hyphen, and the comment's own part */
   commentId: string;
   postId: string;
+  /** The top-level comment this replies to; null on a top-level comment (decision 0071) */
+  parentCommentId: string | null;
   author: Author;
   body: string;
   /** Unix milliseconds */
@@ -1318,7 +1322,11 @@ export function resolveCards(args: {
   return call("POST", "/v1/cards", args, init);
 }
 
-/** A community's posts, newest first */
+/**
+ * A community's posts, newest first
+ *
+ * `q` keeps the posts whose text contains it, without case, beside the pages: follow `next` with the same `q`.
+ */
 export function listCommunityPosts(args: {
   path: {
     communityId: string;
@@ -1327,6 +1335,7 @@ export function listCommunityPosts(args: {
     /** The `next` of the page before */
     before?: string;
     limit?: number;
+    q?: string;
   };
 }, init?: CallInit): Promise<
   | { status: 200; data: PostPage }
@@ -1472,13 +1481,19 @@ export function listComments(args: {
   return call("GET", "/v1/posts/{postId}/comments", args, init);
 }
 
-/** Comment on a post */
+/**
+ * Comment on a post
+ *
+ * With `parentCommentId` the comment is a reply to a top-level comment on this post; a parent that is itself a reply, of another post, or not visible answers 400 invalid_parent_comment (decision 0071).
+ */
 export function createComment(args: {
   path: {
     postId: string;
   };
   body: {
     body: string;
+    /** The post's id, a hyphen, and the comment's own part */
+    parentCommentId?: string | null;
   };
 }, init?: CallInit): Promise<
   | { status: 200; data: Comment }

@@ -47,6 +47,18 @@ async function named(env: Env, comments: CommentContent[]) {
     comments.map((c) => c.author),
   );
   return comments.flatMap((c) => {
+    // A tombstone's slot (decision 0071): its author is gone and its body
+    // never reaches an ordinary reader, only its place in the thread.
+    if (c.author === "") {
+      return [
+        {
+          ...c,
+          author: { accountId: "deleted", name: null, verified: false },
+          body: "",
+          state: "removed" as const,
+        },
+      ];
+    }
     const author = names.get(c.author);
     return author ? [{ ...c, author }] : [];
   });
@@ -108,10 +120,10 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
 
   app.openapi(communityPostsRoute, async (c) => {
     const { communityId } = c.req.valid("param");
-    const { before, limit } = c.req.valid("query");
+    const { before, limit, q } = c.req.valid("query");
     const access = await spaceAccess(c.env, c.var.session.accountId, communityId);
     if (!access) return fail(c, 404, "not_found");
-    const page = await communityPosts(c.env, communityId, access.viewer, before, limit);
+    const page = await communityPosts(c.env, communityId, access.viewer, before, limit, q);
     return c.json({ posts: await render(c.env, page.rows, access.viewer), next: page.next }, 200);
   });
 
@@ -181,14 +193,17 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(createCommentRoute, async (c) => {
     const { accountId } = c.var.session;
     const { postId } = c.req.valid("param");
+    const input = c.req.valid("json");
     const written = await writeComment(
       c.env,
       accountId,
       postId,
-      c.req.valid("json").body,
+      input.body,
       (post, commentId) => askAssistant(c.env, post.communityId, commentId),
+      input.parentCommentId ?? null,
     );
     if (written && "refused" in written) return fail(c, 403, written.refused);
+    if (written && "invalidParent" in written) return fail(c, 400, "invalid_parent_comment");
     const [comment] = written ? await named(c.env, [written.comment]) : [];
     if (!written || !comment) return fail(c, 404, "not_found");
     log("comment.created", { accountId, communityId: written.post.communityId, postId });
