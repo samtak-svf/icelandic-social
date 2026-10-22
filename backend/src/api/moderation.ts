@@ -30,6 +30,14 @@ export const ACTIONS = {
 } as const;
 export type Action = keyof typeof ACTIONS;
 
+/** What the log records of a community's picture and cover (decision 0080). */
+export const COMMUNITY_IMAGE_ACTIONS = [
+  "set_community_picture",
+  "remove_community_picture",
+  "set_community_cover",
+  "remove_community_cover",
+] as const;
+
 /** How a report was closed: the action taken on its target, none, or its community deleted. */
 const DECISIONS = [
   ...(Object.keys(ACTIONS) as [Action, ...Action[]]),
@@ -109,6 +117,7 @@ const LogEntry = z
       "close_report",
       "delete_community",
       "restore_community",
+      ...COMMUNITY_IMAGE_ACTIONS,
     ]),
     target: z.object({ kind: z.enum([...REPORT_KINDS, "report"]), id: OpaqueId }),
     targetAccount: z.union([Author, z.null()]),

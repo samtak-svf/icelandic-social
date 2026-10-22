@@ -18,6 +18,17 @@ const KEPT_MS = 365 * DAY_MS;
 type Event = "delete" | "restore" | "purge";
 
 export type LifecycleHooks = {
+  /**
+   * The statement that logs a change of the community's picture or cover
+   * (decision 0080), written in the batch of the change.
+   */
+  recordImage: (
+    env: Env,
+    communityId: string,
+    by: string,
+    kind: "photo" | "cover",
+    change: "set" | "remove",
+  ) => D1PreparedStatement;
   /** What a purge removes beyond the graph: the space's content and images. */
   purgeContent: (env: Env, communityId: string) => Promise<void>;
   /**

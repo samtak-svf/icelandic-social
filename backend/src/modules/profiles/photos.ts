@@ -1,5 +1,4 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
-import { base64url } from "../../bytes.ts";
 import {
   deletePhotoRoute,
   getPhotoRoute,
@@ -8,8 +7,9 @@ import {
 } from "../../api/accounts.ts";
 import type { AppEnv } from "../../app.ts";
 import { setPhotoVersion, UNBLOCKED } from "../../identity/index.ts";
-import { db, images, profilesBucket, withinLimit } from "../../env/index.ts";
+import { db, profilesBucket } from "../../env/index.ts";
 import { fail } from "../../errors.ts";
+import { deleteImage, imageHeaders, SQUARE, storeImage, takeUpload } from "../../images.ts";
 import { log } from "../../log.ts";
 
 // The profile photo (decision 0039): one per account, shown to every signed-in
@@ -18,36 +18,6 @@ import { log } from "../../log.ts";
 // without metadata, and keeps only that, in spjall-profiles keyed by account
 // id. A log line says a photo was set or removed, with the account id and a
 // size, never the image or its version (0008).
-
-/** The one size every photo is stored at: a square this many pixels a side. */
-const PHOTO_SIDE = 512;
-
-/**
- * Re-encodes an upload of `size` bytes to the stored WebP. Throws when the
- * body is not `size` bytes long; "invalid_image" when Images cannot decode it.
- */
-async function reencode(
-  env: Env,
-  body: ReadableStream<Uint8Array>,
-  size: number,
-): Promise<ArrayBuffer | "invalid_image"> {
-  const { readable, writable } = new FixedLengthStream(size);
-  const [piped, encoded] = await Promise.allSettled([
-    body.pipeTo(writable),
-    images(env)
-      .input(readable)
-      .transform({ width: PHOTO_SIDE, height: PHOTO_SIDE, fit: "cover" })
-      .output({ format: "image/webp" })
-      .then((result) => result.response().arrayBuffer()),
-  ]);
-  if (piped.status === "rejected") throw piped.reason;
-  if (encoded.status === "rejected") {
-    const code = (encoded.reason as { code?: unknown } | null)?.code;
-    log("photo.refused", { code: typeof code === "number" ? `images_${code}` : "images" });
-    return "invalid_image";
-  }
-  return encoded.value;
-}
 
 /**
  * Stores `accountId`'s photo, replacing any it had, and gives it a new
@@ -60,13 +30,13 @@ async function setPhoto(
   body: ReadableStream<Uint8Array>,
   size: number,
 ): Promise<{ version: string; size: number } | "invalid_image"> {
-  const webp = await reencode(env, body, size);
-  if (webp === "invalid_image") return webp;
-  await profilesBucket(env).put(accountId, webp, { httpMetadata: { contentType: "image/webp" } });
-  const version = `ph_${base64url(crypto.getRandomValues(new Uint8Array(16)))}`;
+  const stored = await storeImage(env, accountId, SQUARE, body, size);
+  if (stored === "invalid_image") return stored;
   // The account was deleted while the photo was on its way: keep nothing.
-  if (!(await setPhotoVersion(env, accountId, version))) await deleteAccountPhoto(env, accountId);
-  return { version, size: webp.byteLength };
+  if (!(await setPhotoVersion(env, accountId, stored.version))) {
+    await deleteAccountPhoto(env, accountId);
+  }
+  return stored;
 }
 
 /** Removes `accountId`'s photo: the version first, so none names a missing photo. */
@@ -77,7 +47,7 @@ async function removePhoto(env: Env, accountId: string): Promise<void> {
 
 /** Deletes the stored photo, if any (`DELETE /v1/me`, decision 0039). */
 export async function deleteAccountPhoto(env: Env, accountId: string): Promise<void> {
-  await profilesBucket(env).delete(accountId);
+  await deleteImage(env, accountId);
 }
 
 /**
@@ -99,18 +69,9 @@ async function photoFor(env: Env, viewer: string, owner: string): Promise<R2Obje
 export function photoRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(putPhotoRoute, async (c) => {
     const { accountId } = c.var.session;
-    const body = c.req.raw.body;
-    // A refusal cancels the body, so the client stops sending it.
-    const refuse = async <T>(answer: T) => (await body?.cancel(), answer);
-    if (!(await withinLimit(c.env, "photos", accountId))) {
-      log("request.rate_limited", { code: "photos", requestId: c.var.requestId });
-      return refuse(fail(c, 429, "rate_limited"));
-    }
-    const length = Number(c.req.header("content-length") ?? Number.NaN);
-    if (!Number.isSafeInteger(length) || length < 1 || !body) {
-      return refuse(fail(c, 400, "invalid_request"));
-    }
-    if (length > MAX_PHOTO_UPLOAD) return refuse(fail(c, 413, "too_large"));
+    const upload = await takeUpload(c, accountId, MAX_PHOTO_UPLOAD);
+    if ("error" in upload) return fail(c, upload.status, upload.error);
+    const { body, length } = upload;
     let stored: Awaited<ReturnType<typeof setPhoto>>;
     try {
       stored = await setPhoto(c.env, accountId, body, length);
@@ -134,10 +95,6 @@ export function photoRoutes(app: OpenAPIHono<AppEnv>): void {
     const owner = c.req.valid("param").accountId;
     const object = await photoFor(c.env, c.var.session.accountId, owner);
     if (!object) return fail(c, 404, "not_found");
-    return c.body(object.body, 200, {
-      "content-type": "image/webp",
-      "content-length": String(object.size),
-      "cache-control": "private, max-age=3600",
-    });
+    return c.body(object.body, 200, imageHeaders(object));
   });
 }

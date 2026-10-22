@@ -1,4 +1,4 @@
-import type { Action, REPORT_KINDS } from "../../api/moderation.ts";
+import type { Action, COMMUNITY_IMAGE_ACTIONS, REPORT_KINDS } from "../../api/moderation.ts";
 import { db } from "../../env/index.ts";
 import { authors, type Moderated } from "../social/index.ts";
 
@@ -6,7 +6,12 @@ import { authors, type Moderated } from "../social/index.ts";
 // never edited. Migration 0016's triggers refuse an edit or a deletion; an
 // entry goes only with its community, and a deleted account's id becomes null.
 
-type Logged = Action | "close_report" | "delete_community" | "restore_community";
+type Logged =
+  | Action
+  | "close_report"
+  | "delete_community"
+  | "restore_community"
+  | (typeof COMMUNITY_IMAGE_ACTIONS)[number];
 type Kind = (typeof REPORT_KINDS)[number] | "report";
 
 export type Entry = {

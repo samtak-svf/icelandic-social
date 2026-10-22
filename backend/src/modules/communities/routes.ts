@@ -46,6 +46,7 @@ import {
   transfer,
   withdraw,
 } from "./membership.ts";
+import { communityImageRoutes } from "./images.ts";
 import { type LifecycleHooks, markDeleted, restore } from "./lifecycle.ts";
 
 // The routes of communities and membership (decision 0063). A log line
@@ -241,4 +242,6 @@ export function communityRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleHooks)
     log("community.transferred", { accountId, communityId });
     return c.body(null, 204);
   });
+
+  communityImageRoutes(app, hooks);
 }

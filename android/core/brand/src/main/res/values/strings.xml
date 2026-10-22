@@ -667,6 +667,14 @@
     <string name="moderation_decision_dismissed">Lokað án aðgerðar.</string>
     <!-- A closed report's decision: the community's deletion closed it (decision 0070). -->
     <string name="moderation_decision_community_deleted">Lokað þegar samfélaginu var eytt.</string>
+    <!-- A log entry: a moderator set the community's picture (decision 0080). -->
+    <string name="moderation_log_community_picture_set">Mynd samfélagsins var sett.</string>
+    <!-- A log entry: a moderator removed the community's picture (decision 0080). -->
+    <string name="moderation_log_community_picture_removed">Mynd samfélagsins var fjarlægð.</string>
+    <!-- A log entry: a moderator set the community's cover (decision 0080). -->
+    <string name="moderation_log_community_cover_set">Forsíðumynd samfélagsins var sett.</string>
+    <!-- A log entry: a moderator removed the community's cover (decision 0080). -->
+    <string name="moderation_log_community_cover_removed">Forsíðumynd samfélagsins var fjarlægð.</string>
     <!-- Who closed a report and when; {date} is a formatted date. -->
     <string name="moderation_closed_by">%1$s afgreiddi tilkynninguna %2$s.</string>
     <!-- When a report was closed, when no account is named. -->

@@ -6,4 +6,4 @@
 export { commentModeration } from "./log.ts";
 export { expireReports } from "./reports.ts";
 export { moderationRoutes } from "./routes.ts";
-export { lifecycleRecord } from "./community.ts";
+export { imageRecord, lifecycleRecord } from "./community.ts";

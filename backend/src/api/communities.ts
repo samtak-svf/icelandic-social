@@ -1,5 +1,14 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import { ACCOUNT, AUTHED, errorResponse, INVALID, OpaqueId } from "./common.ts";
+import { MAX_PHOTO_UPLOAD } from "./accounts.ts";
+import {
+  ACCOUNT,
+  AUTHED,
+  errorResponse,
+  INVALID,
+  OpaqueId,
+  PhotoVersion,
+  RATE_LIMITED,
+} from "./common.ts";
 
 // Communities (decision 0063): open or private, joined at once or by a
 // request a moderator approves, with one owner, moderators and members.
@@ -51,6 +60,14 @@ const Community = z
     }),
     openReports: z.int().nullable().openapi({
       description: "How many open reports wait; null unless the caller moderates the community",
+    }),
+    photo: PhotoVersion.openapi({
+      description:
+        "The community's picture version, changed by each upload; null when it has none (decision 0080). The picture is GET /v1/communities/{communityId}/avatar",
+    }),
+    cover: PhotoVersion.openapi({
+      description:
+        "The community's cover version, changed by each upload; null when it has none (decision 0080). The cover is GET /v1/communities/{communityId}/cover",
     }),
   })
   .openapi("Community");
@@ -279,3 +296,93 @@ export const leaveCommunityRoute = createRoute({
     409: errorResponse("owner_cannot_leave: the owner hands the community to a member first"),
   },
 });
+
+// A community's picture and cover (decision 0080): the account photo's path
+// with another size and key. Written by the owner and the moderators, read by
+// whoever may read the community.
+
+const Binary = z.string().openapi({ type: "string", format: "binary" });
+
+const imageRoutes = (which: "avatar" | "cover", noun: string, size: string) => {
+  const Which = which === "avatar" ? "Avatar" : "Cover";
+  const Set = z
+    .object({ version: OpaqueId.openapi({ description: `The new ${noun}'s version` }) })
+    .openapi(`Community${Which}Set`);
+  const base = {
+    tags: ["communities"],
+    security: ACCOUNT,
+    request: { params: community },
+  };
+  return {
+    put: createRoute({
+      ...base,
+      method: "put",
+      path: `/v1/communities/{communityId}/${which}`,
+      operationId: `setCommunity${Which}`,
+      summary: `Set or replace a community's ${noun} (decision 0080)`,
+      description:
+        `The body is an image (JPEG, PNG, WebP, GIF or AVIF) of at most ${MAX_PHOTO_UPLOAD / 1024 / 1024} MB, with a ` +
+        `Content-Length. The server re-encodes it to a ${size} WebP without metadata and keeps ` +
+        `only that. Only the community's owner and its moderators may; the change is a ` +
+        `moderation log entry. It is not end-to-end encrypted.`,
+      request: {
+        params: community,
+        body: { required: true, content: { "application/octet-stream": { schema: Binary } } },
+      },
+      responses: {
+        200: json("Stored", Set),
+        400: errorResponse(
+          "invalid_request: no Content-Length, or a body of another length; " +
+            "invalid_image: not an image the server can decode",
+        ),
+        413: errorResponse("too_large: more than 10 MB"),
+        ...MODERATORS_ONLY,
+        ...NOT_FOUND,
+        ...RATE_LIMITED,
+        ...AUTHED,
+      },
+    }),
+    delete: createRoute({
+      ...base,
+      method: "delete",
+      path: `/v1/communities/{communityId}/${which}`,
+      operationId: `removeCommunity${Which}`,
+      summary: `Remove a community's ${noun} (decision 0080)`,
+      description:
+        "Only the community's owner and its moderators may; the change is a moderation log entry.",
+      responses: {
+        204: { description: `No ${noun}, whether there was one or not` },
+        ...MODERATORS_ONLY,
+        ...NOT_FOUND,
+        ...INVALID,
+        ...AUTHED,
+      },
+    }),
+    get: createRoute({
+      ...base,
+      method: "get",
+      path: `/v1/communities/{communityId}/${which}`,
+      operationId: `getCommunity${Which}`,
+      summary: `A community's ${noun}, a ${size} WebP (decision 0080)`,
+      description:
+        "An open community's is readable by any signed-in account; a private community's only by its members.",
+      responses: {
+        200: { description: `The ${noun}`, content: { "image/webp": { schema: Binary } } },
+        ...INVALID,
+        404: errorResponse(
+          `not_found: no such community, no ${noun}, or the caller may not read the community`,
+        ),
+        ...AUTHED,
+      },
+    }),
+  };
+};
+
+const avatar = imageRoutes("avatar", "picture", "512 by 512");
+const cover = imageRoutes("cover", "cover", "1600 by 600");
+export const putCommunityAvatarRoute = avatar.put;
+export const deleteCommunityAvatarRoute = avatar.delete;
+export const getCommunityAvatarRoute = avatar.get;
+export const putCommunityCoverRoute = cover.put;
+export const deleteCommunityCoverRoute = cover.delete;
+export const getCommunityCoverRoute = cover.get;

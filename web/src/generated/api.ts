@@ -445,6 +445,10 @@ export interface Community {
   pendingJoinRequests: number | null;
   /** How many open reports wait; null unless the caller moderates the community */
   openReports: number | null;
+  /** The community's picture version, changed by each upload; null when it has none (decision 0080). The picture is GET /v1/communities/{communityId}/avatar */
+  photo: string | null;
+  /** The community's cover version, changed by each upload; null when it has none (decision 0080). The cover is GET /v1/communities/{communityId}/cover */
+  cover: string | null;
 }
 
 export interface CommunityPage {
@@ -470,6 +474,16 @@ export interface JoinRequest {
   requestedAt: number;
 }
 
+export interface CommunityAvatarSet {
+  /** The new picture's version */
+  version: string;
+}
+
+export interface CommunityCoverSet {
+  /** The new cover's version */
+  version: string;
+}
+
 /** What a reference shows, by its kind; `unavailable` when the caller may not see it */
 export type Card = {
   kind: "unavailable";
@@ -480,6 +494,8 @@ export type Card = {
   community: {
     communityId: string;
     name: string;
+    /** The community's picture version, as on Community; null when it has none (decision 0080) */
+    photo: string | null;
   };
   author: Author;
   /** The text's first 280 characters, an ellipsis ending one cut short */
@@ -493,6 +509,8 @@ export type Card = {
   community: {
     communityId: string;
     name: string;
+    /** The community's picture version, as on Community; null when it has none (decision 0080) */
+    photo: string | null;
   };
   postId: string;
   author: Author;
@@ -506,6 +524,8 @@ export type Card = {
   community: {
     communityId: string;
     name: string;
+    /** The community's picture version, as on Community; null when it has none (decision 0080) */
+    photo: string | null;
   };
   description: string;
   audience: "open" | "private";
@@ -623,7 +643,7 @@ export interface ModerationLogEntry {
   actor: Author | null;
   /** Done as one of Samtak's platform moderators */
   asPlatform: boolean;
-  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "close_report" | "delete_community" | "restore_community";
+  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "close_report" | "delete_community" | "restore_community" | "set_community_picture" | "remove_community_picture" | "set_community_cover" | "remove_community_cover";
   target: {
     kind: "post" | "comment" | "community" | "account" | "report";
     id: string;
@@ -1306,6 +1326,130 @@ export function transferCommunity(args: {
   | { status: 426; data: ApiError }
 > {
   return call("PUT", "/v1/communities/{communityId}/owner", args, init);
+}
+
+/**
+ * A community's picture, a 512 by 512 WebP (decision 0080)
+ *
+ * An open community's is readable by any signed-in account; a private community's only by its members.
+ */
+export function getCommunityAvatar(args: {
+  path: {
+    communityId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Blob }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/communities/{communityId}/avatar", args, init);
+}
+
+/**
+ * Set or replace a community's picture (decision 0080)
+ *
+ * The body is an image (JPEG, PNG, WebP, GIF or AVIF) of at most 10 MB, with a Content-Length. The server re-encodes it to a 512 by 512 WebP without metadata and keeps only that. Only the community's owner and its moderators may; the change is a moderation log entry. It is not end-to-end encrypted.
+ */
+export function setCommunityAvatar(args: {
+  path: {
+    communityId: string;
+  };
+  body: Blob | ArrayBuffer;
+}, init?: CallInit): Promise<
+  | { status: 200; data: CommunityAvatarSet }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 413; data: ApiError }
+  | { status: 426; data: ApiError }
+  | { status: 429; data: ApiError }
+> {
+  return call("PUT", "/v1/communities/{communityId}/avatar", args, init, "application/octet-stream");
+}
+
+/**
+ * Remove a community's picture (decision 0080)
+ *
+ * Only the community's owner and its moderators may; the change is a moderation log entry.
+ */
+export function removeCommunityAvatar(args: {
+  path: {
+    communityId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/communities/{communityId}/avatar", args, init);
+}
+
+/**
+ * A community's cover, a 1600 by 600 WebP (decision 0080)
+ *
+ * An open community's is readable by any signed-in account; a private community's only by its members.
+ */
+export function getCommunityCover(args: {
+  path: {
+    communityId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Blob }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/communities/{communityId}/cover", args, init);
+}
+
+/**
+ * Set or replace a community's cover (decision 0080)
+ *
+ * The body is an image (JPEG, PNG, WebP, GIF or AVIF) of at most 10 MB, with a Content-Length. The server re-encodes it to a 1600 by 600 WebP without metadata and keeps only that. Only the community's owner and its moderators may; the change is a moderation log entry. It is not end-to-end encrypted.
+ */
+export function setCommunityCover(args: {
+  path: {
+    communityId: string;
+  };
+  body: Blob | ArrayBuffer;
+}, init?: CallInit): Promise<
+  | { status: 200; data: CommunityCoverSet }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 413; data: ApiError }
+  | { status: 426; data: ApiError }
+  | { status: 429; data: ApiError }
+> {
+  return call("PUT", "/v1/communities/{communityId}/cover", args, init, "application/octet-stream");
+}
+
+/**
+ * Remove a community's cover (decision 0080)
+ *
+ * Only the community's owner and its moderators may; the change is a moderation log entry.
+ */
+export function removeCommunityCover(args: {
+  path: {
+    communityId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/communities/{communityId}/cover", args, init);
 }
 
 /**

@@ -36,6 +36,10 @@ export type Standing = {
   pendingJoinRequests: number | null;
   /** How many open reports wait; null unless the viewer moderates. */
   openReports: number | null;
+  /** The picture's version (decision 0080), or null when it has none. */
+  photo: string | null;
+  /** The cover's version (decision 0080), or null when it has none. */
+  cover: string | null;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -46,7 +50,8 @@ export const DECLINED_MS = 30 * DAY_MS;
 
 // ?1 is the viewer in every query that uses these.
 const COLUMNS = `c.community_id, c.name, c.description, c.audience, c.created_at,
-       c.read_only_since, c.deleted_at, c.purged_at, m.role, m.muted_until,
+       c.read_only_since, c.deleted_at, c.purged_at, c.photo_version, c.cover_version,
+       m.role, m.muted_until,
        EXISTS (SELECT 1 FROM platform_moderators p WHERE p.account_id = ?1) AS platform,
        EXISTS (SELECT 1 FROM community_bans x
                 WHERE x.community_id = c.community_id AND x.account_id = ?1) AS banned,
@@ -83,6 +88,8 @@ type Row = {
   read_only_since: number | null;
   deleted_at: number | null;
   purged_at: number | null;
+  photo_version: string | null;
+  cover_version: string | null;
   role: Role | null;
   muted_until: number | null;
   platform: number;
@@ -118,6 +125,8 @@ function standingOf(row: Row): Standing {
         : null,
     pendingJoinRequests: row.pending,
     openReports: row.open_reports,
+    photo: row.photo_version,
+    cover: row.cover_version,
   };
 }
 
@@ -218,6 +227,8 @@ export async function createCommunity(
     joinDeclinedUntil: null,
     pendingJoinRequests: 0,
     openReports: 0,
+    photo: null,
+    cover: null,
   };
 }
 
@@ -284,6 +295,22 @@ export async function updateCommunity(
       change.audience ?? null,
     )
     .run();
+}
+
+/**
+ * The statement that sets a community's picture or cover version, or clears it
+ * with null (decision 0080), for the batch that also writes the log's entry.
+ */
+export function imageVersion(
+  env: Env,
+  communityId: string,
+  which: "photo" | "cover",
+  version: string | null,
+): D1PreparedStatement {
+  const column = which === "photo" ? "photo_version" : "cover_version";
+  return db(env)
+    .prepare(`UPDATE communities SET ${column} = ?2 WHERE community_id = ?1 AND deleted_at IS NULL`)
+    .bind(communityId, version);
 }
 
 export type Member = {

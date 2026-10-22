@@ -38,6 +38,10 @@ const LOGGED: Record<ModerationLogEntry["action"], string> = {
   close_report: strings.moderation_decision_dismissed,
   delete_community: strings.moderation_decision_community_deleted,
   restore_community: strings.community_restore,
+  set_community_picture: strings.moderation_log_community_picture_set,
+  remove_community_picture: strings.moderation_log_community_picture_removed,
+  set_community_cover: strings.moderation_log_community_cover_set,
+  remove_community_cover: strings.moderation_log_community_cover_removed,
 };
 
 /** The moderator's and the owner's tools, with the number waiting for them. */

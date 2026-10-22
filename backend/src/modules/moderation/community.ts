@@ -30,3 +30,31 @@ export async function lifecycleRecord(
     ...closed,
   ];
 }
+
+const IMAGE_ACTIONS = {
+  photo: { set: "set_community_picture", remove: "remove_community_picture" },
+  cover: { set: "set_community_cover", remove: "remove_community_cover" },
+} as const;
+
+/**
+ * The entry for a change of a community's picture or cover (decision 0080),
+ * made by its owner or a moderator, written in the same batch as the change.
+ */
+export function imageRecord(
+  env: Env,
+  communityId: string,
+  by: string,
+  kind: "photo" | "cover",
+  change: "set" | "remove",
+): D1PreparedStatement {
+  return entry(env, {
+    communityId,
+    actorId: by,
+    asPlatform: false,
+    action: IMAGE_ACTIONS[kind][change],
+    targetKind: "community",
+    targetId: communityId,
+    targetAccount: null,
+    reason: "",
+  });
+}

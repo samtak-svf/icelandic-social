@@ -1,4 +1,5 @@
 import { db, images, socialBucket } from "../../env/index.ts";
+import { communityCoverKey, communityPictureKey, deleteImage } from "../../images.ts";
 import { log } from "../../log.ts";
 import type { MediaRef } from "./do/space.ts";
 import { mediaKey } from "./posts.ts";
@@ -113,8 +114,13 @@ export async function deleteKeys(env: Env, keys: string[]): Promise<void> {
   }
 }
 
-/** Deletes a community's every image, rows aside (they go with the community). */
+/**
+ * Deletes a community's every image, rows aside (they go with the community):
+ * its posts' images, and its picture and cover (decision 0080).
+ */
 export async function deleteCommunityMedia(env: Env, communityId: string): Promise<void> {
+  await deleteImage(env, communityPictureKey(communityId));
+  await deleteImage(env, communityCoverKey(communityId));
   const prefix = `social/${communityId}/`;
   let cursor: string | undefined;
   do {

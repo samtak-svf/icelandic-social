@@ -48,11 +48,8 @@ impl<T: Transport> Client<T> {
         }
     }
 
-    /// Sets this account's photo from the image at `path`, in place of any
-    /// it had. The server re-encodes it to a 512 px WebP without the
-    /// image's metadata, and keeps only that; this device fetches it back
-    /// by the version returned, as anyone else does.
-    pub fn set_photo(&mut self, path: &Path) -> Result<String, ClientError> {
+    /// Refuses an image the server would: empty, or over 10 MB (0039, 0080).
+    pub(crate) fn checked_image(&self, path: &Path) -> Result<(), ClientError> {
         let size = self.blobs.len(path).map_err(MediaError::from)?;
         if size == 0 {
             return Err(ClientError::Invalid("an empty photo"));
@@ -60,6 +57,15 @@ impl<T: Transport> Client<T> {
         if size > MAX_PHOTO {
             return Err(ClientError::Invalid("a photo over 10 MB"));
         }
+        Ok(())
+    }
+
+    /// Sets this account's photo from the image at `path`, in place of any
+    /// it had. The server re-encodes it to a 512 px WebP without the
+    /// image's metadata, and keeps only that; this device fetches it back
+    /// by the version returned, as anyone else does.
+    pub fn set_photo(&mut self, path: &Path) -> Result<String, ClientError> {
+        self.checked_image(path)?;
         let version = authed(&self.transport, &self.token, &self.client)?.set_photo(path)?;
         let me = self
             .store
