@@ -28,7 +28,7 @@ struct CommunitiesView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 6)
             if model.part == .discover {
-                SearchField(
+                SocialSearchField(
                     prompt: "communities_find", text: Binding(get: { model.query }, set: { model.query = $0 }),
                     limit: communityNameLimit)
             }

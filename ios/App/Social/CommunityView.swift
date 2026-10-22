@@ -28,7 +28,7 @@ struct CommunityView: View {
                 if let community = model.community {
                     header(community)
                     if model.reads {
-                        SearchField(
+                        SocialSearchField(
                             prompt: "community_search_posts",
                             text: Binding(get: { model.query }, set: { model.query = $0 }))
                         posts

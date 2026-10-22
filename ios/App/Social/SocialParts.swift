@@ -55,7 +55,7 @@ struct CountBadge: View {
 }
 
 /// The field a list is searched with, as the hub finds a community and a community finds a post (decision 0079).
-struct SearchField: View {
+struct SocialSearchField: View {
     let prompt: LocalizedStringKey
     @Binding var text: String
     /// The longest the server takes, when it has a limit of its own.
