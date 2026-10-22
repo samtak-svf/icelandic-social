@@ -7,27 +7,39 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Author
 import samtak.spjall.core.Comment
+import samtak.spjall.core.ModerationState
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
 import samtak.spjall.ui.Palette
@@ -54,7 +66,9 @@ fun PostScreen(
     val post = state.post
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(SUB_SCREEN_SIDES))) {
-            SubHeader(stringResource(R.string.post_title)) { post?.let { actions.community(it.communityId) } }
+            SubHeader(stringResource(R.string.post_title), onBack = {
+                post?.let { actions.community(it.communityId) }
+            })
             if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             LazyColumn(
                 modifier = Modifier.weight(1f),
@@ -78,24 +92,78 @@ fun PostScreen(
                 if (state.loaded && post != null && state.comments.isEmpty()) {
                     item(key = "empty") { Muted(stringResource(R.string.comments_empty)) }
                 }
-                itemsIndexed(state.comments, key = { _, item -> item.commentId }) { index, comment ->
-                    CommentCard(
-                        comment = comment,
-                        reported = comment.commentId in state.reported,
-                        onReport = { reporting = "$COMMENT:${comment.commentId}" },
-                        onDelete = delete("$COMMENT:${comment.commentId}", comment.author),
-                    )
-                    if (index == state.comments.lastIndex && state.next != null) {
-                        LaunchedEffect(state.next) { actions.more() }
-                    }
-                }
-                if (post != null) {
-                    item(key = "composer") { CommentComposer(state, actions) }
-                }
+                commentItems(state, actions, delete, onReport = { reporting = it })
             }
+            // The box to write in stays at the foot of the screen, reachable without scrolling past every comment.
+            if (post != null) ReplyBox(state, actions)
         }
     }
     Dialogs(target, deleting?.let(::target), actions, onReported = { reporting = null }) { deleting = null }
+}
+
+/** The top-level comments oldest first, each with its replies indented under it; asks for the next page at the end. */
+private fun LazyListScope.commentItems(
+    state: PostViewModel.State,
+    actions: PostActions,
+    delete: (String, Author) -> (() -> Unit)?,
+    onReport: (String) -> Unit,
+) {
+    val topLevel = state.comments.filter { it.parentCommentId == null }
+    itemsIndexed(topLevel, key = { _, item -> item.commentId }) { index, comment ->
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            CommentCard(
+                comment = comment,
+                reported = comment.commentId in state.reported,
+                onReport = { onReport("$COMMENT:${comment.commentId}") },
+                onDelete = delete("$COMMENT:${comment.commentId}", comment.author),
+            )
+            if (state.writes &&
+                !(comment.state == ModerationState.REMOVED && comment.body.isEmpty())
+            ) {
+                TextButton(onClick = { actions.onReplyTo(comment) }) {
+                    Text(stringResource(R.string.comment_reply))
+                }
+            }
+            state.comments.filter { it.parentCommentId == comment.commentId }.forEach { reply ->
+                CommentCard(
+                    comment = reply,
+                    reported = reply.commentId in state.reported,
+                    onReport = { onReport("$COMMENT:${reply.commentId}") },
+                    onDelete = delete("$COMMENT:${reply.commentId}", reply.author),
+                    modifier = Modifier.padding(start = 24.dp),
+                )
+            }
+        }
+        if (index == topLevel.lastIndex && state.next != null) {
+            LaunchedEffect(state.next) { actions.more() }
+        }
+    }
+}
+
+/** The box to write a comment in, at the foot of the screen, with the comment it replies to if one is picked. */
+@Composable
+private fun ReplyBox(
+    state: PostViewModel.State,
+    actions: PostActions,
+) {
+    Column(modifier = Modifier.imePadding()) {
+        HorizontalDivider(color = Palette.border)
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            state.replyingTo?.let { comment ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.comment_replying_to, comment.author.shownName()),
+                        modifier = Modifier.weight(1f),
+                        color = Palette.mutedFg,
+                    )
+                    IconButton(onClick = { actions.onReplyTo(null) }) {
+                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.cancel))
+                    }
+                }
+            }
+            CommentComposer(state, actions)
+        }
+    }
 }
 
 /** The box to add a comment in. */
@@ -142,13 +210,23 @@ private fun CommentCard(
     reported: Boolean,
     onReport: () -> Unit,
     onDelete: (() -> Unit)?,
+    modifier: Modifier = Modifier,
 ) {
-    SocialCard {
-        StateMark(comment.state)
-        Byline(comment.author, comment.createdAt)
-        Text(text = comment.body, style = MaterialTheme.typography.bodyLarge)
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            if (onDelete != null) DeleteControl(onDelete) else ReportControl(reported, onReport)
+    if (comment.state == ModerationState.REMOVED && comment.body.isEmpty()) {
+        SocialCard(modifier) {
+            Text(
+                stringResource(R.string.comment_tombstone),
+                style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
+                color = Palette.mutedFg,
+            )
+        }
+    } else {
+        SocialCard(modifier) {
+            StateMark(comment.state)
+            Byline(comment.author, comment.createdAt) {
+                CardActions(reported = reported, onReport = onReport, onDelete = onDelete)
+            }
+            Text(text = comment.body, style = MaterialTheme.typography.bodyLarge)
         }
     }
 }

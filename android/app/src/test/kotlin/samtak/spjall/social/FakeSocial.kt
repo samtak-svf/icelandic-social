@@ -10,12 +10,15 @@ import samtak.spjall.core.Comment
 import samtak.spjall.core.CommentPage
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
+import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.CommunityPage
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.JoinRequest
 import samtak.spjall.core.JoinState
 import samtak.spjall.core.ModerationAction
+import samtak.spjall.core.ModerationLogEntry
+import samtak.spjall.core.ModerationLogPage
 import samtak.spjall.core.ModerationState
 import samtak.spjall.core.Post
 import samtak.spjall.core.PostImage
@@ -64,6 +67,12 @@ class FakeSocial : Social {
 
     /** Each community's waiting join requests, oldest first. */
     val requests = mutableMapOf<String, MutableList<JoinRequest>>()
+
+    /** Each community's members, owner and moderators first. */
+    val members = mutableMapOf<String, MutableList<CommunityMember>>()
+
+    /** Each community's moderation log, newest first. */
+    val moderationLogs = mutableMapOf<String, MutableList<ModerationLogEntry>>()
 
     /** This account's id. */
     var me = "a1"
@@ -185,18 +194,74 @@ class FakeSocial : Social {
         communities.remove(communityId) ?: throw notFound()
     }
 
+    override fun updateCommunity(
+        communityId: String,
+        name: String?,
+        description: String?,
+        audience: CommunityAudience?,
+    ): Community {
+        call("updateCommunity $communityId ${name.orEmpty()} ${description.orEmpty()} $audience".trim())
+        val updated =
+            communities[communityId]?.copy(
+                name = name ?: communities.getValue(communityId).name,
+                description = description ?: communities.getValue(communityId).description,
+                audience = audience ?: communities.getValue(communityId).audience,
+            ) ?: throw notFound()
+        communities[communityId] = updated
+        return updated
+    }
+
+    override fun communityMembers(communityId: String): List<CommunityMember> {
+        call("communityMembers $communityId")
+        return members[communityId].orEmpty().toList()
+    }
+
+    override fun setCommunityRole(
+        communityId: String,
+        accountId: String,
+        role: CommunityRole,
+    ) {
+        call("setCommunityRole $communityId $accountId $role")
+        val list = members[communityId] ?: throw notFound()
+        val index = list.indexOfFirst { it.accountId == accountId }
+        if (index < 0) throw notFound()
+        list[index] = list[index].copy(role = role)
+    }
+
     override fun me(): String {
         call("me")
         return me
+    }
+
+    override fun feed(
+        before: String?,
+        limit: UInt,
+    ): PostPage {
+        call(listOfNotNull("feed", before, limit.toString()).joinToString(" "))
+        val mine =
+            communities.values
+                .filter { it.role != null }
+                .map { it.communityId }
+                .toSet()
+        val feedPosts =
+            this.posts
+                .filterKeys { it in mine }
+                .values
+                .flatten()
+                .sortedByDescending { it.createdAt }
+        val (items, next) = page(feedPosts, before, limit)
+        return PostPage(items, next)
     }
 
     override fun communityPosts(
         id: String,
         before: String?,
         limit: UInt,
+        query: String?,
     ): PostPage {
-        call("communityPosts $id ${before.orEmpty()}".trim())
-        val (items, next) = page(posts[id].orEmpty(), before, limit)
+        call(listOfNotNull("communityPosts", id, before, query).joinToString(" "))
+        val found = posts[id].orEmpty().filter { query == null || it.body.contains(query, ignoreCase = true) }
+        val (items, next) = page(found, before, limit)
         return PostPage(items, next)
     }
 
@@ -262,9 +327,10 @@ class FakeSocial : Social {
     override fun createComment(
         postId: String,
         body: String,
+        parentCommentId: String?,
     ): Comment {
-        call("createComment $postId $body")
-        val comment = comment("c-new${made++}", postId, body)
+        call("createComment $postId $body ${parentCommentId.orEmpty()}".trim())
+        val comment = comment("c-new${made++}", postId, body).copy(parentCommentId = parentCommentId)
         comments.getOrPut(postId) { mutableListOf() }.add(comment)
         return comment
     }
@@ -315,6 +381,16 @@ class FakeSocial : Social {
     ) {
         call("closeReport $reportId $resolution")
         close(reportId)
+    }
+
+    override fun communityModerationLog(
+        communityId: String,
+        before: String?,
+        limit: UInt,
+    ): ModerationLogPage {
+        call("communityModerationLog $communityId ${before.orEmpty()}".trim())
+        val (entries, next) = page(moderationLogs[communityId].orEmpty(), before, limit)
+        return ModerationLogPage(entries, next)
     }
 
     override fun cards(refs: List<CardRef>): List<Card> {
@@ -406,9 +482,11 @@ fun comment(
     postId: String,
     body: String = "Já",
     author: Author = anna,
+    parentCommentId: String? = null,
 ) = Comment(
     commentId = id,
     postId = postId,
+    parentCommentId = parentCommentId,
     author = author,
     body = body,
     createdAt = 1_700_000_000_000uL,

@@ -19,6 +19,9 @@ final class PostModel {
     private(set) var loaded = false
     /// The comment being written.
     var draft = ""
+    /// The comment this account is answering, which the composer names above it (decision 0071); nil for a
+    /// comment on the post itself.
+    private(set) var replyingTo: Comment?
     /// This account's id: its own post and comments can be deleted. Nil until it is known.
     private(set) var me: String?
     /// The post was deleted from here, so the screen goes back to its community.
@@ -95,7 +98,20 @@ final class PostModel {
             if self.comments.count < before, let count = self.post?.commentCount, count > 0 {
                 self.post?.commentCount = count - 1
             }
+            if self.replyingTo?.commentId == commentId { self.replyingTo = nil }
         }
+    }
+
+    /// Answers `comment`: the composer says whose comment it is, and what is sent goes under it (decision 0071).
+    /// A thread takes one level, so a reply has no reply action of its own.
+    func reply(to comment: Comment) {
+        guard comment.parentCommentId == nil, !isTombstone(comment) else { return }
+        replyingTo = comment
+    }
+
+    /// Stops answering, and writes a comment on the post itself again.
+    func cancelReply() {
+        replyingTo = nil
     }
 
     /// The comments' next, newer page, if there is one and none is on its way.
@@ -118,17 +134,22 @@ final class PostModel {
         paging = false
     }
 
-    /// Sends the draft. It goes last, as the newest; while newer pages are still to come it arrives with them.
+    /// Sends the draft, as a reply when a comment is being answered. It goes last, as the newest; while newer
+    /// pages are still to come it arrives with them.
     func publish() async {
         guard sendable else { return }
         let social = social
         let id = postId
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parent = replyingTo?.commentId
         await perform(again: { await self.publish() }) {
-            let comment = try await offMain { try social.createComment(id, body: body) }
+            let comment = try await offMain {
+                try social.createComment(id, body: body, parentCommentId: parent)
+            }
             if self.next == nil { self.comments.append(comment) }
             self.post?.commentCount += 1
             self.draft = ""
+            self.replyingTo = nil
         }
     }
 

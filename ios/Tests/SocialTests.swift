@@ -82,4 +82,43 @@ final class SocialTests: XCTestCase {
         XCTAssertEqual(Set(reactionKinds.map(reactionLabel)).count, reactionKinds.count)
         XCTAssertEqual(Set(reactionKinds.map(reactionEmoji)).count, reactionKinds.count)
     }
+
+    func testEachRoleHasItsOwnWords() {
+        let roles: [CommunityRole] = [.owner, .moderator, .member]
+        XCTAssertEqual(Set(roles.map(roleLabel)).count, roles.count)
+    }
+
+    func testAThreadIsItsTopLevelCommentsWithTheRepliesEachTook() {
+        let threads = commentThreads([
+            makeComment("c1", on: "p1"), makeComment("c2", on: "p1", parent: "c1"),
+            makeComment("c3", on: "p1"), makeComment("c4", on: "p1", parent: "c3"),
+        ])
+        XCTAssertEqual(threads.map(\.comment.commentId), ["c1", "c3"])
+        XCTAssertEqual(threads[0].replies.map(\.commentId), ["c2"])
+        XCTAssertEqual(threads[1].replies.map(\.commentId), ["c4"])
+    }
+
+    func testAReplyWhoseParentIsNotShownStandsOnItsOwn() {
+        let threads = commentThreads([makeComment("c9", on: "p1", parent: "c1")])
+        XCTAssertEqual(threads.map(\.comment.commentId), ["c9"])
+        XCTAssertTrue(threads[0].replies.isEmpty)
+    }
+
+    func testARemovedCommentWithNoTextIsATombstone() {
+        XCTAssertTrue(isTombstone(makeComment("c1", on: "p1", body: "", state: .removed)))
+        XCTAssertFalse(isTombstone(makeComment("c2", on: "p1", body: "Já", state: .removed)))
+        XCTAssertFalse(isTombstone(makeComment("c3", on: "p1")))
+    }
+
+    func testEveryModerationLogActionButTheServerUnknownOneHasItsWords() {
+        let actions: [ModerationLogAction] = [
+            .hidePost, .removePost, .restorePost, .hideComment, .removeComment, .restoreComment,
+            .muteMember, .unmuteMember, .removeMember, .banMember, .unbanMember, .closeReport,
+            .deleteCommunity, .restoreCommunity,
+        ]
+        XCTAssertEqual(actions.compactMap(logActionLabel).count, actions.count)
+        XCTAssertNil(logActionLabel(.unknown))
+        XCTAssertEqual(logActionLabel(.closeReport), localized("moderation_decision_dismissed"))
+        XCTAssertEqual(logActionLabel(.restoreCommunity), localized("moderation_restore"))
+    }
 }

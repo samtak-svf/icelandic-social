@@ -1,8 +1,7 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useCallback, useEffect, useState } from "react";
 import type { Problem } from "../problem.ts";
 import {
-  deleteCommunity,
   getCommunity,
   joinCommunity,
   leaveCommunity,
@@ -13,16 +12,19 @@ import {
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { formatIsDate } from "../lib/is-format.ts";
+import { About } from "../social/about.tsx";
 import { PostComposer } from "../social/composer.tsx";
-import { outcome, useLoad } from "../social/outcome.ts";
+import { outcome, useLoad, type Outcome } from "../social/outcome.ts";
+import { Manage } from "../social/moderate.tsx";
 import { PostView } from "../social/post.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 
 // One community (decision 0063): its name and audience, joining, withdrawing
-// a join request or leaving, writing a post, and its posts, newest first. Its
-// moderators reach the reports and the join requests from here, and its owner
-// deletes it. A platform moderator alone sees a deleted one, and restores it
-// within its 30 days (decision 0070).
+// a join request or leaving, writing a post, and its posts, newest first.
+// Um samfélagið is the panel the meta row opens (decision 0079), and Stjórna
+// holds what its moderators and its owner reach for. A platform moderator
+// alone sees a deleted one, and restores it within its 30 days (decision
+// 0070).
 export const Route = createFileRoute("/communities/$communityId/")({ component: CommunityPage });
 
 function CommunityPage() {
@@ -30,6 +32,7 @@ function CommunityPage() {
   const [community, reload] = useLoad(
     useCallback(() => outcome(getCommunity({ path: { communityId } }), 200), [communityId]),
   );
+  const [info, setInfo] = useState(false);
   if (community === null) return <Status>{strings.loading}</Status>;
   if (!community.ok) {
     return (
@@ -44,37 +47,35 @@ function CommunityPage() {
   const moderates = c.role === "owner" || c.role === "moderator";
   return (
     <>
-      <header className="flex flex-col gap-1">
+      <header className="flex flex-col gap-2">
         <h1 className="font-headline text-3xl">{c.name}</h1>
-        <p className="text-sm text-muted-fg">
+        <button
+          type="button"
+          aria-expanded={info}
+          onClick={() => setInfo(!info)}
+          className="cursor-pointer self-start rounded-md text-left text-sm text-muted-fg"
+        >
           {c.audience === "open" ? strings.community_open : strings.community_private}
-          {c.memberCount !== null && ` · ${strings.community_members({ count: c.memberCount })}`}
-        </p>
-        {c.description !== "" && <p className="whitespace-pre-wrap">{c.description}</p>}
+          {c.memberCount !== null &&
+            ` · ${strings.community_members({ count: c.memberCount })} · ${strings.community_info}`}
+        </button>
+        {c.description !== "" && (
+          <>
+            <p className="line-clamp-3 whitespace-pre-wrap">{c.description}</p>
+            <button
+              type="button"
+              onClick={() => setInfo(true)}
+              className="cursor-pointer self-start rounded-md text-sm underline"
+            >
+              {strings.community_read_more}
+            </button>
+          </>
+        )}
       </header>
+      {info && <About community={c} />}
       <Membership community={c} changed={reload} />
-      {moderates && (
-        <nav className="mt-4 flex flex-wrap gap-x-6">
-          <Link
-            to="/communities/$communityId/reports"
-            params={{ communityId }}
-            className="inline-flex min-h-11 items-center underline"
-          >
-            {strings.moderation_queue}
-          </Link>
-          <Link
-            to="/communities/$communityId/requests"
-            params={{ communityId }}
-            className="inline-flex min-h-11 items-center underline"
-          >
-            {c.pendingJoinRequests !== null && c.pendingJoinRequests > 0
-              ? strings.join_requests_waiting({ count: c.pendingJoinRequests })
-              : strings.join_requests_title}
-          </Link>
-        </nav>
-      )}
+      {moderates && <Manage community={c} changed={reload} />}
       {reads && <Posts community={c} />}
-      {c.role === "owner" && <DeleteCommunity community={c} />}
     </>
   );
 }
@@ -87,7 +88,7 @@ function Membership({
   const [problem, setProblem] = useState<Problem | null>(null);
   const path = { communityId: community.communityId };
 
-  async function change(pending: Promise<{ ok: boolean; problem?: Problem }>) {
+  async function change(pending: Promise<Outcome<unknown>>) {
     setBusy(true);
     setProblem(null);
     const done = await pending;
@@ -183,37 +184,28 @@ function Deleted({
   );
 }
 
-/** The owner deletes the community, once they confirm what goes with it (#364). */
-function DeleteCommunity({ community }: Readonly<{ community: Community }>) {
-  const navigate = useNavigate();
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<Problem | null>(null);
-  async function remove() {
-    if (!confirm(strings.community_delete_confirm({ name: community.name }))) return;
-    setBusy(true);
-    setProblem(null);
-    const done = await outcome(
-      deleteCommunity({ path: { communityId: community.communityId } }),
-      204,
-    );
-    setBusy(false);
-    if (done.ok) await navigate({ to: "/communities" });
-    else setProblem(done.problem);
-  }
-  return (
-    <section className="mt-10 flex flex-col items-start gap-2 border-t border-border pt-4">
-      <Button tone="danger" disabled={busy} onClick={() => void remove()}>
-        {strings.community_delete}
-      </Button>
-      <Status>{problem && <ProblemText problem={problem} />}</Status>
-    </section>
-  );
-}
-
 function Posts({ community }: Readonly<{ community: Community }>) {
   const { communityId } = community;
+  // A letter typed starts the search 300 ms after it lands, so the list is
+  // not called everything someone writes (#0079).
+  const [query, setQuery] = useState("");
+  const [searched, setSearched] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setSearched(query.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
   const [posts, reload] = useLoad(
-    useCallback(() => outcome(listCommunityPosts({ path: { communityId } }), 200), [communityId]),
+    useCallback(
+      () =>
+        outcome(
+          listCommunityPosts({
+            path: { communityId },
+            query: searched === "" ? {} : { q: searched },
+          }),
+          200,
+        ),
+      [communityId, searched],
+    ),
   );
   const muted = community.mutedUntil !== null && community.mutedUntil > Date.now();
   return (
@@ -222,6 +214,17 @@ function Posts({ community }: Readonly<{ community: Community }>) {
         <PostComposer communityId={communityId} posted={reload} />
       )}
       {muted && <p>{strings.community_muted}</p>}
+      <label className="sr-only" htmlFor="community-posts-search">
+        {strings.community_search_posts}
+      </label>
+      <input
+        id="community-posts-search"
+        type="search"
+        placeholder={strings.community_search_posts}
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        className="min-h-11 rounded-md border border-border-strong bg-surface px-3"
+      />
       {posts === null && <Status>{strings.loading}</Status>}
       {posts?.ok === false && (
         <Status>
@@ -229,7 +232,9 @@ function Posts({ community }: Readonly<{ community: Community }>) {
         </Status>
       )}
       {posts?.ok && posts.data.posts.length === 0 && (
-        <p className="text-muted-fg">{strings.posts_empty}</p>
+        <p className="text-muted-fg">
+          {searched === "" ? strings.posts_empty : strings.community_search_empty}
+        </p>
       )}
       {posts?.ok && (
         <ul className="flex flex-col gap-4">

@@ -7,15 +7,16 @@ import XCTest
 final class CommunityModelTests: XCTestCase {
     private let social = FakeSocial()
 
-    private func model(_ community: Community) async -> CommunityModel {
+    private func model(_ community: Community, posts: [Post]? = nil) async -> CommunityModel {
         social.communities = [community.communityId: community]
         social.posts = [
-            community.communityId: [
+            community.communityId: posts ?? [
                 makePost("p3", community.communityId), makePost("p2", community.communityId),
                 makePost("p1", community.communityId),
             ]
         ]
-        let model = CommunityModel(social: social, communityId: community.communityId, now: { FakeAccount.now })
+        let model = CommunityModel(
+            social: social, communityId: community.communityId, now: { FakeAccount.now }, sleep: { _ in })
         await model.load()
         return model
     }
@@ -53,6 +54,56 @@ final class CommunityModelTests: XCTestCase {
         XCTAssertTrue(model.writes)
     }
 
+    func testASearchAsksTheServerForTheWordsAndListsWhatItFound() async {
+        let model = await model(
+            makeCommunity("k1", "Fuglar", role: .member),
+            posts: [makePost("p2", "k1", body: "Fyrsta lóan"), makePost("p1", "k1", body: "Annað")])
+        model.query = " Lóa "
+        await model.search()
+        XCTAssertTrue(model.searched)
+        XCTAssertEqual(model.posts.map(\.postId), ["p2"])
+        XCTAssertTrue(social.calls.contains("communityPosts k1 - q:Lóa"))
+    }
+
+    func testASearchPagesTheSameWayThePlainListDoes() async {
+        let model = await model(
+            makeCommunity("k1", "Fuglar", role: .member),
+            posts: [
+                makePost("p5", "k1", body: "Lóa eitt"), makePost("p4", "k1", body: "Lóa tvö"),
+                makePost("p3", "k1", body: "Lóa þrjú"), makePost("p1", "k1", body: "Annað"),
+            ])
+        model.query = "Lóa"
+        await model.search()
+        XCTAssertEqual(model.posts.map(\.postId), ["p5", "p4"])
+        XCTAssertNotNil(model.next)
+        await model.more()
+        XCTAssertEqual(model.posts.map(\.postId), ["p5", "p4", "p3"])
+        XCTAssertNil(model.next)
+        XCTAssertTrue(social.calls.contains("communityPosts k1 2 q:Lóa"))
+    }
+
+    func testASearchThatFindsNothingSaysSoRatherThanShowingTheList() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        model.query = "engin"
+        await model.search()
+        XCTAssertTrue(model.searched)
+        XCTAssertEqual(model.posts, [])
+        XCTAssertNil(model.next)
+    }
+
+    func testClearingTheSearchBringsThePlainListBack() async {
+        let model = await model(
+            makeCommunity("k1", "Fuglar", role: .member),
+            posts: [makePost("p2", "k1", body: "Fyrsta lóan"), makePost("p1", "k1", body: "Annað")])
+        model.query = "Lóa"
+        await model.search()
+        XCTAssertEqual(model.posts.map(\.postId), ["p2"])
+        model.query = ""
+        await model.search()
+        XCTAssertFalse(model.searched)
+        XCTAssertEqual(model.posts.map(\.postId), ["p2", "p1"])
+    }
+
     func testJoiningAPrivateCommunityAsksAndWaits() async {
         let model = await model(makeCommunity("k1", "Fiskar", audience: .private))
         await model.join()
@@ -80,7 +131,8 @@ final class CommunityModelTests: XCTestCase {
         let model = await model(makeCommunity("k1", "Fuglar", role: .member))
         model.draft = "  Fyrsti lóan  "
         XCTAssertTrue(model.sendable)
-        await model.publish()
+        let posted = await model.publish()
+        XCTAssertTrue(posted)
         XCTAssertEqual(model.posts.first?.body, "Fyrsti lóan")
         XCTAssertEqual(model.draft, "")
         XCTAssertTrue(social.calls.contains("createPost k1 Fyrsti lóan"))
@@ -90,7 +142,8 @@ final class CommunityModelTests: XCTestCase {
         let model = await model(makeCommunity("k1", "Fuglar", role: .member))
         model.draft = "Halló"
         social.failNext = unreachable
-        await model.publish()
+        let posted = await model.publish()
+        XCTAssertFalse(posted)
         XCTAssertEqual(model.draft, "Halló")
         XCTAssertEqual(model.problem, .unreachable)
     }
@@ -121,6 +174,89 @@ final class CommunityModelTests: XCTestCase {
         XCTAssertTrue(moderator.moderates)
         let owner = await model(makeCommunity("k3", "Fuglar", role: .owner))
         XCTAssertTrue(owner.moderates)
+    }
+
+    func testTheWorkWaitingIsCountedForAModeratorOnly() async {
+        let moderator = await model(
+            makeCommunity(
+                "k1", "Fiskar", audience: .private, role: .moderator, pendingJoinRequests: 2, openReports: 1))
+        XCTAssertEqual(moderator.manageCount, 3)
+        let member = await model(
+            makeCommunity("k2", "Fuglar", role: .member, pendingJoinRequests: 2, openReports: 1))
+        XCTAssertEqual(member.manageCount, 0)
+    }
+
+    func testTheMemberListIsAskedForOnce() async {
+        social.members = ["k1": [makeMember("a1", "Jón", role: .owner), makeMember("a2", "Anna")]]
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        await model.loadMembers()
+        XCTAssertTrue(model.membersLoaded)
+        XCTAssertEqual(model.members.map(\.accountId), ["a1", "a2"])
+        await model.loadMembers()
+        XCTAssertEqual(social.calls.filter { $0.hasPrefix("communityMembers") }.count, 1)
+    }
+
+    func testTheOwnerMakesAMemberAModeratorAndTakesItBack() async {
+        social.members = ["k1": [makeMember("a1", "Jón", role: .owner), makeMember("a2", "Anna")]]
+        let model = await model(makeCommunity("k1", "Fuglar", role: .owner))
+        await model.loadMembers()
+        await model.setRole("a2", .moderator)
+        XCTAssertEqual(model.members[1].role, .moderator)
+        XCTAssertTrue(social.calls.contains("setCommunityRole k1 a2 moderator"))
+        await model.setRole("a2", .member)
+        XCTAssertEqual(model.members[1].role, .member)
+        XCTAssertEqual(model.members[0].role, .owner)
+    }
+
+    func testAMemberGivesNoRoleToAnyone() async {
+        social.members = ["k1": [makeMember("a1", "Jón", role: .owner), makeMember("a2", "Anna")]]
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        await model.loadMembers()
+        await model.setRole("a2", .moderator)
+        XCTAssertEqual(model.members[1].role, .member)
+        XCTAssertFalse(social.calls.contains { $0.hasPrefix("setCommunityRole") })
+    }
+
+    func testTheModerationLogIsPagedNewestFirst() async {
+        social.log = [
+            "k1": [
+                makeLogEntry(3, .hidePost), makeLogEntry(2, .muteMember), makeLogEntry(1, .closeReport),
+            ]
+        ]
+        let model = await model(makeCommunity("k1", "Fuglar", role: .moderator))
+        await model.loadLog()
+        XCTAssertTrue(model.logLoaded)
+        XCTAssertEqual(model.log.map(\.entryId), [3, 2])
+        XCTAssertNotNil(model.logNext)
+        await model.moreLog()
+        XCTAssertEqual(model.log.map(\.entryId), [3, 2, 1])
+        XCTAssertNil(model.logNext)
+    }
+
+    func testTheOwnerRenamesAndMakesItPrivate() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .owner))
+        let saved = await model.update(name: "  Fuglar og fiskar ", description: "Ný", audience: .private)
+        XCTAssertTrue(saved)
+        XCTAssertEqual(model.community?.name, "Fuglar og fiskar")
+        XCTAssertEqual(model.community?.audience, .private)
+        XCTAssertTrue(social.calls.contains("updateCommunity k1 Fuglar og fiskar Ný private"))
+        await model.update(name: "Fuglar", description: "Ný", audience: .private)
+        XCTAssertEqual(social.calls.last, "updateCommunity k1 Fuglar Ný")
+    }
+
+    func testAMemberOrABlankNameOrALongOneChangesNothing() async {
+        let member = await model(makeCommunity("k1", "Fuglar", role: .member))
+        let before = social.calls.count
+        let refused = await member.update(name: "Annað", description: "", audience: .open)
+        XCTAssertFalse(refused)
+        XCTAssertEqual(social.calls.count, before)
+        let owner = await model(makeCommunity("k2", "Fuglar", role: .owner))
+        let blank = await owner.update(name: "   ", description: "", audience: .open)
+        XCTAssertFalse(blank)
+        let long = await owner.update(
+            name: String(repeating: "a", count: communityNameLimit + 1), description: "", audience: .open)
+        XCTAssertFalse(long)
+        XCTAssertFalse(social.calls.contains { $0.hasPrefix("updateCommunity") })
     }
 
     func testARefreshTakesTheNewCountsAndANewerPost() async {

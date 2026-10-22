@@ -17,6 +17,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import samtak.spjall.account.Account
 import samtak.spjall.core.CommunityAudience
+import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.Report
@@ -70,11 +71,28 @@ private fun Communities(
         object : CommunitiesActions {
             override fun open(communityId: String) = nav.navigate(SocialRoutes.community(communityId))
 
+            override fun openPost(postId: String) = nav.navigate(SocialRoutes.post(postId))
+
+            override fun react(
+                postId: String,
+                kind: ReactionKind,
+            ) = model.react(postId, kind)
+
+            override fun report(
+                postId: String,
+                reason: ReportReason,
+                note: String,
+            ) = model.report(postId, reason, note)
+
+            override fun selectTab(tab: CommunitiesTab) = model.selectTab(tab)
+
             override fun create() = nav.navigate(SocialRoutes.NEW_COMMUNITY)
 
             override fun search(text: String) = model.search(text)
 
             override fun more() = model.more()
+
+            override fun moreFeed() = model.moreFeed()
 
             override fun retry() = model.retry()
         },
@@ -151,6 +169,25 @@ private fun CommunityEntry(
                 override fun reports() = nav.navigate(SocialRoutes.reports(id))
 
                 override fun requests() = nav.navigate(SocialRoutes.requests(id))
+
+                override fun onSearchQuery(query: String) = model.onSearchQuery(query)
+
+                override fun searchPosts() = model.searchPosts()
+
+                override fun loadMembers() = model.loadMembers()
+
+                override fun setCommunityRole(
+                    accountId: String,
+                    role: CommunityRole,
+                ) = model.setCommunityRole(accountId, role)
+
+                override fun updateCommunity(
+                    name: String,
+                    description: String,
+                    audience: CommunityAudience?,
+                ) = model.updateCommunity(name, description, audience)
+
+                override fun loadModerationLog() = model.loadModerationLog()
 
                 override fun deleteCommunity() = model.deleteCommunity()
 
@@ -243,6 +280,8 @@ private fun PostEntry(
                 override fun draft(text: String) = model.draft(text)
 
                 override fun send() = model.send()
+
+                override fun onReplyTo(comment: samtak.spjall.core.Comment?) = model.onReplyTo(comment)
 
                 override fun react(kind: ReactionKind) = model.react(kind)
 

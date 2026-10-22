@@ -2,8 +2,30 @@ import Foundation
 import Observation
 import SpjallCore
 
-/// The communities tab (decision 0063): the communities this account is in, a search over every one it may see,
-/// and a new community, which only a verified account makes.
+/// The hub's three parts (decision 0079): what is new, what this account is in, and the search. Declared beside the
+/// model rather than inside it: it is a value type of its own, holding no part of the model's state.
+enum CommunitiesPart: CaseIterable, Identifiable, Sendable {
+    /// What is new across this account's communities.
+    case feed
+    /// The communities this account is in.
+    case mine
+    /// The search for a community it is not in yet.
+    case discover
+
+    var id: Self { self }
+
+    /// Its name on the picker.
+    var label: String {
+        switch self {
+        case .feed: localized("communities_tab_feed")
+        case .mine: localized("communities_tab_mine")
+        case .discover: localized("communities_tab_discover")
+        }
+    }
+}
+
+/// The communities tab (decision 0063): the feed across the communities this account is in, those communities, a
+/// search over every one it may see, and a new community, which only a verified account makes (decision 0079).
 @MainActor @Observable
 final class CommunitiesModel {
     /// The communities this account is a member of.
@@ -23,10 +45,22 @@ final class CommunitiesModel {
     private(set) var problem: Problem?
     /// The community just made, to go into.
     private(set) var created: String?
+    /// Which part of the hub is shown.
+    var part = CommunitiesPart.feed
+    /// The feed's posts so far, newest first, from every community this account is in.
+    private(set) var feedPosts: [Post] = []
+    /// The cursor of the feed's next, older page, nil on the last.
+    private(set) var feedNext: String?
+    /// The feed has been asked for, so an empty one says so rather than waiting.
+    private(set) var feedLoaded = false
+    /// A feed page is on its way.
+    private(set) var loadingFeed = false
 
     private let social: Social
     private var failed: (() async -> Void)?
     private let sleep: @Sendable (Duration) async throws -> Void
+    /// The feed posts whose reaction is on its way, so a second tap waits for the first.
+    private var reacting: Set<String> = []
 
     init(
         social: Social,
@@ -49,17 +83,87 @@ final class CommunitiesModel {
         }
     }
 
-    /// Asks the server for `query` once the typing pauses; a newer search cancels the task.
-    func search() async {
-        guard searched else {
-            found = []
-            next = nil
-            searching = false
-            return
+    /// The newest page of the feed: the posts of every community this account is in, newest first.
+    func loadFeed() async {
+        guard !loadingFeed, !feedLoaded else { return }
+        await feedPage(before: nil)
+    }
+
+    /// The feed's next, older page, if there is one and none is on its way.
+    func moreFeed() async {
+        guard let before = feedNext, !loadingFeed else { return }
+        await feedPage(before: before)
+    }
+
+    /// One page of the feed: the first replaces what was shown, a later one adds to it.
+    private func feedPage(before: String?) async {
+        let social = social
+        loadingFeed = true
+        problem = nil
+        do {
+            let page = try await offMain { try social.feed(before: before, limit: Self.feedSize) }
+            if before == nil {
+                feedPosts = page.posts
+            } else {
+                let shown = Set(feedPosts.map(\.postId))
+                feedPosts += page.posts.filter { !shown.contains($0.postId) }
+            }
+            feedNext = page.next
+            failed = nil
+        } catch {
+            failed = { await self.feedPage(before: before) }
+            problem = Problem(error)
         }
-        // Searching from the first key, so "none found" waits for an answer.
-        searching = true
-        do { try await sleep(.milliseconds(300)) } catch { return }
+        feedLoaded = true
+        loadingFeed = false
+    }
+
+    /// This account's community with this id, when it is in it: a feed post's name, and whether it may write there.
+    func community(_ id: String) -> Community? {
+        mine.first { $0.communityId == id }
+    }
+
+    /// This account may react to a feed post: it is a member of the post's community and not muted there.
+    func writes(_ post: Post) -> Bool {
+        community(post.communityId).map { canWrite($0, now: nowMillis()) } ?? false
+    }
+
+    /// Sets this account's reaction on a feed post, shown at once and put back if the server refuses.
+    func react(_ postId: String, _ kind: ReactionKind) async {
+        guard !reacting.contains(postId), let index = feedPosts.firstIndex(where: { $0.postId == postId }),
+            writes(feedPosts[index])
+        else { return }
+        let before = feedPosts[index]
+        let off = before.myReaction == kind
+        feedPosts[index] = reacted(before, off ? nil : kind)
+        reacting.insert(postId)
+        let social = social
+        problem = nil
+        do {
+            try await offMain {
+                if off { try social.unreact(postId) } else { try social.react(postId, kind: kind) }
+            }
+            failed = nil
+        } catch {
+            if let index = feedPosts.firstIndex(where: { $0.postId == postId }) { feedPosts[index] = before }
+            failed = nil
+            problem = Problem(error)
+        }
+        reacting.remove(postId)
+    }
+
+    /// Asks the server for `query` once the typing pauses; a newer search cancels the task. Nothing typed is every
+    /// community this account may see, which is what `Finna` lists before a word is given.
+    func search() async {
+        if searched {
+            // Searching from the first key, so "none found" waits for an answer.
+            searching = true
+            do { try await sleep(.milliseconds(300)) } catch {
+                // A newer search is the one that answers now.
+                searching = false
+                return
+            }
+        }
         await page(after: nil)
     }
 
@@ -75,7 +179,8 @@ final class CommunitiesModel {
     func create(name: String, description: String, audience: CommunityAudience) async -> Bool {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let description = description.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard verified, !name.isEmpty, name.count <= Self.nameLimit, description.count <= Self.descriptionLimit
+        guard verified, !name.isEmpty, name.count <= communityNameLimit,
+            description.count <= communityDescriptionLimit
         else { return false }
         let social = social
         var made = false
@@ -95,18 +200,17 @@ final class CommunitiesModel {
         created = nil
     }
 
-    /// The longest name and description a community takes, as the server holds them.
-    nonisolated static let nameLimit = 80
-    nonisolated static let descriptionLimit = 500
-
-    /// A page of the search for `query`: the first replaces what was shown, a later one adds to it.
+    /// A page of the search for `query`: the first replaces what was shown, a later one adds to it. Nothing typed
+    /// asks for every community this account may see.
     private func page(after: String?) async {
         let social = social
         let query = query.trimmingCharacters(in: .whitespaces)
         searching = true
         problem = nil
         do {
-            let page = try await offMain { try social.communities(query: query, after: after, limit: Self.page) }
+            let page = try await offMain {
+                try social.communities(query: query.isEmpty ? nil : query, after: after, limit: Self.page)
+            }
             guard query == self.query.trimmingCharacters(in: .whitespaces) else {
                 searching = false
                 return
@@ -123,6 +227,9 @@ final class CommunitiesModel {
 
     /// A search page: a screenful and some.
     private nonisolated static let page: UInt32 = 30
+
+    /// A feed page: a screenful and some (decision 0079).
+    private nonisolated static let feedSize: UInt32 = 20
 
     /// Tries the action that failed again.
     func retry() async {

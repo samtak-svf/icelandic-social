@@ -13,7 +13,6 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,12 +56,6 @@ fun <T> Choices(
             }
         }
     }
-}
-
-/** "Eyða", on this account's own post or comment; it asks before it deletes. */
-@Composable
-fun DeleteControl(onDelete: () -> Unit) {
-    TextButton(onClick = onDelete) { Text(stringResource(R.string.delete), color = Palette.danger) }
 }
 
 /** Asks whether to delete, in [text]'s words; "Eyða" deletes, either answer closes it. */
