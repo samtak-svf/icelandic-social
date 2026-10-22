@@ -1,8 +1,9 @@
 # 0071. Comments take one level of replies and no reactions
 
-- Status: accepted; implemented (#80)
+- Status: accepted; implemented (#80); amended by [0080](0080-communities-follow-the-familiar-group-layout.md)
 - Date: 2026-10-20
 - Decided by: Guðröður Atli Jónsson
+- Amended by: [0080](0080-communities-follow-the-familiar-group-layout.md) (a comment takes one 👍 with a count)
 - Builds on: [0063](0063-communities-audiences-and-moderation.md) (communities, comments and
   moderation), [0065](0065-the-space-object-and-social-media.md) (the `Space` object),
   [0067](0067-jobs-and-notifications.md) (notifications)

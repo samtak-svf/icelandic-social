@@ -1,8 +1,9 @@
 # 0079. Community hub tabs, compact feed layout, and dedicated info and management screens
 
-- Status: accepted; implemented
+- Status: accepted; implemented; amended by [0080](0080-communities-follow-the-familiar-group-layout.md)
 - Date: 2026-10-22
 - Decided by: Guðröður Atli Jónsson
+- Amended by: [0080](0080-communities-follow-the-familiar-group-layout.md) (hub rows, header, composer, post card and post screen)
 - Amends: [0009](0009-v1-scope.md) (community hub feed, member list, and management screens in v1), [0063](0063-communities-audiences-and-moderation.md) (how communities, posts, members, and moderation tools are presented)
 
 ## Decision

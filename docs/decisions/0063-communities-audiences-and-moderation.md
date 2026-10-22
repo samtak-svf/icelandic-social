@@ -1,6 +1,6 @@
 # 0063. Communities have an audience, roles and a moderation log; their content is hosted, not encrypted
 
-- Status: accepted; implemented (#49, #58); amended by [0066](0066-moderation-in-d1.md), [0070](0070-community-deletion-and-declined-requests.md), [0071](0071-comment-replies-and-reactions.md) and [0079](0079-community-layout-feed-and-management.md)
+- Status: accepted; implemented (#49, #58); amended by [0066](0066-moderation-in-d1.md), [0070](0070-community-deletion-and-declined-requests.md), [0071](0071-comment-replies-and-reactions.md), [0079](0079-community-layout-feed-and-management.md) and [0080](0080-communities-follow-the-familiar-group-layout.md)
 - Date: 2026-10-17
 - Decided by: Guðröður Atli Jónsson
 - Builds on: [0001](0001-eu-storage-and-residency-wording.md), [0008](0008-no-pii-in-logs.md),
@@ -11,6 +11,7 @@
   content both ways), 0019 (the admin list returns as platform moderators)
 - Amended by: [0079](0079-community-layout-feed-and-management.md) (the hub's tabs, the compact
   feed layout, and the separate info and management screens)
+- Amended by: [0080](0080-communities-follow-the-familiar-group-layout.md) (a community picture and cover, and the group layout readers already know)
 
 ## Decision
 
