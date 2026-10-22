@@ -851,6 +851,15 @@ fn the_social_calls_cross_the_exported_api() {
 
     answer(204, "");
     a1.client.react("p_1".into(), ReactionKind::Wow).unwrap();
+    for _ in 0..6 {
+        answer(204, "");
+    }
+    a1.client.pin_community("c".into()).unwrap();
+    a1.client.unpin_community("c".into()).unwrap();
+    a1.client.pin_post("c".into(), "p_1".into()).unwrap();
+    a1.client.unpin_post("c".into(), "p_1".into()).unwrap();
+    a1.client.like_comment("p_1-0a".into()).unwrap();
+    a1.client.unlike_comment("p_1-0a".into()).unwrap();
     answer(204, "");
     a1.client
         .report(
@@ -1018,6 +1027,12 @@ fn the_social_calls_cross_the_exported_api() {
                 "/v1/communities/cm_1/posts?q=Hall%C3%B3&limit=10".into()
             ),
             (HttpMethod::Put, "/v1/posts/p_1/reaction".into()),
+            (HttpMethod::Put, "/v1/communities/c/pin".into()),
+            (HttpMethod::Delete, "/v1/communities/c/pin".into()),
+            (HttpMethod::Put, "/v1/communities/c/posts/p_1/pin".into()),
+            (HttpMethod::Delete, "/v1/communities/c/posts/p_1/pin".into()),
+            (HttpMethod::Put, "/v1/comments/p_1-0a/like".into()),
+            (HttpMethod::Delete, "/v1/comments/p_1-0a/like".into()),
             (HttpMethod::Post, "/v1/reports".into()),
             (HttpMethod::Post, "/v1/communities/cm_1/actions".into()),
             (HttpMethod::Post, "/v1/cards".into()),

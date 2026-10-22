@@ -588,6 +588,16 @@ pub struct Community {
     /// The cover's version (0080); none when it has no cover.
     #[serde(default)]
     pub cover: Option<String>,
+    /// Posts made since the caller last opened the feed (0080); 0 from a
+    /// server that does not count.
+    #[serde(default)]
+    pub unread: u64,
+    /// When the latest post was made, in Unix milliseconds (0080).
+    #[serde(default)]
+    pub last_post_at: Option<u64>,
+    /// The caller pinned it to the top of its list (0080).
+    #[serde(default)]
+    pub pinned: bool,
 }
 
 /// A page of `listCommunities`, and the cursor of the next, none on the last.
@@ -713,6 +723,10 @@ pub struct Post {
     pub my_reaction: Option<ReactionKind>,
     pub comment_count: u64,
     pub state: ModerationState,
+    /// A moderator pinned it to the top of the community (0080); the first
+    /// post of the community's first page.
+    #[serde(default)]
+    pub pinned: bool,
 }
 
 /// A page of a community's posts, newest first, and the cursor of the next,
@@ -737,6 +751,12 @@ pub struct Comment {
     /// Unix milliseconds.
     pub created_at: u64,
     pub state: ModerationState,
+    /// How many accounts liked it (0080).
+    #[serde(default)]
+    pub likes: u64,
+    /// The caller liked it.
+    #[serde(default)]
+    pub liked: bool,
 }
 
 /// A page of a post's comments, oldest first, and the cursor of the next.
@@ -949,6 +969,8 @@ pub enum ModerationLogAction {
     RemoveCommunityPicture,
     SetCommunityCover,
     RemoveCommunityCover,
+    PinPost,
+    UnpinPost,
     #[serde(other)]
     Unknown,
 }
@@ -2008,6 +2030,46 @@ impl<T: Transport + ?Sized> Api<'_, T> {
         self.done(Method::Delete, format!("/v1/posts/{post}/reaction"), None)
     }
 
+    /// `likeComment` (0080): one like for each account; liking twice is one.
+    pub fn like_comment(&self, comment: &str) -> Result<(), ApiError> {
+        self.done(Method::Put, format!("/v1/comments/{comment}/like"), None)
+    }
+
+    /// `unlikeComment`: 204 also when there was none.
+    pub fn unlike_comment(&self, comment: &str) -> Result<(), ApiError> {
+        self.done(Method::Delete, format!("/v1/comments/{comment}/like"), None)
+    }
+
+    /// `pinPost` (0080): the community's one pinned post; a moderator's.
+    pub fn pin_post(&self, community: &str, post: &str) -> Result<(), ApiError> {
+        let path = format!("/v1/communities/{community}/posts/{post}/pin");
+        self.done(Method::Put, path, None)
+    }
+
+    /// `unpinPost`: 204 also when it was not the pinned one.
+    pub fn unpin_post(&self, community: &str, post: &str) -> Result<(), ApiError> {
+        let path = format!("/v1/communities/{community}/posts/{post}/pin");
+        self.done(Method::Delete, path, None)
+    }
+
+    /// `pinCommunity` (0080): to the top of this account's own list.
+    pub fn pin_community(&self, community: &str) -> Result<(), ApiError> {
+        self.done(
+            Method::Put,
+            format!("/v1/communities/{community}/pin"),
+            None,
+        )
+    }
+
+    /// `unpinCommunity`: 204 also when it was not pinned.
+    pub fn unpin_community(&self, community: &str) -> Result<(), ApiError> {
+        self.done(
+            Method::Delete,
+            format!("/v1/communities/{community}/pin"),
+            None,
+        )
+    }
+
     /// `listComments`: oldest first, after `after`.
     pub fn comments(
         &self,
@@ -2329,7 +2391,7 @@ mod tests {
         // a platform moderator's closing of a report; each contract value
         // reads as itself rather than as `Unknown`.
         let logged = listed("/ModerationLogEntry/properties/action/enum");
-        assert_eq!(logged.len(), 18);
+        assert_eq!(logged.len(), 20);
         assert!(logged.iter().all(|value| {
             serde_json::from_value::<ModerationLogAction>(value.clone())
                 .is_ok_and(|action| action != ModerationLogAction::Unknown)

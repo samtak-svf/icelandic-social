@@ -1,7 +1,8 @@
 import { db, space } from "../../env/index.ts";
 import { blockedEither, UNBLOCKED } from "../../identity/index.ts";
+import { notePost } from "../communities/index.ts";
 import { notice } from "../jobs/index.ts";
-import type { CommentContent, MediaRef, PostContent, Viewer } from "./do/space.ts";
+import type { CommentContent, CommentRecord, MediaRef, PostContent, Viewer } from "./do/space.ts";
 import { type IndexedPost, postAccess, replyRefusal } from "./access.ts";
 
 // Posts across D1 and the space (decision 0060): D1's post_index is what the
@@ -17,6 +18,8 @@ export type Post = Omit<PostContent, "author"> & {
   communityId: string;
   author: Author;
   state: IndexedPost["state"];
+  /** The community's moderators pinned it to the top of its feed (decision 0080). */
+  pinned: boolean;
 };
 
 const hex = (n: number) =>
@@ -48,7 +51,12 @@ export async function authors(env: Env, ids: string[]): Promise<Map<string, Auth
  * The content of indexed posts as `viewer` sees them, in the order given:
  * each community's space is asked once, in parallel, for its posts.
  */
-export async function render(env: Env, rows: IndexedPost[], viewer: Viewer): Promise<Post[]> {
+export async function render(
+  env: Env,
+  rows: IndexedPost[],
+  viewer: Viewer,
+  pinnedId: string | null = null,
+): Promise<Post[]> {
   const byCommunity = Map.groupBy(rows, (r) => r.communityId);
   const contents = new Map<string, PostContent & { communityId: string }>();
   await Promise.all(
@@ -67,7 +75,9 @@ export async function render(env: Env, rows: IndexedPost[], viewer: Viewer): Pro
   return rows.flatMap((row) => {
     const content = contents.get(row.postId);
     const author = content && names.get(content.author);
-    return content && author ? [{ ...content, author, state: row.state }] : [];
+    return content && author
+      ? [{ ...content, author, state: row.state, pinned: row.postId === pinnedId }]
+      : [];
   });
 }
 
@@ -88,7 +98,8 @@ export function parseCursor(cursor: string | undefined): { t: number; id: string
  * viewer. With `query` (decision 0079) the community's own space names the
  * posts whose text matches it, so the index reads only those, and every page
  * and its `next` follow the same rule without the search: keyset pagination,
- * visibility and block filtering stay exact.
+ * visibility and block filtering stay exact. A search page pins nothing: the
+ * caller passes no `pinnedId` with a `query`.
  */
 export async function communityPosts(
   env: Env,
@@ -97,9 +108,11 @@ export async function communityPosts(
   before: string | undefined,
   limit: number,
   query?: string,
+  pinnedId: string | null = null,
 ): Promise<{ rows: IndexedPost[]; next: string | null }> {
   const cursor = parseCursor(before);
-  const matched = query?.trim() ? await space(env, communityId).searchPosts(query.trim()) : null;
+  const text = query?.trim() ?? "";
+  const matched = text ? await space(env, communityId).searchPosts(text) : null;
   if (matched !== null && matched.length === 0) return { rows: [], next: null };
   const { results } = await db(env)
     .prepare(
@@ -121,9 +134,40 @@ export async function communityPosts(
       limit + 1,
     )
     .all<IndexedPost>();
-  const rows = results.slice(0, limit);
-  const last = rows.at(-1);
-  return { rows, next: results.length > limit && last ? `${last.createdAt}-${last.postId}` : null };
+  const page = results.slice(0, limit);
+  const last = page.at(-1);
+  const next = results.length > limit && last ? `${last.createdAt}-${last.postId}` : null;
+  return { rows: await leadWithPinned(env, communityId, viewer, before, pinnedId, page), next };
+}
+
+/**
+ * `page` with the pinned post (decision 0080) leading the first page and
+ * appearing nowhere else, so a client never shows it twice. It is read from
+ * the index, so a pin on a post that is no longer visible, or whose author the
+ * viewer blocked, shows nothing.
+ */
+async function leadWithPinned(
+  env: Env,
+  communityId: string,
+  viewer: Viewer,
+  before: string | undefined,
+  pinnedId: string | null,
+  page: IndexedPost[],
+): Promise<IndexedPost[]> {
+  if (!pinnedId) return page;
+  const rest = page.filter((r) => r.postId !== pinnedId);
+  if (before !== undefined) return rest;
+  const pinned =
+    page.find((r) => r.postId === pinnedId) ??
+    (await db(env)
+      .prepare(
+        `SELECT ${INDEXED} FROM post_index p
+          WHERE p.post_id = ?1 AND p.community_id = ?2 AND p.state = 'visible'
+            AND p.author_id NOT IN (SELECT value FROM json_each(?3))`,
+      )
+      .bind(pinnedId, communityId, JSON.stringify(viewer.hidden))
+      .first<IndexedPost>());
+  return pinned ? [pinned, ...rest] : rest;
 }
 
 /**
@@ -210,6 +254,7 @@ export async function createPost(
   const postId = newPostId();
   const createdAt = Date.now();
   await db(env).batch([
+    ...notePost(env, communityId, author, createdAt),
     db(env)
       .prepare(
         "INSERT INTO post_index (post_id, community_id, author_id, created_at) VALUES (?, ?, ?, ?)",
@@ -276,7 +321,7 @@ export async function writeComment(
   const { post } = found;
   // The parent is checked before anything is written, and the space checks
   // it again as the comment is written, so a refused parent tells nobody.
-  let parent: CommentContent | null = null;
+  let parent: CommentRecord | null = null;
   if (parentCommentId !== null) {
     parent = await space(env, post.communityId).comment(parentCommentId);
     if (!parent || parent.postId !== postId || parent.parentCommentId !== null) {

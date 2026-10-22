@@ -15,6 +15,7 @@ import {
   postContent,
   type Content,
 } from "../social/index.ts";
+import { space } from "../../env/index.ts";
 import { notice } from "../jobs/index.ts";
 import { entry } from "./log.ts";
 import { closing, openReport } from "./reports.ts";
@@ -99,8 +100,11 @@ async function apply(
   const [verb, noun] = input.action.split("_") as [string, string];
   if (target.content) {
     const state = STATES[verb as keyof typeof STATES];
-    if (noun === "post") await moderatePost(env, input.targetId, state, entries);
-    else await moderateComment(env, communityId, input.targetId, state, entries);
+    if (noun === "post") {
+      await moderatePost(env, input.targetId, state, entries);
+      // A post hidden or removed is no longer pinned (decision 0080).
+      if (state !== "visible") await space(env, communityId).unpinPost(input.targetId);
+    } else await moderateComment(env, communityId, input.targetId, state, entries);
     return;
   }
   const what: Sanction =

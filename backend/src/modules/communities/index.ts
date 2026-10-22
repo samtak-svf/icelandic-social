@@ -5,6 +5,7 @@
 
 export { canRead, moderates } from "./access.ts";
 export { communityExists, handOverCommunities, standing, type Standing } from "./communities.ts";
+export { markRead, notePost } from "./hub.ts";
 export { addMember } from "./membership.ts";
 export { expireCommunities, type LifecycleHooks } from "./lifecycle.ts";
 export { sanction, type Sanction } from "./sanctions.ts";

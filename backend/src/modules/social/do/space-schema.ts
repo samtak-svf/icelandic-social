@@ -1,7 +1,12 @@
 /** A removed post's or comment's text is deleted this long after its removal (decision 0063). */
 export const REMOVED_KEPT_MS = 90 * 24 * 60 * 60 * 1000;
 
-/** The Space DO's tables (decisions 0060, 0063): one community's content. */
+/**
+ * The Space DO's tables (decisions 0060, 0063, 0080): one community's content.
+ * `comment_reactions` holds a comment's one 👍 per account (decision 0080);
+ * `pinned_post` is at most one row, the post a moderator pinned to the top of
+ * the community's feed.
+ */
 export const SCHEMA = `
   CREATE TABLE IF NOT EXISTS posts (
     post_id TEXT PRIMARY KEY,
@@ -32,4 +37,16 @@ export const SCHEMA = `
     PRIMARY KEY (post_id, account)
   );
   CREATE INDEX IF NOT EXISTS reactions_by_account ON reactions (account);
+  CREATE TABLE IF NOT EXISTS comment_reactions (
+    comment_id TEXT NOT NULL,
+    account TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (comment_id, account)
+  );
+  CREATE INDEX IF NOT EXISTS comment_reactions_by_account ON comment_reactions (account);
+  CREATE TABLE IF NOT EXISTS pinned_post (
+    slot INTEGER PRIMARY KEY CHECK (slot = 1),
+    post_id TEXT NOT NULL,
+    pinned_at INTEGER NOT NULL
+  );
 `;

@@ -52,6 +52,10 @@ const Post = z
     myReaction: Reaction.nullable(),
     commentCount: z.int(),
     state: State,
+    pinned: z.boolean().openapi({
+      description:
+        "A moderator pinned it to the top of the community (decision 0080). On a community's posts it is the first post of the first page, and only there; `getFeed` never pins",
+    }),
   })
   .openapi("Post");
 
@@ -67,6 +71,11 @@ const Comment = z
     body: z.string(),
     createdAt: z.int().openapi({ description: "Unix milliseconds" }),
     state: State,
+    likes: z.int().openapi({
+      description:
+        "How many accounts liked it, but those a block hides from the caller (decision 0080)",
+    }),
+    liked: z.boolean().openapi({ description: "The caller liked it" }),
   })
   .openapi("Comment");
 
@@ -106,7 +115,7 @@ const MEMBERS_POST = {
     "not_a_member: only members post, comment and react; read_only: the community takes nothing new; muted: a moderator muted the caller here for now",
   ),
 };
-const MEMBERS_REPLY = {
+export const MEMBERS_REPLY = {
   403: errorResponse(
     "not_a_member: only members comment and react; read_only: the community takes nothing new; muted: a moderator muted the caller here for now; not_permitted: the post was hidden or removed; blocked: a block stands between the caller and the post's author",
   ),

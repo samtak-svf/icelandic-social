@@ -13,6 +13,8 @@ const at = (parentCommentId: string | null): Comment => ({
   body: "",
   createdAt: Date.now(),
   state: "visible",
+  likes: 0,
+  liked: false,
 });
 
 describe("initials", () => {

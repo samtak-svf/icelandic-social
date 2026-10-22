@@ -1,7 +1,7 @@
 import { blockedEither } from "../../identity/index.ts";
 import { db, space } from "../../env/index.ts";
 import { canRead, moderates, standing, type Standing } from "../communities/index.ts";
-import type { CommentContent, Viewer } from "./do/space.ts";
+import type { CommentRecord, Viewer } from "./do/space.ts";
 
 // The one answer to "may this account see this?" for a community's content
 // (decision 0063, #287). Every path that reads a post, a comment or an image
@@ -103,7 +103,7 @@ export async function commentAccess(
   env: Env,
   viewer: string,
   commentId: string,
-): Promise<{ post: IndexedPost; access: SpaceAccess; comment: CommentContent } | null> {
+): Promise<{ post: IndexedPost; access: SpaceAccess; comment: CommentRecord } | null> {
   // A comment id is its post's id, a dash and its own part (posts.ts).
   const postId = commentId.slice(0, Math.max(0, commentId.lastIndexOf("-")));
   const found = postId ? await postAccess(env, viewer, postId) : null;

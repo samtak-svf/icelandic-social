@@ -1199,6 +1199,82 @@ fn a_community_picture_and_cover_are_uploaded_and_removed() {
 }
 
 #[test]
+fn the_hub_pins_likes_and_unread_are_sent_and_decoded() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+    for _ in 0..6 {
+        phone.ok();
+    }
+    c.pin_community("cm_1").unwrap();
+    c.unpin_community("cm_1").unwrap();
+    c.pin_post("cm_1", "p_1").unwrap();
+    c.unpin_post("cm_1", "p_1").unwrap();
+    c.like_comment("p_1-0a1b").unwrap();
+    c.unlike_comment("p_1-0a1b").unwrap();
+    assert_eq!(
+        phone
+            .sent()
+            .into_iter()
+            .map(|(method, path, _)| (method, path))
+            .collect::<Vec<_>>(),
+        [
+            (Method::Put, "/v1/communities/cm_1/pin".to_string()),
+            (Method::Delete, "/v1/communities/cm_1/pin".to_string()),
+            (
+                Method::Put,
+                "/v1/communities/cm_1/posts/p_1/pin".to_string()
+            ),
+            (
+                Method::Delete,
+                "/v1/communities/cm_1/posts/p_1/pin".to_string()
+            ),
+            (Method::Put, "/v1/comments/p_1-0a1b/like".to_string()),
+            (Method::Delete, "/v1/comments/p_1-0a1b/like".to_string()),
+        ]
+    );
+    // A bad id never reaches the network.
+    assert!(c.pin_community("no spaces").is_err());
+    assert!(c.pin_post("cm_1", "no spaces").is_err());
+    assert!(c.like_comment("no spaces").is_err());
+    assert!(phone.sent().is_empty());
+
+    // New fields decode.
+    let mut body = community("cm_1", "open");
+    body["unread"] = json!(4);
+    body["lastPostAt"] = json!(1_760_000_300_000u64);
+    body["pinned"] = json!(true);
+    phone.answer(200, body);
+    let got = c.community("cm_1").unwrap();
+    assert_eq!(
+        (got.unread, got.last_post_at, got.pinned),
+        (4, Some(1_760_000_300_000), true)
+    );
+    let mut pinned = post("p_1");
+    pinned["pinned"] = json!(true);
+    phone.answer(200, pinned);
+    assert!(c.post("p_1").unwrap().pinned);
+    let mut liked = comment("p_1-0a1b");
+    liked["likes"] = json!(3);
+    liked["liked"] = json!(true);
+    phone.answer(200, json!({ "comments": [liked], "next": null }));
+    let first = &c.comments("p_1", None, 10).unwrap().comments[0];
+    assert_eq!((first.likes, first.liked), (3, true));
+
+    // A server older than the hub sends none of them.
+    phone.answer(200, community("cm_1", "open"));
+    let old = c.community("cm_1").unwrap();
+    assert_eq!((old.unread, old.last_post_at, old.pinned), (0, None, false));
+    phone.answer(200, post("p_1"));
+    assert!(!c.post("p_1").unwrap().pinned);
+    phone.answer(
+        200,
+        json!({ "comments": [comment("p_1-0a1b")], "next": null }),
+    );
+    let old = &c.comments("p_1", None, 10).unwrap().comments[0];
+    assert_eq!((old.likes, old.liked), (0, false));
+}
+
+#[test]
 fn a_community_image_is_refused_before_a_request_when_empty_or_too_big() {
     let phone = Phone::signed_in();
     let c = &phone.client;

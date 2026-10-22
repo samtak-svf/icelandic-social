@@ -42,6 +42,8 @@ const LOGGED: Record<ModerationLogEntry["action"], string> = {
   remove_community_picture: strings.moderation_log_community_picture_removed,
   set_community_cover: strings.moderation_log_community_cover_set,
   remove_community_cover: strings.moderation_log_community_cover_removed,
+  pin_post: strings.moderation_log_post_pinned,
+  unpin_post: strings.moderation_log_post_unpinned,
 };
 
 /** The moderator's and the owner's tools, with the number waiting for them. */

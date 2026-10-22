@@ -1,4 +1,9 @@
-import type { Action, COMMUNITY_IMAGE_ACTIONS, REPORT_KINDS } from "../../api/moderation.ts";
+import type {
+  Action,
+  COMMUNITY_IMAGE_ACTIONS,
+  COMMUNITY_PIN_ACTIONS,
+  REPORT_KINDS,
+} from "../../api/moderation.ts";
 import { db } from "../../env/index.ts";
 import { authors, type Moderated } from "../social/index.ts";
 
@@ -11,7 +16,8 @@ type Logged =
   | "close_report"
   | "delete_community"
   | "restore_community"
-  | (typeof COMMUNITY_IMAGE_ACTIONS)[number];
+  | (typeof COMMUNITY_IMAGE_ACTIONS)[number]
+  | (typeof COMMUNITY_PIN_ACTIONS)[number];
 type Kind = (typeof REPORT_KINDS)[number] | "report";
 
 export type Entry = {

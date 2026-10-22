@@ -126,6 +126,15 @@ pub struct Community {
     /// The cover's version (0080); none when it has no cover.
     #[uniffi(default = None)]
     pub cover: Option<String>,
+    /// Posts made since this account last opened the feed (0080).
+    #[uniffi(default = 0)]
+    pub unread: u64,
+    /// Unix milliseconds when the latest post was made (0080).
+    #[uniffi(default = None)]
+    pub last_post_at: Option<u64>,
+    /// This account pinned it to the top of its list (0080).
+    #[uniffi(default = false)]
+    pub pinned: bool,
 }
 
 /// An account asking to join a private community.
@@ -170,6 +179,9 @@ impl From<api::Community> for Community {
             open_reports: community.open_reports,
             photo: community.photo,
             cover: community.cover,
+            unread: community.unread,
+            last_post_at: community.last_post_at,
+            pinned: community.pinned,
         }
     }
 }
@@ -319,6 +331,9 @@ pub struct Post {
     pub my_reaction: Option<ReactionKind>,
     pub comment_count: u64,
     pub state: ModerationState,
+    /// A moderator pinned it to the top of the community (0080).
+    #[uniffi(default = false)]
+    pub pinned: bool,
 }
 
 impl From<api::Post> for Post {
@@ -341,6 +356,7 @@ impl From<api::Post> for Post {
             my_reaction: post.my_reaction.map(Into::into),
             comment_count: post.comment_count,
             state: post.state.into(),
+            pinned: post.pinned,
         }
     }
 }
@@ -367,6 +383,12 @@ pub struct Comment {
     /// Unix milliseconds.
     pub created_at: u64,
     pub state: ModerationState,
+    /// How many accounts liked it (0080).
+    #[uniffi(default = 0)]
+    pub likes: u64,
+    /// This account liked it.
+    #[uniffi(default = false)]
+    pub liked: bool,
 }
 
 impl From<api::Comment> for Comment {
@@ -379,6 +401,8 @@ impl From<api::Comment> for Comment {
             body: comment.body,
             created_at: comment.created_at,
             state: comment.state.into(),
+            likes: comment.likes,
+            liked: comment.liked,
         }
     }
 }
@@ -721,6 +745,8 @@ pub enum ModerationLogAction {
     RemoveCommunityPicture,
     SetCommunityCover,
     RemoveCommunityCover,
+    PinPost,
+    UnpinPost,
     Unknown,
 }
 
@@ -746,6 +772,8 @@ impl From<api::ModerationLogAction> for ModerationLogAction {
             A::RemoveCommunityPicture => Self::RemoveCommunityPicture,
             A::SetCommunityCover => Self::SetCommunityCover,
             A::RemoveCommunityCover => Self::RemoveCommunityCover,
+            A::PinPost => Self::PinPost,
+            A::UnpinPost => Self::UnpinPost,
             A::Unknown => Self::Unknown,
         }
     }
@@ -1323,6 +1351,37 @@ impl CoreClient {
     /// Takes this account's reaction off a post; no error when it had none.
     pub fn unreact(&self, post_id: String) -> Result<(), CoreError> {
         Ok(self.client()?.unreact(&post_id)?)
+    }
+
+    /// Likes a comment; liking twice is one like (0080).
+    pub fn like_comment(&self, comment_id: String) -> Result<(), CoreError> {
+        Ok(self.client()?.like_comment(&comment_id)?)
+    }
+
+    /// Takes this account's like off a comment; no error when it had none.
+    pub fn unlike_comment(&self, comment_id: String) -> Result<(), CoreError> {
+        Ok(self.client()?.unlike_comment(&comment_id)?)
+    }
+
+    /// Pins a post to the top of its community, replacing the pinned one
+    /// (0080); a moderator's.
+    pub fn pin_post(&self, community_id: String, post_id: String) -> Result<(), CoreError> {
+        Ok(self.client()?.pin_post(&community_id, &post_id)?)
+    }
+
+    /// Unpins the community's pinned post; no error when it is not pinned.
+    pub fn unpin_post(&self, community_id: String, post_id: String) -> Result<(), CoreError> {
+        Ok(self.client()?.unpin_post(&community_id, &post_id)?)
+    }
+
+    /// Pins a community to the top of this account's own list (0080).
+    pub fn pin_community(&self, community_id: String) -> Result<(), CoreError> {
+        Ok(self.client()?.pin_community(&community_id)?)
+    }
+
+    /// Unpins a community; no error when it was not pinned.
+    pub fn unpin_community(&self, community_id: String) -> Result<(), CoreError> {
+        Ok(self.client()?.unpin_community(&community_id)?)
     }
 
     /// A page of a post's comments, oldest first; `after` is the `next` of

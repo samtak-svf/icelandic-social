@@ -318,6 +318,45 @@ impl<T: Transport> Client<T> {
         Ok(authed(&self.transport, &self.token, &self.client)?.unreact(post)?)
     }
 
+    /// Likes a comment; liking twice is one like (0080).
+    pub fn like_comment(&self, comment: &str) -> Result<(), ClientError> {
+        id(comment, "comment id")?;
+        Ok(authed(&self.transport, &self.token, &self.client)?.like_comment(comment)?)
+    }
+
+    /// Takes this account's like off a comment; no error when it had none.
+    pub fn unlike_comment(&self, comment: &str) -> Result<(), ClientError> {
+        id(comment, "comment id")?;
+        Ok(authed(&self.transport, &self.token, &self.client)?.unlike_comment(comment)?)
+    }
+
+    /// Pins a post to the top of its community, replacing the pinned one
+    /// (0080); a moderator's.
+    pub fn pin_post(&self, community: &str, post: &str) -> Result<(), ClientError> {
+        id(community, "community id")?;
+        id(post, "post id")?;
+        Ok(authed(&self.transport, &self.token, &self.client)?.pin_post(community, post)?)
+    }
+
+    /// Unpins the community's pinned post; no error when it is not pinned.
+    pub fn unpin_post(&self, community: &str, post: &str) -> Result<(), ClientError> {
+        id(community, "community id")?;
+        id(post, "post id")?;
+        Ok(authed(&self.transport, &self.token, &self.client)?.unpin_post(community, post)?)
+    }
+
+    /// Pins a community to the top of this account's own list (0080).
+    pub fn pin_community(&self, community: &str) -> Result<(), ClientError> {
+        id(community, "community id")?;
+        Ok(authed(&self.transport, &self.token, &self.client)?.pin_community(community)?)
+    }
+
+    /// Unpins a community; no error when it was not pinned.
+    pub fn unpin_community(&self, community: &str) -> Result<(), ClientError> {
+        id(community, "community id")?;
+        Ok(authed(&self.transport, &self.token, &self.client)?.unpin_community(community)?)
+    }
+
     /// A page of a post's comments, oldest first; `after` is the `next` of
     /// the page before. At most 100 a page.
     pub fn comments(

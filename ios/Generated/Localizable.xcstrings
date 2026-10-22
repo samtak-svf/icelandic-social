@@ -3925,6 +3925,30 @@
         }
       }
     },
+    "moderation_log_post_pinned": {
+      "comment": "A log entry: a moderator pinned a post to the top of the community (decision 0080).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Færsla var fest efst í samfélaginu."
+          }
+        }
+      }
+    },
+    "moderation_log_post_unpinned": {
+      "comment": "A log entry: a moderator unpinned the community's pinned post (decision 0080).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Færsla var losuð úr festingu."
+          }
+        }
+      }
+    },
     "moderation_closed_by": {
       "comment": "Who closed a report and when; {date} is a formatted date.",
       "extractionState": "manual",
