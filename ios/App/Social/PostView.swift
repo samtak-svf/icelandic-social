@@ -72,7 +72,6 @@ struct PostView: View {
         .onChange(of: model.deleted) { _, deleted in
             if deleted { dismiss() }
         }
-        .environment(\.postImages, PostImages(social: social))
         .sheet(item: $reporting) { reporting in
             ReportSheet(social: social, target: reporting.target)
         }
