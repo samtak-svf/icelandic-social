@@ -68,4 +68,19 @@ class PeopleScreenshotTest {
                 picked = listOf("a2", "a4"),
             ),
         )
+
+    /** Adding to a group that exists (0078): its members are already checked, and cannot be unchecked. */
+    @Test
+    fun adding() =
+        shoot(
+            PeopleViewModel.State(
+                people = met,
+                directory = others,
+                loaded = true,
+                group = true,
+                adding = true,
+                existing = setOf("a2"),
+                picked = listOf("a4"),
+            ),
+        )
 }

@@ -301,6 +301,10 @@ class MainActivity : ComponentActivity() {
                 socialScreens(graph.social, graph.account, graph.files, nav, unread::refresh)
                 composable(VERIFY) { Verify(nav) }
                 composable(PEOPLE) { People(nav) }
+                // Adding to a group that exists (0078): the picker, for that conversation's members.
+                composable("$PEOPLE/{id}") { entry ->
+                    entry.arguments?.getString("id")?.let { People(nav, targetConversation = it) }
+                }
                 composable("$CONVERSATION/{id}") { entry ->
                     entry.arguments?.getString("id")?.let { Conversation(it, nav) }
                 }
@@ -401,11 +405,24 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun People(nav: NavController) {
-        val people: PeopleViewModel = viewModel { PeopleViewModel(graph.account, graph.socket) }
+    private fun People(
+        nav: NavController,
+        targetConversation: String? = null,
+    ) {
+        val people: PeopleViewModel =
+            viewModel(key = "people-${targetConversation ?: "new"}") {
+                PeopleViewModel(graph.account, graph.socket, targetConversation = targetConversation)
+            }
         val state by people.state.collectAsStateWithLifecycle()
         LaunchedEffect(people) {
-            people.opened.collect { nav.navigate(conversation(it)) { popUpTo(LIST) } }
+            people.opened.collect {
+                if (targetConversation == null) {
+                    nav.navigate(conversation(it)) { popUpTo(LIST) }
+                } else {
+                    // Back to the information, whose own read then shows the new members (0078).
+                    nav.popBackStack()
+                }
+            }
         }
         val pop = rememberBack(nav)
         PeopleScreen(
@@ -577,6 +594,14 @@ class MainActivity : ComponentActivity() {
                 override fun unmute() = model.unmute()
 
                 override fun block() = model.block()
+
+                override fun add() = nav.navigate("$PEOPLE/$id")
+
+                override fun rename(name: String?) = model.rename(name)
+
+                override fun remove(account: String) = model.remove(account)
+
+                override fun leave() = model.leave()
 
                 override fun fetch(item: Item) = model.fetch(item)
 

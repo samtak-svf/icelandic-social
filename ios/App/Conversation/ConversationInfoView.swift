@@ -9,11 +9,18 @@ struct ConversationInfoView: View {
 
     @State private var timing = false
     @State private var blocking = false
+    @State private var leaving = false
+    @State private var renaming = false
+    @State private var draftName = ""
+    @State private var removing: Person?
+    @State private var adding: PeopleModel?
     @State private var preview: URL?
     @Environment(\.dismiss) private var dismiss
 
     private var other: Person? {
-        guard let conversation = model.conversation, conversation.members.count == 1 else { return nil }
+        guard let conversation = model.conversation, conversation.name == nil, conversation.members.count == 1 else {
+            return nil
+        }
         return conversation.members[0]
     }
 
@@ -67,11 +74,55 @@ struct ConversationInfoView: View {
             Button("block", role: .destructive) { Task { await model.block() } }
             Button("cancel", role: .cancel) {}
         }
+        .alert(
+            Text("leave_group_confirm"),
+            isPresented: $leaving
+        ) {
+            Button("leave_group", role: .destructive) { Task { await model.leave() } }
+            Button("cancel", role: .cancel) {}
+        }
+        .alert(
+            Text(verbatim: removing.map { localized("remove_member_confirm", shownName($0)) } ?? ""),
+            isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } })
+        ) {
+            Button("remove_member", role: .destructive) {
+                if let account = removing?.account {
+                    removing = nil
+                    Task { await model.remove(account) }
+                }
+            }
+            Button("cancel", role: .cancel) { removing = nil }
+        }
+        .alert(Text("group_name_title"), isPresented: $renaming) {
+            TextField(localized("group_name_hint"), text: $draftName)
+            Button("save") {
+                let next = String(draftName.prefix(64)).trimmingCharacters(in: .whitespacesAndNewlines)
+                Task { await model.rename(next.isEmpty ? nil : next) }
+            }
+            if model.conversation?.name != nil {
+                Button("group_name_remove", role: .destructive) {
+                    Task { await model.rename(nil) }
+                }
+            }
+            Button("cancel", role: .cancel) {}
+        }
+        .sheet(isPresented: Binding(get: { adding != nil }, set: { if !$0 { adding = nil } })) {
+            if let picker = adding {
+                NavigationStack {
+                    PeopleView(model: picker, onInvite: {})
+                }
+                .onChange(of: picker.opened) { _, opened in
+                    guard opened != nil else { return }
+                    adding = nil
+                    Task { await model.load() }
+                }
+            }
+        }
     }
 
     /// The other person, large, with their mark; or a group's name and everyone in it.
     private func who(_ conversation: Conversation) -> some View {
-        let one = conversation.members.count == 1 ? conversation.members[0] : nil
+        let one = (conversation.name == nil && conversation.members.count == 1) ? conversation.members[0] : nil
         return VStack(spacing: 12) {
             Avatar(
                 name: one?.name ?? title(conversation), kind: avatarKind(conversation), size: 96,
@@ -86,7 +137,30 @@ struct ConversationInfoView: View {
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
             .padding(.horizontal, 16)
-            if one == nil { members(conversation) }
+            if one == nil {
+                HStack(spacing: 16) {
+                    Button {
+                        adding = PeopleModel(
+                            account: model.account,
+                            live: model.live,
+                            targetConversation: conversation.id,
+                            existing: Set(conversation.members.map(\.account))
+                        )
+                    } label: {
+                        Label("add_people", systemImage: "person.badge.plus")
+                    }
+                    .buttonStyle(.bordered)
+                    Button {
+                        draftName = conversation.name ?? ""
+                        renaming = true
+                    } label: {
+                        Label("group_name", systemImage: "pencil")
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .padding(.top, 4)
+                members(conversation)
+            }
         }
         .padding(.top, 24)
         .padding(.bottom, 8)
@@ -102,16 +176,27 @@ struct ConversationInfoView: View {
                     Avatar(person: person, size: 36)
                     Text(verbatim: shownName(person)).foregroundStyle(BrandTokens.Colors.fg)
                     if person.verified { VerifiedMark() }
+                    Spacer(minLength: 0)
+                    Menu {
+                        Button("remove_member", role: .destructive) {
+                            removing = person
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .foregroundStyle(BrandTokens.Colors.mutedFg)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel(Text("more_options"))
                 }
                 .frame(minHeight: 48)
-                .accessibilityElement(children: .combine)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
     }
 
-    /// The timer and mute rows say what they are set to; block is last, in red.
+    /// The timer and mute rows say what they are set to; block or leave is last, in red.
     private func settings(_ conversation: Conversation) -> some View {
         let muted = conversation.mute != .off
         return VStack(spacing: 0) {
@@ -140,6 +225,12 @@ struct ConversationInfoView: View {
                     blocking = true
                 } label: {
                     InfoRow(label: localized("block"), color: BrandTokens.Colors.danger)
+                }
+            } else {
+                Button(role: .destructive) {
+                    leaving = true
+                } label: {
+                    InfoRow(label: localized("leave_group"), color: BrandTokens.Colors.danger)
                 }
             }
         }

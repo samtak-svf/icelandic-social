@@ -161,6 +161,9 @@ private fun Banner(conversation: Conversation) {
             ConversationState.REMOVED -> R.string.conversation_removed_banner
             ConversationState.EXCLUDED -> R.string.conversation_excluded_banner
             ConversationState.STALE -> R.string.conversation_stale_banner
+            // Left here, on this device (0078): the store keeps what was said, and a commit that adds
+            // this account again makes it active.
+            ConversationState.LEFT -> R.string.left_banner
             ConversationState.NEW, ConversationState.ACTIVE ->
                 if (conversation.members.isEmpty()) R.string.conversation_alone_banner else return
         }

@@ -62,6 +62,25 @@ class RowsTest {
         )
     }
 
+    /** A group named or unnamed is a card too, and breaks the run around it (0078). */
+    @Test
+    fun aNameChangeIsACard() {
+        val rows =
+            rows(
+                listOf(
+                    item(1u, ts = day),
+                    item(2u, ts = day + 1uL * minute, content = Content.Name("Fjölskyldan")),
+                    item(3u, ts = day + 2uL * minute, content = Content.Name(null)),
+                    item(4u, ts = day + 3uL * minute),
+                ),
+                ZoneOffset.UTC,
+            )
+        assertEquals(
+            listOf("time 0", "1 first last", "card 2", "card 3", "4 first last"),
+            shape(rows),
+        )
+    }
+
     @Test
     fun theReadLineSitsUnderTheNewestOwnMessageSomeoneRead() {
         val rows =

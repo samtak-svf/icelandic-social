@@ -4,6 +4,7 @@ import samtak.spjall.core.Item
 import samtak.spjall.core.MuteFor
 
 /** What [ConversationInfoScreen] can ask for (0055): its settings, and the photos and files it lists. */
+@Suppress("TooManyFunctions")
 interface ConversationInfoActions {
     fun back()
 
@@ -18,6 +19,18 @@ interface ConversationInfoActions {
 
     /** Blocks the other person of a 1:1. */
     fun block()
+
+    /** Opens the picker to put more people in this group (0078). */
+    fun add() = Unit
+
+    /** Names the group, or clears its name with null (0078). */
+    fun rename(name: String?) = Unit
+
+    /** Removes [account] from the group, for everyone (0078). */
+    fun remove(account: String) = Unit
+
+    /** Leaves the group (0078); this account stops receiving it. */
+    fun leave() = Unit
 
     /** Downloads the photo of [item] to show it in the grid. */
     fun fetch(item: Item)

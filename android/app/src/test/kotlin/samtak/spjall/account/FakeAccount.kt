@@ -4,6 +4,7 @@ import samtak.spjall.core.AccountDevice
 import samtak.spjall.core.Body
 import samtak.spjall.core.Content
 import samtak.spjall.core.Conversation
+import samtak.spjall.core.ConversationState
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.Inviter
 import samtak.spjall.core.Item
@@ -187,10 +188,12 @@ class FakeAccount(
     private fun matching(query: String): List<Conversation> {
         val search = query.trim().lowercase()
         return conversations.filter { c ->
-            c.members.any { p ->
-                val name = p.name.orEmpty().lowercase()
-                name.startsWith(search) || name.contains(" $search") || name.contains("-$search")
-            }
+            // A group answers to the name it was given too (0078).
+            c.name?.contains(search, ignoreCase = true) == true ||
+                c.members.any { p ->
+                    val name = p.name.orEmpty().lowercase()
+                    name.startsWith(search) || name.contains(" $search") || name.contains("-$search")
+                }
         }
     }
 
@@ -373,6 +376,54 @@ class FakeAccount(
     override fun unmute(conversation: String) {
         call("unmute $conversation")
         conversations = conversations.map { if (it.id == conversation) it.copy(mute = Mute.Off) else it }
+    }
+
+    /** As the core does: everyone added is in it from now on, named when this device knows them (0078). */
+    override fun addAccounts(
+        conversation: String,
+        accounts: List<String>,
+    ) {
+        call("addAccounts $conversation ${accounts.joinToString(",")}")
+        conversations =
+            conversations.map { c ->
+                if (c.id != conversation) {
+                    c
+                } else {
+                    val known = people + everyone
+                    val added =
+                        accounts
+                            .filter { id -> c.members.none { it.account == id } }
+                            .map { id -> known.firstOrNull { it.account == id } ?: Person(id, null, false) }
+                    c.copy(members = c.members + added)
+                }
+            }
+    }
+
+    override fun removeAccounts(
+        conversation: String,
+        accounts: List<String>,
+    ) {
+        call("removeAccounts $conversation ${accounts.joinToString(",")}")
+        conversations =
+            conversations.map { c ->
+                if (c.id != conversation) c else c.copy(members = c.members.filterNot { it.account in accounts })
+            }
+    }
+
+    override fun rename(
+        conversation: String,
+        name: String?,
+    ): String {
+        call("rename $conversation ${name ?: "-"}")
+        conversations =
+            conversations.map { if (it.id == conversation) it.copy(name = name?.trim()?.ifEmpty { null }) else it }
+        return "e-name${calls.size}"
+    }
+
+    override fun leave(conversation: String) {
+        call("leave $conversation")
+        conversations =
+            conversations.map { if (it.id == conversation) it.copy(state = ConversationState.LEFT) else it }
     }
 
     override fun settings(): Settings {

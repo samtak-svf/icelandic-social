@@ -22,6 +22,10 @@ final class PeopleModel {
     private(set) var loaded = false
     /// Picking several people for a group rather than opening a 1:1 with one.
     private(set) var group = false
+    /// Adding people to an existing group (decision 0078).
+    let adding: Bool
+    /// Accounts already in the group when `adding` is true.
+    private(set) var existing: Set<String>
     /// Account ids, in the order they were picked.
     private(set) var picked: [String] = []
     private(set) var busy = false
@@ -31,16 +35,23 @@ final class PeopleModel {
 
     private let account: Account
     private let live: Live
+    private let targetConversation: String?
     private var failed: (() async -> Void)?
     private let sleep: @Sendable (Duration) async throws -> Void
 
     init(
         account: Account,
         live: Live,
+        targetConversation: String? = nil,
+        existing: Set<String> = [],
         sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
     ) {
         self.account = account
         self.live = live
+        self.targetConversation = targetConversation
+        self.adding = targetConversation != nil
+        self.group = targetConversation != nil
+        self.existing = existing
         self.sleep = sleep
     }
 
@@ -78,7 +89,7 @@ final class PeopleModel {
     /// The header's back button (decision 0047): out of picking several back to one, as the system back
     /// does; true when there is nothing to go back to here, and the screen closes.
     func back() -> Bool {
-        guard group else { return true }
+        guard group, !adding else { return true }
         single()
         return false
     }
@@ -94,6 +105,7 @@ final class PeopleModel {
     }
 
     func toggle(_ person: String) {
+        guard !existing.contains(person) else { return }
         if let index = picked.firstIndex(of: person) {
             picked.remove(at: index)
         } else {
@@ -101,12 +113,20 @@ final class PeopleModel {
         }
     }
 
-    /// Opens the 1:1 there is with one person, or starts a new conversation, into `opened`.
+    /// Opens the 1:1 there is with one person, starts a new conversation, or adds `picked` to the group,
+    /// into `opened`.
     func start() async {
         let picked = picked
         guard !picked.isEmpty else { return }
         let account = account
+        let target = targetConversation
         await perform(again: { await self.start() }) {
+            if let target {
+                try await offMain { try account.addAccounts(target, accounts: picked) }
+                self.live.sync()
+                self.opened = target
+                return
+            }
             let (id, created) = try await offMain { () -> (String, Bool) in
                 if let existing = try Self.existing(picked, in: account.conversations()) { return (existing, false) }
                 return (try account.createConversation(with: picked), true)
@@ -163,7 +183,9 @@ final class PeopleModel {
     /// The 1:1 with this one person, if there is one to go back to.
     private nonisolated static func existing(_ picked: [String], in conversations: [Conversation]) -> String? {
         guard picked.count == 1 else { return nil }
-        return conversations.first { $0.state != .removed && $0.members.map(\.account) == picked }?.id
+        return conversations.first {
+            $0.state != .removed && $0.state != .left && $0.name == nil && $0.members.map(\.account) == picked
+        }?.id
     }
 
     private func perform(again: @escaping () async -> Void, _ action: () async throws -> Void) async {

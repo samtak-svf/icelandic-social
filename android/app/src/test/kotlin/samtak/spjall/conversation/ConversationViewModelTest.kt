@@ -22,10 +22,12 @@ import samtak.spjall.account.FakeAccount
 import samtak.spjall.account.Problem
 import samtak.spjall.account.unreachable
 import samtak.spjall.core.Body
+import samtak.spjall.core.ConversationState
 import samtak.spjall.core.Event
 import samtak.spjall.core.Mute
 import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Outcome
+import samtak.spjall.core.Person
 import samtak.spjall.core.Reaction
 import samtak.spjall.socket.FakeLive
 import samtak.spjall.socket.conversation
@@ -261,6 +263,66 @@ class ConversationViewModelTest {
                 Mute.Until(FakeAccount.NOW + 3_600_000uL),
                 model.state.value.conversation
                     ?.mute,
+            )
+        }
+
+    @Test
+    fun namesTheGroupRemovesAMemberAndLeaves() =
+        runTest(dispatcher) {
+            val model = model()
+            model.rename("Fjölskyldan")
+            advanceUntilIdle()
+            assertEquals(
+                "Fjölskyldan",
+                model.state.value.conversation
+                    ?.name,
+            )
+
+            model.remove("a2")
+            advanceUntilIdle()
+            assertEquals(
+                emptyList<Person>(),
+                model.state.value.conversation
+                    ?.members,
+            )
+
+            model.leave()
+            advanceUntilIdle()
+            assertEquals(
+                ConversationState.LEFT,
+                model.state.value.conversation
+                    ?.state,
+            )
+            assertEquals(
+                listOf("rename c1 Fjölskyldan", "removeAccounts c1 a2", "leave c1"),
+                account.calls.filter {
+                    it.startsWith("rename") || it.startsWith("removeAccounts") || it.startsWith("leave")
+                },
+            )
+            // Each one is a commit the others must hear of (0078).
+            assertEquals(3, live.syncs)
+        }
+
+    @Test
+    fun aFailedRenameIsAProblemThatRetryRenamesAgain() =
+        runTest(dispatcher) {
+            val model = model()
+            account.failNext = unreachable()
+            model.rename("Fjölskyldan")
+            advanceUntilIdle()
+            assertEquals(Problem.Unreachable, model.state.value.problem)
+            assertNull(
+                model.state.value.conversation
+                    ?.name,
+            )
+
+            model.retry()
+            advanceUntilIdle()
+            assertNull(model.state.value.problem)
+            assertEquals(
+                "Fjölskyldan",
+                model.state.value.conversation
+                    ?.name,
             )
         }
 

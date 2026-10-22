@@ -6,8 +6,11 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Shader
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -77,6 +80,22 @@ class ConversationInfoScreenshotTest {
                 calls += "block"
             }
 
+            override fun add() {
+                calls += "add"
+            }
+
+            override fun rename(name: String?) {
+                calls += "rename $name"
+            }
+
+            override fun remove(account: String) {
+                calls += "remove $account"
+            }
+
+            override fun leave() {
+                calls += "leave"
+            }
+
             override fun fetch(item: Item) = Unit
 
             override fun open(item: Item) {
@@ -114,9 +133,10 @@ class ConversationInfoScreenshotTest {
         timer: UInt? = null,
         shared: List<Item> = emptyList(),
         state: ConversationState = ConversationState.ACTIVE,
+        name: String? = null,
     ) {
         val path = landscape()
-        val conversation = Conversation("c1", state, members, null, 0u, timer, mute)
+        val conversation = Conversation("c1", state, name, members, null, 0u, timer, mute)
         val ready = shared.filter { it.isPhoto() }.associate { it.seq!! to ConversationViewModel.Media.Ready(path) }
         compose.setContent {
             DecodingTheme {
@@ -234,6 +254,83 @@ class ConversationInfoScreenshotTest {
         show(state = ConversationState.REMOVED)
         assertEquals(listOf("back"), calls)
     }
+
+    /** A group this account left has no menu to open, so its information closes too (0078). */
+    @Test
+    fun aGroupLeftGoesBack() {
+        show(members = listOf(anna, bjorn), state = ConversationState.LEFT)
+        assertEquals(listOf("back"), calls)
+    }
+
+    // A group's own actions, above its members (0078): more people, and its name.
+    @Test
+    fun aGroupOffersItsOwnActions() {
+        show(members = listOf(anna, bjorn))
+        compose.onNodeWithText(context.getString(R.string.add_people)).performClick()
+        compose.onNodeWithText(context.getString(R.string.group_name)).assertExists()
+        assertEquals(listOf("add"), calls)
+    }
+
+    @Test
+    fun aOneToOneOffersNeitherOfThem() {
+        show()
+        compose.onNodeWithText(context.getString(R.string.add_people)).assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.group_name)).assertDoesNotExist()
+    }
+
+    /** A group is titled by its name once it has one, whatever its members are (0078). */
+    @Test
+    fun aNamedGroupIsTitledByItsName() {
+        show(members = listOf(anna, bjorn), name = "Fjölskyldan")
+        compose.onNodeWithText("Fjölskyldan").assertExists()
+    }
+
+    @Test
+    fun theGroupNameDialogIsNotDrawnHere() {
+        // Robolectric never reports a screen with a text field inside a dialog window as idle (measured:
+        // OutlinedTextField, a disabled one and a bare BasicTextField all spin for 60 s), so the name
+        // dialog's own tests are on a device: ConversationInfoScreenTest.
+        show(members = listOf(anna, bjorn))
+        compose.onNodeWithText(context.getString(R.string.group_name)).assertExists()
+    }
+
+    @Test
+    fun theRemoveMemberDialog() {
+        show(members = listOf(anna, bjorn))
+        compose.onNodeWithText(context.getString(R.string.remove_member_confirm, anna.name)).assertDoesNotExist()
+        compose.onAllNodesWithContentDescription(context.getString(R.string.remove_member))[0].performClick()
+        compose.onNode(isDialog()).captureRoboImage()
+    }
+
+    @Test
+    fun removingAMemberAsksFirst() {
+        show(members = listOf(anna, bjorn))
+        compose.onAllNodesWithContentDescription(context.getString(R.string.remove_member))[0].performClick()
+        assertEquals(emptyList<String>(), calls)
+        compose.onNodeWithText(context.getString(R.string.remove_member_confirm, anna.name)).assertExists()
+        inDialog(context.getString(R.string.remove_member)).performClick()
+        assertEquals(listOf("remove a2"), calls)
+    }
+
+    @Test
+    fun theLeaveDialog() {
+        show(members = listOf(anna, bjorn))
+        compose.onNodeWithText(context.getString(R.string.leave_group)).performClick()
+        compose.onNode(isDialog()).captureRoboImage()
+    }
+
+    @Test
+    fun leavingAGroupAsksFirst() {
+        show(members = listOf(anna, bjorn))
+        compose.onNodeWithText(context.getString(R.string.leave_group)).performClick()
+        assertEquals(emptyList<String>(), calls)
+        compose.onNodeWithText(context.getString(R.string.leave_group_confirm)).assertExists()
+        inDialog(context.getString(R.string.leave_group)).performClick()
+        assertEquals(listOf("leave"), calls)
+    }
+
+    /** The one node with [text] that is inside the dialog, which may say the same words as the row that opened it. */
+    private fun inDialog(text: String) = compose.onNode(hasText(text) and hasAnyAncestor(isDialog()))
 
     /** A small landscape photo, drawn here so the file holds no real one. */
     private fun landscape(): String {

@@ -53,7 +53,8 @@ fun conversation(
     id: String,
     vararg members: Person,
     state: ConversationState = ConversationState.ACTIVE,
-) = Conversation(id, state, members.toList(), null, 0u, null, Mute.Off)
+    name: String? = null,
+) = Conversation(id, state, name, members.toList(), null, 0u, null, Mute.Off)
 
 /** A sent text from [sender] at [ts], its envelope id taken from [seq]. */
 fun item(

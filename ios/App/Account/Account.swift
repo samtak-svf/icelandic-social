@@ -43,6 +43,10 @@ protocol Account: Sendable {
     func directory(query: String?, after: String?, limit: UInt32) throws -> PersonPage
     /// A new conversation with these accounts; its id.
     func createConversation(with accounts: [String]) throws -> String
+    func addAccounts(_ conversation: String, accounts: [String]) throws
+    func removeAccounts(_ conversation: String, accounts: [String]) throws
+    @discardableResult func rename(_ conversation: String, name: String?) throws -> String
+    func leave(_ conversation: String) throws
     /// The 1:1 with whoever made this invite, made if there is none; its id.
     func openInvite(token: String) throws -> String
     /// The conversation's items, oldest first, up to `limit` before the item `before`; the unsent ones last.
@@ -200,6 +204,22 @@ final class CoreAccount: Account, @unchecked Sendable {
 
     func createConversation(with accounts: [String]) throws -> String {
         try core().createConversation(with: accounts)
+    }
+
+    func addAccounts(_ conversation: String, accounts: [String]) throws {
+        try core().addAccounts(conversation: conversation, accounts: accounts)
+    }
+
+    func removeAccounts(_ conversation: String, accounts: [String]) throws {
+        try core().removeAccounts(conversation: conversation, accounts: accounts)
+    }
+
+    @discardableResult func rename(_ conversation: String, name: String?) throws -> String {
+        try core().rename(conversation: conversation, name: name)
+    }
+
+    func leave(_ conversation: String) throws {
+        try core().leave(conversation: conversation)
     }
 
     func openInvite(token: String) throws -> String { try core().openInvite(token: token) }

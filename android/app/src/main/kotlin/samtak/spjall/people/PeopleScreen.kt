@@ -69,18 +69,20 @@ fun PeopleScreen(
     state: PeopleViewModel.State,
     actions: PeopleActions,
 ) {
-    BackHandler(enabled = state.group, onBack = actions::single)
+    BackHandler(enabled = state.group && !state.adding, onBack = actions::single)
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.imePadding().safeDrawingPadding()) {
             Row(
                 modifier = Modifier.padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = if (state.group) actions::single else actions::back) {
+                // Adding to a group has no mode to go back to (0078): back closes the screen.
+                val close = if (state.group && !state.adding) actions::single else actions::back
+                IconButton(onClick = close) {
                     Icon(AppIcons.Back, contentDescription = stringResource(R.string.back))
                 }
                 Text(
-                    text = stringResource(if (state.group) R.string.new_group else R.string.new_conversation),
+                    text = stringResource(title(state)),
                     style = MaterialTheme.typography.headlineMedium,
                     modifier = Modifier.semantics { heading() },
                 )
@@ -98,11 +100,19 @@ fun PeopleScreen(
                     onClick = actions::start,
                     enabled = !state.busy,
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
-                ) { Text(stringResource(R.string.contact_action)) }
+                ) { Text(stringResource(if (state.adding) R.string.add_people_confirm else R.string.contact_action)) }
             }
         }
     }
 }
+
+/** What the picker is for: more people in a group, several for a new one, or one. */
+private fun title(state: PeopleViewModel.State): Int =
+    when {
+        state.adding -> R.string.add_people_title
+        state.group -> R.string.new_group
+        else -> R.string.new_conversation
+    }
 
 @Composable
 private fun SearchField(
@@ -176,7 +186,12 @@ private fun ModeRow(
     actions: PeopleActions,
 ) {
     if (state.group) {
-        PersonRow(person, picked = person.account in state.picked, onToggle = { actions.toggle(person.account) })
+        // Whoever is in the group already is shown taken, and cannot be taken again (0078).
+        if (person.account in state.existing) {
+            PersonRow(person, picked = true, onToggle = {}, enabled = false)
+        } else {
+            PersonRow(person, picked = person.account in state.picked, onToggle = { actions.toggle(person.account) })
+        }
     } else {
         PersonRow(person, picked = null, onToggle = { actions.open(person.account) })
     }
@@ -222,18 +237,22 @@ private fun NewGroupRow(onClick: () -> Unit) {
     }
 }
 
-/** A person: a checkbox while picking several ([picked] not null), otherwise a tap that opens the 1:1. */
+/**
+ * A person: a checkbox while picking several ([picked] not null), otherwise a tap that opens the 1:1.
+ * A row for someone already in the group ([enabled] false) is not a control: its box only says so.
+ */
 @Composable
 private fun PersonRow(
     person: Person,
     picked: Boolean?,
     onToggle: () -> Unit,
+    enabled: Boolean = true,
 ) {
     val control =
-        if (picked != null) {
-            Modifier.toggleable(value = picked, role = Role.Checkbox, onValueChange = { onToggle() })
-        } else {
-            Modifier.clickable(role = Role.Button, onClick = onToggle)
+        when {
+            picked == null -> Modifier.clickable(role = Role.Button, onClick = onToggle)
+            enabled -> Modifier.toggleable(value = picked, role = Role.Checkbox, onValueChange = { onToggle() })
+            else -> Modifier
         }
     Row(
         modifier =
@@ -259,7 +278,7 @@ private fun PersonRow(
             if (person.verified) VerifiedMark()
         }
         // The row is the control; the box only shows its state.
-        if (picked != null) Checkbox(checked = picked, onCheckedChange = null)
+        if (picked != null) Checkbox(checked = picked, onCheckedChange = null, enabled = enabled)
     }
 }
 

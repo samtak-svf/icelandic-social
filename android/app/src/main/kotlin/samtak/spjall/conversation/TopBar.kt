@@ -66,6 +66,17 @@ internal fun TopBar(
             }
             state.conversation?.let {
                 Title(it, Modifier.weight(1f), actions::info)
+                // The information is a tap on the title too; a group's name and members deserve a
+                // mark of their own (0078).
+                if (it.hasMenu()) {
+                    IconButton(onClick = actions::info) {
+                        Icon(
+                            AppIcons.Info,
+                            contentDescription = stringResource(R.string.conversation_info),
+                            tint = Palette.fg,
+                        )
+                    }
+                }
                 ConversationMenu(it, actions)
             }
         }
@@ -80,7 +91,8 @@ private fun Title(
     modifier: Modifier,
     onInfo: () -> Unit,
 ) {
-    val one = conversation.members.singleOrNull()
+    // A named group is drawn as a group, whatever it holds (0078).
+    val one = if (conversation.name == null) conversation.members.singleOrNull() else null
     val title = conversation.title()
     Row(
         modifier =

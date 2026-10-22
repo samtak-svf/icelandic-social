@@ -27,7 +27,10 @@ struct ConversationView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var group: Bool { (model.conversation?.members.count ?? 0) > 1 }
+    private var group: Bool {
+        guard let conversation = model.conversation else { return false }
+        return conversation.name != nil || conversation.members.count > 1
+    }
 
     private var writable: Bool { model.writable }
 
@@ -193,7 +196,7 @@ private struct TopBar: View {
     @Environment(\.dismiss) private var dismiss
 
     private var verified: Bool {
-        guard let conversation, conversation.members.count == 1 else { return false }
+        guard let conversation, conversation.name == nil, conversation.members.count == 1 else { return false }
         return conversation.members[0].verified
     }
 
@@ -223,6 +226,17 @@ private struct TopBar: View {
             }
             Spacer(minLength: 0)
             if writable, let conversation {
+                Button {
+                    info = true
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 18))
+                        .foregroundStyle(BrandTokens.Colors.fg)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("conversation_info"))
                 ConversationMenu(conversation: conversation, model: model, info: $info)
             }
         }
@@ -236,7 +250,7 @@ private struct TopBar: View {
     }
 
     private func who(_ conversation: Conversation) -> some View {
-        let group = conversation.members.count > 1
+        let group = conversation.name != nil || conversation.members.count > 1
         return HStack(spacing: 10) {
             Avatar(
                 name: group ? title(conversation) : conversation.members.first?.name,
@@ -284,6 +298,7 @@ private struct Banner: View {
     private var text: LocalizedStringKey? {
         switch conversation.state {
         case .removed: "conversation_removed_banner"
+        case .left: "left_banner"
         case .excluded: "conversation_excluded_banner"
         case .stale: "conversation_stale_banner"
         case .new, .active: conversation.members.isEmpty ? "conversation_alone_banner" : nil

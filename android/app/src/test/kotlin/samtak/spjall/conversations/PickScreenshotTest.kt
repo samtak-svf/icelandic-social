@@ -45,8 +45,8 @@ class PickScreenshotTest {
 
     private val conversations =
         listOf(
-            Conversation("c2", ConversationState.ACTIVE, listOf(anna), null, 0u, null, Mute.Off),
-            Conversation("c3", ConversationState.ACTIVE, listOf(bjarni), null, 0u, null, Mute.Off),
+            Conversation("c2", ConversationState.ACTIVE, null, listOf(anna), null, 0u, null, Mute.Off),
+            Conversation("c3", ConversationState.ACTIVE, null, listOf(bjarni), null, 0u, null, Mute.Off),
         )
 
     private val message =

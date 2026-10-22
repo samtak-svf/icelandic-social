@@ -377,5 +377,20 @@
   "assistant_android_group": "Á Android: gakktu í Google hópinn {group_url} með Gmail netfanginu sem er á símanum, opnaðu svo https://play.google.com/apps/internaltest/4701643324608289838 á símanum og samþykktu boðið. Enginn þarf að bæta þér við.",
   "assistant_android_manual": "Á Android: svaraðu færslunni með Gmail netfanginu sem er á símanum. Umsjónarmaður bætir því við og þá opnarðu https://play.google.com/apps/internaltest/4701643324608289838 á símanum og samþykktir boðið.",
   "assistant_added_ios": "Þér hefur verið bætt við prófanir á iPhone. Boð frá TestFlight berst í tölvupósti á netfangið sem þú gafst upp. Opnaðu það á iPhone og settu upp TestFlight.",
-  "assistant_failed_ios": "Ekki tókst að bæta netfanginu sjálfkrafa við prófanir á iPhone. Umsjónarmaður lítur á það."
+  "assistant_failed_ios": "Ekki tókst að bæta netfanginu sjálfkrafa við prófanir á iPhone. Umsjónarmaður lítur á það.",
+  "add_people": "Bæta við",
+  "add_people_title": "Bæta við í hópinn",
+  "add_people_confirm": "Bæta við",
+  "group_name": "Nafn",
+  "group_name_title": "Nafn hópsins",
+  "group_name_hint": "Nafn á hópinn",
+  "group_name_remove": "Fjarlægja",
+  "save": "Vista",
+  "name_set_card": "{who} nefndi hópinn „{name}“.",
+  "name_cleared_card": "{who} fjarlægði nafn hópsins.",
+  "remove_member": "Fjarlægja úr hópnum",
+  "remove_member_confirm": "Fjarlægja {name} úr hópnum?",
+  "leave_group": "Yfirgefa hópinn",
+  "leave_group_confirm": "Yfirgefa hópinn? Þú færð ekki fleiri skilaboð úr honum.",
+  "left_banner": "Þú hefur yfirgefið þennan hóp."
 }

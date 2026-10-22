@@ -1,6 +1,6 @@
 # 0078. A group's name, leaving a group, and who may change its members
 
-- Status: accepted; implemented in the core and the backend; the apps' screens not yet
+- Status: accepted; implemented in the core, the backend and the apps' screens
 - Date: 2026-10-21
 - Decided by: Guðröður (all four: add, remove, leave and a name; no admins)
 - Amends: [0009](0009-v1-scope.md) (a group name and leaving a group join v1),

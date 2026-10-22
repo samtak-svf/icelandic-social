@@ -34,6 +34,8 @@ final class PeopleModelTests: XCTestCase {
         account.list = [
             conversation("group", members: [person("a2"), person("a3")]),
             conversation("gone", members: [person("a2")], state: .removed),
+            conversation("left", members: [person("a2")], state: .left),
+            conversation("named", members: [person("a2")], name: "Hópur"),
             conversation("one", members: [person("a2")]),
         ]
         let model = await model()
@@ -172,5 +174,28 @@ final class PeopleModelTests: XCTestCase {
         XCTAssertFalse(model.group)
         XCTAssertTrue(model.picked.isEmpty)
         XCTAssertTrue(model.back(), "picking one closes the screen")
+    }
+
+    func testAddingPeopleToAGroupKeepsExistingMembersAndAddsPicked() async {
+        account.list = [conversation("g1", members: [person("a2", "Anna")])]
+        account.met = [person("a2", "Anna"), person("a3", "Bjarni"), person("a4", "Dóra")]
+        let model = PeopleModel(
+            account: account,
+            live: live,
+            targetConversation: "g1",
+            existing: ["a2"],
+            sleep: { _ in }
+        )
+        await model.load()
+        XCTAssertTrue(model.adding)
+        XCTAssertTrue(model.group)
+        model.toggle("a2")
+        XCTAssertEqual(model.picked, [], "an existing member stays in the group")
+        model.toggle("a3")
+        model.toggle("a4")
+        await model.start()
+        XCTAssertEqual(model.opened, "g1")
+        XCTAssertEqual(account.calls.suffix(2), ["addAccounts g1 a3,a4", "sync"])
+        XCTAssertTrue(model.back(), "back closes the add sheet at once")
     }
 }

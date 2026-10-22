@@ -1555,6 +1555,76 @@
     "assistant_failed_ios": {
       "surfaces": ["backend"],
       "description": "The testers' assistant's fixed reply when the Apple ID a tester gave could not be added to the iPhone test (docs/decisions/0076). Never repeats the address."
+    },
+    "add_people": {
+      "surfaces": ["android", "ios"],
+      "description": "Action on a group's info screen: add people to the group (docs/decisions/0078)."
+    },
+    "add_people_title": {
+      "surfaces": ["android", "ios"],
+      "description": "Title of the people picker when opened to add people to an existing group (docs/decisions/0078)."
+    },
+    "add_people_confirm": {
+      "surfaces": ["android", "ios"],
+      "description": "Confirm button in the people picker when adding picked people to an existing group (docs/decisions/0078)."
+    },
+    "group_name": {
+      "surfaces": ["android", "ios"],
+      "description": "Action on a group's info screen: set or change the group's name (docs/decisions/0078)."
+    },
+    "group_name_title": {
+      "surfaces": ["android", "ios"],
+      "description": "Title of the dialog or sheet that sets or changes a group's name (docs/decisions/0078)."
+    },
+    "group_name_hint": {
+      "surfaces": ["android", "ios"],
+      "description": "Placeholder in the group name field when the group has no name (docs/decisions/0078)."
+    },
+    "group_name_remove": {
+      "surfaces": ["android", "ios"],
+      "description": "Action in the group name dialog that clears the group's name (docs/decisions/0078)."
+    },
+    "save": {
+      "surfaces": ["android", "ios"],
+      "description": "Confirm button that saves a change, such as a group's name (docs/decisions/0078)."
+    },
+    "name_set_card": {
+      "surfaces": ["android", "ios"],
+      "description": "System card when a member names or renames the group (docs/decisions/0078).",
+      "placeholders": {
+        "who": "string",
+        "name": "string"
+      }
+    },
+    "name_cleared_card": {
+      "surfaces": ["android", "ios"],
+      "description": "System card when a member clears the group's name (docs/decisions/0078).",
+      "placeholders": {
+        "who": "string"
+      }
+    },
+    "remove_member": {
+      "surfaces": ["android", "ios"],
+      "description": "Action on a member row in a group's info screen: remove the member from the group (docs/decisions/0078)."
+    },
+    "remove_member_confirm": {
+      "surfaces": ["android", "ios"],
+      "description": "Confirmation prompt before removing {name} from the group (docs/decisions/0078).",
+      "placeholders": {
+        "name": "string"
+      }
+    },
+    "leave_group": {
+      "surfaces": ["android", "ios"],
+      "description": "Destructive action at the foot of a group's info screen: leave the group (docs/decisions/0078)."
+    },
+    "leave_group_confirm": {
+      "surfaces": ["android", "ios"],
+      "description": "Confirmation prompt before leaving the group (docs/decisions/0078)."
+    },
+    "left_banner": {
+      "surfaces": ["android", "ios"],
+      "description": "Banner shown in a conversation the user has left (docs/decisions/0078)."
     }
   }
 }

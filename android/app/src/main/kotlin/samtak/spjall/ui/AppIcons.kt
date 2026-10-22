@@ -93,6 +93,9 @@ object AppIcons {
 
     val ShieldCheck = outline("shield-check", 24f, 2f, "M8.5 12l2.5 2.5 4.5-5")
 
+    /** Into a conversation's information (0055): a circle with an "i" in it (0078). */
+    val Info = outline("info", 24f, 2f, "M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0z", "M12 8h.01", "M12 11.5v5")
+
     /**
      * Google's "G", in Google's own colours rather than the brand's, as its
      * sign-in guidelines ask; shown with `Image`, never tinted.

@@ -13,7 +13,9 @@ struct ConversationMenu: View {
     @State private var timing = false
     @State private var blocking = false
 
-    private var other: Person? { conversation.members.count == 1 ? conversation.members[0] : nil }
+    private var other: Person? {
+        conversation.name == nil && conversation.members.count == 1 ? conversation.members[0] : nil
+    }
 
     var body: some View {
         Menu {

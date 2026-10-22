@@ -121,7 +121,7 @@ final class ConversationModelTests: XCTestCase {
         let anna = person("a2", "Anna")
         let open = await model(conversation("c1", members: [anna]))
         XCTAssertTrue(open.writable)
-        for state in [ConversationState.removed, .excluded, .stale] {
+        for state in [ConversationState.removed, .left, .excluded, .stale] {
             let model = await model(conversation("c1", members: [anna], state: state))
             XCTAssertFalse(model.writable, "\(state) has no menu, composer or title tap")
         }
@@ -280,5 +280,27 @@ final class ConversationModelTests: XCTestCase {
         XCTAssertEqual(
             account.calls.filter { $0.hasPrefix("timeline c1 ") && !$0.hasSuffix("-") }.count, 2,
             "a short page ends the paging")
+    }
+
+    func testRenamesRemovesAndLeavesAGroup() async {
+        let anna = person("a2", "Anna")
+        let bjarni = person("a3", "Bjarni")
+        let model = await model(conversation("c1", members: [anna, bjarni]))
+        await model.rename("Leshringur")
+        XCTAssertEqual(model.conversation?.name, "Leshringur")
+        XCTAssertTrue(account.calls.contains("rename c1 Leshringur"))
+
+        await model.rename("   ")
+        XCTAssertNil(model.conversation?.name)
+        XCTAssertTrue(account.calls.contains("rename c1 -"))
+
+        await model.remove("a3")
+        XCTAssertEqual(model.conversation?.members.map(\.account), ["a2"])
+        XCTAssertTrue(account.calls.contains("removeAccounts c1 a3"))
+
+        await model.leave()
+        XCTAssertEqual(model.conversation?.state, .left)
+        XCTAssertFalse(model.writable)
+        XCTAssertTrue(account.calls.contains("leave c1"))
     }
 }
