@@ -25,7 +25,18 @@ cannot read.
   raising it shuts them out, with no special case. A request with no header and no platform
   is checked against the higher of the two floors.
 - **The apps show an update screen** when the core reports `ClientTooOld`. The screen blocks
-  every other screen and links to the store the app came from.
+  every other screen and opens the update URL the server published for its platform.
+- **The server publishes an `updateUrl` per mobile platform**, `{ android, ios }`, from
+  `UPDATE_URL_ANDROID` and `UPDATE_URL_IOS` (`backend/cloudflare.config.ts`, read through
+  `updateUrls(env)` in `backend/src/env/index.ts`). It sits beside `minClientVersion` in
+  `GET /health`, and the `426 client_too_old` body carries it beside `minVersion` as
+  `{ error: "client_too_old", minVersion, updateUrl }`. A request without a header, or from
+  the web, gets no `updateUrl`.
+- **The update URL follows the platform's distribution channel, not an assumed store listing.**
+  While the Android app is on the internal track it has no public `market://details` page, so
+  the update screen opens the `updateUrl` the server published, which is the internal track's
+  opt-in link. When the server did not publish one, the screen falls back to the brand's
+  `update_url_android` on Android and to `itms-beta://` on iOS (#99).
 - **The floor is raised in its own change**, after the builds that send the header have
   reached the testers.
 

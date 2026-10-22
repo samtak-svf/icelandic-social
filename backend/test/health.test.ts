@@ -8,6 +8,10 @@ describe("/health", () => {
     expect(response.status).toBe(200);
     const body = Health.parse(await response.json());
     expect(body.minClientVersion).toEqual({ android: "0.5.0", ios: "0.5.0", web: "0.1.0" });
+    expect(body.updateUrl).toEqual({
+      android: "https://play.google.com/apps/internaltest/4701643324608289838",
+      ios: "itms-beta://",
+    });
   });
 
   it("is the only route so far", async () => {

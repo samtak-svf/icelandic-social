@@ -6,6 +6,7 @@
 // object wherever Cloudflare chose and could never be moved (decision 0001).
 
 import ids from "../../../identifiers/ids.json" with { type: "json" };
+import { brandStrings } from "../brand.gen.ts";
 import { log } from "../log.ts";
 import type { ApnsKey, FcmAccount } from "../modules/messaging/index.ts";
 import type { Conversation, Inbox } from "../modules/messaging/objects.ts";
@@ -30,6 +31,18 @@ export function minClientVersions(env: Env): Record<Client, string> {
   const floor = (client: Client) =>
     env[`MIN_CLIENT_VERSION_${client.toUpperCase() as Uppercase<Client>}`];
   return Object.fromEntries(CLIENTS.map((p) => [p, floor(p)])) as Record<Client, string>;
+}
+
+/**
+ * Where a mobile client below its floor gets a current build (decision 0030):
+ * the URL each platform's var names, else the brand's Android link and
+ * TestFlight's scheme.
+ */
+export function updateUrls(env: Env): { android: string; ios: string } {
+  return {
+    android: env.UPDATE_URL_ANDROID || brandStrings.update_url_android,
+    ios: env.UPDATE_URL_IOS || "itms-beta://",
+  };
 }
 
 /** D1: accounts, devices, tokens and KeyPackages (decisions 0014, 0017). */

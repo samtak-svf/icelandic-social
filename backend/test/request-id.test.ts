@@ -72,6 +72,7 @@ describe("the request id", () => {
     expect(await old.json()).toEqual({
       error: "client_too_old",
       minVersion: env.MIN_CLIENT_VERSION_ANDROID,
+      updateUrl: "https://play.google.com/apps/internaltest/4701643324608289838",
       requestId: old.headers.get("x-request-id"),
     });
   });

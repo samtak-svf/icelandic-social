@@ -1,11 +1,11 @@
 diff --git a/backend/src/client-version.ts b/backend/src/client-version.ts
-index cbe3dcf..c97058a 100644
 --- a/backend/src/client-version.ts
 +++ b/backend/src/client-version.ts
-@@ -48,5 +48,5 @@ export function belowFloorOf(
+@@ -70,6 +70,6 @@ export function belowFloorOf(
        return { error: "invalid_request" };
      floor = floors[platform]!;
    }
--  return compare(version, floor) < 0 ? { error: "client_too_old", minVersion: floor } : null;
-+  return compare(version, floor) < -1000 ? { error: "client_too_old", minVersion: floor } : null;
- }
+-  if (compare(version, floor) >= 0) return null;
++  if (compare(version, floor) >= -1000) return null;
+   const updateUrl = platform === "android" || platform === "ios" ? urls?.[platform] : undefined;
+   return {

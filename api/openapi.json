@@ -267,6 +267,21 @@
               "web"
             ],
             "description": "The oldest build each client may run. An older app asks the user to update; an older web tab reloads, since `web` is the build the Worker serves."
+          },
+          "updateUrl": {
+            "type": "object",
+            "properties": {
+              "android": {
+                "type": "string"
+              },
+              "ios": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "android",
+              "ios"
+            ]
           }
         },
         "required": [
@@ -318,6 +333,10 @@
             "type": "string",
             "description": "With client_too_old: the lowest version this platform accepts (decision 0030)",
             "example": "0.2.0"
+          },
+          "updateUrl": {
+            "type": "string",
+            "description": "Where to get a current build when error === 'client_too_old' (decision 0030)"
           }
         },
         "required": [

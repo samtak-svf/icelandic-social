@@ -61,6 +61,14 @@ export default defineConfig(({ mode }) => ({
       // raised by the deploy that ships a new one, so every older tab is
       // refused with 426 and reloads. 0.1.0 until the web app exists.
       MIN_CLIENT_VERSION_WEB: bindings.text("0.1.0"),
+      // Where a client below its floor gets a current build (decision 0030),
+      // published by /health and the 426 body. Android's is the internal
+      // track's opt-in link while the app is not on a public listing; iOS's is
+      // TestFlight's scheme. Unset, the brand's value and itms-beta:// apply.
+      UPDATE_URL_ANDROID: bindings.text(
+        "https://play.google.com/apps/internaltest/4701643324608289838",
+      ),
+      UPDATE_URL_IOS: bindings.text("itms-beta://"),
       // Kenni's issuer for this Samtak team (decision 0019). The Worker reads
       // its discovery document; the apps get the authorize endpoint from
       // /v1/sign-in. The interop run signs in with dev/worker.ts's fake Kenni.

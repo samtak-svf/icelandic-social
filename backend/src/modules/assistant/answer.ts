@@ -40,9 +40,12 @@ async function queue(
 /** The system prompt, with the Android steps as they stand. */
 function systemPrompt(env: Env): string {
   const group = androidTesterGroup(env);
+  const play = brandStrings.update_url_android;
   const android = group
-    ? brandStrings.assistant_android_group.replace("{group_url}", () => group)
-    : brandStrings.assistant_android_manual;
+    ? brandStrings.assistant_android_group
+        .replace("{group_url}", () => group)
+        .replace("{play_url}", () => play)
+    : brandStrings.assistant_android_manual.replace("{play_url}", () => play);
   return brandStrings.assistant_prompt.replace("{android}", () => android);
 }
 
