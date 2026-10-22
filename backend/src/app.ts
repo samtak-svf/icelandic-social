@@ -8,6 +8,7 @@ import {
   getConversationDevicesRoute,
   getGroupInfoRoute,
   getWelcomeRoute,
+  leaveConversationRoute,
 } from "./api/conversations.ts";
 import {
   clearPushTokenRoute,
@@ -328,6 +329,17 @@ export function createApp() {
         : fail(c, 404, "not_found");
     }
     return c.json({ accounts: await activeDevicesOf(c.env, result.ok) }, 200);
+  });
+
+  app.openapi(leaveConversationRoute, async (c) => {
+    const { conversationId } = c.req.valid("param");
+    const result = await conversation(c.env, conversationId).leave(c.var.device.accountId);
+    if ("error" in result) {
+      return result.error === "not_a_member"
+        ? fail(c, 403, result.error)
+        : fail(c, 404, "not_found");
+    }
+    return c.body(null, 204);
   });
 
   // Muting (decision 0042).

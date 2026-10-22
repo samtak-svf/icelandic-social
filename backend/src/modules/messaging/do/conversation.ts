@@ -191,7 +191,8 @@ export class Conversation extends DurableObject<Env> {
    * commit's (decision 0015), and epoch 0, the group's own, for the first
    * (decision 0020). An external commit adds a device of a member account,
    * so it keeps the roster (0021). A claim never names a deleted account
-   * (0028), nor brings in an account that has blocked the sender, with a
+   * (0028) or one that left and is not removed yet (0078), nor brings in an
+   * account that has blocked the sender, with a
    * Welcome or without (0024); one that is a member already stays. The epoch
    * is checked first: a join that lost its epoch must hear so, to make its
    * commit again on the new one.
@@ -207,13 +208,21 @@ export class Conversation extends DurableObject<Env> {
       return "external_changes_roster";
     }
     if (input.welcome?.to.some((account) => !after.has(account))) return "welcome_not_a_member";
-    if (input.roster?.some((account) => this.hasDeparted(account))) return "claim_names_departed";
+    if (input.roster?.some((account) => this.hasDeparted(account) || this.hasLeft(account))) {
+      return "claim_names_departed";
+    }
     if (input.blockedBy?.some((account) => !before.includes(account))) return "blocked";
     return null;
   }
 
   private hasDeparted(account: string): boolean {
     return this.sql.exec("SELECT 1 FROM departed WHERE account = ?", account).toArray().length > 0;
+  }
+
+  private hasLeft(account: string): boolean {
+    return (
+      this.sql.exec("SELECT 1 FROM left_accounts WHERE account = ?", account).toArray().length > 0
+    );
   }
 
   /**
@@ -239,6 +248,7 @@ export class Conversation extends DurableObject<Env> {
     }
     for (const account of before.filter((a) => !after.has(a))) {
       this.sql.exec("DELETE FROM roster WHERE account = ?", account);
+      this.sql.exec("DELETE FROM left_accounts WHERE account = ?", account);
       this.sql.exec(
         `INSERT INTO removed (account, seq) VALUES (?, ?)
          ON CONFLICT (account) DO UPDATE SET seq = excluded.seq`,
@@ -351,10 +361,41 @@ export class Conversation extends DurableObject<Env> {
     return { ok: null };
   }
 
-  /** The roster, for a member to check its accounts' devices against (decision 0028). */
+  /**
+   * The roster, for a member to check its accounts' devices against (decision
+   * 0028). An account that left is not in it, so the first member to check
+   * removes its leaves (0078).
+   */
   async roster(account: string): Promise<Result<string[]>> {
     if (!this.meta()) return { error: "not_found" };
-    return this.isMember(account) ? { ok: this.members() } : { error: "not_a_member" };
+    if (!this.isMember(account)) return { error: "not_a_member" };
+    return { ok: this.members().filter((a) => !this.hasLeft(a)) };
+  }
+
+  /**
+   * The account leaves (decision 0078). It stays in the roster, and reads
+   * the history, until a member's commit removes its leaves; until then no
+   * claim may keep it, and the devices listing leaves it out. Every member
+   * is told, so its devices check the roster. Leaving again changes nothing.
+   */
+  async leave(account: string): Promise<Result<null>> {
+    const meta = this.meta();
+    if (!meta) return { error: "not_found" };
+    if (!this.isMember(account)) return { error: "not_a_member" };
+    if (this.hasLeft(account)) return { ok: null };
+    this.ctx.storage.transactionSync(() => {
+      this.sql.exec("INSERT INTO left_accounts (account, at) VALUES (?, ?)", account, Date.now());
+      for (const member of this.members()) {
+        this.sql.exec(
+          `INSERT INTO pending_notify (account, seq) VALUES (?, ?)
+           ON CONFLICT (account) DO UPDATE SET seq = max(seq, excluded.seq)`,
+          member,
+          meta.lastSeq,
+        );
+      }
+    });
+    await this.ctx.storage.setAlarm(Date.now());
+    return { ok: null };
   }
 
   /** Whether the account is in the roster now: who may store or fetch media (decision 0023). */
@@ -375,6 +416,7 @@ export class Conversation extends DurableObject<Env> {
     this.ctx.storage.transactionSync(() => {
       this.sql.exec("DELETE FROM roster WHERE account = ?", account);
       this.sql.exec("DELETE FROM removed WHERE account = ?", account);
+      this.sql.exec("DELETE FROM left_accounts WHERE account = ?", account);
       this.sql.exec("DELETE FROM pending_notify WHERE account = ?", account);
       this.sql.exec("DELETE FROM urgent WHERE account = ?", account);
       this.sql.exec(

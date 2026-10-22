@@ -11,7 +11,7 @@
   [0021](0021-group-info-and-external-join.md) (rejoining)
 - Amended by: [0034](0034-fljotid-and-the-wall.md) (every signed-in account sees a name; `open_direct`),
   [0045](0045-times-between-messages-and-one-reaction-pill.md) (times between messages, one
-  reaction pill)
+  reaction pill), [0078](0078-a-group-name-leaving-and-who-changes-members.md) (a group's name is its title when it has one)
 - Media is [0023](0023-media-as-encrypted-blobs.md); block is [0024](0024-block.md); push is
   [0025](0025-push-without-ids.md).
 

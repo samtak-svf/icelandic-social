@@ -112,9 +112,29 @@ export const getConversationDevicesRoute = createRoute({
   request: { params },
   responses: {
     200: {
-      description: "A deleted account's entry has no devices",
+      description:
+        "A deleted account's entry has no devices; an account that left is not listed (decision 0078)",
       content: { "application/json": { schema: ConversationDevices } },
     },
+    ...INVALID,
+    ...MEMBER,
+    ...AUTHED,
+  },
+});
+
+export const leaveConversationRoute = createRoute({
+  method: "post",
+  path: "/v1/conversations/{conversationId}/leave",
+  operationId: "leaveConversation",
+  tags: ["conversations"],
+  summary:
+    "Leave a conversation: the members' devices remove this account's leaves (decision 0078)",
+  description:
+    "The account stays in the roster, and reads the history, until a member's commit removes its leaves. Until then the devices listing leaves it out and no claim may keep it. Leaving again changes nothing.",
+  security: DEVICE_TOKEN,
+  request: { params },
+  responses: {
+    204: { description: "The account has left" },
     ...INVALID,
     ...MEMBER,
     ...AUTHED,

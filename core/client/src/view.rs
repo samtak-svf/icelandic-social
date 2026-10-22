@@ -81,8 +81,8 @@ impl View {
         })
     }
 
-    /// The conversations whose title, the names of the others in it, has a
-    /// name matching `search` at the start of a word (0038), in the order
+    /// The conversations whose title, the group's name or the names of the
+    /// others in it, has a word starting with `search` (0038, 0078), in the order
     /// of `conversations`. Read from this device alone, never the server; a
     /// blank search keeps every conversation.
     pub fn search_conversations(&mut self, search: &str) -> Result<Vec<Conversation>, ClientError> {
@@ -94,11 +94,10 @@ impl View {
         Ok(all
             .into_iter()
             .filter(|c| {
-                c.members.iter().any(|p| {
-                    p.name
-                        .as_deref()
-                        .is_some_and(|name| starts_a_word(&fold_name(name), &search))
-                })
+                c.name
+                    .iter()
+                    .chain(c.members.iter().filter_map(|p| p.name.as_ref()))
+                    .any(|name| starts_a_word(&fold_name(name), &search))
             })
             .collect())
     }
@@ -161,7 +160,7 @@ impl View {
 
 fn conversations(tx: &Transaction) -> Result<Vec<Conversation>, ClientError> {
     let mut statement = tx.prepare(&format!(
-        "SELECT group_id, {STATE}, timer FROM conversations c
+        "SELECT group_id, {STATE}, timer, name FROM conversations c
          ORDER BY MAX(created_at,
                       COALESCE((SELECT MAX(stored_at) FROM timeline t
                                 WHERE t.group_id = c.group_id), 0),
@@ -170,9 +169,16 @@ fn conversations(tx: &Transaction) -> Result<Vec<Conversation>, ClientError> {
                                0)) DESC,
                   created_at DESC"
     ))?;
-    let rows: Vec<(Vec<u8>, State, Option<u32>)> = statement
+    /// group, state, timer, name.
+    type Row = (Vec<u8>, State, Option<u32>, Option<String>);
+    let rows: Vec<Row> = statement
         .query_map([], |r| {
-            Ok((r.get(0)?, State::parse(&r.get::<_, String>(1)?)?, r.get(2)?))
+            Ok((
+                r.get(0)?,
+                State::parse(&r.get::<_, String>(1)?)?,
+                r.get(2)?,
+                r.get(3)?,
+            ))
         })?
         .collect::<rusqlite::Result<_>>()?;
     if rows.is_empty() {
@@ -181,10 +187,11 @@ fn conversations(tx: &Transaction) -> Result<Vec<Conversation>, ClientError> {
     }
     let (_, me) = this_device(tx)?;
     let mut conversations = Vec::with_capacity(rows.len());
-    for (group, state, timer) in rows {
+    for (group, state, timer, name) in rows {
         conversations.push(Conversation {
             id: conversation_id(&group),
             state,
+            name,
             members: notice::others(tx, &group, &me.account)?,
             last: timeline::items(tx, &group, &me.account, None, 1)?.pop(),
             unread: read::unread(tx, &group, &me.account)?,

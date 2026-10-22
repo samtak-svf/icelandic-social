@@ -66,7 +66,7 @@ pub use timeline::{Content, Item, Quote, Reaction, Status, Unforwardable};
 pub use view::View;
 
 use clock::{Instant, now};
-use members::{refresh_members, set_members};
+use members::{members, refresh_members, set_members};
 use timeline::{fold, fold_members};
 
 #[derive(Debug, thiserror::Error)]
@@ -103,6 +103,14 @@ pub enum ClientError {
     /// The message cannot be forwarded (0041).
     #[error("this message cannot be forwarded: {0:?}")]
     CannotForward(Unforwardable),
+    /// A group's name is 1 to 64 characters, none of them control
+    /// characters, once trimmed (0078).
+    #[error("a group's name is 1 to 64 plain characters")]
+    NameInvalid,
+    /// Only a group, more than two accounts with this one, takes a name or
+    /// can be left (0078).
+    #[error("not a group")]
+    NotAGroup,
 }
 
 /// Where a conversation stands for this device.
@@ -117,6 +125,9 @@ pub enum State {
     Excluded,
     /// A commit removed this account.
     Removed,
+    /// This account left (0078). Its history stays, read-only, as for
+    /// `Removed`; a commit that adds it again makes it `Active`.
+    Left,
     /// This device missed what it needed to follow the group: messages
     /// expired before it fetched them, or a commit it could not process. It
     /// joins again by an external commit on the next `sync` or notify, and
@@ -133,6 +144,7 @@ impl State {
             Self::Active => "active",
             Self::Excluded => "excluded",
             Self::Removed => "removed",
+            Self::Left => "left",
             Self::Stale => "stale",
         }
     }
@@ -143,6 +155,7 @@ impl State {
             "active" => Self::Active,
             "excluded" => Self::Excluded,
             "removed" => Self::Removed,
+            "left" => Self::Left,
             "stale" => Self::Stale,
             _ => return Err(rusqlite::Error::InvalidQuery),
         })
@@ -159,6 +172,8 @@ pub struct Conversation {
     /// The newest item, if any.
     pub last: Option<Item>,
     pub unread: u32,
+    /// The group's name (0078); none when the title is `members`' names.
+    pub name: Option<String>,
     /// The disappearing timer, in seconds.
     pub timer: Option<u32>,
     /// Whether this account muted it (0042). `unread` still counts.
@@ -445,8 +460,10 @@ fn conversation_of(tx: &Transaction, group: &[u8]) -> Result<Option<(State, u64)
         .optional()?)
 }
 
-/// A conversation's `State` as stored: `excluded` only ever qualifies `active`.
-const STATE: &str = "CASE excluded WHEN 1 THEN 'excluded' ELSE state END";
+/// A conversation's `State` as stored: `excluded` only ever qualifies
+/// `active`, and `left_by_self` only `removed`.
+const STATE: &str = "CASE WHEN excluded = 1 THEN 'excluded'
+                          WHEN left_by_self = 1 THEN 'left' ELSE state END";
 
 fn conversation_state(tx: &Transaction, group: &[u8]) -> Result<State, ClientError> {
     conversation_of(tx, group)?
@@ -458,7 +475,7 @@ fn conversation_state(tx: &Transaction, group: &[u8]) -> Result<State, ClientErr
 fn open_conversation(tx: &Transaction, group: &[u8]) -> Result<(), ClientError> {
     match conversation_state(tx, group)? {
         State::New | State::Active | State::Excluded => Ok(()),
-        State::Removed | State::Stale => Err(ClientError::UnknownConversation),
+        State::Removed | State::Left | State::Stale => Err(ClientError::UnknownConversation),
     }
 }
 
@@ -540,13 +557,15 @@ fn next_unsent(tx: &Transaction, group: &[u8]) -> Result<Option<Unsent>, ClientE
 }
 
 fn set_state(tx: &Transaction, group: &[u8], state: State) -> rusqlite::Result<()> {
-    let (stored, excluded) = match state {
-        State::Excluded => (State::Active, true),
-        other => (other, false),
+    let (stored, excluded, left) = match state {
+        State::Excluded => (State::Active, true, false),
+        State::Left => (State::Removed, false, true),
+        other => (other, false, false),
     };
     tx.execute(
-        "UPDATE conversations SET state = ?2, excluded = ?3 WHERE group_id = ?1",
-        params![group, stored.as_str(), excluded],
+        "UPDATE conversations SET state = ?2, excluded = ?3, left_by_self = ?4
+         WHERE group_id = ?1",
+        params![group, stored.as_str(), excluded, left],
     )
     .map(drop)
 }
@@ -575,6 +594,44 @@ fn queue_correction(tx: &Transaction, group: &[u8]) -> Result<(), ClientError> {
         enqueue(tx, group, "correct", &[])?;
     }
     Ok(())
+}
+
+/// More than two members, this account included: what may take a name or
+/// be left (0078).
+fn is_group(tx: &Transaction, group: &[u8]) -> rusqlite::Result<bool> {
+    Ok(members(tx, group)?.len() > 2)
+}
+
+/// Queues the group's name and timer for whoever just joined (0078); a
+/// member who knew them folds it without a card. Nothing when neither is
+/// set.
+fn queue_settings(tx: &Transaction, group: &[u8]) -> Result<(), ClientError> {
+    let (name, timer): (Option<String>, Option<u32>) = tx.query_row(
+        "SELECT name, timer FROM conversations WHERE group_id = ?1",
+        [group],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )?;
+    if name.is_none() && timer.is_none() {
+        return Ok(());
+    }
+    let envelope = Envelope {
+        id: random_id(),
+        ts: now() as u64,
+        body: Body::Settings { name, timer },
+    };
+    enqueue(tx, group, "message", &envelope.encode()?)
+}
+
+/// Whether anything waits to be sealed: a correction or a snapshot a fetch
+/// queued.
+fn unsent_queued(tx: &Transaction, group: &[u8]) -> rusqlite::Result<bool> {
+    tx.query_row(
+        "SELECT EXISTS (SELECT 1 FROM outbox
+                        WHERE group_id = ?1 AND seq IS NULL AND ciphertext IS NULL
+                          AND kind != 'join' AND refused = 0)",
+        [group],
+        |r| r.get(0),
+    )
 }
 
 fn correction_queued(tx: &Transaction, group: &[u8]) -> rusqlite::Result<bool> {
@@ -992,6 +1049,72 @@ impl<T: Transport> Client<T> {
         Ok(envelope.id)
     }
 
+    /// Names a group, or clears its name with `None` or a blank one
+    /// (0078). The name is sent to every member in an envelope, never to
+    /// the server. Returns the envelope's id.
+    pub fn rename(
+        &mut self,
+        conversation: &str,
+        name: Option<String>,
+    ) -> Result<String, ClientError> {
+        let name = match name {
+            Some(name) => timeline::group_name(&name).ok_or(ClientError::NameInvalid)?,
+            None => None,
+        };
+        let group = group_id(conversation).ok_or(ClientError::UnknownConversation)?;
+        self.store.try_write(|tx| {
+            open_conversation(tx, &group)?;
+            if !is_group(tx, &group)? {
+                return Err(ClientError::NotAGroup);
+            }
+            Ok(())
+        })?;
+        self.send(conversation, Body::Name { name })
+    }
+
+    /// Leaves a group (0078), keeping what was read here, as a removal
+    /// does. What waits is sent first; then the server stops serving this
+    /// account, and only then does the leave envelope tell the others, so
+    /// the check it starts already finds this account gone. Leaving again
+    /// is done already.
+    pub fn leave(&mut self, conversation: &str) -> Result<(), ClientError> {
+        let group = group_id(conversation).ok_or(ClientError::UnknownConversation)?;
+        let left = self.store.try_write(|tx| {
+            if conversation_state(tx, &group)? == State::Left {
+                return Ok(true);
+            }
+            open_conversation(tx, &group)?;
+            if !is_group(tx, &group)? {
+                return Err(ClientError::NotAGroup);
+            }
+            Ok(false)
+        })?;
+        if left {
+            return Ok(());
+        }
+        let envelope = Envelope {
+            id: random_id(),
+            ts: now() as u64,
+            body: Body::Leave {},
+        };
+        let bytes = envelope.encode()?;
+        self.exchange(&group)?;
+        authed(&self.transport, &self.token, &self.client)?.leave_conversation(conversation)?;
+        self.store
+            .try_write(|tx| enqueue(tx, &group, "message", &bytes))?;
+        // Best effort: a member that removed this account first has done
+        // what the envelope asks, and the server has the leave either way.
+        let _ = self.exchange(&group);
+        self.store.try_write(|tx| {
+            tx.execute(
+                "DELETE FROM outbox WHERE group_id = ?1 AND seq IS NULL",
+                [&group],
+            )?;
+            set_state(tx, &group, State::Left)?;
+            Ok::<_, ClientError>(())
+        })
+    }
+
     /// A typing frame for the socket, sealed on the current epoch. None
     /// when typing is turned off, or when an `active` one was made here
     /// less than 3 s ago.
@@ -1326,8 +1449,10 @@ impl<T: Transport> Client<T> {
                         self.sync_one(&group)
                     }
                     Some((State::Stale, _)) => self.sync_one(&group),
+                    // Only a member is notified, so this account may have
+                    // been added again (0078).
+                    Some((State::Removed | State::Left, _)) | None => self.join(&group),
                     Some(_) => Ok(()),
-                    None => self.join(&group),
                 })?;
                 self.refresh_profiles()?;
             }
@@ -1467,9 +1592,10 @@ impl<T: Transport> Client<T> {
                 return Ok(());
             }
             let progressed = self.fetch(group)?;
-            // A fetch can queue a correction, which a Done drain has not seen.
-            let queued = drained == Drain::Done
-                && self.store.try_write(|tx| correction_queued(tx, group))?;
+            // A fetch can queue a correction or a snapshot, which a Done
+            // drain has not seen.
+            let queued =
+                drained == Drain::Done && self.store.try_write(|tx| unsent_queued(tx, group))?;
             if !progressed || (drained == Drain::Done && !queued) {
                 return Ok(());
             }
@@ -1781,16 +1907,32 @@ impl<T: Transport> Client<T> {
 
     /// A conversation this device is not in yet: join it from the Welcome
     /// that added this account, or else from the GroupInfo (0021), and read
-    /// what came after it.
+    /// what came after it. One this account was removed from or left is
+    /// joined again only from a Welcome newer than what it read there, and
+    /// keeps its history (0078).
     fn join(&mut self, group: &[u8]) -> Result<(), ClientError> {
         let conversation = conversation_id(group);
+        let before = self.store.try_write(|tx| conversation_of(tx, group))?;
+        // Out of it, only a Welcome newer than what it read brings this
+        // account back, to this device or by its GroupInfo.
+        let mut external = before.is_none();
         match authed(&self.transport, &self.token, &self.client)?.get_welcome(&conversation) {
             Ok((seq, welcome)) => {
+                external |= before.is_some_and(|(_, cursor)| seq > cursor);
                 let welcomed = self.store.try_write(|tx| {
-                    if conversation_of(tx, group)?.is_some() {
-                        return Ok(Welcomed::Already);
-                    }
+                    let again = match conversation_of(tx, group)? {
+                        None => false,
+                        Some((State::Removed | State::Left, cursor)) if seq > cursor => true,
+                        Some(_) => return Ok(Welcomed::Already),
+                    };
                     let provider = Provider::new(tx);
+                    if again {
+                        match Group::load(&provider, group) {
+                            Ok(old) => old.delete(&provider)?,
+                            Err(GroupError::Missing(_)) => {}
+                            Err(error) => return Err(error.into()),
+                        }
+                    }
                     let mls = match Group::join(&provider, &welcome) {
                         Ok(mls) => mls,
                         Err(GroupError::Storage(error)) => {
@@ -1802,11 +1944,20 @@ impl<T: Transport> Client<T> {
                     if mls.id() != group {
                         return Err(ClientError::Protocol("a Welcome for another group"));
                     }
-                    tx.execute(
-                        "INSERT INTO conversations (group_id, state, cursor, created_at)
-                         VALUES (?1, 'active', ?2, ?3)",
-                        params![group, seq as i64, now()],
-                    )?;
+                    if again {
+                        tx.execute(
+                            "UPDATE conversations SET cursor = ?2, devices_checked_at = NULL
+                             WHERE group_id = ?1",
+                            params![group, seq as i64],
+                        )?;
+                        set_state(tx, group, State::Active)?;
+                    } else {
+                        tx.execute(
+                            "INSERT INTO conversations (group_id, state, cursor, created_at)
+                             VALUES (?1, 'active', ?2, ?3)",
+                            params![group, seq as i64, now()],
+                        )?;
+                    }
                     refresh_members(tx, group, &mls)?;
                     Ok::<_, ClientError>(Welcomed::Joined)
                 })?;
@@ -1825,6 +1976,9 @@ impl<T: Transport> Client<T> {
             // before this device was.
             Err(ApiError::Refused { status: 404, .. }) => {}
             Err(error) => return Err(error.into()),
+        }
+        if !external {
+            return Ok(());
         }
         if self.join_external(group)? {
             self.sync_one(group)?;
@@ -1996,6 +2150,9 @@ fn receive(
                 Vec::new(),
             )?;
             events.extend(timeline(card.map(|seq| vec![seq])));
+            if !added.is_empty() {
+                queue_settings(tx, group)?;
+            }
             if !added.is_empty() || !removed.is_empty() {
                 events.push(Event::Membership {
                     conversation: conversation.clone(),
@@ -2090,6 +2247,16 @@ fn receive(
                         added: accounts(added),
                         removed: accounts(removed),
                     });
+                }
+                // One member tells a device that joined by itself the
+                // settings: the first of the devices that were here.
+                let first = mls
+                    .devices()?
+                    .into_iter()
+                    .filter(|d| !joined.contains(d))
+                    .min_by(|a, b| (&a.account, &a.device).cmp(&(&b.account, &b.device)));
+                if !joined.is_empty() && first.as_ref() == Some(&me) {
+                    queue_settings(tx, group)?;
                 }
                 if !joined.is_empty() {
                     events.push(Event::Devices {

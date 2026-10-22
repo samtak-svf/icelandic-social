@@ -87,6 +87,13 @@ pub enum CoreError {
     /// The link request was approved already, by this phone or another.
     #[error("the link request is already approved")]
     LinkAlreadyApproved,
+    /// A group name is 1 to 64 characters with no control characters
+    /// (0078); the app checks the same before it asks.
+    #[error("not a group name")]
+    NameInvalid,
+    /// Only a group is named or left; a conversation of two is not (0078).
+    #[error("not a group")]
+    NotAGroup,
 }
 
 /// Why a message cannot be forwarded (0041).
@@ -242,6 +249,17 @@ impl From<envelope::Body> for Body {
                 lat_e6,
                 lon_e6,
                 accuracy,
+            },
+            // Group settings and leaving reach the apps folded, through
+            // `Conversation.name` and the cards (0078), never as a body.
+            B::Name { .. } => Self::Unknown {
+                kind: "name".into(),
+            },
+            B::Settings { .. } => Self::Unknown {
+                kind: "settings".into(),
+            },
+            B::Leave {} => Self::Unknown {
+                kind: "leave".into(),
             },
             B::Unknown { kind } => Self::Unknown { kind },
         }
@@ -445,6 +463,8 @@ impl CoreError {
             Self::LinkKeyMismatch => "link/key-mismatch".into(),
             Self::LinkExpired => "link/expired".into(),
             Self::LinkAlreadyApproved => "link/already-approved".into(),
+            Self::NameInvalid => "group/name-invalid".into(),
+            Self::NotAGroup => "group/not-a-group".into(),
         })
     }
 }
@@ -591,7 +611,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().to_string_lossy().into_owned();
         let store = CoreStore::open(path.clone(), vec![1; 32]).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 15);
+        assert_eq!(store.schema_version().unwrap(), 16);
         drop(store);
         assert!(matches!(
             CoreStore::open(path.clone(), vec![2; 32]),

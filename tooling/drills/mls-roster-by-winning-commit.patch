@@ -2,11 +2,11 @@ diff --git a/backend/src/modules/messaging/do/conversation.ts b/backend/src/modu
 index 7a10b88..719ca88 100644
 --- a/backend/src/modules/messaging/do/conversation.ts
 +++ b/backend/src/modules/messaging/do/conversation.ts
-@@ -273,7 +273,6 @@ export class Conversation extends DurableObject<Env> {
+@@ -247,7 +247,6 @@
        );
      }
      for (const account of before.filter((a) => !after.has(a))) {
 -      this.sql.exec("DELETE FROM roster WHERE account = ?", account);
+       this.sql.exec("DELETE FROM left_accounts WHERE account = ?", account);
        this.sql.exec(
          `INSERT INTO removed (account, seq) VALUES (?, ?)
-          ON CONFLICT (account) DO UPDATE SET seq = excluded.seq`,

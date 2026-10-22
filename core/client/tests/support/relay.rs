@@ -63,6 +63,9 @@ struct Conversation {
     group_info: Option<(u64, String)>,
     /// Accounts deleted while in the roster: no claim names them again.
     departed: BTreeSet<String>,
+    /// Accounts that left (0078) and whose leaves no commit has removed
+    /// yet: still in the roster, never listed, and no claim keeps them.
+    left: BTreeSet<String>,
 }
 
 #[derive(Default)]
@@ -936,6 +939,7 @@ impl State {
                         expired_to: 0,
                         group_info: None,
                         departed: BTreeSet::new(),
+                        left: BTreeSet::new(),
                     },
                 );
                 answer(200, json!({ "conversationId": id }))
@@ -982,6 +986,23 @@ impl State {
                     json!({ "messages": messages, "more": rows.len() > self.page }),
                 )
             }
+            (Method::Post, ["conversations", id, "leave"]) => {
+                let Some(conversation) = self.conversations.get_mut(*id) else {
+                    return refuse(404, "not_found");
+                };
+                if !conversation.roster.contains(account) {
+                    return refuse(403, "not_a_member");
+                }
+                if conversation.left.insert(account.to_owned()) {
+                    let everyone = conversation.roster.clone();
+                    let seq = conversation
+                        .messages
+                        .last()
+                        .map_or(conversation.expired_to, |m| m.seq);
+                    self.notify(&everyone, id, seq);
+                }
+                answer(204, Value::Null)
+            }
             (Method::Get, ["conversations", id, "welcome"]) => {
                 let Some(conversation) = self.conversations.get(*id) else {
                     return refuse(404, "not_found");
@@ -1011,6 +1032,7 @@ impl State {
                 let accounts: Vec<Value> = conversation
                     .roster
                     .iter()
+                    .filter(|a| !conversation.left.contains(*a))
                     .map(|a| {
                         let ids: Vec<&String> = self
                             .devices
@@ -1403,7 +1425,10 @@ impl State {
                 return refuse(400, "invalid_request");
             }
             after = claim.roster.into_iter().collect();
-            if after.iter().any(|a| conversation.departed.contains(a)) {
+            if after
+                .iter()
+                .any(|a| conversation.departed.contains(a) || conversation.left.contains(a))
+            {
                 return refuse(409, "claim_names_departed");
             }
             if claim.welcome.iter().any(|a| !after.contains(a)) {
@@ -1437,6 +1462,7 @@ impl State {
             conversation.last_epoch = Some(epoch);
             for gone in before.difference(&after) {
                 conversation.removed.insert(gone.clone(), seq);
+                conversation.left.remove(gone);
             }
             for present in &after {
                 conversation.removed.remove(present);

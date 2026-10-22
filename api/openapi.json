@@ -4430,7 +4430,7 @@
             }
           },
           "409": {
-            "description": "epoch_conflict: this epoch already has a commit; re-propose on the new one. claim_names_departed: the claim names a deleted account; check the conversation's devices (decision 0028)",
+            "description": "epoch_conflict: this epoch already has a commit; re-propose on the new one. claim_names_departed: the claim names a deleted account (decision 0028) or one that left (0078); check the conversation's devices",
             "content": {
               "application/json": {
                 "schema": {
@@ -4846,7 +4846,7 @@
         ],
         "responses": {
           "200": {
-            "description": "A deleted account's entry has no devices",
+            "description": "A deleted account's entry has no devices; an account that left is not listed (decision 0078)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4854,6 +4854,90 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_a_member: this account is not in the conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/conversations/{conversationId}/leave": {
+      "post": {
+        "operationId": "leaveConversation",
+        "tags": [
+          "conversations"
+        ],
+        "summary": "Leave a conversation: the members' devices remove this account's leaves (decision 0078)",
+        "description": "The account stays in the roster, and reads the history, until a member's commit removes its leaves. Until then the devices listing leaves it out and no claim may keep it. Leaving again changes nothing.",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "q1w2e3r4t5y6u7i8o9p0aA",
+              "description": "The MLS group id, unpadded base64url"
+            },
+            "required": true,
+            "description": "The MLS group id, unpadded base64url",
+            "name": "conversationId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The account has left"
           },
           "400": {
             "description": "The request does not match the schema",

@@ -511,6 +511,63 @@ const MIGRATIONS: &[(u32, &str)] = &[
              SELECT group_id, seq, account, emoji FROM reactions_0059;
          DROP TABLE reactions_0059;",
     ),
+    (
+        16,
+        // Decision 0078: a group's name, and leaving a group.
+        "-- This account left: kept beside `state` as `excluded` is, so the
+         -- rows that cascade from `conversations` stay where they are;
+         -- `left_by_self` is only ever set on `removed`.
+         ALTER TABLE conversations ADD COLUMN left_by_self INTEGER NOT NULL DEFAULT 0
+             CHECK (left_by_self IN (0, 1));
+         -- The group's name as its members last set it, trimmed; none when
+         -- the title is its members' names.
+         ALTER TABLE conversations ADD COLUMN name TEXT
+             CHECK (name IS NULL OR length(name) BETWEEN 1 AND 64);
+
+         -- The timeline again, with `name`: a card like `timer`, whose
+         -- `detail` holds the name set or none. As in 15, `reactions` are
+         -- kept aside from the cascade.
+         CREATE TEMP TABLE reactions_0078 AS SELECT * FROM reactions;
+         CREATE TABLE timeline_0078 (
+             group_id       BLOB NOT NULL
+                            REFERENCES conversations (group_id) ON DELETE CASCADE,
+             seq            INTEGER NOT NULL,
+             kind           TEXT NOT NULL
+                            CHECK (kind IN ('text', 'media', 'members', 'timer', 'post',
+                                            'location', 'name')),
+             sender_account TEXT NOT NULL,
+             sender_device  TEXT NOT NULL,
+             envelope_id    TEXT,
+             ts             INTEGER NOT NULL,
+             stored_at      INTEGER NOT NULL,
+             text           TEXT,
+             reply_to       TEXT,
+             detail         TEXT,
+             edited         INTEGER NOT NULL DEFAULT 0 CHECK (edited IN (0, 1)),
+             deleted        INTEGER NOT NULL DEFAULT 0 CHECK (deleted IN (0, 1)),
+             expires_at     INTEGER,
+             received_at    INTEGER,
+             PRIMARY KEY (group_id, seq),
+             CHECK ((envelope_id IS NULL) = (kind IN ('members', 'timer', 'name'))),
+             CHECK (deleted = 0 OR (text IS NULL AND reply_to IS NULL AND detail IS NULL)),
+             CHECK (kind NOT IN ('post', 'location') OR text IS NULL)
+         ) STRICT, WITHOUT ROWID;
+         INSERT INTO timeline_0078 (group_id, seq, kind, sender_account, sender_device,
+                                    envelope_id, ts, stored_at, text, reply_to, detail,
+                                    edited, deleted, expires_at, received_at)
+             SELECT group_id, seq, kind, sender_account, sender_device,
+                    envelope_id, ts, stored_at, text, reply_to, detail,
+                    edited, deleted, expires_at, received_at
+             FROM timeline;
+         DROP TABLE timeline;
+         ALTER TABLE timeline_0078 RENAME TO timeline;
+         CREATE INDEX timeline_by_envelope ON timeline (group_id, envelope_id);
+         CREATE INDEX timeline_by_expiry ON timeline (expires_at)
+             WHERE expires_at IS NOT NULL;
+         INSERT INTO reactions (group_id, seq, account, emoji)
+             SELECT group_id, seq, account, emoji FROM reactions_0078;
+         DROP TABLE reactions_0078;",
+    ),
 ];
 
 /// The migrations every store has run before `REPAIRS` apply: from 15 on,
@@ -1152,6 +1209,16 @@ mod tests {
                  VALUES (x'02', 'gone', 0, 0)"
         ));
         assert!(refused(&mut store, "UPDATE conversations SET excluded = 2"));
+        assert!(refused(
+            &mut store,
+            "UPDATE conversations SET left_by_self = 2"
+        ));
+        // A name is one to 64 characters.
+        assert!(refused(&mut store, "UPDATE conversations SET name = ''"));
+        assert!(refused(
+            &mut store,
+            &format!("UPDATE conversations SET name = '{}'", "x".repeat(65))
+        ));
         // History and the outbox belong to a conversation the store knows.
         assert!(refused(
             &mut store,
