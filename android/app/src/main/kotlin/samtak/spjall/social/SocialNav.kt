@@ -12,6 +12,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
@@ -39,19 +40,25 @@ fun NavGraphBuilder.socialScreens(
     nav: NavController,
     read: () -> Unit,
 ) {
-    composable(SocialRoutes.COMMUNITIES) { Communities(social, account, nav) }
-    composable(SocialRoutes.NOTIFICATIONS) { Notifications(social, nav, read) }
-    composable(SocialRoutes.NEW_COMMUNITY) { NewCommunity(social, nav) }
-    composable("${SocialRoutes.COMMUNITY}/{id}") { entry ->
+    // Any of these screens can draw a post card, so each is given where the images come from.
+    fun screen(
+        route: String,
+        content: @Composable (NavBackStackEntry) -> Unit,
+    ) = composable(route) { entry -> WithPostImages(social) { content(entry) } }
+
+    screen(SocialRoutes.COMMUNITIES) { Communities(social, account, nav) }
+    screen(SocialRoutes.NOTIFICATIONS) { Notifications(social, nav, read) }
+    screen(SocialRoutes.NEW_COMMUNITY) { NewCommunity(social, nav) }
+    screen("${SocialRoutes.COMMUNITY}/{id}") { entry ->
         entry.arguments?.getString("id")?.let { CommunityEntry(it, social, files, nav) }
     }
-    composable("${SocialRoutes.POST}/{id}") { entry ->
+    screen("${SocialRoutes.POST}/{id}") { entry ->
         entry.arguments?.getString("id")?.let { PostEntry(it, social, nav) }
     }
-    composable("${SocialRoutes.REPORTS}/{id}") { entry ->
+    screen("${SocialRoutes.REPORTS}/{id}") { entry ->
         entry.arguments?.getString("id")?.let { Reports(it, social, nav) }
     }
-    composable("${SocialRoutes.REQUESTS}/{id}") { entry ->
+    screen("${SocialRoutes.REQUESTS}/{id}") { entry ->
         entry.arguments?.getString("id")?.let { JoinRequests(it, social, nav) }
     }
 }
@@ -154,76 +161,74 @@ private fun CommunityEntry(
     LaunchedEffect(model) { model.deleted.collect { nav.popBackStack(SocialRoutes.COMMUNITIES, inclusive = false) } }
     // Back from a post: its comment count and reactions may have changed there.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { model.load() }
-    WithPostImages(social) {
-        CommunityScreen(
-            state,
-            object : CommunityActions {
-                override fun back() = back()
+    CommunityScreen(
+        state,
+        object : CommunityActions {
+            override fun back() = back()
 
-                override fun join() = model.join()
+            override fun join() = model.join()
 
-                override fun leave() = model.leave()
+            override fun leave() = model.leave()
 
-                override fun open(postId: String) = nav.navigate(SocialRoutes.post(postId))
+            override fun open(postId: String) = nav.navigate(SocialRoutes.post(postId))
 
-                override fun reports() = nav.navigate(SocialRoutes.reports(id))
+            override fun reports() = nav.navigate(SocialRoutes.reports(id))
 
-                override fun requests() = nav.navigate(SocialRoutes.requests(id))
+            override fun requests() = nav.navigate(SocialRoutes.requests(id))
 
-                override fun onSearchQuery(query: String) = model.onSearchQuery(query)
+            override fun onSearchQuery(query: String) = model.onSearchQuery(query)
 
-                override fun searchPosts() = model.searchPosts()
+            override fun searchPosts() = model.searchPosts()
 
-                override fun loadMembers() = model.loadMembers()
+            override fun loadMembers() = model.loadMembers()
 
-                override fun setCommunityRole(
-                    accountId: String,
-                    role: CommunityRole,
-                ) = model.setCommunityRole(accountId, role)
+            override fun setCommunityRole(
+                accountId: String,
+                role: CommunityRole,
+            ) = model.setCommunityRole(accountId, role)
 
-                override fun updateCommunity(
-                    name: String,
-                    description: String,
-                    audience: CommunityAudience?,
-                ) = model.updateCommunity(name, description, audience)
+            override fun updateCommunity(
+                name: String,
+                description: String,
+                audience: CommunityAudience?,
+            ) = model.updateCommunity(name, description, audience)
 
-                override fun loadModerationLog() = model.loadModerationLog()
+            override fun loadModerationLog() = model.loadModerationLog()
 
-                override fun deleteCommunity() = model.deleteCommunity()
+            override fun deleteCommunity() = model.deleteCommunity()
 
-                override fun draft(text: String) = model.draft(text)
+            override fun draft(text: String) = model.draft(text)
 
-                override fun publish() = model.publish()
+            override fun publish() = model.publish()
 
-                override fun withdraw() = model.withdraw()
+            override fun withdraw() = model.withdraw()
 
-                override fun addImage() {
-                    if (!model.roomForImage()) return
-                    val request = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    if (model.room() > 1) images.launch(request) else image.launch(request)
-                }
+            override fun addImage() {
+                if (!model.roomForImage()) return
+                val request = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                if (model.room() > 1) images.launch(request) else image.launch(request)
+            }
 
-                override fun removeImage(path: String) = model.unpick(path)
+            override fun removeImage(path: String) = model.unpick(path)
 
-                override fun delete(postId: String) = model.delete(postId)
+            override fun delete(postId: String) = model.delete(postId)
 
-                override fun react(
-                    postId: String,
-                    kind: ReactionKind,
-                ) = model.react(postId, kind)
+            override fun react(
+                postId: String,
+                kind: ReactionKind,
+            ) = model.react(postId, kind)
 
-                override fun report(
-                    target: ReportTarget,
-                    reason: ReportReason,
-                    note: String,
-                ) = model.report(target, reason, note)
+            override fun report(
+                target: ReportTarget,
+                reason: ReportReason,
+                note: String,
+            ) = model.report(target, reason, note)
 
-                override fun more() = model.more()
+            override fun more() = model.more()
 
-                override fun retry() = model.retry()
-            },
-        )
-    }
+            override fun retry() = model.retry()
+        },
+    )
 }
 
 /** Provides where a post's images come from to [content]; one the core cannot fetch now shows as a plain box. */
@@ -267,36 +272,34 @@ private fun PostEntry(
         }
     }
     LaunchedEffect(model) { model.deleted.collect { community(it, true) } }
-    WithPostImages(social) {
-        PostScreen(
-            state,
-            object : PostActions {
-                override fun community(communityId: String) = community(communityId, false)
+    PostScreen(
+        state,
+        object : PostActions {
+            override fun community(communityId: String) = community(communityId, false)
 
-                override fun deletePost() = model.deletePost()
+            override fun deletePost() = model.deletePost()
 
-                override fun deleteComment(commentId: String) = model.deleteComment(commentId)
+            override fun deleteComment(commentId: String) = model.deleteComment(commentId)
 
-                override fun draft(text: String) = model.draft(text)
+            override fun draft(text: String) = model.draft(text)
 
-                override fun send() = model.send()
+            override fun send() = model.send()
 
-                override fun onReplyTo(comment: samtak.spjall.core.Comment?) = model.onReplyTo(comment)
+            override fun onReplyTo(comment: samtak.spjall.core.Comment?) = model.onReplyTo(comment)
 
-                override fun react(kind: ReactionKind) = model.react(kind)
+            override fun react(kind: ReactionKind) = model.react(kind)
 
-                override fun report(
-                    target: ReportTarget,
-                    reason: ReportReason,
-                    note: String,
-                ) = model.report(target, reason, note)
+            override fun report(
+                target: ReportTarget,
+                reason: ReportReason,
+                note: String,
+            ) = model.report(target, reason, note)
 
-                override fun more() = model.more()
+            override fun more() = model.more()
 
-                override fun retry() = model.retry()
-            },
-        )
-    }
+            override fun retry() = model.retry()
+        },
+    )
 }
 
 @Composable

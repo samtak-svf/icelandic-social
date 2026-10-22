@@ -219,6 +219,8 @@ struct HomeView: View {
                     SocialDestination(route: route, social: social)
                 }
         }
+        // Any screen in the stack can draw a post card, the hub's feed included.
+        .environment(\.postImages, PostImages(social: social))
     }
 
     private var atRoot: Bool {
