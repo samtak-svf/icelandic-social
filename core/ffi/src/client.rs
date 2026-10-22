@@ -15,6 +15,7 @@ pub enum HttpMethod {
     Post,
     Delete,
     Put,
+    Patch,
 }
 
 /// A request to the API. `path` starts at `/v1/` and holds any query. The
@@ -82,6 +83,7 @@ fn http_request(request: api::Request) -> HttpRequest {
             api::Method::Post => HttpMethod::Post,
             api::Method::Delete => HttpMethod::Delete,
             api::Method::Put => HttpMethod::Put,
+            api::Method::Patch => HttpMethod::Patch,
         },
         path: request.path,
         body: request.body,

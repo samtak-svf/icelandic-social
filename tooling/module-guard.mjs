@@ -115,6 +115,11 @@ export const READS = [
     why: "a standing says whether the viewer is a platform moderator, who reads and moderates every community (decision 0066)",
   },
   {
+    module: "communities",
+    table: "reports",
+    why: "a standing tells a moderator how many open reports wait in the community (decision 0079)",
+  },
+  {
     module: "notifications",
     table: "accounts",
     why: "a notification is written only for an account that still exists",

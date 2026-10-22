@@ -76,6 +76,16 @@ impl From<api::Role> for CommunityRole {
     }
 }
 
+impl From<CommunityRole> for api::Role {
+    fn from(role: CommunityRole) -> Self {
+        match role {
+            CommunityRole::Owner => Self::Owner,
+            CommunityRole::Moderator => Self::Moderator,
+            CommunityRole::Member => Self::Member,
+        }
+    }
+}
+
 /// A community as this account sees it.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct Community {
@@ -107,6 +117,9 @@ pub struct Community {
     pub join_declined_until: Option<u64>,
     /// Join requests that wait; none unless this account moderates.
     pub pending_join_requests: Option<u64>,
+    /// Open reports in its queue; none unless this account moderates.
+    #[uniffi(default = None)]
+    pub open_reports: Option<u64>,
 }
 
 /// An account asking to join a private community.
@@ -148,12 +161,37 @@ impl From<api::Community> for Community {
             deleted_at: community.deleted_at,
             join_declined_until: community.join_declined_until,
             pending_join_requests: community.pending_join_requests,
+            open_reports: community.open_reports,
         }
     }
 }
 
 fn communities(communities: Vec<api::Community>) -> Vec<Community> {
     communities.into_iter().map(Into::into).collect()
+}
+
+/// An account in a community's member list, with the role it holds there.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct CommunityMember {
+    pub account_id: String,
+    /// None for an account that never gave one.
+    pub name: Option<String>,
+    pub verified: bool,
+    pub role: CommunityRole,
+    /// Unix milliseconds.
+    pub joined_at: u64,
+}
+
+impl From<api::CommunityMember> for CommunityMember {
+    fn from(member: api::CommunityMember) -> Self {
+        Self {
+            account_id: member.account_id,
+            name: member.name,
+            verified: member.verified,
+            role: member.role.into(),
+            joined_at: member.joined_at,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -313,6 +351,9 @@ pub struct Comment {
     /// The post's id, a hyphen, and the comment's own part.
     pub comment_id: String,
     pub post_id: String,
+    /// The comment this one answers, when it is a reply.
+    #[uniffi(default = None)]
+    pub parent_comment_id: Option<String>,
     pub author: Author,
     pub body: String,
     /// Unix milliseconds.
@@ -325,6 +366,7 @@ impl From<api::Comment> for Comment {
         Self {
             comment_id: comment.comment_id,
             post_id: comment.post_id,
+            parent_comment_id: comment.parent_comment_id,
             author: comment.author.into(),
             body: comment.body,
             created_at: comment.created_at,
@@ -648,6 +690,138 @@ impl From<api::ModerationAction> for ModerationAction {
     }
 }
 
+/// What a moderation log entry records; `Unknown` for a value a later
+/// server adds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ModerationLogAction {
+    HidePost,
+    RemovePost,
+    RestorePost,
+    HideComment,
+    RemoveComment,
+    RestoreComment,
+    MuteMember,
+    UnmuteMember,
+    RemoveMember,
+    BanMember,
+    UnbanMember,
+    /// A moderator closed a report about the content.
+    CloseReport,
+    DeleteCommunity,
+    RestoreCommunity,
+    Unknown,
+}
+
+impl From<api::ModerationLogAction> for ModerationLogAction {
+    fn from(action: api::ModerationLogAction) -> Self {
+        use api::ModerationLogAction as A;
+        match action {
+            A::HidePost => Self::HidePost,
+            A::RemovePost => Self::RemovePost,
+            A::RestorePost => Self::RestorePost,
+            A::HideComment => Self::HideComment,
+            A::RemoveComment => Self::RemoveComment,
+            A::RestoreComment => Self::RestoreComment,
+            A::MuteMember => Self::MuteMember,
+            A::UnmuteMember => Self::UnmuteMember,
+            A::RemoveMember => Self::RemoveMember,
+            A::BanMember => Self::BanMember,
+            A::UnbanMember => Self::UnbanMember,
+            A::CloseReport => Self::CloseReport,
+            A::DeleteCommunity => Self::DeleteCommunity,
+            A::RestoreCommunity => Self::RestoreCommunity,
+            A::Unknown => Self::Unknown,
+        }
+    }
+}
+
+/// What a moderation log entry acted on; `Unknown` for a value a later
+/// server adds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum LogTargetKind {
+    Post,
+    Comment,
+    Community,
+    Account,
+    Report,
+    Unknown,
+}
+
+impl From<api::LogTargetKind> for LogTargetKind {
+    fn from(kind: api::LogTargetKind) -> Self {
+        use api::LogTargetKind as K;
+        match kind {
+            K::Post => Self::Post,
+            K::Comment => Self::Comment,
+            K::Community => Self::Community,
+            K::Account => Self::Account,
+            K::Report => Self::Report,
+            K::Unknown => Self::Unknown,
+        }
+    }
+}
+
+/// The post, comment, account, community or report an entry acted on.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct LogTarget {
+    pub kind: LogTargetKind,
+    pub id: String,
+}
+
+impl From<api::LogTarget> for LogTarget {
+    fn from(target: api::LogTarget) -> Self {
+        Self {
+            kind: target.kind.into(),
+            id: target.id,
+        }
+    }
+}
+
+/// One action in a community's moderation log, with the reason its
+/// moderator gave.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ModerationLogEntry {
+    pub entry_id: u64,
+    /// None for an action a platform moderator took on an account.
+    pub community_id: Option<String>,
+    /// Who did it; none once that account is deleted.
+    pub actor: Option<Author>,
+    /// Done as one of the platform's moderators rather than as this
+    /// community's.
+    pub as_platform: bool,
+    pub action: ModerationLogAction,
+    pub target: LogTarget,
+    /// Whose content it is, or the account acted on.
+    pub target_account: Option<Author>,
+    pub reason: String,
+    /// Unix milliseconds.
+    pub created_at: u64,
+}
+
+impl From<api::ModerationLogEntry> for ModerationLogEntry {
+    fn from(entry: api::ModerationLogEntry) -> Self {
+        Self {
+            entry_id: entry.entry_id,
+            community_id: entry.community_id,
+            actor: entry.actor.map(Into::into),
+            as_platform: entry.as_platform,
+            action: entry.action.into(),
+            target: entry.target.into(),
+            target_account: entry.target_account.map(Into::into),
+            reason: entry.reason,
+            created_at: entry.created_at,
+        }
+    }
+}
+
+/// A page of a community's moderation log, newest first.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ModerationLogPage {
+    pub entries: Vec<ModerationLogEntry>,
+    /// The `before` of the next, older page; none on the last.
+    pub next: Option<String>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum CardKind {
     Post,
@@ -903,6 +1077,50 @@ impl CoreClient {
         Ok(self.client()?.community(&community_id)?.into())
     }
 
+    /// Renames a community, changes its description, or makes an open one
+    /// private; only its owner may. `Invalid` for a blank name, and
+    /// `Refused` with 409 `audience_locked` since a private community never
+    /// becomes open (0063).
+    pub fn update_community(
+        &self,
+        community_id: String,
+        name: Option<String>,
+        description: Option<String>,
+        audience: Option<CommunityAudience>,
+    ) -> Result<Community, CoreError> {
+        Ok(self
+            .client()?
+            .update_community(
+                &community_id,
+                name.as_deref(),
+                description.as_deref(),
+                audience.map(Into::into),
+            )?
+            .into())
+    }
+
+    /// The community's members, its owner and moderators first.
+    pub fn community_members(
+        &self,
+        community_id: String,
+    ) -> Result<Vec<CommunityMember>, CoreError> {
+        let members = self.client()?.community_members(&community_id)?;
+        Ok(members.into_iter().map(Into::into).collect())
+    }
+
+    /// Makes a member a moderator, or a moderator a member again; only the
+    /// community's owner may.
+    pub fn set_community_role(
+        &self,
+        community_id: String,
+        account_id: String,
+        role: CommunityRole,
+    ) -> Result<(), CoreError> {
+        Ok(self
+            .client()?
+            .set_community_role(&community_id, &account_id, role.into())?)
+    }
+
     /// Joins an open community at once, or asks a private one's moderators.
     pub fn join_community(&self, community_id: String) -> Result<JoinState, CoreError> {
         Ok(self.client()?.join_community(&community_id)?.into())
@@ -963,17 +1181,34 @@ impl CoreClient {
 /// Posts, comments and reactions.
 #[uniffi::export]
 impl CoreClient {
-    /// A page of a community's posts, newest first; `before` is the `next`
-    /// of the page before. At most 50 a page.
+    /// A page of a community's posts, newest first, those whose body matches
+    /// `query` when there is one; `before` is the `next` of the page before.
+    /// At most 50 a page.
+    #[uniffi::method(default(query = None))]
     pub fn community_posts(
         &self,
         community_id: String,
         before: Option<String>,
         limit: u32,
+        query: Option<String>,
     ) -> Result<PostPage, CoreError> {
-        let page = self
-            .client()?
-            .community_posts(&community_id, before.as_deref(), limit)?;
+        let page = self.client()?.community_posts(
+            &community_id,
+            query.as_deref(),
+            before.as_deref(),
+            limit,
+        )?;
+        Ok(PostPage {
+            posts: page.posts.into_iter().map(Into::into).collect(),
+            next: page.next,
+        })
+    }
+
+    /// A page of the posts of every community this account is a member of,
+    /// newest first; `before` is the `next` of the page before. At most 50 a
+    /// page.
+    pub fn feed(&self, before: Option<String>, limit: u32) -> Result<PostPage, CoreError> {
+        let page = self.client()?.feed(before.as_deref(), limit)?;
         Ok(PostPage {
             posts: page.posts.into_iter().map(Into::into).collect(),
             next: page.next,
@@ -1049,9 +1284,19 @@ impl CoreClient {
         })
     }
 
-    /// Comments on a post. `Invalid` for a blank comment.
-    pub fn create_comment(&self, post_id: String, body: String) -> Result<Comment, CoreError> {
-        Ok(self.client()?.create_comment(&post_id, &body)?.into())
+    /// Comments on a post, a reply when `parent_comment_id` names the
+    /// comment it answers. `Invalid` for a blank comment or a bad id.
+    #[uniffi::method(default(parent_comment_id = None))]
+    pub fn create_comment(
+        &self,
+        post_id: String,
+        body: String,
+        parent_comment_id: Option<String>,
+    ) -> Result<Comment, CoreError> {
+        Ok(self
+            .client()?
+            .create_comment(&post_id, &body, parent_comment_id.as_deref())?
+            .into())
     }
 
     /// Deletes this account's own comment.
@@ -1129,6 +1374,24 @@ impl CoreClient {
     /// Closes a report with what was done about it.
     pub fn close_report(&self, report_id: String, resolution: String) -> Result<(), CoreError> {
         Ok(self.client()?.close_report(&report_id, &resolution)?)
+    }
+
+    /// A page of a community's moderation log, newest first, for its
+    /// moderators; `before` is the `next` of the page before. At most 100 a
+    /// page.
+    pub fn community_moderation_log(
+        &self,
+        community_id: String,
+        before: Option<String>,
+        limit: u32,
+    ) -> Result<ModerationLogPage, CoreError> {
+        let page =
+            self.client()?
+                .community_moderation_log(&community_id, before.as_deref(), limit)?;
+        Ok(ModerationLogPage {
+            entries: page.entries.into_iter().map(Into::into).collect(),
+            next: page.next,
+        })
     }
 
     /// What each reference shows, one card each in their order: at most 50.

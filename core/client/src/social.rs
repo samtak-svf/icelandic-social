@@ -7,9 +7,9 @@
 use std::path::{Path, PathBuf};
 
 use crate::api::{
-    Audience, Card, Comment, CommentPage, Community, CommunityPage, JoinRequest, JoinState,
-    Moderation, ModerationAction, NewReport, NotificationPage, Post, PostPage, ReactionKind, Ref,
-    ReportPage, ReportState, SocialMedia, Transport,
+    Audience, Card, Comment, CommentPage, Community, CommunityMember, CommunityPage, JoinRequest,
+    JoinState, Moderation, ModerationAction, ModerationLogPage, NewReport, NotificationPage, Post,
+    PostPage, ReactionKind, Ref, ReportPage, ReportState, Role, SocialMedia, Transport,
 };
 use crate::{Client, ClientError, MediaError, authed, is_id};
 
@@ -75,6 +75,45 @@ impl<T: Transport> Client<T> {
         Ok(authed(&self.transport, &self.token, &self.client)?.community(community)?)
     }
 
+    /// Renames a community, changes its description, or makes an open one
+    /// private; only its owner may. A blank name is refused before it is
+    /// sent, and a private community never becomes open (0063).
+    pub fn update_community(
+        &self,
+        community: &str,
+        name: Option<&str>,
+        description: Option<&str>,
+        audience: Option<Audience>,
+    ) -> Result<Community, ClientError> {
+        id(community, "community id")?;
+        let name = name.map(str::trim);
+        if name == Some("") {
+            return Err(ClientError::Invalid("a community needs a name"));
+        }
+        let api = authed(&self.transport, &self.token, &self.client)?;
+        Ok(api.update_community(community, name, description.map(str::trim), audience)?)
+    }
+
+    /// The community's members, its owner and moderators first.
+    pub fn community_members(&self, community: &str) -> Result<Vec<CommunityMember>, ClientError> {
+        id(community, "community id")?;
+        Ok(authed(&self.transport, &self.token, &self.client)?.community_members(community)?)
+    }
+
+    /// Makes a member a moderator, or a moderator a member again; only the
+    /// community's owner may.
+    pub fn set_community_role(
+        &self,
+        community: &str,
+        account: &str,
+        role: Role,
+    ) -> Result<(), ClientError> {
+        id(community, "community id")?;
+        id(account, "account id")?;
+        let api = authed(&self.transport, &self.token, &self.client)?;
+        Ok(api.set_community_role(community, account, role)?)
+    }
+
     /// Joins an open community at once, or asks a private one's moderators.
     pub fn join_community(&self, community: &str) -> Result<JoinState, ClientError> {
         id(community, "community id")?;
@@ -132,17 +171,26 @@ impl<T: Transport> Client<T> {
 
 /// Posts, comments and reactions.
 impl<T: Transport> Client<T> {
-    /// A page of a community's posts, newest first; `before` is the `next`
-    /// of the page before. At most 50 a page.
+    /// Posts of every community this account is a member of, newest first;
+    /// `before` is the `next` of the page before. At most 50 a page.
+    pub fn feed(&self, before: Option<&str>, size: u32) -> Result<PostPage, ClientError> {
+        let api = authed(&self.transport, &self.token, &self.client)?;
+        Ok(api.feed(before, size.clamp(1, 50))?)
+    }
+
+    /// A page of a community's posts, newest first, those whose body matches
+    /// `query` when there is one; `before` is the `next` of the page before.
+    /// At most 50 a page.
     pub fn community_posts(
         &self,
         community: &str,
+        query: Option<&str>,
         before: Option<&str>,
         size: u32,
     ) -> Result<PostPage, ClientError> {
         id(community, "community id")?;
         let api = authed(&self.transport, &self.token, &self.client)?;
-        Ok(api.community_posts(community, before, size.clamp(1, 50))?)
+        Ok(api.community_posts(community, search(query), before, size.clamp(1, 50))?)
     }
 
     /// Posts a text, images `upload_social_media` returned, or both.
@@ -243,12 +291,23 @@ impl<T: Transport> Client<T> {
         Ok(api.comments(post, after, size.clamp(1, 100))?)
     }
 
-    pub fn create_comment(&self, post: &str, body: &str) -> Result<Comment, ClientError> {
+    /// Comments on a post, a reply when `parent_comment_id` names the
+    /// comment it answers.
+    pub fn create_comment(
+        &self,
+        post: &str,
+        body: &str,
+        parent_comment_id: Option<&str>,
+    ) -> Result<Comment, ClientError> {
         id(post, "post id")?;
         if body.trim().is_empty() {
             return Err(ClientError::Invalid("an empty comment"));
         }
-        Ok(authed(&self.transport, &self.token, &self.client)?.create_comment(post, body)?)
+        if let Some(parent) = parent_comment_id {
+            id(parent, "comment id")?;
+        }
+        let api = authed(&self.transport, &self.token, &self.client)?;
+        Ok(api.create_comment(post, body, parent_comment_id)?)
     }
 
     pub fn delete_comment(&self, comment: &str) -> Result<(), ClientError> {
@@ -298,6 +357,20 @@ impl<T: Transport> Client<T> {
         }
         let api = authed(&self.transport, &self.token, &self.client)?;
         Ok(api.moderate(community, moderation)?)
+    }
+
+    /// A page of a community's moderation log, newest first, for its
+    /// moderators; `before` is the `next` of the page before. At most 100 a
+    /// page.
+    pub fn community_moderation_log(
+        &self,
+        community: &str,
+        before: Option<&str>,
+        size: u32,
+    ) -> Result<ModerationLogPage, ClientError> {
+        id(community, "community id")?;
+        let api = authed(&self.transport, &self.token, &self.client)?;
+        Ok(api.community_moderation_log(community, before, size.clamp(1, 100))?)
     }
 
     /// Closes a report with what was done about it.
