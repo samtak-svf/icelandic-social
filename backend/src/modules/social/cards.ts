@@ -28,7 +28,9 @@ async function card(env: Env, viewer: string, ref: Ref) {
     return {
       kind: "community" as const,
       ref,
-      community: { communityId: found.communityId, name: found.name },
+      // The version is random and says nothing; fetching the picture still
+      // goes through the community's read rule, so a card grants no access.
+      community: { communityId: found.communityId, name: found.name, photo: found.photo },
       description: found.description,
       audience: found.audience,
       memberCount: found.memberCount,
@@ -41,7 +43,12 @@ async function card(env: Env, viewer: string, ref: Ref) {
     return {
       kind: "post" as const,
       ref,
-      community: { communityId: post.communityId, name: found.access.standing.name },
+      community: {
+        communityId: post.communityId,
+        name: found.access.standing.name,
+        // As above: an opaque version, the image itself stays behind the read rule.
+        photo: found.access.standing.photo,
+      },
       author: post.author,
       excerpt: excerpt(post.body),
       image: post.media[0] ?? null,
@@ -54,7 +61,12 @@ async function card(env: Env, viewer: string, ref: Ref) {
   return {
     kind: "comment" as const,
     ref,
-    community: { communityId: found.post.communityId, name: found.access.standing.name },
+    community: {
+      communityId: found.post.communityId,
+      name: found.access.standing.name,
+      // As above: an opaque version, the image itself stays behind the read rule.
+      photo: found.access.standing.photo,
+    },
     postId: found.post.postId,
     author,
     excerpt: excerpt(found.comment.body),

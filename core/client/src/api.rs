@@ -1025,6 +1025,9 @@ pub struct Ref {
 pub struct CardCommunity {
     pub community_id: String,
     pub name: String,
+    /// The picture's version (0080); none when it has no picture.
+    #[serde(default)]
+    pub photo: Option<String>,
 }
 
 /// What a reference shows, by its kind: `Unavailable` when the caller may

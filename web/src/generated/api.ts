@@ -494,6 +494,8 @@ export type Card = {
   community: {
     communityId: string;
     name: string;
+    /** The community's picture version, as on Community; null when it has none (decision 0080) */
+    photo: string | null;
   };
   author: Author;
   /** The text's first 280 characters, an ellipsis ending one cut short */
@@ -507,6 +509,8 @@ export type Card = {
   community: {
     communityId: string;
     name: string;
+    /** The community's picture version, as on Community; null when it has none (decision 0080) */
+    photo: string | null;
   };
   postId: string;
   author: Author;
@@ -520,6 +524,8 @@ export type Card = {
   community: {
     communityId: string;
     name: string;
+    /** The community's picture version, as on Community; null when it has none (decision 0080) */
+    photo: string | null;
   };
   description: string;
   audience: "open" | "private";

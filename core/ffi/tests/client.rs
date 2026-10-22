@@ -878,7 +878,7 @@ fn the_social_calls_cross_the_exported_api() {
     answer(
         200,
         r#"{"cards":[{"kind":"community","ref":{"kind":"community","id":"cm_1"},
-        "community":{"communityId":"cm_1","name":"Kór"},"description":"","audience":"open",
+        "community":{"communityId":"cm_1","name":"Kór","photo":"ph_k"},"description":"","audience":"open",
         "memberCount":3}]}"#,
     );
     let reference = CardRef {
@@ -891,7 +891,8 @@ fn the_social_calls_cross_the_exported_api() {
             reference,
             community: CardCommunity {
                 community_id: "cm_1".into(),
-                name: "Kór".into()
+                name: "Kór".into(),
+                photo: Some("ph_k".into())
             },
             description: String::new(),
             audience: CommunityAudience::Open,

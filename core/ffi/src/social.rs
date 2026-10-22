@@ -884,6 +884,9 @@ impl From<CardRef> for api::Ref {
 pub struct CardCommunity {
     pub community_id: String,
     pub name: String,
+    /// The picture's version (0080); none when it has no picture.
+    #[uniffi(default = None)]
+    pub photo: Option<String>,
 }
 
 impl From<api::CardCommunity> for CardCommunity {
@@ -891,6 +894,7 @@ impl From<api::CardCommunity> for CardCommunity {
         Self {
             community_id: community.community_id,
             name: community.name,
+            photo: community.photo,
         }
     }
 }

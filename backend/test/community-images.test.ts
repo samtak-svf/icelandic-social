@@ -238,4 +238,23 @@ describe("a community's picture and cover (decision 0080)", () => {
     expect(await env.PROFILES.head(`community/${id}/photo`)).toBeNull();
     expect(await env.PROFILES.head(`community/${id}/cover`)).toBeNull();
   });
+
+  it("is named in the community reference of a card once set", async () => {
+    const owner = await person("Eigandi");
+    const id = await create(owner, "open");
+    const refs = [{ kind: "community", id }];
+    const card = async () =>
+      (
+        (await (
+          await owner.call("POST", "/v1/cards", JSON.stringify({ refs }), {
+            "content-type": "application/json",
+          })
+        ).json()) as { cards: { community: { photo: string | null } }[] }
+      ).cards[0]!.community.photo;
+    expect(await card()).toBeNull();
+    const { version } = (await (await put(owner, id, "avatar", await png(40, 30))).json()) as {
+      version: string;
+    };
+    expect(await card()).toBe(version);
+  });
 });

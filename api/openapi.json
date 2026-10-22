@@ -1703,11 +1703,21 @@
                   },
                   "name": {
                     "type": "string"
+                  },
+                  "photo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                    "example": "c_9f3a1b",
+                    "description": "The community's picture version, as on Community; null when it has none (decision 0080)"
                   }
                 },
                 "required": [
                   "communityId",
-                  "name"
+                  "name",
+                  "photo"
                 ]
               },
               "author": {
@@ -1764,11 +1774,21 @@
                   },
                   "name": {
                     "type": "string"
+                  },
+                  "photo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                    "example": "c_9f3a1b",
+                    "description": "The community's picture version, as on Community; null when it has none (decision 0080)"
                   }
                 },
                 "required": [
                   "communityId",
-                  "name"
+                  "name",
+                  "photo"
                 ]
               },
               "postId": {
@@ -1820,11 +1840,21 @@
                   },
                   "name": {
                     "type": "string"
+                  },
+                  "photo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                    "example": "c_9f3a1b",
+                    "description": "The community's picture version, as on Community; null when it has none (decision 0080)"
                   }
                 },
                 "required": [
                   "communityId",
-                  "name"
+                  "name",
+                  "photo"
                 ]
               },
               "description": {

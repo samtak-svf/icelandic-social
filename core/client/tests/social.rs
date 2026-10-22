@@ -475,7 +475,7 @@ fn reports_moderation_and_cards() {
             id: "p_9".into(),
         },
     ];
-    let named = json!({ "communityId": "cm_1", "name": "Kór Hlíðanna" });
+    let named = json!({ "communityId": "cm_1", "name": "Kór Hlíðanna", "photo": "ph_kor" });
     phone.answer(
         200,
         json!({ "cards": [
@@ -502,6 +502,7 @@ fn reports_moderation_and_cards() {
     let community = CardCommunity {
         community_id: "cm_1".into(),
         name: "Kór Hlíðanna".into(),
+        photo: Some("ph_kor".into()),
     };
     assert!(
         matches!(&cards[0], Card::Post { excerpt, image: Some(image), community: on, .. }

@@ -1,5 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import { ACCOUNT, AUTHED, INVALID, OpaqueId } from "./common.ts";
+import { ACCOUNT, AUTHED, INVALID, OpaqueId, PhotoVersion } from "./common.ts";
 import { Author, Media } from "./social.ts";
 
 // Typed references to a community's content and the cards they show when
@@ -20,7 +20,14 @@ const Ref = z
   .object({ kind: z.enum(REF_KINDS), id: OpaqueId })
   .openapi("Ref", { description: "A stable reference to a post, a comment or a community" });
 
-const CardCommunity = z.object({ communityId: OpaqueId, name: z.string() });
+const CardCommunity = z.object({
+  communityId: OpaqueId,
+  name: z.string(),
+  photo: PhotoVersion.openapi({
+    description:
+      "The community's picture version, as on Community; null when it has none (decision 0080)",
+  }),
+});
 const Excerpt = z.string().openapi({
   description: `The text's first ${EXCERPT_LENGTH} characters, an ellipsis ending one cut short`,
 });
