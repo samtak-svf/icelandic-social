@@ -158,7 +158,7 @@ final class CoreClientTests: XCTestCase {
 
         relay.setFloor("0.3.0")
         XCTAssertThrowsError(try a.sync()) { error in
-            guard case CoreError.ClientTooOld(let min) = error else { return XCTFail("\(error)") }
+            guard case CoreError.ClientTooOld(let min, _) = error else { return XCTFail("\(error)") }
             XCTAssertEqual(min, "0.3.0")
         }
     }
