@@ -104,7 +104,8 @@ struct CommunitiesView: View {
             PostCard(
                 post: post, linked: true, writes: model.writes(post),
                 community: model.community(post.communityId)?.name,
-                onReact: { kind in Task { await model.react(post.postId, kind) } })
+                onReact: { kind in Task { await model.react(post.postId, kind) } }
+            )
             .padding(.horizontal, 16)
             .padding(.vertical, 6)
         }
