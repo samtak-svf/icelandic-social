@@ -1,6 +1,6 @@
 # 0071. Comments take one level of replies and no reactions
 
-- Status: accepted; designed, not yet implemented (#80)
+- Status: accepted; implemented (#80)
 - Date: 2026-10-20
 - Decided by: Guðröður Atli Jónsson
 - Builds on: [0063](0063-communities-audiences-and-moderation.md) (communities, comments and

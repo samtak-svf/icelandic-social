@@ -396,6 +396,12 @@
     <string name="shared_media_empty">Engar myndir eða skrár hafa verið sendar í þessu samtali.</string>
     <!-- Navigation: the communities a person is in and the way to find more (decision 0063). -->
     <string name="tab_communities">Samfélög</string>
+    <!-- Tab of the community hub: the chronological feed of the posts in the person's communities (decision 0079). -->
+    <string name="communities_tab_feed">Nýjast</string>
+    <!-- Tab of the community hub: the communities the person is a member of. -->
+    <string name="communities_tab_mine">Mín samfélög</string>
+    <!-- Tab of the community hub: the search and the list of communities to join. -->
+    <string name="communities_tab_discover">Finna</string>
     <!-- Navigation: what was addressed to this account in communities (decision 0067). -->
     <string name="tab_notifications">Tilkynningar</string>
     <!-- Badge text on the notifications tab: how many are unread. -->
@@ -423,6 +429,8 @@
     <string name="communities_find">Finna samfélag</string>
     <!-- The community search found nothing. -->
     <string name="communities_none_found">Ekkert samfélag fannst.</string>
+    <!-- The hub's feed when the person's communities have no posts yet (decision 0079). -->
+    <string name="communities_feed_empty">Engir póstar úr samfélögunum þínum enn.</string>
     <!-- Heading and button: create a new community. -->
     <string name="community_create">Stofna samfélag</string>
     <!-- Label of a community's name field. -->
@@ -442,6 +450,34 @@
         <item quantity="one">%1$d meðlimur</item>
         <item quantity="other">%1$d meðlimir</item>
     </plurals>
+    <!-- Heading over a community's member list. -->
+    <string name="community_members_title">Meðlimir</string>
+    <!-- A member's role: the one owner, who names moderators and may delete the community (decision 0063). -->
+    <string name="community_role_owner">Eigandi</string>
+    <!-- A member's role: approves join requests and moderates posts and comments (decision 0063). -->
+    <string name="community_role_moderator">Stjórnandi</string>
+    <!-- A member's role: reads, posts, comments and reacts (decision 0063). -->
+    <string name="community_role_member">Meðlimur</string>
+    <!-- Owner action on a member: make them a moderator. -->
+    <string name="community_make_moderator">Gera að stjórnanda</string>
+    <!-- Owner action on a moderator: take the role away. -->
+    <string name="community_remove_moderator">Taka úr stjórnendum</string>
+    <!-- Title of the screen with a community's full description, its hosting notice and its members (decision 0079). -->
+    <string name="community_info">Um samfélagið</string>
+    <!-- Link that opens the full description from the feed's clamped community description (decision 0079). -->
+    <string name="community_read_more">Lesa meira</string>
+    <!-- Says a community's content is hosted on a server and is not end-to-end encrypted (decisions 0060, 0063). -->
+    <string name="community_not_encrypted_notice">Efni í samfélögum er hýst á þjóni og er ekki dulkóðað enda á milli.</string>
+    <!-- Owner action: change a community's name, description or audience. -->
+    <string name="community_edit">Breyta samfélagi</string>
+    <!-- Title of the screen holding a moderator's and the owner's tools (decision 0079). -->
+    <string name="community_manage">Stjórna</string>
+    <!-- The manage screen's label with the number of items waiting for the person. -->
+    <string name="community_manage_count">Stjórna (%1$d)</string>
+    <!-- Placeholder of the search over one community's posts. -->
+    <string name="community_search_posts">Leita í samfélagi</string>
+    <!-- The search over a community's posts found nothing. -->
+    <string name="community_search_empty">Enginn póstur fannst.</string>
     <!-- Button: join an open community. -->
     <string name="community_join">Ganga í samfélagið</string>
     <!-- Button: ask to join a private community. -->
@@ -454,6 +490,8 @@
     <string name="community_muted">Stjórnandi þaggaði niður í þér hér. Þú getur lesið en ekki skrifað.</string>
     <!-- Label of the field where a member writes a new post. -->
     <string name="post_compose">Skrifa póst</string>
+    <!-- The one-line prompt in a feed that opens the post composer when it is tapped (decision 0079). -->
+    <string name="post_compose_prompt">Skrifaðu eitthvað…</string>
     <!-- Button: publish the post being written. -->
     <string name="post_publish">Birta</string>
     <!-- A community with no posts yet. -->
@@ -471,6 +509,17 @@
     <string name="comment_publish">Senda</string>
     <!-- A post with no comments yet. -->
     <string name="comments_empty">Engar athugasemdir enn.</string>
+    <!-- Action under a comment: write a reply to it (decision 0071). -->
+    <string name="comment_reply">Svara</string>
+    <!-- Above the comment composer while a reply is being written; {name} is the author of the comment being answered (decision 0071). -->
+    <string name="comment_replying_to">Svarar %1$s</string>
+    <!-- How many replies a top-level comment has (decision 0071). -->
+    <plurals name="comment_replies_count">
+        <item quantity="one">%1$d svar</item>
+        <item quantity="other">%1$d svör</item>
+    </plurals>
+    <!-- Stands in a comment list where a removed or deleted parent comment still has visible replies (decision 0071). -->
+    <string name="comment_tombstone">Athugasemd er ekki lengur sýnileg.</string>
     <!-- The like reaction, for a screen reader and as a button's name. -->
     <string name="reaction_like">Líkar vel</string>
     <!-- The love reaction. -->
@@ -509,6 +558,10 @@
     <string name="moderation_queue">Tilkynnt efni</string>
     <!-- The report queue when it is empty. -->
     <string name="moderation_queue_empty">Ekkert bíður.</string>
+    <!-- Heading of a community's append-only moderation log (decision 0063), read on the manage screen (decision 0079). -->
+    <string name="moderation_log_title">Aðgerðaskrá</string>
+    <!-- The moderation log when no action has been recorded. -->
+    <string name="moderation_log_empty">Engar skráðar aðgerðir.</string>
     <!-- Moderator action: hide the reported post or comment. -->
     <string name="moderation_hide">Fela</string>
     <!-- Moderator action: remove the reported post or comment. -->

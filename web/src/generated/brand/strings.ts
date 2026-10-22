@@ -118,6 +118,12 @@ export const strings = {
   reload: "Hlaða aftur",
   /** Navigation: the communities a person is in and the way to find more (decision 0063). */
   tab_communities: "Samfélög",
+  /** Tab of the community hub: the chronological feed of the posts in the person's communities (decision 0079). */
+  communities_tab_feed: "Nýjast",
+  /** Tab of the community hub: the communities the person is a member of. */
+  communities_tab_mine: "Mín samfélög",
+  /** Tab of the community hub: the search and the list of communities to join. */
+  communities_tab_discover: "Finna",
   /** Navigation: what was addressed to this account in communities (decision 0067). */
   tab_notifications: "Tilkynningar",
   /** Badge text on the notifications tab: how many are unread. */
@@ -147,6 +153,8 @@ export const strings = {
   communities_find: "Finna samfélag",
   /** The community search found nothing. */
   communities_none_found: "Ekkert samfélag fannst.",
+  /** The hub's feed when the person's communities have no posts yet (decision 0079). */
+  communities_feed_empty: "Engir póstar úr samfélögunum þínum enn.",
   /** Heading and button: create a new community. */
   community_create: "Stofna samfélag",
   /** Label of a community's name field. */
@@ -166,6 +174,35 @@ export const strings = {
     plural.select(args.count) === "one"
       ? String(args.count) + " meðlimur"
       : String(args.count) + " meðlimir",
+  /** Heading over a community's member list. */
+  community_members_title: "Meðlimir",
+  /** A member's role: the one owner, who names moderators and may delete the community (decision 0063). */
+  community_role_owner: "Eigandi",
+  /** A member's role: approves join requests and moderates posts and comments (decision 0063). */
+  community_role_moderator: "Stjórnandi",
+  /** A member's role: reads, posts, comments and reacts (decision 0063). */
+  community_role_member: "Meðlimur",
+  /** Owner action on a member: make them a moderator. */
+  community_make_moderator: "Gera að stjórnanda",
+  /** Owner action on a moderator: take the role away. */
+  community_remove_moderator: "Taka úr stjórnendum",
+  /** Title of the screen with a community's full description, its hosting notice and its members (decision 0079). */
+  community_info: "Um samfélagið",
+  /** Link that opens the full description from the feed's clamped community description (decision 0079). */
+  community_read_more: "Lesa meira",
+  /** Says a community's content is hosted on a server and is not end-to-end encrypted (decisions 0060, 0063). */
+  community_not_encrypted_notice: "Efni í samfélögum er hýst á þjóni og er ekki dulkóðað enda á milli.",
+  /** Owner action: change a community's name, description or audience. */
+  community_edit: "Breyta samfélagi",
+  /** Title of the screen holding a moderator's and the owner's tools (decision 0079). */
+  community_manage: "Stjórna",
+  /** The manage screen's label with the number of items waiting for the person. */
+  community_manage_count: (args: { count: number }): string =>
+    "Stjórna (" + String(args.count) + ")",
+  /** Placeholder of the search over one community's posts. */
+  community_search_posts: "Leita í samfélagi",
+  /** The search over a community's posts found nothing. */
+  community_search_empty: "Enginn póstur fannst.",
   /** Button: join an open community. */
   community_join: "Ganga í samfélagið",
   /** Button: ask to join a private community. */
@@ -178,6 +215,8 @@ export const strings = {
   community_muted: "Stjórnandi þaggaði niður í þér hér. Þú getur lesið en ekki skrifað.",
   /** Label of the field where a member writes a new post. */
   post_compose: "Skrifa póst",
+  /** The one-line prompt in a feed that opens the post composer when it is tapped (decision 0079). */
+  post_compose_prompt: "Skrifaðu eitthvað…",
   /** Button: publish the post being written. */
   post_publish: "Birta",
   /** A community with no posts yet. */
@@ -195,6 +234,18 @@ export const strings = {
   comment_publish: "Senda",
   /** A post with no comments yet. */
   comments_empty: "Engar athugasemdir enn.",
+  /** Action under a comment: write a reply to it (decision 0071). */
+  comment_reply: "Svara",
+  /** Above the comment composer while a reply is being written; {name} is the author of the comment being answered (decision 0071). */
+  comment_replying_to: (args: { name: string }): string =>
+    "Svarar " + args.name,
+  /** How many replies a top-level comment has (decision 0071). */
+  comment_replies_count: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " svar"
+      : String(args.count) + " svör",
+  /** Stands in a comment list where a removed or deleted parent comment still has visible replies (decision 0071). */
+  comment_tombstone: "Athugasemd er ekki lengur sýnileg.",
   /** The like reaction, for a screen reader and as a button's name. */
   reaction_like: "Líkar vel",
   /** The love reaction. */
@@ -233,6 +284,10 @@ export const strings = {
   moderation_queue: "Tilkynnt efni",
   /** The report queue when it is empty. */
   moderation_queue_empty: "Ekkert bíður.",
+  /** Heading of a community's append-only moderation log (decision 0063), read on the manage screen (decision 0079). */
+  moderation_log_title: "Aðgerðaskrá",
+  /** The moderation log when no action has been recorded. */
+  moderation_log_empty: "Engar skráðar aðgerðir.",
   /** Moderator action: hide the reported post or comment. */
   moderation_hide: "Fela",
   /** Moderator action: remove the reported post or comment. */
