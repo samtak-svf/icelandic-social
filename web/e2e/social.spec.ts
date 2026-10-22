@@ -37,6 +37,7 @@ const post = (page: Page, text: string) => page.getByRole("article").filter({ ha
 async function found(owner: Page, audience: "open" | "private"): Promise<string> {
   const name = `Garðyrkjufélagið ${crypto.randomUUID().slice(0, 8)}`;
   await owner.getByRole("link", { name: strings.tab_communities }).click();
+  await owner.getByRole("link", { name: new RegExp(`^${strings.community_create}`) }).click();
   await owner.getByLabel(strings.community_name).fill(name);
   if (audience === "private") {
     await owner.getByRole("radio", { name: new RegExp(strings.community_private_hint) }).check();
@@ -80,6 +81,7 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
 
   // The owner creates an open community.
   await owner.getByRole("link", { name: strings.tab_communities }).click();
+  await owner.getByRole("link", { name: new RegExp(`^${strings.community_create}`) }).click();
   await owner.getByLabel(strings.community_name).fill(name);
   await owner.getByLabel(strings.community_description).fill("Allt um garða.");
   await owner.getByRole("button", { name: strings.community_create }).click();
@@ -89,8 +91,10 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
   // The member finds it by name and joins.
   for (const one of [member, spammer]) {
     await one.getByRole("link", { name: strings.tab_communities }).click();
+    // The search sits behind the icon in the hub's header (0080).
+    await one.getByRole("button", { name: strings.communities_find }).first().click();
     await one.getByRole("searchbox").fill(name.slice(0, 18));
-    await one.getByRole("button", { name: strings.communities_find }).click();
+    await one.getByRole("button", { name: strings.communities_find }).last().click();
     await one.getByRole("link", { name: new RegExp(name) }).click();
     await one.getByRole("button", { name: strings.community_join }).click();
     await expect(one.getByRole("button", { name: strings.community_leave })).toBeVisible();

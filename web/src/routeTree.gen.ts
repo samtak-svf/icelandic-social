@@ -16,6 +16,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as CommunitiesIndexRouteImport } from './routes/communities.index'
+import { Route as CommunitiesNewRouteImport } from './routes/communities.new'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as CommunitiesCommunityIdIndexRouteImport } from './routes/communities.$communityId.index'
 import { Route as CommunitiesCommunityIdReportsRouteImport } from './routes/communities.$communityId.reports'
@@ -56,6 +57,11 @@ const CommunitiesIndexRoute = CommunitiesIndexRouteImport.update({
   path: '/communities/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CommunitiesNewRoute = CommunitiesNewRouteImport.update({
+  id: '/communities/new',
+  path: '/communities/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/posts/$postId',
   path: '/posts/$postId',
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
   '/verify': typeof VerifyRoute
+  '/communities/new': typeof CommunitiesNewRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities/': typeof CommunitiesIndexRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
   '/verify': typeof VerifyRoute
+  '/communities/new': typeof CommunitiesNewRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities': typeof CommunitiesIndexRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
   '/verify': typeof VerifyRoute
+  '/communities/new': typeof CommunitiesNewRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities/': typeof CommunitiesIndexRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/support'
     | '/verify'
+    | '/communities/new'
     | '/posts/$postId'
     | '/communities/'
     | '/communities/$communityId/reports'
@@ -142,6 +152,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/support'
     | '/verify'
+    | '/communities/new'
     | '/posts/$postId'
     | '/communities'
     | '/communities/$communityId/reports'
@@ -155,6 +166,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/support'
     | '/verify'
+    | '/communities/new'
     | '/posts/$postId'
     | '/communities/'
     | '/communities/$communityId/reports'
@@ -169,6 +181,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SupportRoute: typeof SupportRoute
   VerifyRoute: typeof VerifyRoute
+  CommunitiesNewRoute: typeof CommunitiesNewRoute
   PostsPostIdRoute: typeof PostsPostIdRoute
   CommunitiesIndexRoute: typeof CommunitiesIndexRoute
   CommunitiesCommunityIdReportsRoute: typeof CommunitiesCommunityIdReportsRoute
@@ -227,6 +240,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CommunitiesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/communities/new': {
+      id: '/communities/new'
+      path: '/communities/new'
+      fullPath: '/communities/new'
+      preLoaderRoute: typeof CommunitiesNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/posts/$postId'
@@ -265,6 +285,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SupportRoute: SupportRoute,
   VerifyRoute: VerifyRoute,
+  CommunitiesNewRoute: CommunitiesNewRoute,
   PostsPostIdRoute: PostsPostIdRoute,
   CommunitiesIndexRoute: CommunitiesIndexRoute,
   CommunitiesCommunityIdReportsRoute: CommunitiesCommunityIdReportsRoute,
@@ -274,12 +295,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

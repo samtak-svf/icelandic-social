@@ -431,5 +431,7 @@
   "community_picture_choose": "Velja mynd samfélagsins",
   "community_picture_remove": "Fjarlægja mynd samfélagsins",
   "community_cover_choose": "Velja forsíðumynd",
-  "community_cover_remove": "Fjarlægja forsíðumynd"
+  "community_cover_remove": "Fjarlægja forsíðumynd",
+  "communities_from_yours": "Frá samfélögunum þínum",
+  "communities_create_row_hint": "Safnaðu fólki saman um málefni"
 }

@@ -39,7 +39,7 @@
       "description": "The new-conversation picker when nobody else has signed in yet; points at the invite link (docs/decisions/0022, 0036)."
     },
     "people_search": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Placeholder of the name search at the top of the new-conversation picker (docs/decisions/0036)."
     },
     "people_none_found": {
@@ -87,7 +87,7 @@
       "description": "Button on an invite landing that opens a conversation with the inviter."
     },
     "invite": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Share your own invite link or QR code (docs/decisions/0009)."
     },
     "composer_placeholder": {
@@ -399,11 +399,11 @@
       "description": "Quote-reply to a message."
     },
     "copy": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Message menu entry that copies a text message to the clipboard (docs/decisions/0046)."
     },
     "copied": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Brief confirmation that a message was copied, where the system shows none (docs/decisions/0046)."
     },
     "link_open": {
@@ -482,7 +482,7 @@
       "description": "Title of the sheet listing who reacted to a message (docs/decisions/0045)."
     },
     "reaction_count": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Screen-reader text of a bubble's reaction pill: how many reactions it holds (docs/decisions/0045).",
       "plural": true,
       "placeholders": {
@@ -747,19 +747,19 @@
       "description": "Button that repeats the action that failed."
     },
     "cancel": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Dismisses a confirmation without doing anything."
     },
     "back": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Screen-reader label of the back arrow at the top of a screen."
     },
     "more_options": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Screen-reader label of the conversation's menu button (the disappearing timer, block)."
     },
     "share": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Shares the invite link through the system share sheet."
     },
     "devices_title": {
@@ -1727,7 +1727,7 @@
       "description": "Action in the group name dialog that clears the group's name (docs/decisions/0078)."
     },
     "save": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Confirm button that saves a change, such as a group's name (docs/decisions/0078)."
     },
     "name_set_card": {
@@ -1783,6 +1783,14 @@
     "community_cover_remove": {
       "surfaces": ["web"],
       "description": "Button that removes a community's cover (decision 0080)."
+    },
+    "communities_from_yours": {
+      "surfaces": ["web"],
+      "description": "Heading of the cross-community feed under the list on the hub"
+    },
+    "communities_create_row_hint": {
+      "surfaces": ["web"],
+      "description": "Second line of the create row on the hub"
     }
   }
 }

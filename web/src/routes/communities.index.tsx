@@ -4,7 +4,6 @@ import { useAccount } from "../account.tsx";
 import type { Problem } from "../problem.ts";
 import { getFeed, listCommunities, myCommunities, type Community } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { CreateCommunity } from "../social/create-community.tsx";
 import { Avatar } from "../social/avatar.tsx";
 import { outcome, useLoad, type Outcome } from "../social/outcome.ts";
 import { PostView } from "../social/post.tsx";
@@ -32,7 +31,28 @@ function Communities() {
   const byId = new Map((mine?.ok ? mine.data.communities : []).map((c) => [c.communityId, c]));
   return (
     <>
-      <h1 className="font-headline text-3xl">{strings.tab_communities}</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="font-headline text-3xl">{strings.tab_communities}</h1>
+        <button
+          type="button"
+          aria-label={strings.communities_find}
+          onClick={() => setTab("discover")}
+          className="inline-flex size-11 items-center justify-center rounded-md hover:bg-muted"
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className="size-6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-4-4" />
+          </svg>
+        </button>
+      </div>
       <div role="group" aria-label={strings.tab_communities} className="mt-2 flex flex-wrap gap-2">
         {TABS.map(([value, label]) => (
           <Button
@@ -47,24 +67,50 @@ function Communities() {
       </div>
       {tab === "feed" && <Feed byId={byId} />}
       {tab === "mine" && (
-        <Mine mine={mine} verified={state.status === "signed-in" && state.me.verified} />
+        <Mine
+          mine={mine}
+          byId={byId}
+          verified={state.status === "signed-in" && state.me.verified}
+        />
       )}
       {tab === "discover" && <Discover />}
     </>
   );
 }
 
-/** The communities the person is in, the find, and, when verified, creating one. */
+/** The communities the person is in, the way to make one, and what is new in them (0080). */
 function Mine({
   mine,
+  byId,
   verified,
-}: Readonly<{ mine: Outcome<{ communities: Community[] }> | null; verified: boolean }>) {
+}: Readonly<{
+  mine: Outcome<{ communities: Community[] }> | null;
+  byId: Map<string, Community>;
+  verified: boolean;
+}>) {
   return (
     <>
       <section aria-labelledby="mine" className="mt-6">
-        <h2 id="mine" className="text-xl font-semibold">
+        <h2 id="mine" className="sr-only">
           {strings.communities_mine}
         </h2>
+        {verified && (
+          <Link
+            to="/communities/new"
+            className="flex min-h-14 items-center gap-3 rounded-md border border-border px-4 py-2"
+          >
+            <span
+              aria-hidden="true"
+              className="flex size-10 items-center justify-center rounded-lg bg-muted text-2xl"
+            >
+              +
+            </span>
+            <span className="flex min-w-0 flex-col justify-center">
+              <span className="font-semibold">{strings.community_create}</span>
+              <span className="text-sm text-muted-fg">{strings.communities_create_row_hint}</span>
+            </span>
+          </Link>
+        )}
         {mine === null && <Status>{strings.loading}</Status>}
         {mine?.ok === false && (
           <Status>
@@ -76,13 +122,12 @@ function Mine({
         )}
         {mine?.ok && <CommunityList communities={mine.data.communities} />}
       </section>
-      <Find />
-      {verified && (
-        <section aria-labelledby="create" className="mt-8">
-          <h2 id="create" className="text-xl font-semibold">
-            {strings.community_create}
+      {mine?.ok && mine.data.communities.length > 0 && (
+        <section aria-labelledby="from-yours" className="mt-8">
+          <h2 id="from-yours" className="text-xl font-semibold">
+            {strings.communities_from_yours}
           </h2>
-          <CreateCommunity />
+          <Feed byId={byId} />
         </section>
       )}
     </>
