@@ -1,4 +1,4 @@
-import type { Browser, Page } from "@playwright/test";
+import type { Browser, Locator, Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
 import { png } from "./images.ts";
 import { expect, serveOrigin, test, WEB } from "./origin.ts";
@@ -25,10 +25,31 @@ async function runJobs() {
   expect((await fetch(`${DEV}/dev/jobs`, { method: "POST" })).status).toBe(204);
 }
 
+/** Writes a post in the composer's dialog (opened from its pill), or a comment in the box. */
 async function write(page: Page, label: string, action: string, text: string) {
+  if (label === strings.post_compose) {
+    await openComposer(page);
+    await page.getByRole("dialog").getByLabel(label).fill(text);
+    await page.getByRole("dialog").getByRole("button", { name: action }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    return;
+  }
   await page.getByLabel(label).fill(text);
   await page.getByRole("button", { name: action }).click();
   await expect(page.getByLabel(label)).toHaveValue("");
+}
+
+/** Opens the post composer's dialog from the one-row composer, unless it is open. */
+async function openComposer(page: Page) {
+  if ((await page.getByRole("dialog").count()) === 0) {
+    await page.getByRole("button", { name: strings.post_compose_prompt }).click();
+  }
+}
+
+/** Presses an item of a post card's `⋯` menu. */
+async function cardMenu(card: Locator, item: string) {
+  await card.getByRole("button", { name: strings.more_options }).click();
+  await card.getByRole("menuitem", { name: item }).click();
 }
 
 const post = (page: Page, text: string) => page.getByRole("article").filter({ hasText: text });
@@ -121,10 +142,13 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
   // The member posts and reacts to their own post.
   await write(member, strings.post_compose, strings.post_publish, "Tómatarnir eru komnir upp.");
   const mine = post(member, "Tómatarnir");
-  const like = mine.getByRole("button", { name: strings.reaction_like });
+  const like = mine.getByRole("button", { name: strings.post_like, exact: true });
   await like.click();
-  await expect(like).toHaveAttribute("aria-pressed", "true");
-  await expect(like).toContainText("1");
+  await expect(mine.getByRole("button", { name: strings.reaction_like })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(mine.getByText(strings.reaction_count({ count: 1 }))).toBeVisible();
 
   // The owner comments on it.
   await owner.goto(community);
@@ -152,7 +176,7 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
   await write(spammer, strings.post_compose, strings.post_publish, "Ódýr úr, smelltu hér.");
   await member.goto(community);
   const spam = post(member, "Ódýr úr");
-  await spam.getByRole("button", { name: strings.report }).click();
+  await cardMenu(spam, strings.report);
   await spam.getByLabel(strings.report_reason_spam).check();
   await spam.getByRole("button", { name: strings.report_send }).click();
   await expect(spam.getByText(strings.report_sent)).toBeVisible();
@@ -186,7 +210,8 @@ test("a member posts images, deletes a comment and the post, and withdraws a joi
 
   // Five images, or one over 10 MB, are refused before any upload.
   const image = { name: "mynd.png", mimeType: "image/png", buffer: await png(member) };
-  const pick = member.getByLabel(strings.post_add_images);
+  await openComposer(member);
+  const pick = member.getByRole("dialog").getByLabel(strings.post_add_images);
   await pick.setInputFiles([1, 2, 3, 4, 5].map((n) => ({ ...image, name: `mynd${n}.png` })));
   await expect(member.getByText(strings.post_images_too_many)).toBeVisible();
   const large = Buffer.alloc(10 * 1024 * 1024 + 1);
@@ -216,9 +241,11 @@ test("a member posts images, deletes a comment and the post, and withdraws a joi
   // Someone else sees them too, and has no delete on another's post.
   await owner.goto(open);
   await expect(post(owner, "Myndir úr garðinum").getByRole("img")).toHaveCount(2);
-  await expect(
-    post(owner, "Myndir úr garðinum").getByRole("button", { name: strings.delete }),
-  ).toHaveCount(0);
+  await post(owner, "Myndir úr garðinum")
+    .getByRole("button", { name: strings.more_options })
+    .click();
+  await expect(owner.getByRole("menuitem", { name: strings.delete })).toHaveCount(0);
+  await owner.keyboard.press("Escape");
 
   // The member comments, then deletes the comment and the post, after confirming.
   await mine.getByRole("link", { name: strings.post_comments({ count: 0 }) }).click();
@@ -229,7 +256,7 @@ test("a member posts images, deletes a comment and the post, and withdraws a joi
   await expect(comment).toHaveCount(0);
   await expect(member.getByText(strings.comments_empty)).toBeVisible();
   member.once("dialog", (dialog) => void dialog.accept());
-  await post(member, "Myndir úr garðinum").getByRole("button", { name: strings.delete }).click();
+  await cardMenu(post(member, "Myndir úr garðinum"), strings.delete);
   await member.waitForURL(open);
   await expect(member.getByText(strings.posts_empty)).toBeVisible();
 
@@ -256,7 +283,7 @@ test("a moderator hides, then restores and mutes and unmutes from the closed rep
   await write(writer, strings.post_compose, strings.post_publish, "Kaupið ódýra áburðinn.");
   await reader.reload();
   const spam = post(reader, "ódýra áburðinn");
-  await spam.getByRole("button", { name: strings.report }).click();
+  await cardMenu(spam, strings.report);
   await spam.getByLabel(strings.report_reason_spam).check();
   await spam.getByRole("button", { name: strings.report_send }).click();
   await expect(spam.getByText(strings.report_sent)).toBeVisible();
@@ -305,10 +332,10 @@ test("a moderator hides, then restores and mutes and unmutes from the closed rep
   await act(strings.moderation_mute);
   await writer.reload();
   await expect(writer.getByText(strings.community_muted)).toBeVisible();
-  await expect(writer.getByLabel(strings.post_compose)).toHaveCount(0);
+  await expect(writer.getByRole("button", { name: strings.post_compose_prompt })).toHaveCount(0);
   await act(strings.moderation_unmute);
   await writer.reload();
-  await expect(writer.getByLabel(strings.post_compose)).toBeVisible();
+  await expect(writer.getByRole("button", { name: strings.post_compose_prompt })).toBeVisible();
   await expect(writer.getByText(strings.community_muted)).toHaveCount(0);
 
   // The open side is empty still.

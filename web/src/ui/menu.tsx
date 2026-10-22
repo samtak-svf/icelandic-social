@@ -8,11 +8,13 @@ export function Menu({
   label,
   icon,
   align = "right",
+  triggerClassName = "min-h-11 min-w-11",
   children,
 }: Readonly<{
   label: string;
   icon: ReactNode;
   align?: "left" | "right";
+  triggerClassName?: string;
   children: (close: () => void) => ReactNode;
 }>) {
   const [open, setOpen] = useState(false);
@@ -22,7 +24,7 @@ export function Menu({
   useEffect(() => {
     if (!open) return undefined;
     const outside = (event: MouseEvent) => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false);
+      if (!(event.target instanceof Node && root.current?.contains(event.target))) setOpen(false);
     };
     const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -47,7 +49,7 @@ export function Menu({
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen(!open)}
-        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-muted"
+        className={`inline-flex items-center justify-center gap-2 rounded-md hover:bg-muted ${triggerClassName}`}
       >
         {icon}
       </button>
@@ -55,7 +57,7 @@ export function Menu({
         <div
           id={id}
           role="menu"
-          className={`absolute z-20 mt-1 flex min-w-48 flex-col rounded-md border border-border bg-surface py-1 shadow-lg ${align === "right" ? "right-0" : "left-0"}`}
+          className={`absolute z-20 flex min-w-48 flex-col rounded-md border border-border bg-surface py-1 shadow-lg ${align === "right" ? "right-0 top-full" : "left-0 top-full"}`}
         >
           {children(() => setOpen(false))}
         </div>

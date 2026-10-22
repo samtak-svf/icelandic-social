@@ -157,7 +157,7 @@ export function CommunityHeader({
       )}
       <div className="flex items-center justify-between gap-3">
         {readable ? <MemberStack communityId={communityId} /> : <span />}
-        {(community.role !== null || closed === false) && <Invite community={community} />}
+        {(community.role !== null || !closed) && <Invite community={community} />}
       </div>
     </header>
   );

@@ -1,8 +1,11 @@
 import { useId, useState, type ChangeEvent, type FormEvent } from "react";
+import { useAccount } from "../account.tsx";
 import type { Problem } from "../problem.ts";
 import { createPost, uploadSocialMedia } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
+import { Dialog } from "../ui/dialog.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
+import { Avatar } from "./avatar.tsx";
 import { IMAGE_TYPES, refusal } from "./images.ts";
 import { outcome, type Outcome } from "./outcome.ts";
 
@@ -71,10 +74,7 @@ const REFUSED = {
  * A new post: its text, its images, or both. The images are checked when
  * chosen and uploaded when the post is published, then named in it.
  */
-export function PostComposer({
-  communityId,
-  posted,
-}: Readonly<{ communityId: string; posted: () => void }>) {
+function PostForm({ communityId, posted }: Readonly<{ communityId: string; posted: () => void }>) {
   const id = useId();
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -118,11 +118,6 @@ export function PostComposer({
     }
   }
 
-  // A one-line pill that grows into the whole composer when it is written
-  // in (decision 0079). The field is always there, so tests and screen
-  // readers find it where it stands.
-  const [inField, setInField] = useState(false);
-
   return (
     <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-2">
       <label htmlFor={id} className="sr-only">
@@ -132,9 +127,10 @@ export function PostComposer({
         id={id}
         value={text}
         maxLength={5000}
-        rows={inField ? 3 : 1}
+        rows={4}
         placeholder={strings.post_compose_prompt}
-        onFocus={() => setInField(true)}
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- the dialog was opened to write in it
+        autoFocus
         onChange={(event) => setText(event.target.value)}
         className="rounded-md border border-border-strong bg-surface p-2"
       />
@@ -189,5 +185,72 @@ export function PostComposer({
             : problem !== null && <ProblemText problem={problem} />}
       </Status>
     </form>
+  );
+}
+
+/**
+ * The composer as one row (decision 0080): the writer's own picture, a pill
+ * that says what to write, and a photo button. Either opens the dialog that
+ * holds the whole form, so the card list keeps its place.
+ */
+export function PostComposer({
+  communityId,
+  posted,
+}: Readonly<{ communityId: string; posted: () => void }>) {
+  const { state } = useAccount();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <div className="flex items-center gap-3 rounded-md border border-border p-3">
+        {state.status === "signed-in" && (
+          <Avatar
+            kind="person"
+            id={state.me.accountId}
+            name={state.me.name}
+            photo={state.me.photo}
+            className="size-10 rounded-full"
+          />
+        )}
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex min-h-11 flex-1 items-center rounded-full bg-muted px-4 text-left text-muted-fg"
+        >
+          {strings.post_compose_prompt}
+        </button>
+        <button
+          type="button"
+          aria-label={strings.post_add_images}
+          onClick={() => setOpen(true)}
+          className="inline-flex size-11 items-center justify-center rounded-md hover:bg-muted"
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className="size-6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <circle cx="9" cy="10" r="2" />
+            <path d="m21 16-5-5-9 9" />
+          </svg>
+        </button>
+      </div>
+      {open && (
+        <Dialog title={strings.post_compose} onClose={() => setOpen(false)}>
+          <PostForm
+            communityId={communityId}
+            posted={() => {
+              setOpen(false);
+              posted();
+            }}
+          />
+        </Dialog>
+      )}
+    </>
   );
 }

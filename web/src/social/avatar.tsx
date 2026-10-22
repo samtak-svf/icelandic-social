@@ -15,10 +15,7 @@ export function initials(name: string | null): string {
   return first === undefined ? "" : first.toUpperCase();
 }
 
-export function Initials({
-  name,
-  className,
-}: Readonly<{ name: string | null; className: string }>) {
+function Initials({ name, className }: Readonly<{ name: string | null; className: string }>) {
   return (
     <span
       aria-hidden="true"

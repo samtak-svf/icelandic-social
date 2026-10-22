@@ -442,5 +442,18 @@
   "community_invite_none": "Enginn fannst",
   "community_link_copied": "Hlekkur samfélagsins afritaður",
   "community_members_stack": "Meðlimir samfélagsins",
-  "community_cover_alt": "Forsíðumynd samfélagsins"
+  "community_cover_alt": "Forsíðumynd samfélagsins",
+  "time_now": "Núna",
+  "time_minutes": "{count} mín.",
+  "time_hours": "{count} klst.",
+  "time_days": "{count} d.",
+  "time_weeks": "{count} vik.",
+  "post_see_more": "Sjá meira",
+  "post_like": "Líkar",
+  "post_comment_action": "Athugasemd",
+  "post_copy_link": "Afrita tengil",
+  "post_link_copied": "Tengill afritaður",
+  "post_pin": "Festa",
+  "post_write_comment": "Skrifaðu athugasemd…",
+  "post_reactions_more": "Fleiri viðbrögð"
 }

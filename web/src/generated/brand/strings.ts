@@ -508,4 +508,34 @@ export const strings = {
   community_members_stack: "Meðlimir samfélagsins",
   /** Name of the cover picture */
   community_cover_alt: "Forsíðumynd samfélagsins",
+  /** Relative time of something posted less than a minute ago */
+  time_now: "Núna",
+  /** Relative time in minutes, as a short label on a post */
+  time_minutes: (args: { count: number }): string =>
+    String(args.count) + " mín.",
+  /** Relative time in hours, as a short label on a post */
+  time_hours: (args: { count: number }): string =>
+    String(args.count) + " klst.",
+  /** Relative time in days, as a short label on a post */
+  time_days: (args: { count: number }): string =>
+    String(args.count) + " d.",
+  /** Relative time in weeks, as a short label on a post */
+  time_weeks: (args: { count: number }): string =>
+    String(args.count) + " vik.",
+  /** Expands a post whose text is cut short in the feed */
+  post_see_more: "Sjá meira",
+  /** Action that likes a post with one press; long press or hover opens the other reactions */
+  post_like: "Líkar",
+  /** Action that opens the comments of a post */
+  post_comment_action: "Athugasemd",
+  /** Menu item that copies the address of a post */
+  post_copy_link: "Afrita tengil",
+  /** Told after the address of a post was copied */
+  post_link_copied: "Tengill afritaður",
+  /** Menu item for a moderator that pins a post, off until the server can pin */
+  post_pin: "Festa",
+  /** Pill under a post card that opens its comments */
+  post_write_comment: "Skrifaðu athugasemd…",
+  /** Name of the group of five reactions opened from the like action */
+  post_reactions_more: "Fleiri viðbrögð",
 } as const;

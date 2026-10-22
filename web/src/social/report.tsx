@@ -31,7 +31,10 @@ export function ReportButton({ target }: Readonly<{ target: ReportTarget }>) {
   return <ReportForm target={target} onSent={() => setSent(true)} />;
 }
 
-function ReportForm({ target, onSent }: Readonly<{ target: ReportTarget; onSent: () => void }>) {
+export function ReportForm({
+  target,
+  onSent,
+}: Readonly<{ target: ReportTarget; onSent: () => void }>) {
   const note = useId();
   const [reason, setReason] = useState<Reason | null>(null);
   const [text, setText] = useState("");

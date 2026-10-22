@@ -13,15 +13,12 @@ import { Dialog } from "../ui/dialog.tsx";
 // can share and copied where it cannot.
 
 /** The address a person who opens it lands on this community's page. */
-export function communityLink(communityId: string): string {
+function communityLink(communityId: string): string {
   return `${location.origin}/communities/${communityId}`;
 }
 
 /** Shares or copies the link; what to tell the person, or the problem. */
-export async function shareLink(
-  url: string,
-  title: string,
-): Promise<"shared" | "copied" | "failed"> {
+async function shareLink(url: string, title: string): Promise<"shared" | "copied" | "failed"> {
   try {
     if (typeof navigator.share === "function") {
       await navigator.share({ url, title });

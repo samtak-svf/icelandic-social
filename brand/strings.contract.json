@@ -1827,6 +1827,70 @@
     "community_cover_alt": {
       "surfaces": ["web"],
       "description": "Name of the cover picture"
+    },
+    "time_now": {
+      "surfaces": ["web"],
+      "description": "Relative time of something posted less than a minute ago"
+    },
+    "time_minutes": {
+      "surfaces": ["web"],
+      "description": "Relative time in minutes, as a short label on a post",
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "time_hours": {
+      "surfaces": ["web"],
+      "description": "Relative time in hours, as a short label on a post",
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "time_days": {
+      "surfaces": ["web"],
+      "description": "Relative time in days, as a short label on a post",
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "time_weeks": {
+      "surfaces": ["web"],
+      "description": "Relative time in weeks, as a short label on a post",
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "post_see_more": {
+      "surfaces": ["web"],
+      "description": "Expands a post whose text is cut short in the feed"
+    },
+    "post_like": {
+      "surfaces": ["web"],
+      "description": "Action that likes a post with one press; long press or hover opens the other reactions"
+    },
+    "post_comment_action": {
+      "surfaces": ["web"],
+      "description": "Action that opens the comments of a post"
+    },
+    "post_copy_link": {
+      "surfaces": ["web"],
+      "description": "Menu item that copies the address of a post"
+    },
+    "post_link_copied": {
+      "surfaces": ["web"],
+      "description": "Told after the address of a post was copied"
+    },
+    "post_pin": {
+      "surfaces": ["web"],
+      "description": "Menu item for a moderator that pins a post, off until the server can pin"
+    },
+    "post_write_comment": {
+      "surfaces": ["web"],
+      "description": "Pill under a post card that opens its comments"
+    },
+    "post_reactions_more": {
+      "surfaces": ["web"],
+      "description": "Name of the group of five reactions opened from the like action"
     }
   }
 }
