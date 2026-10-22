@@ -74,6 +74,7 @@ final class URLSessionTransport: Transport, Sendable {
             case .get: "GET"
             case .post: "POST"
             case .put: "PUT"
+            case .patch: "PATCH"
             case .delete: "DELETE"
             }
         if let bearer = request.bearer {

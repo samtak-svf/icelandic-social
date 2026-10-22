@@ -1,8 +1,8 @@
 import SpjallCore
 import SwiftUI
 
-/// The communities tab (decision 0063): this account's communities, a search over every one it may see, and,
-/// for a verified account, a new one.
+/// The communities hub (decisions 0063, 0079): what is new across this account's communities, the ones it is in,
+/// a search over every one it may see, and, for a verified account, a new one.
 struct CommunitiesView: View {
     let model: CommunitiesModel
     let onOpen: (String) -> Void
@@ -19,8 +19,20 @@ struct CommunitiesView: View {
                         tint: BrandTokens.Colors.primaryFg, size: 34, action: { creating = true })
                 }
             }
-            CommunitySearch(query: Binding(get: { model.query }, set: { model.query = $0 }))
-            if model.busy || model.searching {
+            Picker("tab_communities", selection: part) {
+                ForEach(CommunitiesPart.allCases) { part in
+                    Text(verbatim: part.label).tag(part)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+            if model.part == .discover {
+                SocialSearchField(
+                    prompt: "communities_find", text: Binding(get: { model.query }, set: { model.query = $0 }),
+                    limit: communityNameLimit)
+            }
+            if model.busy || model.searching || model.loadingFeed {
                 ProgressView().progressViewStyle(.linear)
             }
             if let problem = model.problem {
@@ -30,27 +42,7 @@ struct CommunitiesView: View {
             }
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    if model.searched {
-                        if !model.searching && model.found.isEmpty && model.problem == nil {
-                            EmptyState(systemImage: "magnifyingglass", text: "communities_none_found")
-                        }
-                        rows(model.found)
-                        if model.next != nil {
-                            Color.clear.frame(height: 1).task(id: model.next) { await model.more() }
-                        }
-                    } else {
-                        if !model.mine.isEmpty {
-                            SectionLabel(text: localized("communities_mine"))
-                                .padding(.horizontal, 20)
-                                .padding(.top, 12)
-                                .padding(.bottom, 4)
-                                .accessibilityAddTraits(.isHeader)
-                        }
-                        if model.loaded && model.mine.isEmpty && model.problem == nil {
-                            EmptyState(systemImage: "person.3", text: "communities_empty")
-                        }
-                        rows(model.mine)
-                    }
+                    content
                 }
                 .animation(Motion.rows(reduceMotion: reduceMotion), value: shown)
             }
@@ -59,7 +51,18 @@ struct CommunitiesView: View {
         .navigationTitle(Text("tab_communities"))
         .toolbar(.hidden, for: .navigationBar)
         .task { await model.load() }
-        .task(id: model.query) { await model.search() }
+        .task(id: model.part) {
+            switch model.part {
+            case .feed: await model.loadFeed()
+            case .mine: break
+            case .discover: await model.search()
+            }
+        }
+        .task(id: model.query) {
+            // The search is the third part's; the other two never ask for it.
+            guard model.part == .discover else { return }
+            await model.search()
+        }
         .sheet(isPresented: $creating) {
             CreateCommunitySheet(model: model)
         }
@@ -71,9 +74,61 @@ struct CommunitiesView: View {
         }
     }
 
+    private var part: Binding<CommunitiesPart> {
+        Binding(get: { model.part }, set: { model.part = $0 })
+    }
+
     /// The ids the list shows, in order: what its animation follows.
     private var shown: [String] {
-        (model.searched ? model.found : model.mine).map(\.communityId)
+        switch model.part {
+        case .feed: model.feedPosts.map(\.postId)
+        case .mine: model.mine.map(\.communityId)
+        case .discover: model.found.map(\.communityId)
+        }
+    }
+
+    @ViewBuilder private var content: some View {
+        switch model.part {
+        case .feed: feedList
+        case .mine: mineList
+        case .discover: discoverList
+        }
+    }
+
+    /// What is new: one chronological feed across the communities this account is in, each card naming its own.
+    @ViewBuilder private var feedList: some View {
+        if model.feedLoaded && model.feedPosts.isEmpty && model.problem == nil {
+            EmptyState(systemImage: "text.bubble", text: "communities_feed_empty")
+        }
+        ForEach(model.feedPosts, id: \.postId) { post in
+            PostCard(
+                post: post, linked: true, writes: model.writes(post),
+                community: model.community(post.communityId)?.name,
+                onReact: { kind in Task { await model.react(post.postId, kind) } }
+            )
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+        }
+        if model.feedNext != nil {
+            Color.clear.frame(height: 1).task(id: model.feedNext) { await model.moreFeed() }
+        }
+    }
+
+    @ViewBuilder private var mineList: some View {
+        if model.loaded && model.mine.isEmpty && model.problem == nil {
+            EmptyState(systemImage: "person.3", text: "communities_empty")
+        }
+        rows(model.mine)
+    }
+
+    @ViewBuilder private var discoverList: some View {
+        if model.searched && !model.searching && model.found.isEmpty && model.problem == nil {
+            EmptyState(systemImage: "magnifyingglass", text: "communities_none_found")
+        }
+        rows(model.found)
+        if model.next != nil {
+            Color.clear.frame(height: 1).task(id: model.next) { await model.more() }
+        }
     }
 
     private func rows(_ communities: [Community]) -> some View {
@@ -88,19 +143,14 @@ struct CommunitiesView: View {
     }
 }
 
-/// One community: its name, its audience and members, and the start of its description.
+/// One community: its badge, name, audience and members, and the start of its description.
 private struct CommunityRow: View {
     let community: Community
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                Image(systemName: community.audience == .open ? "person.3" : "person.3.fill")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(BrandTokens.Colors.fg)
-                    .frame(width: 46, height: 46)
-                    .background(BrandTokens.Colors.secondarySubtle, in: RoundedRectangle(cornerRadius: 12))
-                    .accessibilityHidden(true)
+                CommunityBadge(community: community)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(verbatim: community.name)
                         .font(.sans(14.5, black: true))
@@ -124,39 +174,12 @@ private struct CommunityRow: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 10)
-            Hairline().padding(.leading, 78)
+            Hairline().padding(.leading, 72)
         }
         .frame(minHeight: 64)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
-    }
-}
-
-/// The search over every community this account may see.
-private struct CommunitySearch: View {
-    @Binding var query: String
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(BrandTokens.Colors.mutedFg)
-                .accessibilityHidden(true)
-            TextField(text: $query, prompt: Text("communities_find")) {
-                Text("communities_find")
-            }
-            .autocorrectionDisabled()
-            .submitLabel(.search)
-            .onChange(of: query) { _, text in
-                if text.count > CommunitiesModel.nameLimit { query = String(text.prefix(CommunitiesModel.nameLimit)) }
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(BrandTokens.Colors.surface, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(BrandTokens.Colors.border))
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
     }
 }
 
@@ -177,23 +200,10 @@ private struct CreateCommunitySheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("community_name", text: $name)
-                        .onChange(of: name) { _, text in
-                            if text.count > CommunitiesModel.nameLimit {
-                                name = String(text.prefix(CommunitiesModel.nameLimit))
-                            }
-                        }
-                    TextField("community_description", text: $description, axis: .vertical)
-                        .lineLimit(2...6)
-                        .onChange(of: description) { _, text in
-                            if text.count > CommunitiesModel.descriptionLimit {
-                                description = String(text.prefix(CommunitiesModel.descriptionLimit))
-                            }
-                        }
+                    CommunityTextFields(name: $name, description: $description)
                 }
                 Section {
-                    audienceRow(.open, label: "community_open", hint: "community_open_hint")
-                    audienceRow(.private, label: "community_private", hint: "community_private_hint")
+                    CommunityAudiencePicker(audience: $audience)
                 }
                 if let problem = model.problem {
                     Section {
@@ -221,30 +231,5 @@ private struct CreateCommunitySheet: View {
                 }
             }
         }
-    }
-
-    private func audienceRow(_ value: CommunityAudience, label: LocalizedStringKey, hint: LocalizedStringKey)
-        -> some View
-    {
-        Button {
-            audience = value
-        } label: {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(label).font(.sans(14.5, black: true)).foregroundStyle(BrandTokens.Colors.fg)
-                    Text(hint).font(.sans(13)).foregroundStyle(BrandTokens.Colors.mutedFg)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 8)
-                Image(systemName: audience == value ? "largecircle.fill.circle" : "circle")
-                    .foregroundStyle(audience == value ? BrandTokens.Colors.primary : BrandTokens.Colors.mutedFg)
-                    .accessibilityHidden(true)
-            }
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(audience == value ? [.isButton, .isSelected] : .isButton)
     }
 }

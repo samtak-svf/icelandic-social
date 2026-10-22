@@ -118,16 +118,23 @@ export function PostComposer({
     }
   }
 
+  // A one-line pill that grows into the whole composer when it is written
+  // in (decision 0079). The field is always there, so tests and screen
+  // readers find it where it stands.
+  const [inField, setInField] = useState(false);
+
   return (
     <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-2">
-      <label htmlFor={id} className="font-semibold">
+      <label htmlFor={id} className="sr-only">
         {strings.post_compose}
       </label>
       <textarea
         id={id}
         value={text}
         maxLength={5000}
-        rows={3}
+        rows={inField ? 3 : 1}
+        placeholder={strings.post_compose_prompt}
+        onFocus={() => setInField(true)}
         onChange={(event) => setText(event.target.value)}
         className="rounded-md border border-border-strong bg-surface p-2"
       />

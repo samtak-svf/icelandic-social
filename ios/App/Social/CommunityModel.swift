@@ -5,6 +5,8 @@ import SpjallCore
 /// One community (decision 0063): who may read and write in it, joining, asking to join, taking the request
 /// back and leaving, and its posts, newest first, each with a reaction to toggle. A member who is not muted
 /// writes a post at the top, of text, up to four images (0065), or both; this account's own posts can be deleted.
+/// Its posts can be searched, its member list and moderation log read, and its owner renames it, changes its
+/// description or makes it private (decision 0079).
 @MainActor @Observable
 final class CommunityModel {
     let communityId: String
@@ -15,6 +17,21 @@ final class CommunityModel {
     private(set) var next: String?
     /// A further page is on its way.
     private(set) var paging = false
+    /// The search as typed; `search()` asks the server for it (decision 0079).
+    var query = ""
+    /// A search is on its way, the typing pause included.
+    private(set) var searching = false
+    /// The member list, its owner and moderators first (decision 0079).
+    private(set) var members: [CommunityMember] = []
+    /// The member list has been asked for, so an empty one is an answer rather than a wait.
+    private(set) var membersLoaded = false
+    /// A moderator's actions here, newest first, as `Aðgerðaskrá` reads them (decision 0079).
+    private(set) var log: [ModerationLogEntry] = []
+    /// The cursor of the log's next, older page, nil on the last.
+    private(set) var logNext: String?
+    /// The log has been asked for, so an empty one says so rather than waiting.
+    private(set) var logLoaded = false
+    private(set) var loadingLog = false
     private(set) var loaded = false
     /// The post being written.
     var draft = ""
@@ -31,11 +48,13 @@ final class CommunityModel {
 
     private let social: Social
     private let now: @Sendable () -> UInt64
+    private let sleep: @Sendable (Duration) async throws -> Void
     private var failed: (() async -> Void)?
     /// The posts whose reaction is on its way, so a second tap waits for the first.
     private var reacting: Set<String> = []
     /// The media id of each picked image already uploaded, by its local copy, so a retry does not send it again.
     private var uploaded: [String: String] = [:]
+    private var loadingMembers = false
 
     /// Why an image did not go with the post.
     enum ImageNotice: Equatable, Sendable {
@@ -47,10 +66,14 @@ final class CommunityModel {
         case invalid
     }
 
-    init(social: Social, communityId: String, now: @escaping @Sendable () -> UInt64 = nowMillis) {
+    init(
+        social: Social, communityId: String, now: @escaping @Sendable () -> UInt64 = nowMillis,
+        sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
+    ) {
         self.social = social
         self.communityId = communityId
         self.now = now
+        self.sleep = sleep
     }
 
     /// This account may read the posts: it is a member, or the community is open.
@@ -84,6 +107,28 @@ final class CommunityModel {
         return Int(community?.pendingJoinRequests ?? 0)
     }
 
+    /// The reported content that waits in its queue, for a moderator; zero when none, or when this account does
+    /// not moderate.
+    var openReports: Int {
+        guard moderates else { return 0 }
+        return Int(community?.openReports ?? 0)
+    }
+
+    /// The work waiting for this account here, which `Stjórna` counts in its label (decision 0079).
+    var manageCount: Int { openReports + pendingRequests }
+
+    /// A search is typed, so the list shows what it found and an empty one says none was.
+    var searched: Bool { sent != nil }
+
+    /// The query the posts on screen answer: nil for the plain list. A search for the same words asks for nothing.
+    private var shown: String?
+
+    /// The words the server is asked to match: none for an empty field, which is the plain list.
+    private var sent: String? {
+        let query = query.trimmingCharacters(in: .whitespaces)
+        return query.isEmpty ? nil : query
+    }
+
     /// The draft may be sent: something written, an image picked, or both, and the text not over the limit.
     var sendable: Bool {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -114,22 +159,61 @@ final class CommunityModel {
 
     /// The posts' next, older page, if there is one and none is on its way.
     func more() async {
-        guard let next, !paging, !busy else { return }
-        let social = social
-        let id = communityId
+        guard let next, !paging, !searching, !busy else { return }
+        let before = next
         paging = true
         problem = nil
         do {
-            let page = try await offMain { try social.communityPosts(id, before: next, limit: Self.page) }
-            let shown = Set(posts.map(\.postId))
-            posts += page.posts.filter { !shown.contains($0.postId) }
-            self.next = page.next
+            try await page(before: before, sent)
             failed = nil
         } catch {
             failed = { await self.more() }
             problem = Problem(error)
         }
         paging = false
+    }
+
+    /// Asks the server for the posts matching `query` once the typing pauses (decision 0079); a newer search
+    /// cancels the older one's answer. An empty field asks for the plain list again.
+    func search() async {
+        guard loaded, reads, !busy, sent != shown else { return }
+        let query = sent
+        searching = true
+        problem = nil
+        if query != nil {
+            // Searching from the first key, so "none found" waits for the answer rather than flashing.
+            do { try await sleep(.milliseconds(300)) } catch {
+                searching = false
+                return
+            }
+        }
+        do {
+            try await page(before: nil, query)
+            failed = nil
+        } catch {
+            failed = { await self.search() }
+            problem = Problem(error)
+        }
+        searching = false
+    }
+
+    /// One page of the posts: the first replaces what was shown, a later one adds to it. `query` filters them on
+    /// the server, and a page answering a search that has moved on since is dropped.
+    private func page(before: String?, _ query: String?) async throws {
+        let social = social
+        let id = communityId
+        let page = try await offMain {
+            try social.communityPosts(id, before: before, limit: Self.page, query: query)
+        }
+        guard query == sent else { return }
+        if before == nil {
+            posts = page.posts
+        } else {
+            let listed = Set(posts.map(\.postId))
+            posts += page.posts.filter { !listed.contains($0.postId) }
+        }
+        next = page.next
+        shown = query
     }
 
     /// Joins an open community at once, or asks a private one's moderators to let this account in.
@@ -185,6 +269,103 @@ final class CommunityModel {
         }
     }
 
+    /// Renames the community, changes its description or makes an open one private; its owner alone may, and a
+    /// private one never becomes open again (decisions 0063, 0079). False when a field is empty or too long.
+    @discardableResult
+    func update(name: String, description: String, audience: CommunityAudience) async -> Bool {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let description = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard owns, let community, !name.isEmpty, name.count <= communityNameLimit,
+            description.count <= communityDescriptionLimit
+        else { return false }
+        let social = social
+        let id = communityId
+        var saved = false
+        await perform(again: { _ = await self.update(name: name, description: description, audience: audience) }) {
+            self.community = try await offMain {
+                try social.updateCommunity(
+                    id, name: name, description: description,
+                    audience: audience == community.audience ? nil : audience)
+            }
+            saved = true
+        }
+        return saved
+    }
+
+    /// The member list, its owner and moderators first, for `Um samfélagið` and `Meðlimir og hlutverk`
+    /// (decision 0079). Asked for once; a second ask waits for the first.
+    func loadMembers() async {
+        guard !membersLoaded, !loadingMembers, !busy else { return }
+        let social = social
+        let id = communityId
+        loadingMembers = true
+        problem = nil
+        do {
+            members = try await offMain { try social.communityMembers(id) }
+            failed = nil
+            membersLoaded = true
+        } catch {
+            failed = { await self.loadMembers() }
+            problem = Problem(error)
+        }
+        loadingMembers = false
+    }
+
+    /// Makes a member a moderator, or a moderator a member again; the owner alone may (decisions 0063, 0079).
+    /// The list shows the new role at once, once the server has taken it.
+    func setRole(_ account: String, _ role: CommunityRole) async {
+        guard owns, members.contains(where: { $0.accountId == account && $0.role != role }) else { return }
+        let social = social
+        let id = communityId
+        await perform(again: { await self.setRole(account, role) }) {
+            try await offMain { try social.setCommunityRole(id, account: account, role: role) }
+            self.members = self.members.map { member in
+                var member = member
+                if member.accountId == account { member.role = role }
+                return member
+            }
+        }
+    }
+
+    /// The moderation log's newest page, newest first, for `Aðgerðaskrá` (decision 0079). It is a reading of the
+    /// log: nothing here edits or deletes an entry.
+    func loadLog() async {
+        guard !logLoaded, !loadingLog else { return }
+        await logPage(before: nil)
+    }
+
+    /// The log's next, older page, if there is one and none is on its way.
+    func moreLog() async {
+        guard let before = logNext, !loadingLog else { return }
+        await logPage(before: before)
+    }
+
+    /// One page of the log: the first replaces what was shown, a later one adds to it.
+    private func logPage(before: String?) async {
+        let social = social
+        let id = communityId
+        loadingLog = true
+        problem = nil
+        do {
+            let page = try await offMain {
+                try social.communityModerationLog(id, before: before, limit: Self.logSize)
+            }
+            if before == nil {
+                log = page.entries
+            } else {
+                let shown = Set(log.map(\.entryId))
+                log += page.entries.filter { !shown.contains($0.entryId) }
+            }
+            logNext = page.next
+            failed = nil
+            logLoaded = true
+        } catch {
+            failed = { await self.logPage(before: before) }
+            problem = Problem(error)
+        }
+        loadingLog = false
+    }
+
     /// Whether another image fits in the post; when none does, says so instead of opening the picker.
     func roomForImage() -> Bool {
         let room = images.count < Self.imageCount
@@ -233,13 +414,16 @@ final class CommunityModel {
     }
 
     /// Uploads each picked image not yet uploaded, then publishes the draft with them at the top of the posts;
-    /// the box empties. An image the server refuses is named, and nothing is posted.
-    func publish() async {
-        guard sendable, !busy else { return }
+    /// the box empties. An image the server refuses is named, and nothing is posted. True once it is posted, so
+    /// the composer that opened for it closes (decision 0079).
+    @discardableResult
+    func publish() async -> Bool {
+        guard sendable, !busy else { return false }
         let social = social
         let id = communityId
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         let picked = images
+        var posted = false
         busy = true
         problem = nil
         imageNotice = nil
@@ -255,6 +439,7 @@ final class CommunityModel {
             posts.insert(post, at: 0)
             draft = ""
             failed = nil
+            posted = true
         } catch {
             // A media id the server no longer knows (over a day old): the next try uploads again.
             if case CoreError.Refused(_, "invalid_media", _) = error { uploaded = [:] }
@@ -262,11 +447,12 @@ final class CommunityModel {
                 failed = nil
                 imageNotice = notice
             } else {
-                failed = { await self.publish() }
+                failed = { _ = await self.publish() }
                 problem = Problem(error)
             }
         }
         busy = false
+        return posted
     }
 
     /// What the server's refusal of an image says, or nil when it is not about an image.
@@ -314,18 +500,22 @@ final class CommunityModel {
     /// The newest page again, once a post opened from here is closed: the posts on it take their reactions and
     /// comment counts as they are now, and any newer post goes on top. Quiet: a failure leaves what is shown.
     func refresh() async {
-        guard loaded, reads, !busy, !paging else { return }
+        guard loaded, reads, !busy, !paging, !searching, sent == shown else { return }
         let social = social
         let id = communityId
-        guard let page = try? await offMain({ try social.communityPosts(id, before: nil, limit: Self.page) })
+        let query = sent
+        guard
+            let page = try? await offMain({
+                try social.communityPosts(id, before: nil, limit: Self.page, query: query)
+            }), query == sent
         else { return }
         let fresh = Dictionary(page.posts.map { ($0.postId, $0) }, uniquingKeysWith: { first, _ in first })
-        let shown = Set(posts.map(\.postId))
+        let listed = Set(posts.map(\.postId))
         // A post shown in the span the newest page covers but missing from it was deleted since, as one deleted
         // from its own screen is; the whole list when that page is the last.
         let oldest = page.next == nil ? 0 : (page.posts.last?.createdAt ?? UInt64.max)
         let kept = posts.filter { fresh[$0.postId] != nil || $0.createdAt <= oldest }
-        posts = page.posts.filter { !shown.contains($0.postId) } + kept.map { fresh[$0.postId] ?? $0 }
+        posts = page.posts.filter { !listed.contains($0.postId) } + kept.map { fresh[$0.postId] ?? $0 }
     }
 
     /// The longest post the server takes.
@@ -337,22 +527,24 @@ final class CommunityModel {
     /// The largest image the server takes for a post, 10 MB.
     nonisolated static let imageLimit: Int64 = 10 * 1_024 * 1_024
 
-    /// The newest page of posts, when this account may read them; none otherwise.
+    /// The newest page of posts, when this account may read them; none otherwise. The search starts over, so
+    /// joining or leaving shows the plain list.
     private func first() async throws {
+        query = ""
         guard reads else {
             posts = []
             next = nil
+            shown = nil
             return
         }
-        let social = social
-        let id = communityId
-        let page = try await offMain { try social.communityPosts(id, before: nil, limit: Self.page) }
-        posts = page.posts
-        next = page.next
+        try await page(before: nil, nil)
     }
 
     /// A page of posts: a screenful and some.
     private nonisolated static let page: UInt32 = 20
+
+    /// A page of the moderation log: a screenful and some (decision 0079).
+    private nonisolated static let logSize: UInt32 = 30
 
     /// Tries the action that failed again.
     func retry() async {

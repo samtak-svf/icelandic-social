@@ -1,8 +1,10 @@
 import SpjallCore
 import SwiftUI
 
-/// One post (decision 0063), its reactions, and its comments oldest first; a member of its community who is
-/// not muted writes a comment at the foot. This account's own post and comments have a delete, which asks first.
+/// One post (decisions 0063, 0071): its reactions, and its comments oldest first, one level of replies under the
+/// comment each answers. The composer is pinned to the bottom bar, so it stays over the keyboard while the thread
+/// scrolls behind it; a member of its community who is not muted writes there. This account's own post and
+/// comments have a delete, which asks first.
 struct PostView: View {
     let model: PostModel
     let social: Social
@@ -43,11 +45,16 @@ struct PostView: View {
         }
         .safeAreaInset(edge: .bottom) {
             if model.writes {
-                SocialComposer(
-                    placeholder: "comment_compose", send: "comment_publish",
-                    draft: Binding(get: { model.draft }, set: { model.draft = $0 }),
-                    limit: PostModel.commentLimit, enabled: model.sendable && !model.busy,
-                    onSend: { Task { await model.publish() } })
+                VStack(spacing: 0) {
+                    if let comment = model.replyingTo {
+                        ReplyBar(name: authorName(comment.author)) { model.cancelReply() }
+                    }
+                    SocialComposer(
+                        placeholder: "comment_compose", send: "comment_publish",
+                        draft: Binding(get: { model.draft }, set: { model.draft = $0 }),
+                        limit: PostModel.commentLimit, enabled: model.sendable && !model.busy,
+                        onSend: { Task { await model.publish() } })
+                }
             }
         }
         .alert("post_delete_confirm", isPresented: $deletingPost) {
@@ -72,25 +79,68 @@ struct PostView: View {
         .task { await model.load() }
     }
 
+    /// The thread: each top-level comment with the replies to it under it, indented, and `Svara` on the ones that
+    /// a reply may answer (decision 0071).
     @ViewBuilder private var comments: some View {
         if model.loaded && model.comments.isEmpty && model.next == nil && model.problem == nil {
             EmptyState(systemImage: "text.bubble", text: "comments_empty")
         }
-        if !model.comments.isEmpty {
+        let threads = commentThreads(model.comments)
+        if !threads.isEmpty {
             Panel {
-                ForEach(Array(model.comments.enumerated()), id: \.element.commentId) { index, comment in
+                ForEach(Array(threads.indices), id: \.self) { index in
+                    let thread = threads[index]
                     if index > 0 { Hairline() }
-                    CommentCard(
-                        comment: comment,
-                        onReport: {
-                            reporting = Reporting(target: ReportTarget(kind: .comment, id: comment.commentId))
-                        },
-                        onDelete: model.mine(comment.author) ? { deletingComment = comment.commentId } : nil)
+                    card(thread.comment, replies: thread.replies.count, replyable: true)
+                    ForEach(thread.replies, id: \.commentId) { reply in
+                        Hairline().padding(.leading, Self.indent)
+                        card(reply, replies: 0, replyable: false)
+                            .padding(.leading, Self.indent)
+                    }
                 }
             }
         }
         if model.next != nil {
             Color.clear.frame(height: 1).task(id: model.next) { await model.more() }
         }
+    }
+
+    private func card(_ comment: Comment, replies: Int, replyable: Bool) -> some View {
+        CommentCard(
+            comment: comment,
+            onReport: { reporting = Reporting(target: ReportTarget(kind: .comment, id: comment.commentId)) },
+            onDelete: model.mine(comment.author) ? { deletingComment = comment.commentId } : nil,
+            onReply: replyable ? { model.reply(to: comment) } : nil,
+            replies: replies)
+    }
+
+    /// How far a reply stands in from the comment it answers.
+    private static let indent: CGFloat = 28
+}
+
+/// The line over the composer while a reply is being written: whose comment it answers, and a way to stop.
+private struct ReplyBar: View {
+    let name: String
+    let onCancel: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(verbatim: localized("comment_replying_to", name))
+                .font(.sans(12.5, black: true))
+                .foregroundStyle(BrandTokens.Colors.primary)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            Button(action: onCancel) {
+                Text("cancel")
+                    .font(.sans(12.5, black: true))
+                    .foregroundStyle(BrandTokens.Colors.mutedFg)
+                    .frame(minHeight: 36)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+        .background(BrandTokens.Colors.primarySubtle)
     }
 }

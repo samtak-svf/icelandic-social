@@ -12,6 +12,7 @@ import {
   type SocialMedia,
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
+import { Initials } from "./avatar.tsx";
 import { Button, ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
 import { outcome, when, type Outcome } from "./outcome.ts";
 import { ReportButton } from "./report.tsx";
@@ -92,21 +93,47 @@ export function PostView({
   post,
   linked,
   deleted,
-}: Readonly<{ post: Post; linked: boolean; deleted: () => void }>) {
+  community,
+}: Readonly<{
+  post: Post;
+  linked: boolean;
+  deleted: () => void;
+  community?: { communityId: string; name: string } | null;
+}>) {
   const mine = useMine(post.author);
+  const path = { to: "/posts/$postId", params: { postId: post.postId } };
   return (
     <article
       aria-label={authorName(post.author)}
       className="flex flex-col gap-2 rounded-md border border-border p-4"
     >
       <StateMark state={post.state} />
-      <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <AuthorName author={post.author} />
+      <header className="flex flex-wrap items-center justify-between gap-2">
+        <span className="flex items-center gap-2">
+          <Initials name={post.author.name} className="size-8 rounded-md text-sm" />
+          <AuthorName author={post.author} />
+        </span>
         <time dateTime={new Date(post.createdAt).toISOString()} className="text-sm text-muted-fg">
           {when(post.createdAt)}
         </time>
       </header>
-      {post.body !== "" && <p className="whitespace-pre-wrap">{post.body}</p>}
+      {community !== undefined && community !== null && (
+        <Link
+          to="/communities/$communityId"
+          params={{ communityId: community.communityId }}
+          className="text-sm font-medium underline"
+        >
+          {community.name}
+        </Link>
+      )}
+      {post.body !== "" &&
+        (linked ? (
+          <Link {...path} className="whitespace-pre-wrap">
+            {post.body}
+          </Link>
+        ) : (
+          <p className="whitespace-pre-wrap">{post.body}</p>
+        ))}
       {post.media.length > 0 && <Images postId={post.postId} media={post.media} />}
       <Reactions post={post} />
       <footer className="flex flex-wrap items-center justify-between gap-2">

@@ -28,8 +28,19 @@ protocol Social: Sendable {
     func declineJoinRequest(_ community: String, account: String) throws
     /// Deletes a community, which its owner may do (#364); it can be restored for 30 days.
     func deleteCommunity(_ id: String) throws
-    /// A page of a community's posts, newest first.
-    func communityPosts(_ community: String, before: String?, limit: UInt32) throws -> PostPage
+    /// The community's members, its owner and moderators first (decision 0079).
+    func communityMembers(_ community: String) throws -> [CommunityMember]
+    /// Makes a member a moderator, or a moderator a member again; only the community's owner may.
+    func setCommunityRole(_ community: String, account: String, role: CommunityRole) throws
+    /// Renames a community, changes its description or makes an open one private; only its owner may.
+    func updateCommunity(_ community: String, name: String?, description: String?, audience: CommunityAudience?)
+        throws -> Community
+    /// A page of a community's moderation log, newest first, for its moderators (decision 0079).
+    func communityModerationLog(_ community: String, before: String?, limit: UInt32) throws -> ModerationLogPage
+    /// A page of a community's posts, newest first, those whose body matches `query` when there is one.
+    func communityPosts(_ community: String, before: String?, limit: UInt32, query: String?) throws -> PostPage
+    /// A page of the posts of every community this account is a member of, newest first (decision 0079).
+    func feed(before: String?, limit: UInt32) throws -> PostPage
     /// A post of text, up to four images from `uploadPostImage` by their media ids (decision 0065), or both.
     func createPost(_ community: String, body: String, media: [String]) throws -> Post
     /// Uploads the image file at `path` for a post in the community; its media id goes in `createPost`.
@@ -44,7 +55,8 @@ protocol Social: Sendable {
     func unreact(_ post: String) throws
     /// A page of a post's comments, oldest first.
     func comments(_ post: String, after: String?, limit: UInt32) throws -> CommentPage
-    func createComment(_ post: String, body: String) throws -> Comment
+    /// Comments on a post, a reply when `parentCommentId` names the comment it answers (decision 0071).
+    func createComment(_ post: String, body: String, parentCommentId: String?) throws -> Comment
     /// Deletes this account's own comment.
     func deleteComment(_ id: String) throws
     /// Reports to the moderators, who are never told who reported; the server sends what is unlawful to the
@@ -65,6 +77,18 @@ protocol Social: Sendable {
     func notifications(before: String?, limit: UInt32) throws -> SocialNotificationPage
     /// Marks read every notification made at or before `upTo`.
     func readNotifications(upTo: UInt64) throws
+}
+
+extension Social {
+    /// A community's posts, with none of a search's words.
+    func communityPosts(_ community: String, before: String?, limit: UInt32) throws -> PostPage {
+        try communityPosts(community, before: before, limit: limit, query: nil)
+    }
+
+    /// A comment on a post, rather than a reply to one.
+    func createComment(_ post: String, body: String) throws -> Comment {
+        try createComment(post, body: body, parentCommentId: nil)
+    }
 }
 
 extension CoreAccount: Social {
@@ -100,8 +124,30 @@ extension CoreAccount: Social {
 
     func deleteCommunity(_ id: String) throws { try core().deleteCommunity(communityId: id) }
 
-    func communityPosts(_ community: String, before: String?, limit: UInt32) throws -> PostPage {
-        try core().communityPosts(communityId: community, before: before, limit: limit)
+    func communityMembers(_ community: String) throws -> [CommunityMember] {
+        try core().communityMembers(communityId: community)
+    }
+
+    func setCommunityRole(_ community: String, account: String, role: CommunityRole) throws {
+        try core().setCommunityRole(communityId: community, accountId: account, role: role)
+    }
+
+    func updateCommunity(_ community: String, name: String?, description: String?, audience: CommunityAudience?)
+        throws -> Community
+    {
+        try core().updateCommunity(communityId: community, name: name, description: description, audience: audience)
+    }
+
+    func communityModerationLog(_ community: String, before: String?, limit: UInt32) throws -> ModerationLogPage {
+        try core().communityModerationLog(communityId: community, before: before, limit: limit)
+    }
+
+    func communityPosts(_ community: String, before: String?, limit: UInt32, query: String?) throws -> PostPage {
+        try core().communityPosts(communityId: community, before: before, limit: limit, query: query)
+    }
+
+    func feed(before: String?, limit: UInt32) throws -> PostPage {
+        try core().feed(before: before, limit: limit)
     }
 
     func createPost(_ community: String, body: String, media: [String]) throws -> Post {
@@ -128,8 +174,8 @@ extension CoreAccount: Social {
         try core().comments(postId: post, after: after, limit: limit)
     }
 
-    func createComment(_ post: String, body: String) throws -> Comment {
-        try core().createComment(postId: post, body: body)
+    func createComment(_ post: String, body: String, parentCommentId: String?) throws -> Comment {
+        try core().createComment(postId: post, body: body, parentCommentId: parentCommentId)
     }
 
     func deleteComment(_ id: String) throws { try core().deleteComment(commentId: id) }
@@ -176,6 +222,10 @@ let reactionKinds: [ReactionKind] = [.like, .love, .laugh, .wow, .sad]
 
 /// The reasons a report gives, in the order they are offered.
 let reportReasons: [ReportReason] = [.unlawful, .harassment, .spam, .other]
+
+/// The longest name and description a community takes, as the server holds them.
+let communityNameLimit = 80
+let communityDescriptionLimit = 500
 
 /// Now, in Unix milliseconds, as the server counts.
 @Sendable func nowMillis() -> UInt64 {
@@ -395,3 +445,65 @@ func cardRef(_ target: ReportTarget) -> CardRef? {
     case .community, .account: nil
     }
 }
+
+/// The words for an account's role in a community (decision 0079).
+func roleLabel(_ role: CommunityRole) -> String {
+    switch role {
+    case .owner: localized("community_role_owner")
+    case .moderator: localized("community_role_moderator")
+    case .member: localized("community_role_member")
+    }
+}
+
+/// What a moderation log entry records (decision 0079). The log has no words of its own, so it borrows the past
+/// tense a closed report's decision uses; nil for an action a later server adds.
+func logActionLabel(_ action: ModerationLogAction) -> String? {
+    switch action {
+    case .hidePost: localized("moderation_decision_hide_post")
+    case .removePost: localized("moderation_decision_remove_post")
+    case .restorePost: localized("moderation_decision_restore_post")
+    case .hideComment: localized("moderation_decision_hide_comment")
+    case .removeComment: localized("moderation_decision_remove_comment")
+    case .restoreComment: localized("moderation_decision_restore_comment")
+    case .muteMember: localized("moderation_decision_mute_member")
+    case .unmuteMember: localized("moderation_decision_unmute_member")
+    case .removeMember: localized("moderation_decision_remove_member")
+    case .banMember: localized("moderation_decision_ban_member")
+    case .unbanMember: localized("moderation_decision_unban_member")
+    case .closeReport: localized("moderation_decision_dismissed")
+    case .deleteCommunity: localized("moderation_decision_community_deleted")
+    case .restoreCommunity: localized("moderation_restore")
+    case .unknown: nil
+    }
+}
+
+/// A top-level comment and the replies it takes (decision 0071): one level, never a reply to a reply.
+struct CommentThread: Identifiable {
+    let comment: Comment
+    var replies: [Comment]
+
+    var id: String { comment.commentId }
+}
+
+/// A post's comments as their top-level ones, each with the replies to it in the order they came. A reply whose
+/// parent is not among `comments` (an older page, or one this account may not see) stands on its own rather than
+/// disappearing from the thread.
+func commentThreads(_ comments: [Comment]) -> [CommentThread] {
+    var threads: [CommentThread] = []
+    var at: [String: Int] = [:]
+    for comment in comments where comment.parentCommentId == nil {
+        at[comment.commentId] = threads.count
+        threads.append(CommentThread(comment: comment, replies: []))
+    }
+    var orphans: [Comment] = []
+    for comment in comments {
+        guard let parent = comment.parentCommentId else { continue }
+        if let index = at[parent] { threads[index].replies.append(comment) } else { orphans.append(comment) }
+    }
+    for comment in orphans { threads.append(CommentThread(comment: comment, replies: [])) }
+    return threads
+}
+
+/// A comment a moderator removed, or whose author's account is gone, which the thread stands in for as long as
+/// the replies to it are shown (decision 0071).
+func isTombstone(_ comment: Comment) -> Bool { comment.state == .removed && comment.body.isEmpty }

@@ -16,6 +16,8 @@ final class FakeSocial: Social, @unchecked Sendable {
     private var _posts: [String: [Post]] = [:]
     private var _comments: [String: [Comment]] = [:]
     private var _reports: [String: [Report]] = [:]
+    private var _members: [String: [CommunityMember]] = [:]
+    private var _log: [String: [ModerationLogEntry]] = [:]
     private var _cards: [String: Card] = [:]
     private var _notifications: [SocialNotification] = []
     private var _joins: [String: JoinState] = [:]
@@ -69,6 +71,18 @@ final class FakeSocial: Social, @unchecked Sendable {
     var reports: [String: [Report]] {
         get { lock.withLock { _reports } }
         set { lock.withLock { _reports = newValue } }
+    }
+
+    /// Each community's member list, in the order `communityMembers` gives it.
+    var members: [String: [CommunityMember]] {
+        get { lock.withLock { _members } }
+        set { lock.withLock { _members = newValue } }
+    }
+
+    /// Each community's moderation log, newest first.
+    var log: [String: [ModerationLogEntry]] {
+        get { lock.withLock { _log } }
+        set { lock.withLock { _log = newValue } }
     }
 
     /// The card each id resolves to; one not here is unavailable.
@@ -213,9 +227,53 @@ final class FakeSocial: Social, @unchecked Sendable {
         mine.removeAll { $0 == id }
     }
 
-    func communityPosts(_ community: String, before: String?, limit: UInt32) throws -> PostPage {
-        try call("communityPosts \(community) \(before ?? "-")")
-        let (found, next) = page(posts[community] ?? [], after: before)
+    func communityMembers(_ community: String) throws -> [CommunityMember] {
+        try call("communityMembers \(community)")
+        return members[community] ?? []
+    }
+
+    func setCommunityRole(_ community: String, account: String, role: CommunityRole) throws {
+        try call("setCommunityRole \(community) \(account) \(role)")
+        members[community] = (members[community] ?? []).map { found in
+            var found = found
+            if found.accountId == account { found.role = role }
+            return found
+        }
+    }
+
+    func updateCommunity(_ community: String, name: String?, description: String?, audience: CommunityAudience?)
+        throws -> Community
+    {
+        try call(
+            "updateCommunity \(community) \(name ?? "-") \(description ?? "-")"
+                + (audience.map { " \($0 == .open ? "open" : "private")" } ?? ""))
+        guard var found = communities[community] else { throw notFound }
+        if let name { found.name = name }
+        if let description { found.description = description }
+        if let audience { found.audience = audience }
+        communities[community] = found
+        return found
+    }
+
+    func communityModerationLog(_ community: String, before: String?, limit: UInt32) throws -> ModerationLogPage {
+        try call("communityModerationLog \(community) \(before ?? "-")")
+        let (found, next) = page(log[community] ?? [], after: before)
+        return ModerationLogPage(entries: found, next: next)
+    }
+
+    func communityPosts(_ community: String, before: String?, limit: UInt32, query: String?) throws -> PostPage {
+        try call("communityPosts \(community) \(before ?? "-")" + (query.map { " q:\($0)" } ?? ""))
+        let all = (posts[community] ?? []).filter {
+            query == nil || $0.body.localizedCaseInsensitiveContains(query!)
+        }
+        let (found, next) = page(all, after: before)
+        return PostPage(posts: found, next: next)
+    }
+
+    func feed(before: String?, limit: UInt32) throws -> PostPage {
+        try call("feed \(before ?? "-")")
+        let all = mine.flatMap { posts[$0] ?? [] }.sorted { $0.createdAt > $1.createdAt }
+        let (found, next) = page(all, after: before)
         return PostPage(posts: found, next: next)
     }
 
@@ -269,10 +327,11 @@ final class FakeSocial: Social, @unchecked Sendable {
         return CommentPage(comments: found, next: next)
     }
 
-    func createComment(_ post: String, body: String) throws -> Comment {
-        try call("createComment \(post) \(body)")
+    func createComment(_ post: String, body: String, parentCommentId: String?) throws -> Comment {
+        try call("createComment \(post) \(body)" + (parentCommentId.map { " on \($0)" } ?? ""))
         let created = Comment(
             commentId: "c\(post)-\((comments[post] ?? []).count + 1)", postId: post,
+            parentCommentId: parentCommentId,
             author: Author(accountId: "a1", name: "Jón Jónsson", verified: true), body: body,
             createdAt: FakeAccount.now, state: .visible)
         comments[post, default: []].append(created)
@@ -348,12 +407,14 @@ final class FakeSocial: Social, @unchecked Sendable {
 
 func makeCommunity(
     _ id: String, _ name: String, audience: CommunityAudience = .open, role: CommunityRole? = nil,
-    description: String = "", memberCount: UInt64? = 3, mutedUntil: UInt64? = nil, readOnly: Bool = false
+    description: String = "", memberCount: UInt64? = 3, mutedUntil: UInt64? = nil, readOnly: Bool = false,
+    pendingJoinRequests: UInt64? = nil, openReports: UInt64? = nil
 ) -> Community {
     Community(
         communityId: id, name: name, description: description, audience: audience, createdAt: FakeAccount.now,
         memberCount: memberCount, role: role, joinRequested: false, invited: false, mutedUntil: mutedUntil,
-        readOnly: readOnly, deletedAt: nil, joinDeclinedUntil: nil, pendingJoinRequests: nil)
+        readOnly: readOnly, deletedAt: nil, joinDeclinedUntil: nil, pendingJoinRequests: pendingJoinRequests,
+        openReports: openReports)
 }
 
 func makePost(
@@ -366,15 +427,37 @@ func makePost(
         reactions: reactions, myReaction: mine, commentCount: comments, state: state)
 }
 
+/// Somebody in a community's member list.
+func makeMember(
+    _ account: String, _ name: String? = nil, role: CommunityRole = .member, verified: Bool = false,
+    joinedAt: UInt64 = FakeAccount.now
+) -> CommunityMember {
+    CommunityMember(accountId: account, name: name, verified: verified, role: role, joinedAt: joinedAt)
+}
+
+/// One action in a community's moderation log.
+func makeLogEntry(
+    _ id: UInt64, _ action: ModerationLogAction, target: LogTarget = LogTarget(kind: .post, id: "p1"),
+    actor: Author? = anna, targetAccount: Author? = nil, reason: String = ""
+) -> ModerationLogEntry {
+    ModerationLogEntry(
+        entryId: id, communityId: "k1", actor: actor, asPlatform: false, action: action, target: target,
+        targetAccount: targetAccount, reason: reason, createdAt: FakeAccount.now)
+}
+
 /// Someone else in the communities.
 let anna = Author(accountId: "a2", name: "Anna", verified: false)
 
 /// This account, as its own posts and comments name it.
 let jon = Author(accountId: "a1", name: "Jón Jónsson", verified: true)
 
-func makeComment(_ id: String, on post: String, body: String = "Já", author: Author = anna) -> Comment {
+func makeComment(
+    _ id: String, on post: String, body: String = "Já", author: Author = anna, parent: String? = nil,
+    state: ModerationState = .visible
+) -> Comment {
     Comment(
-        commentId: id, postId: post, author: author, body: body, createdAt: FakeAccount.now, state: .visible)
+        commentId: id, postId: post, parentCommentId: parent, author: author, body: body,
+        createdAt: FakeAccount.now, state: state)
 }
 
 /// A report on `target`; `author` is who wrote it, or the account itself, nil when that account is gone.

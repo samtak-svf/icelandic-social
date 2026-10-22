@@ -31,6 +31,7 @@ class PostViewModel(
     private val id: String,
     private val social: Social,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val now: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
     data class State(
         val post: Post? = null,
@@ -43,7 +44,9 @@ class PostViewModel(
         val loadingMore: Boolean = false,
         /** The comment being written. */
         val draft: String = "",
+        val replyingTo: Comment? = null,
         val sending: Boolean = false,
+        val writes: Boolean = false,
         val reacting: Boolean = false,
         /** The post and comments this account reported from here. */
         val reported: Set<String> = emptySet(),
@@ -74,6 +77,7 @@ class PostViewModel(
                 val post = withContext(io) { social.post(id) }
                 val page = withContext(io) { social.comments(id, null, PAGE) }
                 val me = _state.value.me ?: withContext(io) { social.me() }
+                val community = withContext(io) { social.community(post.communityId) }
                 failed = null
                 _state.update {
                     it.copy(
@@ -81,6 +85,7 @@ class PostViewModel(
                         comments = page.comments,
                         next = page.next,
                         me = me,
+                        writes = community.writes(now()),
                         loaded = true,
                         busy = false,
                     )
@@ -96,6 +101,10 @@ class PostViewModel(
         if (text.length <= COMMENT_LIMIT) _state.update { it.copy(draft = text) }
     }
 
+    fun onReplyTo(comment: Comment?) {
+        _state.update { it.copy(replyingTo = comment) }
+    }
+
     /**
      * Sends the draft. The comment is shown at the end once every page is there, and the post counts it; with
      * pages still to come it is reached by scrolling to them.
@@ -107,13 +116,17 @@ class PostViewModel(
         _state.update { it.copy(sending = true, problem = null) }
         viewModelScope.launch {
             try {
-                val comment = withContext(io) { social.createComment(id, body) }
+                val comment =
+                    withContext(io) {
+                        social.createComment(id, body, state.replyingTo?.commentId)
+                    }
                 failed = null
                 _state.update {
                     it.copy(
                         comments = if (it.next == null) it.comments + comment else it.comments,
                         post = it.post?.let { post -> post.copy(commentCount = post.commentCount + 1uL) },
                         draft = "",
+                        replyingTo = null,
                         sending = false,
                     )
                 }

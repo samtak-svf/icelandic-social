@@ -34,6 +34,7 @@ class PostViewModelTest {
     @After fun reset() = Dispatchers.resetMain()
 
     @Before fun posts() {
+        social.communities["k1"] = community("k1", role = samtak.spjall.core.CommunityRole.MEMBER)
         social.posts["k1"] = mutableListOf(post("p1", comments = 2uL))
         social.comments["p1"] = mutableListOf(comment("c1", "p1"), comment("c2", "p1"))
     }
@@ -67,6 +68,24 @@ class PostViewModelTest {
                     ?.commentCount,
             )
             assertEquals("", model.state.value.draft)
+        }
+
+    @Test
+    fun aReplyCarriesItsParentAndClearsReplyingStateAfterSend() =
+        runTest(dispatcher) {
+            val model = model()
+            model.onReplyTo(comment("c1", "p1"))
+            model.draft("Svar")
+            model.send()
+            advanceUntilIdle()
+            assertTrue("createComment p1 Svar c1" in social.calls)
+            assertEquals(
+                "c1",
+                model.state.value.comments
+                    .last()
+                    .parentCommentId,
+            )
+            assertEquals(null, model.state.value.replyingTo)
         }
 
     @Test

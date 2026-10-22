@@ -20,8 +20,13 @@ import samtak.spjall.account.Problem
 import samtak.spjall.account.unreachable
 import samtak.spjall.conversation.Picked
 import samtak.spjall.core.CommunityAudience
+import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.LogTarget
+import samtak.spjall.core.LogTargetKind
+import samtak.spjall.core.ModerationLogAction
+import samtak.spjall.core.ModerationLogEntry
 import samtak.spjall.core.ReactionCount
 import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
@@ -168,6 +173,97 @@ class CommunityViewModelTest {
                 model.state.value.posts
                     .map { it.postId },
             )
+        }
+
+    @Test
+    fun searchesPostsInsideTheCommunity() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.MEMBER)
+            social.posts["k1"] = mutableListOf(post("p1", body = "Æfing á þriðjudegi"), post("p2", body = "Tónleikar"))
+            val model = model()
+            model.onSearchQuery("  æfing  ")
+            model.searchPosts()
+            advanceUntilIdle()
+            assertEquals(
+                listOf("p1"),
+                model.state.value.posts
+                    .map { it.postId },
+            )
+            assertTrue("communityPosts k1 æfing" in social.calls)
+        }
+
+    @Test
+    fun anOwnerCanEditTheCommunityAndSetAOneWayAudienceChange() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.OWNER)
+            val model = model()
+            model.updateCommunity("Nýtt heiti", "Ný lýsing", CommunityAudience.PRIVATE)
+            advanceUntilIdle()
+            assertEquals(
+                "Nýtt heiti",
+                model.state.value.community
+                    ?.name,
+            )
+            assertEquals(
+                "Ný lýsing",
+                model.state.value.community
+                    ?.description,
+            )
+            assertEquals(
+                CommunityAudience.PRIVATE,
+                model.state.value.community
+                    ?.audience,
+            )
+            assertTrue(social.calls.any { it.startsWith("updateCommunity k1 Nýtt heiti Ný lýsing") })
+        }
+
+    @Test
+    fun anOwnerCanChangeMemberRoles() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.OWNER)
+            social.members["k1"] = mutableListOf(CommunityMember("a2", "Anna", true, CommunityRole.MEMBER, 1uL))
+            val model = model()
+            model.loadMembers()
+            advanceUntilIdle()
+            model.setCommunityRole("a2", CommunityRole.MODERATOR)
+            advanceUntilIdle()
+            assertEquals(
+                CommunityRole.MODERATOR,
+                model.state.value.members
+                    .single()
+                    .role,
+            )
+            assertTrue("setCommunityRole k1 a2 MODERATOR" in social.calls)
+        }
+
+    @Test
+    fun moderatorsCanLoadTheCommunityActionLog() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.MODERATOR)
+            social.moderationLogs["k1"] =
+                mutableListOf(
+                    ModerationLogEntry(
+                        entryId = 1uL,
+                        communityId = "k1",
+                        actor = self,
+                        asPlatform = false,
+                        action = ModerationLogAction.HIDE_POST,
+                        target = LogTarget(LogTargetKind.POST, "p1"),
+                        targetAccount = anna,
+                        reason = "Ruslefni",
+                        createdAt = 1uL,
+                    ),
+                )
+            val model = model()
+            model.loadModerationLog()
+            advanceUntilIdle()
+            assertEquals(
+                ModerationLogAction.HIDE_POST,
+                model.state.value.moderationLog
+                    .single()
+                    .action,
+            )
+            assertTrue("communityModerationLog k1" in social.calls)
         }
 
     @Test

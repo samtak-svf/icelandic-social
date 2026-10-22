@@ -1,5 +1,6 @@
 package samtak.spjall.social
 
+import samtak.spjall.core.Comment
 import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
@@ -12,6 +13,8 @@ interface PostActions {
     fun draft(text: String)
 
     fun send()
+
+    fun onReplyTo(comment: Comment?)
 
     fun react(kind: ReactionKind)
 

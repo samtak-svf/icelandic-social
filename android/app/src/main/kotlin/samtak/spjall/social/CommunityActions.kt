@@ -1,5 +1,7 @@
 package samtak.spjall.social
 
+import samtak.spjall.core.CommunityAudience
+import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
@@ -24,6 +26,25 @@ interface CommunityActions {
 
     /** The join requests that wait, for the owner and moderators. */
     fun requests()
+
+    fun onSearchQuery(query: String)
+
+    fun searchPosts()
+
+    fun loadMembers()
+
+    fun setCommunityRole(
+        accountId: String,
+        role: CommunityRole,
+    )
+
+    fun updateCommunity(
+        name: String,
+        description: String,
+        audience: CommunityAudience?,
+    )
+
+    fun loadModerationLog()
 
     /** Deletes the community, once its owner confirmed. */
     fun deleteCommunity()

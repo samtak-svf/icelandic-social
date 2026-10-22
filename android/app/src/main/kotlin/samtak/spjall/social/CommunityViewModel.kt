@@ -17,7 +17,11 @@ import samtak.spjall.account.Problem
 import samtak.spjall.account.problem
 import samtak.spjall.conversation.Picked
 import samtak.spjall.core.Community
+import samtak.spjall.core.CommunityAudience
+import samtak.spjall.core.CommunityMember
+import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.ModerationLogEntry
 import samtak.spjall.core.Post
 import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
@@ -42,6 +46,9 @@ class CommunityViewModel(
         val community: Community? = null,
         /** Newest first. */
         val posts: List<Post> = emptyList(),
+        val searchQuery: String = "",
+        val members: List<CommunityMember> = emptyList(),
+        val moderationLog: List<ModerationLogEntry> = emptyList(),
         /** The cursor of the next, older page, null on the last. */
         val next: String? = null,
         val loaded: Boolean = false,
@@ -138,6 +145,64 @@ class CommunityViewModel(
         perform(::deleteCommunity) {
             social.deleteCommunity(id)
             _deleted.trySend(Unit)
+        }
+    }
+
+    fun onSearchQuery(query: String) {
+        _state.update { it.copy(searchQuery = query) }
+    }
+
+    fun searchPosts() {
+        val query =
+            _state.value.searchQuery
+                .trim()
+                .ifEmpty { null }
+        if (_state.value.busy) return
+        _state.update { it.copy(loadingMore = false, busy = true, problem = null) }
+        viewModelScope.launch {
+            try {
+                val page = withContext(io) { social.communityPosts(id, null, PAGE, query) }
+                failed = null
+                _state.update { it.copy(posts = page.posts, next = page.next, busy = false, loaded = true) }
+            } catch (e: CoreException) {
+                failed = ::searchPosts
+                _state.update { it.copy(busy = false, problem = e.problem()) }
+            }
+        }
+    }
+
+    fun loadMembers() {
+        perform(::loadMembers) {
+            val members = social.communityMembers(id)
+            _state.update { it.copy(members = members) }
+        }
+    }
+
+    fun setCommunityRole(
+        accountId: String,
+        role: CommunityRole,
+    ) {
+        perform({ setCommunityRole(accountId, role) }) {
+            social.setCommunityRole(id, accountId, role)
+            _state.update { it.copy(members = social.communityMembers(id)) }
+        }
+    }
+
+    fun updateCommunity(
+        name: String,
+        description: String,
+        audience: CommunityAudience?,
+    ) {
+        perform({ updateCommunity(name, description, audience) }) {
+            val updated = social.updateCommunity(id, name, description, audience)
+            _state.update { it.copy(community = updated) }
+        }
+    }
+
+    fun loadModerationLog() {
+        perform(::loadModerationLog) {
+            val log = social.communityModerationLog(id, null, MODERATION_LOG_PAGE)
+            _state.update { it.copy(moderationLog = log.entries) }
         }
     }
 
@@ -306,7 +371,11 @@ class CommunityViewModel(
         _state.update { it.copy(loadingMore = true) }
         viewModelScope.launch {
             try {
-                val page = withContext(io) { social.communityPosts(id, next, PAGE) }
+                val query =
+                    _state.value.searchQuery
+                        .trim()
+                        .ifEmpty { null }
+                val page = withContext(io) { social.communityPosts(id, next, PAGE, query) }
                 _state.update { it.copy(posts = it.posts + page.posts, next = page.next, loadingMore = false) }
             } catch (e: CoreException) {
                 failed = ::more
@@ -322,7 +391,11 @@ class CommunityViewModel(
     private fun reload() {
         val community = social.community(id)
         val me = _state.value.me ?: social.me()
-        val page = if (community.reads) social.communityPosts(id, null, PAGE) else null
+        val query =
+            _state.value.searchQuery
+                .trim()
+                .ifEmpty { null }
+        val page = if (community.reads) social.communityPosts(id, null, PAGE, query) else null
         _state.update {
             it.copy(
                 community = community,
@@ -365,6 +438,9 @@ private fun CoreException.imageNotice(): CommunityViewModel.ImageNotice? =
 
 /** A page of posts. */
 private const val PAGE = 20u
+
+/** The first page shown in the community's action log. */
+private const val MODERATION_LOG_PAGE = 30u
 
 /** The most images one post holds. */
 const val IMAGES = 4

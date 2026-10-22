@@ -5,10 +5,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +24,8 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +34,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +55,8 @@ import samtak.spjall.core.ModerationState
 import samtak.spjall.core.Post
 import samtak.spjall.core.ReactionKind
 import samtak.spjall.ui.AppIcons
+import samtak.spjall.ui.Avatar
+import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.VerifiedMark
 import samtak.spjall.ui.listStamp
@@ -72,6 +80,7 @@ fun Author?.shownName(): String =
 fun SubHeader(
     title: String,
     onBack: () -> Unit,
+    trailing: @Composable () -> Unit = {},
 ) {
     Row(
         modifier =
@@ -90,6 +99,7 @@ fun SubHeader(
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.weight(1f).semantics { heading() },
         )
+        trailing()
     }
 }
 
@@ -113,17 +123,22 @@ fun SocialCard(
 
 /** "Opið · 12 meðlimir": the audience, and how many are in it when this account may know. */
 @Composable
-fun CommunityLine(community: Community) {
+fun CommunityLine(
+    community: Community,
+    onClick: (() -> Unit)? = null,
+) {
     val audience =
         stringResource(
             if (community.audience == CommunityAudience.OPEN) R.string.community_open else R.string.community_private,
         )
     val members =
         community.memberCount?.let { pluralStringResource(R.plurals.community_members, it.toInt(), it.toLong()) }
+    val line = Modifier.run { if (onClick == null) this else clickable(role = Role.Button, onClick = onClick) }
     Text(
         text = listOfNotNull(audience, members).joinToString(" · "),
         style = MaterialTheme.typography.bodySmall,
         color = Palette.mutedFg,
+        modifier = line,
     )
 }
 
@@ -134,8 +149,13 @@ fun CommunityRow(
     onOpen: () -> Unit,
 ) {
     SocialCard(modifier = Modifier.clickable(role = Role.Button, onClick = onOpen)) {
-        Text(text = community.name, style = MaterialTheme.typography.titleMedium)
-        CommunityLine(community)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Avatar(name = community.name, kind = AvatarKind.Group, size = 40.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(text = community.name, style = MaterialTheme.typography.titleMedium)
+                CommunityLine(community)
+            }
+        }
     }
 }
 
@@ -155,31 +175,39 @@ fun StateMark(state: ModerationState) {
     )
 }
 
-/** Who wrote it, verified or not, and when. */
+/** Who wrote it: their initials in a circle, verified or not, and when; [trailing] sits on the right. */
 @Composable
 fun Byline(
     author: Author,
     createdAt: ULong,
+    trailing: @Composable () -> Unit = {},
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(
-            text = author.shownName(),
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.weight(1f, fill = false),
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Avatar(
+            name = author.name,
+            kind = if (author.verified) AvatarKind.Verified else AvatarKind.Unverified,
+            size = 34.dp,
         )
-        if (author.verified) VerifiedMark()
-        Text(
-            text = listStamp(createdAt),
-            style = MaterialTheme.typography.bodySmall,
-            color = Palette.mutedFg,
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(text = author.shownName(), style = MaterialTheme.typography.titleSmall)
+                if (author.verified) VerifiedMark()
+            }
+            Text(
+                text = listStamp(createdAt),
+                style = MaterialTheme.typography.bodySmall,
+                color = Palette.mutedFg,
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        trailing()
     }
 }
 
 /**
  * A post as a community's feed and its own screen show it: the byline, its text and images, the five reactions
- * and its comment count, which opens it when [onOpen] is given. This account's own post offers [onDelete] in place
- * of a report.
+ * and its comment count, which opens it when [onOpen] is given; a tap anywhere on the card opens it too. This
+ * account's own post offers a delete in place of a report, both behind the byline's more menu.
  */
 @Composable
 fun PostCard(
@@ -191,44 +219,72 @@ fun PostCard(
     onOpen: (() -> Unit)?,
     onDelete: (() -> Unit)? = null,
 ) {
-    SocialCard {
+    SocialCard(
+        modifier =
+            if (onOpen != null) {
+                Modifier.clickable(role = Role.Button, onClick = onOpen)
+            } else {
+                Modifier
+            },
+    ) {
         StateMark(post.state)
-        Byline(post.author, post.createdAt)
+        Byline(post.author, post.createdAt) {
+            CardActions(reported = reported, onReport = onReport, onDelete = onDelete)
+        }
         if (post.body.isNotBlank()) Text(text = post.body, style = MaterialTheme.typography.bodyLarge)
         PostImageGrid(post)
         Reactions(post, reacting, onReact)
-        // Side by side while both fit; at a large text size the second goes under the first instead of cutting it.
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            itemVerticalAlignment = Alignment.CenterVertically,
-        ) {
-            val comments =
-                pluralStringResource(R.plurals.post_comments, post.commentCount.toInt(), post.commentCount.toLong())
-            if (onOpen != null) {
-                TextButton(onClick = onOpen) { Text(comments) }
-            } else {
-                Text(text = comments, style = MaterialTheme.typography.bodyMedium, color = Palette.mutedFg)
-            }
-            if (onDelete != null) DeleteControl(onDelete) else ReportControl(reported, onReport)
+        val comments =
+            pluralStringResource(R.plurals.post_comments, post.commentCount.toInt(), post.commentCount.toLong())
+        if (onOpen != null) {
+            TextButton(onClick = onOpen) { Text(comments) }
+        } else {
+            Text(text = comments, style = MaterialTheme.typography.bodyMedium, color = Palette.mutedFg)
         }
     }
 }
 
-/** "Tilkynna", or, once sent, that it was. */
+/**
+ * The more menu on a post or a comment: delete this account's own, or report it; once the report was sent it
+ * says so instead of offering another.
+ */
 @Composable
-fun ReportControl(
+fun CardActions(
     reported: Boolean,
     onReport: () -> Unit,
+    onDelete: (() -> Unit)?,
 ) {
-    if (reported) {
-        Text(
-            text = stringResource(R.string.report_sent),
-            style = MaterialTheme.typography.bodySmall,
-            color = Palette.mutedFg,
-        )
-    } else {
-        TextButton(onClick = onReport) { Text(stringResource(R.string.report)) }
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }) {
+            Icon(AppIcons.More, contentDescription = stringResource(R.string.more_options))
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            when {
+                onDelete != null ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.delete), color = Palette.danger) },
+                        onClick = {
+                            open = false
+                            onDelete()
+                        },
+                    )
+                reported ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.report_sent)) },
+                        onClick = { open = false },
+                        enabled = false,
+                    )
+                else ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.report)) },
+                        onClick = {
+                            open = false
+                            onReport()
+                        },
+                    )
+            }
+        }
     }
 }
 

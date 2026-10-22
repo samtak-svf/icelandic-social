@@ -46,6 +46,19 @@ class CommunitiesViewModelTest {
         }
 
     @Test
+    fun loadsTheCombinedFeedAlongsideTheCommunityLists() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.MEMBER)
+            social.communities["k2"] = community("k2")
+            social.posts["k1"] = mutableListOf(post("p1", communityId = "k1"))
+            social.posts["k2"] = mutableListOf(post("p2", communityId = "k2"))
+            val state = model().state.value
+            assertEquals(listOf("p1"), state.feed.map { it.postId })
+            assertTrue("feed 20" in social.calls)
+            assertEquals(CommunitiesTab.MINE, state.tab)
+        }
+
+    @Test
     fun anUnverifiedAccountIsNotOfferedCreate() =
         runTest(dispatcher) {
             account.verified = false

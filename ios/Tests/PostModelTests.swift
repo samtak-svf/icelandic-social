@@ -111,6 +111,52 @@ final class PostModelTests: XCTestCase {
         XCTAssertEqual(model.post?.commentCount, 2)
     }
 
+    func testAReplyGoesUnderTheCommentItAnswers() async {
+        let model = await model()
+        model.reply(to: model.comments[0])
+        XCTAssertEqual(model.replyingTo?.commentId, "c1")
+        model.draft = "Sammála"
+        await model.publish()
+        XCTAssertTrue(social.calls.contains("createComment p1 Sammála on c1"))
+        XCTAssertNil(model.replyingTo)
+    }
+
+    func testAThreadTakesOneLevelSoAReplyIsNotAnsweredAndATombstoneIsNotEither() async {
+        social.comments = [
+            "p1": [
+                makeComment("c1", on: "p1"), makeComment("c2", on: "p1", parent: "c1"),
+                makeComment("c3", on: "p1", body: "", state: .removed),
+            ]
+        ]
+        let model = await modelKeepingComments()
+        model.reply(to: model.comments[1])
+        XCTAssertNil(model.replyingTo)
+        await model.more()
+        model.reply(to: model.comments[2])
+        XCTAssertNil(model.replyingTo)
+        model.reply(to: model.comments[0])
+        XCTAssertEqual(model.replyingTo?.commentId, "c1")
+    }
+
+    func testCancellingAReplyWritesOnThePostItselfAgain() async {
+        let model = await model()
+        model.reply(to: model.comments[0])
+        model.cancelReply()
+        XCTAssertNil(model.replyingTo)
+        model.draft = "Sammála"
+        await model.publish()
+        XCTAssertTrue(social.calls.contains("createComment p1 Sammála"))
+        XCTAssertFalse(social.calls.contains { $0.contains(" on ") })
+    }
+
+    func testDeletingTheCommentBeingAnsweredStopsTheReply() async {
+        social.comments = ["p1": [makeComment("c1", on: "p1", author: jon)]]
+        let model = await modelKeepingComments()
+        model.reply(to: model.comments[0])
+        await model.deleteComment("c1")
+        XCTAssertNil(model.replyingTo)
+    }
+
     /// The post with three comments counted, and whichever comments the test set.
     private func modelKeepingComments() async -> PostModel {
         social.communities = ["k1": makeCommunity("k1", "Fuglar", role: .member)]

@@ -6,11 +6,13 @@ import samtak.spjall.core.Comment
 import samtak.spjall.core.CommentPage
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
+import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.CommunityPage
 import samtak.spjall.core.CoreClient
 import samtak.spjall.core.JoinRequest
 import samtak.spjall.core.JoinState
 import samtak.spjall.core.ModerationAction
+import samtak.spjall.core.ModerationLogPage
 import samtak.spjall.core.Post
 import samtak.spjall.core.PostImage
 import samtak.spjall.core.PostPage
@@ -76,14 +78,39 @@ interface Social {
     /** Deletes a community this account owns; it can be restored for 30 days (decision 0070). */
     fun deleteCommunity(communityId: String)
 
+    /** Renames a community, changes its description, or changes its audience when allowed. */
+    fun updateCommunity(
+        communityId: String,
+        name: String?,
+        description: String?,
+        audience: CommunityAudience?,
+    ): Community
+
+    /** The community's members, its owner and moderators first. */
+    fun communityMembers(communityId: String): List<CommunityMember>
+
+    /** Makes a member a moderator, or a moderator a member again. */
+    fun setCommunityRole(
+        communityId: String,
+        accountId: String,
+        role: samtak.spjall.core.CommunityRole,
+    )
+
     /** This account's id, to tell its own posts and comments from others'. */
     fun me(): String
+
+    /** A page of posts across every community this account belongs to. */
+    fun feed(
+        before: String?,
+        limit: UInt,
+    ): PostPage
 
     /** A page of a community's posts, newest first; [before] is the `next` of the page before. */
     fun communityPosts(
         communityId: String,
         before: String?,
         limit: UInt,
+        query: String? = null,
     ): PostPage
 
     /** A post of text, up to four images from [uploadPostImage] by their media ids, or both. */
@@ -129,6 +156,7 @@ interface Social {
     fun createComment(
         postId: String,
         body: String,
+        parentCommentId: String? = null,
     ): Comment
 
     /** Deletes this account's own comment. */
@@ -167,6 +195,13 @@ interface Social {
         reportId: String,
         resolution: String,
     )
+
+    /** A page of the community's moderation log, newest first. */
+    fun communityModerationLog(
+        communityId: String,
+        before: String?,
+        limit: UInt,
+    ): ModerationLogPage
 
     /** What each reference shows, one card each in their order. */
     fun cards(refs: List<CardRef>): List<Card>
@@ -224,13 +259,34 @@ class CoreSocial(
 
     override fun deleteCommunity(communityId: String) = client.deleteCommunity(communityId)
 
+    override fun updateCommunity(
+        communityId: String,
+        name: String?,
+        description: String?,
+        audience: CommunityAudience?,
+    ) = client.updateCommunity(communityId, name, description, audience)
+
+    override fun communityMembers(communityId: String) = client.communityMembers(communityId)
+
+    override fun setCommunityRole(
+        communityId: String,
+        accountId: String,
+        role: samtak.spjall.core.CommunityRole,
+    ) = client.setCommunityRole(communityId, accountId, role)
+
     override fun me() = client.me().accountId
+
+    override fun feed(
+        before: String?,
+        limit: UInt,
+    ) = client.feed(before, limit)
 
     override fun communityPosts(
         communityId: String,
         before: String?,
         limit: UInt,
-    ) = client.communityPosts(communityId, before, limit)
+        query: String?,
+    ) = client.communityPosts(communityId, before, limit, query)
 
     override fun createPost(
         communityId: String,
@@ -268,7 +324,8 @@ class CoreSocial(
     override fun createComment(
         postId: String,
         body: String,
-    ) = client.createComment(postId, body)
+        parentCommentId: String?,
+    ) = client.createComment(postId, body, parentCommentId)
 
     override fun deleteComment(commentId: String) = client.deleteComment(commentId)
 
@@ -298,6 +355,12 @@ class CoreSocial(
         reportId: String,
         resolution: String,
     ) = client.closeReport(reportId, resolution)
+
+    override fun communityModerationLog(
+        communityId: String,
+        before: String?,
+        limit: UInt,
+    ) = client.communityModerationLog(communityId, before, limit)
 
     override fun cards(refs: List<CardRef>) = client.cards(refs)
 
