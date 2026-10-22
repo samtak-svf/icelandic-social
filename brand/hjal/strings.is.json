@@ -433,5 +433,14 @@
   "community_cover_choose": "Velja forsíðumynd",
   "community_cover_remove": "Fjarlægja forsíðumynd",
   "communities_from_yours": "Frá samfélögunum þínum",
-  "communities_create_row_hint": "Safnaðu fólki saman um málefni"
+  "communities_create_row_hint": "Safnaðu fólki saman um málefni",
+  "close": "Loka",
+  "community_open_full": "Opið samfélag",
+  "community_private_full": "Lokað samfélag",
+  "community_invite_title": "Bjóða í samfélagið",
+  "community_invite_sent": "Boð sent",
+  "community_invite_none": "Enginn fannst",
+  "community_link_copied": "Hlekkur samfélagsins afritaður",
+  "community_members_stack": "Meðlimir samfélagsins",
+  "community_cover_alt": "Forsíðumynd samfélagsins"
 }

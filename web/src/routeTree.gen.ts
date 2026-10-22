@@ -19,6 +19,8 @@ import { Route as CommunitiesIndexRouteImport } from './routes/communities.index
 import { Route as CommunitiesNewRouteImport } from './routes/communities.new'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as CommunitiesCommunityIdIndexRouteImport } from './routes/communities.$communityId.index'
+import { Route as CommunitiesCommunityIdAboutRouteImport } from './routes/communities.$communityId.about'
+import { Route as CommunitiesCommunityIdManageRouteImport } from './routes/communities.$communityId.manage'
 import { Route as CommunitiesCommunityIdReportsRouteImport } from './routes/communities.$communityId.reports'
 import { Route as CommunitiesCommunityIdRequestsRouteImport } from './routes/communities.$communityId.requests'
 
@@ -73,6 +75,18 @@ const CommunitiesCommunityIdIndexRoute =
     path: '/communities/$communityId/',
     getParentRoute: () => rootRouteImport,
   } as any)
+const CommunitiesCommunityIdAboutRoute =
+  CommunitiesCommunityIdAboutRouteImport.update({
+    id: '/communities/$communityId/about',
+    path: '/communities/$communityId/about',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const CommunitiesCommunityIdManageRoute =
+  CommunitiesCommunityIdManageRouteImport.update({
+    id: '/communities/$communityId/manage',
+    path: '/communities/$communityId/manage',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const CommunitiesCommunityIdReportsRoute =
   CommunitiesCommunityIdReportsRouteImport.update({
     id: '/communities/$communityId/reports',
@@ -96,6 +110,8 @@ export interface FileRoutesByFullPath {
   '/communities/new': typeof CommunitiesNewRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities/': typeof CommunitiesIndexRoute
+  '/communities/$communityId/about': typeof CommunitiesCommunityIdAboutRoute
+  '/communities/$communityId/manage': typeof CommunitiesCommunityIdManageRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
   '/communities/$communityId/requests': typeof CommunitiesCommunityIdRequestsRoute
   '/communities/$communityId/': typeof CommunitiesCommunityIdIndexRoute
@@ -110,6 +126,8 @@ export interface FileRoutesByTo {
   '/communities/new': typeof CommunitiesNewRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities': typeof CommunitiesIndexRoute
+  '/communities/$communityId/about': typeof CommunitiesCommunityIdAboutRoute
+  '/communities/$communityId/manage': typeof CommunitiesCommunityIdManageRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
   '/communities/$communityId/requests': typeof CommunitiesCommunityIdRequestsRoute
   '/communities/$communityId': typeof CommunitiesCommunityIdIndexRoute
@@ -125,6 +143,8 @@ export interface FileRoutesById {
   '/communities/new': typeof CommunitiesNewRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities/': typeof CommunitiesIndexRoute
+  '/communities/$communityId/about': typeof CommunitiesCommunityIdAboutRoute
+  '/communities/$communityId/manage': typeof CommunitiesCommunityIdManageRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
   '/communities/$communityId/requests': typeof CommunitiesCommunityIdRequestsRoute
   '/communities/$communityId/': typeof CommunitiesCommunityIdIndexRoute
@@ -141,6 +161,8 @@ export interface FileRouteTypes {
     | '/communities/new'
     | '/posts/$postId'
     | '/communities/'
+    | '/communities/$communityId/about'
+    | '/communities/$communityId/manage'
     | '/communities/$communityId/reports'
     | '/communities/$communityId/requests'
     | '/communities/$communityId/'
@@ -155,6 +177,8 @@ export interface FileRouteTypes {
     | '/communities/new'
     | '/posts/$postId'
     | '/communities'
+    | '/communities/$communityId/about'
+    | '/communities/$communityId/manage'
     | '/communities/$communityId/reports'
     | '/communities/$communityId/requests'
     | '/communities/$communityId'
@@ -169,6 +193,8 @@ export interface FileRouteTypes {
     | '/communities/new'
     | '/posts/$postId'
     | '/communities/'
+    | '/communities/$communityId/about'
+    | '/communities/$communityId/manage'
     | '/communities/$communityId/reports'
     | '/communities/$communityId/requests'
     | '/communities/$communityId/'
@@ -184,6 +210,8 @@ export interface RootRouteChildren {
   CommunitiesNewRoute: typeof CommunitiesNewRoute
   PostsPostIdRoute: typeof PostsPostIdRoute
   CommunitiesIndexRoute: typeof CommunitiesIndexRoute
+  CommunitiesCommunityIdAboutRoute: typeof CommunitiesCommunityIdAboutRoute
+  CommunitiesCommunityIdManageRoute: typeof CommunitiesCommunityIdManageRoute
   CommunitiesCommunityIdReportsRoute: typeof CommunitiesCommunityIdReportsRoute
   CommunitiesCommunityIdRequestsRoute: typeof CommunitiesCommunityIdRequestsRoute
   CommunitiesCommunityIdIndexRoute: typeof CommunitiesCommunityIdIndexRoute
@@ -261,6 +289,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CommunitiesCommunityIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/communities/$communityId/about': {
+      id: '/communities/$communityId/about'
+      path: '/communities/$communityId/about'
+      fullPath: '/communities/$communityId/about'
+      preLoaderRoute: typeof CommunitiesCommunityIdAboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/communities/$communityId/manage': {
+      id: '/communities/$communityId/manage'
+      path: '/communities/$communityId/manage'
+      fullPath: '/communities/$communityId/manage'
+      preLoaderRoute: typeof CommunitiesCommunityIdManageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/communities/$communityId/reports': {
       id: '/communities/$communityId/reports'
       path: '/communities/$communityId/reports'
@@ -288,6 +330,8 @@ const rootRouteChildren: RootRouteChildren = {
   CommunitiesNewRoute: CommunitiesNewRoute,
   PostsPostIdRoute: PostsPostIdRoute,
   CommunitiesIndexRoute: CommunitiesIndexRoute,
+  CommunitiesCommunityIdAboutRoute: CommunitiesCommunityIdAboutRoute,
+  CommunitiesCommunityIdManageRoute: CommunitiesCommunityIdManageRoute,
   CommunitiesCommunityIdReportsRoute: CommunitiesCommunityIdReportsRoute,
   CommunitiesCommunityIdRequestsRoute: CommunitiesCommunityIdRequestsRoute,
   CommunitiesCommunityIdIndexRoute: CommunitiesCommunityIdIndexRoute,

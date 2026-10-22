@@ -18,7 +18,7 @@ import { outcome, useLoad, when } from "./outcome.ts";
 import { Button, ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
 
 // Stjórna (decision 0079): what a community's owner and moderators reach
-// for, in the panel on its page. The reports and the join requests each with
+// for, on a page of its own (decision 0080) that the community's `⋯` menu opens. The reports and the join requests each with
 // what waits for them, the details the owner changes (decision 0063), the
 // members whose role the owner names, the actions kept (decision 0063), and
 // the delete only the owner may do (decision 0070).
@@ -56,12 +56,12 @@ export function Manage({
   const waiting = (community.openReports ?? 0) + (community.pendingJoinRequests ?? 0);
   const owner = community.role === "owner";
   return (
-    <details open className="mt-6 rounded-md border border-border p-3">
-      <summary className="cursor-pointer text-lg font-semibold">
+    <section aria-labelledby="manage-title" className="mt-4">
+      <h1 id="manage-title" className="font-headline text-3xl">
         {waiting > 0
           ? strings.community_manage_count({ count: waiting })
           : strings.community_manage}
-      </summary>
+      </h1>
       <div className="mt-3 flex flex-col gap-4">
         <nav className="flex flex-wrap gap-x-6">
           <Link
@@ -91,7 +91,7 @@ export function Manage({
         <Log communityId={communityId} />
         {owner && <Delete community={community} />}
       </div>
-    </details>
+    </section>
   );
 }
 

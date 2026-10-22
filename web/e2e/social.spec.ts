@@ -61,11 +61,29 @@ async function platformModerator(page: Page) {
   expect((await fetch(url, { method: "POST" })).status).toBe(204);
 }
 
+/** Opens the community's `⋯` menu (decision 0080) and leaves it open. */
+async function openMenu(page: Page) {
+  await page.getByRole("button", { name: strings.more_options }).click();
+}
+
+/** Goes to Stjórna through the `⋯` menu. */
+async function manage(page: Page) {
+  await openMenu(page);
+  await page.getByRole("menuitem", { name: new RegExp(`^${strings.community_manage}`) }).click();
+}
+
+/** Expects the person in `page` to be a member who may leave, which the menu offers. */
+async function expectMember(page: Page) {
+  await openMenu(page);
+  await expect(page.getByRole("menuitem", { name: strings.community_leave })).toBeVisible();
+  await page.keyboard.press("Escape");
+}
+
 /** Joins the open community at `address` as `page`. */
 async function join(page: Page, address: string) {
   await page.goto(address);
   await page.getByRole("button", { name: strings.community_join }).click();
-  await expect(page.getByRole("button", { name: strings.community_leave })).toBeVisible();
+  await expectMember(page);
 }
 
 test("a member joins, posts, comments, reacts, is told and reports; a moderator acts", async ({
@@ -97,7 +115,7 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
     await one.getByRole("button", { name: strings.communities_find }).last().click();
     await one.getByRole("link", { name: new RegExp(name) }).click();
     await one.getByRole("button", { name: strings.community_join }).click();
-    await expect(one.getByRole("button", { name: strings.community_leave })).toBeVisible();
+    await expectMember(one);
   }
 
   // The member posts and reacts to their own post.
@@ -141,6 +159,7 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
 
   // The owner reviews the report and hides the post.
   await owner.goto(community);
+  await manage(owner);
   await owner.getByRole("link", { name: strings.moderation_queue }).click();
   const report = owner.getByRole("article", { name: strings.report_reason_spam });
   await expect(report).toContainText("Ódýr úr");
@@ -244,6 +263,7 @@ test("a moderator hides, then restores and mutes and unmutes from the closed rep
 
   // Hiding closes the report; the closed side holds it.
   await owner.goto(community);
+  await manage(owner);
   await owner.getByRole("link", { name: strings.moderation_queue }).click();
   const open = owner.getByRole("article", { name: strings.report_reason_spam });
   await open.getByLabel(strings.report_reason).fill("Ruslpóstur");
@@ -312,6 +332,7 @@ test("a moderator approves one join request and declines another, who must wait"
 
   // The owner sees how many wait, and answers each.
   await owner.reload();
+  await manage(owner);
   await owner.getByRole("link", { name: strings.join_requests_waiting({ count: 2 }) }).click();
   await expect(owner.getByRole("heading", { name: strings.join_requests_title })).toBeVisible();
   const request = (name: string) => owner.getByRole("article").filter({ hasText: name });
@@ -323,7 +344,7 @@ test("a moderator approves one join request and declines another, who must wait"
 
   // One is a member; the other is told, and offered no way to ask again yet.
   await welcome.reload();
-  await expect(welcome.getByRole("button", { name: strings.community_leave })).toBeVisible();
+  await expectMember(welcome);
   await refused.reload();
   await expect(refused.getByText(strings.community_join_declined)).toBeVisible();
   await expect(refused.getByText(/^Þú getur beðið aftur \d+\. \p{L}+ \d{4}\.$/u)).toBeVisible();
@@ -347,6 +368,7 @@ test("the owner deletes a community, and a platform moderator restores it", asyn
     asked = dialog.message();
     void dialog.accept();
   });
+  await manage(owner);
   await owner.getByRole("button", { name: strings.community_delete }).click();
   await owner.waitForURL(/\/communities$/);
   expect(asked).toBe(strings.community_delete_confirm({ name }));

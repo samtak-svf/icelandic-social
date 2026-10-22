@@ -490,4 +490,22 @@ export const strings = {
   communities_from_yours: "Frá samfélögunum þínum",
   /** Second line of the create row on the hub */
   communities_create_row_hint: "Safnaðu fólki saman um málefni",
+  /** Closes a dialog or a menu */
+  close: "Loka",
+  /** Audience line of a community header, open */
+  community_open_full: "Opið samfélag",
+  /** Audience line of a community header, private */
+  community_private_full: "Lokað samfélag",
+  /** Title of the invitation dialog */
+  community_invite_title: "Bjóða í samfélagið",
+  /** Told after an invitation went out */
+  community_invite_sent: "Boð sent",
+  /** No person matched the invitation search */
+  community_invite_none: "Enginn fannst",
+  /** Told after the community link was copied */
+  community_link_copied: "Hlekkur samfélagsins afritaður",
+  /** Name of the picture stack of members in a community header */
+  community_members_stack: "Meðlimir samfélagsins",
+  /** Name of the cover picture */
+  community_cover_alt: "Forsíðumynd samfélagsins",
 } as const;

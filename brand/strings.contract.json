@@ -1791,6 +1791,42 @@
     "communities_create_row_hint": {
       "surfaces": ["web"],
       "description": "Second line of the create row on the hub"
+    },
+    "close": {
+      "surfaces": ["web"],
+      "description": "Closes a dialog or a menu"
+    },
+    "community_open_full": {
+      "surfaces": ["web"],
+      "description": "Audience line of a community header, open"
+    },
+    "community_private_full": {
+      "surfaces": ["web"],
+      "description": "Audience line of a community header, private"
+    },
+    "community_invite_title": {
+      "surfaces": ["web"],
+      "description": "Title of the invitation dialog"
+    },
+    "community_invite_sent": {
+      "surfaces": ["web"],
+      "description": "Told after an invitation went out"
+    },
+    "community_invite_none": {
+      "surfaces": ["web"],
+      "description": "No person matched the invitation search"
+    },
+    "community_link_copied": {
+      "surfaces": ["web"],
+      "description": "Told after the community link was copied"
+    },
+    "community_members_stack": {
+      "surfaces": ["web"],
+      "description": "Name of the picture stack of members in a community header"
+    },
+    "community_cover_alt": {
+      "surfaces": ["web"],
+      "description": "Name of the cover picture"
     }
   }
 }
