@@ -113,7 +113,8 @@ final class PeopleModel {
         }
     }
 
-    /// Opens the 1:1 there is with one person, starts a new conversation, or adds `picked` to `targetConversation`, into `opened`.
+    /// Opens the 1:1 there is with one person, starts a new conversation, or adds `picked` to the group,
+    /// into `opened`.
     func start() async {
         let picked = picked
         guard !picked.isEmpty else { return }

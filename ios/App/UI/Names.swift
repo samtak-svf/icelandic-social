@@ -14,7 +14,8 @@ func firstName(_ person: Person) -> String {
 /// A group is titled by its name when it has one (decision 0078); otherwise by its members (decision 0022),
 /// or says no one else is there.
 func title(_ conversation: Conversation) -> String {
-    conversation.name ?? (conversation.members.isEmpty ? localized("conversation_alone_title") : names(conversation.members))
+    if let name = conversation.name { return name }
+    return conversation.members.isEmpty ? localized("conversation_alone_title") : names(conversation.members)
 }
 
 func names(_ people: [Person]) -> String {
