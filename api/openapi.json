@@ -286,8 +286,7 @@
         },
         "required": [
           "status",
-          "minClientVersion",
-          "updateUrl"
+          "minClientVersion"
         ]
       },
       "SignInConfig": {

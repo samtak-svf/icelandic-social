@@ -18,10 +18,12 @@ export const Health = z
       description:
         "The oldest build each client may run. An older app asks the user to update; an older web tab reloads, since `web` is the build the Worker serves.",
     }),
-    updateUrl: z.object({
-      android: z.string(),
-      ios: z.string(),
-    }),
+    updateUrl: z
+      .object({
+        android: z.string(),
+        ios: z.string(),
+      })
+      .optional(),
   })
   .openapi("Health");
 

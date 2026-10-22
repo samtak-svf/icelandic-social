@@ -70,7 +70,7 @@ export interface Health {
     ios: string;
     web: string;
   };
-  updateUrl: {
+  updateUrl?: {
     android: string;
     ios: string;
   };
