@@ -396,6 +396,33 @@ class ConversationViewModel(
         }
     }
 
+    /** Names the group, or clears its name with null (0078); everyone in it hears of the change. */
+    fun rename(name: String?) {
+        perform({ rename(name) }) {
+            account.rename(id, name)
+            live.sync()
+            load()
+        }
+    }
+
+    /** Removes [member] from the group, for everyone (0078). */
+    fun remove(member: String) {
+        perform({ remove(member) }) {
+            account.removeAccounts(id, listOf(member))
+            live.sync()
+            load()
+        }
+    }
+
+    /** Leaves the group (0078); the conversation stays here, saying so. */
+    fun leave() {
+        perform(::leave) {
+            account.leave(id)
+            live.sync()
+            load()
+        }
+    }
+
     /** Blocks the other person of a 1:1 (0024); the conversation ends. */
     fun block() {
         val other =

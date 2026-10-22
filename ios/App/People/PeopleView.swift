@@ -65,7 +65,7 @@ struct PeopleView: View {
             guard model.loaded else { return }
             await model.search()
         }
-        .navigationTitle(Text(model.group ? "new_group" : "new_conversation"))
+        .navigationTitle(Text(model.adding ? "add_people_title" : (model.group ? "new_group" : "new_conversation")))
         .navigationBarTitleDisplayMode(.inline)
         // A back button of the app's own in both modes (decision 0047): out of picking several back to
         // one tap, otherwise out of the picker. Swiping from the edge does the same.
@@ -87,14 +87,14 @@ struct PeopleView: View {
             }
         }
         .background {
-            SwipeBack(instead: model.group ? { _ = model.back() } : nil).frame(width: 0, height: 0)
+            SwipeBack(instead: (model.group && !model.adding) ? { _ = model.back() } : nil).frame(width: 0, height: 0)
         }
         .safeAreaInset(edge: .bottom) {
             if model.group && !model.picked.isEmpty {
                 Button {
                     Task { await model.start() }
                 } label: {
-                    Text("contact_action").frame(maxWidth: .infinity)
+                    Text(model.adding ? "add_people_confirm" : "contact_action").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
@@ -118,7 +118,12 @@ extension PeopleView {
     private func rows(_ people: [Person]) -> some View {
         ForEach(people, id: \.account) { person in
             if model.group {
-                PersonRow(person: person, picked: model.picked.contains(person.account)) {
+                let isExisting = model.existing.contains(person.account)
+                PersonRow(
+                    person: person,
+                    picked: isExisting || model.picked.contains(person.account),
+                    disabled: isExisting
+                ) {
                     model.toggle(person.account)
                 }
             } else {
@@ -159,6 +164,7 @@ private struct NewGroupRow: View {
 private struct PersonRow: View {
     let person: Person
     let picked: Bool?
+    var disabled = false
     let onToggle: () -> Void
 
     var body: some View {
@@ -171,6 +177,7 @@ private struct PersonRow: View {
                 if let picked {
                     Image(systemName: picked ? "checkmark.circle.fill" : "circle")
                         .foregroundStyle(picked ? BrandTokens.Colors.primary : BrandTokens.Colors.mutedFg)
+                        .opacity(disabled ? 0.5 : 1)
                         .accessibilityHidden(true)
                 }
             }
@@ -178,6 +185,7 @@ private struct PersonRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(disabled)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(picked == true ? [.isButton, .isSelected] : .isButton)
     }

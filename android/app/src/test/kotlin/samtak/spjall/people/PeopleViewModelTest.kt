@@ -37,6 +37,11 @@ class PeopleViewModelTest {
 
     private fun TestScope.model() = PeopleViewModel(account, live, dispatcher).also { advanceUntilIdle() }
 
+    /** The picker opened to add to a group that exists (0078). */
+    private fun TestScope.adding(existing: Set<String> = emptySet()) =
+        PeopleViewModel(account, live, dispatcher, targetConversation = "c1", existingMembers = existing)
+            .also { advanceUntilIdle() }
+
     private fun TestScope.opened(model: PeopleViewModel) =
         mutableListOf<String>().also { list -> backgroundScope.launch { model.opened.collect(list::add) } }
 
@@ -202,5 +207,56 @@ class PeopleViewModelTest {
             advanceUntilIdle()
             model.toggle("a2")
             assertEquals(listOf("a3", "a2"), model.state.value.picked)
+        }
+
+    @Test
+    fun addingToAGroupStartsInThatModeAndReadsWhoIsInIt() =
+        runTest(dispatcher) {
+            account.conversations = listOf(conversation("c1", anna, bjorn))
+            val state = adding().state.value
+            assertTrue(state.adding)
+            assertTrue(state.group)
+            assertEquals(setOf("a2", "a3"), state.existing)
+        }
+
+    @Test
+    fun someoneAlreadyInTheGroupCannotBePicked() =
+        runTest(dispatcher) {
+            account.conversations = listOf(conversation("c1", anna))
+            val model = adding(existing = setOf("a2"))
+            model.toggle("a2")
+            assertEquals(emptyList<String>(), model.state.value.picked)
+            model.toggle("a3")
+            assertEquals(listOf("a3"), model.state.value.picked)
+        }
+
+    @Test
+    fun addingPutsThePickedPeopleInTheGroupAndGoesBack() =
+        runTest(dispatcher) {
+            account.conversations = listOf(conversation("c1", anna))
+            val model = adding(existing = setOf("a2"))
+            val opened = opened(model)
+            model.toggle("a3")
+            model.start()
+            advanceUntilIdle()
+            assertTrue("addAccounts c1 a3" in account.calls)
+            assertFalse(account.calls.any { it.startsWith("createConversation") })
+            assertEquals(listOf("c1"), opened)
+            assertEquals(1, live.syncs)
+        }
+
+    /** A 1:1 this account left is not one to go back into; one with the person is started (0078). */
+    @Test
+    fun aConversationThisAccountLeftIsNotReused() =
+        runTest(dispatcher) {
+            account.conversations = listOf(conversation("c-left", anna, state = ConversationState.LEFT))
+            val model = model()
+            val opened = opened(model)
+            model.group()
+            model.toggle("a2")
+            model.start()
+            advanceUntilIdle()
+            assertTrue(account.calls.any { it.startsWith("createConversation") })
+            assertEquals(listOf("c-new1"), opened)
         }
 }

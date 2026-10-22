@@ -97,7 +97,7 @@ private struct PickRow: View {
     let onToggle: () -> Void
 
     var body: some View {
-        let group = conversation.members.count > 1
+        let group = conversation.name != nil || conversation.members.count > 1
         // As in the list: a group's circle carries the group's initials, a 1:1's the other person's.
         let initialsOf = group ? title(conversation) : conversation.members.first?.name
         Button(action: onToggle) {

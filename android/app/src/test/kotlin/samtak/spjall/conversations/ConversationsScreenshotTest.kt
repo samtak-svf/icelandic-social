@@ -100,7 +100,7 @@ class ConversationsScreenshotTest {
         line: String,
         unread: UInt,
         mute: Mute = Mute.Off,
-    ) = Conversation(id, ConversationState.ACTIVE, listOf(person), last(person, line), unread, null, mute)
+    ) = Conversation(id, ConversationState.ACTIVE, null, listOf(person), last(person, line), unread, null, mute)
 
     private fun shoot(state: ConversationsViewModel.State) {
         compose.setContent { SpjallTheme { ConversationsScreen(state, actions) } }
@@ -154,6 +154,7 @@ class ConversationsScreenshotTest {
     ) = Conversation(
         id,
         ConversationState.ACTIVE,
+        null,
         members,
         Item(2uL, "e2", anna, true, PAST, status, Content.Text("Takk", null), false, emptyList(), readBy, null, false),
         0u,
@@ -172,6 +173,7 @@ class ConversationsScreenshotTest {
                         Conversation(
                             "c2",
                             ConversationState.ACTIVE,
+                            null,
                             listOf(anna, bjarni),
                             last(bjarni, "Já"),
                             0u,

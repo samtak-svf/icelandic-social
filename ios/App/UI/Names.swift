@@ -11,9 +11,10 @@ func firstName(_ person: Person) -> String {
     person.name?.split(separator: " ").first.map(String.init) ?? localized("person_unnamed")
 }
 
-/// A group has no name in v1: it is titled by its members (decision 0022), or says no one else is there.
+/// A group is titled by its name when it has one (decision 0078); otherwise by its members (decision 0022),
+/// or says no one else is there.
 func title(_ conversation: Conversation) -> String {
-    conversation.members.isEmpty ? localized("conversation_alone_title") : names(conversation.members)
+    conversation.name ?? (conversation.members.isEmpty ? localized("conversation_alone_title") : names(conversation.members))
 }
 
 func names(_ people: [Person]) -> String {
@@ -59,6 +60,12 @@ func lastLine(_ item: Item, group: Bool = true) -> String {
         } else {
             localized("disappearing_off_card", shownName(item.sender))
         }
+    case .name(let name):
+        if let name {
+            localized("name_set_card", shownName(item.sender), name)
+        } else {
+            localized("name_cleared_card", shownName(item.sender))
+        }
     }
 }
 
@@ -78,6 +85,6 @@ func previewLine(_ item: Item, group: Bool) -> String {
     case .text, .media, .post, .location:
         if item.own { return localized("last_line_own", line) }
         return group ? localized("last_line_sender", firstName(item.sender), line) : line
-    case .deleted, .members, .timer, .unreadable: return line
+    case .deleted, .members, .timer, .name, .unreadable: return line
     }
 }

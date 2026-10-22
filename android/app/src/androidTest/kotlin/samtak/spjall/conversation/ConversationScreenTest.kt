@@ -211,7 +211,7 @@ class ConversationScreenTest {
         SpjallTheme {
             ConversationScreen(
                 ConversationViewModel.State(
-                    conversation = Conversation("c1", state, members, null, 0u, timer, mute),
+                    conversation = Conversation("c1", state, null, members, null, 0u, timer, mute),
                     items = items.toList(),
                     loaded = true,
                     typing = typing,
@@ -587,6 +587,7 @@ class ConversationScreenTest {
                             Conversation(
                                 "c1",
                                 ConversationState.ACTIVE,
+                                null,
                                 listOf(anna),
                                 null,
                                 0u,

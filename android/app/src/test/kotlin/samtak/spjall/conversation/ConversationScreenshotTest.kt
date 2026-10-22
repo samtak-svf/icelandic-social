@@ -167,13 +167,13 @@ class ConversationScreenshotTest {
                 ConversationViewModel.State(
                     conversation =
                         Conversation(
-                            "c1",
-                            ConversationState.ACTIVE,
-                            listOf(anna),
-                            null,
-                            0u,
-                            3_600u,
-                            Mute.Off,
+                            id = "c1",
+                            state = ConversationState.ACTIVE,
+                            members = listOf(anna),
+                            last = null,
+                            unread = 0u,
+                            timer = 3_600u,
+                            mute = Mute.Off,
                         ),
                     items = items.toList(),
                     loaded = true,
@@ -189,6 +189,19 @@ class ConversationScreenshotTest {
     @Test
     fun emptyComposerOffersAttach() {
         show(item(1u, Content.Text("Sæl", null)))
+        compose.onRoot().captureRoboImage()
+    }
+
+    /** Who named a group, or took its name away, is a line of its own in the timeline (0078). */
+    @Test
+    fun namingTheGroupIsACardInTheTimeline() {
+        show(
+            item(1u, Content.Text("Sæl", null)),
+            item(2u, Content.Name("Fjölskyldan")),
+            item(3u, Content.Name(null)),
+        )
+        compose.onNodeWithText("Anna Jónsdóttir nefndi hópinn „Fjölskyldan“.").assertExists()
+        compose.onNodeWithText("Anna Jónsdóttir fjarlægði nafn hópsins.").assertExists()
         compose.onRoot().captureRoboImage()
     }
 

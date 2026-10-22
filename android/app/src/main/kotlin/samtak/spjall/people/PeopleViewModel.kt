@@ -24,17 +24,20 @@ import samtak.spjall.core.Person
 import samtak.spjall.socket.Live
 
 /**
- * The new-conversation picker (decisions 0022, 0036): the people met through
+ * The new-conversation picker (decisions 0022, 0036, 0078): the people met through
  * a shared conversation, then everyone else signed in, a page at a time, and
  * a name search over the whole directory. A tap on a person opens the 1:1
  * with them at once (decision 0043); "Nýr hópur" switches to picking several,
- * and more than one picked start a group.
+ * and more than one picked start a group. Given [targetConversation] it adds
+ * people to that group instead, with everyone already in it shown as taken.
  */
 @Suppress("TooManyFunctions") // One per thing the picker does, as PeopleActions lists them.
 class PeopleViewModel(
     private val account: Account,
     private val live: Live,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val targetConversation: String? = null,
+    private val existingMembers: Set<String> = emptySet(),
 ) : ViewModel() {
     data class State(
         /** The people met through a shared conversation. */
@@ -52,6 +55,10 @@ class PeopleViewModel(
         val group: Boolean = false,
         /** Account ids, in the order they were picked. */
         val picked: List<String> = emptyList(),
+        /** Adding to a group that exists (0078): there is no mode to leave, and the title says so. */
+        val adding: Boolean = false,
+        /** Already in that group: shown checked, and not to be picked. */
+        val existing: Set<String> = emptySet(),
         val busy: Boolean = false,
         val problem: Problem? = null,
     ) {
@@ -66,7 +73,14 @@ class PeopleViewModel(
                 }
     }
 
-    private val _state = MutableStateFlow(State())
+    private val _state =
+        MutableStateFlow(
+            if (targetConversation == null) {
+                State()
+            } else {
+                State(group = true, adding = true, existing = existingMembers)
+            },
+        )
     val state: StateFlow<State> = _state.asStateFlow()
 
     private val _opened = Channel<String>(Channel.BUFFERED)
@@ -102,6 +116,8 @@ class PeopleViewModel(
     }
 
     fun toggle(account: String) {
+        // Whoever is already in the group stays so; the row is shown taken.
+        if (account in _state.value.existing) return
         _state.update { state ->
             state.copy(picked = if (account in state.picked) state.picked - account else state.picked + account)
         }
@@ -110,6 +126,15 @@ class PeopleViewModel(
     fun start() {
         val picked = _state.value.picked
         if (picked.isEmpty()) return
+        val target = targetConversation
+        if (target != null) {
+            perform(::start) {
+                account.addAccounts(target, picked)
+                live.sync()
+                _opened.send(target)
+            }
+            return
+        }
         perform(::start) {
             val id = existing(picked) ?: account.createConversation(picked).also { live.sync() }
             _opened.send(id)
@@ -163,9 +188,29 @@ class PeopleViewModel(
         perform(::load) {
             val people = withContext(io) { account.people() }
             val page = withContext(io) { account.directory(null, null, PAGE) }
-            _state.update { it.copy(people = people, directory = page.people, next = page.next, loaded = true) }
+            // Who is already in the group being added to, when the screen was not told (0078).
+            val existing =
+                if (targetConversation != null && _state.value.existing.isEmpty()) {
+                    withContext(io) { membersOf(targetConversation) }
+                } else {
+                    _state.value.existing
+                }
+            _state.update {
+                it.copy(people = people, directory = page.people, next = page.next, loaded = true, existing = existing)
+            }
         }
     }
+
+    /** Everyone already in [conversation], as account ids; empty when this device does not have it. */
+    private fun membersOf(conversation: String): Set<String> =
+        account
+            .conversations()
+            .firstOrNull { it.id == conversation }
+            ?.members
+            ?.mapTo(
+                HashSet(),
+            ) { it.account }
+            .orEmpty()
 
     /** The 1:1 with this one person, if there is one to go back to. */
     private fun existing(picked: List<String>): String? =
@@ -173,7 +218,10 @@ class PeopleViewModel(
             account
                 .conversations()
                 .firstOrNull { c ->
-                    c.state != ConversationState.REMOVED && c.members.map { it.account } == listOf(person)
+                    // A conversation this account left is not one to go back into (0078).
+                    c.state != ConversationState.REMOVED &&
+                        c.state != ConversationState.LEFT &&
+                        c.members.map { it.account } == listOf(person)
                 }?.id
         }
 

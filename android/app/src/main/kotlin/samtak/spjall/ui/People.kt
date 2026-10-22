@@ -50,10 +50,13 @@ fun Person.firstName(): String {
     return first ?: stringResource(R.string.person_unnamed)
 }
 
-/** A group has no name in v1: it is titled by its members (decision 0022), or says no one else is there. */
+/**
+ * A group is titled by the name it was given (0078), or by its members (0022) while it has none; a
+ * conversation with no one else in it says so.
+ */
 @Composable
 fun Conversation.title(): String =
-    if (members.isEmpty()) stringResource(R.string.conversation_alone_title) else names(members)
+    name ?: if (members.isEmpty()) stringResource(R.string.conversation_alone_title) else names(members)
 
 @Composable
 fun names(people: List<Person>): String = people.map { it.shownName() }.joinToString(", ")
@@ -129,7 +132,7 @@ const val AVATAR_INITIALS = "avatar_initials"
 /** The avatar's fill for a conversation: a group, or its one member verified or not. */
 fun Conversation.avatarKind(): AvatarKind =
     when {
-        members.size > 1 -> AvatarKind.Group
+        name != null || members.size > 1 -> AvatarKind.Group
         members.singleOrNull()?.verified == true -> AvatarKind.Verified
         else -> AvatarKind.Unverified
     }
@@ -216,6 +219,15 @@ fun lastLine(
             content.seconds?.let {
                 stringResource(R.string.disappearing_set_card, item.sender.shownName(), duration(it))
             } ?: stringResource(R.string.disappearing_off_card, item.sender.shownName())
+        // Who named the group, or took its name away (0078).
+        is Content.Name -> {
+            val named = content.name
+            if (named != null) {
+                stringResource(R.string.name_set_card, item.sender.shownName(), named)
+            } else {
+                stringResource(R.string.name_cleared_card, item.sender.shownName())
+            }
+        }
     }
 
 /** A disappearing timer: whole days when it is, else hours (decision 0022). */

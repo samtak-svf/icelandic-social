@@ -104,7 +104,7 @@ final class ConversationModel {
         guard let conversation, !conversation.members.isEmpty else { return false }
         switch conversation.state {
         case .active, .new: return true
-        case .excluded, .removed, .stale: return false
+        case .excluded, .removed, .left, .stale: return false
         }
     }
     private(set) var media: [UInt64: Media] = [:]
@@ -114,8 +114,8 @@ final class ConversationModel {
     private(set) var shared: Shared?
     private(set) var problem: Problem?
 
-    @ObservationIgnored private let account: Account
-    @ObservationIgnored private let live: Live
+    @ObservationIgnored let account: Account
+    @ObservationIgnored let live: Live
     @ObservationIgnored private let sleep: @Sendable (Duration) async throws -> Void
     @ObservationIgnored private let now: @Sendable () -> UInt64
     @ObservationIgnored private var failed: (() async -> Void)?
@@ -394,7 +394,7 @@ final class ConversationModel {
 
     /// Blocks the other person of a 1:1 (decision 0024); the conversation ends.
     func block() async {
-        guard let members = conversation?.members, members.count == 1 else { return }
+        guard conversation?.name == nil, let members = conversation?.members, members.count == 1 else { return }
         let other = members[0].account
         do {
             try await live.performAndWait { try $0.block(other) }
@@ -404,6 +404,56 @@ final class ConversationModel {
         } catch {
             // Said, not swallowed: the person must not believe a block that did not happen.
             failed = { await self.block() }
+            problem = Problem(error)
+        }
+    }
+
+    /// Names the group, or clears its name with nil (decision 0078).
+    func rename(_ name: String?) async {
+        let account = account
+        let id = id
+        let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let next = (trimmed?.isEmpty == false) ? trimmed : nil
+        do {
+            _ = try await offMain { try account.rename(id, name: next) }
+            failed = nil
+            problem = nil
+            live.sync()
+            await load()
+        } catch {
+            failed = { await self.rename(name) }
+            problem = Problem(error)
+        }
+    }
+
+    /// Removes `member` from the group (decision 0078).
+    func remove(_ member: String) async {
+        let account = account
+        let id = id
+        do {
+            try await offMain { try account.removeAccounts(id, accounts: [member]) }
+            failed = nil
+            problem = nil
+            live.sync()
+            await load()
+        } catch {
+            failed = { await self.remove(member) }
+            problem = Problem(error)
+        }
+    }
+
+    /// Leaves the group (decision 0078).
+    func leave() async {
+        let account = account
+        let id = id
+        do {
+            try await offMain { try account.leave(id) }
+            failed = nil
+            problem = nil
+            live.sync()
+            await load()
+        } catch {
+            failed = { await self.leave() }
             problem = Problem(error)
         }
     }

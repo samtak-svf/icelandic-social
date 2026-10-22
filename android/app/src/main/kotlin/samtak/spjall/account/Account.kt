@@ -213,6 +213,27 @@ interface Account {
     /** Ends a mute; a conversation not muted stays so. */
     fun unmute(conversation: String)
 
+    /** Adds [accounts] to a group (0078); the commit reaches the server on the next [sync]. */
+    fun addAccounts(
+        conversation: String,
+        accounts: List<String>,
+    )
+
+    /** Removes [accounts] from a group, for everyone (0078). */
+    fun removeAccounts(
+        conversation: String,
+        accounts: List<String>,
+    )
+
+    /** Names a group, or clears its name with null (0078). Returns the envelope id of the commit. */
+    fun rename(
+        conversation: String,
+        name: String?,
+    ): String
+
+    /** Leaves a group (0078): this account is removed, and its copy of the conversation says so. */
+    fun leave(conversation: String)
+
     fun settings(): Settings
 
     fun setSettings(settings: Settings)
@@ -373,6 +394,23 @@ class CoreAccount(
     ) = client.mute(conversation, duration)
 
     override fun unmute(conversation: String) = client.unmute(conversation)
+
+    override fun addAccounts(
+        conversation: String,
+        accounts: List<String>,
+    ) = client.addAccounts(conversation, accounts)
+
+    override fun removeAccounts(
+        conversation: String,
+        accounts: List<String>,
+    ) = client.removeAccounts(conversation, accounts)
+
+    override fun rename(
+        conversation: String,
+        name: String?,
+    ) = client.rename(conversation, name)
+
+    override fun leave(conversation: String) = client.leave(conversation)
 
     override fun settings() = client.settings()
 

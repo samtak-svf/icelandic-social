@@ -67,7 +67,7 @@ class PhotosTest {
         val without = Person("a3", "Björn", false)
 
         fun of(vararg members: Person) =
-            Conversation("c1", ConversationState.ACTIVE, members.toList(), null, 0u, null, Mute.Off).photoOf()
+            Conversation("c1", ConversationState.ACTIVE, null, members.toList(), null, 0u, null, Mute.Off).photoOf()
         assertEquals(PhotoOf("a2", "v3"), of(withPhoto))
         assertNull(of(without))
         assertNull("a group's avatar stays initials (decision 0039)", of(withPhoto, without))

@@ -252,7 +252,12 @@ final class FakeAccount: Account, @unchecked Sendable {
     private func matching(_ query: String) -> [Conversation] {
         let search = query.trimmingCharacters(in: .whitespaces).lowercased()
         return list.filter { conversation in
-            conversation.members.contains { person in
+            if let groupName = conversation.name?.lowercased(),
+                groupName.hasPrefix(search) || groupName.contains(" \(search)") || groupName.contains("-\(search)")
+            {
+                return true
+            }
+            return conversation.members.contains { person in
                 let name = (person.name ?? "").lowercased()
                 return name.hasPrefix(search) || name.contains(" \(search)") || name.contains("-\(search)")
             }
@@ -280,6 +285,51 @@ final class FakeAccount: Account, @unchecked Sendable {
             let members = accounts.map { Person(account: $0, name: nil, verified: false) }
             _list.insert(conversation(id, members: members), at: 0)
             return id
+        }
+    }
+
+    func addAccounts(_ conversation: String, accounts: [String]) throws {
+        try call("addAccounts \(conversation) \(accounts.joined(separator: ","))")
+        let added = accounts.map { id in
+            met.first { $0.account == id }
+                ?? everyone.first { $0.account == id }
+                ?? Person(account: id, name: nil, verified: false)
+        }
+        list = list.map {
+            var changed = $0
+            if changed.id == conversation { changed.members.append(contentsOf: added) }
+            return changed
+        }
+    }
+
+    func removeAccounts(_ conversation: String, accounts: [String]) throws {
+        try call("removeAccounts \(conversation) \(accounts.joined(separator: ","))")
+        let gone = Set(accounts)
+        list = list.map {
+            var changed = $0
+            if changed.id == conversation { changed.members.removeAll { gone.contains($0.account) } }
+            return changed
+        }
+    }
+
+    @discardableResult func rename(_ conversation: String, name: String?) throws -> String {
+        let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let next = (trimmed?.isEmpty == false) ? trimmed : nil
+        try call("rename \(conversation) \(next ?? "-")")
+        list = list.map {
+            var changed = $0
+            if changed.id == conversation { changed.name = next }
+            return changed
+        }
+        return "e-name\(calls.count)"
+    }
+
+    func leave(_ conversation: String) throws {
+        try call("leave \(conversation)")
+        list = list.map {
+            var changed = $0
+            if changed.id == conversation { changed.state = .left }
+            return changed
         }
     }
 
@@ -451,10 +501,11 @@ final class FakeAccount: Account, @unchecked Sendable {
 func conversation(
     _ id: String,
     members: [Person],
+    name: String? = nil,
     state: ConversationState = .active,
     unread: UInt32 = 0
 ) -> Conversation {
-    Conversation(id: id, state: state, members: members, last: nil, unread: unread, timer: nil, mute: .off)
+    Conversation(id: id, state: state, name: name, members: members, last: nil, unread: unread, timer: nil, mute: .off)
 }
 
 func person(_ account: String, _ name: String? = nil) -> Person {

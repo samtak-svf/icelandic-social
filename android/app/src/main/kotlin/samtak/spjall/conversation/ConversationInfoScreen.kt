@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package samtak.spjall.conversation
 
 import androidx.compose.foundation.background
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -21,11 +24,16 @@ import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -47,8 +55,10 @@ import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.Mute
+import samtak.spjall.core.Person
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
+import samtak.spjall.ui.CancelButton
 import samtak.spjall.ui.NameWithMark
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
@@ -85,6 +95,9 @@ fun ConversationInfoScreen(
     }
     LaunchedEffect(nearEnd, shared?.items?.size) { if (nearEnd && shared?.more == true) actions.more() }
     val sides = WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
+    // The two ways out of a group (0078), asked for in two places on the screen and answered here.
+    var renaming by rememberSaveable { mutableStateOf(false) }
+    var leaving by rememberSaveable { mutableStateOf(false) }
     Column(
         modifier =
             Modifier
@@ -102,9 +115,28 @@ fun ConversationInfoScreen(
             verticalArrangement = Arrangement.spacedBy(GAP.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            whole("who") { Who(conversation) }
-            whole("settings") { Settings(conversation, actions) }
+            whole("who") { Who(conversation, actions, onRename = { renaming = true }) }
+            whole("settings") { Settings(conversation, actions, onLeave = { leaving = true }) }
             shared(shared, state.media, actions)
+        }
+        if (renaming) {
+            RenameDialog(
+                current = conversation.name,
+                onSave = {
+                    renaming = false
+                    actions.rename(it)
+                },
+                onDismiss = { renaming = false },
+            )
+        }
+        if (leaving) {
+            LeaveDialog(
+                onConfirm = {
+                    leaving = false
+                    actions.leave()
+                },
+                onDismiss = { leaving = false },
+            )
         }
     }
 }
@@ -133,10 +165,15 @@ private fun InfoBar(actions: ConversationInfoActions) {
     HorizontalDivider(color = Palette.border)
 }
 
-/** The other person, large, with their mark; or a group's name and everyone in it. */
+/** The other person, large, with their mark; or a group's name, what may be done with it, and everyone in it. */
 @Composable
-private fun Who(conversation: Conversation) {
-    val one = conversation.members.singleOrNull()
+private fun Who(
+    conversation: Conversation,
+    actions: ConversationInfoActions,
+    onRename: () -> Unit,
+) {
+    // A group is everyone else when it has a name, whatever its size (0078).
+    val one = if (conversation.name == null) conversation.members.singleOrNull() else null
     Column(
         modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -155,13 +192,52 @@ private fun Who(conversation: Conversation) {
             markSize = 18.dp,
             modifier = Modifier.padding(top = 12.dp, start = 16.dp, end = 16.dp).semantics { heading() },
         )
-        if (one == null) Members(conversation)
+        if (one == null) {
+            GroupActions(actions::add, onRename)
+            Members(conversation) { actions.remove(it.account) }
+        }
+    }
+}
+
+/** What a group's information offers above its members (0078): more people, or a name. */
+@Composable
+private fun GroupActions(
+    onAdd: () -> Unit,
+    onRename: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.padding(top = 16.dp, start = 16.dp, end = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OutlinedButton(onClick = onAdd, modifier = Modifier.heightIn(min = ACTION.dp)) {
+            Icon(
+                AppIcons.Plus,
+                contentDescription = null,
+                tint = Palette.fg,
+                modifier = Modifier.padding(end = 6.dp).size(ACTION_ICON.dp),
+            )
+            Text(stringResource(R.string.add_people))
+        }
+        OutlinedButton(onClick = onRename, modifier = Modifier.heightIn(min = ACTION.dp)) {
+            Icon(
+                AppIcons.Edit,
+                contentDescription = null,
+                tint = Palette.fg,
+                modifier = Modifier.padding(end = 6.dp).size(ACTION_ICON.dp),
+            )
+            Text(stringResource(R.string.group_name))
+        }
     }
 }
 
 @Composable
-private fun Members(conversation: Conversation) {
+private fun Members(
+    conversation: Conversation,
+    onRemove: (Person) -> Unit,
+) {
     val members = conversation.members
+    var removing by remember { mutableStateOf<Person?>(null) }
     SectionLabel(
         text = pluralStringResource(R.plurals.group_member_count, members.size, members.size),
         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp),
@@ -178,22 +254,47 @@ private fun Members(conversation: Conversation) {
                 style = MaterialTheme.typography.bodyLarge,
                 color = Palette.fg,
                 markSize = 14.dp,
-                modifier = Modifier.padding(start = 12.dp),
+                modifier = Modifier.weight(1f).padding(start = 12.dp),
             )
+            // It takes someone out for everyone, so it asks first (0078).
+            IconButton(onClick = { removing = person }) {
+                Icon(
+                    AppIcons.Trash,
+                    contentDescription = stringResource(R.string.remove_member),
+                    tint = Palette.mutedFg,
+                )
+            }
         }
+    }
+    removing?.let { person ->
+        AlertDialog(
+            onDismissRequest = { removing = null },
+            text = { Text(stringResource(R.string.remove_member_confirm, person.shownName())) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        removing = null
+                        onRemove(person)
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Palette.danger),
+                ) { Text(stringResource(R.string.remove_member)) }
+            },
+            dismissButton = { CancelButton(onClick = { removing = null }) },
+        )
     }
 }
 
-/** The timer and mute rows say what they are set to (0055); block is last, in the danger colour. */
+/** The timer and mute rows say what they are set to (0055); block is last in a 1:1, as leaving is in a group (0078). */
 @Composable
 private fun Settings(
     conversation: Conversation,
     actions: ConversationInfoActions,
+    onLeave: () -> Unit,
 ) {
     var timing by rememberSaveable { mutableStateOf(false) }
     var muting by rememberSaveable { mutableStateOf(false) }
     var blocking by rememberSaveable { mutableStateOf(false) }
-    val other = conversation.members.singleOrNull()
+    val other = if (conversation.name == null) conversation.members.singleOrNull() else null
     Column(modifier = Modifier.fillMaxWidth()) {
         HorizontalDivider(color = Palette.border, modifier = Modifier.padding(vertical = 8.dp))
         InfoRow(stringResource(R.string.disappearing_messages), timerState(conversation.timer)) { timing = true }
@@ -204,6 +305,8 @@ private fun Settings(
         ) { if (muted) actions.unmute() else muting = true }
         if (other != null) {
             InfoRow(stringResource(R.string.block), color = Palette.danger) { blocking = true }
+        } else {
+            InfoRow(stringResource(R.string.leave_group), color = Palette.danger, onClick = onLeave)
         }
         HorizontalDivider(color = Palette.border, modifier = Modifier.padding(top = 8.dp))
     }
@@ -232,6 +335,66 @@ private fun Settings(
             actions.block()
         }, onDismiss = { blocking = false })
     }
+}
+
+/** Asks before leaving the group (0078): the store keeps what was said, but no more comes. */
+@Composable
+private fun LeaveDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        text = { Text(stringResource(R.string.leave_group_confirm)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm, colors = ButtonDefaults.textButtonColors(contentColor = Palette.danger)) {
+                Text(stringResource(R.string.leave_group))
+            }
+        },
+        dismissButton = { CancelButton(onClick = onDismiss) },
+    )
+}
+
+/**
+ * Names the group, or takes its name away (0078). Everyone in it is told; with no name the group is
+ * titled by its members again.
+ */
+@Composable
+private fun RenameDialog(
+    current: String?,
+    onSave: (String?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var text by rememberSaveable { mutableStateOf(current.orEmpty()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.group_name_title)) },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { if (it.length <= NAME_LIMIT) text = it },
+                placeholder = { Text(stringResource(R.string.group_name_hint)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(text.trim().ifEmpty { null }) }) {
+                Text(stringResource(R.string.save))
+            }
+        },
+        dismissButton = {
+            Row {
+                if (!current.isNullOrEmpty()) {
+                    TextButton(
+                        onClick = { onSave(null) },
+                        colors = ButtonDefaults.textButtonColors(contentColor = Palette.danger),
+                    ) { Text(stringResource(R.string.group_name_remove)) }
+                }
+                CancelButton(onClick = onDismiss)
+            }
+        },
+    )
 }
 
 /** What the timer is set to, as the menu's choices say it. */
@@ -313,5 +476,10 @@ private const val COLUMNS = 3
 private const val GAP = 2
 private const val MORE_AHEAD = 6
 private const val ROW = 48
+private const val ACTION = 40
+private const val ACTION_ICON = 16
 private const val LARGE_AVATAR = 96
 private const val MEMBER_AVATAR = 36
+
+/** The longest a group's name may be (0078): a title, not a sentence. */
+private const val NAME_LIMIT = 64

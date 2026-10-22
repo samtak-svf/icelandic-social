@@ -59,10 +59,20 @@ class PickScreenTest {
 
     private val conversations =
         listOf(
-            Conversation("c2", ConversationState.ACTIVE, listOf(Person("a2", "Anna", true)), null, 0u, null, Mute.Off),
+            Conversation(
+                "c2",
+                ConversationState.ACTIVE,
+                null,
+                listOf(Person("a2", "Anna", true)),
+                null,
+                0u,
+                null,
+                Mute.Off,
+            ),
             Conversation(
                 "c3",
                 ConversationState.ACTIVE,
+                null,
                 listOf(Person("a3", "Björn", false), Person("a4", "Dóra", false)),
                 null,
                 0u,

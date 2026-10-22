@@ -216,7 +216,7 @@ private struct ConversationRow: View {
     private var muted: Bool { conversation.mute != .off }
     /// Unread and not muted: only then does the row ask for attention (decision 0042).
     private var calling: Bool { unread && !muted }
-    private var group: Bool { conversation.members.count > 1 }
+    private var group: Bool { conversation.name != nil || conversation.members.count > 1 }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -231,7 +231,7 @@ private struct ConversationRow: View {
                         .foregroundStyle(BrandTokens.Colors.fg)
                         .lineLimit(1)
                     // One member's mark: a group's title names several people.
-                    if conversation.members.count == 1, conversation.members[0].verified {
+                    if !group, conversation.members.count == 1, conversation.members[0].verified {
                         VerifiedMark()
                     }
                 }

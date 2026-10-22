@@ -57,7 +57,8 @@ internal fun ConversationMenu(
     var timing by rememberSaveable { mutableStateOf(false) }
     var blocking by rememberSaveable { mutableStateOf(false) }
     var muting by rememberSaveable { mutableStateOf(false) }
-    val other = conversation.members.singleOrNull()
+    // Block is for a 1:1; a named group is a group whatever its size (0078).
+    val other = if (conversation.name == null) conversation.members.singleOrNull() else null
     val pick = { choice: Choice ->
         when (choice) {
             Choice.INFO -> actions.info()

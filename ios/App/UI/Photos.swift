@@ -23,7 +23,7 @@ extension Me {
 
 /// A 1:1's photo is the other person's; a group's avatar stays initials (decision 0039).
 func photoOf(_ conversation: Conversation) -> PhotoOf? {
-    conversation.members.count == 1 ? conversation.members.first?.photoOf : nil
+    conversation.name == nil && conversation.members.count == 1 ? conversation.members.first?.photoOf : nil
 }
 
 /// Decoded photos by account and version, the last `capacity` in memory only.

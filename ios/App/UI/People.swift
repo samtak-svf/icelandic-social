@@ -31,7 +31,7 @@ enum AvatarKind {
 }
 
 func avatarKind(_ conversation: Conversation) -> AvatarKind {
-    if conversation.members.count > 1 { return .group }
+    if conversation.name != nil || conversation.members.count > 1 { return .group }
     return conversation.members.first?.verified == true ? .verified : .unverified
 }
 
