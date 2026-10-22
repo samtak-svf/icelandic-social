@@ -94,6 +94,46 @@ impl<T: Transport> Client<T> {
         Ok(api.update_community(community, name, description.map(str::trim), audience)?)
     }
 
+    /// Sets a community's picture from the image at `path`; its owner or a
+    /// moderator may. The server re-encodes it to a 512 px square WebP and
+    /// keeps only that. Returns the new version (0080).
+    pub fn set_community_avatar(
+        &self,
+        community: &str,
+        path: &Path,
+    ) -> Result<String, ClientError> {
+        id(community, "community id")?;
+        self.checked_image(path)?;
+        Ok(authed(&self.transport, &self.token, &self.client)?
+            .set_community_avatar(community, path)?)
+    }
+
+    /// Removes a community's picture; no error when there was none (0080).
+    pub fn remove_community_avatar(&self, community: &str) -> Result<(), ClientError> {
+        id(community, "community id")?;
+        Ok(authed(&self.transport, &self.token, &self.client)?
+            .remove_community_avatar(community)?)
+    }
+
+    /// Sets a community's cover from the image at `path`; its owner or a
+    /// moderator may. The server re-encodes it to a 1600 by 600 WebP and
+    /// keeps only that. Returns the new version (0080).
+    pub fn set_community_cover(&self, community: &str, path: &Path) -> Result<String, ClientError> {
+        id(community, "community id")?;
+        self.checked_image(path)?;
+        Ok(authed(&self.transport, &self.token, &self.client)?
+            .set_community_cover(community, path)?)
+    }
+
+    /// Removes a community's cover; no error when there was none (0080).
+    pub fn remove_community_cover(&self, community: &str) -> Result<(), ClientError> {
+        id(community, "community id")?;
+        Ok(
+            authed(&self.transport, &self.token, &self.client)?
+                .remove_community_cover(community)?,
+        )
+    }
+
     /// The community's members, its owner and moderators first.
     pub fn community_members(&self, community: &str) -> Result<Vec<CommunityMember>, ClientError> {
         id(community, "community id")?;

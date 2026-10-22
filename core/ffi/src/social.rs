@@ -120,6 +120,12 @@ pub struct Community {
     /// Open reports in its queue; none unless this account moderates.
     #[uniffi(default = None)]
     pub open_reports: Option<u64>,
+    /// The picture's version (0080); none when it has no picture.
+    #[uniffi(default = None)]
+    pub photo: Option<String>,
+    /// The cover's version (0080); none when it has no cover.
+    #[uniffi(default = None)]
+    pub cover: Option<String>,
 }
 
 /// An account asking to join a private community.
@@ -162,6 +168,8 @@ impl From<api::Community> for Community {
             join_declined_until: community.join_declined_until,
             pending_join_requests: community.pending_join_requests,
             open_reports: community.open_reports,
+            photo: community.photo,
+            cover: community.cover,
         }
     }
 }
@@ -709,6 +717,10 @@ pub enum ModerationLogAction {
     CloseReport,
     DeleteCommunity,
     RestoreCommunity,
+    SetCommunityPicture,
+    RemoveCommunityPicture,
+    SetCommunityCover,
+    RemoveCommunityCover,
     Unknown,
 }
 
@@ -730,6 +742,10 @@ impl From<api::ModerationLogAction> for ModerationLogAction {
             A::CloseReport => Self::CloseReport,
             A::DeleteCommunity => Self::DeleteCommunity,
             A::RestoreCommunity => Self::RestoreCommunity,
+            A::SetCommunityPicture => Self::SetCommunityPicture,
+            A::RemoveCommunityPicture => Self::RemoveCommunityPicture,
+            A::SetCommunityCover => Self::SetCommunityCover,
+            A::RemoveCommunityCover => Self::RemoveCommunityCover,
             A::Unknown => Self::Unknown,
         }
     }
@@ -1097,6 +1113,42 @@ impl CoreClient {
                 audience.map(Into::into),
             )?
             .into())
+    }
+
+    /// Sets a community's picture from the image at `path`; its owner or a
+    /// moderator may. `Invalid` for an empty image or one over 10 MB,
+    /// `Refused` with 400 `invalid_image` for what the server cannot decode,
+    /// and 403 for anyone else. Returns the new version (0080).
+    pub fn set_community_avatar(
+        &self,
+        community_id: String,
+        path: String,
+    ) -> Result<String, CoreError> {
+        Ok(self
+            .client()?
+            .set_community_avatar(&community_id, Path::new(&path))?)
+    }
+
+    /// Removes a community's picture; no error when there was none (0080).
+    pub fn remove_community_avatar(&self, community_id: String) -> Result<(), CoreError> {
+        Ok(self.client()?.remove_community_avatar(&community_id)?)
+    }
+
+    /// Sets a community's cover from the image at `path`, as
+    /// `set_community_avatar` does the picture (0080).
+    pub fn set_community_cover(
+        &self,
+        community_id: String,
+        path: String,
+    ) -> Result<String, CoreError> {
+        Ok(self
+            .client()?
+            .set_community_cover(&community_id, Path::new(&path))?)
+    }
+
+    /// Removes a community's cover; no error when there was none (0080).
+    pub fn remove_community_cover(&self, community_id: String) -> Result<(), CoreError> {
+        Ok(self.client()?.remove_community_cover(&community_id)?)
     }
 
     /// The community's members, its owner and moderators first.

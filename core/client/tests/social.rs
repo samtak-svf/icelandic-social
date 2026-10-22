@@ -1151,3 +1151,73 @@ fn a_declined_join_keeps_its_code() {
             if code == "join_declined"
     ));
 }
+
+#[test]
+fn a_community_picture_and_cover_are_uploaded_and_removed() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+    let dir = tempfile::tempdir().unwrap();
+    let image = dir.path().join("kor.jpg");
+    std::fs::write(&image, b"image:first").unwrap();
+
+    phone.answer(200, json!({ "version": "ph_one" }));
+    assert_eq!(c.set_community_avatar("cm_1", &image).unwrap(), "ph_one");
+    phone.answer(200, json!({ "version": "ph_two" }));
+    assert_eq!(c.set_community_cover("cm_1", &image).unwrap(), "ph_two");
+    phone.ok();
+    c.remove_community_avatar("cm_1").unwrap();
+    phone.ok();
+    c.remove_community_cover("cm_1").unwrap();
+    assert_eq!(
+        phone
+            .sent()
+            .into_iter()
+            .map(|(method, path, _)| (method, path))
+            .collect::<Vec<_>>(),
+        [
+            (Method::Put, "/v1/communities/cm_1/avatar".to_string()),
+            (Method::Put, "/v1/communities/cm_1/cover".to_string()),
+            (Method::Delete, "/v1/communities/cm_1/avatar".to_string()),
+            (Method::Delete, "/v1/communities/cm_1/cover".to_string()),
+        ]
+    );
+    assert_eq!(phone.canned.lock().unwrap().uploaded.len(), 2);
+
+    // A community carries their versions.
+    let mut body = community("cm_1", "open");
+    body["photo"] = json!("ph_one");
+    body["cover"] = json!("ph_two");
+    phone.answer(200, body);
+    let got = c.community("cm_1").unwrap();
+    assert_eq!(got.photo.as_deref(), Some("ph_one"));
+    assert_eq!(got.cover.as_deref(), Some("ph_two"));
+    // A server older than the images sends neither.
+    phone.answer(200, community("cm_1", "open"));
+    let old = c.community("cm_1").unwrap();
+    assert_eq!((old.photo, old.cover), (None, None));
+}
+
+#[test]
+fn a_community_image_is_refused_before_a_request_when_empty_or_too_big() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+    let dir = tempfile::tempdir().unwrap();
+    let empty = dir.path().join("empty.png");
+    std::fs::write(&empty, b"").unwrap();
+    let big = dir.path().join("big.png");
+    std::fs::File::create(&big)
+        .unwrap()
+        .set_len(spjall_client::MAX_PHOTO + 1)
+        .unwrap();
+    let ok = dir.path().join("ok.png");
+    std::fs::write(&ok, b"image").unwrap();
+
+    let refused = |r: Result<_, ClientError>| matches!(r, Err(ClientError::Invalid(_)));
+    assert!(refused(c.set_community_avatar("cm_1", &empty).map(drop)));
+    assert!(refused(c.set_community_avatar("cm_1", &big).map(drop)));
+    assert!(refused(c.set_community_cover("cm_1", &empty).map(drop)));
+    assert!(refused(c.set_community_cover("cm_1", &big).map(drop)));
+    assert!(refused(c.set_community_avatar("../x", &ok).map(drop)));
+    assert!(refused(c.remove_community_cover("a/b")));
+    assert!(phone.sent().is_empty());
+}

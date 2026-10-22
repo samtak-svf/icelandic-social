@@ -481,6 +481,12 @@ pub struct DeviceLinkRequestInfo {
     pub approved: bool,
 }
 
+/// `setCommunityAvatar`'s and `setCommunityCover`'s answer: the new version (0080).
+#[derive(Deserialize)]
+struct ImageSet {
+    version: String,
+}
+
 /// `setPhoto`'s answer: the new version (0039).
 #[derive(Deserialize)]
 struct PhotoSet {
@@ -576,6 +582,12 @@ pub struct Community {
     /// Open reports in its queue; none unless the caller moderates.
     #[serde(default)]
     pub open_reports: Option<u64>,
+    /// The picture's version (0080); none when it has no picture.
+    #[serde(default)]
+    pub photo: Option<String>,
+    /// The cover's version (0080); none when it has no cover.
+    #[serde(default)]
+    pub cover: Option<String>,
 }
 
 /// A page of `listCommunities`, and the cursor of the next, none on the last.
@@ -933,6 +945,10 @@ pub enum ModerationLogAction {
     CloseReport,
     DeleteCommunity,
     RestoreCommunity,
+    SetCommunityPicture,
+    RemoveCommunityPicture,
+    SetCommunityCover,
+    RemoveCommunityCover,
     #[serde(other)]
     Unknown,
 }
@@ -1766,6 +1782,58 @@ impl<T: Transport + ?Sized> Api<'_, T> {
         )
     }
 
+    /// `setCommunityAvatar` and `setCommunityCover` (0080): uploads the image
+    /// at `file`; `kind` is `avatar` or `cover`. The new version.
+    fn set_community_image(
+        &self,
+        community: &str,
+        kind: &str,
+        file: &Path,
+        what: &'static str,
+    ) -> Result<String, ApiError> {
+        let request = self.request(
+            Method::Put,
+            format!("/v1/communities/{community}/{kind}"),
+            None,
+        );
+        let response = Self::checked(self.transport.upload(request, file)?)?;
+        let set: ImageSet =
+            serde_json::from_str(&response.body).map_err(|_| ApiError::Malformed(what))?;
+        Ok(set.version)
+    }
+
+    /// `setCommunityAvatar`: the community's picture, re-encoded by the
+    /// server to a 512 px square WebP. Its owner or a moderator (0080).
+    pub fn set_community_avatar(&self, community: &str, file: &Path) -> Result<String, ApiError> {
+        self.set_community_image(community, "avatar", file, "setCommunityAvatar")
+    }
+
+    /// `removeCommunityAvatar`: no error when there was none.
+    pub fn remove_community_avatar(&self, community: &str) -> Result<(), ApiError> {
+        self.send(
+            Method::Delete,
+            format!("/v1/communities/{community}/avatar"),
+            None,
+        )
+        .map(drop)
+    }
+
+    /// `setCommunityCover`: the community's cover, re-encoded by the server
+    /// to a 1600 by 600 WebP. Its owner or a moderator (0080).
+    pub fn set_community_cover(&self, community: &str, file: &Path) -> Result<String, ApiError> {
+        self.set_community_image(community, "cover", file, "setCommunityCover")
+    }
+
+    /// `removeCommunityCover`: no error when there was none.
+    pub fn remove_community_cover(&self, community: &str) -> Result<(), ApiError> {
+        self.send(
+            Method::Delete,
+            format!("/v1/communities/{community}/cover"),
+            None,
+        )
+        .map(drop)
+    }
+
     /// `listCommunityMembers`: the owner and the moderators first.
     pub fn community_members(&self, community: &str) -> Result<Vec<CommunityMember>, ApiError> {
         let listed: Members = self.call(
@@ -2258,7 +2326,7 @@ mod tests {
         // a platform moderator's closing of a report; each contract value
         // reads as itself rather than as `Unknown`.
         let logged = listed("/ModerationLogEntry/properties/action/enum");
-        assert_eq!(logged.len(), 14);
+        assert_eq!(logged.len(), 18);
         assert!(logged.iter().all(|value| {
             serde_json::from_value::<ModerationLogAction>(value.clone())
                 .is_ok_and(|action| action != ModerationLogAction::Unknown)

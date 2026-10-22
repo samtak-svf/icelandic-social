@@ -1537,6 +1537,22 @@
       "surfaces": ["android", "ios", "web"],
       "description": "A closed report's decision: the community's deletion closed it (decision 0070)."
     },
+    "moderation_log_community_picture_set": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A log entry: a moderator set the community's picture (decision 0080)."
+    },
+    "moderation_log_community_picture_removed": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A log entry: a moderator removed the community's picture (decision 0080)."
+    },
+    "moderation_log_community_cover_set": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A log entry: a moderator set the community's cover (decision 0080)."
+    },
+    "moderation_log_community_cover_removed": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A log entry: a moderator removed the community's cover (decision 0080)."
+    },
     "moderation_closed_by": {
       "surfaces": ["android", "ios", "web"],
       "description": "Who closed a report and when; {date} is a formatted date.",

@@ -396,6 +396,14 @@ export const strings = {
   moderation_decision_dismissed: "Lokað án aðgerðar.",
   /** A closed report's decision: the community's deletion closed it (decision 0070). */
   moderation_decision_community_deleted: "Lokað þegar samfélaginu var eytt.",
+  /** A log entry: a moderator set the community's picture (decision 0080). */
+  moderation_log_community_picture_set: "Mynd samfélagsins var sett.",
+  /** A log entry: a moderator removed the community's picture (decision 0080). */
+  moderation_log_community_picture_removed: "Mynd samfélagsins var fjarlægð.",
+  /** A log entry: a moderator set the community's cover (decision 0080). */
+  moderation_log_community_cover_set: "Forsíðumynd samfélagsins var sett.",
+  /** A log entry: a moderator removed the community's cover (decision 0080). */
+  moderation_log_community_cover_removed: "Forsíðumynd samfélagsins var fjarlægð.",
   /** Who closed a report and when; {date} is a formatted date. */
   moderation_closed_by: (args: { name: string; date: string }): string =>
     args.name + " afgreiddi tilkynninguna " + args.date + ".",
