@@ -1,4 +1,5 @@
 import { createMiddleware } from "hono/factory";
+import type { AppEnv } from "./app.ts";
 import { minClientVersions, updateUrls } from "./env/index.ts";
 import { fail } from "./errors.ts";
 
@@ -36,7 +37,7 @@ export function belowFloor(env: Env, header: string | undefined): FloorRefusal |
 }
 
 /** Every /v1 route refuses a build below its platform's floor (decision 0030). */
-export const clientFloor = createMiddleware<{ Bindings: Env }>(async (c, next) => {
+export const clientFloor = createMiddleware<AppEnv>(async (c, next) => {
   const refusal = belowFloor(c.env, c.req.header(CLIENT_HEADER));
   if (!refusal) return next();
   if (refusal.error === "invalid_request") return fail(c, 400, refusal.error);
