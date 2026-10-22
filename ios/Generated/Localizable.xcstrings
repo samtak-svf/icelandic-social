@@ -2293,6 +2293,42 @@
         }
       }
     },
+    "communities_tab_feed": {
+      "comment": "Tab of the community hub: the chronological feed of the posts in the person's communities (decision 0079).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nýjast"
+          }
+        }
+      }
+    },
+    "communities_tab_mine": {
+      "comment": "Tab of the community hub: the communities the person is a member of.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mín samfélög"
+          }
+        }
+      }
+    },
+    "communities_tab_discover": {
+      "comment": "Tab of the community hub: the search and the list of communities to join.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finna"
+          }
+        }
+      }
+    },
     "tab_notifications": {
       "comment": "Navigation: what was addressed to this account in communities (decision 0067).",
       "extractionState": "manual",
@@ -2449,6 +2485,18 @@
         }
       }
     },
+    "communities_feed_empty": {
+      "comment": "The hub's feed when the person's communities have no posts yet (decision 0079).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engir póstar úr samfélögunum þínum enn."
+          }
+        }
+      }
+    },
     "community_create": {
       "comment": "Heading and button: create a new community.",
       "extractionState": "manual",
@@ -2557,6 +2605,174 @@
         }
       }
     },
+    "community_members_title": {
+      "comment": "Heading over a community's member list.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meðlimir"
+          }
+        }
+      }
+    },
+    "community_role_owner": {
+      "comment": "A member's role: the one owner, who names moderators and may delete the community (decision 0063).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eigandi"
+          }
+        }
+      }
+    },
+    "community_role_moderator": {
+      "comment": "A member's role: approves join requests and moderates posts and comments (decision 0063).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stjórnandi"
+          }
+        }
+      }
+    },
+    "community_role_member": {
+      "comment": "A member's role: reads, posts, comments and reacts (decision 0063).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meðlimur"
+          }
+        }
+      }
+    },
+    "community_make_moderator": {
+      "comment": "Owner action on a member: make them a moderator.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gera að stjórnanda"
+          }
+        }
+      }
+    },
+    "community_remove_moderator": {
+      "comment": "Owner action on a moderator: take the role away.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taka úr stjórnendum"
+          }
+        }
+      }
+    },
+    "community_info": {
+      "comment": "Title of the screen with a community's full description, its hosting notice and its members (decision 0079).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um samfélagið"
+          }
+        }
+      }
+    },
+    "community_read_more": {
+      "comment": "Link that opens the full description from the feed's clamped community description (decision 0079).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lesa meira"
+          }
+        }
+      }
+    },
+    "community_not_encrypted_notice": {
+      "comment": "Says a community's content is hosted on a server and is not end-to-end encrypted (decisions 0060, 0063).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Efni í samfélögum er hýst á þjóni og er ekki dulkóðað enda á milli."
+          }
+        }
+      }
+    },
+    "community_edit": {
+      "comment": "Owner action: change a community's name, description or audience.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Breyta samfélagi"
+          }
+        }
+      }
+    },
+    "community_manage": {
+      "comment": "Title of the screen holding a moderator's and the owner's tools (decision 0079).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stjórna"
+          }
+        }
+      }
+    },
+    "community_manage_count": {
+      "comment": "The manage screen's label with the number of items waiting for the person.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stjórna (%1$lld)"
+          }
+        }
+      }
+    },
+    "community_search_posts": {
+      "comment": "Placeholder of the search over one community's posts.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leita í samfélagi"
+          }
+        }
+      }
+    },
+    "community_search_empty": {
+      "comment": "The search over a community's posts found nothing.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enginn póstur fannst."
+          }
+        }
+      }
+    },
     "community_join": {
       "comment": "Button: join an open community.",
       "extractionState": "manual",
@@ -2625,6 +2841,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Skrifa póst"
+          }
+        }
+      }
+    },
+    "post_compose_prompt": {
+      "comment": "The one-line prompt in a feed that opens the post composer when it is tapped (decision 0079).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrifaðu eitthvað…"
           }
         }
       }
@@ -2721,6 +2949,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "Engar athugasemdir enn."
+          }
+        }
+      }
+    },
+    "comment_reply": {
+      "comment": "Action under a comment: write a reply to it (decision 0071).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Svara"
+          }
+        }
+      }
+    },
+    "comment_replying_to": {
+      "comment": "Above the comment composer while a reply is being written; {name} is the author of the comment being answered (decision 0071).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Svarar %1$@"
+          }
+        }
+      }
+    },
+    "comment_replies_count": {
+      "comment": "How many replies a top-level comment has (decision 0071).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld svar"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld svör"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "comment_tombstone": {
+      "comment": "Stands in a comment list where a removed or deleted parent comment still has visible replies (decision 0071).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Athugasemd er ekki lengur sýnileg."
           }
         }
       }
@@ -2949,6 +3237,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ekkert bíður."
+          }
+        }
+      }
+    },
+    "moderation_log_title": {
+      "comment": "Heading of a community's append-only moderation log (decision 0063), read on the manage screen (decision 0079).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aðgerðaskrá"
+          }
+        }
+      }
+    },
+    "moderation_log_empty": {
+      "comment": "The moderation log when no action has been recorded.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engar skráðar aðgerðir."
           }
         }
       }

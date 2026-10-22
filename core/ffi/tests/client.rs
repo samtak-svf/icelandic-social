@@ -19,8 +19,8 @@ use spjall_core::client::{
 };
 use spjall_core::social::{
     Author, Card, CardCommunity, CardKind, CardRef, CommunityAudience, CommunityRole,
-    ModerationAction, ModerationState, ReactionCount, ReactionKind, ReportReason, ReportTarget,
-    ReportTargetKind, SocialNotificationKind,
+    LogTargetKind, ModerationAction, ModerationLogAction, ModerationState, ReactionCount,
+    ReactionKind, ReportReason, ReportTarget, ReportTargetKind, SocialNotificationKind,
 };
 use spjall_core::{Body, CoreError};
 
@@ -49,6 +49,7 @@ impl App {
                 HttpMethod::Post => api::Method::Post,
                 HttpMethod::Delete => api::Method::Delete,
                 HttpMethod::Put => api::Method::Put,
+                HttpMethod::Patch => api::Method::Patch,
             },
             path: request.path,
             body: request.body,
@@ -793,7 +794,10 @@ fn the_social_calls_cross_the_exported_api() {
         "reactions":[{"kind":"laugh","count":2}],"myReaction":null,"commentCount":0,
         "state":"removed"}],"next":"2"}"#,
     );
-    let page = a1.client.community_posts("cm_1".into(), None, 10).unwrap();
+    let page = a1
+        .client
+        .community_posts("cm_1".into(), None, 10, Some("Halló".into()))
+        .unwrap();
     let post = &page.posts[0];
     assert_eq!(page.next.as_deref(), Some("2"));
     assert_eq!(
@@ -882,6 +886,81 @@ fn the_social_calls_cross_the_exported_api() {
         (SocialNotificationKind::JoinApproved, 0, None)
     );
 
+    answer(204, "");
+    a1.client
+        .set_community_role("cm_1".into(), "b".into(), CommunityRole::Moderator)
+        .unwrap();
+
+    answer(
+        200,
+        r#"{"communityId":"cm_1","name":"Kór Hlíðanna","description":"","audience":"private",
+        "createdAt":1,"memberCount":3,"role":"owner","joinRequested":false,"invited":false,
+        "mutedUntil":null,"readOnly":false,"openReports":2}"#,
+    );
+    let edited = a1
+        .client
+        .update_community(
+            "cm_1".into(),
+            Some("Kór Hlíðanna".into()),
+            None,
+            Some(CommunityAudience::Private),
+        )
+        .unwrap();
+    assert_eq!(edited.open_reports, Some(2));
+
+    answer(
+        200,
+        r#"{"members":[{"accountId":"a","name":"Sigrún","verified":true,"role":"owner",
+        "joinedAt":9}]}"#,
+    );
+    let members = a1.client.community_members("cm_1".into()).unwrap();
+    assert_eq!(
+        (
+            members[0].account_id.as_str(),
+            members[0].role,
+            members[0].joined_at
+        ),
+        ("a", CommunityRole::Owner, 9)
+    );
+
+    answer(
+        200,
+        r#"{"entries":[{"entryId":4,"communityId":"cm_1","actor":null,"asPlatform":false,
+        "action":"close_report","target":{"kind":"report","id":"r_1"},"targetAccount":null,
+        "reason":"Lokið","createdAt":6}],"next":null}"#,
+    );
+    let log = a1
+        .client
+        .community_moderation_log("cm_1".into(), None, 50)
+        .unwrap();
+    assert_eq!(
+        (
+            log.entries[0].action,
+            log.entries[0].target.kind,
+            log.entries[0].target.id.as_str()
+        ),
+        (
+            ModerationLogAction::CloseReport,
+            LogTargetKind::Report,
+            "r_1"
+        )
+    );
+
+    answer(200, r#"{"posts":[],"next":null}"#);
+    assert!(a1.client.feed(None, 20).unwrap().posts.is_empty());
+
+    answer(
+        200,
+        r#"{"commentId":"p_1-0a1b","postId":"p_1","parentCommentId":"p_1-0a1a",
+        "author":{"accountId":"a","name":null,"verified":false},"body":"Svar","createdAt":7,
+        "state":"visible"}"#,
+    );
+    let reply = a1
+        .client
+        .create_comment("p_1".into(), "Svar".into(), Some("p_1-0a1a".into()))
+        .unwrap();
+    assert_eq!(reply.parent_comment_id.as_deref(), Some("p_1-0a1a"));
+
     answer(403, r#"{"error":"not_moderator","requestId":"r"}"#);
     assert!(matches!(
         a1.client.close_report("r_1".into(), "Lokið".into()),
@@ -906,13 +985,25 @@ fn the_social_calls_cross_the_exported_api() {
             (HttpMethod::Post, "/v1/communities".to_string()),
             (
                 HttpMethod::Get,
-                "/v1/communities/cm_1/posts?limit=10".into()
+                "/v1/communities/cm_1/posts?q=Hall%C3%B3&limit=10".into()
             ),
             (HttpMethod::Put, "/v1/posts/p_1/reaction".into()),
             (HttpMethod::Post, "/v1/reports".into()),
             (HttpMethod::Post, "/v1/communities/cm_1/actions".into()),
             (HttpMethod::Post, "/v1/cards".into()),
             (HttpMethod::Get, "/v1/notifications?limit=50".into()),
+            (
+                HttpMethod::Put,
+                "/v1/communities/cm_1/members/b/role".into()
+            ),
+            (HttpMethod::Patch, "/v1/communities/cm_1".into()),
+            (HttpMethod::Get, "/v1/communities/cm_1/members".into()),
+            (
+                HttpMethod::Get,
+                "/v1/communities/cm_1/moderation-log?limit=50".into()
+            ),
+            (HttpMethod::Get, "/v1/feed?limit=20".into()),
+            (HttpMethod::Post, "/v1/posts/p_1/comments".into()),
             (HttpMethod::Post, "/v1/reports/r_1/close".into()),
         ]
     );

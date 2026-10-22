@@ -976,6 +976,18 @@
       "surfaces": ["android", "ios", "web"],
       "description": "Navigation: the communities a person is in and the way to find more (decision 0063)."
     },
+    "communities_tab_feed": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Tab of the community hub: the chronological feed of the posts in the person's communities (decision 0079)."
+    },
+    "communities_tab_mine": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Tab of the community hub: the communities the person is a member of."
+    },
+    "communities_tab_discover": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Tab of the community hub: the search and the list of communities to join."
+    },
     "tab_notifications": {
       "surfaces": ["android", "ios", "web"],
       "description": "Navigation: what was addressed to this account in communities (decision 0067)."
@@ -1034,6 +1046,10 @@
       "surfaces": ["android", "ios", "web"],
       "description": "The community search found nothing."
     },
+    "communities_feed_empty": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The hub's feed when the person's communities have no posts yet (decision 0079)."
+    },
     "community_create": {
       "surfaces": ["android", "ios", "web"],
       "description": "Heading and button: create a new community."
@@ -1070,6 +1086,65 @@
         "count": "int"
       }
     },
+    "community_members_title": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Heading over a community's member list."
+    },
+    "community_role_owner": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A member's role: the one owner, who names moderators and may delete the community (decision 0063)."
+    },
+    "community_role_moderator": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A member's role: approves join requests and moderates posts and comments (decision 0063)."
+    },
+    "community_role_member": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A member's role: reads, posts, comments and reacts (decision 0063)."
+    },
+    "community_make_moderator": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Owner action on a member: make them a moderator."
+    },
+    "community_remove_moderator": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Owner action on a moderator: take the role away."
+    },
+    "community_info": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Title of the screen with a community's full description, its hosting notice and its members (decision 0079)."
+    },
+    "community_read_more": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Link that opens the full description from the feed's clamped community description (decision 0079)."
+    },
+    "community_not_encrypted_notice": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Says a community's content is hosted on a server and is not end-to-end encrypted (decisions 0060, 0063)."
+    },
+    "community_edit": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Owner action: change a community's name, description or audience."
+    },
+    "community_manage": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Title of the screen holding a moderator's and the owner's tools (decision 0079)."
+    },
+    "community_manage_count": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The manage screen's label with the number of items waiting for the person.",
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "community_search_posts": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Placeholder of the search over one community's posts."
+    },
+    "community_search_empty": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The search over a community's posts found nothing."
+    },
     "community_join": {
       "surfaces": ["android", "ios", "web"],
       "description": "Button: join an open community."
@@ -1093,6 +1168,10 @@
     "post_compose": {
       "surfaces": ["android", "ios", "web"],
       "description": "Label of the field where a member writes a new post."
+    },
+    "post_compose_prompt": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The one-line prompt in a feed that opens the post composer when it is tapped (decision 0079)."
     },
     "post_publish": {
       "surfaces": ["android", "ios", "web"],
@@ -1125,6 +1204,29 @@
     "comments_empty": {
       "surfaces": ["android", "ios", "web"],
       "description": "A post with no comments yet."
+    },
+    "comment_reply": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Action under a comment: write a reply to it (decision 0071)."
+    },
+    "comment_replying_to": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Above the comment composer while a reply is being written; {name} is the author of the comment being answered (decision 0071).",
+      "placeholders": {
+        "name": "string"
+      }
+    },
+    "comment_replies_count": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "How many replies a top-level comment has (decision 0071).",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "comment_tombstone": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Stands in a comment list where a removed or deleted parent comment still has visible replies (decision 0071)."
     },
     "reaction_like": {
       "surfaces": ["android", "ios", "web"],
@@ -1201,6 +1303,14 @@
     "moderation_queue_empty": {
       "surfaces": ["android", "ios", "web"],
       "description": "The report queue when it is empty."
+    },
+    "moderation_log_title": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Heading of a community's append-only moderation log (decision 0063), read on the manage screen (decision 0079)."
+    },
+    "moderation_log_empty": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The moderation log when no action has been recorded."
     },
     "moderation_hide": {
       "surfaces": ["android", "ios", "web"],

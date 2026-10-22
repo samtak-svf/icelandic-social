@@ -1,5 +1,5 @@
 import { db, space } from "../../env/index.ts";
-import { UNBLOCKED } from "../../identity/index.ts";
+import { blockedEither, UNBLOCKED } from "../../identity/index.ts";
 import { notice } from "../jobs/index.ts";
 import type { CommentContent, MediaRef, PostContent, Viewer } from "./do/space.ts";
 import { type IndexedPost, postAccess, replyRefusal } from "./access.ts";
@@ -83,15 +83,24 @@ export function parseCursor(cursor: string | undefined): { t: number; id: string
     : { t: Number(cursor.slice(0, at)), id: cursor.slice(at + 1) };
 }
 
-/** A community's visible posts, newest first, but those a block hides from the viewer. */
+/**
+ * A community's visible posts, newest first, but those a block hides from the
+ * viewer. With `query` (decision 0079) the community's own space names the
+ * posts whose text matches it, so the index reads only those, and every page
+ * and its `next` follow the same rule without the search: keyset pagination,
+ * visibility and block filtering stay exact.
+ */
 export async function communityPosts(
   env: Env,
   communityId: string,
   viewer: Viewer,
   before: string | undefined,
   limit: number,
+  query?: string,
 ): Promise<{ rows: IndexedPost[]; next: string | null }> {
   const cursor = parseCursor(before);
+  const matched = query?.trim() ? await space(env, communityId).searchPosts(query.trim()) : null;
+  if (matched !== null && matched.length === 0) return { rows: [], next: null };
   const { results } = await db(env)
     .prepare(
       `SELECT ${INDEXED} FROM post_index p
@@ -99,13 +108,16 @@ export async function communityPosts(
           AND p.author_id NOT IN (SELECT value FROM json_each(?2))
           AND (?3 IS NULL OR p.created_at < ?3
                OR (p.created_at = ?3 AND (?4 IS NULL OR p.post_id < ?4)))
-        ORDER BY p.created_at DESC, p.post_id DESC LIMIT ?5`,
+          AND (?5 = 1 OR p.post_id IN (SELECT value FROM json_each(?6)))
+        ORDER BY p.created_at DESC, p.post_id DESC LIMIT ?7`,
     )
     .bind(
       communityId,
       JSON.stringify(viewer.hidden),
       cursor?.t ?? null,
       cursor?.id ?? null,
+      matched === null ? 1 : 0,
+      JSON.stringify(matched ?? []),
       limit + 1,
     )
     .all<IndexedPost>();
@@ -237,9 +249,12 @@ export async function noteAuthor(
 /**
  * Comments `body` on `postId` as `author`, when it may reply there: the one
  * way a comment is written, from the route and from the assistant (decision
- * 0076). The post's author is told, and `also` adds the jobs of the comment's
- * id to that batch. The notice is written first; its job finds no comment to
- * tell of if the space then fails to take it.
+ * 0076). With `parentCommentId` it is a reply to a top-level comment on the
+ * post, whose author is told too (0071), deduplicated when it is the post's
+ * author, and never across a block. The post's author is told, and `also`
+ * adds the jobs of the comment's id to that batch. The notice is written
+ * first; its job finds no comment to tell of if the space then fails to
+ * take it.
  */
 export async function writeComment(
   env: Env,
@@ -247,9 +262,11 @@ export async function writeComment(
   postId: string,
   body: string,
   also: (post: IndexedPost, commentId: string) => D1PreparedStatement[] = () => [],
+  parentCommentId: string | null = null,
 ): Promise<
   | { comment: CommentContent; post: IndexedPost }
   | { refused: NonNullable<ReturnType<typeof replyRefusal>> }
+  | { invalidParent: true }
   | null
 > {
   const found = await postAccess(env, author, postId);
@@ -257,6 +274,17 @@ export async function writeComment(
   const refused = replyRefusal(found.access, found.post);
   if (refused) return { refused };
   const { post } = found;
+  // The parent is checked before anything is written, and the space checks
+  // it again as the comment is written, so a refused parent tells nobody.
+  let parent: CommentContent | null = null;
+  if (parentCommentId !== null) {
+    parent = await space(env, post.communityId).comment(parentCommentId);
+    if (!parent || parent.postId !== postId || parent.parentCommentId !== null) {
+      return { invalidParent: true };
+    }
+    if (parent.state !== "visible") return { invalidParent: true };
+    if ((await blockedEither(env, author)).includes(parent.author)) return { refused: "blocked" };
+  }
   const commentId = newCommentId(postId);
   await noteAuthor(env, post.communityId, author, [
     notice(env, commentId, {
@@ -267,16 +295,33 @@ export async function writeComment(
       postId,
       commentId,
     }),
+    // A reply tells the parent comment's author besides the post's (0071);
+    // one and the same account is told once, by the notice above.
+    ...(parent && parent.author !== post.authorId
+      ? [
+          notice(env, `${commentId}:parent`, {
+            kind: "comment",
+            accountId: parent.author,
+            actorId: author,
+            communityId: post.communityId,
+            postId,
+            commentId,
+          }),
+        ]
+      : []),
     ...also(post, commentId),
   ]);
   const comment = await space(env, post.communityId).addComment({
     commentId,
     postId,
+    parentCommentId,
     author,
     body,
     createdAt: Date.now(),
   });
-  return comment ? { comment, post } : null;
+  if (comment === null) return null;
+  if (comment === "invalid_parent_comment") return { invalidParent: true };
+  return { comment, post };
 }
 
 /** What someone said in a space: a post, or a comment on one. */

@@ -16,20 +16,21 @@ use std::sync::{Arc, Mutex};
 use relay::{Link, Relay};
 use serde_json::{Value, json};
 use spjall_client::api::{
-    ApiError, Audience, Author, Card, CardCommunity, JoinState, Method, Moderation,
-    ModerationAction, ModerationState, NewReport, NotificationKind, Platform, Provider,
-    ReactionCount, ReactionKind, Ref, RefKind, ReportDecision, ReportReason, ReportState, Request,
-    Response, Role, SocialMedia, Target, TargetKind, TargetStanding, TargetState, Transport,
-    Unreachable,
+    ApiError, Audience, Author, Card, CardCommunity, JoinState, LogTargetKind, Method, Moderation,
+    ModerationAction, ModerationLogAction, ModerationState, NewReport, NotificationKind, Platform,
+    Provider, ReactionCount, ReactionKind, Ref, RefKind, ReportDecision, ReportReason, ReportState,
+    Request, Response, Role, SocialMedia, Target, TargetKind, TargetStanding, TargetState,
+    Transport, Unreachable,
 };
 use spjall_client::{Client, ClientError};
 use tempfile::TempDir;
 
 const KEY: [u8; 32] = [7; 32];
 
-const SOCIAL: [&str; 7] = [
+const SOCIAL: [&str; 8] = [
     "/v1/communities",
     "/v1/me/communities",
+    "/v1/feed",
     "/v1/posts/",
     "/v1/comments/",
     "/v1/reports",
@@ -273,7 +274,9 @@ fn posts_comments_and_reactions_go_by_their_ids() {
     let c = &phone.client;
 
     phone.answer(200, json!({ "posts": [post("p_1")], "next": null }));
-    let page = c.community_posts("cm_1", Some("1760000100000"), 0).unwrap();
+    let page = c
+        .community_posts("cm_1", None, Some("1760000100000"), 0)
+        .unwrap();
     assert_eq!(page.next, None);
     let first = &page.posts[0];
     assert_eq!(
@@ -331,7 +334,9 @@ fn posts_comments_and_reactions_go_by_their_ids() {
     assert_eq!(comments.comments[0].state, ModerationState::Hidden);
     assert_eq!(comments.next.as_deref(), Some("1760000200000-0a1b"));
     phone.answer(200, comment("p_1-0a1c"));
-    let made = c.create_comment("p_1", "Takk fyrir að láta vita.").unwrap();
+    let made = c
+        .create_comment("p_1", "Takk fyrir að láta vita.", None)
+        .unwrap();
     assert_eq!(made.comment_id, "p_1-0a1c");
     phone.ok();
     c.delete_comment("p_1-0a1c").unwrap();
@@ -676,7 +681,7 @@ fn a_refusal_keeps_its_code_and_a_bad_id_is_never_sent() {
         c.post("p_1?x=1").map(drop),
         c.delete_comment("").map(drop),
         c.react("p 1", ReactionKind::Like),
-        c.create_comment("p_1", "  ").map(drop),
+        c.create_comment("p_1", "  ", None).map(drop),
         c.close_report("r_1", " ").map(drop),
         c.create_community(" ", "", Audience::Open).map(drop),
         c.moderate("cm_1", &mute(None)),
@@ -884,13 +889,214 @@ fn a_community_with_lifecycle_fields_decodes() {
     body["deletedAt"] = json!(1_760_000_900_000u64);
     body["joinDeclinedUntil"] = json!(1_760_100_000_000u64);
     body["pendingJoinRequests"] = json!(4);
+    body["openReports"] = json!(2);
     phone.answer(200, body);
     let got = phone.client.community("cm_1").unwrap();
     assert_eq!(got.deleted_at, Some(1_760_000_900_000));
     assert_eq!(got.join_declined_until, Some(1_760_100_000_000));
     assert_eq!(got.pending_join_requests, Some(4));
+    assert_eq!(got.open_reports, Some(2));
 }
 
+#[test]
+fn a_community_is_edited_and_its_members_and_log_read() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+
+    phone.answer(200, community("cm_1", "private"));
+    let edited = c
+        .update_community(
+            "cm_1",
+            Some("  Kór Hlíðanna "),
+            None,
+            Some(Audience::Private),
+        )
+        .unwrap();
+    assert_eq!(edited.name, "Kór Hlíðanna");
+    // A server older than the reports count sends none.
+    assert_eq!(edited.open_reports, None);
+
+    phone.answer(
+        200,
+        json!({ "members": [
+            {
+                "accountId": "acc_a", "name": "Sigrún Jónsdóttir", "verified": true,
+                "role": "owner", "joinedAt": 1_760_000_000_000u64,
+            },
+            {
+                "accountId": "acc_b", "name": null, "verified": false,
+                "role": "member", "joinedAt": 1_760_000_600_000u64,
+            },
+        ] }),
+    );
+    let members = c.community_members("cm_1").unwrap();
+    assert_eq!(members.len(), 2);
+    assert_eq!(
+        (
+            members[0].account_id.as_str(),
+            members[0].role,
+            members[0].joined_at
+        ),
+        ("acc_a", Role::Owner, 1_760_000_000_000)
+    );
+    assert_eq!(
+        (members[1].name.as_deref(), members[1].role),
+        (None, Role::Member)
+    );
+
+    phone.ok();
+    c.set_community_role("cm_1", "acc_b", Role::Moderator)
+        .unwrap();
+
+    phone.answer(
+        200,
+        json!({ "entries": [
+            {
+                "entryId": 7,
+                "communityId": "cm_1",
+                "actor": author("acc_a"),
+                "asPlatform": false,
+                "action": "hide_comment",
+                "target": { "kind": "comment", "id": "p_1-0a1b" },
+                "targetAccount": author("acc_c"),
+                "reason": "Áreitni",
+                "createdAt": 1_760_000_700_000u64,
+            },
+            {
+                "entryId": 6,
+                "communityId": null,
+                "actor": null,
+                "asPlatform": true,
+                "action": "teleported",
+                "target": { "kind": "planet", "id": "x_1" },
+                "targetAccount": null,
+                "reason": "",
+                "createdAt": 1_760_000_690_000u64,
+            },
+        ], "next": "7" }),
+    );
+    let log = c.community_moderation_log("cm_1", Some("8"), 500).unwrap();
+    let newest = &log.entries[0];
+    assert_eq!(
+        (newest.entry_id, newest.action, newest.target.kind),
+        (7, ModerationLogAction::HideComment, LogTargetKind::Comment)
+    );
+    assert_eq!(newest.target.id, "p_1-0a1b");
+    assert_eq!(newest.actor.as_ref().unwrap().account_id, "acc_a");
+    assert_eq!(newest.target_account.as_ref().unwrap().account_id, "acc_c");
+    assert!(!newest.as_platform);
+    assert_eq!(log.next.as_deref(), Some("7"));
+    let unknown = &log.entries[1];
+    assert_eq!(unknown.action, ModerationLogAction::Unknown);
+    assert_eq!(unknown.target.kind, LogTargetKind::Unknown);
+    assert!(unknown.as_platform);
+    assert!(unknown.community_id.is_none() && unknown.actor.is_none());
+
+    assert_eq!(
+        phone.sent(),
+        [
+            (
+                Method::Patch,
+                "/v1/communities/cm_1".into(),
+                json!({ "name": "Kór Hlíðanna", "audience": "private" })
+            ),
+            (
+                Method::Get,
+                "/v1/communities/cm_1/members".into(),
+                Value::Null
+            ),
+            (
+                Method::Put,
+                "/v1/communities/cm_1/members/acc_b/role".into(),
+                json!({ "role": "moderator" })
+            ),
+            (
+                Method::Get,
+                "/v1/communities/cm_1/moderation-log?before=8&limit=100".into(),
+                Value::Null
+            ),
+        ]
+    );
+
+    for refused in [
+        c.update_community("cm_1", Some("  "), None, None).map(drop),
+        c.update_community("../me", None, Some("x"), None).map(drop),
+        c.community_members("cm 1").map(drop),
+        c.set_community_role("cm_1", "a/b", Role::Member),
+        c.community_moderation_log("cm_1?x", None, 20).map(drop),
+    ] {
+        assert!(
+            matches!(refused, Err(ClientError::Invalid(_))),
+            "{refused:?}"
+        );
+    }
+    assert!(phone.sent().is_empty());
+}
+
+#[test]
+fn the_feed_gathers_the_communities_and_a_search_names_the_words() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+
+    phone.answer(
+        200,
+        json!({ "posts": [post("p_1")], "next": "1760000100000" }),
+    );
+    let page = c.feed(Some("1760000200000"), 500).unwrap();
+    assert_eq!(page.posts.len(), 1);
+    assert_eq!(page.next.as_deref(), Some("1760000100000"));
+
+    phone.answer(200, json!({ "posts": [], "next": null }));
+    let searched = c
+        .community_posts("cm_1", Some("  Æfing "), None, 20)
+        .unwrap();
+    assert!(searched.posts.is_empty());
+
+    assert_eq!(
+        phone.sent(),
+        [
+            (
+                Method::Get,
+                "/v1/feed?before=1760000200000&limit=50".into(),
+                Value::Null
+            ),
+            (
+                Method::Get,
+                "/v1/communities/cm_1/posts?q=%C3%86fing&limit=20".into(),
+                Value::Null
+            ),
+        ]
+    );
+}
+
+#[test]
+fn a_reply_names_the_comment_it_answers() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+
+    let mut answered = comment("p_1-0a1d");
+    answered["parentCommentId"] = json!("p_1-0a1b");
+    phone.answer(200, answered);
+    let made = c
+        .create_comment("p_1", "Rétt hjá þér.", Some("p_1-0a1b"))
+        .unwrap();
+    assert_eq!(made.parent_comment_id.as_deref(), Some("p_1-0a1b"));
+
+    assert_eq!(
+        phone.sent(),
+        [(
+            Method::Post,
+            "/v1/posts/p_1/comments".into(),
+            json!({ "body": "Rétt hjá þér.", "parentCommentId": "p_1-0a1b" })
+        )]
+    );
+
+    assert!(matches!(
+        c.create_comment("p_1", "Svar", Some("../x")),
+        Err(ClientError::Invalid("comment id"))
+    ));
+    assert!(phone.sent().is_empty());
+}
 #[test]
 fn a_closed_report_decodes_and_unknown_values_fall_back() {
     let phone = Phone::signed_in();

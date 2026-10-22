@@ -49,6 +49,9 @@ const Community = z
     pendingJoinRequests: z.int().nullable().openapi({
       description: "How many join requests wait; null unless the caller moderates the community",
     }),
+    openReports: z.int().nullable().openapi({
+      description: "How many open reports wait; null unless the caller moderates the community",
+    }),
   })
   .openapi("Community");
 

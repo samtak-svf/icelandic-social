@@ -116,6 +116,17 @@ impl Transport for Http {
                     None => call.send_empty(),
                 }
             }
+            Method::Patch => {
+                let mut call = self
+                    .agent
+                    .patch(&url)
+                    .header("content-type", "application/json")
+                    .header("spjall-client", &client);
+                if let Some(auth) = &auth {
+                    call = call.header("authorization", auth);
+                }
+                call.send(request.body.unwrap_or_default())
+            }
         };
         let answer = answered(answer.map_err(|e| Unreachable(e.to_string()))?)?;
         if request.method == Method::Put && request.path.ends_with("/push") {

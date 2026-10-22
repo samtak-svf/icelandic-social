@@ -13,6 +13,7 @@ pub enum Method {
     Get,
     Post,
     Put,
+    Patch,
     Delete,
 }
 
@@ -527,7 +528,7 @@ pub enum Audience {
 }
 
 /// An account's role in a community.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Role {
     Owner,
@@ -567,6 +568,9 @@ pub struct Community {
     pub join_declined_until: Option<u64>,
     /// Join requests that wait; none unless the caller moderates.
     pub pending_join_requests: Option<u64>,
+    /// Open reports in its queue; none unless the caller moderates.
+    #[serde(default)]
+    pub open_reports: Option<u64>,
 }
 
 /// A page of `listCommunities`, and the cursor of the next, none on the last.
@@ -609,6 +613,36 @@ struct JoinRequests {
 #[derive(Deserialize)]
 struct Joined {
     state: JoinState,
+}
+
+/// An account in a community's member list, with the role it holds there.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommunityMember {
+    pub account_id: String,
+    pub name: Option<String>,
+    pub verified: bool,
+    pub role: Role,
+    /// Unix milliseconds.
+    pub joined_at: u64,
+}
+
+#[derive(Deserialize)]
+struct Members {
+    members: Vec<CommunityMember>,
+}
+
+/// `updateCommunity`'s body: the fields to change, and only those. A name
+/// cannot be blank and a private community never becomes open (0063).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommunityUpdate<'a> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub audience: Option<Audience>,
 }
 
 /// An image of a post, re-encoded by the server to WebP.
@@ -678,6 +712,9 @@ pub struct Comment {
     /// The post's id, a hyphen, and the comment's own part.
     pub comment_id: String,
     pub post_id: String,
+    /// The comment this one answers, when it is a reply.
+    #[serde(default)]
+    pub parent_comment_id: Option<String>,
     pub author: Author,
     pub body: String,
     /// Unix milliseconds.
@@ -690,6 +727,16 @@ pub struct Comment {
 pub struct CommentPage {
     pub comments: Vec<Comment>,
     pub next: Option<String>,
+}
+
+/// `createComment`'s body: a text, and the comment it answers when the new
+/// one is a reply.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NewComment<'a> {
+    pub body: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_comment_id: Option<&'a str>,
 }
 
 /// What a report or a moderator's action is about.
@@ -860,6 +907,79 @@ pub struct Moderation {
     /// With `MuteMember` only: when the mute ends, in Unix milliseconds.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub until: Option<u64>,
+}
+
+/// What a moderation log entry records. A value a later server adds reads as
+/// `Unknown`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ModerationLogAction {
+    HidePost,
+    RemovePost,
+    RestorePost,
+    HideComment,
+    RemoveComment,
+    RestoreComment,
+    MuteMember,
+    UnmuteMember,
+    RemoveMember,
+    BanMember,
+    UnbanMember,
+    CloseReport,
+    DeleteCommunity,
+    RestoreCommunity,
+    #[serde(other)]
+    Unknown,
+}
+
+/// What a moderation log entry acted on. A value a later server adds reads
+/// as `Unknown`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LogTargetKind {
+    Post,
+    Comment,
+    Community,
+    Account,
+    Report,
+    #[serde(other)]
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct LogTarget {
+    pub kind: LogTargetKind,
+    pub id: String,
+}
+
+/// One action in a community's moderation log, with the reason its
+/// moderator gave.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModerationLogEntry {
+    pub entry_id: u64,
+    /// None for an action a platform moderator took on an account.
+    pub community_id: Option<String>,
+    /// Who did it; none once that account is deleted.
+    pub actor: Option<Author>,
+    /// Done as one of the platform's moderators rather than as this
+    /// community's.
+    pub as_platform: bool,
+    pub action: ModerationLogAction,
+    pub target: LogTarget,
+    /// Whose content it is, or the account acted on.
+    pub target_account: Option<Author>,
+    pub reason: String,
+    /// Unix milliseconds.
+    pub created_at: u64,
+}
+
+/// A page of a community's moderation log, newest first, and the cursor of
+/// the next, older page.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct ModerationLogPage {
+    pub entries: Vec<ModerationLogEntry>,
+    pub next: Option<String>,
 }
 
 /// What a card can show.
@@ -1616,6 +1736,53 @@ impl<T: Transport + ?Sized> Api<'_, T> {
         )
     }
 
+    /// `updateCommunity`: renames it, changes its description, or makes an
+    /// open one private; only its owner may, and a private one never becomes
+    /// open (0063).
+    pub fn update_community(
+        &self,
+        community: &str,
+        name: Option<&str>,
+        description: Option<&str>,
+        audience: Option<Audience>,
+    ) -> Result<Community, ApiError> {
+        let body = CommunityUpdate {
+            name,
+            description,
+            audience,
+        };
+        self.call(
+            Method::Patch,
+            format!("/v1/communities/{community}"),
+            Self::json(&body),
+            "updateCommunity",
+        )
+    }
+
+    /// `listCommunityMembers`: the owner and the moderators first.
+    pub fn community_members(&self, community: &str) -> Result<Vec<CommunityMember>, ApiError> {
+        let listed: Members = self.call(
+            Method::Get,
+            format!("/v1/communities/{community}/members"),
+            None,
+            "listCommunityMembers",
+        )?;
+        Ok(listed.members)
+    }
+
+    /// `setCommunityRole`: a member becomes a moderator, or a moderator a
+    /// member again; only the owner may.
+    pub fn set_community_role(
+        &self,
+        community: &str,
+        account: &str,
+        role: Role,
+    ) -> Result<(), ApiError> {
+        let body = serde_json::json!({ "role": role });
+        let path = format!("/v1/communities/{community}/members/{account}/role");
+        self.done(Method::Put, path, Self::json(&body))
+    }
+
     /// `joinCommunity`.
     pub fn join_community(&self, community: &str) -> Result<JoinState, ApiError> {
         let joined: Joined = self.call(
@@ -1678,17 +1845,32 @@ impl<T: Transport + ?Sized> Api<'_, T> {
         self.done(Method::Post, path, Some("{}".into()))
     }
 
-    /// `listCommunityPosts`: newest first, older than `before`.
+    /// `listCommunityPosts`: newest first, older than `before`, those whose
+    /// body matches `query` when there is one.
     pub fn community_posts(
         &self,
         community: &str,
+        query: Option<&str>,
         before: Option<&str>,
         limit: u32,
     ) -> Result<PostPage, ApiError> {
         let limit = limit.to_string();
-        let params = [("before", before), ("limit", Some(limit.as_str()))];
+        let params = [
+            ("q", query),
+            ("before", before),
+            ("limit", Some(limit.as_str())),
+        ];
         let path = with_query(&format!("/v1/communities/{community}/posts"), &params);
         self.call(Method::Get, path, None, "listCommunityPosts")
+    }
+
+    /// `getFeed`: the posts of every community this account is a member of,
+    /// newest first, older than `before`.
+    pub fn feed(&self, before: Option<&str>, limit: u32) -> Result<PostPage, ApiError> {
+        let limit = limit.to_string();
+        let params = [("before", before), ("limit", Some(limit.as_str()))];
+        let path = with_query("/v1/feed", &params);
+        self.call(Method::Get, path, None, "getFeed")
     }
 
     /// `uploadSocialMedia` (0065): the image at `file`, which the server
@@ -1761,13 +1943,22 @@ impl<T: Transport + ?Sized> Api<'_, T> {
         self.call(Method::Get, path, None, "listComments")
     }
 
-    /// `createComment`.
-    pub fn create_comment(&self, post: &str, body: &str) -> Result<Comment, ApiError> {
-        let body = serde_json::json!({ "body": body });
+    /// `createComment`: a text, and the comment it answers when it is a
+    /// reply.
+    pub fn create_comment(
+        &self,
+        post: &str,
+        body: &str,
+        parent_comment_id: Option<&str>,
+    ) -> Result<Comment, ApiError> {
+        let comment = NewComment {
+            body,
+            parent_comment_id,
+        };
         self.call(
             Method::Post,
             format!("/v1/posts/{post}/comments"),
-            Self::json(&body),
+            Self::json(&comment),
             "createComment",
         )
     }
@@ -1804,6 +1995,23 @@ impl<T: Transport + ?Sized> Api<'_, T> {
     pub fn moderate(&self, community: &str, moderation: &Moderation) -> Result<(), ApiError> {
         let path = format!("/v1/communities/{community}/actions");
         self.done(Method::Post, path, Self::json(moderation))
+    }
+
+    /// `communityModerationLog`: the community's log, newest first, older
+    /// than `before`; for its moderators.
+    pub fn community_moderation_log(
+        &self,
+        community: &str,
+        before: Option<&str>,
+        limit: u32,
+    ) -> Result<ModerationLogPage, ApiError> {
+        let limit = limit.to_string();
+        let params = [("before", before), ("limit", Some(limit.as_str()))];
+        let path = with_query(
+            &format!("/v1/communities/{community}/moderation-log"),
+            &params,
+        );
+        self.call(Method::Get, path, None, "communityModerationLog")
     }
 
     /// `closeReport`.
@@ -2007,6 +2215,21 @@ mod tests {
             body["properties"]["action"]["enum"],
             serde_json::json!(names(&actions))
         );
+        // A log entry holds every action a moderator takes, and one more for
+        // a platform moderator's closing of a report; each contract value
+        // reads as itself rather than as `Unknown`.
+        let logged = listed("/ModerationLogEntry/properties/action/enum");
+        assert_eq!(logged.len(), 14);
+        assert!(logged.iter().all(|value| {
+            serde_json::from_value::<ModerationLogAction>(value.clone())
+                .is_ok_and(|action| action != ModerationLogAction::Unknown)
+        }));
+        let targets = listed("/ModerationLogEntry/properties/target/properties/kind/enum");
+        assert_eq!(targets.len(), 5);
+        assert!(targets.iter().all(|value| {
+            serde_json::from_value::<LogTargetKind>(value.clone())
+                .is_ok_and(|kind| kind != LogTargetKind::Unknown)
+        }));
     }
 
     /// Every platform the contract names, `api/openapi.json` being generated
