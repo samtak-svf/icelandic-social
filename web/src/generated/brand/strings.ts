@@ -455,4 +455,12 @@ export const strings = {
   support_account_heading: "Innskráningar, tæki og eyðing aðgangs",
   /** Body on /support explaining where to manage sessions, unlink devices and delete an account. */
   support_account_body: "Í Stillingum getur þú séð alla vafra og síma þar sem aðgangurinn þinn er skráður inn og skráð út úr þeim. Í símaappinu undir Ég getur þú einnig aftengt einstök tæki eða valið „Eyða aðgangi“ til að eyða aðganginum og öllum gögnum hans af þjóninum.",
+  /** Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080). */
+  community_picture_choose: "Velja mynd samfélagsins",
+  /** Button that removes a community's picture (decision 0080). */
+  community_picture_remove: "Fjarlægja mynd samfélagsins",
+  /** Label of the file picker for a community's wide cover (decision 0080). */
+  community_cover_choose: "Velja forsíðumynd",
+  /** Button that removes a community's cover (decision 0080). */
+  community_cover_remove: "Fjarlægja forsíðumynd",
 } as const;

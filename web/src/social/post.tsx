@@ -12,7 +12,7 @@ import {
   type SocialMedia,
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { Initials } from "./avatar.tsx";
+import { Avatar } from "./avatar.tsx";
 import { Button, ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
 import { outcome, when, type Outcome } from "./outcome.ts";
 import { ReportButton } from "./report.tsx";
@@ -98,7 +98,7 @@ export function PostView({
   post: Post;
   linked: boolean;
   deleted: () => void;
-  community?: { communityId: string; name: string } | null;
+  community?: { communityId: string; name: string; photo: string | null } | null;
 }>) {
   const mine = useMine(post.author);
   const path = { to: "/posts/$postId", params: { postId: post.postId } };
@@ -110,7 +110,12 @@ export function PostView({
       <StateMark state={post.state} />
       <header className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2">
-          <Initials name={post.author.name} className="size-8 rounded-md text-sm" />
+          <Avatar
+            kind="person"
+            id={post.author.accountId}
+            name={post.author.name}
+            className="size-8 rounded-md text-sm"
+          />
           <AuthorName author={post.author} />
         </span>
         <time dateTime={new Date(post.createdAt).toISOString()} className="text-sm text-muted-fg">
@@ -121,9 +126,16 @@ export function PostView({
         <Link
           to="/communities/$communityId"
           params={{ communityId: community.communityId }}
-          className="text-sm font-medium underline"
+          className="inline-flex items-center gap-2 self-start text-sm font-medium"
         >
-          {community.name}
+          <Avatar
+            kind="community"
+            id={community.communityId}
+            name={community.name}
+            photo={community.photo}
+            className="size-6 rounded-md text-xs"
+          />
+          <span className="underline">{community.name}</span>
         </Link>
       )}
       {post.body !== "" &&

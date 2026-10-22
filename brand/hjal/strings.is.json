@@ -427,5 +427,9 @@
   "remove_member_confirm": "Fjarlægja {name} úr hópnum?",
   "leave_group": "Yfirgefa hópinn",
   "leave_group_confirm": "Yfirgefa hópinn? Þú færð ekki fleiri skilaboð úr honum.",
-  "left_banner": "Þú hefur yfirgefið þennan hóp."
+  "left_banner": "Þú hefur yfirgefið þennan hóp.",
+  "community_picture_choose": "Velja mynd samfélagsins",
+  "community_picture_remove": "Fjarlægja mynd samfélagsins",
+  "community_cover_choose": "Velja forsíðumynd",
+  "community_cover_remove": "Fjarlægja forsíðumynd"
 }

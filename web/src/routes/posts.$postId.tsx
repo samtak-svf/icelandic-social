@@ -8,7 +8,7 @@ import {
   type Comment,
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { Initials } from "../social/avatar.tsx";
+import { Avatar } from "../social/avatar.tsx";
 import { commentThreads, isTombstone } from "../social/comments.ts";
 import { Composer } from "../social/composer.tsx";
 import { outcome, useLoad, when } from "../social/outcome.ts";
@@ -172,7 +172,12 @@ function CommentView({
       <StateMark state={comment.state} />
       <header className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2">
-          <Initials name={comment.author.name} className="size-7 rounded-md text-xs" />
+          <Avatar
+            kind="person"
+            id={comment.author.accountId}
+            name={comment.author.name}
+            className="size-7 rounded-md text-xs"
+          />
           <AuthorName author={comment.author} />
         </span>
         <time

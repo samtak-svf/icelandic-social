@@ -12,7 +12,8 @@ import {
   type ModerationLogEntry,
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { Initials } from "./avatar.tsx";
+import { Avatar } from "./avatar.tsx";
+import { CommunityPictures } from "./picture-pick.tsx";
 import { outcome, useLoad, when } from "./outcome.ts";
 import { Button, ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
 
@@ -85,7 +86,7 @@ export function Manage({
               : strings.join_requests_title}
           </Link>
         </nav>
-        {owner && <Edit community={community} changed={changed} />}
+        <Edit community={community} changed={changed} owner={owner} />
         {owner && <Roles community={community} changed={changed} />}
         <Log communityId={communityId} />
         {owner && <Delete community={community} />}
@@ -95,7 +96,11 @@ export function Manage({
 }
 
 /** Breyta samfélagi: the owner changes its name, description or audience (decision 0063). */
-function Edit({ community, changed }: Readonly<{ community: Community; changed: () => void }>) {
+function Edit({
+  community,
+  changed,
+  owner,
+}: Readonly<{ community: Community; changed: () => void; owner: boolean }>) {
   const id = useId();
   const [name, setName] = useState(community.name);
   const [description, setDescription] = useState(community.description);
@@ -123,46 +128,51 @@ function Edit({ community, changed }: Readonly<{ community: Community; changed: 
   return (
     <details>
       <summary className="cursor-pointer text-base font-semibold">{strings.community_edit}</summary>
-      <form onSubmit={(event) => void submit(event)} className="mt-2 flex flex-col gap-2">
-        <label htmlFor={`${id}-name`}>{strings.community_name}</label>
-        <input
-          id={`${id}-name`}
-          required
-          maxLength={80}
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          className={field}
-        />
-        <label htmlFor={`${id}-description`}>{strings.community_description}</label>
-        <textarea
-          id={`${id}-description`}
-          maxLength={500}
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          className={`${field} py-2`}
-        />
-        <fieldset className="flex flex-col">
-          {(["open", "private"] as const).map((value) => (
-            <label key={value} className="flex min-h-11 items-center gap-2">
-              <input
-                type="radio"
-                name="audience"
-                checked={audience === value}
-                // A private community never becomes open: its members joined on that promise.
-                disabled={value === "open" && community.audience === "private"}
-                onChange={() => setAudience(value)}
-              />
-              <span className="font-semibold">
-                {value === "open" ? strings.community_open : strings.community_private}
-              </span>
-            </label>
-          ))}
-        </fieldset>
-        <Button tone="primary" type="submit" disabled={busy || name.trim() === ""}>
-          {strings.community_edit}
-        </Button>
-        <Status>{problem && <ProblemText problem={problem} />}</Status>
-      </form>
+      <div className="mt-2">
+        <CommunityPictures community={community} changed={changed} />
+      </div>
+      {owner && (
+        <form onSubmit={(event) => void submit(event)} className="mt-2 flex flex-col gap-2">
+          <label htmlFor={`${id}-name`}>{strings.community_name}</label>
+          <input
+            id={`${id}-name`}
+            required
+            maxLength={80}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            className={field}
+          />
+          <label htmlFor={`${id}-description`}>{strings.community_description}</label>
+          <textarea
+            id={`${id}-description`}
+            maxLength={500}
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            className={`${field} py-2`}
+          />
+          <fieldset className="flex flex-col">
+            {(["open", "private"] as const).map((value) => (
+              <label key={value} className="flex min-h-11 items-center gap-2">
+                <input
+                  type="radio"
+                  name="audience"
+                  checked={audience === value}
+                  // A private community never becomes open: its members joined on that promise.
+                  disabled={value === "open" && community.audience === "private"}
+                  onChange={() => setAudience(value)}
+                />
+                <span className="font-semibold">
+                  {value === "open" ? strings.community_open : strings.community_private}
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          <Button tone="primary" type="submit" disabled={busy || name.trim() === ""}>
+            {strings.community_edit}
+          </Button>
+          <Status>{problem && <ProblemText problem={problem} />}</Status>
+        </form>
+      )}
     </details>
   );
 }
@@ -209,7 +219,12 @@ function Roles({ community, changed }: Readonly<{ community: Community; changed:
           {members.data.members.map((member) => (
             <li key={member.accountId} className="flex items-center justify-between gap-2">
               <span className="flex min-w-0 flex-wrap items-center gap-x-2">
-                <Initials name={member.name} className="size-8 rounded-md text-sm" />
+                <Avatar
+                  kind="person"
+                  id={member.accountId}
+                  name={member.name}
+                  className="size-8 rounded-md text-sm"
+                />
                 <span className="font-semibold">{member.name ?? strings.person_unnamed}</span>
                 {member.verified && <VerifiedMark className="text-sm" />}
                 {member.role === "moderator" && (

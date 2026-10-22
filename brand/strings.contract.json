@@ -1767,6 +1767,22 @@
     "left_banner": {
       "surfaces": ["android", "ios"],
       "description": "Banner shown in a conversation the user has left (docs/decisions/0078)."
+    },
+    "community_picture_choose": {
+      "surfaces": ["web"],
+      "description": "Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080)."
+    },
+    "community_picture_remove": {
+      "surfaces": ["web"],
+      "description": "Button that removes a community's picture (decision 0080)."
+    },
+    "community_cover_choose": {
+      "surfaces": ["web"],
+      "description": "Label of the file picker for a community's wide cover (decision 0080)."
+    },
+    "community_cover_remove": {
+      "surfaces": ["web"],
+      "description": "Button that removes a community's cover (decision 0080)."
     }
   }
 }
