@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { call } from "../api/call.ts";
-import { getAccount } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 
 // The one avatar for people and for communities (decision 0080): the photo
@@ -62,22 +61,6 @@ function pictureUrl(kind: PictureKind, id: string, version: string): Promise<str
   return pending;
 }
 
-// A byline names a person (Author) without the version of their photo, so the
-// version is asked of the profile once per person. TODO(0080): drop this when
-// Author carries `photo` and each card stops costing a profile call.
-const versions = new Map<string, Promise<string | null>>();
-
-function profileVersion(accountId: string): Promise<string | null> {
-  let pending = versions.get(accountId);
-  if (pending === undefined) {
-    pending = getAccount({ path: { accountId } })
-      .then((answer) => (answer.status === 200 ? answer.data.photo : null))
-      .catch(() => null);
-    versions.set(accountId, pending);
-  }
-  return pending;
-}
-
 /**
  * The picture of the person or community `id` at version `photo`, fetched
  * with the client header the API asks of every call (the way a post's images
@@ -93,28 +76,19 @@ export function Avatar({
   kind: PictureKind;
   id: string;
   name: string | null;
-  /**
-   * The picture's version; null when there is none to show. Left out, a
-   * person's is asked of their profile and a community's is taken as none.
-   */
-  photo?: string | null;
+  /** The picture's version, as the API gave it; null when there is none to show. */
+  photo: string | null;
   className: string;
 }>) {
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
     setSrc(null);
-    const version =
-      photo !== undefined
-        ? Promise.resolve(photo)
-        : kind === "person"
-          ? profileVersion(id)
-          : Promise.resolve(null);
-    void version
-      .then((v) => (v === null ? null : pictureUrl(kind, id, v)))
-      .then((url) => {
+    if (photo !== null) {
+      void pictureUrl(kind, id, photo).then((url) => {
         if (live) setSrc(url);
       });
+    }
     return () => {
       live = false;
     };

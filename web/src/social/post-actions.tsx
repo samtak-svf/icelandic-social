@@ -97,7 +97,7 @@ export function ActionRow({
           }
         >
           {(close) => (
-            // TODO(0080): "send in a conversation" once the web has a conversation picker (#288).
+            // The web has no conversations (end-to-end encrypted messaging lives in the apps), and 0080 allows "or copies its link".
             <MenuItem
               onSelect={() => {
                 close();

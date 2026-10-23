@@ -75,6 +75,7 @@ function Item({
           kind="person"
           id={n.actor.accountId}
           name={n.actor.name}
+          photo={n.actor.photo}
           className="size-10 rounded-md"
         />
       ) : (

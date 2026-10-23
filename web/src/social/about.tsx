@@ -40,6 +40,7 @@ export function About({ community }: Readonly<{ community: Community }>) {
                 kind="person"
                 id={member.accountId}
                 name={member.name}
+                photo={null}
                 className="size-8 rounded-md text-sm"
               />
               <span className="flex flex-wrap items-center gap-x-2">

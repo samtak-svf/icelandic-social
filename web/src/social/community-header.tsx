@@ -177,6 +177,7 @@ function MemberStack({ communityId }: Readonly<{ communityId: string }>) {
             kind="person"
             id={member.accountId}
             name={member.name}
+            photo={null}
             className="size-9 rounded-full border-2 border-bg text-xs"
           />
         </li>
