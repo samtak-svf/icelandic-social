@@ -1,0 +1,69 @@
+package samtak.spjall.ui
+
+import androidx.activity.ComponentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Assert.assertFalse
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class ComposerFieldImeTest {
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    private fun imeVisible(): Boolean {
+        val view = compose.activity.window.decorView
+        return ViewCompat.getRootWindowInsets(view)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+    }
+
+    private fun waitForIme(visible: Boolean) {
+        compose.waitUntil(IME_TIMEOUT_MS) { imeVisible() == visible }
+    }
+
+    @Test
+    fun theFieldGivesUpFocusWhenTheKeyboardIsClosedSoResumeDoesNotReopenIt() {
+        compose.setContent {
+            var text by remember { mutableStateOf("") }
+            ComposerField(
+                value = text,
+                onChange = { text = it },
+                placeholder = "write",
+                modifier = Modifier.testTag("field"),
+            )
+        }
+        compose.onNodeWithTag("field").performClick()
+        compose.onNodeWithTag("field").assertIsFocused()
+        waitForIme(visible = true)
+
+        WindowInsetsControllerCompat(compose.activity.window, compose.activity.window.decorView)
+            .hide(WindowInsetsCompat.Type.ime())
+        waitForIme(visible = false)
+
+        compose.onNodeWithTag("field").assertIsNotFocused()
+
+        val scenario = compose.activityRule.scenario
+        scenario.moveToState(Lifecycle.State.CREATED)
+        scenario.moveToState(Lifecycle.State.RESUMED)
+        compose.waitForIdle()
+        Thread.sleep(SETTLE_MS)
+        assertFalse("the keyboard came back on resume", imeVisible())
+    }
+}
+
+private const val IME_TIMEOUT_MS = 5_000L
+private const val SETTLE_MS = 1_000L
