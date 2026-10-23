@@ -20,7 +20,12 @@ export function Dialog({
     <dialog
       ref={ref}
       aria-label={title}
-      onClose={onClose}
+      onClose={() => {
+        // The `close` event is queued: under React's development double
+        // effect it lands after the dialog was shown again, and that is not
+        // the person closing it.
+        if (ref.current?.open !== true) onClose();
+      }}
       onClick={(event) => {
         // A click on the backdrop lands on the dialog element itself.
         if (event.target === ref.current) onClose();
