@@ -67,7 +67,7 @@ struct CommunityMemberRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Avatar(name: member.name, kind: member.verified ? .verified : .unverified, size: 34)
+            Avatar(name: member.name, kind: member.verified ? .verified : .unverified, size: 34, photo: member.photoOf)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
                     Text(verbatim: member.name ?? localized("person_unnamed"))
@@ -351,6 +351,15 @@ private struct EditCommunityView: View {
         Form {
             Section {
                 CommunityTextFields(name: $name, description: $description)
+            }
+            Section {
+                CommunityPictureFields(
+                    hasPicture: model.community?.photo != nil, hasCover: model.community?.cover != nil,
+                    onPicture: { pick in Task { await model.setPicture { try await profilePhoto(pick) } } },
+                    onCover: { pick in Task { await model.setCover { try await communityCover(pick) } } },
+                    onRemovePicture: { Task { await model.removePicture() } },
+                    onRemoveCover: { Task { await model.removeCover() } },
+                    disabled: model.busy)
             }
             Section {
                 CommunityAudiencePicker(audience: $audience, locked: locked)

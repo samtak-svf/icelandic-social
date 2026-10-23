@@ -18,9 +18,12 @@ struct CommunityView: View {
     @State private var away = false
     /// The own post waiting for the delete to be confirmed.
     @State private var deleting: String?
+    @State private var sharing: String?
     @State private var about = false
     @State private var managing = false
     @State private var composing = false
+    /// The post search is open: it sits behind the top bar's search icon (decision 0080).
+    @State private var searchOpen = false
 
     var body: some View {
         ScrollView {
@@ -28,9 +31,11 @@ struct CommunityView: View {
                 if let community = model.community {
                     header(community)
                     if model.reads {
-                        SocialSearchField(
-                            prompt: "community_search_posts",
-                            text: Binding(get: { model.query }, set: { model.query = $0 }))
+                        if searchOpen || model.searched {
+                            SocialSearchField(
+                                prompt: "community_search_posts",
+                                text: Binding(get: { model.query }, set: { model.query = $0 }))
+                        }
                         posts
                     }
                 } else if !model.loaded {
@@ -44,6 +49,16 @@ struct CommunityView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
+            if model.community != nil, model.reads {
+                ToolbarItem(placement: .topBarTrailing) {
+                    RoundButton(
+                        systemImage: "magnifyingglass", label: "community_search_posts",
+                        fill: BrandTokens.Colors.muted, tint: BrandTokens.Colors.fg, size: 34
+                    ) {
+                        searchOpen.toggle()
+                    }
+                }
+            }
             if model.community != nil, !model.moderates {
                 ToolbarItem(placement: .topBarTrailing) {
                     RoundButton(
@@ -62,7 +77,7 @@ struct CommunityView: View {
         }
         .safeAreaInset(edge: .bottom) {
             if model.writes {
-                ComposePrompt { composing = true }
+                ComposePrompt(name: model.myName, photo: model.myPhoto) { composing = true }
             }
         }
         .alert(
@@ -76,6 +91,7 @@ struct CommunityView: View {
         .onChange(of: model.deleted) { _, deleted in
             if deleted { dismiss() }
         }
+        .sharingPost($sharing)
         .sheet(item: $reporting) { reporting in
             ReportSheet(social: social, target: reporting.target)
         }
@@ -89,6 +105,10 @@ struct CommunityView: View {
             ComposerSheet(model: model)
         }
         .task { await model.load() }
+        .task(id: model.reads) {
+            // The row of faces under the name; quiet, so a failure leaves the row out rather than a problem card.
+            if model.reads { await model.loadMembers() }
+        }
         .task(id: model.query) { await model.search() }
         .onAppear {
             guard away else { return }
@@ -98,59 +118,103 @@ struct CommunityView: View {
         .onDisappear { away = true }
     }
 
-    /// The community's name, the line under it, and the start of its description: the way into `Um samfélagið`
-    /// and, for a moderator, into `Stjórna` (decision 0079).
+    /// The community as the groups readers know lay it out (decision 0080): a cover band with the picture over its
+    /// edge, a large name, the audience line that opens `Um samfélagið`, a row of members, `Bjóða`, and the start of
+    /// the description. The band is plain while the cover loads and when there is none.
     private func header(_ community: Community) -> some View {
-        Panel {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(verbatim: community.name)
-                        .font(TypeStyle.accountName)
-                        .foregroundStyle(BrandTokens.Colors.fg)
-                        .accessibilityAddTraits(.isHeader)
-                    Spacer(minLength: 8)
-                    if model.moderates {
-                        ManageButton(count: model.manageCount) { managing = true }
+        VStack(alignment: .leading, spacing: 10) {
+            ZStack(alignment: .bottomLeading) {
+                cover(community)
+                CommunityBadge(community: community, size: 64)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 64 * 0.28).strokeBorder(BrandTokens.Colors.bg, lineWidth: 3)
                     }
-                }
-                Button {
-                    about = true
-                } label: {
-                    HStack(spacing: 6) {
-                        Text(verbatim: audienceLine(community))
-                            .font(TypeStyle.meta)
-                            .foregroundStyle(BrandTokens.Colors.mutedFg)
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(BrandTokens.Colors.mutedFg)
-                            .accessibilityHidden(true)
-                    }
-                    .frame(minHeight: 32)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("community_info"))
-                if !community.description.isEmpty {
-                    Text(verbatim: community.description)
-                        .font(.sans(14))
-                        .foregroundStyle(BrandTokens.Colors.proseBody)
-                        .lineLimit(Self.descriptionLines)
-                    if isLong(community.description) {
-                        Button {
-                            about = true
-                        } label: {
-                            Text("community_read_more")
-                                .font(.sans(12.5, black: true))
-                                .foregroundStyle(BrandTokens.Colors.primary)
-                                .frame(minHeight: 36)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                membership(community)
+                    .offset(x: 16, y: 28)
             }
-            .padding(16)
+            .padding(.bottom, 28)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(verbatim: community.name)
+                    .font(TypeStyle.accountName)
+                    .foregroundStyle(BrandTokens.Colors.fg)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 8)
+                if model.moderates {
+                    ManageButton(count: model.manageCount) { managing = true }
+                }
+            }
+            Button {
+                about = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: community.audience == .open ? "globe" : "lock.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(BrandTokens.Colors.mutedFg)
+                        .accessibilityHidden(true)
+                    Text(verbatim: audienceLineFull(community))
+                        .font(TypeStyle.meta)
+                        .foregroundStyle(BrandTokens.Colors.mutedFg)
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(BrandTokens.Colors.mutedFg)
+                        .accessibilityHidden(true)
+                }
+                .frame(minHeight: 32)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("community_info"))
+            if !community.description.isEmpty {
+                Text(verbatim: community.description)
+                    .font(.sans(14))
+                    .foregroundStyle(BrandTokens.Colors.proseBody)
+                    .lineLimit(Self.descriptionLines)
+                if isLong(community.description) {
+                    Button {
+                        about = true
+                    } label: {
+                        Text("community_read_more")
+                            .font(.sans(12.5, black: true))
+                            .foregroundStyle(BrandTokens.Colors.primary)
+                            .frame(minHeight: 36)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            HStack(spacing: 12) {
+                MemberFaces(members: model.members)
+                Spacer(minLength: 8)
+                invite(community)
+            }
+            membership(community)
+        }
+    }
+
+    /// The cover band: the cover cut 8:3 by whoever set it, shown 110 points high, or a plain band.
+    private func cover(_ community: Community) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 14)
+        return LoadedPhoto(community.coverOf) { image in
+            Color.clear
+                .overlay {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .accessibilityLabel(Text("community_cover_alt"))
+                }
+                .clipShape(shape)
+        } placeholder: {
+            shape.fill(BrandTokens.Colors.secondarySubtle).accessibilityHidden(true)
+        }
+        .frame(height: 110)
+    }
+
+    /// `Bjóða`: an open community's link goes through the system share sheet. A private community's invitation has
+    /// no flow in this app yet, and its link would open for nobody outside it, so there is nothing to offer there.
+    @ViewBuilder private func invite(_ community: Community) -> some View {
+        if community.audience == .open, let link = communityLink(community.communityId) {
+            ShareLink(item: link) {
+                PillLabel(text: "invite", filled: false, wide: false)
+            }
         }
     }
 
@@ -205,7 +269,9 @@ struct CommunityView: View {
                 post: post, linked: true, writes: model.writes,
                 onReact: { kind in Task { await model.react(post.postId, kind) } },
                 onReport: { reporting = Reporting(target: ReportTarget(kind: .post, id: post.postId)) },
-                onDelete: model.mine(post.author) ? { deleting = post.postId } : nil)
+                onDelete: model.mine(post.author) ? { deleting = post.postId } : nil,
+                onPin: model.moderates ? { Task<Void, Never> { await model.pin(post.postId, !post.pinned) } } : nil,
+                onShare: { sharing = post.postId })
         }
         if model.next != nil {
             Color.clear.frame(height: 1).task(id: model.next) { await model.more() }
@@ -227,31 +293,60 @@ struct CommunityView: View {
     private static let longDescription = 140
 }
 
-/// The composer's one line at the foot of a feed (decision 0079): a prompt, not a field, which opens the full
-/// composer as a sheet so the feed keeps its reading width.
+/// The composer's one row at the foot of a feed (decision 0080): the reader's own picture and a prompt, not a field,
+/// which opens the full composer as a sheet so the feed keeps its reading width. The photo button opens the same
+/// sheet, where the images are picked.
 private struct ComposePrompt: View {
+    let name: String?
+    let photo: PhotoOf?
     let action: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             Divider()
-            Button(action: action) {
-                Text("post_compose_prompt")
-                    .font(.sans(14))
-                    .foregroundStyle(BrandTokens.Colors.mutedFg)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .frame(minHeight: 40)
-                    .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 20))
-                    .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(BrandTokens.Colors.border) }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .contentShape(Rectangle())
+            HStack(spacing: 10) {
+                Avatar(name: name, kind: .me, size: 34, photo: photo)
+                Button(action: action) {
+                    Text("post_compose_prompt")
+                        .font(.sans(14))
+                        .foregroundStyle(BrandTokens.Colors.mutedFg)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .frame(minHeight: 40)
+                        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 20))
+                        .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(BrandTokens.Colors.border) }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                RoundButton(
+                    systemImage: "photo", label: "post_add_images", fill: BrandTokens.Colors.muted,
+                    tint: BrandTokens.Colors.fg, size: 34, action: action)
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
         }
         .background(BrandTokens.Colors.surface)
+    }
+}
+
+/// Up to five of a community's members as overlapping faces (decision 0080): the account's photo, or the initials in
+/// the fill the person's mark sets.
+private struct MemberFaces: View {
+    let members: [CommunityMember]
+
+    var body: some View {
+        HStack(spacing: -8) {
+            ForEach(Array(members.prefix(5)), id: \.accountId) { member in
+                Avatar(
+                    name: member.name, kind: member.verified ? .verified : .unverified, size: 28,
+                    photo: member.photoOf
+                )
+                .overlay { Circle().strokeBorder(BrandTokens.Colors.bg, lineWidth: 2) }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("community_members_stack"))
     }
 }
 

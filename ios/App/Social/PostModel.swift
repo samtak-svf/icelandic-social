@@ -33,6 +33,8 @@ final class PostModel {
     private let now: @Sendable () -> UInt64
     private var failed: (() async -> Void)?
     private var reacting = false
+    /// The comments whose like is on its way, so a second tap waits for the first.
+    private var liking: Set<String> = []
 
     init(social: Social, postId: String, now: @escaping @Sendable () -> UInt64 = nowMillis) {
         self.social = social
@@ -174,6 +176,57 @@ final class PostModel {
             problem = Problem(error)
         }
         reacting = false
+    }
+
+    /// This account moderates the post's community, and may pin its posts (decision 0080).
+    var moderates: Bool { community?.role == .owner || community?.role == .moderator }
+
+    /// Pins the post to the top of its community's feed, or takes the pin off, and reads the post again.
+    func pin(_ pinned: Bool) async {
+        guard moderates else { return }
+        let social = social
+        let id = postId
+        let communityId = post?.communityId
+        guard let communityId else { return }
+        await perform(again: { await self.pin(pinned) }) {
+            self.post = try await offMain { () throws -> Post in
+                if pinned {
+                    try social.pinPost(communityId, post: id)
+                } else {
+                    try social.unpinPost(communityId, post: id)
+                }
+                return try social.post(id)
+            }
+        }
+    }
+
+    /// Gives a comment this account's one 👍, or takes it back, shown at once and put back if the server refuses
+    /// (decision 0080). A removed comment and a reader who may not write here take none.
+    func like(_ commentId: String) async {
+        guard writes, !liking.contains(commentId),
+            let index = comments.firstIndex(where: { $0.commentId == commentId }),
+            !isTombstone(comments[index])
+        else { return }
+        let before = comments[index]
+        let off = before.liked
+        var after = before
+        after.liked = !off
+        after.likes = off ? before.likes - min(before.likes, 1) : before.likes + 1
+        comments[index] = after
+        liking.insert(commentId)
+        let social = social
+        problem = nil
+        do {
+            try await offMain {
+                if off { try social.unlikeComment(commentId) } else { try social.likeComment(commentId) }
+            }
+            failed = nil
+        } catch {
+            if let index = comments.firstIndex(where: { $0.commentId == commentId }) { comments[index] = before }
+            failed = nil
+            problem = Problem(error)
+        }
+        liking.remove(commentId)
     }
 
     /// The longest comment the server takes.

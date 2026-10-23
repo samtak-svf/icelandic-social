@@ -73,6 +73,26 @@ protocol Social: Sendable {
     func closeReport(_ report: String, resolution: String) throws
     /// What each reference shows, one card each in their order.
     func cards(_ refs: [CardRef]) throws -> [Card]
+    /// Sets the community's picture from the image file at `path` (already cropped square); its new version.
+    func setCommunityAvatar(_ community: String, path: String) throws -> String
+    func removeCommunityAvatar(_ community: String) throws
+    /// Sets the community's cover from the image file at `path` (already cropped wide); its new version.
+    func setCommunityCover(_ community: String, path: String) throws -> String
+    func removeCommunityCover(_ community: String) throws
+    /// The core's file for a community's picture at `version`, its `photo`; nil when it has none or the reader may
+    /// not see it (decision 0080).
+    func communityPicture(_ community: String, version: String) throws -> String?
+    /// The core's file for a community's cover at `version`, its `cover` (decision 0080).
+    func communityCover(_ community: String, version: String) throws -> String?
+    /// Likes a comment, or takes the like back (decision 0080).
+    func likeComment(_ comment: String) throws
+    func unlikeComment(_ comment: String) throws
+    /// Pins a post to the top of its community, or lets it go; only the community's moderators and owner may.
+    func pinPost(_ community: String, post: String) throws
+    func unpinPost(_ community: String, post: String) throws
+    /// Pins a community to the top of this account's own list, or lets it go.
+    func pinCommunity(_ community: String) throws
+    func unpinCommunity(_ community: String) throws
     /// A page of this account's notifications, newest first, with how many are unread.
     func notifications(before: String?, limit: UInt32) throws -> SocialNotificationPage
     /// Marks read every notification made at or before `upTo`.
@@ -202,6 +222,42 @@ extension CoreAccount: Social {
 
     func cards(_ refs: [CardRef]) throws -> [Card] { try core().cards(refs: refs) }
 
+    func setCommunityAvatar(_ community: String, path: String) throws -> String {
+        try core().setCommunityAvatar(communityId: community, path: path)
+    }
+
+    func removeCommunityAvatar(_ community: String) throws { try core().removeCommunityAvatar(communityId: community) }
+
+    func setCommunityCover(_ community: String, path: String) throws -> String {
+        try core().setCommunityCover(communityId: community, path: path)
+    }
+
+    func removeCommunityCover(_ community: String) throws { try core().removeCommunityCover(communityId: community) }
+
+    func communityPicture(_ community: String, version: String) throws -> String? {
+        try core().communityPicture(communityId: community, version: version)
+    }
+
+    func communityCover(_ community: String, version: String) throws -> String? {
+        try core().communityCover(communityId: community, version: version)
+    }
+
+    func likeComment(_ comment: String) throws { try core().likeComment(commentId: comment) }
+
+    func unlikeComment(_ comment: String) throws { try core().unlikeComment(commentId: comment) }
+
+    func pinPost(_ community: String, post: String) throws {
+        try core().pinPost(communityId: community, postId: post)
+    }
+
+    func unpinPost(_ community: String, post: String) throws {
+        try core().unpinPost(communityId: community, postId: post)
+    }
+
+    func pinCommunity(_ community: String) throws { try core().pinCommunity(communityId: community) }
+
+    func unpinCommunity(_ community: String) throws { try core().unpinCommunity(communityId: community) }
+
     func notifications(before: String?, limit: UInt32) throws -> SocialNotificationPage {
         try core().notifications(before: before, limit: limit)
     }
@@ -243,6 +299,18 @@ func audienceLine(_ community: Community) -> String {
     let audience = localized(community.audience == .open ? "community_open" : "community_private")
     guard let count = community.memberCount else { return audience }
     return "\(audience) · \(plural("community_members", Int(count)))"
+}
+
+/// The audience line the community header carries (decision 0080): `Lokað samfélag · 12 meðlimir`.
+func audienceLineFull(_ community: Community) -> String {
+    let audience = localized(community.audience == .open ? "community_open_full" : "community_private_full")
+    guard let count = community.memberCount else { return audience }
+    return "\(audience) · \(plural("community_members", Int(count)))"
+}
+
+/// The web address of a community, which is what an open community shares (decision 0080).
+func communityLink(_ communityId: String) -> URL? {
+    URL(string: "\(webOrigin)/communities/\(communityId)")
 }
 
 /// The words for a reaction, which a screen reader says in place of its emoji.

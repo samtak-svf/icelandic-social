@@ -4237,6 +4237,378 @@
         }
       }
     },
+    "community_picture_choose": {
+      "comment": "Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Velja mynd samfélagsins"
+          }
+        }
+      }
+    },
+    "community_picture_remove": {
+      "comment": "Button that removes a community's picture (decision 0080).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjarlægja mynd samfélagsins"
+          }
+        }
+      }
+    },
+    "community_cover_choose": {
+      "comment": "Label of the file picker for a community's wide cover (decision 0080).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Velja forsíðumynd"
+          }
+        }
+      }
+    },
+    "community_cover_remove": {
+      "comment": "Button that removes a community's cover (decision 0080).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjarlægja forsíðumynd"
+          }
+        }
+      }
+    },
+    "communities_create_row_hint": {
+      "comment": "Second line of the create row on the hub",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Safnaðu fólki saman um málefni"
+          }
+        }
+      }
+    },
+    "close": {
+      "comment": "Closes a dialog or a menu",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loka"
+          }
+        }
+      }
+    },
+    "community_open_full": {
+      "comment": "Audience line of a community header, open",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opið samfélag"
+          }
+        }
+      }
+    },
+    "community_private_full": {
+      "comment": "Audience line of a community header, private",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokað samfélag"
+          }
+        }
+      }
+    },
+    "community_link_copied": {
+      "comment": "Told after the community link was copied",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hlekkur samfélagsins afritaður"
+          }
+        }
+      }
+    },
+    "community_members_stack": {
+      "comment": "Name of the picture stack of members in a community header",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meðlimir samfélagsins"
+          }
+        }
+      }
+    },
+    "community_cover_alt": {
+      "comment": "Name of the cover picture",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forsíðumynd samfélagsins"
+          }
+        }
+      }
+    },
+    "time_now": {
+      "comment": "Relative time of something posted less than a minute ago",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Núna"
+          }
+        }
+      }
+    },
+    "time_minutes": {
+      "comment": "Relative time in minutes, as a short label on a post",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld mín."
+          }
+        }
+      }
+    },
+    "time_hours": {
+      "comment": "Relative time in hours, as a short label on a post",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld klst."
+          }
+        }
+      }
+    },
+    "time_days": {
+      "comment": "Relative time in days, as a short label on a post",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld d."
+          }
+        }
+      }
+    },
+    "time_weeks": {
+      "comment": "Relative time in weeks, as a short label on a post",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld vik."
+          }
+        }
+      }
+    },
+    "post_see_more": {
+      "comment": "Expands a post whose text is cut short in the feed",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sjá meira"
+          }
+        }
+      }
+    },
+    "post_like": {
+      "comment": "Action that likes a post with one press; long press or hover opens the other reactions",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Líkar"
+          }
+        }
+      }
+    },
+    "post_comment_action": {
+      "comment": "Action that opens the comments of a post",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Athugasemd"
+          }
+        }
+      }
+    },
+    "post_copy_link": {
+      "comment": "Menu item that copies the address of a post",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afrita tengil"
+          }
+        }
+      }
+    },
+    "post_link_copied": {
+      "comment": "Told after the address of a post was copied",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tengill afritaður"
+          }
+        }
+      }
+    },
+    "post_pin": {
+      "comment": "Menu item for a moderator or the owner that pins a post to the top of its community (decision 0080)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Festa"
+          }
+        }
+      }
+    },
+    "post_write_comment": {
+      "comment": "Pill under a post card that opens its comments",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrifaðu athugasemd…"
+          }
+        }
+      }
+    },
+    "post_reactions_more": {
+      "comment": "Name of the group of five reactions opened from the like action",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fleiri viðbrögð"
+          }
+        }
+      }
+    },
+    "post_unpin": {
+      "comment": "Menu item that unpins the community's pinned post",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Losa"
+          }
+        }
+      }
+    },
+    "post_pinned": {
+      "comment": "Marker on the card of the post pinned to the top of its community",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fest efst"
+          }
+        }
+      }
+    },
+    "comment_like": {
+      "comment": "Under a comment: like it with a thumbs up, bold while the caller has liked it (decision 0080)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Líkar þetta"
+          }
+        }
+      }
+    },
+    "community_new_posts": {
+      "comment": "On a hub row: how many posts the caller has not seen in the community (decision 0080)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld nýr póstur"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld nýir póstar"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "community_pin": {
+      "comment": "Hub row menu item that pins the community to the top of the caller's list (decision 0080)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Festa efst"
+          }
+        }
+      }
+    },
+    "community_unpin": {
+      "comment": "Hub row menu item that unpins the community",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Losa"
+          }
+        }
+      }
+    },
     "post_share_to_conversation": {
       "comment": "Share sheet entry that sends a post into a conversation (decision 0080).",
       "extractionState": "manual",
@@ -4257,6 +4629,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Leita að samfélögum"
+          }
+        }
+      }
+    },
+    "community_pinned": {
+      "comment": "Accessible label of the pin shown on a pinned community row.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fest efst"
           }
         }
       }

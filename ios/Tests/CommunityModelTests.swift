@@ -244,6 +244,36 @@ final class CommunityModelTests: XCTestCase {
         XCTAssertEqual(social.calls.last, "updateCommunity k1 Fuglar Ný")
     }
 
+    func testTheOwnerSetsAndRemovesThePictureAndTheCover() async throws {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .owner))
+        let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+        try Data("x".utf8).write(to: file)
+        await model.setPicture { file }
+        XCTAssertNotNil(model.community?.photo)
+        XCTAssertTrue(social.calls.contains("setCommunityAvatar k1 \(file.path)"))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path), "the file is deleted once sent")
+        let band = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+        try Data("y".utf8).write(to: band)
+        await model.setCover { band }
+        XCTAssertNotNil(model.community?.cover)
+        XCTAssertTrue(social.calls.contains("setCommunityCover k1 \(band.path)"))
+        await model.removePicture()
+        XCTAssertNil(model.community?.photo)
+        XCTAssertNotNil(model.community?.cover, "the cover stays")
+        await model.removeCover()
+        XCTAssertNil(model.community?.cover)
+    }
+
+    func testAMemberSetsNeitherPictureNorCover() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        let before = social.calls.count
+        await model.setPicture { URL(fileURLWithPath: "/nowhere") }
+        await model.setCover { URL(fileURLWithPath: "/nowhere") }
+        await model.removePicture()
+        await model.removeCover()
+        XCTAssertEqual(social.calls.count, before)
+    }
+
     func testAMemberOrABlankNameOrALongOneChangesNothing() async {
         let member = await model(makeCommunity("k1", "Fuglar", role: .member))
         let before = social.calls.count
@@ -362,5 +392,29 @@ final class CommunityModelTests: XCTestCase {
         XCTAssertNil(model.problem)
         XCTAssertEqual(model.images.count, 1)
         XCTAssertFalse(social.calls.contains { $0.hasPrefix("createPost") })
+    }
+
+    func testFestaPinsThePostAndTheFeedLeadsWithIt() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .moderator))
+        XCTAssertEqual(model.posts.map(\.postId), ["p3", "p2"])
+        await model.pin("p1", true)
+        XCTAssertTrue(social.calls.contains("pinPost k1 p1"))
+        XCTAssertEqual(model.posts.first?.postId, "p1")
+        XCTAssertEqual(model.posts.first?.pinned, true)
+        await model.pin("p1", false)
+        XCTAssertTrue(social.calls.contains("unpinPost k1 p1"))
+        XCTAssertEqual(model.posts.contains { $0.pinned }, false)
+    }
+
+    func testAMemberCannotPinAPost() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        await model.pin("p1", true)
+        XCTAssertFalse(social.calls.contains("pinPost k1 p1"))
+    }
+
+    func testTheComposerRowKnowsTheReadersOwnName() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        XCTAssertEqual(model.myName, "Jón Jónsson")
+        XCTAssertNil(model.myPhoto)
     }
 }

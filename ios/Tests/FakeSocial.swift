@@ -13,6 +13,8 @@ final class FakeSocial: Social, @unchecked Sendable {
     private var _verified = true
     private var _communities: [String: Community] = [:]
     private var _mine: [String] = []
+    private var _pictureFiles: [String: String] = [:]
+    private var _coverFiles: [String: String] = [:]
     private var _posts: [String: [Post]] = [:]
     private var _comments: [String: [Comment]] = [:]
     private var _reports: [String: [Report]] = [:]
@@ -53,6 +55,17 @@ final class FakeSocial: Social, @unchecked Sendable {
     var mine: [String] {
         get { lock.withLock { _mine } }
         set { lock.withLock { _mine = newValue } }
+    }
+
+    /// The core's file for each community picture and cover, by "community/version"; one not here has none.
+    var pictureFiles: [String: String] {
+        get { lock.withLock { _pictureFiles } }
+        set { lock.withLock { _pictureFiles = newValue } }
+    }
+
+    var coverFiles: [String: String] {
+        get { lock.withLock { _coverFiles } }
+        set { lock.withLock { _coverFiles = newValue } }
     }
 
     /// Each community's posts, newest first.
@@ -387,6 +400,70 @@ final class FakeSocial: Social, @unchecked Sendable {
         return refs.map { all[$0.id] ?? .unavailable(reference: $0) }
     }
 
+    func setCommunityAvatar(_ community: String, path: String) throws -> String {
+        try call("setCommunityAvatar \(community) \(path)")
+        communities[community]?.photo = "v\(path.count)"
+        return "v\(path.count)"
+    }
+
+    func removeCommunityAvatar(_ community: String) throws {
+        try call("removeCommunityAvatar \(community)")
+        communities[community]?.photo = nil
+    }
+
+    func setCommunityCover(_ community: String, path: String) throws -> String {
+        try call("setCommunityCover \(community) \(path)")
+        communities[community]?.cover = "v\(path.count)"
+        return "v\(path.count)"
+    }
+
+    func removeCommunityCover(_ community: String) throws {
+        try call("removeCommunityCover \(community)")
+        communities[community]?.cover = nil
+    }
+
+    func communityPicture(_ community: String, version: String) throws -> String? {
+        try call("communityPicture \(community) \(version)")
+        return lock.withLock { _pictureFiles["\(community)/\(version)"] }
+    }
+
+    func communityCover(_ community: String, version: String) throws -> String? {
+        try call("communityCover \(community) \(version)")
+        return lock.withLock { _coverFiles["\(community)/\(version)"] }
+    }
+
+    func likeComment(_ comment: String) throws { try call("likeComment \(comment)") }
+
+    func unlikeComment(_ comment: String) throws { try call("unlikeComment \(comment)") }
+
+    func pinPost(_ community: String, post: String) throws {
+        try call("pinPost \(community) \(post)")
+        posts[community] = (posts[community] ?? []).map { found in
+            var found = found
+            found.pinned = found.postId == post
+            return found
+        }.sorted { $0.pinned && !$1.pinned }
+    }
+
+    func unpinPost(_ community: String, post: String) throws {
+        try call("unpinPost \(community) \(post)")
+        posts[community] = (posts[community] ?? []).map { found in
+            var found = found
+            if found.postId == post { found.pinned = false }
+            return found
+        }
+    }
+
+    func pinCommunity(_ community: String) throws {
+        try call("pinCommunity \(community)")
+        communities[community]?.pinned = true
+    }
+
+    func unpinCommunity(_ community: String) throws {
+        try call("unpinCommunity \(community)")
+        communities[community]?.pinned = false
+    }
+
     func notifications(before: String?, limit: UInt32) throws -> SocialNotificationPage {
         try call("notifications \(before ?? "-")")
         let all = notifications
@@ -408,31 +485,34 @@ final class FakeSocial: Social, @unchecked Sendable {
 func makeCommunity(
     _ id: String, _ name: String, audience: CommunityAudience = .open, role: CommunityRole? = nil,
     description: String = "", memberCount: UInt64? = 3, mutedUntil: UInt64? = nil, readOnly: Bool = false,
-    pendingJoinRequests: UInt64? = nil, openReports: UInt64? = nil
+    pendingJoinRequests: UInt64? = nil, openReports: UInt64? = nil, unread: UInt64 = 0,
+    lastPostAt: UInt64? = nil, pinned: Bool = false
 ) -> Community {
     Community(
         communityId: id, name: name, description: description, audience: audience, createdAt: FakeAccount.now,
         memberCount: memberCount, role: role, joinRequested: false, invited: false, mutedUntil: mutedUntil,
         readOnly: readOnly, deletedAt: nil, joinDeclinedUntil: nil, pendingJoinRequests: pendingJoinRequests,
-        openReports: openReports)
+        openReports: openReports, unread: unread, lastPostAt: lastPostAt, pinned: pinned)
 }
 
 func makePost(
     _ id: String, _ community: String, body: String = "Halló", author: Author = anna,
     reactions: [ReactionCount] = [], mine: ReactionKind? = nil, comments: UInt64 = 0,
-    state: ModerationState = .visible, createdAt: UInt64 = FakeAccount.now
+    state: ModerationState = .visible, createdAt: UInt64 = FakeAccount.now, pinned: Bool = false,
+    latestComment: Comment? = nil
 ) -> Post {
     Post(
         postId: id, communityId: community, author: author, body: body, images: [], createdAt: createdAt,
-        reactions: reactions, myReaction: mine, commentCount: comments, state: state)
+        reactions: reactions, myReaction: mine, commentCount: comments, latestComment: latestComment, state: state,
+        pinned: pinned)
 }
 
 /// Somebody in a community's member list.
 func makeMember(
     _ account: String, _ name: String? = nil, role: CommunityRole = .member, verified: Bool = false,
-    joinedAt: UInt64 = FakeAccount.now
+    joinedAt: UInt64 = FakeAccount.now, photo: String? = nil
 ) -> CommunityMember {
-    CommunityMember(accountId: account, name: name, verified: verified, role: role, joinedAt: joinedAt, photo: nil)
+    CommunityMember(accountId: account, name: name, verified: verified, role: role, joinedAt: joinedAt, photo: photo)
 }
 
 /// One action in a community's moderation log.
@@ -453,11 +533,11 @@ let jon = Author(accountId: "a1", name: "Jón Jónsson", verified: true)
 
 func makeComment(
     _ id: String, on post: String, body: String = "Já", author: Author = anna, parent: String? = nil,
-    state: ModerationState = .visible
+    state: ModerationState = .visible, likes: UInt64 = 0, liked: Bool = false
 ) -> Comment {
     Comment(
         commentId: id, postId: post, parentCommentId: parent, author: author, body: body,
-        createdAt: FakeAccount.now, state: state)
+        createdAt: FakeAccount.now, state: state, likes: likes, liked: liked)
 }
 
 /// A report on `target`; `author` is who wrote it, or the account itself, nil when that account is gone.

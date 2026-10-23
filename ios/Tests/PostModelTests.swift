@@ -165,4 +165,59 @@ final class PostModelTests: XCTestCase {
         await model.load()
         return model
     }
+
+    func testALikeIsShownAtOnceAndTakenBackWithTheSameTap() async {
+        let model = await model()
+        await model.like("c1")
+        XCTAssertTrue(social.calls.contains("likeComment c1"))
+        XCTAssertEqual(model.comments.first?.liked, true)
+        XCTAssertEqual(model.comments.first?.likes, 1)
+        await model.like("c1")
+        XCTAssertTrue(social.calls.contains("unlikeComment c1"))
+        XCTAssertEqual(model.comments.first?.liked, false)
+        XCTAssertEqual(model.comments.first?.likes, 0)
+    }
+
+    func testALikeTheServerRefusesIsPutBack() async {
+        let model = await model()
+        social.failNext = unreachable
+        await model.like("c1")
+        XCTAssertEqual(model.comments.first?.liked, false)
+        XCTAssertEqual(model.comments.first?.likes, 0)
+        XCTAssertNotNil(model.problem)
+    }
+
+    func testAReaderWhoMayNotWriteLikesNothing() async {
+        let model = await model(role: nil)
+        await model.like("c1")
+        XCTAssertFalse(social.calls.contains("likeComment c1"))
+    }
+
+    func testARemovedCommentTakesNoLike() async {
+        social.communities = ["k1": makeCommunity("k1", "Fuglar", role: .member)]
+        social.posts = ["k1": [makePost("p1", "k1", comments: 1)]]
+        social.comments = ["p1": [makeComment("c1", on: "p1", body: "", state: .removed)]]
+        let model = PostModel(social: social, postId: "p1", now: { FakeAccount.now })
+        await model.load()
+        await model.like("c1")
+        XCTAssertFalse(social.calls.contains("likeComment c1"))
+    }
+
+    func testAModeratorPinsThePostAndItIsShownPinned() async {
+        let model = await model(role: .moderator)
+        XCTAssertTrue(model.moderates)
+        await model.pin(true)
+        XCTAssertTrue(social.calls.contains("pinPost k1 p1"))
+        XCTAssertEqual(model.post?.pinned, true)
+        await model.pin(false)
+        XCTAssertTrue(social.calls.contains("unpinPost k1 p1"))
+        XCTAssertEqual(model.post?.pinned, false)
+    }
+
+    func testAMemberDoesNotPin() async {
+        let model = await model()
+        XCTAssertFalse(model.moderates)
+        await model.pin(true)
+        XCTAssertFalse(social.calls.contains("pinPost k1 p1"))
+    }
 }

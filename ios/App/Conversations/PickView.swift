@@ -82,6 +82,8 @@ private struct OutgoingPreview: View {
                 switch outgoing {
                 case .message(let item):
                     Text(verbatim: lastLine(item)).font(TypeStyle.bubble).lineLimit(3)
+                case .post:
+                    Text("post_shared").font(TypeStyle.bubble).lineLimit(3)
                 }
             }
             .foregroundStyle(BrandTokens.Colors.fg)

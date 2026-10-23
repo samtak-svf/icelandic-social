@@ -297,3 +297,11 @@ struct PillLabel: View {
             .contentShape(Capsule())
     }
 }
+
+/// The pick cut into a band for a community's cover (decision 0080), off the main thread; the copy of the
+/// original is deleted.
+func communityCover(_ photo: Picked) async throws -> URL {
+    let copy = try await photo.read()
+    defer { try? FileManager.default.removeItem(at: copy) }
+    return try await offMain { try coverPhoto(copy) }
+}

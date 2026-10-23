@@ -41,6 +41,9 @@ final class CommunityModel {
     private(set) var imageNotice: ImageNotice?
     /// This account's id: its own posts can be deleted. Nil until it is known, when none is.
     private(set) var me: String?
+    /// This account's name and photo, for the composer row's own picture (decision 0080).
+    private(set) var myName: String?
+    private(set) var myPhoto: PhotoOf?
     private(set) var busy = false
     /// The owner deleted the community from here, so the screen leaves it.
     private(set) var deleted = false
@@ -154,7 +157,10 @@ final class CommunityModel {
     private func whoAmI() async {
         guard me == nil else { return }
         let social = social
-        me = try? await offMain { try social.me().accountId }
+        guard let own = try? await offMain({ try social.me() }) else { return }
+        me = own.accountId
+        myName = own.name
+        myPhoto = own.photoOf
     }
 
     /// The posts' next, older page, if there is one and none is on its way.
@@ -290,6 +296,52 @@ final class CommunityModel {
             saved = true
         }
         return saved
+    }
+
+    /// Sets the community's picture from the file `make` gives, already small and square, or its cover from one
+    /// already cut into a band (decision 0080); the file is deleted once the core has sent it, or failed to.
+    /// Only the owner does either. Trying again makes the file again from the pick.
+    func setPicture(_ make: @escaping @Sendable () async throws -> URL) async {
+        await setImage(cover: false, make)
+    }
+
+    func setCover(_ make: @escaping @Sendable () async throws -> URL) async {
+        await setImage(cover: true, make)
+    }
+
+    private func setImage(cover: Bool, _ make: @escaping @Sendable () async throws -> URL) async {
+        guard owns else { return }
+        let social = social
+        let id = communityId
+        await perform(again: { await self.setImage(cover: cover, make) }) {
+            let file = try await make()
+            defer { try? FileManager.default.removeItem(at: file) }
+            self.community = try await offMain {
+                if cover {
+                    _ = try social.setCommunityCover(id, path: file.path)
+                } else {
+                    _ = try social.setCommunityAvatar(id, path: file.path)
+                }
+                return try social.community(id)
+            }
+        }
+    }
+
+    /// Takes the community's picture or its cover away.
+    func removePicture() async { await removeImage(cover: false) }
+
+    func removeCover() async { await removeImage(cover: true) }
+
+    private func removeImage(cover: Bool) async {
+        guard owns else { return }
+        let social = social
+        let id = communityId
+        await perform(again: { await self.removeImage(cover: cover) }) {
+            self.community = try await offMain {
+                if cover { try social.removeCommunityCover(id) } else { try social.removeCommunityAvatar(id) }
+                return try social.community(id)
+            }
+        }
     }
 
     /// The member list, its owner and moderators first, for `Um samfélagið` and `Meðlimir og hlutverk`
@@ -461,6 +513,20 @@ final class CommunityModel {
         case CoreError.Refused(_, "too_large", _): .tooLarge
         case CoreError.Refused(_, "invalid_image", _): .invalid
         default: nil
+        }
+    }
+
+    /// Pins a post to the top of the feed, or takes the pin off, for a moderator or the owner, and reads the first
+    /// page again so the pinned post leads (decision 0080).
+    func pin(_ postId: String, _ pinned: Bool) async {
+        guard moderates else { return }
+        let social = social
+        let id = communityId
+        await perform(again: { await self.pin(postId, pinned) }) {
+            try await offMain {
+                if pinned { try social.pinPost(id, post: postId) } else { try social.unpinPost(id, post: postId) }
+            }
+            try await self.page(before: nil, self.sent)
         }
     }
 

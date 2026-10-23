@@ -130,5 +130,12 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             | tee "$RUNNER_TEMP/xcodebuild-test.log" | xcpretty
 
+      # xcpretty prints only the first line of a diagnostic; a conformance
+      # failure then hides the error that caused it, which only the raw log has.
+      - name: Show the compiler's errors
+        if: failure()
+        run: |
+          grep -E -A6 '(error|note): ' "$RUNNER_TEMP/xcodebuild-test.log" | head -200 || true
+
       - name: Fail when no tests ran
         run: grep -E 'Executed [1-9][0-9]* tests?, with 0 failures' "$RUNNER_TEMP/xcodebuild-test.log"

@@ -11,6 +11,7 @@ struct PostView: View {
 
     @State private var reporting: Reporting?
     @State private var deletingPost = false
+    @State private var sharing: String?
     /// The own comment waiting for the delete to be confirmed.
     @State private var deletingComment: String?
     @Environment(\.dismiss) private var dismiss
@@ -23,7 +24,9 @@ struct PostView: View {
                         post: post, linked: false, writes: model.writes,
                         onReact: { kind in Task { await model.react(kind) } },
                         onReport: { reporting = Reporting(target: ReportTarget(kind: .post, id: post.postId)) },
-                        onDelete: model.mine(post.author) ? { deletingPost = true } : nil)
+                        onDelete: model.mine(post.author) ? { deletingPost = true } : nil,
+                        onPin: model.moderates ? { Task<Void, Never> { await model.pin(!post.pinned) } } : nil,
+                        onShare: { sharing = post.postId })
                     if model.muted {
                         SocialNote(text: "community_muted")
                     }
@@ -72,6 +75,7 @@ struct PostView: View {
         .onChange(of: model.deleted) { _, deleted in
             if deleted { dismiss() }
         }
+        .sharingPost($sharing)
         .sheet(item: $reporting) { reporting in
             ReportSheet(social: social, target: reporting.target)
         }
@@ -85,18 +89,12 @@ struct PostView: View {
             EmptyState(systemImage: "text.bubble", text: "comments_empty")
         }
         let threads = commentThreads(model.comments)
-        if !threads.isEmpty {
-            Panel {
-                ForEach(Array(threads.indices), id: \.self) { index in
-                    let thread = threads[index]
-                    if index > 0 { Hairline() }
-                    card(thread.comment, replies: thread.replies.count, replyable: true)
-                    ForEach(thread.replies, id: \.commentId) { reply in
-                        Hairline().padding(.leading, Self.indent)
-                        card(reply, replies: 0, replyable: false)
-                            .padding(.leading, Self.indent)
-                    }
-                }
+        ForEach(Array(threads.indices), id: \.self) { index in
+            let thread = threads[index]
+            card(thread.comment, replies: thread.replies.count, replyable: true)
+            ForEach(thread.replies, id: \.commentId) { reply in
+                card(reply, replies: 0, replyable: false)
+                    .padding(.leading, Self.indent)
             }
         }
         if model.next != nil {
@@ -110,6 +108,7 @@ struct PostView: View {
             onReport: { reporting = Reporting(target: ReportTarget(kind: .comment, id: comment.commentId)) },
             onDelete: model.mine(comment.author) ? { deletingComment = comment.commentId } : nil,
             onReply: replyable ? { model.reply(to: comment) } : nil,
+            onLike: model.writes ? { Task<Void, Never> { await model.like(comment.commentId) } } : nil,
             replies: replies)
     }
 

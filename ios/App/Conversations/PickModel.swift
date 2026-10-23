@@ -135,6 +135,8 @@ final class PickModel {
 /// What a pick sends, shown at its top: the message forwarded.
 enum Outgoing: Equatable, Sendable {
     case message(Item)
+    /// A post of the communities, shared as a card (decision 0080).
+    case post(String)
 }
 
 /// Runs `work` for each of `targets` in turn, off the main actor, until one throws:

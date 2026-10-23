@@ -8,10 +8,13 @@ import XCTest
 
 final class PhotoCacheTests: XCTestCase {
     private let account = FakeAccount(signedIn: true)
+    private let social = FakeSocial()
 
     /// A cache whose "image" is the path it was decoded from; a file named `bad` is not an image.
     private func cache(capacity: Int = 64) -> PhotoCache<String> {
-        PhotoCache(account: account, capacity: capacity) { path in path == "bad" ? nil : "image of \(path)" }
+        PhotoCache(account: account, social: social, capacity: capacity) { _, path in
+            path == "bad" ? nil : "image of \(path)"
+        }
     }
 
     private func fetches(_ account: String, _ version: String) -> Int {
@@ -21,7 +24,7 @@ final class PhotoCacheTests: XCTestCase {
     func testAPhotoIsDecodedOnceAndThenKept() async {
         account.photoFiles = ["a2/v1": "a2.webp"]
         let photos = cache()
-        let photo = PhotoOf(account: "a2", version: "v1")
+        let photo = PhotoOf(owner: "a2", version: "v1")
         XCTAssertNil(photos.kept(photo), "nothing is kept before it is asked for")
         let first = await photos.load(photo)
         let second = await photos.load(photo)
@@ -31,21 +34,61 @@ final class PhotoCacheTests: XCTestCase {
         XCTAssertEqual(fetches("a2", "v1"), 1)
     }
 
+    func testACommunityPictureAndCoverLoadThroughTheCoreFunctionOfTheirKind() async {
+        social.pictureFiles = ["k1/v1": "picture.webp"]
+        social.coverFiles = ["k1/v1": "cover.webp"]
+        let photos = cache()
+        let picture = PhotoOf(owner: "k1", version: "v1", kind: .communityPicture)
+        let cover = PhotoOf(owner: "k1", version: "v1", kind: .communityCover)
+        let loadedPicture = await photos.load(picture)
+        let loadedCover = await photos.load(cover)
+        XCTAssertEqual(loadedPicture, "image of picture.webp")
+        XCTAssertEqual(loadedCover, "image of cover.webp")
+        XCTAssertEqual(social.calls, ["communityPicture k1 v1", "communityCover k1 v1"])
+        XCTAssertEqual(account.calls.filter { $0.hasPrefix("photo") }, [], "a community is not an account")
+        _ = await photos.load(picture)
+        _ = await photos.load(cover)
+        XCTAssertEqual(social.calls.count, 2, "each kind is kept under its own key")
+    }
+
+    func testACommunityWithNoPictureOrCoverIsNilAndAskedAgainNextTime() async {
+        let photos = cache()
+        let picture = PhotoOf(owner: "k1", version: "v1", kind: .communityPicture)
+        let cover = PhotoOf(owner: "k1", version: "v1", kind: .communityCover)
+        for _ in 0..<2 {
+            let results = [await photos.load(picture), await photos.load(cover)]
+            XCTAssertEqual(results, [nil, nil])
+        }
+        XCTAssertEqual(social.calls.count, 4)
+    }
+
+    func testAMembersPhotoIsTheAccountsAndACommunitysTheCommunitys() {
+        XCTAssertEqual(makeMember("a2", "Anna", photo: "v3").photoOf, PhotoOf(owner: "a2", version: "v3"))
+        XCTAssertNil(makeMember("a3", "Bjarni").photoOf)
+        var community = makeCommunity("k1", "Gróa")
+        XCTAssertNil(community.pictureOf)
+        XCTAssertNil(community.coverOf)
+        community.photo = "p1"
+        community.cover = "c1"
+        XCTAssertEqual(community.pictureOf, PhotoOf(owner: "k1", version: "p1", kind: .communityPicture))
+        XCTAssertEqual(community.coverOf, PhotoOf(owner: "k1", version: "c1", kind: .communityCover))
+    }
+
     func testANewVersionIsFetchedAgain() async {
         account.photoFiles = ["a2/v1": "old.webp", "a2/v2": "new.webp"]
         let photos = cache()
-        _ = await photos.load(PhotoOf(account: "a2", version: "v1"))
-        let changed = await photos.load(PhotoOf(account: "a2", version: "v2"))
+        _ = await photos.load(PhotoOf(owner: "a2", version: "v1"))
+        let changed = await photos.load(PhotoOf(owner: "a2", version: "v2"))
         XCTAssertEqual(changed, "image of new.webp")
         XCTAssertEqual(fetches("a2", "v2"), 1)
     }
 
     func testNoPhotoAFailureOrABadFileIsNilAndAskedAgainNextTime() async {
         let photos = cache()
-        let none = PhotoOf(account: "a2", version: "v1")
-        let bad = PhotoOf(account: "a3", version: "v1")
+        let none = PhotoOf(owner: "a2", version: "v1")
+        let bad = PhotoOf(owner: "a3", version: "v1")
         account.photoFiles = ["a3/v1": "bad"]
-        let failing = PhotoOf(account: "a4", version: "v1")
+        let failing = PhotoOf(owner: "a4", version: "v1")
         account.failOn = "photo a4 v1"
 
         for _ in 0..<2 {
@@ -58,9 +101,9 @@ final class PhotoCacheTests: XCTestCase {
     func testOnlyTheLastFewAreKept() async {
         account.photoFiles = ["a1/v": "1", "a2/v": "2", "a3/v": "3"]
         let photos = cache(capacity: 2)
-        let one = PhotoOf(account: "a1", version: "v")
-        let two = PhotoOf(account: "a2", version: "v")
-        let three = PhotoOf(account: "a3", version: "v")
+        let one = PhotoOf(owner: "a1", version: "v")
+        let two = PhotoOf(owner: "a2", version: "v")
+        let three = PhotoOf(owner: "a3", version: "v")
         _ = await photos.load(one)
         _ = await photos.load(two)
         XCTAssertNotNil(photos.kept(one), "drawing it again makes it the most recent")
@@ -75,7 +118,7 @@ final class PhotoCacheTests: XCTestCase {
         anna.photo = "v3"
         var bjarni = person("a3", "Bjarni")
         bjarni.photo = "v1"
-        XCTAssertEqual(photoOf(conversation("c1", members: [anna])), PhotoOf(account: "a2", version: "v3"))
+        XCTAssertEqual(photoOf(conversation("c1", members: [anna])), PhotoOf(owner: "a2", version: "v3"))
         XCTAssertNil(photoOf(conversation("c2", members: [anna, bjarni])))
         XCTAssertNil(photoOf(conversation("c3", members: [person("a4", "Dóra")])))
     }
@@ -187,6 +230,44 @@ final class SquarePhotoTests: XCTestCase {
         try Data("not a photo".utf8).write(to: file)
         XCTAssertEqual(withoutLocation(file), file)
         XCTAssertEqual(try Data(contentsOf: file), Data("not a photo".utf8))
+    }
+
+    func testACoverIsABandFromTheMiddleNoWiderThan1600() throws {
+        // 3200 × 3200 with only the middle third (by height) green: the 8:3 band is cut from the middle.
+        let original = try write(width: 3200, height: 3200, orientation: 1, gps: true) { context in
+            context.setFillColor(red: 0, green: 0, blue: 1, alpha: 1)
+            context.fill(CGRect(x: 0, y: 0, width: 3200, height: 3200))
+            context.setFillColor(red: 0, green: 1, blue: 0, alpha: 1)
+            context.fill(CGRect(x: 0, y: 1000, width: 3200, height: 1200))
+        }
+        let cover = try coverPhoto(original)
+        made.append(cover)
+        let image = try XCTUnwrap(read(cover))
+        XCTAssertEqual([image.width, image.height], [1600, 600])
+        for (x, y) in [(10, 10), (800, 300), (1590, 590)] {
+            XCTAssertEqual(color(image, x: x, y: y), .green, "(\(x), \(y)) is from the middle")
+        }
+        let source = try XCTUnwrap(CGImageSourceCreateWithURL(cover as CFURL, nil))
+        let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+        XCTAssertNil(properties?[kCGImagePropertyGPSDictionary], "the location must not go with it")
+    }
+
+    func testASmallCoverIsNotMadeLargerAndKeepsItsShape() throws {
+        let original = try write(width: 800, height: 600, orientation: 1, gps: false) { context in
+            context.setFillColor(red: 0, green: 1, blue: 0, alpha: 1)
+            context.fill(CGRect(x: 0, y: 0, width: 800, height: 600))
+        }
+        let cover = try coverPhoto(original)
+        made.append(cover)
+        let image = try XCTUnwrap(read(cover))
+        XCTAssertEqual([image.width, image.height], [800, 300])
+    }
+
+    func testAFileThatIsNotACoverPhotoIsRefused() throws {
+        let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+        made.append(file)
+        try Data("not a photo".utf8).write(to: file)
+        XCTAssertThrowsError(try coverPhoto(file))
     }
 
     func testAFileThatIsNotAPhotoIsRefused() throws {

@@ -66,7 +66,7 @@ struct HomeView: View {
         _communities = State(initialValue: CommunitiesModel(social: social))
         _notices = State(initialValue: NotificationsModel(social: social))
         _onboarding = State(initialValue: OnboardingModel(notifier: push.notifier))
-        _photos = State(initialValue: PhotoCache(account: signIn.account, decode: avatarPhoto))
+        _photos = State(initialValue: PhotoCache(account: signIn.account, social: social, decode: displayPhoto))
     }
 
     var body: some View {
@@ -169,6 +169,29 @@ struct HomeView: View {
         }
     }
 
+    /// `Deila` on a post: the forward picker, sending the post as a card into each conversation picked (decision 0080).
+    private var postSharing: PostSharing {
+        let account = signIn.account
+        let live = socket
+        return PostSharing { postId in
+            PickModel(
+                account: account, live: live,
+                preview: { _ in Outgoing.post(postId) }
+            ) { account, to in
+                _ = try account.sharePost(postId, to: to)
+            }
+        }
+    }
+
+    /// A shared post in a conversation: resolved through the communities' client, its image drawn from the same
+    /// cache, and a tap opens the post on the communities tab (decision 0080).
+    private var sharedPosts: SharedPosts {
+        SharedPosts(social: social, images: PostImages(social: social)) { postId in
+            communitiesPath = [.post(postId)]
+            tab = .communities
+        }
+    }
+
     private var conversationsStack: some View {
         NavigationStack(path: $path) {
             ConversationsView(
@@ -190,6 +213,7 @@ struct HomeView: View {
                 }
             }
         }
+        .environment(\.sharedPosts, sharedPosts)
     }
 
     private var meStack: some View {
@@ -221,6 +245,7 @@ struct HomeView: View {
         }
         // Any screen in the stack can draw a post card, the hub's feed included.
         .environment(\.postImages, PostImages(social: social))
+        .environment(\.postSharing, postSharing)
     }
 
     private var atRoot: Bool {

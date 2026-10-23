@@ -1777,19 +1777,19 @@
       "description": "Banner shown in a conversation the user has left (docs/decisions/0078)."
     },
     "community_picture_choose": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080)."
     },
     "community_picture_remove": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Button that removes a community's picture (decision 0080)."
     },
     "community_cover_choose": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Label of the file picker for a community's wide cover (decision 0080)."
     },
     "community_cover_remove": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Button that removes a community's cover (decision 0080)."
     },
     "communities_from_yours": {
@@ -1797,19 +1797,19 @@
       "description": "Heading of the cross-community feed under the list on the hub"
     },
     "communities_create_row_hint": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Second line of the create row on the hub"
     },
     "close": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Closes a dialog or a menu"
     },
     "community_open_full": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Audience line of a community header, open"
     },
     "community_private_full": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Audience line of a community header, private"
     },
     "community_invite_title": {
@@ -1825,95 +1825,95 @@
       "description": "No person matched the invitation search"
     },
     "community_link_copied": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Told after the community link was copied"
     },
     "community_members_stack": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Name of the picture stack of members in a community header"
     },
     "community_cover_alt": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Name of the cover picture"
     },
     "time_now": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Relative time of something posted less than a minute ago"
     },
     "time_minutes": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Relative time in minutes, as a short label on a post",
       "placeholders": {
         "count": "int"
       }
     },
     "time_hours": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Relative time in hours, as a short label on a post",
       "placeholders": {
         "count": "int"
       }
     },
     "time_days": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Relative time in days, as a short label on a post",
       "placeholders": {
         "count": "int"
       }
     },
     "time_weeks": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Relative time in weeks, as a short label on a post",
       "placeholders": {
         "count": "int"
       }
     },
     "post_see_more": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Expands a post whose text is cut short in the feed"
     },
     "post_like": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Action that likes a post with one press; long press or hover opens the other reactions"
     },
     "post_comment_action": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Action that opens the comments of a post"
     },
     "post_copy_link": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Menu item that copies the address of a post"
     },
     "post_link_copied": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Told after the address of a post was copied"
     },
     "post_pin": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Menu item for a moderator or the owner that pins a post to the top of its community (decision 0080)"
     },
     "post_write_comment": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Pill under a post card that opens its comments"
     },
     "post_reactions_more": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Name of the group of five reactions opened from the like action"
     },
     "post_unpin": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Menu item that unpins the community's pinned post"
     },
     "post_pinned": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Marker on the card of the post pinned to the top of its community"
     },
     "comment_like": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Under a comment: like it with a thumbs up, bold while the caller has liked it (decision 0080)"
     },
     "community_new_posts": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "On a hub row: how many posts the caller has not seen in the community (decision 0080)",
       "plural": true,
       "placeholders": {
@@ -1928,11 +1928,11 @@
       }
     },
     "community_pin": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Hub row menu item that pins the community to the top of the caller's list (decision 0080)"
     },
     "community_unpin": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Hub row menu item that unpins the community"
     },
     "post_share_to_conversation": {
@@ -1942,6 +1942,10 @@
     "communities_search_open": {
       "surfaces": ["android", "ios", "web"],
       "description": "Hub header icon that opens the community search (decision 0080)."
+    },
+    "community_pinned": {
+      "surfaces": ["ios"],
+      "description": "Accessible label of the pin shown on a pinned community row."
     }
   }
 }

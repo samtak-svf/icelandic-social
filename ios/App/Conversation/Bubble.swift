@@ -278,9 +278,9 @@ private struct BodyText: View {
             if let quote {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: quote.sender.map(shownName) ?? "").font(.caption.weight(.semibold))
-                    if quote.postId != nil {
+                    if let postId = quote.postId {
                         // A reply to a share quotes the post as its card: the store holds no text of it.
-                        SharedCard(foreground: foreground)
+                        SharedCard(postId: postId, foreground: foreground)
                     } else if quote.location {
                         // Never the place: a quote of a location says only that it is one (decision 0059).
                         Label("location", systemImage: "mappin.and.ellipse").font(.caption)
@@ -304,8 +304,8 @@ private struct BodyText: View {
             Attachment(
                 item: item, mime: mime, size: size, caption: caption, name: name, foreground: foreground,
                 model: model)
-        case .post:
-            SharedCard(foreground: foreground)
+        case .post(let postId):
+            SharedCard(postId: postId, foreground: foreground)
         case .location(let latE6, let lonE6, let accuracy):
             LocationCard(latE6: latE6, lonE6: lonE6, accuracy: accuracy, foreground: foreground)
         case .members, .timer, .name:

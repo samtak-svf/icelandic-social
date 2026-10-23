@@ -70,6 +70,8 @@ protocol Account: Sendable {
     /// Copies the message at `seq` of `from` into `to` as a new message there, marked forwarded (decision 0041).
     /// Refused under a timer, for a deleted message and for a card.
     func forward(_ from: String, seq: UInt64, to: String) throws -> String
+    /// Sends a post into `to` as a card (decision 0080, amending 0044); the receiver resolves it itself.
+    func sharePost(_ postId: String, to: String) throws -> String
     /// Blocks `account` (decision 0024): it can no longer reach this one, and the 1:1 with it ends.
     func block(_ account: String) throws -> Outcome
     func unblock(_ account: String) throws
@@ -259,6 +261,10 @@ final class CoreAccount: Account, @unchecked Sendable {
 
     func forward(_ from: String, seq: UInt64, to: String) throws -> String {
         try core().forward(from: from, seq: seq, to: to)
+    }
+
+    func sharePost(_ postId: String, to: String) throws -> String {
+        try core().send(conversation: to, body: .post(postId: postId))
     }
 
     func block(_ account: String) throws -> Outcome { try core().block(account: account) }

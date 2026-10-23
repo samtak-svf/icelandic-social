@@ -6,4 +6,5 @@ SPJALL_NSE_BUNDLE_ID = is.samtak.spjall.notifications
 SPJALL_APP_GROUP = group.is.samtak.spjall
 SPJALL_URL_SCHEME = is.samtak.spjall
 SPJALL_API_HOST = spjall.samtak.is
+SPJALL_WEB_HOST = spjall.samtak.is
 DEVELOPMENT_TEAM = 
