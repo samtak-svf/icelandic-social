@@ -3,7 +3,8 @@ import { evictDurableObject, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { conversation, inbox } from "../src/env/index.ts";
 import { connect } from "./socket.ts";
-import { device, euEnv } from "./support.ts";
+import { device, euEnv, linkedBrowser, revoke } from "./support.ts";
+import { worker } from "./main.ts";
 
 // The socket of decision 0015 against the real Inbox and Conversation DOs:
 // hello and catch-up, ack, typing, push for a device with no socket, and
@@ -187,5 +188,60 @@ describe("the socket", () => {
       state.storage.sql.exec("SELECT device_id, seq FROM cursors").toArray(),
     );
     expect(cursors).toEqual([{ device_id: me.deviceId, seq: 4 }]);
+  });
+
+  describe("with a browser's session cookie (decision 0081)", () => {
+    const WEB = "https://spjall.samtak.is";
+    const open = (headers: Record<string, string>) =>
+      worker.fetch("https://spjall.test/v1/ws", { headers: { upgrade: "websocket", ...headers } });
+
+    it("opens the socket of the session's linked device from the web host", async () => {
+      const { browser, enrolled } = await linkedBrowser();
+      const socket = await connect(browser.web);
+      expect(await socket.next()).toMatchObject({ type: "hello" });
+      socket.send({ type: "ack", conversationId: "conv_web", seq: 2 });
+      await socket.settle("n10");
+      const cursors = await runInDurableObject(inbox(testEnv, browser.accountId), (_, state) =>
+        state.storage.sql.exec("SELECT device_id FROM cursors").toArray(),
+      );
+      expect(cursors).toEqual([{ device_id: enrolled!.deviceId }]);
+    });
+
+    it("refuses another origin, and none", async () => {
+      const { browser } = await linkedBrowser();
+      const other = await open({ cookie: browser.cookie, origin: "https://elsewhere.example" });
+      expect(other.status).toBe(403);
+      expect(await other.json()).toMatchObject({ error: "forbidden_origin" });
+      const none = await open({ cookie: browser.cookie });
+      expect(none.status).toBe(403);
+      expect(await none.json()).toMatchObject({ error: "forbidden_origin" });
+    });
+
+    it("refuses a session with no linked device, or a revoked one", async () => {
+      const { browser } = await linkedBrowser({ complete: false });
+      const unlinked = await open(browser.web);
+      expect(unlinked.status).toBe(403);
+      expect(await unlinked.json()).toMatchObject({ error: "no_linked_device" });
+
+      const linked = await linkedBrowser();
+      await revoke(linked.enrolled!.deviceId);
+      const revoked = await open(linked.browser.web);
+      expect(revoked.status).toBe(403);
+      expect(await revoked.json()).toMatchObject({ error: "no_linked_device" });
+    });
+
+    it("refuses a linked device idle past its window", async () => {
+      const { browser, enrolled } = await linkedBrowser();
+      await env.DB.prepare("UPDATE devices SET last_seen_at = ? WHERE device_id = ?")
+        .bind(Date.now() - 46 * 24 * 60 * 60 * 1000, enrolled!.deviceId)
+        .run();
+      const idle = await open(browser.web);
+      expect(idle.status).toBe(403);
+      expect(await idle.json()).toMatchObject({ error: "no_linked_device" });
+    });
+
+    it("is refused with no valid session, whatever the origin", async () => {
+      expect((await open({ origin: WEB })).status).toBe(401);
+    });
   });
 });

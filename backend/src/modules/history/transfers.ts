@@ -177,21 +177,54 @@ export async function completeTransfer(
   return "ok";
 }
 
-/** The completed transfer's bytes, for the device the link made. */
+/**
+ * What a `Range` header asks of an object of `size` bytes (RFC 9110 § 14): the
+ * whole object for no header or a unit other than bytes, a single `a-b` or `a-`
+ * range clamped to the end, or "unsatisfiable" for a range past the end, a
+ * reversed, suffix or multiple range, or one that is not a range at all.
+ */
+function rangeOf(
+  header: string | undefined,
+  size: number,
+): "whole" | "unsatisfiable" | { offset: number; length: number } {
+  if (header === undefined || !/^bytes\s*=/i.test(header)) return "whole";
+  const match = /^bytes\s*=\s*(\d{1,15})-(\d{1,15})?\s*$/i.exec(header);
+  if (!match) return "unsatisfiable";
+  const first = Number(match[1]);
+  const last = match[2] === undefined ? size - 1 : Math.min(Number(match[2]), size - 1);
+  if (first >= size || first > last) return "unsatisfiable";
+  return { offset: first, length: last - first + 1 };
+}
+
+/**
+ * The completed transfer's bytes, or the slice of them `range` asks for (a
+ * `Range` header, decision 0081), for the device the link made. `size` is
+ * the whole transfer's, which a 206 and a 416 both report.
+ */
 export async function getTransfer(
   env: Env,
   device: Device,
   linkId: string,
+  range?: string,
   now = Date.now(),
-): Promise<{ ok: R2ObjectBody } | { error: Refused | "expired" }> {
+): Promise<
+  | { ok: R2ObjectBody; size: number; range: { offset: number; length: number } | null }
+  | { error: Refused | "expired" }
+  | { unsatisfiable: number }
+> {
   const link = await approvedLink(env, linkId, now);
   if (!link) return { error: "not_found" };
   if (!isRecipient(link, device)) return { error: "not_this_device" };
   const transfer = await transferOf(env, linkId);
   if (!transfer || transfer.completedAt === null) return { error: "not_found" };
   if (transfer.expiresAt <= now) return { error: "expired" };
-  const object = await mediaBucket(env).get(keyOf(linkId));
-  return object ? { ok: object } : { error: "not_found" };
+  const bucket = mediaBucket(env);
+  const head = range === undefined ? null : await bucket.head(keyOf(linkId));
+  const slice = head ? rangeOf(range, head.size) : "whole";
+  if (slice === "unsatisfiable") return { unsatisfiable: head!.size };
+  const object = await bucket.get(keyOf(linkId), slice === "whole" ? undefined : { range: slice });
+  if (!object) return { error: "not_found" };
+  return { ok: object, size: object.size, range: slice === "whole" ? null : slice };
 }
 
 /**

@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { fromBase64, toBase64 } from "../src/bytes.ts";
 import { expireLinkedDevices, LINKED_IDLE_MS } from "../src/identity/index.ts";
-import { euEnv, phoneWithKey, webSession } from "./support.ts";
+import { euEnv, linkedBrowser, phoneWithKey, webSession } from "./support.ts";
 import { worker } from "./main.ts";
 
 // Linked non-phone devices (decision 0064, #299): enrolled from a web session
@@ -192,6 +192,35 @@ describe("enrolling a linked device from a session (decision 0064, #299)", () =>
     const again = await approve(linkA, await phone.approve(linkA, keyA));
     expect(again.status).toBe(409);
     expect(await again.json()).toMatchObject({ error: "already_approved" });
+  });
+
+  it("tells the browser whether a history follows, as the approving phone said (decision 0081)", async () => {
+    const none = await linkedBrowser({ history: "none" });
+    expect(none.enrolled?.historyExpected).toBe(false);
+    const sent = await linkedBrowser({ history: "sent" });
+    expect(sent.enrolled?.historyExpected).toBe(true);
+    // A 0.37 app sends no field and always sends a history.
+    const absent = await linkedBrowser();
+    expect(absent.enrolled?.historyExpected).toBe(true);
+
+    const phone = await phoneWithKey();
+    const browser = await webSession({ accountId: phone.accountId });
+    const deviceKey = crypto.getRandomValues(new Uint8Array(32));
+    const started = await fetch("/v1/devices/link-requests", {
+      method: "POST",
+      headers: { ...browser.web, "content-type": "application/json" },
+      body: JSON.stringify({ deviceKey: toBase64(deviceKey), historyKey: randomKeyBase64() }),
+    });
+    const { linkId } = (await started.json()) as { linkId: string };
+    const refused = await fetch(`/v1/devices/link-requests/${linkId}/approve`, {
+      method: "POST",
+      headers: { ...phone.auth, "content-type": "application/json" },
+      body: JSON.stringify({
+        signature: toBase64(await phone.approve(linkId, deviceKey)),
+        history: "later",
+      }),
+    });
+    expect(refused.status).toBe(400);
   });
 
   it("removes a linked device after 45 days of inactivity while keeping phones and the web session", async () => {

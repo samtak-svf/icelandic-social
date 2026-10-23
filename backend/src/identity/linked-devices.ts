@@ -8,12 +8,13 @@ import {
   getLinkedStoreKeyRoute,
 } from "../api/linked-devices.ts";
 import { fromBase64, toBase64 } from "../bytes.ts";
-import { db, inbox } from "../env/index.ts";
+import { db } from "../env/index.ts";
 import { fail } from "../errors.ts";
 import { log } from "../log.ts";
 import type { Platform } from "../platforms.ts";
 import { type Device, randomToken, tokenHash } from "./accounts.ts";
 import { approvalMessage } from "./link-approval.ts";
+import { LINKED_IDLE_MS } from "./linked-device-lifecycle.ts";
 import type { Session } from "./sessions.ts";
 
 // Enrolling a linked non-phone device from a browser session (decision 0064,
@@ -24,9 +25,6 @@ import type { Session } from "./sessions.ts";
 // 32-byte half of its two-part store key. A linked device expires after 45 days without
 // use, and revoking it leaves its browser session signed in.
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-/** A linked device is removed after 45 days without an authenticated request (decision 0064). */
-export const LINKED_IDLE_MS = 45 * DAY_MS;
 /** A pending QR link request expires after 10 minutes. */
 const LINK_REQUEST_MS = 10 * 60 * 1000;
 async function createLinkRequest(
@@ -117,6 +115,7 @@ async function approveLinkRequest(
   approver: Device,
   linkId: string,
   signature: Uint8Array,
+  history: "none" | "sent" = "sent",
   now = Date.now(),
 ): Promise<
   | { ok: true }
@@ -165,10 +164,11 @@ async function approveLinkRequest(
   const updated = await db(env)
     .prepare(
       `UPDATE device_link_requests
-          SET approved_by_device_id = ?, approval_signature = ?, approved_at = ?
+          SET approved_by_device_id = ?, approval_signature = ?, approved_at = ?,
+              history_expected = ?
         WHERE link_id = ? AND account_id = ? AND approved_by_device_id IS NULL`,
     )
-    .bind(approver.deviceId, signature, now, linkId, approver.accountId)
+    .bind(approver.deviceId, signature, now, history === "sent" ? 1 : 0, linkId, approver.accountId)
     .run();
   return updated.meta.changes === 1 ? { ok: true } : { error: "already_approved" };
 }
@@ -186,6 +186,7 @@ async function completeLinkRequest(
         sessionId: string;
         token: string;
         storeKeyShare: string;
+        historyExpected: boolean;
       };
     }
   | { error: "not_found" | "not_approved" | "device_key_taken" }
@@ -193,7 +194,7 @@ async function completeLinkRequest(
   const row = await db(env)
     .prepare(
       `SELECT r.device_key AS deviceKey, r.approved_by_device_id AS approvedBy,
-              p.platform AS phonePlatform, p.revoked_at AS phoneRevokedAt
+              r.history_expected AS historyExpected, p.platform AS phonePlatform, p.revoked_at AS phoneRevokedAt
          FROM device_link_requests r
          LEFT JOIN devices p ON p.device_id = r.approved_by_device_id
                 AND p.account_id = r.account_id AND p.kind = 'phone'
@@ -203,6 +204,7 @@ async function completeLinkRequest(
     .first<{
       deviceKey: ArrayBuffer;
       approvedBy: string | null;
+      historyExpected: number;
       phonePlatform: Platform | null;
       phoneRevokedAt: number | null;
     }>();
@@ -251,6 +253,7 @@ async function completeLinkRequest(
       sessionId: session.sessionId,
       token,
       storeKeyShare: toBase64(share),
+      historyExpected: row.historyExpected === 1,
     },
   };
 }
@@ -326,62 +329,6 @@ async function storeKeyShareForSession(
   };
 }
 
-/**
- * Checks whether a linked non-phone device is still within its 45-day activity
- * window and updates `last_seen_at` at most once a day (decision 0064).
- */
-export async function touchLinkedDevice(
-  env: Env,
-  deviceId: string,
-  now = Date.now(),
-): Promise<boolean> {
-  const row = await db(env)
-    .prepare("SELECT last_seen_at AS lastSeenAt FROM devices WHERE device_id = ?")
-    .bind(deviceId)
-    .first<{ lastSeenAt: number | null }>();
-  if (!row) return false;
-  if (row.lastSeenAt !== null && row.lastSeenAt + LINKED_IDLE_MS <= now) return false;
-  if (row.lastSeenAt === null || now - row.lastSeenAt >= DAY_MS) {
-    await db(env)
-      .prepare("UPDATE devices SET last_seen_at = ? WHERE device_id = ?")
-      .bind(now, deviceId)
-      .run();
-  }
-  return true;
-}
-
-/**
- * Revokes linked non-phone devices that have made no authenticated request in
- * 45 days (decision 0064) and deletes expired link requests. The web session
- * survives the device's removal, and remaining devices remove the expired
- * device's MLS leaves per decision 0028.
- */
-export async function expireLinkedDevices(env: Env, now = Date.now()): Promise<number> {
-  const cutoff = now - LINKED_IDLE_MS;
-  const [, , revoked] = await db(env).batch<{ accountId: string; deviceId: string }>([
-    db(env).prepare("DELETE FROM device_link_requests WHERE expires_at <= ?").bind(now),
-    db(env)
-      .prepare(
-        `DELETE FROM key_packages WHERE device_id IN
-           (SELECT device_id FROM devices
-             WHERE kind != 'phone' AND revoked_at IS NULL AND last_seen_at <= ?)`,
-      )
-      .bind(cutoff),
-    db(env)
-      .prepare(
-        `UPDATE devices SET revoked_at = ?, push_token = NULL, store_key_share = NULL
-          WHERE kind != 'phone' AND revoked_at IS NULL AND last_seen_at <= ?
-          RETURNING account_id AS accountId, device_id AS deviceId`,
-      )
-      .bind(now, cutoff),
-  ]);
-  const list = revoked?.results ?? [];
-  for (const { accountId, deviceId } of list) {
-    await inbox(env, accountId).closeDevice(deviceId);
-  }
-  return list.length;
-}
-
 export function linkedDeviceRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(createDeviceLinkRoute, async (c) => {
     const { session } = c.var;
@@ -408,8 +355,14 @@ export function linkedDeviceRoutes(app: OpenAPIHono<AppEnv>): void {
 
   app.openapi(approveDeviceLinkRoute, async (c) => {
     const { linkId } = c.req.valid("param");
-    const { signature } = c.req.valid("json");
-    const approved = await approveLinkRequest(c.env, c.var.device, linkId, fromBase64(signature));
+    const { signature, history } = c.req.valid("json");
+    const approved = await approveLinkRequest(
+      c.env,
+      c.var.device,
+      linkId,
+      fromBase64(signature),
+      history,
+    );
     if ("error" in approved) {
       const { error } = approved;
       return fail(c, error === "not_found" ? 404 : error === "already_approved" ? 409 : 403, error);

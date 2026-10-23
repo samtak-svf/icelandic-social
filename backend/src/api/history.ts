@@ -113,13 +113,21 @@ export const getHistoryRoute = createRoute({
   tags: ["devices"],
   summary: "Download the history a link's approving phone uploaded, as the device it made",
   description:
-    "The ciphertext stays until the device deletes it or 24 hours pass, so a download that breaks can be repeated.",
+    "The ciphertext stays until the device deletes it or 24 hours pass, so a download that breaks can be repeated. A single `Range: bytes=a-b` or `bytes=a-` answers 206 with that slice, so a browser fetches the file in pieces (decision 0081).",
   security: DEVICE_TOKEN,
   request: { params: LinkParams },
   responses: {
     200: {
       description: "The ciphertext",
       content: { "application/octet-stream": { schema: Binary } },
+    },
+    206: {
+      description: "The slice a Range asked for, with its content-range",
+      content: { "application/octet-stream": { schema: Binary } },
+    },
+    416: {
+      description:
+        "The range starts past the end, is reversed, a suffix or several ranges; content-range is `bytes */<size>`",
     },
     ...INVALID,
     ...AUTHED,

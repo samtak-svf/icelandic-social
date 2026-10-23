@@ -140,6 +140,45 @@ describe("a history transfer (decision 0064, #300)", () => {
     expect(rows?.n).toBe(0);
   });
 
+  it("answers a Range with that slice of the ciphertext (decision 0081)", async () => {
+    const { phone, linkId, linked } = await approvedLink();
+    const blob = sealedHistory(1000);
+    await upload(linkId, phone.auth, blob);
+    const ranged = (range?: string) =>
+      fetch(history(linkId), { headers: { ...linked!.auth, ...(range ? { range } : {}) } });
+
+    const head = await ranged("bytes=0-9");
+    expect(head.status).toBe(206);
+    expect(head.headers.get("content-range")).toBe("bytes 0-9/1000");
+    expect(head.headers.get("content-length")).toBe("10");
+    expect(head.headers.get("accept-ranges")).toBe("bytes");
+    expect(new Uint8Array(await head.arrayBuffer())).toEqual(blob.slice(0, 10));
+
+    const rest = await ranged("bytes=10-");
+    expect(rest.status).toBe(206);
+    expect(rest.headers.get("content-range")).toBe("bytes 10-999/1000");
+    expect(new Uint8Array(await rest.arrayBuffer())).toEqual(blob.slice(10));
+
+    // An end past the last byte is clamped to it.
+    const clamped = await ranged("bytes=990-5000");
+    expect(clamped.headers.get("content-range")).toBe("bytes 990-999/1000");
+    expect(new Uint8Array(await clamped.arrayBuffer())).toEqual(blob.slice(990));
+
+    for (const bad of ["bytes=999999-", "bytes=1000-", "bytes=0-1,5-6", "bytes=9-3", "bytes=x-y"]) {
+      const refused = await ranged(bad);
+      expect(refused.status, bad).toBe(416);
+      expect(refused.headers.get("content-range"), bad).toBe("bytes */1000");
+    }
+
+    // Another unit is ignored, as is no Range at all.
+    for (const range of [undefined, "items=0-3"]) {
+      const whole = await ranged(range);
+      expect(whole.status).toBe(200);
+      expect(whole.headers.get("accept-ranges")).toBe("bytes");
+      expect(new Uint8Array(await whole.arrayBuffer())).toEqual(blob);
+    }
+  });
+
   it("may start before the browser completes the link, and reaches the device it then makes", async () => {
     const { phone, browser, linkId } = await approvedLink({ complete: false });
     await upload(linkId, phone.auth, sealedHistory(1000));
