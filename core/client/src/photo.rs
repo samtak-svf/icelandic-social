@@ -8,7 +8,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::api::{ApiError, Transport};
+use crate::api::{Api, ApiError, Transport};
 use crate::blobs::BlobStore;
 use crate::members::store_photo;
 use crate::{Client, ClientError, MediaError, authed, is_id, this_device};
@@ -88,13 +88,15 @@ impl<T: Transport> Client<T> {
         Ok(())
     }
 
-    /// The file of `account`'s photo at `version`, the version a `Person`,
-    /// a post's author or `me` gave: kept from an earlier call, else
-    /// fetched now in place of the version before it. None when the server
-    /// has no such photo for this account, or a block withholds it; the
-    /// kept files go then too, and a stored profile shows none.
-    pub fn photo(&mut self, account: &str, version: &str) -> Result<Option<PathBuf>, ClientError> {
-        let dir = self.photos_of(account)?;
+    /// The file at `dir/<version>.webp`: kept from an earlier call, else
+    /// fetched now through `fetch` in place of the versions before it. None
+    /// when the server answered 404; the caller then decides what to forget.
+    fn kept_or_fetched(
+        &mut self,
+        dir: PathBuf,
+        version: &str,
+        fetch: impl FnOnce(&Api<'_, T>, &Path) -> Result<(), ApiError>,
+    ) -> Result<Option<PathBuf>, ClientError> {
         if !is_id(version) {
             return Err(ClientError::Invalid("photo version"));
         }
@@ -104,7 +106,7 @@ impl<T: Transport> Client<T> {
         }
         self.blobs.create_dir_all(&dir).map_err(MediaError::from)?;
         let part = dir.join(format!("{version}.part"));
-        let fetched = authed(&self.transport, &self.token, &self.client)?.get_photo(account, &part);
+        let fetched = fetch(&authed(&self.transport, &self.token, &self.client)?, &part);
         match fetched {
             Ok(()) => {
                 self.blobs.rename(&part, &kept).map_err(MediaError::from)?;
@@ -112,8 +114,7 @@ impl<T: Transport> Client<T> {
                 Ok(Some(kept))
             }
             Err(ApiError::Refused { status: 404, .. }) => {
-                self.forget_photo(account);
-                self.store.try_write(|tx| store_photo(tx, account, None))?;
+                let _ = self.blobs.remove_file(&part);
                 Ok(None)
             }
             Err(error) => {
@@ -121,5 +122,69 @@ impl<T: Transport> Client<T> {
                 Err(error.into())
             }
         }
+    }
+
+    /// The file of `account`'s photo at `version`, the version a `Person`,
+    /// a post's author or `me` gave: kept from an earlier call, else
+    /// fetched now in place of the version before it. None when the server
+    /// has no such photo for this account, or a block withholds it; the
+    /// kept files go then too, and a stored profile shows none.
+    pub fn photo(&mut self, account: &str, version: &str) -> Result<Option<PathBuf>, ClientError> {
+        let dir = self.photos_of(account)?;
+        let found = self.kept_or_fetched(dir, version, |api, part| api.get_photo(account, part))?;
+        if found.is_none() {
+            self.forget_photo(account);
+            self.store.try_write(|tx| store_photo(tx, account, None))?;
+        }
+        Ok(found)
+    }
+
+    /// The file of a community's picture (`cover` false) or cover at
+    /// `version`, the version a `Community` gave: kept under
+    /// `communities/<community>/{avatar|cover}/<version>.webp`, fetched
+    /// once per version in place of the one before it. None when the
+    /// community has none, or the reader may not see it; the kept files go
+    /// then too (0080).
+    pub(crate) fn community_image(
+        &mut self,
+        community: &str,
+        cover: bool,
+        version: &str,
+    ) -> Result<Option<PathBuf>, ClientError> {
+        if !is_id(community) {
+            return Err(ClientError::Invalid("community id"));
+        }
+        let kind = if cover { "cover" } else { "avatar" };
+        let dir = self.media.join("communities").join(community).join(kind);
+        let found = self.kept_or_fetched(dir.clone(), version, |api, part| {
+            if cover {
+                api.get_community_cover(community, part)
+            } else {
+                api.get_community_avatar(community, part)
+            }
+        })?;
+        if found.is_none() {
+            clear(&*self.blobs, &dir, None);
+            let _ = self.blobs.remove_dir(&dir);
+        }
+        Ok(found)
+    }
+
+    /// A community's picture at `version`; see `community_image` (0080).
+    pub fn community_picture(
+        &mut self,
+        community: &str,
+        version: &str,
+    ) -> Result<Option<PathBuf>, ClientError> {
+        self.community_image(community, false, version)
+    }
+
+    /// A community's cover at `version`; see `community_image` (0080).
+    pub fn community_cover(
+        &mut self,
+        community: &str,
+        version: &str,
+    ) -> Result<Option<PathBuf>, ClientError> {
+        self.community_image(community, true, version)
     }
 }

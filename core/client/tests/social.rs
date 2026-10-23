@@ -968,6 +968,7 @@ fn a_community_is_edited_and_its_members_and_log_read() {
             {
                 "accountId": "acc_a", "name": "Sigrún Jónsdóttir", "verified": true,
                 "role": "owner", "joinedAt": 1_760_000_000_000u64,
+                "photo": "ph_a",
             },
             {
                 "accountId": "acc_b", "name": null, "verified": false,
@@ -989,6 +990,9 @@ fn a_community_is_edited_and_its_members_and_log_read() {
         (members[1].name.as_deref(), members[1].role),
         (None, Role::Member)
     );
+    // The photo version decodes; a row from an older server has none.
+    assert_eq!(members[0].photo.as_deref(), Some("ph_a"));
+    assert_eq!(members[1].photo, None);
 
     phone.ok();
     c.set_community_role("cm_1", "acc_b", Role::Moderator)
@@ -1341,5 +1345,85 @@ fn a_community_image_is_refused_before_a_request_when_empty_or_too_big() {
     assert!(refused(c.set_community_cover("cm_1", &big).map(drop)));
     assert!(refused(c.set_community_avatar("../x", &ok).map(drop)));
     assert!(refused(c.remove_community_cover("a/b")));
+    assert!(phone.sent().is_empty());
+}
+
+#[test]
+fn a_community_picture_and_cover_are_fetched_once_per_version() {
+    let mut phone = Phone::signed_in();
+    for cover in [false, true] {
+        let kind = if cover { "cover" } else { "avatar" };
+        let fetch = |phone: &mut Phone, version: &str| {
+            if cover {
+                phone.client.community_cover("cm_1", version)
+            } else {
+                phone.client.community_picture("cm_1", version)
+            }
+        };
+        phone.answer(200, Value::Null);
+        let first = fetch(&mut phone, "ph_one").unwrap().unwrap();
+        assert!(first.ends_with(format!("communities/cm_1/{kind}/ph_one.webp")));
+        assert_eq!(std::fs::read(&first).unwrap(), IMAGE);
+        // Kept: the second call asks nothing.
+        assert_eq!(fetch(&mut phone, "ph_one").unwrap().unwrap(), first);
+        // A new version is fetched and replaces the old file.
+        phone.answer(200, Value::Null);
+        let second = fetch(&mut phone, "ph_two").unwrap().unwrap();
+        assert!(second.ends_with(format!("communities/cm_1/{kind}/ph_two.webp")));
+        assert!(!first.exists());
+        assert_eq!(
+            phone
+                .sent()
+                .into_iter()
+                .map(|(method, path, _)| (method, path))
+                .collect::<Vec<_>>(),
+            [
+                (Method::Get, format!("/v1/communities/cm_1/{kind}")),
+                (Method::Get, format!("/v1/communities/cm_1/{kind}")),
+            ]
+        );
+    }
+}
+
+#[test]
+fn a_community_picture_the_server_lacks_is_none_and_clears_the_kept_file() {
+    let mut phone = Phone::signed_in();
+    phone.answer(200, Value::Null);
+    let kept = phone
+        .client
+        .community_picture("cm_1", "ph_one")
+        .unwrap()
+        .unwrap();
+    assert!(kept.exists());
+    phone.answer(404, json!({ "error": "not_found" }));
+    assert_eq!(
+        phone.client.community_picture("cm_1", "ph_two").unwrap(),
+        None
+    );
+    assert!(!kept.exists());
+    assert!(!kept.parent().unwrap().exists());
+    // A server error is not a 404: it propagates and keeps nothing half-fetched.
+    phone.answer(500, json!({ "error": "internal" }));
+    assert!(matches!(
+        phone.client.community_cover("cm_1", "ph_three"),
+        Err(ClientError::Transport(ApiError::Refused {
+            status: 500,
+            ..
+        }))
+    ));
+    let _ = phone.sent();
+}
+
+#[test]
+fn a_bad_community_picture_id_is_refused_without_a_request() {
+    let mut phone = Phone::signed_in();
+    assert!(matches!(
+        phone.client.community_picture("../x", "ph_one"),
+        Err(ClientError::Invalid(_))
+    ));
+    assert!(matches!(
+        phone.client.community_cover("cm_1", "../x"),
+        Err(ClientError::Invalid(_))
+    ));
     assert!(phone.sent().is_empty());
 }

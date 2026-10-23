@@ -671,6 +671,10 @@ pub struct CommunityMember {
     pub role: Role,
     /// Unix milliseconds.
     pub joined_at: u64,
+    /// The account's photo version, none without one; `photo` fetches it.
+    /// An older server sends none (0080).
+    #[serde(default)]
+    pub photo: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -1677,6 +1681,27 @@ impl<T: Transport + ?Sized> Api<'_, T> {
     /// has none, or a block stands between the two.
     pub fn get_photo(&self, account: &str, to: &Path) -> Result<(), ApiError> {
         let request = self.request(Method::Get, format!("/v1/accounts/{account}/photo"), None);
+        Self::checked(self.transport.download(request, to)?).map(drop)
+    }
+
+    /// `getCommunityAvatar`: the community's picture, a WebP, written to
+    /// `to`. 404 when it has none, or the reader may not see it (0080).
+    pub fn get_community_avatar(&self, community: &str, to: &Path) -> Result<(), ApiError> {
+        let request = self.request(
+            Method::Get,
+            format!("/v1/communities/{community}/avatar"),
+            None,
+        );
+        Self::checked(self.transport.download(request, to)?).map(drop)
+    }
+
+    /// `getCommunityCover`: the community's cover, as `get_community_avatar`.
+    pub fn get_community_cover(&self, community: &str, to: &Path) -> Result<(), ApiError> {
+        let request = self.request(
+            Method::Get,
+            format!("/v1/communities/{community}/cover"),
+            None,
+        );
         Self::checked(self.transport.download(request, to)?).map(drop)
     }
 

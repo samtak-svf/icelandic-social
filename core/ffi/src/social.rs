@@ -226,6 +226,8 @@ pub struct CommunityMember {
     pub role: CommunityRole,
     /// Unix milliseconds.
     pub joined_at: u64,
+    /// The account's photo version; `photo` fetches it.
+    pub photo: Option<String>,
 }
 
 impl From<api::CommunityMember> for CommunityMember {
@@ -236,6 +238,7 @@ impl From<api::CommunityMember> for CommunityMember {
             verified: member.verified,
             role: member.role.into(),
             joined_at: member.joined_at,
+            photo: member.photo,
         }
     }
 }
@@ -1211,6 +1214,36 @@ impl CoreClient {
     /// Removes a community's cover; no error when there was none (0080).
     pub fn remove_community_cover(&self, community_id: String) -> Result<(), CoreError> {
         Ok(self.client()?.remove_community_cover(&community_id)?)
+    }
+
+    /// The path of a community's picture at `version`, the `photo` of its
+    /// `Community`: fetched once per version and kept by the core. None when
+    /// it has none or the reader may not see it; draw the initials then,
+    /// and while this runs (0080).
+    pub fn community_picture(
+        &self,
+        community_id: String,
+        version: String,
+    ) -> Result<Option<String>, CoreError> {
+        Ok(self
+            .client()?
+            .community_picture(&community_id, &version)?
+            .as_deref()
+            .map(path_string))
+    }
+
+    /// The path of a community's cover at `version`, as `community_picture`
+    /// does the picture (0080).
+    pub fn community_cover(
+        &self,
+        community_id: String,
+        version: String,
+    ) -> Result<Option<String>, CoreError> {
+        Ok(self
+            .client()?
+            .community_cover(&community_id, &version)?
+            .as_deref()
+            .map(path_string))
     }
 
     /// The community's members, its owner and moderators first.
