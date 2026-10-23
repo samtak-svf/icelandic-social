@@ -141,3 +141,34 @@ test("Afrita tengil puts the post's address on the clipboard", async ({ browser 
   const copied = await member.evaluate(() => navigator.clipboard.readText());
   expect(copied).toBe(`${new URL(community).origin}${href}`);
 });
+
+test("Líkar, Athugasemd and Deila take equal thirds of a 360px screen, none spilling into the next", async ({
+  browser,
+}) => {
+  const member = await person(browser, "Mjósjá Skjádóttir");
+  await found(member, "open");
+  await write(member, strings.post_compose, strings.post_publish, "Póstur á mjóum skjá.");
+  await member.setViewportSize({ width: 360, height: 800 });
+  const card = post(member, "Póstur á mjóum skjá");
+  const actions = [
+    card.getByRole("button", { name: strings.post_like, exact: true }),
+    card.getByRole("link", { name: strings.post_comment_action, exact: true }),
+    card.getByRole("button", { name: strings.share, exact: true }),
+  ];
+  const boxes = await Promise.all(
+    actions.map((action) =>
+      action.evaluate((element) => {
+        const { left, right } = element.getBoundingClientRect();
+        return { left, right, spill: element.scrollWidth - element.clientWidth };
+      }),
+    ),
+  );
+  const [first] = boxes;
+  for (const box of boxes) {
+    expect(box.spill).toBeLessThanOrEqual(0);
+    expect(box.right - box.left).toBeCloseTo((first?.right ?? 0) - (first?.left ?? 0), 0);
+  }
+  for (const [before, after] of boxes.slice(0, -1).map((box, i) => [box, boxes[i + 1]] as const)) {
+    expect(after?.left ?? 0).toBeGreaterThanOrEqual(before.right - 0.5);
+  }
+});

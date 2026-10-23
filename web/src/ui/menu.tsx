@@ -9,12 +9,15 @@ export function Menu({
   icon,
   align = "right",
   triggerClassName = "min-h-11 min-w-11",
+  className = "",
   children,
 }: Readonly<{
   label: string;
   icon: ReactNode;
   align?: "left" | "right";
   triggerClassName?: string;
+  /** Classes for the menu's root, e.g. to fill a cell of a row of actions. */
+  className?: string;
   children: (close: () => void) => ReactNode;
 }>) {
   const [open, setOpen] = useState(false);
@@ -40,7 +43,7 @@ export function Menu({
     };
   }, [open]);
   return (
-    <div ref={root} className="relative">
+    <div ref={root} className={`relative ${className}`}>
       <button
         ref={button}
         type="button"
