@@ -11,7 +11,8 @@
   leaves), [0061](0061-account-identity-session-and-device-are-separate.md) (sessions),
   [0062](0062-the-web-host-and-its-sign-in-callbacks.md) (the web host)
 - Amended by: [0074](0074-history-transfer-format-and-upload.md),
-  [0077](0077-the-link-code-and-what-the-phone-signs.md)
+  [0077](0077-the-link-code-and-what-the-phone-signs.md),
+  [0081](0081-the-browser-runs-the-blocking-core-in-a-worker.md) (the browser client)
 - Amends: 0006 (a linked device may receive history from the phone that approved it), 0016
   (the store in a browser)
 
@@ -74,7 +75,8 @@ The measurement ([`docs/browser-storage.md`](../browser-storage.md), #297) sets 
   browser that finds its store gone is a lost device: it is revoked, and the person links again.
 - **Browser chat waits for the async core.** The browser client's transport is not the
   phones' blocking one; that is the first engineering decision of phase 6 (#308), before any
-  chat in a browser.
+  chat in a browser. (Amended by 0081: the blocking core runs in a worker over synchronous
+  requests, and no async core is written.)
 - A desktop app, when there is one, uses the native core, SQLCipher and the OS keychain, and
   links the same way.
 
