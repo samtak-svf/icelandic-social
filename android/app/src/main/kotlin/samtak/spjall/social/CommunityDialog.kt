@@ -251,6 +251,23 @@ private fun EditCommunityDialog(
                     minLines = 3,
                 )
                 Choices(options, audience) { audience = it }
+                // Set or removed at once, apart from the text above (0080).
+                ImageRow(
+                    R.string.community_picture_choose,
+                    R.string.community_picture_remove,
+                    community.photo != null,
+                    busy,
+                    actions::pickPicture,
+                    actions::removePicture,
+                )
+                ImageRow(
+                    R.string.community_cover_choose,
+                    R.string.community_cover_remove,
+                    community.cover != null,
+                    busy,
+                    actions::pickCover,
+                    actions::removeCover,
+                )
             }
         },
         confirmButton = {
@@ -268,6 +285,22 @@ private fun EditCommunityDialog(
         },
         dismissButton = { CancelButton(onDismiss) },
     )
+}
+
+/** A community picture or cover: a button to pick one, and one to take it away while there is one (0080). */
+@Composable
+private fun ImageRow(
+    choose: Int,
+    remove: Int,
+    present: Boolean,
+    busy: Boolean,
+    onChoose: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        TextButton(onClick = onChoose, enabled = !busy) { Text(stringResource(choose)) }
+        if (present) TextButton(onClick = onRemove, enabled = !busy) { Text(stringResource(remove)) }
+    }
 }
 
 @Composable

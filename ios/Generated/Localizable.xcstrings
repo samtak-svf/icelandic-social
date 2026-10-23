@@ -4212,6 +4212,30 @@
           }
         }
       }
+    },
+    "post_share_to_conversation": {
+      "comment": "Share sheet entry that sends a post into a conversation (decision 0080).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Senda í samtal"
+          }
+        }
+      }
+    },
+    "communities_search_open": {
+      "comment": "Hub header icon that opens the community search (decision 0080).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leita að samfélögum"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

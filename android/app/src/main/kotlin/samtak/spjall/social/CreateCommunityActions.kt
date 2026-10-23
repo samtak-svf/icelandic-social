@@ -10,6 +10,15 @@ interface CreateCommunityActions {
 
     fun audience(audience: CommunityAudience)
 
+    /** Opens the picker for the picture, or the cover, the community is made with (0080). */
+    fun pickPicture()
+
+    fun pickCover()
+
+    fun removePicture()
+
+    fun removeCover()
+
     fun create()
 
     fun back()

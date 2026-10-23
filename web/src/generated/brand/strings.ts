@@ -556,4 +556,8 @@ export const strings = {
   community_pin: "Festa efst",
   /** Hub row menu item that unpins the community */
   community_unpin: "Losa",
+  /** Share sheet entry that sends a post into a conversation (decision 0080). */
+  post_share_to_conversation: "Senda í samtal",
+  /** Hub header icon that opens the community search (decision 0080). */
+  communities_search_open: "Leita að samfélögum",
 } as const;

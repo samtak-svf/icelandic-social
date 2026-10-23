@@ -46,6 +46,15 @@ interface CommunityActions {
 
     fun loadModerationLog()
 
+    /** Opens the picker for the community picture, or the cover (0080). */
+    fun pickPicture()
+
+    fun pickCover()
+
+    fun removePicture()
+
+    fun removeCover()
+
     /** Deletes the community, once its owner confirmed. */
     fun deleteCommunity()
 

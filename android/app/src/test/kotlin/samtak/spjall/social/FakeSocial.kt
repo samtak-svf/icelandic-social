@@ -314,6 +314,44 @@ class FakeSocial : Social {
 
     override fun unreact(postId: String) = call("unreact $postId")
 
+    override fun setCommunityAvatar(
+        communityId: String,
+        path: String,
+    ): String {
+        call("setCommunityAvatar $communityId $path")
+        return "1"
+    }
+
+    override fun setCommunityCover(
+        communityId: String,
+        path: String,
+    ): String {
+        call("setCommunityCover $communityId $path")
+        return "1"
+    }
+
+    override fun removeCommunityAvatar(communityId: String) = call("removeCommunityAvatar $communityId")
+
+    override fun removeCommunityCover(communityId: String) = call("removeCommunityCover $communityId")
+
+    override fun likeComment(commentId: String) = call("likeComment $commentId")
+
+    override fun unlikeComment(commentId: String) = call("unlikeComment $commentId")
+
+    override fun pinPost(
+        communityId: String,
+        postId: String,
+    ) = call("pinPost $communityId $postId")
+
+    override fun unpinPost(
+        communityId: String,
+        postId: String,
+    ) = call("unpinPost $communityId $postId")
+
+    override fun pinCommunity(communityId: String) = call("pinCommunity $communityId")
+
+    override fun unpinCommunity(communityId: String) = call("unpinCommunity $communityId")
+
     override fun comments(
         postId: String,
         after: String?,

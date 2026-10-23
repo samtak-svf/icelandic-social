@@ -48,7 +48,7 @@ fun NavGraphBuilder.socialScreens(
 
     screen(SocialRoutes.COMMUNITIES) { Communities(social, account, nav) }
     screen(SocialRoutes.NOTIFICATIONS) { Notifications(social, nav, read) }
-    screen(SocialRoutes.NEW_COMMUNITY) { NewCommunity(social, nav) }
+    screen(SocialRoutes.NEW_COMMUNITY) { NewCommunity(social, files, nav) }
     screen("${SocialRoutes.COMMUNITY}/{id}") { entry ->
         entry.arguments?.getString("id")?.let { CommunityEntry(it, social, files, nav) }
     }
@@ -109,11 +109,20 @@ private fun Communities(
 @Composable
 private fun NewCommunity(
     social: Social,
+    files: Files,
     nav: NavController,
 ) {
     val model: CreateCommunityViewModel = viewModel { CreateCommunityViewModel(social) }
     val state by model.state.collectAsStateWithLifecycle()
     val back = rememberBack(nav)
+    val picture =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            uri?.let { model.pickPicture { files.communityPicture(it) } }
+        }
+    val cover =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            uri?.let { model.pickCover { files.communityCover(it) } }
+        }
     LaunchedEffect(model) {
         model.created.collect { id ->
             nav.navigate(SocialRoutes.community(id)) { popUpTo(SocialRoutes.COMMUNITIES) }
@@ -127,6 +136,16 @@ private fun NewCommunity(
             override fun description(text: String) = model.description(text)
 
             override fun audience(audience: CommunityAudience) = model.audience(audience)
+
+            override fun pickPicture() =
+                picture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+
+            override fun pickCover() =
+                cover.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+
+            override fun removePicture() = model.removePicture()
+
+            override fun removeCover() = model.removeCover()
 
             override fun create() = model.create()
 
@@ -156,6 +175,15 @@ private fun CommunityEntry(
             ActivityResultContracts.PickMultipleVisualMedia(maxOf(2, IMAGES - state.images.size)),
         ) { uris ->
             model.pick(uris.map(files::pickedPhoto))
+        }
+    // The community's picture and cover (0080): picked, then cut to size off the main thread by the view model.
+    val picture =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            uri?.let { model.setPicture { files.communityPicture(it) } }
+        }
+    val cover =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            uri?.let { model.setCover { files.communityCover(it) } }
         }
     // The community is gone: back to the list, where it no longer is.
     LaunchedEffect(model) { model.deleted.collect { nav.popBackStack(SocialRoutes.COMMUNITIES, inclusive = false) } }
@@ -194,6 +222,16 @@ private fun CommunityEntry(
             ) = model.updateCommunity(name, description, audience)
 
             override fun loadModerationLog() = model.loadModerationLog()
+
+            override fun pickPicture() =
+                picture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+
+            override fun pickCover() =
+                cover.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+
+            override fun removePicture() = model.removePicture()
+
+            override fun removeCover() = model.removeCover()
 
             override fun deleteCommunity() = model.deleteCommunity()
 

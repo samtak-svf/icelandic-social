@@ -502,4 +502,19 @@ class CommunityViewModelTest {
             advanceUntilIdle()
             assertEquals(Problem.NotPermitted, model.state.value.problem)
         }
+
+    @Test
+    fun aPictureIsSentFromTheFileThatCutItAndTheFileGoes() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.OWNER)
+            val file = File.createTempFile("cover", ".jpg")
+            val model = model()
+            model.setCover { file }
+            advanceUntilIdle()
+            assertTrue("setCommunityCover k1 ${file.path}" in social.calls)
+            assertFalse(file.exists())
+            model.removePicture()
+            advanceUntilIdle()
+            assertTrue("removeCommunityAvatar k1" in social.calls)
+        }
 }
