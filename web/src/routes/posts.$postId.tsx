@@ -15,7 +15,7 @@ import { strings } from "../generated/brand/strings.ts";
 import { Avatar } from "../social/avatar.tsx";
 import { relativeTime } from "../lib/relative-time.ts";
 import { commentThreads, isTombstone } from "../social/comments.ts";
-import { Composer } from "../social/composer.tsx";
+import { CommentComposer } from "../social/composer.tsx";
 import { outcome, useLoad, when } from "../social/outcome.ts";
 import {
   AuthorName,
@@ -157,8 +157,9 @@ function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () 
           data-comment-composer
           className="sticky bottom-[var(--tabbar-height,0px)] -mx-4 border-t border-border bg-bg px-4 py-2"
         >
-          <Composer
+          <CommentComposer
             label={strings.comment_compose}
+            placeholder={strings.post_write_comment}
             action={strings.comment_publish}
             max={2000}
             send={async (body) => {

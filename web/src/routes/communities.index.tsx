@@ -9,11 +9,13 @@ import {
   pinCommunity,
   unpinCommunity,
   type Community,
+  type Post,
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { relativeTime } from "../lib/relative-time.ts";
 import { Avatar } from "../social/avatar.tsx";
 import { outcome, useLoad, type Outcome } from "../social/outcome.ts";
+import { usePaged } from "../social/paged.ts";
 import { PostView } from "../social/post.tsx";
 import { moderatesAs } from "../social/roles.tsx";
 import { DotsIcon, Menu, MenuItem } from "../ui/menu.tsx";
@@ -149,21 +151,27 @@ function Mine({
 
 /** Everything in the person's communities, newest first (decision 0079). */
 function Feed({ byId }: Readonly<{ byId: Map<string, Community> }>) {
-  const [feed, changed] = useLoad(useCallback(() => outcome(getFeed(), 200), []));
+  const fetchPage = useCallback(
+    (before: string | undefined) =>
+      outcome(getFeed(before === undefined ? undefined : { query: { before } }), 200),
+    [],
+  );
+  const feed = usePaged(fetchPage, (post: Post) => post.postId);
+  const changed = feed.reload;
   return (
     <section aria-label={strings.communities_tab_feed} className="mt-6 flex flex-col gap-4">
-      {feed === null && <Status>{strings.loading}</Status>}
-      {feed?.ok === false && (
+      {feed.items === null && feed.problem === null && <Status>{strings.loading}</Status>}
+      {feed.problem !== null && (
         <Status>
           <ProblemText problem={feed.problem} />
         </Status>
       )}
-      {feed?.ok && feed.data.posts.length === 0 && (
+      {feed.items?.length === 0 && !feed.hasMore && (
         <p className="mt-2 text-muted-fg">{strings.communities_feed_empty}</p>
       )}
-      {feed?.ok && (
+      {feed.items !== null && (
         <ul className="flex flex-col gap-4">
-          {feed.data.posts.map((post) => (
+          {feed.items.map((post) => (
             <li key={post.postId}>
               <PostView
                 post={post}
@@ -177,6 +185,7 @@ function Feed({ byId }: Readonly<{ byId: Map<string, Community> }>) {
           ))}
         </ul>
       )}
+      {feed.hasMore && feed.problem === null && <div ref={feed.sentinel} aria-hidden="true" />}
     </section>
   );
 }
