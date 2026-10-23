@@ -386,24 +386,31 @@ private fun ModerationLogDialog(
     )
 }
 
-private fun ModerationLogAction.label(): Int =
-    when (this) {
-        ModerationLogAction.HIDE_POST, ModerationLogAction.HIDE_COMMENT -> R.string.moderation_hide
-        ModerationLogAction.REMOVE_POST,
-        ModerationLogAction.REMOVE_COMMENT,
-        ModerationLogAction.REMOVE_MEMBER,
-        -> R.string.moderation_remove
-        ModerationLogAction.RESTORE_POST,
-        ModerationLogAction.RESTORE_COMMENT,
-        ModerationLogAction.RESTORE_COMMUNITY,
-        -> R.string.moderation_restore
-        ModerationLogAction.MUTE_MEMBER -> R.string.moderation_mute
-        ModerationLogAction.UNMUTE_MEMBER -> R.string.moderation_unmute
-        ModerationLogAction.BAN_MEMBER -> R.string.moderation_ban
-        ModerationLogAction.UNBAN_MEMBER -> R.string.moderation_unban
-        ModerationLogAction.DELETE_COMMUNITY -> R.string.community_delete
-        ModerationLogAction.CLOSE_REPORT, ModerationLogAction.UNKNOWN -> R.string.moderation_done
-    }
+/** What a log entry records; an action a later server adds reads as done. */
+private val logLabels =
+    mapOf(
+        ModerationLogAction.HIDE_POST to R.string.moderation_hide,
+        ModerationLogAction.HIDE_COMMENT to R.string.moderation_hide,
+        ModerationLogAction.REMOVE_POST to R.string.moderation_remove,
+        ModerationLogAction.REMOVE_COMMENT to R.string.moderation_remove,
+        ModerationLogAction.REMOVE_MEMBER to R.string.moderation_remove,
+        ModerationLogAction.RESTORE_POST to R.string.moderation_restore,
+        ModerationLogAction.RESTORE_COMMENT to R.string.moderation_restore,
+        ModerationLogAction.RESTORE_COMMUNITY to R.string.moderation_restore,
+        ModerationLogAction.MUTE_MEMBER to R.string.moderation_mute,
+        ModerationLogAction.UNMUTE_MEMBER to R.string.moderation_unmute,
+        ModerationLogAction.BAN_MEMBER to R.string.moderation_ban,
+        ModerationLogAction.UNBAN_MEMBER to R.string.moderation_unban,
+        ModerationLogAction.DELETE_COMMUNITY to R.string.community_delete,
+        ModerationLogAction.SET_COMMUNITY_PICTURE to R.string.moderation_log_community_picture_set,
+        ModerationLogAction.REMOVE_COMMUNITY_PICTURE to R.string.moderation_log_community_picture_removed,
+        ModerationLogAction.SET_COMMUNITY_COVER to R.string.moderation_log_community_cover_set,
+        ModerationLogAction.REMOVE_COMMUNITY_COVER to R.string.moderation_log_community_cover_removed,
+        ModerationLogAction.PIN_POST to R.string.moderation_log_post_pinned,
+        ModerationLogAction.UNPIN_POST to R.string.moderation_log_post_unpinned,
+    )
+
+private fun ModerationLogAction.label(): Int = logLabels[this] ?: R.string.moderation_done
 
 @Composable
 private fun DeleteCommunityConfirm(
