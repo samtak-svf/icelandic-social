@@ -401,6 +401,10 @@
     <string name="shared_media">Myndir og skrár</string>
     <!-- The information screen when no photo or file has been sent in the conversation (0055). -->
     <string name="shared_media_empty">Engar myndir eða skrár hafa verið sendar í þessu samtali.</string>
+    <!-- A browser session in the list: its browser and system, as the server named them. -->
+    <string name="session_browser">%1$s á %2$s</string>
+    <!-- A browser session whose browser the server could not name. -->
+    <string name="session_browser_unknown">Vafri</string>
     <!-- Navigation: the communities a person is in and the way to find more (decision 0063). -->
     <string name="tab_communities">Samfélög</string>
     <!-- Tab of the community hub: the chronological feed of the posts in the person's communities (decision 0079). -->
@@ -803,4 +807,46 @@
     <string name="post_share_to_conversation">Senda í samtal</string>
     <!-- Hub header icon that opens the community search (decision 0080). -->
     <string name="communities_search_open">Leita að samfélögum</string>
+    <!-- Entry on the devices list that starts scanning a browser's link code (docs/decisions/0064, 0077). -->
+    <string name="device_link_action">Tengja vafra</string>
+    <!-- Title of the screen that scans a browser's link code. -->
+    <string name="device_link_scan_title">Skannaðu kóðann í vafranum</string>
+    <!-- Under the camera view: where the code comes from. -->
+    <string name="device_link_scan_hint">Skráðu þig inn í vafranum og veldu Tengja vafrann. Beindu síðan myndavélinni að kóðanum sem birtist.</string>
+    <!-- Action that switches from the camera to typing or pasting the link code. -->
+    <string name="device_link_paste">Líma kóðann í staðinn</string>
+    <!-- Label of the field that takes a pasted link code. -->
+    <string name="device_link_code_field">Tengikóði</string>
+    <!-- Button that checks a pasted link code. -->
+    <string name="device_link_continue">Áfram</string>
+    <!-- Shown in place of the camera view when the camera is not allowed. -->
+    <string name="device_link_camera_denied">Myndavélin er ekki leyfð. Þú getur límt kóðann í staðinn.</string>
+    <!-- Title of the approve screen after a code is scanned and checked. -->
+    <string name="device_link_approve_title">Tengja þennan vafra?</string>
+    <!-- What approving gives the browser; label is session_browser (or session_browser_unknown) filled from the link request. -->
+    <string name="device_link_approve_body">%1$s fær aðgang að samtölunum þínum og getur sent skilaboð í þínu nafni þar til þú aftengir vafrann.</string>
+    <!-- Heading over the choice of older messages to send (0077). -->
+    <string name="device_link_history_title">Eldri skilaboð</string>
+    <!-- History choice: the last 90 days. -->
+    <string name="device_link_history_recent">Síðustu 90 dagar</string>
+    <!-- History choice: everything on this phone. -->
+    <string name="device_link_history_all">Öll skilaboð</string>
+    <!-- History choice: send nothing. -->
+    <string name="device_link_history_none">Engin</string>
+    <!-- Button that approves the link. -->
+    <string name="device_link_approve">Tengja</string>
+    <!-- Progress while the phone seals and uploads the history (0074). -->
+    <string name="device_link_sending_history">Sendi eldri skilaboð…</string>
+    <!-- Shown once the browser is linked. -->
+    <string name="device_link_done">Vafrinn er tengdur.</string>
+    <!-- The scanned or pasted text is not a link code. -->
+    <string name="device_link_invalid">Þetta er ekki tengikóði.</string>
+    <!-- The server's keys differ from the code's, so nothing was approved (0077). -->
+    <string name="device_link_mismatch">Kóðinn passar ekki við beiðnina úr vafranum. Ekkert var tengt.</string>
+    <!-- The link request has expired or is gone. -->
+    <string name="device_link_expired">Kóðinn er útrunninn. Búðu til nýjan í vafranum.</string>
+    <!-- The link request was approved already (409 already_approved). -->
+    <string name="device_link_already">Þessi vafri er þegar tengdur.</string>
+    <!-- A linked browser on the account's device list. -->
+    <string name="device_kind_web">Vafri</string>
 </resources>

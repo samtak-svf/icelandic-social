@@ -728,7 +728,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Myndavélin er notuð til að taka mynd sem þú sendir í samtali."
+            "value": "Myndavélin er notuð til að taka mynd sem þú sendir og til að skanna tengikóða úr vafra."
           }
         }
       }
@@ -2301,6 +2301,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "Engar myndir eða skrár hafa verið sendar í þessu samtali."
+          }
+        }
+      }
+    },
+    "session_browser": {
+      "comment": "A browser session in the list: its browser and system, as the server named them.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ á %2$@"
+          }
+        }
+      }
+    },
+    "session_browser_unknown": {
+      "comment": "A browser session whose browser the server could not name.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vafri"
           }
         }
       }
@@ -4653,6 +4677,258 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fest efst"
+          }
+        }
+      }
+    },
+    "device_link_action": {
+      "comment": "Entry on the devices list that starts scanning a browser's link code (docs/decisions/0064, 0077).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tengja vafra"
+          }
+        }
+      }
+    },
+    "device_link_scan_title": {
+      "comment": "Title of the screen that scans a browser's link code.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skannaðu kóðann í vafranum"
+          }
+        }
+      }
+    },
+    "device_link_scan_hint": {
+      "comment": "Under the camera view: where the code comes from.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skráðu þig inn í vafranum og veldu Tengja vafrann. Beindu síðan myndavélinni að kóðanum sem birtist."
+          }
+        }
+      }
+    },
+    "device_link_paste": {
+      "comment": "Action that switches from the camera to typing or pasting the link code.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Líma kóðann í staðinn"
+          }
+        }
+      }
+    },
+    "device_link_code_field": {
+      "comment": "Label of the field that takes a pasted link code.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tengikóði"
+          }
+        }
+      }
+    },
+    "device_link_continue": {
+      "comment": "Button that checks a pasted link code.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Áfram"
+          }
+        }
+      }
+    },
+    "device_link_camera_denied": {
+      "comment": "Shown in place of the camera view when the camera is not allowed.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Myndavélin er ekki leyfð. Þú getur límt kóðann í staðinn."
+          }
+        }
+      }
+    },
+    "device_link_approve_title": {
+      "comment": "Title of the approve screen after a code is scanned and checked.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tengja þennan vafra?"
+          }
+        }
+      }
+    },
+    "device_link_approve_body": {
+      "comment": "What approving gives the browser; label is session_browser (or session_browser_unknown) filled from the link request.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ fær aðgang að samtölunum þínum og getur sent skilaboð í þínu nafni þar til þú aftengir vafrann."
+          }
+        }
+      }
+    },
+    "device_link_history_title": {
+      "comment": "Heading over the choice of older messages to send (0077).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eldri skilaboð"
+          }
+        }
+      }
+    },
+    "device_link_history_recent": {
+      "comment": "History choice: the last 90 days.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Síðustu 90 dagar"
+          }
+        }
+      }
+    },
+    "device_link_history_all": {
+      "comment": "History choice: everything on this phone.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öll skilaboð"
+          }
+        }
+      }
+    },
+    "device_link_history_none": {
+      "comment": "History choice: send nothing.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engin"
+          }
+        }
+      }
+    },
+    "device_link_approve": {
+      "comment": "Button that approves the link.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tengja"
+          }
+        }
+      }
+    },
+    "device_link_sending_history": {
+      "comment": "Progress while the phone seals and uploads the history (0074).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sendi eldri skilaboð…"
+          }
+        }
+      }
+    },
+    "device_link_done": {
+      "comment": "Shown once the browser is linked.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vafrinn er tengdur."
+          }
+        }
+      }
+    },
+    "device_link_invalid": {
+      "comment": "The scanned or pasted text is not a link code.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þetta er ekki tengikóði."
+          }
+        }
+      }
+    },
+    "device_link_mismatch": {
+      "comment": "The server's keys differ from the code's, so nothing was approved (0077).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kóðinn passar ekki við beiðnina úr vafranum. Ekkert var tengt."
+          }
+        }
+      }
+    },
+    "device_link_expired": {
+      "comment": "The link request has expired or is gone.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kóðinn er útrunninn. Búðu til nýjan í vafranum."
+          }
+        }
+      }
+    },
+    "device_link_already": {
+      "comment": "The link request was approved already (409 already_approved).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þessi vafri er þegar tengdur."
+          }
+        }
+      }
+    },
+    "device_kind_web": {
+      "comment": "A linked browser on the account's device list.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vafri"
           }
         }
       }
