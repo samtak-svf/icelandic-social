@@ -40,6 +40,7 @@ describe("web-api", () => {
     expect(forWeb({ security: [{ deviceToken: [] }] })).toBe(false);
     expect(forWeb({ security: [] })).toBe(true);
     expect(forWeb({ operationId: "registerDevice", security: [] })).toBe(false);
+    expect(forWeb({ security: [{ session: [] }], "x-ws-frames": {} })).toBe(false);
   });
 
   it("maps the schema keywords the spec uses", () => {

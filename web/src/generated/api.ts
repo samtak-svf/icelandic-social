@@ -2021,13 +2021,3 @@ export function readNotifications(args: {
 > {
   return call("POST", "/v1/notifications/read", args, init);
 }
-
-/** Upgrade to the WebSocket that carries WsFrame */
-export function openSocket(init?: CallInit): Promise<
-  | { status: 101; data: undefined }
-  | { status: 401; data: ApiError }
-  | { status: 403; data: ApiError }
-  | { status: 426; data: ApiError }
-> {
-  return call("GET", "/v1/ws", undefined, init);
-}

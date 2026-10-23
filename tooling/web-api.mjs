@@ -193,12 +193,13 @@ function declaration(name, schema) {
 
 /**
  * Whether a browser can call the operation: it accepts the session, or no
- * credential at all, and is not one only an app calls.
+ * credential at all, and is not one only an app calls. A WebSocket upgrade
+ * (`x-ws-frames`) is not a fetch: the page opens it with `new WebSocket`.
  *
  * @param {any} op
  */
 export function forWeb(op) {
-  if (NATIVE_ONLY.has(op.operationId)) return false;
+  if (NATIVE_ONLY.has(op.operationId) || "x-ws-frames" in op) return false;
   const security = op.security ?? [];
   return (
     security.length === 0 ||
