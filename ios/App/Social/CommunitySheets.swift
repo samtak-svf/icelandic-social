@@ -353,6 +353,15 @@ private struct EditCommunityView: View {
                 CommunityTextFields(name: $name, description: $description)
             }
             Section {
+                CommunityPictureFields(
+                    hasPicture: model.community?.photo != nil, hasCover: model.community?.cover != nil,
+                    onPicture: { pick in Task { await model.setPicture { try await profilePhoto(pick) } } },
+                    onCover: { pick in Task { await model.setCover { try await communityCover(pick) } } },
+                    onRemovePicture: { Task { await model.removePicture() } },
+                    onRemoveCover: { Task { await model.removeCover() } },
+                    disabled: model.busy)
+            }
+            Section {
                 CommunityAudiencePicker(audience: $audience, locked: locked)
             }
             if let problem = model.problem {

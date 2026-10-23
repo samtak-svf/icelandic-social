@@ -176,7 +176,10 @@ final class CommunitiesModel {
     /// Makes a community, its maker its owner, and goes into it. False when the name is blank or too long, or
     /// the description too long.
     @discardableResult
-    func create(name: String, description: String, audience: CommunityAudience) async -> Bool {
+    func create(
+        name: String, description: String, audience: CommunityAudience,
+        picture: (@Sendable () async throws -> URL)? = nil, cover: (@Sendable () async throws -> URL)? = nil
+    ) async -> Bool {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let description = description.trimmingCharacters(in: .whitespacesAndNewlines)
         guard verified, !name.isEmpty, name.count <= communityNameLimit,
@@ -184,9 +187,29 @@ final class CommunitiesModel {
         else { return false }
         let social = social
         var made = false
-        await perform(again: { await self.create(name: name, description: description, audience: audience) }) {
-            let community = try await offMain {
+        await perform(
+            again: {
+                await self.create(
+                    name: name, description: description, audience: audience, picture: picture, cover: cover)
+            }
+        ) {
+            var community = try await offMain {
                 try social.createCommunity(name: name, description: description, audience: audience)
+            }
+            // The community exists from here on: a picture that fails to send is not a reason to make it again
+            // (the owner sets it in `Breyta samfélagi`), so only the ones that went are drawn.
+            let id = community.communityId
+            if let picture, let file = try? await picture() {
+                defer { try? FileManager.default.removeItem(at: file) }
+                if let version = try? await offMain({ try social.setCommunityAvatar(id, path: file.path) }) {
+                    community.photo = version
+                }
+            }
+            if let cover, let file = try? await cover() {
+                defer { try? FileManager.default.removeItem(at: file) }
+                if let version = try? await offMain({ try social.setCommunityCover(id, path: file.path) }) {
+                    community.cover = version
+                }
             }
             self.mine.insert(community, at: 0)
             self.created = community.communityId

@@ -244,6 +244,36 @@ final class CommunityModelTests: XCTestCase {
         XCTAssertEqual(social.calls.last, "updateCommunity k1 Fuglar Ný")
     }
 
+    func testTheOwnerSetsAndRemovesThePictureAndTheCover() async throws {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .owner))
+        let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+        try Data("x".utf8).write(to: file)
+        await model.setPicture { file }
+        XCTAssertNotNil(model.community?.photo)
+        XCTAssertTrue(social.calls.contains("setCommunityAvatar k1 \(file.path)"))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path), "the file is deleted once sent")
+        let band = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+        try Data("y".utf8).write(to: band)
+        await model.setCover { band }
+        XCTAssertNotNil(model.community?.cover)
+        XCTAssertTrue(social.calls.contains("setCommunityCover k1 \(band.path)"))
+        await model.removePicture()
+        XCTAssertNil(model.community?.photo)
+        XCTAssertNotNil(model.community?.cover, "the cover stays")
+        await model.removeCover()
+        XCTAssertNil(model.community?.cover)
+    }
+
+    func testAMemberSetsNeitherPictureNorCover() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        let before = social.calls.count
+        await model.setPicture { URL(fileURLWithPath: "/nowhere") }
+        await model.setCover { URL(fileURLWithPath: "/nowhere") }
+        await model.removePicture()
+        await model.removeCover()
+        XCTAssertEqual(social.calls.count, before)
+    }
+
     func testAMemberOrABlankNameOrALongOneChangesNothing() async {
         let member = await model(makeCommunity("k1", "Fuglar", role: .member))
         let before = social.calls.count

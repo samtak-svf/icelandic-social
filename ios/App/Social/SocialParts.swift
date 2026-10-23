@@ -1,3 +1,4 @@
+import PhotosUI
 import SpjallCore
 import SwiftUI
 
@@ -126,6 +127,63 @@ struct CommunityTextFields: View {
                     description = String(typed.prefix(communityDescriptionLimit))
                 }
             }
+    }
+}
+
+/// A community's picture and cover (decision 0080): choose or replace each, and take each away. The form that
+/// makes a community keeps the picks until it is made; the one that changes it sends them at once. The picks
+/// are cut small off the main thread by the caller.
+struct CommunityPictureFields: View {
+    let hasPicture: Bool
+    let hasCover: Bool
+    let onPicture: (Picked) -> Void
+    let onCover: (Picked) -> Void
+    let onRemovePicture: () -> Void
+    let onRemoveCover: () -> Void
+    var disabled = false
+
+    @State private var picture: PhotosPickerItem?
+    @State private var cover: PhotosPickerItem?
+
+    var body: some View {
+        fields.disabled(disabled)
+    }
+
+    @ViewBuilder private var fields: some View {
+        PhotosPicker(selection: $picture, matching: .images) {
+            Label {
+                Text("community_picture_choose")
+            } icon: {
+                Image(systemName: hasPicture ? "checkmark.circle.fill" : "photo")
+            }
+        }
+        .onChange(of: picture) { _, item in
+            guard let item else { return }
+            picture = nil
+            onPicture(Picked(photo: item))
+        }
+        if hasPicture {
+            Button(role: .destructive, action: onRemovePicture) {
+                Text("community_picture_remove")
+            }
+        }
+        PhotosPicker(selection: $cover, matching: .images) {
+            Label {
+                Text("community_cover_choose")
+            } icon: {
+                Image(systemName: hasCover ? "checkmark.circle.fill" : "photo.on.rectangle")
+            }
+        }
+        .onChange(of: cover) { _, item in
+            guard let item else { return }
+            cover = nil
+            onCover(Picked(photo: item))
+        }
+        if hasCover {
+            Button(role: .destructive, action: onRemoveCover) {
+                Text("community_cover_remove")
+            }
+        }
     }
 }
 

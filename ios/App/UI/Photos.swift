@@ -136,6 +136,51 @@ func squarePhoto(_ url: URL, side: Int) throws -> URL {
     return file
 }
 
+/// The photo at `url` as an upright band 8:3 wide from its middle, no wider than 1600 pixels, written to a new
+/// temporary JPEG: a community's cover (decision 0080). As `squarePhoto`, only the pixels are written. Throws
+/// when `url` is not an image.
+func coverPhoto(_ url: URL) throws -> URL {
+    let unreadable = CocoaError(.fileReadCorruptFile)
+    let wide = 1600
+    let high = 600
+    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+        let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+        let width = properties[kCGImagePropertyPixelWidth] as? Int,
+        let height = properties[kCGImagePropertyPixelHeight] as? Int,
+        min(width, height) > 0
+    else { throw unreadable }
+    // The longer side as it is, up to 2400 pixels: the band is cut from an upright picture either way.
+    let options: [CFString: Any] = [
+        kCGImageSourceCreateThumbnailFromImageAlways: true,
+        kCGImageSourceCreateThumbnailWithTransform: true,
+        kCGImageSourceThumbnailMaxPixelSize: min(max(width, height), 2400),
+    ]
+    guard let upright = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+        throw unreadable
+    }
+    let cutWidth = min(upright.width, upright.height * wide / high)
+    let cutHeight = cutWidth * high / wide
+    guard cutWidth > 0, cutHeight > 0 else { throw unreadable }
+    let middle = CGRect(
+        x: (upright.width - cutWidth) / 2, y: (upright.height - cutHeight) / 2, width: cutWidth, height: cutHeight)
+    let outWidth = min(cutWidth, wide)
+    let outHeight = outWidth * high / wide
+    guard let band = upright.cropping(to: middle),
+        let context = CGContext(
+            data: nil, width: outWidth, height: outHeight, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
+    else { throw unreadable }
+    context.interpolationQuality = .high
+    context.draw(band, in: CGRect(x: 0, y: 0, width: outWidth, height: outHeight))
+    let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+    guard let small = context.makeImage(),
+        let destination = CGImageDestinationCreateWithURL(file as CFURL, UTType.jpeg.identifier as CFString, 1, nil)
+    else { throw unreadable }
+    CGImageDestinationAddImage(destination, small, [kCGImageDestinationLossyCompressionQuality: 0.9] as CFDictionary)
+    guard CGImageDestinationFinalize(destination) else { throw unreadable }
+    return file
+}
+
 /// The photo at `url` without where it was taken (decision 0048), in a new temporary file of the same type:
 /// ImageIO copies its encoded data as it is and leaves the GPS metadata behind, so nothing is encoded again.
 /// A type it cannot copy so goes as it is, which the system picker has already stripped of location.

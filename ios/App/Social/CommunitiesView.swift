@@ -190,6 +190,9 @@ private struct CreateCommunitySheet: View {
     @State private var name = ""
     @State private var description = ""
     @State private var audience = CommunityAudience.open
+    /// The picks, kept until the community is made (decision 0080).
+    @State private var picture: Picked?
+    @State private var cover: Picked?
     @Environment(\.dismiss) private var dismiss
 
     private var ready: Bool {
@@ -203,6 +206,12 @@ private struct CreateCommunitySheet: View {
                     CommunityTextFields(name: $name, description: $description)
                 }
                 Section {
+                    CommunityPictureFields(
+                        hasPicture: picture != nil, hasCover: cover != nil,
+                        onPicture: { picture = $0 }, onCover: { cover = $0 },
+                        onRemovePicture: { picture = nil }, onRemoveCover: { cover = nil })
+                }
+                Section {
                     CommunityAudiencePicker(audience: $audience)
                 }
                 if let problem = model.problem {
@@ -212,7 +221,17 @@ private struct CreateCommunitySheet: View {
                 }
                 Section {
                     Button {
-                        Task { await model.create(name: name, description: description, audience: audience) }
+                        let makePicture: (@Sendable () async throws -> URL)? = picture.map { pick in
+                            { @Sendable in try await profilePhoto(pick) }
+                        }
+                        let makeCover: (@Sendable () async throws -> URL)? = cover.map { pick in
+                            { @Sendable in try await communityCover(pick) }
+                        }
+                        Task {
+                            await model.create(
+                                name: name, description: description, audience: audience,
+                                picture: makePicture, cover: makeCover)
+                        }
                     } label: {
                         Text("community_create").frame(maxWidth: .infinity)
                     }

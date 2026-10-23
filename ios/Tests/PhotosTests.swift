@@ -189,6 +189,44 @@ final class SquarePhotoTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: file), Data("not a photo".utf8))
     }
 
+    func testACoverIsABandFromTheMiddleNoWiderThan1600() throws {
+        // 3200 × 3200 with only the middle third (by height) green: the 8:3 band is cut from the middle.
+        let original = try write(width: 3200, height: 3200, orientation: 1, gps: true) { context in
+            context.setFillColor(red: 0, green: 0, blue: 1, alpha: 1)
+            context.fill(CGRect(x: 0, y: 0, width: 3200, height: 3200))
+            context.setFillColor(red: 0, green: 1, blue: 0, alpha: 1)
+            context.fill(CGRect(x: 0, y: 1000, width: 3200, height: 1200))
+        }
+        let cover = try coverPhoto(original)
+        made.append(cover)
+        let image = try XCTUnwrap(read(cover))
+        XCTAssertEqual([image.width, image.height], [1600, 600])
+        for (x, y) in [(10, 10), (800, 300), (1590, 590)] {
+            XCTAssertEqual(color(image, x: x, y: y), .green, "(\(x), \(y)) is from the middle")
+        }
+        let source = try XCTUnwrap(CGImageSourceCreateWithURL(cover as CFURL, nil))
+        let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+        XCTAssertNil(properties?[kCGImagePropertyGPSDictionary], "the location must not go with it")
+    }
+
+    func testASmallCoverIsNotMadeLargerAndKeepsItsShape() throws {
+        let original = try write(width: 800, height: 600, orientation: 1, gps: false) { context in
+            context.setFillColor(red: 0, green: 1, blue: 0, alpha: 1)
+            context.fill(CGRect(x: 0, y: 0, width: 800, height: 600))
+        }
+        let cover = try coverPhoto(original)
+        made.append(cover)
+        let image = try XCTUnwrap(read(cover))
+        XCTAssertEqual([image.width, image.height], [800, 300])
+    }
+
+    func testAFileThatIsNotACoverPhotoIsRefused() throws {
+        let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+        made.append(file)
+        try Data("not a photo".utf8).write(to: file)
+        XCTAssertThrowsError(try coverPhoto(file))
+    }
+
     func testAFileThatIsNotAPhotoIsRefused() throws {
         let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
         made.append(file)

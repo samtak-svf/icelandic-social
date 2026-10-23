@@ -292,6 +292,52 @@ final class CommunityModel {
         return saved
     }
 
+    /// Sets the community's picture from the file `make` gives, already small and square, or its cover from one
+    /// already cut into a band (decision 0080); the file is deleted once the core has sent it, or failed to.
+    /// Only the owner does either. Trying again makes the file again from the pick.
+    func setPicture(_ make: @escaping @Sendable () async throws -> URL) async {
+        await setImage(cover: false, make)
+    }
+
+    func setCover(_ make: @escaping @Sendable () async throws -> URL) async {
+        await setImage(cover: true, make)
+    }
+
+    private func setImage(cover: Bool, _ make: @escaping @Sendable () async throws -> URL) async {
+        guard owns else { return }
+        let social = social
+        let id = communityId
+        await perform(again: { await self.setImage(cover: cover, make) }) {
+            let file = try await make()
+            defer { try? FileManager.default.removeItem(at: file) }
+            self.community = try await offMain {
+                if cover {
+                    _ = try social.setCommunityCover(id, path: file.path)
+                } else {
+                    _ = try social.setCommunityAvatar(id, path: file.path)
+                }
+                return try social.community(id)
+            }
+        }
+    }
+
+    /// Takes the community's picture or its cover away.
+    func removePicture() async { await removeImage(cover: false) }
+
+    func removeCover() async { await removeImage(cover: true) }
+
+    private func removeImage(cover: Bool) async {
+        guard owns else { return }
+        let social = social
+        let id = communityId
+        await perform(again: { await self.removeImage(cover: cover) }) {
+            self.community = try await offMain {
+                if cover { try social.removeCommunityCover(id) } else { try social.removeCommunityAvatar(id) }
+                return try social.community(id)
+            }
+        }
+    }
+
     /// The member list, its owner and moderators first, for `Um samfélagið` and `Meðlimir og hlutverk`
     /// (decision 0079). Asked for once; a second ask waits for the first.
     func loadMembers() async {

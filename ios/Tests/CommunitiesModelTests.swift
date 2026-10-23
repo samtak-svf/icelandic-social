@@ -112,6 +112,21 @@ final class CommunitiesModelTests: XCTestCase {
         XCTAssertNil(model.created)
     }
 
+    func testAPictureAndACoverGoWithTheNewCommunityAndAFailedOneDoesNotMakeItAgain() async throws {
+        let model = await model()
+        let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+        try Data("x".utf8).write(to: file)
+        let made = await model.create(
+            name: "Bækur", description: "", audience: .open, picture: { file },
+            cover: { throw CocoaError(.fileReadCorruptFile) })
+        XCTAssertTrue(made)
+        XCTAssertNotNil(model.mine.first?.photo)
+        XCTAssertNil(model.mine.first?.cover, "the cover that could not be made is left out")
+        XCTAssertEqual(social.calls.filter { $0.hasPrefix("createCommunity") }.count, 1)
+        XCTAssertFalse(social.calls.contains { $0.hasPrefix("setCommunityCover") })
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+    }
+
     func testAnUnverifiedAccountOrABlankNameMakesNone() async {
         social.verified = false
         let model = await model()

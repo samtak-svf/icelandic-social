@@ -3,7 +3,7 @@
   "surfaces": ["android", "ios", "backend", "web"],
   "keys": {
     "app_name": {
-      "surfaces": ["android", "ios", "backend", "web"],
+      "surfaces": ["android", "backend", "ios", "web"],
       "description": "Launcher label, home-screen name, store-facing display name."
     },
     "tab_conversations": {
@@ -146,7 +146,7 @@
       }
     },
     "push_fallback_body": {
-      "surfaces": ["android", "ios", "backend"],
+      "surfaces": ["android", "backend", "ios"],
       "description": "Notification text when the device could not fetch what a push announced: the APNs alert the notification service extension keeps when it cannot decrypt in time, and Android's when its sync fails (docs/decisions/0025). Never names the sender."
     },
     "notification_channel_messages_name": {
@@ -214,14 +214,14 @@
       "description": "Replace the invite link; the old one stops working."
     },
     "link_invited_by": {
-      "surfaces": ["android", "ios", "backend"],
+      "surfaces": ["android", "backend", "ios"],
       "description": "Heading of the invite link page (/l/{token}) and of the app's invite screen when a person sent the link (docs/decisions/0019).",
       "placeholders": {
         "name": "string"
       }
     },
     "link_invited": {
-      "surfaces": ["android", "ios", "backend"],
+      "surfaces": ["android", "backend", "ios"],
       "description": "Heading of the invite link page and of the app's invite screen when the operator sent the link, or the inviter has no name."
     },
     "link_open_in_app": {
@@ -233,7 +233,7 @@
       "description": "Invite link page: the app is in a closed test, and how to get it."
     },
     "link_expired": {
-      "surfaces": ["android", "ios", "backend"],
+      "surfaces": ["android", "backend", "ios"],
       "description": "The invite link page and the app's invite screen for a link that was rotated, revoked or never existed."
     },
     "update_required_title": {
@@ -802,7 +802,7 @@
       "description": "Confirmation before signing this device out (docs/decisions/0047)."
     },
     "residency_claim": {
-      "surfaces": ["android", "ios", "backend", "web"],
+      "surfaces": ["android", "backend", "ios", "web"],
       "description": "The only permitted statement about where data lives (docs/decisions/0001).",
       "claim": "residency"
     },
@@ -1341,91 +1341,91 @@
       "description": "Confirmation after a moderator acts; every action is logged (decision 0066)."
     },
     "post_delete_confirm": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Asks before the author deletes their own post: its comments, reactions and images go with it."
     },
     "comment_delete_confirm": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Asks before the author deletes their own comment."
     },
     "community_withdraw_request": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Button: withdraw the person's own waiting join request to a private community."
     },
     "moderation_restore": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Moderator action: show a hidden or removed post or comment again."
     },
     "moderation_member": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Heading of the moderator's actions on the member a report is about."
     },
     "moderation_mute": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Moderator action: mute the member, who reads but does not write until the time chosen."
     },
     "moderation_mute_for": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Label of how long a moderator mutes a member."
     },
     "moderation_mute_day": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "How long a mute lasts: one day."
     },
     "moderation_mute_week": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "How long a mute lasts: seven days."
     },
     "moderation_mute_month": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "How long a mute lasts: thirty days."
     },
     "moderation_unmute": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Moderator action: end a member's mute."
     },
     "moderation_ban": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Moderator action: ban the member, who may not join again or read."
     },
     "moderation_unban": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Moderator action: lift a member's ban."
     },
     "moderation_open": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Switch in the report queue: the reports that wait."
     },
     "moderation_closed": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Switch in the report queue: the reports already closed."
     },
     "moderation_closed_empty": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "The closed side of the report queue when it is empty."
     },
     "post_add_images": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Opens the picker for images to add to a post being written (decision 0065)."
     },
     "post_image_remove": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Button: take a chosen image out of the post being written."
     },
     "post_images_too_many": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Refuses an image past the fourth on one post, before any upload (decision 0065)."
     },
     "post_image_too_large": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Refuses an image larger than 10 MB, before any upload (decision 0065)."
     },
     "post_image_failed": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "The server refused an image: not an image it reads (decision 0065)."
     },
     "post_image_alt": {
-      "surfaces": ["web", "android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Text alternative of an image in a post."
     },
     "moderation_ban_confirm": {
@@ -1777,19 +1777,19 @@
       "description": "Banner shown in a conversation the user has left (docs/decisions/0078)."
     },
     "community_picture_choose": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080)."
     },
     "community_picture_remove": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Button that removes a community's picture (decision 0080)."
     },
     "community_cover_choose": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Label of the file picker for a community's wide cover (decision 0080)."
     },
     "community_cover_remove": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Button that removes a community's cover (decision 0080)."
     },
     "communities_from_yours": {

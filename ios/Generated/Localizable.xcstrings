@@ -4237,6 +4237,54 @@
         }
       }
     },
+    "community_picture_choose": {
+      "comment": "Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Velja mynd samfélagsins"
+          }
+        }
+      }
+    },
+    "community_picture_remove": {
+      "comment": "Button that removes a community's picture (decision 0080).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjarlægja mynd samfélagsins"
+          }
+        }
+      }
+    },
+    "community_cover_choose": {
+      "comment": "Label of the file picker for a community's wide cover (decision 0080).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Velja forsíðumynd"
+          }
+        }
+      }
+    },
+    "community_cover_remove": {
+      "comment": "Button that removes a community's cover (decision 0080).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjarlægja forsíðumynd"
+          }
+        }
+      }
+    },
     "post_share_to_conversation": {
       "comment": "Share sheet entry that sends a post into a conversation (decision 0080).",
       "extractionState": "manual",
