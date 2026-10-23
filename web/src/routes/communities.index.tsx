@@ -2,11 +2,21 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useId, useState, type FormEvent } from "react";
 import { useAccount } from "../account.tsx";
 import type { Problem } from "../problem.ts";
-import { getFeed, listCommunities, myCommunities, type Community } from "../generated/api.ts";
+import {
+  getFeed,
+  listCommunities,
+  myCommunities,
+  pinCommunity,
+  unpinCommunity,
+  type Community,
+} from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
+import { relativeTime } from "../lib/relative-time.ts";
 import { Avatar } from "../social/avatar.tsx";
 import { outcome, useLoad, type Outcome } from "../social/outcome.ts";
 import { PostView } from "../social/post.tsx";
+import { moderatesAs } from "../social/roles.tsx";
+import { DotsIcon, Menu, MenuItem } from "../ui/menu.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 
 // Communities (decision 0063) in three tabs (decision 0079): the feed of what
@@ -26,7 +36,7 @@ function Communities() {
   const { state } = useAccount();
   // Loaded whatever the tab chosen, so the names of the feed's communities
   // need no second call once the person has been here.
-  const [mine] = useLoad(useCallback(() => outcome(myCommunities(), 200), []));
+  const [mine, reloadMine] = useLoad(useCallback(() => outcome(myCommunities(), 200), []));
   const [tab, setTab] = useState<Tab>("mine");
   const byId = new Map((mine?.ok ? mine.data.communities : []).map((c) => [c.communityId, c]));
   return (
@@ -69,6 +79,7 @@ function Communities() {
       {tab === "mine" && (
         <Mine
           mine={mine}
+          reloadMine={reloadMine}
           byId={byId}
           verified={state.status === "signed-in" && state.me.verified}
         />
@@ -81,10 +92,12 @@ function Communities() {
 /** The communities the person is in, the way to make one, and what is new in them (0080). */
 function Mine({
   mine,
+  reloadMine,
   byId,
   verified,
 }: Readonly<{
   mine: Outcome<{ communities: Community[] }> | null;
+  reloadMine: () => void;
   byId: Map<string, Community>;
   verified: boolean;
 }>) {
@@ -120,7 +133,7 @@ function Mine({
         {mine?.ok && mine.data.communities.length === 0 && (
           <p className="mt-2 text-muted-fg">{strings.communities_empty}</p>
         )}
-        {mine?.ok && <CommunityList communities={mine.data.communities} />}
+        {mine?.ok && <CommunityList communities={mine.data.communities} changed={reloadMine} />}
       </section>
       {mine?.ok && mine.data.communities.length > 0 && (
         <section aria-labelledby="from-yours" className="mt-8">
@@ -156,6 +169,8 @@ function Feed({ byId }: Readonly<{ byId: Map<string, Community> }>) {
                 post={post}
                 linked
                 deleted={changed}
+                changed={changed}
+                moderates={moderatesAs(byId.get(post.communityId)?.role ?? null)}
                 community={context(byId.get(post.communityId))}
               />
             </li>
@@ -173,43 +188,100 @@ function context(community: Community | undefined) {
     : { communityId: community.communityId, name: community.name, photo: community.photo };
 }
 
-function CommunityList({ communities }: Readonly<{ communities: Community[] }>) {
+function CommunityList({
+  communities,
+  changed,
+}: Readonly<{ communities: Community[]; changed?: () => void }>) {
   if (communities.length === 0) return null;
   return (
     <ul className="mt-2 flex flex-col gap-2">
       {communities.map((c) => (
         <li key={c.communityId}>
-          <CommunityCard community={c} />
+          <CommunityCard community={c} changed={changed} />
         </li>
       ))}
     </ul>
   );
 }
 
-/** One community among the person's or on its way to discovery (decision 0079). */
-function CommunityCard({ community }: Readonly<{ community: Community }>) {
+/**
+ * One community among the person's or on its way to discovery (decisions 0079
+ * and 0080): its picture and name, in bold with a count and a dot while it has
+ * posts the person has not seen, otherwise when it was last posted in. A
+ * member can pin it to the top of their list from the row's `⋯`.
+ */
+function CommunityCard({
+  community,
+  changed,
+}: Readonly<{ community: Community; changed?: () => void }>) {
+  const unread = community.unread > 0;
+  const [problem, setProblem] = useState<Problem | null>(null);
+  async function togglePin() {
+    setProblem(null);
+    const path = { communityId: community.communityId };
+    const done = await outcome(
+      community.pinned ? unpinCommunity({ path }) : pinCommunity({ path }),
+      204,
+    );
+    if (done.ok) changed?.();
+    else setProblem(done.problem);
+  }
   return (
-    <Link
-      to="/communities/$communityId"
-      params={{ communityId: community.communityId }}
-      className="flex min-h-14 items-center gap-3 rounded-md border border-border px-4 py-2"
-    >
-      <Avatar
-        kind="community"
-        id={community.communityId}
-        name={community.name}
-        photo={community.photo}
-        className="size-10 rounded-lg"
-      />
-      <span className="flex min-w-0 flex-col justify-center">
-        <span className="truncate font-semibold">{community.name}</span>
-        <span className="text-sm text-muted-fg">
-          {community.audience === "open" ? strings.community_open : strings.community_private}
-          {community.memberCount !== null &&
-            ` · ${strings.community_members({ count: community.memberCount })}`}
+    <div className="flex min-h-14 items-center gap-1 rounded-md border border-border pr-1">
+      <Link
+        to="/communities/$communityId"
+        params={{ communityId: community.communityId }}
+        className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2"
+      >
+        <Avatar
+          kind="community"
+          id={community.communityId}
+          name={community.name}
+          photo={community.photo}
+          className="size-10 rounded-lg"
+        />
+        <span className="flex min-w-0 flex-col justify-center">
+          <span className={`truncate ${unread ? "font-bold" : "font-semibold"}`}>
+            {community.name}
+          </span>
+          <span className="text-sm text-muted-fg">
+            {unread ? (
+              <span className="inline-flex items-center gap-1 font-medium text-fg">
+                {strings.community_new_posts({ count: community.unread })}
+                <span aria-hidden="true" className="size-2 rounded-full bg-primary" />
+              </span>
+            ) : community.lastPostAt !== null ? (
+              strings.community_last_post({ when: relativeTime(community.lastPostAt) })
+            ) : community.audience === "open" ? (
+              strings.community_open
+            ) : (
+              strings.community_private
+            )}
+            {community.memberCount !== null &&
+              ` · ${strings.community_members({ count: community.memberCount })}`}
+          </span>
         </span>
-      </span>
-    </Link>
+      </Link>
+      {community.role !== null && changed !== undefined && (
+        <Menu label={strings.more_options} icon={<DotsIcon />} align="right">
+          {(close) => (
+            <MenuItem
+              onSelect={() => {
+                close();
+                void togglePin();
+              }}
+            >
+              {community.pinned ? strings.community_unpin : strings.community_pin}
+            </MenuItem>
+          )}
+        </Menu>
+      )}
+      {problem && (
+        <Status>
+          <ProblemText problem={problem} />
+        </Status>
+      )}
+    </div>
   );
 }
 
