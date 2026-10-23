@@ -55,7 +55,7 @@ export function Summary({
 }
 
 const ACTION =
-  "inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md font-medium hover:bg-muted";
+  "inline-flex min-h-11 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-1 font-medium hover:bg-muted";
 
 /** Líkar, Athugasemd and Deila: three equal actions under the post. */
 export function ActionRow({
@@ -65,7 +65,7 @@ export function ActionRow({
 }: Readonly<{ post: Post; reactions: ReactionState; linked: boolean }>) {
   const [told, setTold] = useState(false);
   return (
-    <div className="flex items-center border-y border-border py-1">
+    <div className="grid grid-cols-3 border-y border-border py-1 text-sm">
       <LikeButton reactions={reactions} />
       {linked ? (
         <Link to="/posts/$postId" params={{ postId: post.postId }} className={ACTION}>
@@ -84,35 +84,38 @@ export function ActionRow({
           {strings.post_comment_action}
         </button>
       )}
-      <div className="flex flex-1">
-        <Menu
-          label={strings.share}
-          triggerClassName={`${ACTION} w-full`}
-          align="right"
-          icon={
-            <>
-              <ShareIcon />
-              {strings.share}
-            </>
-          }
-        >
-          {(close) => (
-            // The web has no conversations (end-to-end encrypted messaging lives in the apps), and 0080 allows "or copies its link".
-            <MenuItem
-              onSelect={() => {
-                close();
-                void navigator.clipboard
-                  .writeText(`${location.origin}/posts/${post.postId}`)
-                  .then(() => setTold(true))
-                  .catch(() => undefined);
-              }}
-            >
-              {strings.post_copy_link}
-            </MenuItem>
-          )}
-        </Menu>
-      </div>
-      {told && <Status>{strings.post_link_copied}</Status>}
+      <Menu
+        className="flex min-w-0"
+        label={strings.share}
+        triggerClassName={`${ACTION} w-full`}
+        align="right"
+        icon={
+          <>
+            <ShareIcon />
+            {strings.share}
+          </>
+        }
+      >
+        {(close) => (
+          // The web has no conversations (end-to-end encrypted messaging lives in the apps), and 0080 allows "or copies its link".
+          <MenuItem
+            onSelect={() => {
+              close();
+              void navigator.clipboard
+                .writeText(`${location.origin}/posts/${post.postId}`)
+                .then(() => setTold(true))
+                .catch(() => undefined);
+            }}
+          >
+            {strings.post_copy_link}
+          </MenuItem>
+        )}
+      </Menu>
+      {told && (
+        <div className="col-span-3 px-1">
+          <Status>{strings.post_link_copied}</Status>
+        </div>
+      )}
     </div>
   );
 }
@@ -142,7 +145,7 @@ function LikeButton({ reactions }: Readonly<{ reactions: ReactionState }>) {
 
   return (
     <div
-      className="relative flex flex-1"
+      className="relative flex"
       onPointerEnter={(event) => {
         if (event.pointerType === "mouse") later(() => setOpen(true), HOLD_MS);
       }}
