@@ -516,6 +516,20 @@ final class CommunityModel {
         }
     }
 
+    /// Pins a post to the top of the feed, or takes the pin off, for a moderator or the owner, and reads the first
+    /// page again so the pinned post leads (decision 0080).
+    func pin(_ postId: String, _ pinned: Bool) async {
+        guard moderates else { return }
+        let social = social
+        let id = communityId
+        await perform(again: { await self.pin(postId, pinned) }) {
+            try await offMain {
+                if pinned { try social.pinPost(id, post: postId) } else { try social.unpinPost(id, post: postId) }
+            }
+            try await self.page(before: nil, self.sent)
+        }
+    }
+
     /// Deletes this account's own post; it leaves the list.
     func delete(_ postId: String) async {
         let social = social

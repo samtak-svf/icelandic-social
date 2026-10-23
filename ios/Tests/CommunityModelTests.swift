@@ -393,4 +393,28 @@ final class CommunityModelTests: XCTestCase {
         XCTAssertEqual(model.images.count, 1)
         XCTAssertFalse(social.calls.contains { $0.hasPrefix("createPost") })
     }
+
+    func testFestaPinsThePostAndTheFeedLeadsWithIt() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .moderator))
+        XCTAssertEqual(model.posts.map(\.postId), ["p3", "p2"])
+        await model.pin("p1", true)
+        XCTAssertTrue(social.calls.contains("pinPost k1 p1"))
+        XCTAssertEqual(model.posts.first?.postId, "p1")
+        XCTAssertEqual(model.posts.first?.pinned, true)
+        await model.pin("p1", false)
+        XCTAssertTrue(social.calls.contains("unpinPost k1 p1"))
+        XCTAssertEqual(model.posts.contains { $0.pinned }, false)
+    }
+
+    func testAMemberCannotPinAPost() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        await model.pin("p1", true)
+        XCTAssertFalse(social.calls.contains("pinPost k1 p1"))
+    }
+
+    func testTheComposerRowKnowsTheReadersOwnName() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        XCTAssertEqual(model.myName, "Jón Jónsson")
+        XCTAssertNil(model.myPhoto)
+    }
 }

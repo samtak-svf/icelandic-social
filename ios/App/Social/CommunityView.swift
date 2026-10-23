@@ -253,7 +253,8 @@ struct CommunityView: View {
                 post: post, linked: true, writes: model.writes,
                 onReact: { kind in Task { await model.react(post.postId, kind) } },
                 onReport: { reporting = Reporting(target: ReportTarget(kind: .post, id: post.postId)) },
-                onDelete: model.mine(post.author) ? { deleting = post.postId } : nil)
+                onDelete: model.mine(post.author) ? { deleting = post.postId } : nil,
+                onPin: model.moderates ? { Task { await model.pin(post.postId, !post.pinned) } } : nil)
         }
         if model.next != nil {
             Color.clear.frame(height: 1).task(id: model.next) { await model.more() }

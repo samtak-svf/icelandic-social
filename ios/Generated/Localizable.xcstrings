@@ -4429,6 +4429,114 @@
         }
       }
     },
+    "post_see_more": {
+      "comment": "Expands a post whose text is cut short in the feed",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sjá meira"
+          }
+        }
+      }
+    },
+    "post_like": {
+      "comment": "Action that likes a post with one press; long press or hover opens the other reactions",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Líkar"
+          }
+        }
+      }
+    },
+    "post_comment_action": {
+      "comment": "Action that opens the comments of a post",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Athugasemd"
+          }
+        }
+      }
+    },
+    "post_pin": {
+      "comment": "Menu item for a moderator or the owner that pins a post to the top of its community (decision 0080)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Festa"
+          }
+        }
+      }
+    },
+    "post_write_comment": {
+      "comment": "Pill under a post card that opens its comments",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrifaðu athugasemd…"
+          }
+        }
+      }
+    },
+    "post_reactions_more": {
+      "comment": "Name of the group of five reactions opened from the like action",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fleiri viðbrögð"
+          }
+        }
+      }
+    },
+    "post_unpin": {
+      "comment": "Menu item that unpins the community's pinned post",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Losa"
+          }
+        }
+      }
+    },
+    "post_pinned": {
+      "comment": "Marker on the card of the post pinned to the top of its community",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fest efst"
+          }
+        }
+      }
+    },
+    "comment_like": {
+      "comment": "Under a comment: like it with a thumbs up, bold while the caller has liked it (decision 0080)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Líkar þetta"
+          }
+        }
+      }
+    },
     "community_new_posts": {
       "comment": "On a hub row: how many posts the caller has not seen in the community (decision 0080)",
       "extractionState": "manual",

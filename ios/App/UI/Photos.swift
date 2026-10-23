@@ -16,6 +16,11 @@ extension Person {
     var photoOf: PhotoOf? { photo.map { PhotoOf(account: account, version: $0) } }
 }
 
+extension Author {
+    /// The photo to draw for this author, or nil when the server gave none (decision 0080).
+    var photoOf: PhotoOf? { photo.map { PhotoOf(account: accountId, version: $0) } }
+}
+
 extension Me {
     /// This account's own photo, or nil when it has none.
     var photoOf: PhotoOf? { photo.map { PhotoOf(account: accountId, version: $0) } }

@@ -1869,15 +1869,15 @@
       }
     },
     "post_see_more": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Expands a post whose text is cut short in the feed"
     },
     "post_like": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Action that likes a post with one press; long press or hover opens the other reactions"
     },
     "post_comment_action": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Action that opens the comments of a post"
     },
     "post_copy_link": {
@@ -1889,27 +1889,27 @@
       "description": "Told after the address of a post was copied"
     },
     "post_pin": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Menu item for a moderator or the owner that pins a post to the top of its community (decision 0080)"
     },
     "post_write_comment": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Pill under a post card that opens its comments"
     },
     "post_reactions_more": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Name of the group of five reactions opened from the like action"
     },
     "post_unpin": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Menu item that unpins the community's pinned post"
     },
     "post_pinned": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Marker on the card of the post pinned to the top of its community"
     },
     "comment_like": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Under a comment: like it with a thumbs up, bold while the caller has liked it (decision 0080)"
     },
     "community_new_posts": {

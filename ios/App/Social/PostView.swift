@@ -23,7 +23,8 @@ struct PostView: View {
                         post: post, linked: false, writes: model.writes,
                         onReact: { kind in Task { await model.react(kind) } },
                         onReport: { reporting = Reporting(target: ReportTarget(kind: .post, id: post.postId)) },
-                        onDelete: model.mine(post.author) ? { deletingPost = true } : nil)
+                        onDelete: model.mine(post.author) ? { deletingPost = true } : nil,
+                        onPin: model.moderates ? { Task { await model.pin(!post.pinned) } } : nil)
                     if model.muted {
                         SocialNote(text: "community_muted")
                     }
@@ -85,18 +86,12 @@ struct PostView: View {
             EmptyState(systemImage: "text.bubble", text: "comments_empty")
         }
         let threads = commentThreads(model.comments)
-        if !threads.isEmpty {
-            Panel {
-                ForEach(Array(threads.indices), id: \.self) { index in
-                    let thread = threads[index]
-                    if index > 0 { Hairline() }
-                    card(thread.comment, replies: thread.replies.count, replyable: true)
-                    ForEach(thread.replies, id: \.commentId) { reply in
-                        Hairline().padding(.leading, Self.indent)
-                        card(reply, replies: 0, replyable: false)
-                            .padding(.leading, Self.indent)
-                    }
-                }
+        ForEach(Array(threads.indices), id: \.self) { index in
+            let thread = threads[index]
+            card(thread.comment, replies: thread.replies.count, replyable: true)
+            ForEach(thread.replies, id: \.commentId) { reply in
+                card(reply, replies: 0, replyable: false)
+                    .padding(.leading, Self.indent)
             }
         }
         if model.next != nil {
@@ -110,6 +105,7 @@ struct PostView: View {
             onReport: { reporting = Reporting(target: ReportTarget(kind: .comment, id: comment.commentId)) },
             onDelete: model.mine(comment.author) ? { deletingComment = comment.commentId } : nil,
             onReply: replyable ? { model.reply(to: comment) } : nil,
+            onLike: model.writes ? { Task { await model.like(comment.commentId) } } : nil,
             replies: replies)
     }
 
