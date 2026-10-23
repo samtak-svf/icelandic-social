@@ -109,7 +109,7 @@ internal fun PinnedMarker() {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         Icon(AppIcons.Pin, contentDescription = null, tint = Palette.mutedFg, modifier = Modifier.size(14.dp))
         Text(
-            text = stringResource(R.string.post_pinned_marker),
+            text = stringResource(R.string.post_pinned),
             style = MaterialTheme.typography.labelMedium,
             color = Palette.mutedFg,
         )

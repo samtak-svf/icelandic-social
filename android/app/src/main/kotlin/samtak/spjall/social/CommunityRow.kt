@@ -115,7 +115,7 @@ private fun CommunityRowText(
         }
         if (unread > 0) {
             Text(
-                text = pluralStringResource(R.plurals.community_unread_posts, unread.toInt(), unread),
+                text = pluralStringResource(R.plurals.community_new_posts, unread.toInt(), unread),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold,
             )
