@@ -11,6 +11,7 @@ struct PostView: View {
 
     @State private var reporting: Reporting?
     @State private var deletingPost = false
+    @State private var sharing: String?
     /// The own comment waiting for the delete to be confirmed.
     @State private var deletingComment: String?
     @Environment(\.dismiss) private var dismiss
@@ -24,7 +25,8 @@ struct PostView: View {
                         onReact: { kind in Task { await model.react(kind) } },
                         onReport: { reporting = Reporting(target: ReportTarget(kind: .post, id: post.postId)) },
                         onDelete: model.mine(post.author) ? { deletingPost = true } : nil,
-                        onPin: model.moderates ? { Task { await model.pin(!post.pinned) } } : nil)
+                        onPin: model.moderates ? { Task { await model.pin(!post.pinned) } } : nil,
+                        onShare: { sharing = post.postId })
                     if model.muted {
                         SocialNote(text: "community_muted")
                     }
@@ -73,6 +75,7 @@ struct PostView: View {
         .onChange(of: model.deleted) { _, deleted in
             if deleted { dismiss() }
         }
+        .sharingPost($sharing)
         .sheet(item: $reporting) { reporting in
             ReportSheet(social: social, target: reporting.target)
         }

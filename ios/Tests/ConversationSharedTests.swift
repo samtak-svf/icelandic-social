@@ -80,3 +80,51 @@ final class ConversationSharedTests: XCTestCase {
         XCTAssertNotEqual(muteLine(.off), muteLine(.always))
     }
 }
+
+/// A shared post card resolves through `cards`, once (decision 0080, #288).
+@MainActor
+final class SharedCardModelTests: XCTestCase {
+    private let social = FakeSocial()
+
+    private func reference(_ id: String) -> CardRef { CardRef(kind: .post, id: id) }
+
+    private func card(_ id: String) -> Card {
+        .post(
+            reference: reference(id), community: CardCommunity(communityId: "k1", name: "Fuglar"),
+            author: anna, excerpt: "Fyrsti haninn", image: nil, createdAt: FakeAccount.now)
+    }
+
+    func testAPostResolvesToItsCard() async {
+        social.cards = ["p1": card("p1")]
+        let model = SharedCardModel(social: social, postId: "p1")
+        XCTAssertNil(model.card)
+        await model.load()
+        XCTAssertEqual(model.card, card("p1"))
+        XCTAssertFalse(model.gone)
+    }
+
+    func testAPostThatIsGoneIsUnavailable() async {
+        let model = SharedCardModel(social: social, postId: "p9")
+        await model.load()
+        XCTAssertTrue(model.gone)
+    }
+
+    func testItAsksTheServerOncePerCard() async {
+        social.cards = ["p1": card("p1")]
+        let model = SharedCardModel(social: social, postId: "p1")
+        await model.load()
+        await model.load()
+        XCTAssertEqual(social.calls.filter { $0.hasPrefix("cards") }.count, 1)
+    }
+
+    func testAFailedReadLeavesTheCardForTheNextDraw() async {
+        social.cards = ["p1": card("p1")]
+        let model = SharedCardModel(social: social, postId: "p1")
+        social.failNext = unreachable
+        await model.load()
+        XCTAssertNil(model.card)
+        XCTAssertFalse(model.gone)
+        await model.load()
+        XCTAssertEqual(model.card, card("p1"))
+    }
+}

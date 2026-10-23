@@ -304,8 +304,8 @@ private struct BodyText: View {
             Attachment(
                 item: item, mime: mime, size: size, caption: caption, name: name, foreground: foreground,
                 model: model)
-        case .post:
-            SharedCard(foreground: foreground)
+        case .post(let postId):
+            SharedCard(postId: postId, foreground: foreground)
         case .location(let latE6, let lonE6, let accuracy):
             LocationCard(latE6: latE6, lonE6: lonE6, accuracy: accuracy, foreground: foreground)
         case .members, .timer, .name:

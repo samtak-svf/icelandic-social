@@ -805,4 +805,6 @@
     <string name="communities_search">Leita að samfélagi</string>
     <!-- Accessible label of the pin shown on a pinned community row. -->
     <string name="community_pinned">Fest efst</string>
+    <!-- Share option that opens the conversation picker to send a post into conversations -->
+    <string name="post_send_to_conversation">Senda í samtal</string>
 </resources>

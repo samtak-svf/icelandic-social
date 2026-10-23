@@ -8,6 +8,7 @@ struct CommunitiesView: View {
     let onOpen: (String) -> Void
 
     @State private var creating = false
+    @State private var sharing: String?
     /// The search field is open: it sits behind the header's search icon, not on the screen (decision 0080).
     @State private var searchOpen = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -70,6 +71,7 @@ struct CommunitiesView: View {
         .sheet(isPresented: $creating) {
             CreateCommunitySheet(model: model)
         }
+        .sharingPost($sharing)
         .onChange(of: model.created) { _, id in
             guard let id else { return }
             creating = false
@@ -108,7 +110,8 @@ struct CommunitiesView: View {
             PostCard(
                 post: post, linked: true, writes: model.writes(post),
                 community: model.community(post.communityId)?.name,
-                onReact: { kind in Task { await model.react(post.postId, kind) } }
+                onReact: { kind in Task { await model.react(post.postId, kind) } },
+                onShare: { sharing = post.postId }
             )
             .padding(.horizontal, 16)
             .padding(.vertical, 6)

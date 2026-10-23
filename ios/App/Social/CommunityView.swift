@@ -18,6 +18,7 @@ struct CommunityView: View {
     @State private var away = false
     /// The own post waiting for the delete to be confirmed.
     @State private var deleting: String?
+    @State private var sharing: String?
     @State private var about = false
     @State private var managing = false
     @State private var composing = false
@@ -90,6 +91,7 @@ struct CommunityView: View {
         .onChange(of: model.deleted) { _, deleted in
             if deleted { dismiss() }
         }
+        .sharingPost($sharing)
         .sheet(item: $reporting) { reporting in
             ReportSheet(social: social, target: reporting.target)
         }
@@ -254,7 +256,8 @@ struct CommunityView: View {
                 onReact: { kind in Task { await model.react(post.postId, kind) } },
                 onReport: { reporting = Reporting(target: ReportTarget(kind: .post, id: post.postId)) },
                 onDelete: model.mine(post.author) ? { deleting = post.postId } : nil,
-                onPin: model.moderates ? { Task { await model.pin(post.postId, !post.pinned) } } : nil)
+                onPin: model.moderates ? { Task { await model.pin(post.postId, !post.pinned) } } : nil,
+                onShare: { sharing = post.postId })
         }
         if model.next != nil {
             Color.clear.frame(height: 1).task(id: model.next) { await model.more() }

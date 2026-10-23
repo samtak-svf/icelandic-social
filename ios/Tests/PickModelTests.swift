@@ -178,4 +178,21 @@ final class PickModelTests: XCTestCase {
         XCTAssertNil(model.problem)
         XCTAssertEqual(model.found?.map(\.id), ["c2"])
     }
+
+    func testASharedPostGoesIntoEachPickedConversationAsACard() async {
+        account.list = ["c2", "c3"].map { conversation($0, members: [person("a2")]) }
+        let model = PickModel(
+            account: account, live: live, sleep: { _ in },
+            preview: { _ in Outgoing.post("p1") }
+        ) { account, to in
+            _ = try account.sharePost("p1", to: to)
+        }
+        await model.load()
+        XCTAssertEqual(model.outgoing, Outgoing.post("p1"))
+        model.toggle("c2")
+        model.toggle("c3")
+        await model.send()
+        XCTAssertEqual(account.calls.filter { $0.hasPrefix("sharePost") }, ["sharePost p1 c2", "sharePost p1 c3"])
+        XCTAssertEqual(model.done, 2)
+    }
 }

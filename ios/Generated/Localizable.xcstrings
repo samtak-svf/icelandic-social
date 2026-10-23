@@ -4465,6 +4465,30 @@
         }
       }
     },
+    "post_copy_link": {
+      "comment": "Menu item that copies the address of a post",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afrita tengil"
+          }
+        }
+      }
+    },
+    "post_link_copied": {
+      "comment": "Told after the address of a post was copied",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tengill afritaður"
+          }
+        }
+      }
+    },
     "post_pin": {
       "comment": "Menu item for a moderator or the owner that pins a post to the top of its community (decision 0080)",
       "extractionState": "manual",
@@ -4629,6 +4653,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fest efst"
+          }
+        }
+      }
+    },
+    "post_send_to_conversation": {
+      "comment": "Share option that opens the conversation picker to send a post into conversations",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Senda í samtal"
           }
         }
       }

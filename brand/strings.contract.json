@@ -1881,11 +1881,11 @@
       "description": "Action that opens the comments of a post"
     },
     "post_copy_link": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Menu item that copies the address of a post"
     },
     "post_link_copied": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Told after the address of a post was copied"
     },
     "post_pin": {
@@ -1950,6 +1950,10 @@
     "community_pinned": {
       "surfaces": ["android", "ios"],
       "description": "Accessible label of the pin shown on a pinned community row."
+    },
+    "post_send_to_conversation": {
+      "surfaces": ["android", "ios"],
+      "description": "Share option that opens the conversation picker to send a post into conversations"
     }
   }
 }
