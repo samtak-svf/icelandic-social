@@ -45,7 +45,9 @@ env:
 
 jobs:
   build:
-    runs-on: macos-26
+    # MAC_RUNNER_LABELS names a Mac of Samtak's own (tooling/mac-bootstrap.sh);
+    # unset, or for a fork's PR, the job runs on GitHub's hosted macOS.
+    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["macos-26"]' || vars.MAC_RUNNER_LABELS || '["macos-26"]') }}
     timeout-minutes: 60
     defaults:
       run:
@@ -99,36 +101,9 @@ jobs:
           done
           exit $fail
 
-      - name: Pick an available iPhone simulator
-        run: |
-          SIM_UDID=$(xcrun simctl list devices available -j | jq -r '[.devices | to_entries[] | select(.key | startswith("com.apple.CoreSimulator.SimRuntime.iOS-")) | {runtime: .key, devices: [.value[] | select(.name | startswith("iPhone"))]} | select(.devices | length > 0)] | sort_by(.runtime) | (last // {}) | (.devices // []) | .[0] | .udid? // empty')
-          if [ -z "$SIM_UDID" ]; then
-            xcrun simctl list devices available
-            echo "::error::no available iPhone simulator"
-            exit 1
-          fi
-          echo "SIM_UDID=$SIM_UDID" >> "$GITHUB_ENV"
-
-      # -skipPackagePluginValidation: swift-openapi-generator's build plugin
-      # would otherwise wait for a trust prompt no CI runner can answer.
-      # Signed ad hoc ("Sign to Run Locally", no team): an unsigned app has no
-      # application identifier, and the simulator's Keychain refuses it
-      # (errSecMissingEntitlement), which the store key test needs.
+      # The script also fails when no test ran.
       - name: Build and test (simulator, signed ad hoc)
-        working-directory: ios
-        run: |
-          set -o pipefail
-          xcodebuild test \
-            -project Spjall.xcodeproj \
-            -scheme Spjall \
-            -destination "id=$SIM_UDID" \
-            -configuration Debug \
-            -derivedDataPath build \
-            -skipPackagePluginValidation \
-            CODE_SIGN_IDENTITY=- \
-            CODE_SIGNING_ALLOWED=YES \
-            CODE_SIGNING_REQUIRED=NO \
-            | tee "$RUNNER_TEMP/xcodebuild-test.log" | xcpretty
+        run: ios/scripts/test.sh
 
       # xcpretty prints only the first line of a diagnostic; a conformance
       # failure then hides the error that caused it, which only the raw log has.
@@ -136,6 +111,3 @@ jobs:
         if: failure()
         run: |
           grep -E -A6 '(error|note): ' "$RUNNER_TEMP/xcodebuild-test.log" | head -200 || true
-
-      - name: Fail when no tests ran
-        run: grep -E 'Executed [1-9][0-9]* tests?, with 0 failures' "$RUNNER_TEMP/xcodebuild-test.log"

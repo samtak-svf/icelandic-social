@@ -88,7 +88,8 @@ cargo xtask fetch android    # the pinned published artifact, checksum-verified
 
 # The apps (they read the core from the paths xtask fills, never build it)
 cd android && ./gradlew check assembleDebug   # ktlint, detekt, lint (warnings are errors), unit tests
-cd ios && xcodegen && xcodebuild test -scheme Spjall -skipPackagePluginValidation   # macOS only
+ios/scripts/test.sh --prepare   # macOS only: the iOS tests, as ios.yml runs them
+node tooling/mac-remote.mjs     # the same from Linux, on Samtak's own Mac over ssh (set up by tooling/mac-bootstrap.sh)
 ```
 
 A debug Android build talks to a local `pnpm --filter spjall-backend dev` (`cf dev`) with `spjall.debugApiBaseUrl=http://10.0.2.2:8787`
