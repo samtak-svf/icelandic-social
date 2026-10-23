@@ -221,7 +221,7 @@ class CommunityViewModelTest {
     fun anOwnerCanChangeMemberRoles() =
         runTest(dispatcher) {
             social.communities["k1"] = community("k1", role = CommunityRole.OWNER)
-            social.members["k1"] = mutableListOf(CommunityMember("a2", "Anna", true, CommunityRole.MEMBER, 1uL))
+            social.members["k1"] = mutableListOf(CommunityMember("a2", "Anna", true, CommunityRole.MEMBER, 1uL, null))
             val model = model()
             model.loadMembers()
             advanceUntilIdle()
