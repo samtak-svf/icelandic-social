@@ -27,9 +27,11 @@ export async function write(page: Page, label: string, action: string, text: str
     await expect(page.getByRole("dialog")).toHaveCount(0);
     return;
   }
-  await page.getByLabel(label).fill(text);
-  await page.getByRole("button", { name: action }).click();
-  await expect(page.getByLabel(label)).toHaveValue("");
+  // The comment box is one row: its placeholder names it, and the send icon carries the action.
+  const box = page.getByPlaceholder(strings.post_write_comment);
+  await box.fill(text);
+  await page.getByRole("button", { name: action, exact: true }).click();
+  await expect(box).toHaveValue("");
 }
 
 /** Opens the post composer's dialog from the one-row composer, unless it is open. */

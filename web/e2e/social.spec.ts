@@ -405,3 +405,79 @@ test("serves public /privacy and /support pages without signing in and from sett
   await expect(page.getByRole("heading", { level: 1, name: strings.support_title })).toBeVisible();
   await expect(page.getByText(strings.support_contact_body)).toBeVisible();
 });
+
+test("a comment is liked and replied to through the one-row composer", async ({ browser }) => {
+  const owner = await person(browser, "Spjallari Prófsdóttir");
+  const community = await found(owner, "open");
+  await write(owner, strings.post_compose, strings.post_publish, "Umræðuefni dagsins.");
+  await post(owner, "Umræðuefni dagsins.")
+    .getByRole("link", { name: strings.post_comments({ count: 0 }) })
+    .click();
+
+  // The box is one row: the send button waits for text.
+  const send = owner.getByRole("button", { name: strings.comment_publish, exact: true });
+  await expect(send).toBeDisabled();
+  await owner.getByPlaceholder(strings.post_write_comment).fill("Fyrsta athugasemd.");
+  await expect(send).toBeEnabled();
+  await send.click();
+  const first = owner.getByRole("article").filter({ hasText: "Fyrsta athugasemd." });
+  await expect(first).toBeVisible();
+
+  // Like it.
+  const like = first.getByRole("button", { name: strings.comment_like });
+  await like.click();
+  await expect(like).toHaveAttribute("aria-pressed", "true");
+
+  // Reply to it: the bar names who is answered, and the reply lands under it.
+  await first.getByRole("button", { name: strings.comment_reply }).click();
+  await expect(owner.getByLabel(strings.comment_reply)).toContainText(
+    strings.comment_replying_to({ name: "Spjallari Prófsdóttir" }),
+  );
+  await write(owner, strings.comment_compose, strings.comment_publish, "Svar við því.");
+  await expect(owner.getByRole("article").filter({ hasText: "Svar við því." })).toBeVisible();
+  await expect(owner.getByLabel(strings.comment_reply)).toHaveCount(0);
+  await owner.goto(community);
+});
+
+test("the feed shows more than one page of posts after scrolling", async ({ browser }) => {
+  test.slow();
+  const owner = await person(browser, "Skrunari Prófsdóttir");
+  const community = await found(owner, "open");
+  const communityId = community.split("/").pop() ?? "";
+  const COUNT = 23;
+  // Seeded through the API: the page size is 20, so a second page must be read.
+  const made = await owner.evaluate(
+    async ({ id, count }) => {
+      let ok = 0;
+      for (let n = 1; n <= count; n++) {
+        const answer = await fetch(`/v1/communities/${id}/posts`, {
+          method: "POST",
+          headers: { "spjall-client": "web/0.1.0", "content-type": "application/json" },
+          body: JSON.stringify({ body: `Færsla númer ${n}`, media: [] }),
+        });
+        if (answer.status === 200) ok++;
+      }
+      return ok;
+    },
+    { id: communityId, count: COUNT },
+  );
+  expect(made).toBe(COUNT);
+
+  await owner.getByRole("link", { name: strings.tab_communities }).click();
+  await owner.getByRole("button", { name: strings.communities_tab_feed }).click();
+  const cards = owner
+    .getByRole("region", { name: strings.communities_tab_feed })
+    .getByRole("article");
+  await expect(cards.first()).toBeVisible();
+  // Scroll to the end until the oldest post has been read in.
+  await expect
+    .poll(
+      async () => {
+        await owner.mouse.wheel(0, 100_000);
+        return cards.count();
+      },
+      { timeout: 20_000 },
+    )
+    .toBe(COUNT);
+  await expect(owner.getByText("Færsla númer 1", { exact: true })).toBeVisible();
+});
