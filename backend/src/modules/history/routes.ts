@@ -79,11 +79,20 @@ export function historyRoutes(app: OpenAPIHono<AppEnv>): void {
 
   app.openapi(getHistoryRoute, async (c) => {
     const { linkId } = c.req.valid("param");
-    const found = await getTransfer(c.env, c.var.device, linkId);
+    const found = await getTransfer(c.env, c.var.device, linkId, c.req.header("range"));
     if ("error" in found) return refusal(c, found.error);
-    return c.body(found.ok.body, 200, {
-      "content-type": "application/octet-stream",
-      "content-length": String(found.ok.size),
+    if ("unsatisfiable" in found) {
+      return c.body(null, 416, { "content-range": `bytes */${found.unsatisfiable}` });
+    }
+    const headers = { "content-type": "application/octet-stream", "accept-ranges": "bytes" };
+    if (!found.range) {
+      return c.body(found.ok.body, 200, { ...headers, "content-length": String(found.size) });
+    }
+    const { offset, length } = found.range;
+    return c.body(found.ok.body, 206, {
+      ...headers,
+      "content-length": String(length),
+      "content-range": `bytes ${offset}-${offset + length - 1}/${found.size}`,
     });
   });
 

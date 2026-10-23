@@ -8,6 +8,8 @@ import { withinLimit } from "./env/index.ts";
 import { fail } from "./errors.ts";
 import {
   deviceForToken,
+  type Device,
+  linkedDeviceOfSession,
   SESSION_COOKIE,
   SESSION_SECRET,
   sessionCookie,
@@ -134,4 +136,18 @@ export function guards(app: OpenAPIHono<AppEnv>) {
   });
 
   return { publicLimit, credentials };
+}
+
+/**
+ * The device a socket opens for when no device token named one: a browser's
+ * session cookie is the one credential a page can send on a WebSocket, so it
+ * must come from the web host (the guard checks Origin only on a request that
+ * changes state) and opens the socket of its session's linked device
+ * (decision 0081).
+ */
+export async function webSocketDevice(
+  c: Context<AppEnv>,
+): Promise<Device | "forbidden_origin" | "no_linked_device"> {
+  if (c.req.header("origin") !== WEB_ORIGIN) return "forbidden_origin";
+  return (await linkedDeviceOfSession(c.env, c.var.session)) ?? "no_linked_device";
 }

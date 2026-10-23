@@ -27,7 +27,7 @@ import { listMessagesRoute, sendMessageRoute } from "./api/messages.ts";
 import { SOCKET_ACCOUNT, SOCKET_DEVICE, socketRoute } from "./api/socket.ts";
 import { fromBase64, toBase64 } from "./bytes.ts";
 import { clientFloor } from "./client-version.ts";
-import { guards, registerSchemes } from "./credentials.ts";
+import { guards, registerSchemes, webSocketDevice } from "./credentials.ts";
 import { drainBody, fail, failed, requestId } from "./errors.ts";
 import {
   conversation,
@@ -439,7 +439,9 @@ export function createApp() {
     if (c.req.header("upgrade")?.toLowerCase() !== "websocket") {
       return fail(c, 426, "upgrade_required");
     }
-    const { accountId, deviceId } = c.var.device;
+    const device = c.var.device ?? (await webSocketDevice(c));
+    if (typeof device === "string") return fail(c, 403, device);
+    const { accountId, deviceId } = device;
     const headers = new Headers(c.req.raw.headers);
     headers.set(SOCKET_ACCOUNT, accountId);
     headers.set(SOCKET_DEVICE, deviceId);

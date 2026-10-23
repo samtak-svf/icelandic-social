@@ -96,6 +96,10 @@ const ApproveDeviceLinkRequest = z
       description:
         "64-byte Ed25519 signature by this phone's device key over the UTF-8 bytes `spjall device link v1` and a zero byte, then the UTF-8 linkId, then the new device's 32-byte deviceKey (decision 0077)",
     }),
+    history: z.enum(["none", "sent"]).optional().openapi({
+      description:
+        "Whether the phone sends a history (decision 0081); absent means sent, as 0.37 apps send it",
+    }),
   })
   .openapi("ApproveDeviceLinkRequest");
 
@@ -134,6 +138,10 @@ const LinkedDeviceEnrolled = z
     token: z.string().openapi({ description: "The device token, shown once; send it as Bearer" }),
     storeKeyShare: base64(32).openapi({
       description: "The server's 32-byte half of the browser's two-part store key (decision 0064)",
+    }),
+    historyExpected: z.boolean().openapi({
+      description:
+        "Whether the approving phone sends a history, so the browser waits for one only then (decision 0081)",
     }),
   })
   .openapi("LinkedDeviceEnrolled");

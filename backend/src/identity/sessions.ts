@@ -1,7 +1,7 @@
 import { db } from "../env/index.ts";
 import type { Platform } from "../platforms.ts";
 import { type Device, randomToken, tokenHash } from "./accounts.ts";
-import { touchLinkedDevice } from "./linked-devices.ts";
+import { touchLinkedDevice } from "./linked-device-lifecycle.ts";
 
 // Sessions (decision 0061): one sign-in on one client. A browser proves its
 // session with the secret in its cookie; a phone with its device's token,

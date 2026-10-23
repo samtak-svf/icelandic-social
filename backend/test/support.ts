@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
-import { base64url } from "../src/bytes.ts";
+import { base64url, toBase64 } from "../src/bytes.ts";
 import { tokenHash } from "../src/identity/accounts.ts";
+import { worker } from "./main.ts";
 import { mls } from "./mls.ts";
 
 // Shared by the tests: the EU check for Durable Object stubs, and seeded
@@ -166,4 +167,50 @@ export async function webSession({
     cookie,
     web: { cookie, origin: "https://spjall.samtak.is" },
   };
+}
+
+/**
+ * A browser session whose link a phone approved (`history` is what the phone
+ * says about a history, absent for a 0.37 app) and, with `complete`, that
+ * completed it: the linked device and what `complete` answered.
+ */
+export async function linkedBrowser({
+  history,
+  complete = true,
+}: { history?: "none" | "sent"; complete?: boolean } = {}) {
+  const phone = await phoneWithKey();
+  const browser = await webSession({ accountId: phone.accountId });
+  const deviceKey = crypto.getRandomValues(new Uint8Array(32));
+  const json = { "content-type": "application/json" };
+  const started = await worker.fetch("https://spjall.test/v1/devices/link-requests", {
+    method: "POST",
+    headers: { ...browser.web, ...json },
+    body: JSON.stringify({
+      deviceKey: toBase64(deviceKey),
+      historyKey: toBase64(crypto.getRandomValues(new Uint8Array(32))),
+    }),
+  });
+  const { linkId } = (await started.json()) as { linkId: string };
+  const signature = toBase64(await phone.approve(linkId, deviceKey));
+  const approved = await worker.fetch(
+    `https://spjall.test/v1/devices/link-requests/${linkId}/approve`,
+    {
+      method: "POST",
+      headers: { ...phone.auth, ...json },
+      body: JSON.stringify(history === undefined ? { signature } : { signature, history }),
+    },
+  );
+  if (approved.status !== 204) throw new Error(`approve answered ${approved.status}`);
+  if (!complete) return { phone, browser, linkId, enrolled: null };
+  const completed = await worker.fetch(
+    `https://spjall.test/v1/devices/link-requests/${linkId}/complete`,
+    { method: "POST", headers: browser.web },
+  );
+  if (completed.status !== 200) throw new Error(`complete answered ${completed.status}`);
+  const enrolled = (await completed.json()) as {
+    deviceId: string;
+    token: string;
+    historyExpected: boolean;
+  };
+  return { phone, browser, linkId, enrolled };
 }

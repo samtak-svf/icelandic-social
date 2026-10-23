@@ -84,7 +84,7 @@ export interface SignInConfig {
 }
 
 export interface ApiError {
-  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, invalid_media, muted, expired, incomplete, internal_error */
+  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, invalid_media, muted, expired, incomplete, internal_error */
   error: string;
   /** The request's id, also in the x-request-id header: opaque, for support to find the request by (decision 0037) */
   requestId: string;
@@ -233,6 +233,8 @@ export interface DeviceLinkRequestInfo {
 export interface ApproveDeviceLinkRequest {
   /** 64-byte Ed25519 signature by this phone's device key over the UTF-8 bytes `spjall device link v1` and a zero byte, then the UTF-8 linkId, then the new device's 32-byte deviceKey (decision 0077) */
   signature: string;
+  /** Whether the phone sends a history (decision 0081); absent means sent, as 0.37 apps send it */
+  history?: "none" | "sent";
 }
 
 export interface LinkedDeviceEnrolled {
@@ -243,6 +245,8 @@ export interface LinkedDeviceEnrolled {
   token: string;
   /** The server's 32-byte half of the browser's two-part store key (decision 0064) */
   storeKeyShare: string;
+  /** Whether the approving phone sends a history, so the browser waits for one only then (decision 0081) */
+  historyExpected: boolean;
 }
 
 export interface LinkedStoreKey {

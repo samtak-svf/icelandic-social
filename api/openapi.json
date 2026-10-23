@@ -321,7 +321,7 @@
         "properties": {
           "error": {
             "type": "string",
-            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, invalid_media, muted, expired, incomplete, internal_error",
+            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, invalid_media, muted, expired, incomplete, internal_error",
             "example": "unauthorized"
           },
           "requestId": {
@@ -824,6 +824,14 @@
             "maxLength": 88,
             "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
             "description": "64-byte Ed25519 signature by this phone's device key over the UTF-8 bytes `spjall device link v1` and a zero byte, then the UTF-8 linkId, then the new device's 32-byte deviceKey (decision 0077)"
+          },
+          "history": {
+            "type": "string",
+            "enum": [
+              "none",
+              "sent"
+            ],
+            "description": "Whether the phone sends a history (decision 0081); absent means sent, as 0.37 apps send it"
           }
         },
         "required": [
@@ -858,6 +866,10 @@
             "maxLength": 44,
             "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
             "description": "The server's 32-byte half of the browser's two-part store key (decision 0064)"
+          },
+          "historyExpected": {
+            "type": "boolean",
+            "description": "Whether the approving phone sends a history, so the browser waits for one only then (decision 0081)"
           }
         },
         "required": [
@@ -865,7 +877,8 @@
           "deviceId",
           "sessionId",
           "token",
-          "storeKeyShare"
+          "storeKeyShare",
+          "historyExpected"
         ]
       },
       "LinkedStoreKey": {
@@ -3919,7 +3932,7 @@
           "devices"
         ],
         "summary": "Download the history a link's approving phone uploaded, as the device it made",
-        "description": "The ciphertext stays until the device deletes it or 24 hours pass, so a download that breaks can be repeated.",
+        "description": "The ciphertext stays until the device deletes it or 24 hours pass, so a download that breaks can be repeated. A single `Range: bytes=a-b` or `bytes=a-` answers 206 with that slice, so a browser fetches the file in pieces (decision 0081).",
         "security": [
           {
             "deviceToken": []
@@ -3940,6 +3953,17 @@
         "responses": {
           "200": {
             "description": "The ciphertext",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "The slice a Range asked for, with its content-range",
             "content": {
               "application/octet-stream": {
                 "schema": {
@@ -3998,6 +4022,9 @@
                 }
               }
             }
+          },
+          "416": {
+            "description": "The range starts past the end, is reversed, a suffix or several ranges; content-range is `bytes */<size>`"
           },
           "426": {
             "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
@@ -11278,6 +11305,9 @@
         "security": [
           {
             "deviceToken": []
+          },
+          {
+            "session": []
           }
         ],
         "x-ws-frames": {
@@ -11289,6 +11319,16 @@
           },
           "401": {
             "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden_origin: a session cookie opens the socket only from the web host's own origin (decision 0081); no_linked_device: the session has no active linked device",
             "content": {
               "application/json": {
                 "schema": {
