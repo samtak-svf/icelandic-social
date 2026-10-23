@@ -99,8 +99,8 @@ private struct PostSharingModifier: ViewModifier {
 
 private struct ShareOptions: View {
     let canSend: Bool
-    let onSend: () -> Void
-    let onCopy: () -> Void
+    let onSend: @MainActor () -> Void
+    let onCopy: @MainActor () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -117,7 +117,9 @@ private struct ShareOptions: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func row(_ systemImage: String, _ key: LocalizedStringKey, _ action: @escaping () -> Void) -> some View {
+    private func row(
+        _ systemImage: String, _ key: LocalizedStringKey, _ action: @escaping @MainActor () -> Void
+    ) -> some View {
         Button(action: action) {
             HStack(spacing: 12) {
                 Image(systemName: systemImage)
