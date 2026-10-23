@@ -25,7 +25,7 @@ struct PostView: View {
                         onReact: { kind in Task { await model.react(kind) } },
                         onReport: { reporting = Reporting(target: ReportTarget(kind: .post, id: post.postId)) },
                         onDelete: model.mine(post.author) ? { deletingPost = true } : nil,
-                        onPin: model.moderates ? { Task { await model.pin(!post.pinned) } } : nil,
+                        onPin: model.moderates ? { Task<Void, Never> { await model.pin(!post.pinned) } } : nil,
                         onShare: { sharing = post.postId })
                     if model.muted {
                         SocialNote(text: "community_muted")
@@ -108,7 +108,7 @@ struct PostView: View {
             onReport: { reporting = Reporting(target: ReportTarget(kind: .comment, id: comment.commentId)) },
             onDelete: model.mine(comment.author) ? { deletingComment = comment.commentId } : nil,
             onReply: replyable ? { model.reply(to: comment) } : nil,
-            onLike: model.writes ? { Task { await model.like(comment.commentId) } } : nil,
+            onLike: model.writes ? { Task<Void, Never> { await model.like(comment.commentId) } } : nil,
             replies: replies)
     }
 

@@ -270,7 +270,7 @@ struct CommunityView: View {
                 onReact: { kind in Task { await model.react(post.postId, kind) } },
                 onReport: { reporting = Reporting(target: ReportTarget(kind: .post, id: post.postId)) },
                 onDelete: model.mine(post.author) ? { deleting = post.postId } : nil,
-                onPin: model.moderates ? { Task { await model.pin(post.postId, !post.pinned) } } : nil,
+                onPin: model.moderates ? { Task<Void, Never> { await model.pin(post.postId, !post.pinned) } } : nil,
                 onShare: { sharing = post.postId })
         }
         if model.next != nil {
