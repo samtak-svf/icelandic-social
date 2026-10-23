@@ -919,7 +919,7 @@
       "description": "Marks the session in the list that is this browser."
     },
     "session_browser": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "A browser session in the list: its browser and system, as the server named them.",
       "placeholders": {
         "browser": "string",
@@ -927,7 +927,7 @@
       }
     },
     "session_browser_unknown": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "A browser session whose browser the server could not name."
     },
     "session_android": {
@@ -1981,7 +1981,7 @@
     },
     "device_link_approve_body": {
       "surfaces": ["android", "ios"],
-      "description": "What approving gives the browser; label is the session's browser and system as the server named them.",
+      "description": "What approving gives the browser; label is session_browser (or session_browser_unknown) filled from the link request.",
       "placeholders": {
         "label": "string"
       }

@@ -2305,6 +2305,30 @@
         }
       }
     },
+    "session_browser": {
+      "comment": "A browser session in the list: its browser and system, as the server named them.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ á %2$@"
+          }
+        }
+      }
+    },
+    "session_browser_unknown": {
+      "comment": "A browser session whose browser the server could not name.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vafri"
+          }
+        }
+      }
+    },
     "tab_communities": {
       "comment": "Navigation: the communities a person is in and the way to find more (decision 0063).",
       "extractionState": "manual",
@@ -4754,7 +4778,7 @@
       }
     },
     "device_link_approve_body": {
-      "comment": "What approving gives the browser; label is the session's browser and system as the server named them.",
+      "comment": "What approving gives the browser; label is session_browser (or session_browser_unknown) filled from the link request.",
       "extractionState": "manual",
       "localizations": {
         "is": {
