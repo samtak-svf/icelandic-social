@@ -48,35 +48,24 @@ struct Avatar: View {
     var size: CGFloat = 46
     var photo: PhotoOf?
 
-    @Environment(\.photos) private var photos
-    @State private var loaded: UIImage?
-
     var body: some View {
-        let image = photo.flatMap { photo in loaded ?? photos?.kept(photo) }
-        ZStack {
-            if let image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: size, height: size)
-                    .clipShape(Circle())
-                    .overlay {
-                        if kind == .verified { Circle().strokeBorder(kind.fill, lineWidth: 2) }
-                    }
-            } else {
-                Text(verbatim: initials(name))
-                    .font(.sansFixed(size * 0.33, black: true))
-                    .foregroundStyle(kind.ink)
-            }
+        LoadedPhoto(photo) { image in
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: size, height: size)
+                .clipShape(Circle())
+                .overlay {
+                    if kind == .verified { Circle().strokeBorder(kind.fill, lineWidth: 2) }
+                }
+        } placeholder: {
+            Text(verbatim: initials(name))
+                .font(.sansFixed(size * 0.33, black: true))
+                .foregroundStyle(kind.ink)
         }
         .frame(width: size, height: size)
         .background(kind.fill, in: Circle())
         .accessibilityHidden(true)
-        .task(id: photo) {
-            loaded = nil
-            guard let photo, let photos else { return }
-            loaded = await photos.load(photo)
-        }
     }
 }
 

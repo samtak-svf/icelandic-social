@@ -66,7 +66,7 @@ struct HomeView: View {
         _communities = State(initialValue: CommunitiesModel(social: social))
         _notices = State(initialValue: NotificationsModel(social: social))
         _onboarding = State(initialValue: OnboardingModel(notifier: push.notifier))
-        _photos = State(initialValue: PhotoCache(account: signIn.account, decode: avatarPhoto))
+        _photos = State(initialValue: PhotoCache(account: signIn.account, social: social, decode: displayPhoto))
     }
 
     var body: some View {

@@ -5,25 +5,52 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
-/// An account's profile photo at the version the server named (decision 0039).
+/// A picture the core keeps, at the version the server named: an account's profile photo (decision 0039), or a
+/// community's picture or cover (decision 0080). All three load through one `PhotoCache`.
 struct PhotoOf: Hashable, Sendable {
-    let account: String
+    enum Kind: Hashable, Sendable {
+        case account
+        case communityPicture
+        case communityCover
+    }
+
+    /// The account id, or for the community kinds the community id.
+    let owner: String
     let version: String
+    var kind = Kind.account
 }
 
 extension Person {
     /// The photo to draw for this person, or nil when the server gave none.
-    var photoOf: PhotoOf? { photo.map { PhotoOf(account: account, version: $0) } }
+    var photoOf: PhotoOf? { photo.map { PhotoOf(owner: account, version: $0) } }
 }
 
 extension Author {
     /// The photo to draw for this author, or nil when the server gave none (decision 0080).
-    var photoOf: PhotoOf? { photo.map { PhotoOf(account: accountId, version: $0) } }
+    var photoOf: PhotoOf? { photo.map { PhotoOf(owner: accountId, version: $0) } }
+}
+
+extension CommunityMember {
+    /// The photo to draw for this member, or nil when the account has none (decision 0080).
+    var photoOf: PhotoOf? { photo.map { PhotoOf(owner: accountId, version: $0) } }
+}
+
+extension Community {
+    /// The community's picture, or nil when it has none (decision 0080).
+    var pictureOf: PhotoOf? { photo.map { PhotoOf(owner: communityId, version: $0, kind: .communityPicture) } }
+
+    /// The community's cover, or nil when it has none (decision 0080).
+    var coverOf: PhotoOf? { cover.map { PhotoOf(owner: communityId, version: $0, kind: .communityCover) } }
+}
+
+extension CardCommunity {
+    /// The picture of the community a card is in, or nil when it has none (decision 0080).
+    var pictureOf: PhotoOf? { photo.map { PhotoOf(owner: communityId, version: $0, kind: .communityPicture) } }
 }
 
 extension Me {
     /// This account's own photo, or nil when it has none.
-    var photoOf: PhotoOf? { photo.map { PhotoOf(account: accountId, version: $0) } }
+    var photoOf: PhotoOf? { photo.map { PhotoOf(owner: accountId, version: $0) } }
 }
 
 /// A 1:1's photo is the other person's; a group's avatar stays initials (decision 0039).
@@ -31,20 +58,25 @@ func photoOf(_ conversation: Conversation) -> PhotoOf? {
     conversation.name == nil && conversation.members.count == 1 ? conversation.members.first?.photoOf : nil
 }
 
-/// Decoded photos by account and version, the last `capacity` in memory only.
+/// Decoded pictures by owner, kind and version, the last `capacity` in memory only.
 /// The file stays the core's, in its media folder (decision 0039): nothing here
 /// writes one.
 final class PhotoCache<Image: Sendable>: @unchecked Sendable {
     private let account: Account
+    private let social: Social
     private let capacity: Int
-    private let decode: @Sendable (String) -> Image?
+    private let decode: @Sendable (PhotoOf.Kind, String) -> Image?
     private let lock = NSLock()
     private var images: [PhotoOf: Image] = [:]
     /// Least recently used first.
     private var order: [PhotoOf] = []
 
-    init(account: Account, capacity: Int = 64, decode: @escaping @Sendable (String) -> Image?) {
+    init(
+        account: Account, social: Social, capacity: Int = 64,
+        decode: @escaping @Sendable (PhotoOf.Kind, String) -> Image?
+    ) {
         self.account = account
+        self.social = social
         self.capacity = capacity
         self.decode = decode
     }
@@ -63,10 +95,16 @@ final class PhotoCache<Image: Sendable>: @unchecked Sendable {
     /// when it cannot be had now (offline, refused, not an image), so the next draw asks again.
     func load(_ photo: PhotoOf) async -> Image? {
         if let image = kept(photo) { return image }
-        let (account, decode) = (account, decode)
+        let (account, social, decode) = (account, social, decode)
         guard
-            let image = try? await offMain({
-                try account.photo(account: photo.account, version: photo.version).flatMap(decode)
+            let image = try? await offMain({ () throws -> Image? in
+                let path: String?
+                switch photo.kind {
+                case .account: path = try account.photo(account: photo.owner, version: photo.version)
+                case .communityPicture: path = try social.communityPicture(photo.owner, version: photo.version)
+                case .communityCover: path = try social.communityCover(photo.owner, version: photo.version)
+                }
+                return path.flatMap { decode(photo.kind, $0) }
             })
         else { return nil }
         lock.withLock {
@@ -89,14 +127,53 @@ extension EnvironmentValues {
     }
 }
 
-/// A photo for an avatar: the server's 512 px one, halved, which is about the largest avatar (88 pt) on
-/// most screens at a quarter of the memory.
-func avatarPhoto(_ path: String) -> UIImage? {
+/// A picture from the cache, or `placeholder` while it loads, when there is none and when it cannot be had
+/// (decisions 0039 and 0080). `Avatar` and the community views all draw through this one view.
+struct LoadedPhoto<Picture: View, Placeholder: View>: View {
+    let photo: PhotoOf?
+    let picture: (UIImage) -> Picture
+    let placeholder: () -> Placeholder
+
+    @Environment(\.photos) private var photos
+    @State private var loaded: UIImage?
+
+    init(
+        _ photo: PhotoOf?, @ViewBuilder picture: @escaping (UIImage) -> Picture,
+        @ViewBuilder placeholder: @escaping () -> Placeholder
+    ) {
+        self.photo = photo
+        self.picture = picture
+        self.placeholder = placeholder
+    }
+
+    var body: some View {
+        ZStack {
+            if let image = photo.flatMap({ photo in loaded ?? photos?.kept(photo) }) {
+                picture(image)
+            } else {
+                placeholder()
+            }
+        }
+        .task(id: photo) {
+            loaded = nil
+            guard let photo, let photos else { return }
+            loaded = await photos.load(photo)
+        }
+    }
+}
+
+/// A picture for the screen: an avatar's or a community's picture is the server's 512 px one, halved, which is
+/// about the largest (88 pt) on most screens at a quarter of the memory; a cover keeps 1200 pixels across.
+func displayPhoto(_ kind: PhotoOf.Kind, _ path: String) -> UIImage? {
+    downsampled(path, maxPixel: kind == .communityCover ? 1200 : 256)
+}
+
+private func downsampled(_ path: String, maxPixel: Int) -> UIImage? {
     guard let source = CGImageSourceCreateWithURL(URL(filePath: path) as CFURL, nil) else { return nil }
     let options: [CFString: Any] = [
         kCGImageSourceCreateThumbnailFromImageAlways: true,
         kCGImageSourceCreateThumbnailWithTransform: true,
-        kCGImageSourceThumbnailMaxPixelSize: 256,
+        kCGImageSourceThumbnailMaxPixelSize: maxPixel,
     ]
     guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
     return UIImage(cgImage: image)

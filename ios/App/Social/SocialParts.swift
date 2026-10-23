@@ -12,18 +12,27 @@ struct Reporting: Identifiable {
     var id: String { "\(target.kind)/\(target.id)" }
 }
 
-/// A community's badge: a rounded square with its initials, or its audience where a name has no initials to show
-/// (decision 0079). The row's text says which community it is, so this says nothing.
+/// A community's badge: a rounded square with its picture (decision 0080), or its initials while that loads and
+/// when there is none, or its audience where a name has no initials to show (decision 0079). The row's text says
+/// which community it is, so this says nothing.
 struct CommunityBadge: View {
     let community: Community
     var size: CGFloat = 40
 
     var body: some View {
-        RoundedRectangle(cornerRadius: size * 0.28)
-            .fill(BrandTokens.Colors.secondarySubtle)
-            .frame(width: size, height: size)
-            .overlay { letters }
-            .accessibilityHidden(true)
+        let shape = RoundedRectangle(cornerRadius: size * 0.28)
+        LoadedPhoto(community.pictureOf) { image in
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: size, height: size)
+                .clipShape(shape)
+        } placeholder: {
+            letters
+        }
+        .frame(width: size, height: size)
+        .background(BrandTokens.Colors.secondarySubtle, in: shape)
+        .accessibilityHidden(true)
     }
 
     @ViewBuilder private var letters: some View {
@@ -228,17 +237,18 @@ struct CommunityAudiencePicker: View {
 }
 
 /// Who wrote it, with the verified mark, a badge when they own or moderate the community, and when; `community`
-/// names the community a post from the hub's feed is in, and `menu` is what the card offers at the end of the row.
-/// `short` writes the age as the groups readers know do ("6 klst.") rather than the clock (decision 0080).
+/// names the community a post from the hub's feed is in, with its picture, and `menu` is what the card offers at
+/// the end of the row. `short` writes the age as the groups readers know do ("6 klst.") rather than the clock
+/// (decision 0080).
 struct Byline<Menu: View>: View {
     let author: Author?
     let createdAt: UInt64
-    var community: String?
+    var community: Community?
     var short = false
     let menu: Menu
 
     init(
-        author: Author?, createdAt: UInt64, community: String? = nil, short: Bool = false,
+        author: Author?, createdAt: UInt64, community: Community? = nil, short: Bool = false,
         @ViewBuilder menu: () -> Menu
     ) {
         self.author = author
@@ -267,10 +277,19 @@ struct Byline<Menu: View>: View {
                     .foregroundStyle(BrandTokens.Colors.mutedFg)
                 if let community {
                     HStack(spacing: 4) {
-                        Image(systemName: "person.3.fill")
-                            .font(.system(size: 9, weight: .semibold))
-                            .accessibilityHidden(true)
-                        Text(verbatim: community)
+                        LoadedPhoto(community.pictureOf) { image in
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 14, height: 14)
+                                .clipShape(RoundedRectangle(cornerRadius: 4))
+                        } placeholder: {
+                            Image(systemName: "person.3.fill")
+                                .font(.system(size: 9, weight: .semibold))
+                        }
+                        .frame(width: 14, height: 14)
+                        .accessibilityHidden(true)
+                        Text(verbatim: community.name)
                             .lineLimit(1)
                     }
                     .font(TypeStyle.meta)
@@ -310,7 +329,7 @@ struct RoleBadge: View {
 
 extension Byline where Menu == EmptyView {
     /// A byline with nothing to offer at its end.
-    init(author: Author?, createdAt: UInt64, community: String? = nil, short: Bool = false) {
+    init(author: Author?, createdAt: UInt64, community: Community? = nil, short: Bool = false) {
         self.init(author: author, createdAt: createdAt, community: community, short: short) { EmptyView() }
     }
 }
@@ -391,8 +410,8 @@ struct PostCard: View {
     let post: Post
     let linked: Bool
     let writes: Bool
-    /// The community's name, when the card is shown outside it, as the hub's feed shows it.
-    var community: String?
+    /// The community, when the card is shown outside it, as the hub's feed shows it: its name and picture.
+    var community: Community?
     let onReact: (ReactionKind) -> Void
     /// The report sheet, where the screen showing the card has one.
     var onReport: (() -> Void)?

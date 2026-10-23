@@ -13,6 +13,8 @@ final class FakeSocial: Social, @unchecked Sendable {
     private var _verified = true
     private var _communities: [String: Community] = [:]
     private var _mine: [String] = []
+    private var _pictureFiles: [String: String] = [:]
+    private var _coverFiles: [String: String] = [:]
     private var _posts: [String: [Post]] = [:]
     private var _comments: [String: [Comment]] = [:]
     private var _reports: [String: [Report]] = [:]
@@ -53,6 +55,17 @@ final class FakeSocial: Social, @unchecked Sendable {
     var mine: [String] {
         get { lock.withLock { _mine } }
         set { lock.withLock { _mine = newValue } }
+    }
+
+    /// The core's file for each community picture and cover, by "community/version"; one not here has none.
+    var pictureFiles: [String: String] {
+        get { lock.withLock { _pictureFiles } }
+        set { lock.withLock { _pictureFiles = newValue } }
+    }
+
+    var coverFiles: [String: String] {
+        get { lock.withLock { _coverFiles } }
+        set { lock.withLock { _coverFiles = newValue } }
     }
 
     /// Each community's posts, newest first.
@@ -409,6 +422,16 @@ final class FakeSocial: Social, @unchecked Sendable {
         communities[community]?.cover = nil
     }
 
+    func communityPicture(_ community: String, version: String) throws -> String? {
+        try call("communityPicture \(community) \(version)")
+        return lock.withLock { _pictureFiles["\(community)/\(version)"] }
+    }
+
+    func communityCover(_ community: String, version: String) throws -> String? {
+        try call("communityCover \(community) \(version)")
+        return lock.withLock { _coverFiles["\(community)/\(version)"] }
+    }
+
     func likeComment(_ comment: String) throws { try call("likeComment \(comment)") }
 
     func unlikeComment(_ comment: String) throws { try call("unlikeComment \(comment)") }
@@ -487,9 +510,9 @@ func makePost(
 /// Somebody in a community's member list.
 func makeMember(
     _ account: String, _ name: String? = nil, role: CommunityRole = .member, verified: Bool = false,
-    joinedAt: UInt64 = FakeAccount.now
+    joinedAt: UInt64 = FakeAccount.now, photo: String? = nil
 ) -> CommunityMember {
-    CommunityMember(accountId: account, name: name, verified: verified, role: role, joinedAt: joinedAt, photo: nil)
+    CommunityMember(accountId: account, name: name, verified: verified, role: role, joinedAt: joinedAt, photo: photo)
 }
 
 /// One action in a community's moderation log.

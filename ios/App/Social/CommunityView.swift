@@ -120,15 +120,11 @@ struct CommunityView: View {
 
     /// The community as the groups readers know lay it out (decision 0080): a cover band with the picture over its
     /// edge, a large name, the audience line that opens `Um samfélagið`, a row of members, `Bjóða`, and the start of
-    /// the description. The core gives no way to read a community's image bytes back, so the band is plain and the
-    /// picture is the initials tile until it does.
+    /// the description. The band is plain while the cover loads and when there is none.
     private func header(_ community: Community) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             ZStack(alignment: .bottomLeading) {
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(BrandTokens.Colors.secondarySubtle)
-                    .frame(height: 110)
-                    .accessibilityHidden(true)
+                cover(community)
                 CommunityBadge(community: community, size: 64)
                     .overlay {
                         RoundedRectangle(cornerRadius: 64 * 0.28).strokeBorder(BrandTokens.Colors.bg, lineWidth: 3)
@@ -192,6 +188,24 @@ struct CommunityView: View {
             }
             membership(community)
         }
+    }
+
+    /// The cover band: the cover cut 8:3 by whoever set it, shown 110 points high, or a plain band.
+    private func cover(_ community: Community) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 14)
+        return LoadedPhoto(community.coverOf) { image in
+            Color.clear
+                .overlay {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .accessibilityLabel(Text("community_cover_alt"))
+                }
+                .clipShape(shape)
+        } placeholder: {
+            shape.fill(BrandTokens.Colors.secondarySubtle).accessibilityHidden(true)
+        }
+        .frame(height: 110)
     }
 
     /// `Bjóða`: an open community's link goes through the system share sheet. A private community's invitation has
@@ -316,15 +330,17 @@ private struct ComposePrompt: View {
     }
 }
 
-/// Up to five of a community's members as overlapping initials (decision 0080). The member list carries no photo
-/// version, so a face here is the initials in the fill the person's mark sets.
+/// Up to five of a community's members as overlapping faces (decision 0080): the account's photo, or the initials in
+/// the fill the person's mark sets.
 private struct MemberFaces: View {
     let members: [CommunityMember]
 
     var body: some View {
         HStack(spacing: -8) {
             ForEach(Array(members.prefix(5)), id: \.accountId) { member in
-                Avatar(name: member.name, kind: member.verified ? .verified : .unverified, size: 28)
+                Avatar(
+                    name: member.name, kind: member.verified ? .verified : .unverified, size: 28,
+                    photo: member.photoOf)
                     .overlay { Circle().strokeBorder(BrandTokens.Colors.bg, lineWidth: 2) }
             }
         }

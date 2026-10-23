@@ -111,9 +111,18 @@ struct SharedCard: View {
     private func card(community: CardCommunity, author: Author, excerpt: String, image: PostImage?) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 4) {
-                Image(systemName: "person.3.fill")
-                    .font(.system(size: 9, weight: .semibold))
-                    .accessibilityHidden(true)
+                LoadedPhoto(community.pictureOf) { image in
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 14, height: 14)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                } placeholder: {
+                    Image(systemName: "person.3.fill")
+                        .font(.system(size: 9, weight: .semibold))
+                }
+                .frame(width: 14, height: 14)
+                .accessibilityHidden(true)
                 Text(verbatim: community.name).lineLimit(1)
             }
             .font(TypeStyle.meta)

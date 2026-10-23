@@ -67,7 +67,7 @@ struct CommunityMemberRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Avatar(name: member.name, kind: member.verified ? .verified : .unverified, size: 34)
+            Avatar(name: member.name, kind: member.verified ? .verified : .unverified, size: 34, photo: member.photoOf)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
                     Text(verbatim: member.name ?? localized("person_unnamed"))

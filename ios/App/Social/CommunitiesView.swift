@@ -109,7 +109,7 @@ struct CommunitiesView: View {
         ForEach(model.feedPosts, id: \.postId) { post in
             PostCard(
                 post: post, linked: true, writes: model.writes(post),
-                community: model.community(post.communityId)?.name,
+                community: model.community(post.communityId),
                 onReact: { kind in Task { await model.react(post.postId, kind) } },
                 onShare: { sharing = post.postId }
             )

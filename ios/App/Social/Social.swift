@@ -79,6 +79,11 @@ protocol Social: Sendable {
     /// Sets the community's cover from the image file at `path` (already cropped wide); its new version.
     func setCommunityCover(_ community: String, path: String) throws -> String
     func removeCommunityCover(_ community: String) throws
+    /// The core's file for a community's picture at `version`, its `photo`; nil when it has none or the reader may
+    /// not see it (decision 0080).
+    func communityPicture(_ community: String, version: String) throws -> String?
+    /// The core's file for a community's cover at `version`, its `cover` (decision 0080).
+    func communityCover(_ community: String, version: String) throws -> String?
     /// Likes a comment, or takes the like back (decision 0080).
     func likeComment(_ comment: String) throws
     func unlikeComment(_ comment: String) throws
@@ -228,6 +233,14 @@ extension CoreAccount: Social {
     }
 
     func removeCommunityCover(_ community: String) throws { try core().removeCommunityCover(communityId: community) }
+
+    func communityPicture(_ community: String, version: String) throws -> String? {
+        try core().communityPicture(communityId: community, version: version)
+    }
+
+    func communityCover(_ community: String, version: String) throws -> String? {
+        try core().communityCover(communityId: community, version: version)
+    }
 
     func likeComment(_ comment: String) throws { try core().likeComment(commentId: comment) }
 
