@@ -532,10 +532,28 @@ export const strings = {
   post_copy_link: "Afrita tengil",
   /** Told after the address of a post was copied */
   post_link_copied: "Tengill afritaður",
-  /** Menu item for a moderator that pins a post, off until the server can pin */
+  /** Menu item for a moderator or the owner that pins a post to the top of its community (decision 0080) */
   post_pin: "Festa",
   /** Pill under a post card that opens its comments */
   post_write_comment: "Skrifaðu athugasemd…",
   /** Name of the group of five reactions opened from the like action */
   post_reactions_more: "Fleiri viðbrögð",
+  /** Menu item that unpins the community's pinned post */
+  post_unpin: "Losa",
+  /** Marker on the card of the post pinned to the top of its community */
+  post_pinned: "Fest efst",
+  /** Under a comment: like it with a thumbs up, bold while the caller has liked it (decision 0080) */
+  comment_like: "Líkar þetta",
+  /** On a hub row: how many posts the caller has not seen in the community (decision 0080) */
+  community_new_posts: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " nýr póstur"
+      : String(args.count) + " nýir póstar",
+  /** On a hub row of a community with no unread posts: when the latest post was made; {when} is a short age such as '6 klst.' or a date (decision 0080) */
+  community_last_post: (args: { when: string }): string =>
+    "Síðasti póstur: " + args.when,
+  /** Hub row menu item that pins the community to the top of the caller's list (decision 0080) */
+  community_pin: "Festa efst",
+  /** Hub row menu item that unpins the community */
+  community_unpin: "Losa",
 } as const;

@@ -455,5 +455,15 @@
   "post_link_copied": "Tengill afritaður",
   "post_pin": "Festa",
   "post_write_comment": "Skrifaðu athugasemd…",
-  "post_reactions_more": "Fleiri viðbrögð"
+  "post_reactions_more": "Fleiri viðbrögð",
+  "post_unpin": "Losa",
+  "post_pinned": "Fest efst",
+  "comment_like": "Líkar þetta",
+  "community_new_posts": {
+    "one": "{count} nýr póstur",
+    "other": "{count} nýir póstar"
+  },
+  "community_last_post": "Síðasti póstur: {when}",
+  "community_pin": "Festa efst",
+  "community_unpin": "Losa"
 }

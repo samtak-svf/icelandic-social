@@ -1882,7 +1882,7 @@
     },
     "post_pin": {
       "surfaces": ["web"],
-      "description": "Menu item for a moderator that pins a post, off until the server can pin"
+      "description": "Menu item for a moderator or the owner that pins a post to the top of its community (decision 0080)"
     },
     "post_write_comment": {
       "surfaces": ["web"],
@@ -1891,6 +1891,41 @@
     "post_reactions_more": {
       "surfaces": ["web"],
       "description": "Name of the group of five reactions opened from the like action"
+    },
+    "post_unpin": {
+      "surfaces": ["web"],
+      "description": "Menu item that unpins the community's pinned post"
+    },
+    "post_pinned": {
+      "surfaces": ["web"],
+      "description": "Marker on the card of the post pinned to the top of its community"
+    },
+    "comment_like": {
+      "surfaces": ["web"],
+      "description": "Under a comment: like it with a thumbs up, bold while the caller has liked it (decision 0080)"
+    },
+    "community_new_posts": {
+      "surfaces": ["web"],
+      "description": "On a hub row: how many posts the caller has not seen in the community (decision 0080)",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "community_last_post": {
+      "surfaces": ["web"],
+      "description": "On a hub row of a community with no unread posts: when the latest post was made; {when} is a short age such as '6 klst.' or a date (decision 0080)",
+      "placeholders": {
+        "when": "string"
+      }
+    },
+    "community_pin": {
+      "surfaces": ["web"],
+      "description": "Hub row menu item that pins the community to the top of the caller's list (decision 0080)"
+    },
+    "community_unpin": {
+      "surfaces": ["web"],
+      "description": "Hub row menu item that unpins the community"
     }
   }
 }
