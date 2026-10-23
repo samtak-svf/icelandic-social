@@ -4,9 +4,7 @@ import type { Problem } from "../problem.ts";
 import {
   getCommunity,
   joinCommunity,
-  listCommunityMembers,
   listCommunityPosts,
-  type Post,
   restoreCommunity,
   withdrawJoinRequest,
   type Community,
@@ -14,7 +12,7 @@ import {
 import { strings } from "../generated/brand/strings.ts";
 import { formatIsDate } from "../lib/is-format.ts";
 import { CommunityBar, CommunityHeader } from "../social/community-header.tsx";
-import { RolesProvider } from "../social/roles.tsx";
+import { moderatesAs } from "../social/roles.tsx";
 import { PostComposer } from "../social/composer.tsx";
 import { outcome, useLoad, type Outcome } from "../social/outcome.ts";
 import { PostView } from "../social/post.tsx";
@@ -204,29 +202,21 @@ function Posts({ community }: Readonly<{ community: Community }>) {
           {searched === "" ? strings.posts_empty : strings.community_search_empty}
         </p>
       )}
-      {posts?.ok && <PostList communityId={communityId} posts={posts.data.posts} reload={reload} />}
+      {posts?.ok && (
+        <ul className="flex flex-col gap-4">
+          {posts.data.posts.map((post) => (
+            <li key={post.postId}>
+              <PostView
+                post={post}
+                linked
+                deleted={reload}
+                changed={reload}
+                moderates={moderatesAs(community.role)}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
-  );
-}
-
-/** The cards, each with the role badge its author has in this community. */
-function PostList({
-  communityId,
-  posts,
-  reload,
-}: Readonly<{ communityId: string; posts: Post[]; reload: () => void }>) {
-  const [members] = useLoad(
-    useCallback(() => outcome(listCommunityMembers({ path: { communityId } }), 200), [communityId]),
-  );
-  return (
-    <RolesProvider members={members?.ok ? members.data.members : []}>
-      <ul className="flex flex-col gap-4">
-        {posts.map((post) => (
-          <li key={post.postId}>
-            <PostView post={post} linked deleted={reload} />
-          </li>
-        ))}
-      </ul>
-    </RolesProvider>
   );
 }

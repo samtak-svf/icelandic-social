@@ -5,7 +5,10 @@ import type { Problem } from "../problem.ts";
 import {
   deletePost,
   getPostMedia,
+  pinPost,
+  unpinPost,
   type Author,
+  type Comment,
   type Post,
   type SocialMedia,
 } from "../generated/api.ts";
@@ -18,7 +21,7 @@ import { Button, ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
 import { outcome, when, type Outcome } from "./outcome.ts";
 import { ReportForm } from "./report.tsx";
 import { ActionRow, Summary, useReactions } from "./post-actions.tsx";
-import { RoleBadge, useModerates } from "./roles.tsx";
+import { RoleBadge } from "./roles.tsx";
 
 // A post as a community's feed and its own page show it: who wrote it and
 // when, its text and images, its reactions and its comment count. A
@@ -87,11 +90,17 @@ export function PostView({
   post,
   linked,
   deleted,
+  changed,
+  moderates,
   community,
 }: Readonly<{
   post: Post;
   linked: boolean;
   deleted: () => void;
+  /** Called after the post was pinned or unpinned, so the page loads its posts again. */
+  changed: () => void;
+  /** Whether the caller is the owner or a moderator of the post's community. */
+  moderates: boolean;
   community?: { communityId: string; name: string; photo: string | null } | null;
 }>) {
   const reactions = useReactions(post);
@@ -101,17 +110,19 @@ export function PostView({
       className="flex flex-col gap-2 rounded-md border border-border p-4"
     >
       <StateMark state={post.state} />
+      {post.pinned && <PinnedMark />}
       <header className="flex items-start gap-3">
         <Avatar
           kind="person"
           id={post.author.accountId}
           name={post.author.name}
+          photo={post.author.photo}
           className="size-10 rounded-full"
         />
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <AuthorName author={post.author} />
-            <RoleBadge accountId={post.author.accountId} />
+            <RoleBadge role={post.author.role} />
           </span>
           <span className="flex flex-wrap items-center gap-x-2 text-sm text-muted-fg">
             <time dateTime={new Date(post.createdAt).toISOString()} title={when(post.createdAt)}>
@@ -135,13 +146,15 @@ export function PostView({
             )}
           </span>
         </div>
-        <PostMenu post={post} deleted={deleted} />
+        <PostMenu post={post} deleted={deleted} changed={changed} moderates={moderates} />
       </header>
       {post.body !== "" && <Body post={post} linked={linked} />}
       {post.media.length > 0 && <Images postId={post.postId} media={post.media} />}
       <Summary post={post} reactions={reactions} linked={linked} />
       <ActionRow post={post} reactions={reactions} linked={linked} />
-      {/* TODO(0080): the newest comment as a preview here, once the card data carries it. */}
+      {linked && post.latestComment !== null && post.latestComment.state === "visible" && (
+        <LatestComment comment={post.latestComment} />
+      )}
       {linked && (
         <Link
           to="/posts/$postId"
@@ -152,6 +165,60 @@ export function PostView({
         </Link>
       )}
     </article>
+  );
+}
+
+function PinIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 17v5" />
+      <path d="M9 3h6l-1 7 3 3v2H7v-2l3-3z" />
+    </svg>
+  );
+}
+
+/** The marker on the post pinned to the top of its community. */
+function PinnedMark() {
+  return (
+    <p className="inline-flex items-center gap-1 text-sm font-medium text-muted-fg">
+      <PinIcon />
+      {strings.post_pinned}
+    </p>
+  );
+}
+
+/** The newest comment under a card: picture, name, badge and two lines of text; it opens the post. */
+function LatestComment({ comment }: Readonly<{ comment: Comment }>) {
+  return (
+    <Link
+      to="/posts/$postId"
+      params={{ postId: comment.postId }}
+      className="flex items-start gap-2"
+    >
+      <Avatar
+        kind="person"
+        id={comment.author.accountId}
+        name={comment.author.name}
+        photo={comment.author.photo}
+        className="size-8 rounded-full text-xs"
+      />
+      <span className="flex min-w-0 flex-1 flex-col rounded-2xl bg-muted px-3 py-2">
+        <span className="flex flex-wrap items-center gap-x-2">
+          <span className="font-bold">{authorName(comment.author)}</span>
+          <RoleBadge role={comment.author.role} />
+        </span>
+        <span className="line-clamp-2 whitespace-pre-wrap">{comment.body}</span>
+      </span>
+    </Link>
   );
 }
 
@@ -191,10 +258,14 @@ function Body({ post, linked }: Readonly<{ post: Post; linked: boolean }>) {
   );
 }
 
-/** The `⋯` menu: Eyða for the author, Tilkynna for others, Festa for a moderator (off until the server pins). */
-function PostMenu({ post, deleted }: Readonly<{ post: Post; deleted: () => void }>) {
+/** The `⋯` menu: Eyða for the author, Tilkynna for others, Festa or Losa for a moderator. */
+function PostMenu({
+  post,
+  deleted,
+  changed,
+  moderates,
+}: Readonly<{ post: Post; deleted: () => void; changed: () => void; moderates: boolean }>) {
   const mine = useMine(post.author);
-  const moderates = useModerates();
   const [reporting, setReporting] = useState(false);
   const [sent, setSent] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -207,15 +278,27 @@ function PostMenu({ post, deleted }: Readonly<{ post: Post; deleted: () => void 
     else setProblem(done.problem);
   }
 
+  async function togglePin() {
+    setProblem(null);
+    const path = { communityId: post.communityId, postId: post.postId };
+    const done = await outcome(post.pinned ? unpinPost({ path }) : pinPost({ path }), 204);
+    if (done.ok) changed();
+    else setProblem(done.problem);
+  }
+
   return (
     <div className="flex flex-col items-end">
       <Menu label={strings.more_options} icon={<DotsIcon />}>
         {(close) => (
           <>
             {moderates && (
-              // TODO(0080): enabled once the server pins posts.
-              <MenuItem disabled onSelect={close}>
-                {strings.post_pin}
+              <MenuItem
+                onSelect={() => {
+                  close();
+                  void togglePin();
+                }}
+              >
+                {post.pinned ? strings.post_unpin : strings.post_pin}
               </MenuItem>
             )}
             {mine ? (
