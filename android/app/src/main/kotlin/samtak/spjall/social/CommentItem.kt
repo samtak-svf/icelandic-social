@@ -35,6 +35,7 @@ import samtak.spjall.core.ModerationState
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.Palette
+import samtak.spjall.ui.photoOf
 
 /**
  * A comment (0080): a grey bubble with the author's picture, name and role badge, a thumb count on its corner
@@ -65,6 +66,7 @@ internal fun CommentItem(
             name = comment.author.name,
             kind = if (comment.author.verified) AvatarKind.Verified else AvatarKind.Unverified,
             size = 32.dp,
+            photo = comment.author.photoOf(),
         )
         Column(modifier = Modifier.weight(1f)) {
             Box {

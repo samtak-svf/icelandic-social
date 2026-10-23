@@ -6,6 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import samtak.spjall.account.FakeAccount
+import samtak.spjall.core.Author
 import samtak.spjall.core.CardCommunity
 import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.CommunityRole
@@ -111,6 +112,8 @@ class PhotosTest {
         )
         assertNull(CommunityMember("a3", null, false, CommunityRole.MEMBER, 1uL, null).photoOf())
         assertEquals(PhotoOf("c1", "p1", PhotoKind.CommunityPicture), CardCommunity("c1", "K", "p1").pictureOf())
+        assertEquals(PhotoOf("a4", "v2"), Author("a4", "Anna", true, "v2", null).photoOf())
+        assertNull(Author("a5", null, false, null, null).photoOf())
     }
 
     @Test

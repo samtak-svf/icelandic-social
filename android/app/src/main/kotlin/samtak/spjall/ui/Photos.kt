@@ -17,6 +17,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import samtak.spjall.account.Account
+import samtak.spjall.core.Author
 import samtak.spjall.core.CardCommunity
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityMember
@@ -44,6 +45,9 @@ private const val TILE_CORNER = 0.25f
 
 /** The photo to draw for this person, or null when the server gave none. */
 fun Person.photoOf(): PhotoOf? = photo?.let { PhotoOf(account, it) }
+
+/** The photo to draw for the author of a post or comment, or null when the server gave none (0080). */
+fun Author.photoOf(): PhotoOf? = photo?.let { PhotoOf(accountId, it) }
 
 /** The photo to draw for this member of a community, or null when the account has none. */
 fun CommunityMember.photoOf(): PhotoOf? = photo?.let { PhotoOf(accountId, it) }

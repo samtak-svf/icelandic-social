@@ -50,6 +50,7 @@ import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.VerifiedMark
+import samtak.spjall.ui.photoOf
 
 /** The role badge text of an author in a community, or null for a plain member. */
 internal fun AuthorRole?.badge(): Int? =
@@ -86,6 +87,7 @@ internal fun AuthorRow(
             name = author.name,
             kind = if (author.verified) AvatarKind.Verified else AvatarKind.Unverified,
             size = 40.dp,
+            photo = author.photoOf(),
         )
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -256,6 +258,7 @@ internal fun CommentPreview(comment: Comment) {
             name = comment.author.name,
             kind = if (comment.author.verified) AvatarKind.Verified else AvatarKind.Unverified,
             size = 28.dp,
+            photo = comment.author.photoOf(),
         )
         Column(
             modifier =
