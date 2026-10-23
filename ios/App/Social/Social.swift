@@ -473,6 +473,12 @@ func logActionLabel(_ action: ModerationLogAction) -> String? {
     case .closeReport: localized("moderation_decision_dismissed")
     case .deleteCommunity: localized("moderation_decision_community_deleted")
     case .restoreCommunity: localized("moderation_restore")
+    case .setCommunityPicture: localized("moderation_log_community_picture_set")
+    case .removeCommunityPicture: localized("moderation_log_community_picture_removed")
+    case .setCommunityCover: localized("moderation_log_community_cover_set")
+    case .removeCommunityCover: localized("moderation_log_community_cover_removed")
+    case .pinPost: localized("moderation_log_post_pinned")
+    case .unpinPost: localized("moderation_log_post_unpinned")
     case .unknown: nil
     }
 }
