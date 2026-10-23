@@ -1,9 +1,12 @@
 package samtak.spjall.social
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,9 +14,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -29,8 +34,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
@@ -52,16 +59,15 @@ fun CommunitiesScreen(
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
             ScreenHeader(stringResource(R.string.tab_communities)) {
-                if (state.verified) {
-                    RoundButton(
-                        icon = AppIcons.Plus,
-                        description = stringResource(R.string.community_create),
-                        onClick = actions::create,
-                        fill = Palette.primary,
-                        tint = Palette.primaryFg,
-                        size = NEW_BUTTON.dp,
-                    )
-                }
+                // The search is behind an icon (0080): it opens the tab that finds communities.
+                RoundButton(
+                    icon = Icons.Filled.Search,
+                    description = stringResource(R.string.communities_search_open),
+                    onClick = { actions.selectTab(CommunitiesTab.DISCOVER) },
+                    fill = Palette.secondarySubtle,
+                    tint = Palette.fg,
+                    size = NEW_BUTTON.dp,
+                )
             }
             if (state.busy || state.searching) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             Box(modifier = Modifier.weight(1f)) { Content(state, actions) { reporting = it } }
@@ -146,12 +152,40 @@ private fun androidx.compose.foundation.lazy.LazyListScope.mine(
     state: CommunitiesViewModel.State,
     actions: CommunitiesActions,
 ) {
+    if (state.verified) item(key = "create-row") { CreateRow(actions::create) }
     item(key = "mine-title") { SectionLabel(stringResource(R.string.communities_mine)) }
     if (state.loaded && state.mine.isEmpty()) {
         item(key = "mine-empty") { EmptyState(AppIcons.Communities, stringResource(R.string.communities_empty)) }
     }
     itemsIndexed(state.mine, key = { _, community -> "mine-${community.communityId}" }) { _, community ->
-        CommunityRow(community) { actions.open(community.communityId) }
+        CommunityRow(
+            community,
+            onOpen = { actions.open(community.communityId) },
+            onPin = { actions.pin(community.communityId, it) },
+        )
+    }
+}
+
+/** "Stofna samfélag" at the top of the list (0080): only a verified account is offered it. */
+@Composable
+private fun CreateRow(onCreate: () -> Unit) {
+    SocialCard(modifier = Modifier.clickable(role = Role.Button, onClick = onCreate)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(
+                modifier = Modifier.size(40.dp).background(Palette.primary, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(AppIcons.Plus, contentDescription = null, tint = Palette.primaryFg)
+            }
+            Column {
+                Text(stringResource(R.string.community_create), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    stringResource(R.string.communities_create_row_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Palette.mutedFg,
+                )
+            }
+        }
     }
 }
 
@@ -184,7 +218,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.discover(
         }
     }
     itemsIndexed(state.others, key = { _, community -> "found-${community.communityId}" }) { index, community ->
-        CommunityRow(community) { actions.open(community.communityId) }
+        CommunityRow(community, onOpen = { actions.open(community.communityId) })
         if (index == state.others.lastIndex && state.next != null) {
             LaunchedEffect(state.next) { actions.more() }
         }

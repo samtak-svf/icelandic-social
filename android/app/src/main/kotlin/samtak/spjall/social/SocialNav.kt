@@ -93,6 +93,11 @@ private fun Communities(
 
             override fun selectTab(tab: CommunitiesTab) = model.selectTab(tab)
 
+            override fun pin(
+                communityId: String,
+                pinned: Boolean,
+            ) = model.pin(communityId, pinned)
+
             override fun create() = nav.navigate(SocialRoutes.NEW_COMMUNITY)
 
             override fun search(text: String) = model.search(text)

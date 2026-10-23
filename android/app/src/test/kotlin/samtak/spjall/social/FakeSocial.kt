@@ -348,9 +348,15 @@ class FakeSocial : Social {
         postId: String,
     ) = call("unpinPost $communityId $postId")
 
-    override fun pinCommunity(communityId: String) = call("pinCommunity $communityId")
+    override fun pinCommunity(communityId: String) {
+        call("pinCommunity $communityId")
+        communities[communityId]?.let { communities[communityId] = it.copy(pinned = true) }
+    }
 
-    override fun unpinCommunity(communityId: String) = call("unpinCommunity $communityId")
+    override fun unpinCommunity(communityId: String) {
+        call("unpinCommunity $communityId")
+        communities[communityId]?.let { communities[communityId] = it.copy(pinned = false) }
+    }
 
     override fun comments(
         postId: String,
@@ -477,6 +483,9 @@ fun community(
     mutedUntil: ULong? = null,
     joinDeclinedUntil: ULong? = null,
     pendingJoinRequests: ULong? = null,
+    unread: ULong = 0uL,
+    pinned: Boolean = false,
+    lastPostAt: ULong? = null,
 ) = Community(
     communityId = id,
     name = name,
@@ -492,6 +501,9 @@ fun community(
     deletedAt = null,
     joinDeclinedUntil = joinDeclinedUntil,
     pendingJoinRequests = pendingJoinRequests,
+    unread = unread,
+    pinned = pinned,
+    lastPostAt = lastPostAt,
 )
 
 fun post(

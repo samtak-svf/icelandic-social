@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -40,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,6 +52,8 @@ import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
 import samtak.spjall.ui.AppIcons
+import samtak.spjall.ui.Avatar
+import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.calendarDate
@@ -200,6 +204,7 @@ private fun ComposerPillOrBox(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                Avatar(name = null, kind = AvatarKind.Me, size = 36.dp)
                 Text(
                     text = stringResource(R.string.post_compose_prompt),
                     color = Palette.mutedFg,
@@ -277,8 +282,12 @@ private fun About(
     onInfo: () -> Unit,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
+    // The people the picture row shows are read once, for a community this account may read.
+    LaunchedEffect(community.communityId, community.reads) {
+        if (community.reads && state.members.isEmpty()) actions.loadMembers()
+    }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        CommunityLine(community, onInfo)
+        CommunityHeader(community, state.members, onInfo)
         Description(community.description, expanded) {
             expanded = true
             onInfo()

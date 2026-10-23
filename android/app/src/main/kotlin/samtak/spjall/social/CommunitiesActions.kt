@@ -22,6 +22,12 @@ interface CommunitiesActions {
 
     fun selectTab(tab: CommunitiesTab)
 
+    /** Pins or unpins a community in this account's hub (0080). */
+    fun pin(
+        communityId: String,
+        pinned: Boolean,
+    )
+
     /** "Stofna samfélag": only offered to a verified account (decision 0063). */
     fun create()
 

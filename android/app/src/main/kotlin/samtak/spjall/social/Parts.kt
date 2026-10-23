@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectableGroup
@@ -140,23 +141,6 @@ fun CommunityLine(
         color = Palette.mutedFg,
         modifier = line,
     )
-}
-
-/** A community in a list: its name and its line; a tap opens it. */
-@Composable
-fun CommunityRow(
-    community: Community,
-    onOpen: () -> Unit,
-) {
-    SocialCard(modifier = Modifier.clickable(role = Role.Button, onClick = onOpen)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Avatar(name = community.name, kind = AvatarKind.Group, size = 40.dp)
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(text = community.name, style = MaterialTheme.typography.titleMedium)
-                CommunityLine(community)
-            }
-        }
-    }
 }
 
 /** The mark on content only a moderator still sees, or nothing. */
