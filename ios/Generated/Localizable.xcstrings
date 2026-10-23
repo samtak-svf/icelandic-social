@@ -4633,18 +4633,6 @@
         }
       }
     },
-    "communities_search": {
-      "comment": "Accessible label of the hub header button that opens the community search.",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Leita að samfélagi"
-          }
-        }
-      }
-    },
     "community_pinned": {
       "comment": "Accessible label of the pin shown on a pinned community row.",
       "extractionState": "manual",
@@ -4653,18 +4641,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fest efst"
-          }
-        }
-      }
-    },
-    "post_send_to_conversation": {
-      "comment": "Share option that opens the conversation picker to send a post into conversations",
-      "extractionState": "manual",
-      "localizations": {
-        "is": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Senda í samtal"
           }
         }
       }

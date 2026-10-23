@@ -17,7 +17,7 @@ struct CommunitiesView: View {
         VStack(spacing: 0) {
             ScreenHeader(title: localized("tab_communities")) {
                 RoundButton(
-                    systemImage: "magnifyingglass", label: "communities_search", fill: BrandTokens.Colors.muted,
+                    systemImage: "magnifyingglass", label: "communities_search_open", fill: BrandTokens.Colors.muted,
                     tint: BrandTokens.Colors.fg, size: 34,
                     action: {
                         searchOpen = true

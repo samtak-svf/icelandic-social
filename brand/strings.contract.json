@@ -3,7 +3,7 @@
   "surfaces": ["android", "ios", "backend", "web"],
   "keys": {
     "app_name": {
-      "surfaces": ["android", "backend", "ios", "web"],
+      "surfaces": ["android", "ios", "backend", "web"],
       "description": "Launcher label, home-screen name, store-facing display name."
     },
     "tab_conversations": {
@@ -146,7 +146,7 @@
       }
     },
     "push_fallback_body": {
-      "surfaces": ["android", "backend", "ios"],
+      "surfaces": ["android", "ios", "backend"],
       "description": "Notification text when the device could not fetch what a push announced: the APNs alert the notification service extension keeps when it cannot decrypt in time, and Android's when its sync fails (docs/decisions/0025). Never names the sender."
     },
     "notification_channel_messages_name": {
@@ -214,14 +214,14 @@
       "description": "Replace the invite link; the old one stops working."
     },
     "link_invited_by": {
-      "surfaces": ["android", "backend", "ios"],
+      "surfaces": ["android", "ios", "backend"],
       "description": "Heading of the invite link page (/l/{token}) and of the app's invite screen when a person sent the link (docs/decisions/0019).",
       "placeholders": {
         "name": "string"
       }
     },
     "link_invited": {
-      "surfaces": ["android", "backend", "ios"],
+      "surfaces": ["android", "ios", "backend"],
       "description": "Heading of the invite link page and of the app's invite screen when the operator sent the link, or the inviter has no name."
     },
     "link_open_in_app": {
@@ -233,7 +233,7 @@
       "description": "Invite link page: the app is in a closed test, and how to get it."
     },
     "link_expired": {
-      "surfaces": ["android", "backend", "ios"],
+      "surfaces": ["android", "ios", "backend"],
       "description": "The invite link page and the app's invite screen for a link that was rotated, revoked or never existed."
     },
     "update_required_title": {
@@ -802,7 +802,7 @@
       "description": "Confirmation before signing this device out (docs/decisions/0047)."
     },
     "residency_claim": {
-      "surfaces": ["android", "backend", "ios", "web"],
+      "surfaces": ["android", "ios", "backend", "web"],
       "description": "The only permitted statement about where data lives (docs/decisions/0001).",
       "claim": "residency"
     },
@@ -1341,91 +1341,91 @@
       "description": "Confirmation after a moderator acts; every action is logged (decision 0066)."
     },
     "post_delete_confirm": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Asks before the author deletes their own post: its comments, reactions and images go with it."
     },
     "comment_delete_confirm": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Asks before the author deletes their own comment."
     },
     "community_withdraw_request": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Button: withdraw the person's own waiting join request to a private community."
     },
     "moderation_restore": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Moderator action: show a hidden or removed post or comment again."
     },
     "moderation_member": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Heading of the moderator's actions on the member a report is about."
     },
     "moderation_mute": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Moderator action: mute the member, who reads but does not write until the time chosen."
     },
     "moderation_mute_for": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Label of how long a moderator mutes a member."
     },
     "moderation_mute_day": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "How long a mute lasts: one day."
     },
     "moderation_mute_week": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "How long a mute lasts: seven days."
     },
     "moderation_mute_month": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "How long a mute lasts: thirty days."
     },
     "moderation_unmute": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Moderator action: end a member's mute."
     },
     "moderation_ban": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Moderator action: ban the member, who may not join again or read."
     },
     "moderation_unban": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Moderator action: lift a member's ban."
     },
     "moderation_open": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Switch in the report queue: the reports that wait."
     },
     "moderation_closed": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Switch in the report queue: the reports already closed."
     },
     "moderation_closed_empty": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "The closed side of the report queue when it is empty."
     },
     "post_add_images": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Opens the picker for images to add to a post being written (decision 0065)."
     },
     "post_image_remove": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Button: take a chosen image out of the post being written."
     },
     "post_images_too_many": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Refuses an image past the fourth on one post, before any upload (decision 0065)."
     },
     "post_image_too_large": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Refuses an image larger than 10 MB, before any upload (decision 0065)."
     },
     "post_image_failed": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "The server refused an image: not an image it reads (decision 0065)."
     },
     "post_image_alt": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Text alternative of an image in a post."
     },
     "moderation_ban_confirm": {
@@ -1777,19 +1777,19 @@
       "description": "Banner shown in a conversation the user has left (docs/decisions/0078)."
     },
     "community_picture_choose": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080)."
     },
     "community_picture_remove": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Button that removes a community's picture (decision 0080)."
     },
     "community_cover_choose": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Label of the file picker for a community's wide cover (decision 0080)."
     },
     "community_cover_remove": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Button that removes a community's cover (decision 0080)."
     },
     "communities_from_yours": {
@@ -1797,19 +1797,19 @@
       "description": "Heading of the cross-community feed under the list on the hub"
     },
     "communities_create_row_hint": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Second line of the create row on the hub"
     },
     "close": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Closes a dialog or a menu"
     },
     "community_open_full": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Audience line of a community header, open"
     },
     "community_private_full": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Audience line of a community header, private"
     },
     "community_invite_title": {
@@ -1825,95 +1825,95 @@
       "description": "No person matched the invitation search"
     },
     "community_link_copied": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Told after the community link was copied"
     },
     "community_members_stack": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Name of the picture stack of members in a community header"
     },
     "community_cover_alt": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Name of the cover picture"
     },
     "time_now": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Relative time of something posted less than a minute ago"
     },
     "time_minutes": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Relative time in minutes, as a short label on a post",
       "placeholders": {
         "count": "int"
       }
     },
     "time_hours": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Relative time in hours, as a short label on a post",
       "placeholders": {
         "count": "int"
       }
     },
     "time_days": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Relative time in days, as a short label on a post",
       "placeholders": {
         "count": "int"
       }
     },
     "time_weeks": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Relative time in weeks, as a short label on a post",
       "placeholders": {
         "count": "int"
       }
     },
     "post_see_more": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Expands a post whose text is cut short in the feed"
     },
     "post_like": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Action that likes a post with one press; long press or hover opens the other reactions"
     },
     "post_comment_action": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Action that opens the comments of a post"
     },
     "post_copy_link": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Menu item that copies the address of a post"
     },
     "post_link_copied": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Told after the address of a post was copied"
     },
     "post_pin": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Menu item for a moderator or the owner that pins a post to the top of its community (decision 0080)"
     },
     "post_write_comment": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Pill under a post card that opens its comments"
     },
     "post_reactions_more": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Name of the group of five reactions opened from the like action"
     },
     "post_unpin": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Menu item that unpins the community's pinned post"
     },
     "post_pinned": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Marker on the card of the post pinned to the top of its community"
     },
     "comment_like": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Under a comment: like it with a thumbs up, bold while the caller has liked it (decision 0080)"
     },
     "community_new_posts": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "On a hub row: how many posts the caller has not seen in the community (decision 0080)",
       "plural": true,
       "placeholders": {
@@ -1928,11 +1928,11 @@
       }
     },
     "community_pin": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Hub row menu item that pins the community to the top of the caller's list (decision 0080)"
     },
     "community_unpin": {
-      "surfaces": ["android", "ios", "web"],
+      "surfaces": ["android", "web", "ios"],
       "description": "Hub row menu item that unpins the community"
     },
     "post_share_to_conversation": {
@@ -1943,17 +1943,9 @@
       "surfaces": ["android", "ios", "web"],
       "description": "Hub header icon that opens the community search (decision 0080)."
     },
-    "communities_search": {
-      "surfaces": ["android", "ios"],
-      "description": "Accessible label of the hub header button that opens the community search."
-    },
     "community_pinned": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["ios"],
       "description": "Accessible label of the pin shown on a pinned community row."
-    },
-    "post_send_to_conversation": {
-      "surfaces": ["android", "ios"],
-      "description": "Share option that opens the conversation picker to send a post into conversations"
     }
   }
 }

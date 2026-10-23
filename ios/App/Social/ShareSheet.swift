@@ -67,7 +67,7 @@ private struct PostSharingModifier: ViewModifier {
             }
             .sheet(isPresented: Binding(get: { picker != nil }, set: { if !$0 { picker = nil } })) {
                 if let picker {
-                    PickView(model: picker, title: "post_send_to_conversation") { self.picker = nil }
+                    PickView(model: picker, title: "post_share_to_conversation") { self.picker = nil }
                         .onChange(of: picker.done) { _, done in
                             guard let done else { return }
                             self.picker = nil
@@ -108,7 +108,7 @@ private struct ShareOptions: View {
                 .font(.sans(17, black: true))
                 .padding(.bottom, 8)
             if canSend {
-                row("bubble.left.and.bubble.right", "post_send_to_conversation", onSend)
+                row("bubble.left.and.bubble.right", "post_share_to_conversation", onSend)
             }
             row("link", "post_copy_link", onCopy)
             Spacer(minLength: 0)
