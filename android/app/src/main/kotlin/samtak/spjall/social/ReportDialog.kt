@@ -92,5 +92,3 @@ val REASONS =
         ReportReason.SPAM to R.string.report_reason_spam,
         ReportReason.OTHER to R.string.report_reason_other,
     )
-
-private const val TOUCH = 44

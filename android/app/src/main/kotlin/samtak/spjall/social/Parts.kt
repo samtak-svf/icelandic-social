@@ -5,10 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -19,31 +17,22 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -53,8 +42,6 @@ import samtak.spjall.core.Author
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.ModerationState
-import samtak.spjall.core.Post
-import samtak.spjall.core.ReactionKind
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
@@ -189,130 +176,6 @@ fun Byline(
 }
 
 /**
- * A post as a community's feed and its own screen show it: the byline, its text and images, the five reactions
- * and its comment count, which opens it when [onOpen] is given; a tap anywhere on the card opens it too. This
- * account's own post offers a delete in place of a report, both behind the byline's more menu.
- */
-@Composable
-fun PostCard(
-    post: Post,
-    reacting: Boolean,
-    reported: Boolean,
-    onReact: (ReactionKind) -> Unit,
-    onReport: () -> Unit,
-    onOpen: (() -> Unit)?,
-    onDelete: (() -> Unit)? = null,
-) {
-    SocialCard(
-        modifier =
-            if (onOpen != null) {
-                Modifier.clickable(role = Role.Button, onClick = onOpen)
-            } else {
-                Modifier
-            },
-    ) {
-        StateMark(post.state)
-        Byline(post.author, post.createdAt) {
-            CardActions(reported = reported, onReport = onReport, onDelete = onDelete)
-        }
-        if (post.body.isNotBlank()) Text(text = post.body, style = MaterialTheme.typography.bodyLarge)
-        PostImageGrid(post)
-        Reactions(post, reacting, onReact)
-        val comments =
-            pluralStringResource(R.plurals.post_comments, post.commentCount.toInt(), post.commentCount.toLong())
-        if (onOpen != null) {
-            TextButton(onClick = onOpen) { Text(comments) }
-        } else {
-            Text(text = comments, style = MaterialTheme.typography.bodyMedium, color = Palette.mutedFg)
-        }
-    }
-}
-
-/**
- * The more menu on a post or a comment: delete this account's own, or report it; once the report was sent it
- * says so instead of offering another.
- */
-@Composable
-fun CardActions(
-    reported: Boolean,
-    onReport: () -> Unit,
-    onDelete: (() -> Unit)?,
-) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { open = true }) {
-            Icon(AppIcons.More, contentDescription = stringResource(R.string.more_options))
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            when {
-                onDelete != null ->
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.delete), color = Palette.danger) },
-                        onClick = {
-                            open = false
-                            onDelete()
-                        },
-                    )
-                reported ->
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.report_sent)) },
-                        onClick = { open = false },
-                        enabled = false,
-                    )
-                else ->
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.report)) },
-                        onClick = {
-                            open = false
-                            onReport()
-                        },
-                    )
-            }
-        }
-    }
-}
-
-/** The five reactions; this account's is pressed, and pressing it again takes it back. */
-@Composable
-private fun Reactions(
-    post: Post,
-    busy: Boolean,
-    onReact: (ReactionKind) -> Unit,
-) {
-    val counts = post.reactions.associate { it.kind to it.count }
-    val title = stringResource(R.string.reactions_title)
-    FlowRow(
-        modifier = Modifier.semantics { contentDescription = title }.selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        REACTIONS.forEach { (kind, emoji, label) ->
-            val mine = post.myReaction == kind
-            val count = counts[kind] ?: 0uL
-            val name = stringResource(label)
-            Row(
-                modifier =
-                    Modifier
-                        .heightIn(min = TOUCH.dp)
-                        .widthIn(min = TOUCH.dp)
-                        .background(if (mine) Palette.primarySubtle else Palette.surface, RoundedCornerShape(PILL.dp))
-                        .border(
-                            BorderStroke(1.dp, if (mine) Palette.primary else Palette.border),
-                            RoundedCornerShape(PILL.dp),
-                        ).toggleable(value = mine, enabled = !busy, role = Role.Checkbox) { onReact(kind) }
-                        .clearAndSetSemantics { contentDescription = if (count > 0uL) "$name, $count" else name }
-                        .padding(horizontal = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
-            ) {
-                Text(text = emoji, style = MaterialTheme.typography.titleMedium)
-                if (count > 0uL) Text(text = "$count", style = MaterialTheme.typography.labelLarge)
-            }
-        }
-    }
-}
-
-/**
  * The box a post and a comment are both written in, with its button under it; [extra] goes between them (a
  * post's images), and [ready] says whether there is something to send.
  */
@@ -325,6 +188,7 @@ fun Composer(
     onText: (String) -> Unit,
     onSend: () -> Unit,
     ready: Boolean = text.isNotBlank(),
+    modifier: Modifier = Modifier,
     extra: @Composable ColumnScope.() -> Unit = {},
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -333,7 +197,7 @@ fun Composer(
             onValueChange = onText,
             label = { Text(label) },
             minLines = 2,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = modifier.fillMaxWidth(),
         )
         extra()
         Button(
@@ -344,21 +208,6 @@ fun Composer(
     }
 }
 
-private data class Reaction(
-    val kind: ReactionKind,
-    val emoji: String,
-    val label: Int,
-)
-
-private val REACTIONS =
-    listOf(
-        Reaction(ReactionKind.LIKE, "👍", R.string.reaction_like),
-        Reaction(ReactionKind.LOVE, "❤️", R.string.reaction_love),
-        Reaction(ReactionKind.LAUGH, "😂", R.string.reaction_laugh),
-        Reaction(ReactionKind.WOW, "😮", R.string.reaction_wow),
-        Reaction(ReactionKind.SAD, "😢", R.string.reaction_sad),
-    )
-
 private const val CARD_RADIUS = 14
-private const val PILL = 20
-private const val TOUCH = 44
+internal const val PILL = 20
+internal const val TOUCH = 44

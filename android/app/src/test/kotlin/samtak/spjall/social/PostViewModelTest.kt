@@ -150,6 +150,55 @@ class PostViewModelTest {
         }
 
     @Test
+    fun likingACommentShowsAtOnceAndUnlikingTakesItBack() =
+        runTest(dispatcher) {
+            val model = model()
+            model.likeComment("c1")
+            assertTrue(
+                model.state.value.comments
+                    .first { it.commentId == "c1" }
+                    .liked,
+            )
+            assertEquals(
+                1uL,
+                model.state.value.comments
+                    .first { it.commentId == "c1" }
+                    .likes,
+            )
+            advanceUntilIdle()
+            assertTrue("likeComment c1" in social.calls)
+            model.likeComment("c1")
+            advanceUntilIdle()
+            assertTrue("unlikeComment c1" in social.calls)
+            assertFalse(
+                model.state.value.comments
+                    .first { it.commentId == "c1" }
+                    .liked,
+            )
+            assertEquals(
+                0uL,
+                model.state.value.comments
+                    .first { it.commentId == "c1" }
+                    .likes,
+            )
+        }
+
+    @Test
+    fun aRefusedLikeIsRolledBackAndReported() =
+        runTest(dispatcher) {
+            val model = model()
+            social.failNext = unreachable()
+            model.likeComment("c1")
+            advanceUntilIdle()
+            val c1 =
+                model.state.value.comments
+                    .first { it.commentId == "c1" }
+            assertFalse(c1.liked)
+            assertEquals(0uL, c1.likes)
+            assertTrue(model.state.value.problem != null)
+        }
+
+    @Test
     fun aCommentCanBeReported() =
         runTest(dispatcher) {
             val model = model()

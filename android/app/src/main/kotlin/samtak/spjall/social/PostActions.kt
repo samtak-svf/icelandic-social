@@ -6,6 +6,7 @@ import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
 
 /** What [PostScreen] can ask for. */
+@Suppress("TooManyFunctions")
 interface PostActions {
     /** "Til baka í samfélagið". */
     fun community(communityId: String)
@@ -17,6 +18,15 @@ interface PostActions {
     fun onReplyTo(comment: Comment?)
 
     fun react(kind: ReactionKind)
+
+    /** Likes the comment, or takes the like back. */
+    fun likeComment(commentId: String)
+
+    /** Pins the post to the top of its community, or loosens it. */
+    fun pin(pinned: Boolean)
+
+    /** Opens the picker that sends the post into conversations. */
+    fun sendToConversation(postId: String)
 
     /** Deletes this account's own post, once it confirmed. */
     fun deletePost()

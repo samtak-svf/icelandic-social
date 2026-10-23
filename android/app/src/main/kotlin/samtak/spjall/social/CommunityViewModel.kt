@@ -383,6 +383,17 @@ class CommunityViewModel(
         }
     }
 
+    /** Pins the post to the top of the community, or loosens it; the feed is read again so the pinned post leads. */
+    fun pin(
+        postId: String,
+        pinned: Boolean,
+    ) {
+        perform(again = { pin(postId, pinned) }) {
+            if (pinned) social.pinPost(id, postId) else social.unpinPost(id, postId)
+            reload()
+        }
+    }
+
     /** Reports a post to the community's moderators; once sent, the post shows that it was. */
     fun report(
         target: ReportTarget,

@@ -4,10 +4,17 @@ import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 
 /** What [CommunitiesScreen] can ask for. */
+@Suppress("TooManyFunctions")
 interface CommunitiesActions {
     fun open(communityId: String)
 
     fun openPost(postId: String)
+
+    /** Opens the post with its comment field focused. */
+    fun comment(postId: String)
+
+    /** Opens the picker that sends the post into conversations. */
+    fun sendToConversation(postId: String)
 
     fun react(
         postId: String,

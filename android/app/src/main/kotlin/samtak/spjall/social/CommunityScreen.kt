@@ -171,10 +171,20 @@ private fun ColumnScope.Feed(
                 post = post,
                 reacting = post.postId in state.reacting,
                 reported = post.postId in state.reported,
-                onReact = { actions.react(post.postId, it) },
-                onReport = { onReport(post.postId) },
-                onOpen = { actions.open(post.postId) },
-                onDelete = { onDelete(post.postId) }.takeIf { post.author.accountId == state.me },
+                callbacks =
+                    PostCardCallbacks(
+                        onReact = { actions.react(post.postId, it) },
+                        onReport = { onReport(post.postId) },
+                        onOpen = { actions.open(post.postId) },
+                        onComment = { actions.comment(post.postId) },
+                        onDelete = { onDelete(post.postId) }.takeIf { post.author.accountId == state.me },
+                        onPin =
+                            { pinned: Boolean -> actions.pin(post.postId, pinned) }.takeIf {
+                                state.community?.moderates ==
+                                    true
+                            },
+                        onSendToConversation = { actions.sendToConversation(post.postId) },
+                    ),
             )
             if (index == state.posts.lastIndex &&
                 state.next != null

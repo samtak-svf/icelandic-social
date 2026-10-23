@@ -71,6 +71,18 @@ interface CommunityActions {
     /** Deletes this account's own post, once it confirmed. */
     fun delete(postId: String)
 
+    /** Opens the post with its comment field focused. */
+    fun comment(postId: String)
+
+    /** Pins the post to the top of the community, or loosens it. */
+    fun pin(
+        postId: String,
+        pinned: Boolean,
+    )
+
+    /** Opens the picker that sends the post into conversations. */
+    fun sendToConversation(postId: String)
+
     fun react(
         postId: String,
         kind: ReactionKind,

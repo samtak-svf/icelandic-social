@@ -12,7 +12,13 @@ object SocialRoutes {
 
     fun community(id: String) = "$COMMUNITY/$id"
 
-    fun post(id: String) = "$POST/$id"
+    /** The pattern the post screen is registered under: [focus] opens it with the comment field focused. */
+    const val POST_PATTERN = "$POST/{id}?focus={focus}"
+
+    fun post(
+        id: String,
+        focus: Boolean = false,
+    ) = if (focus) "$POST/$id?focus=true" else "$POST/$id"
 
     fun reports(id: String) = "$REPORTS/$id"
 

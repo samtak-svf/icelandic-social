@@ -138,9 +138,14 @@ private fun androidx.compose.foundation.lazy.LazyListScope.feed(
             post = post,
             reacting = post.postId in state.reacting,
             reported = post.postId in state.reported,
-            onReact = { actions.react(post.postId, it) },
-            onReport = { onReport(post.postId) },
-            onOpen = { actions.openPost(post.postId) },
+            callbacks =
+                PostCardCallbacks(
+                    onReact = { actions.react(post.postId, it) },
+                    onReport = { onReport(post.postId) },
+                    onOpen = { actions.openPost(post.postId) },
+                    onComment = { actions.comment(post.postId) },
+                    onSendToConversation = { actions.sendToConversation(post.postId) },
+                ),
         )
         if (index == state.feed.lastIndex && state.feedNext != null) {
             LaunchedEffect(state.feedNext) { actions.moreFeed() }

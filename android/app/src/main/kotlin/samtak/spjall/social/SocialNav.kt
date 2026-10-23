@@ -39,6 +39,7 @@ fun NavGraphBuilder.socialScreens(
     files: Files,
     nav: NavController,
     read: () -> Unit,
+    sharePost: (String) -> Unit = {},
 ) {
     // Any of these screens can draw a post card, so each is given where the images come from.
     fun screen(
@@ -46,14 +47,16 @@ fun NavGraphBuilder.socialScreens(
         content: @Composable (NavBackStackEntry) -> Unit,
     ) = composable(route) { entry -> WithPostImages(social) { content(entry) } }
 
-    screen(SocialRoutes.COMMUNITIES) { Communities(social, account, nav) }
+    screen(SocialRoutes.COMMUNITIES) { Communities(social, account, nav, sharePost) }
     screen(SocialRoutes.NOTIFICATIONS) { Notifications(social, nav, read) }
     screen(SocialRoutes.NEW_COMMUNITY) { NewCommunity(social, files, nav) }
     screen("${SocialRoutes.COMMUNITY}/{id}") { entry ->
-        entry.arguments?.getString("id")?.let { CommunityEntry(it, social, files, nav) }
+        entry.arguments?.getString("id")?.let { CommunityEntry(it, social, files, nav, sharePost) }
     }
-    screen("${SocialRoutes.POST}/{id}") { entry ->
-        entry.arguments?.getString("id")?.let { PostEntry(it, social, nav) }
+    screen(SocialRoutes.POST_PATTERN) { entry ->
+        entry.arguments?.getString("id")?.let {
+            PostEntry(it, entry.arguments?.getString("focus") == "true", social, nav, sharePost)
+        }
     }
     screen("${SocialRoutes.REPORTS}/{id}") { entry ->
         entry.arguments?.getString("id")?.let { Reports(it, social, nav) }
@@ -68,6 +71,7 @@ private fun Communities(
     social: Social,
     account: Account,
     nav: NavController,
+    sharePost: (String) -> Unit,
 ) {
     val model: CommunitiesViewModel = viewModel { CommunitiesViewModel(social, account) }
     val state by model.state.collectAsStateWithLifecycle()
@@ -79,6 +83,10 @@ private fun Communities(
             override fun open(communityId: String) = nav.navigate(SocialRoutes.community(communityId))
 
             override fun openPost(postId: String) = nav.navigate(SocialRoutes.post(postId))
+
+            override fun comment(postId: String) = nav.navigate(SocialRoutes.post(postId, focus = true))
+
+            override fun sendToConversation(postId: String) = sharePost(postId)
 
             override fun react(
                 postId: String,
@@ -165,6 +173,7 @@ private fun CommunityEntry(
     social: Social,
     files: Files,
     nav: NavController,
+    sharePost: (String) -> Unit,
 ) {
     val model: CommunityViewModel = viewModel(key = "community-$id") { CommunityViewModel(id, social) }
     val state by model.state.collectAsStateWithLifecycle()
@@ -204,6 +213,15 @@ private fun CommunityEntry(
             override fun leave() = model.leave()
 
             override fun open(postId: String) = nav.navigate(SocialRoutes.post(postId))
+
+            override fun comment(postId: String) = nav.navigate(SocialRoutes.post(postId, focus = true))
+
+            override fun pin(
+                postId: String,
+                pinned: Boolean,
+            ) = model.pin(postId, pinned)
+
+            override fun sendToConversation(postId: String) = sharePost(postId)
 
             override fun reports() = nav.navigate(SocialRoutes.reports(id))
 
@@ -296,8 +314,10 @@ private fun WithPostImages(
 @Composable
 private fun PostEntry(
     id: String,
+    focusComment: Boolean,
     social: Social,
     nav: NavController,
+    sharePost: (String) -> Unit,
 ) {
     val model: PostViewModel = viewModel(key = "post-$id") { PostViewModel(id, social) }
     val state by model.state.collectAsStateWithLifecycle()
@@ -310,38 +330,46 @@ private fun PostEntry(
                 previous.arguments?.getString("id") == communityId
         when {
             fromIt -> nav.popBackStack()
-            gone -> nav.navigate(route) { popUpTo("${SocialRoutes.POST}/{id}") { inclusive = true } }
+            gone -> nav.navigate(route) { popUpTo(SocialRoutes.POST_PATTERN) { inclusive = true } }
             else -> nav.navigate(route)
         }
     }
     LaunchedEffect(model) { model.deleted.collect { community(it, true) } }
     PostScreen(
         state,
-        object : PostActions {
-            override fun community(communityId: String) = community(communityId, false)
+        focusComment = focusComment,
+        actions =
+            object : PostActions {
+                override fun community(communityId: String) = community(communityId, false)
 
-            override fun deletePost() = model.deletePost()
+                override fun deletePost() = model.deletePost()
 
-            override fun deleteComment(commentId: String) = model.deleteComment(commentId)
+                override fun deleteComment(commentId: String) = model.deleteComment(commentId)
 
-            override fun draft(text: String) = model.draft(text)
+                override fun draft(text: String) = model.draft(text)
 
-            override fun send() = model.send()
+                override fun send() = model.send()
 
-            override fun onReplyTo(comment: samtak.spjall.core.Comment?) = model.onReplyTo(comment)
+                override fun onReplyTo(comment: samtak.spjall.core.Comment?) = model.onReplyTo(comment)
 
-            override fun react(kind: ReactionKind) = model.react(kind)
+                override fun react(kind: ReactionKind) = model.react(kind)
 
-            override fun report(
-                target: ReportTarget,
-                reason: ReportReason,
-                note: String,
-            ) = model.report(target, reason, note)
+                override fun likeComment(commentId: String) = model.likeComment(commentId)
 
-            override fun more() = model.more()
+                override fun pin(pinned: Boolean) = model.pin(pinned)
 
-            override fun retry() = model.retry()
-        },
+                override fun sendToConversation(postId: String) = sharePost(postId)
+
+                override fun report(
+                    target: ReportTarget,
+                    reason: ReportReason,
+                    note: String,
+                ) = model.report(target, reason, note)
+
+                override fun more() = model.more()
+
+                override fun retry() = model.retry()
+            },
     )
 }
 

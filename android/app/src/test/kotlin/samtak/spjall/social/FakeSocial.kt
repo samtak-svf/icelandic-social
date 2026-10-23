@@ -341,12 +341,29 @@ class FakeSocial : Social {
     override fun pinPost(
         communityId: String,
         postId: String,
-    ) = call("pinPost $communityId $postId")
+    ) {
+        call("pinPost $communityId $postId")
+        setPinned(communityId, postId, true)
+    }
 
     override fun unpinPost(
         communityId: String,
         postId: String,
-    ) = call("unpinPost $communityId $postId")
+    ) {
+        call("unpinPost $communityId $postId")
+        setPinned(communityId, postId, false)
+    }
+
+    /** The pinned post leads the first page, as the server returns it. */
+    private fun setPinned(
+        communityId: String,
+        postId: String,
+        pinned: Boolean,
+    ) {
+        val list = posts[communityId] ?: return
+        val moved = list.map { if (it.postId == postId) it.copy(pinned = pinned) else it.copy(pinned = false) }
+        posts[communityId] = moved.sortedByDescending { it.pinned }.toMutableList()
+    }
 
     override fun pinCommunity(communityId: String) {
         call("pinCommunity $communityId")
