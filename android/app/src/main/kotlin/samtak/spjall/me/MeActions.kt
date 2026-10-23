@@ -28,6 +28,9 @@ interface MeActions {
     /** Opens the screen that links Kenni, for an account it has not verified (decision 0033). */
     fun verify()
 
+    /** Opens the screen that scans a browser's link code (decisions 0064, 0077). */
+    fun linkBrowser()
+
     /** The system's notification settings for the app. */
     fun notificationSettings()
 }

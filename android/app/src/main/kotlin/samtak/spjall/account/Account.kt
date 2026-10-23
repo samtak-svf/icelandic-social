@@ -5,6 +5,7 @@ import samtak.spjall.core.Conversation
 import samtak.spjall.core.CoreClient
 import samtak.spjall.core.Inviter
 import samtak.spjall.core.Item
+import samtak.spjall.core.LinkRequest
 import samtak.spjall.core.ListSearch
 import samtak.spjall.core.Me
 import samtak.spjall.core.Mute
@@ -64,6 +65,23 @@ interface Account {
     fun revokeDevice(deviceId: String)
 
     fun deleteAccount()
+
+    /**
+     * What a browser's link code asks for (decisions 0064, 0077). `LinkCodeInvalid` when [code] is not one,
+     * `LinkKeyMismatch` when the server's keys differ from the code's, `LinkExpired` when the request is gone.
+     */
+    fun inspectLink(code: String): LinkRequest
+
+    /**
+     * Approves the browser [code] names and, when [send], seals the history since [since] (milliseconds since
+     * the epoch; null for all of it) for it. Returns how many messages were sealed: 0 when none was sent.
+     * `LinkAlreadyApproved` when the request was approved before.
+     */
+    fun approveLink(
+        code: String,
+        since: ULong?,
+        send: Boolean,
+    ): ULong
 
     /** The token for the socket's upgrade; null when signed out. */
     fun deviceToken(): String?
@@ -297,6 +315,14 @@ class CoreAccount(
     override fun revokeDevice(deviceId: String) = client.revokeDevice(deviceId)
 
     override fun deleteAccount() = client.deleteAccount()
+
+    override fun inspectLink(code: String) = client.inspectLink(code)
+
+    override fun approveLink(
+        code: String,
+        since: ULong?,
+        send: Boolean,
+    ) = client.approveLink(code, since, send)
 
     override fun deviceToken() = client.deviceToken()
 
