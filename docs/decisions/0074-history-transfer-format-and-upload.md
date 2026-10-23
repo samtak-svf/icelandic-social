@@ -4,6 +4,8 @@
   (#82), the web client not yet (#43)
 - Date: 2026-10-21
 - Decided by: Guðröður Atli Jónsson
+- Amended by: [0081](0081-the-browser-runs-the-blocking-core-in-a-worker.md) (a ranged
+  download)
 - Builds on: [0064](0064-non-phone-devices-are-linked-devices.md) (history from the approving
   phone), [0023](0023-media-as-encrypted-blobs.md) (media and their segments)
 
