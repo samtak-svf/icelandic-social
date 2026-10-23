@@ -41,6 +41,9 @@ final class CommunityModel {
     private(set) var imageNotice: ImageNotice?
     /// This account's id: its own posts can be deleted. Nil until it is known, when none is.
     private(set) var me: String?
+    /// This account's name and photo, for the composer row's own picture (decision 0080).
+    private(set) var myName: String?
+    private(set) var myPhoto: PhotoOf?
     private(set) var busy = false
     /// The owner deleted the community from here, so the screen leaves it.
     private(set) var deleted = false
@@ -154,7 +157,10 @@ final class CommunityModel {
     private func whoAmI() async {
         guard me == nil else { return }
         let social = social
-        me = try? await offMain { try social.me().accountId }
+        guard let own = try? await offMain({ try social.me() }) else { return }
+        me = own.accountId
+        myName = own.name
+        myPhoto = own.photoOf
     }
 
     /// The posts' next, older page, if there is one and none is on its way.

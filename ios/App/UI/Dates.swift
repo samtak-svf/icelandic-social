@@ -42,6 +42,27 @@ enum Dates {
         format("d. MMM yyyy", at, calendar)
     }
 
+    /// How long before `now` a moment was, in whole units rounded down: `date` once it is over four weeks old. A
+    /// clock a little ahead of the server's never reads as the future (decision 0080).
+    enum Age: Equatable, Sendable {
+        case now
+        case minutes(Int)
+        case hours(Int)
+        case days(Int)
+        case weeks(Int)
+        case date
+    }
+
+    static func age(of at: Date, now: Date) -> Age {
+        let seconds = max(0, Int(now.timeIntervalSince(at)))
+        if seconds < 60 { return .now }
+        if seconds < 3_600 { return .minutes(seconds / 60) }
+        if seconds < 86_400 { return .hours(seconds / 3_600) }
+        if seconds < 7 * 86_400 { return .days(seconds / 86_400) }
+        if seconds < 28 * 86_400 { return .weeks(seconds / (7 * 86_400)) }
+        return .date
+    }
+
     static func at(_ millis: UInt64) -> Date {
         Date(timeIntervalSince1970: TimeInterval(millis) / 1_000)
     }
@@ -93,4 +114,17 @@ func calendarDate(_ millis: UInt64) -> String {
 /// A time line between messages in a conversation.
 func timeLine(_ date: Date) -> String {
     Dates.line(date, now: Date(), yesterdayWord: localized("day_yesterday"))
+}
+
+/// The short age a hub row and a post card carry ("6 klst."), or the date once it is no longer recent (decision 0080).
+func relativeTime(_ millis: UInt64, now: Date = Date()) -> String {
+    let at = Dates.at(millis)
+    switch Dates.age(of: at, now: now) {
+    case .now: return localized("time_now")
+    case .minutes(let count): return localized("time_minutes", count)
+    case .hours(let count): return localized("time_hours", count)
+    case .days(let count): return localized("time_days", count)
+    case .weeks(let count): return localized("time_weeks", count)
+    case .date: return Dates.date(at)
+    }
 }

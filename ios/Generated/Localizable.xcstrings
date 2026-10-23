@@ -4285,6 +4285,198 @@
         }
       }
     },
+    "communities_create_row_hint": {
+      "comment": "Second line of the create row on the hub",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Safnaðu fólki saman um málefni"
+          }
+        }
+      }
+    },
+    "close": {
+      "comment": "Closes a dialog or a menu",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loka"
+          }
+        }
+      }
+    },
+    "community_open_full": {
+      "comment": "Audience line of a community header, open",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opið samfélag"
+          }
+        }
+      }
+    },
+    "community_private_full": {
+      "comment": "Audience line of a community header, private",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokað samfélag"
+          }
+        }
+      }
+    },
+    "community_link_copied": {
+      "comment": "Told after the community link was copied",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hlekkur samfélagsins afritaður"
+          }
+        }
+      }
+    },
+    "community_members_stack": {
+      "comment": "Name of the picture stack of members in a community header",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meðlimir samfélagsins"
+          }
+        }
+      }
+    },
+    "community_cover_alt": {
+      "comment": "Name of the cover picture",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forsíðumynd samfélagsins"
+          }
+        }
+      }
+    },
+    "time_now": {
+      "comment": "Relative time of something posted less than a minute ago",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Núna"
+          }
+        }
+      }
+    },
+    "time_minutes": {
+      "comment": "Relative time in minutes, as a short label on a post",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld mín."
+          }
+        }
+      }
+    },
+    "time_hours": {
+      "comment": "Relative time in hours, as a short label on a post",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld klst."
+          }
+        }
+      }
+    },
+    "time_days": {
+      "comment": "Relative time in days, as a short label on a post",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld d."
+          }
+        }
+      }
+    },
+    "time_weeks": {
+      "comment": "Relative time in weeks, as a short label on a post",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld vik."
+          }
+        }
+      }
+    },
+    "community_new_posts": {
+      "comment": "On a hub row: how many posts the caller has not seen in the community (decision 0080)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld nýr póstur"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld nýir póstar"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "community_pin": {
+      "comment": "Hub row menu item that pins the community to the top of the caller's list (decision 0080)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Festa efst"
+          }
+        }
+      }
+    },
+    "community_unpin": {
+      "comment": "Hub row menu item that unpins the community",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Losa"
+          }
+        }
+      }
+    },
     "post_share_to_conversation": {
       "comment": "Share sheet entry that sends a post into a conversation (decision 0080).",
       "extractionState": "manual",
@@ -4305,6 +4497,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "Leita að samfélögum"
+          }
+        }
+      }
+    },
+    "communities_search": {
+      "comment": "Accessible label of the hub header button that opens the community search.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leita að samfélagi"
+          }
+        }
+      }
+    },
+    "community_pinned": {
+      "comment": "Accessible label of the pin shown on a pinned community row.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fest efst"
           }
         }
       }

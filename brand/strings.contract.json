@@ -1797,19 +1797,19 @@
       "description": "Heading of the cross-community feed under the list on the hub"
     },
     "communities_create_row_hint": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Second line of the create row on the hub"
     },
     "close": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Closes a dialog or a menu"
     },
     "community_open_full": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Audience line of a community header, open"
     },
     "community_private_full": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Audience line of a community header, private"
     },
     "community_invite_title": {
@@ -1825,44 +1825,44 @@
       "description": "No person matched the invitation search"
     },
     "community_link_copied": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Told after the community link was copied"
     },
     "community_members_stack": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Name of the picture stack of members in a community header"
     },
     "community_cover_alt": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Name of the cover picture"
     },
     "time_now": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Relative time of something posted less than a minute ago"
     },
     "time_minutes": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Relative time in minutes, as a short label on a post",
       "placeholders": {
         "count": "int"
       }
     },
     "time_hours": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Relative time in hours, as a short label on a post",
       "placeholders": {
         "count": "int"
       }
     },
     "time_days": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Relative time in days, as a short label on a post",
       "placeholders": {
         "count": "int"
       }
     },
     "time_weeks": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Relative time in weeks, as a short label on a post",
       "placeholders": {
         "count": "int"
@@ -1913,7 +1913,7 @@
       "description": "Under a comment: like it with a thumbs up, bold while the caller has liked it (decision 0080)"
     },
     "community_new_posts": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "On a hub row: how many posts the caller has not seen in the community (decision 0080)",
       "plural": true,
       "placeholders": {
@@ -1928,11 +1928,11 @@
       }
     },
     "community_pin": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Hub row menu item that pins the community to the top of the caller's list (decision 0080)"
     },
     "community_unpin": {
-      "surfaces": ["android", "web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Hub row menu item that unpins the community"
     },
     "post_share_to_conversation": {
@@ -1942,6 +1942,14 @@
     "communities_search_open": {
       "surfaces": ["android", "ios", "web"],
       "description": "Hub header icon that opens the community search (decision 0080)."
+    },
+    "communities_search": {
+      "surfaces": ["android", "ios"],
+      "description": "Accessible label of the hub header button that opens the community search."
+    },
+    "community_pinned": {
+      "surfaces": ["android", "ios"],
+      "description": "Accessible label of the pin shown on a pinned community row."
     }
   }
 }

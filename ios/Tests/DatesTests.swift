@@ -60,4 +60,21 @@ final class DatesTests: XCTestCase {
     func testMillisAreAnInstant() {
         XCTAssertEqual(Dates.at(1_791_419_400_000), at(10, 8, 0, 30))
     }
+
+    func testAnAgeIsWholeUnitsRoundedDownThenTheDate() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        func age(_ seconds: Double) -> Dates.Age { Dates.age(of: now.addingTimeInterval(-seconds), now: now) }
+        XCTAssertEqual(age(59), .now)
+        XCTAssertEqual(age(60), .minutes(1))
+        XCTAssertEqual(age(3_599), .minutes(59))
+        XCTAssertEqual(age(6 * 3_600 + 5), .hours(6))
+        XCTAssertEqual(age(2 * 86_400), .days(2))
+        XCTAssertEqual(age(15 * 86_400), .weeks(2))
+        XCTAssertEqual(age(28 * 86_400), .date)
+    }
+
+    func testAClockAheadOfOursIsNeverTheFuture() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        XCTAssertEqual(Dates.age(of: now.addingTimeInterval(30), now: now), .now)
+    }
 }

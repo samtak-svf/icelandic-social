@@ -288,6 +288,18 @@ func audienceLine(_ community: Community) -> String {
     return "\(audience) · \(plural("community_members", Int(count)))"
 }
 
+/// The audience line the community header carries (decision 0080): `Lokað samfélag · 12 meðlimir`.
+func audienceLineFull(_ community: Community) -> String {
+    let audience = localized(community.audience == .open ? "community_open_full" : "community_private_full")
+    guard let count = community.memberCount else { return audience }
+    return "\(audience) · \(plural("community_members", Int(count)))"
+}
+
+/// The web address of a community, which is what an open community shares (decision 0080).
+func communityLink(_ communityId: String) -> URL? {
+    URL(string: "https://spjall.samtak.is/communities/\(communityId)")
+}
+
 /// The words for a reaction, which a screen reader says in place of its emoji.
 func reactionLabel(_ kind: ReactionKind) -> String {
     switch kind {

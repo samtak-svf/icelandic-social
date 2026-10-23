@@ -156,4 +156,43 @@ final class CommunitiesModelTests: XCTestCase {
         XCTAssertNil(model.problem)
         XCTAssertEqual(model.mine.map(\.communityId), ["k1"])
     }
+
+    func testPinnedCommunitiesLeadAndKeepTheServersOrderWithinEachGroup() async {
+        let model = await model()
+        social.communities["k2"] = makeCommunity("k2", "Fjallgöngur", role: .member)
+        social.communities["k3"] = makeCommunity("k3", "Fiskar", audience: .private, role: .member, pinned: true)
+        social.mine = ["k1", "k2", "k3"]
+        await model.load()
+        XCTAssertEqual(model.mine.map(\.communityId), ["k3", "k1", "k2"])
+    }
+
+    func testPinningAndUnpinningAreTheServersAndReorderTheList() async {
+        let model = await model()
+        social.communities["k2"] = makeCommunity("k2", "Fjallgöngur", role: .member)
+        social.mine = ["k1", "k2"]
+        await model.load()
+        await model.pin("k2", true)
+        XCTAssertTrue(social.calls.contains("pinCommunity k2"))
+        XCTAssertEqual(model.mine.map(\.communityId), ["k2", "k1"])
+        XCTAssertEqual(model.mine.first?.pinned, true)
+        await model.pin("k2", false)
+        XCTAssertTrue(social.calls.contains("unpinCommunity k2"))
+        XCTAssertEqual(model.mine.map(\.communityId), ["k1", "k2"])
+    }
+
+    func testUnreadComesFromTheServerAndIsGoneOnceTheFeedIsOpenedAndTheHubReread() async {
+        let model = await model()
+        social.communities["k1"]?.unread = 3
+        await model.load()
+        XCTAssertEqual(model.mine.first?.unread, 3)
+        social.communities["k1"]?.unread = 0
+        await model.load()
+        XCTAssertEqual(model.mine.first?.unread, 0)
+    }
+
+    func testAnUnknownCommunityIsNotPinned() async {
+        let model = await model()
+        await model.pin("zz", true)
+        XCTAssertFalse(social.calls.contains("pinCommunity zz"))
+    }
 }

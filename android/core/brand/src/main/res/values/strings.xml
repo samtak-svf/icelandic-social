@@ -801,4 +801,8 @@
     <string name="post_share_to_conversation">Senda í samtal</string>
     <!-- Hub header icon that opens the community search (decision 0080). -->
     <string name="communities_search_open">Leita að samfélögum</string>
+    <!-- Accessible label of the hub header button that opens the community search. -->
+    <string name="communities_search">Leita að samfélagi</string>
+    <!-- Accessible label of the pin shown on a pinned community row. -->
+    <string name="community_pinned">Fest efst</string>
 </resources>

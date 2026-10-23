@@ -78,8 +78,27 @@ final class CommunitiesModel {
         await perform(again: { await self.load() }) {
             let (verified, mine) = try await offMain { (try social.me().verified, try social.myCommunities()) }
             self.verified = verified
-            self.mine = mine
+            self.mine = Self.pinnedFirst(mine)
             self.loaded = true
+        }
+    }
+
+    /// The communities this account pinned lead, each group in the order the server gave (decision 0080).
+    static func pinnedFirst(_ communities: [Community]) -> [Community] {
+        communities.filter(\.pinned) + communities.filter { !$0.pinned }
+    }
+
+    /// Pins a community to the top of `Mín samfélög`, or takes the pin off, and reads the list again so the order
+    /// is the server's.
+    func pin(_ communityId: String, _ pinned: Bool) async {
+        guard mine.contains(where: { $0.communityId == communityId }) else { return }
+        let social = social
+        await perform(again: { await self.pin(communityId, pinned) }) {
+            try await offMain {
+                if pinned { try social.pinCommunity(communityId) } else { try social.unpinCommunity(communityId) }
+            }
+            let mine = try await offMain { try social.myCommunities() }
+            self.mine = Self.pinnedFirst(mine)
         }
     }
 

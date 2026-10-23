@@ -8,16 +8,20 @@ struct CommunitiesView: View {
     let onOpen: (String) -> Void
 
     @State private var creating = false
+    /// The search field is open: it sits behind the header's search icon, not on the screen (decision 0080).
+    @State private var searchOpen = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 0) {
             ScreenHeader(title: localized("tab_communities")) {
-                if model.verified {
-                    RoundButton(
-                        systemImage: "plus", label: "community_create", fill: BrandTokens.Colors.primary,
-                        tint: BrandTokens.Colors.primaryFg, size: 34, action: { creating = true })
-                }
+                RoundButton(
+                    systemImage: "magnifyingglass", label: "communities_search", fill: BrandTokens.Colors.muted,
+                    tint: BrandTokens.Colors.fg, size: 34,
+                    action: {
+                        searchOpen = true
+                        model.part = .discover
+                    })
             }
             Picker("tab_communities", selection: part) {
                 ForEach(CommunitiesPart.allCases) { part in
@@ -27,7 +31,7 @@ struct CommunitiesView: View {
             .pickerStyle(.segmented)
             .padding(.horizontal, 16)
             .padding(.vertical, 6)
-            if model.part == .discover {
+            if model.part == .discover && (searchOpen || model.searched) {
                 SocialSearchField(
                     prompt: "communities_find", text: Binding(get: { model.query }, set: { model.query = $0 }),
                     limit: communityNameLimit)
@@ -115,6 +119,9 @@ struct CommunitiesView: View {
     }
 
     @ViewBuilder private var mineList: some View {
+        if model.verified {
+            CreateRow { creating = true }
+        }
         if model.loaded && model.mine.isEmpty && model.problem == nil {
             EmptyState(systemImage: "person.3", text: "communities_empty")
         }
@@ -139,26 +146,83 @@ struct CommunitiesView: View {
                 CommunityRow(community: community)
             }
             .buttonStyle(.plain)
+            .contextMenu {
+                // A pin is this account's own list, so only a community it is in can be pinned.
+                if community.role != nil {
+                    Button {
+                        Task { await model.pin(community.communityId, !community.pinned) }
+                    } label: {
+                        if community.pinned {
+                            Label("community_unpin", systemImage: "pin.slash")
+                        } else {
+                            Label("community_pin", systemImage: "pin")
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
-/// One community: its badge, name, audience and members, and the start of its description.
+/// `Stofna samfélag`, the first row of `Mín samfélög`: it opens the create screen (decision 0080).
+private struct CreateRow: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 0) {
+                HStack(spacing: 12) {
+                    RoundIcon(
+                        systemImage: "plus", fill: BrandTokens.Colors.primary, tint: BrandTokens.Colors.primaryFg,
+                        size: 40
+                    )
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("community_create")
+                            .font(.sans(14.5, black: true))
+                            .foregroundStyle(BrandTokens.Colors.fg)
+                        Text("communities_create_row_hint")
+                            .font(TypeStyle.meta)
+                            .foregroundStyle(BrandTokens.Colors.mutedFg)
+                    }
+                    Spacer(minLength: 8)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                Hairline().padding(.leading, 72)
+            }
+            .frame(minHeight: 64)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// One community: its badge, its name, and the last activity: bold with the count of new posts and a dot while the
+/// reader has not seen them, else when the community was last written in (decision 0080).
 private struct CommunityRow: View {
     let community: Community
+
+    private var unread: Bool { community.unread > 0 }
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 CommunityBadge(community: community)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(verbatim: community.name)
-                        .font(.sans(14.5, black: true))
-                        .foregroundStyle(BrandTokens.Colors.fg)
-                        .lineLimit(1)
-                    Text(verbatim: audienceLine(community))
-                        .font(TypeStyle.meta)
-                        .foregroundStyle(BrandTokens.Colors.mutedFg)
+                    HStack(spacing: 6) {
+                        Text(verbatim: community.name)
+                            .font(.sans(14.5, black: unread))
+                            .foregroundStyle(BrandTokens.Colors.fg)
+                            .lineLimit(1)
+                        if community.pinned {
+                            Image(systemName: "pin.fill")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(BrandTokens.Colors.mutedFg)
+                                .accessibilityLabel(Text("community_pinned"))
+                        }
+                    }
+                    activity
                     if !community.description.isEmpty {
                         Text(verbatim: community.description)
                             .font(.sans(13))
@@ -167,6 +231,12 @@ private struct CommunityRow: View {
                     }
                 }
                 Spacer(minLength: 8)
+                if unread {
+                    Circle()
+                        .fill(BrandTokens.Colors.primary)
+                        .frame(width: 10, height: 10)
+                        .accessibilityHidden(true)
+                }
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(BrandTokens.Colors.mutedFg)
@@ -180,6 +250,23 @@ private struct CommunityRow: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
+    }
+
+    /// The count of new posts, or the age of the last one, or, for a community nobody has written in, who it is for.
+    @ViewBuilder private var activity: some View {
+        if unread {
+            Text(verbatim: plural("community_new_posts", Int(community.unread)))
+                .font(.sans(12.5, black: true))
+                .foregroundStyle(BrandTokens.Colors.primary)
+        } else if let last = community.lastPostAt {
+            Text(verbatim: relativeTime(last))
+                .font(TypeStyle.meta)
+                .foregroundStyle(BrandTokens.Colors.mutedFg)
+        } else {
+            Text(verbatim: audienceLine(community))
+                .font(TypeStyle.meta)
+                .foregroundStyle(BrandTokens.Colors.mutedFg)
+        }
     }
 }
 
