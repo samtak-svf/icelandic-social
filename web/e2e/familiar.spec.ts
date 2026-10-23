@@ -17,16 +17,18 @@ test("a hub row counts what is new, and opening the community clears it", async 
   await write(owner, strings.post_compose, strings.post_publish, "Annar nýi pósturinn.");
   await expect(post(owner, "Annar nýi")).toBeVisible();
 
+  // The feed under the list names the community too, so look in the list alone.
+  const mine = member.locator('section[aria-labelledby="mine"]');
   await member.getByRole("link", { name: strings.tab_communities }).click();
-  const row = member.getByRole("link", { name: new RegExp(name) });
+  const row = mine.getByRole("link", { name: new RegExp(name) });
   await expect(row).toContainText(strings.community_new_posts({ count: 2 }));
   await row.click();
   await expect(member.getByRole("heading", { name })).toBeVisible();
   await expect(post(member, "Annar nýi")).toBeVisible();
 
   await member.getByRole("link", { name: strings.tab_communities }).click();
-  await expect(member.getByRole("link", { name: new RegExp(name) })).toBeVisible();
-  await expect(member.getByText(/nýir? póstar?/)).toHaveCount(0);
+  await expect(row).toBeVisible();
+  await expect(mine.getByText(/nýir? póstar?/)).toHaveCount(0);
 });
 
 test("a pinned community leads the list, and unpinning gives the place back", async ({
