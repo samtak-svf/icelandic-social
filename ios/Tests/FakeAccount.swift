@@ -81,6 +81,9 @@ final class FakeAccount: Account, @unchecked Sendable {
     }
     private var _failOn: String?
 
+    /// What `inspectLink` returns.
+    var linkRequest = LinkRequest(browser: "Firefox", os: "Linux", expiresAt: 1_700_000_300_000, approved: false)
+
     var link: String? {
         get { lock.withLock { _link } }
         set { lock.withLock { _link = newValue } }
@@ -202,6 +205,16 @@ final class FakeAccount: Account, @unchecked Sendable {
             if devices.first(where: { $0.deviceId == deviceId })?.current == true { _signedIn = false }
             devices.removeAll { $0.deviceId == deviceId }
         }
+    }
+
+    func inspectLink(code: String) throws -> LinkRequest {
+        try call("inspectLink \(code)")
+        return linkRequest
+    }
+
+    func approveLink(code: String, since: UInt64?, send: Bool) throws -> UInt64 {
+        try call("approveLink \(code) \(since.map(String.init) ?? "nil") \(send)")
+        return send ? 1024 : 0
     }
 
     func deleteAccount() throws {

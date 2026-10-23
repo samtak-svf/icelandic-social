@@ -9,6 +9,7 @@ struct SettingsSection: View {
     let model: MeModel
     let me: Me
     let notificationsOff: Bool
+    let onLink: () -> Void
 
     @State private var revoking: String?
     @State private var deleting = false
@@ -24,6 +25,20 @@ struct SettingsSection: View {
                         device: device, enabled: !model.busy,
                         onRevoke: MeModel.revocable(device) ? { revoking = device.deviceId } : nil)
                 }
+                Hairline()
+                Button(action: onLink) {
+                    HStack {
+                        Text("device_link_action")
+                            .font(.sans(14.5, black: true))
+                            .foregroundStyle(BrandTokens.Colors.primary)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 48)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(model.busy)
             }
             if notificationsOff {
                 NotificationsOff()

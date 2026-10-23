@@ -9,6 +9,7 @@ struct MeView: View {
     let model: MeModel
     let push: PushModel
     let onVerify: () -> Void
+    let onLink: () -> Void
 
     /// What the photo picker chose, from the circle or from the words under it.
     @State private var picked: PhotosPickerItem?
@@ -40,7 +41,7 @@ struct MeView: View {
                     if !me.verified { VerifyLink(onVerify: onVerify) }
                     CardLabel(key: "invite_link_title")
                     InviteCard(model: model)
-                    SettingsSection(model: model, me: me, notificationsOff: push.off)
+                    SettingsSection(model: model, me: me, notificationsOff: push.off, onLink: onLink)
                 }
                 VersionLine()
             }
