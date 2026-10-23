@@ -121,6 +121,23 @@ describe("a byline's photo", () => {
   });
 });
 
+describe("a member row's photo", () => {
+  it("is null with no photo and the version once one is set", async () => {
+    const [owner, member] = [await person("Eigandi"), await person("Meðlimur")];
+    const id = await community(owner, "open", member);
+    type Row = { accountId: string; photo: string | null };
+    const photoOf = async () =>
+      (
+        await ok<{ members: Row[] }>(await owner.call("GET", `/v1/communities/${id}/members`))
+      ).members.find((m) => m.accountId === member.accountId)?.photo;
+    expect(await photoOf()).toBeNull();
+    await env.DB.prepare("UPDATE accounts SET photo_version = ? WHERE account_id = ?")
+      .bind("ph_0123456789abcdef", member.accountId)
+      .run();
+    expect(await photoOf()).toBe("ph_0123456789abcdef");
+  });
+});
+
 describe("a post's latestComment", () => {
   it("is null with no comments, then the newest of two, with its likes", async () => {
     const [owner, member] = [await person("Eigandi"), await person("Meðlimur")];

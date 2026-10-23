@@ -18,6 +18,12 @@
     },
     { "fg": "muted-fg", "bg": "muted", "level": "aaNormal", "use": "pressed rows" },
     {
+      "fg": "primary",
+      "bg": "muted",
+      "level": "aaNormal",
+      "use": "the liked Líkar button under a hover (decision 0080)"
+    },
+    {
       "fg": "fg",
       "bg": "muted",
       "level": "aaNormal",

@@ -467,6 +467,8 @@ export interface CommunityMember {
   accountId: string;
   name: string | null;
   verified: boolean;
+  /** The profile photo's version, changed by each upload; null when there is none to show (decision 0039) */
+  photo: string | null;
   role: "owner" | "moderator" | "member";
   /** Unix milliseconds */
   joinedAt: number;

@@ -1,35 +1,32 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useAccount } from "../account.tsx";
 import type { Problem } from "../problem.ts";
 import {
   deletePost,
   getPostMedia,
-  react,
-  unreact,
+  pinPost,
+  unpinPost,
   type Author,
+  type Comment,
   type Post,
   type SocialMedia,
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { Initials } from "./avatar.tsx";
+import { relativeTime } from "../lib/relative-time.ts";
+import { Dialog } from "../ui/dialog.tsx";
+import { DotsIcon, Menu, MenuItem } from "../ui/menu.tsx";
+import { Avatar } from "./avatar.tsx";
 import { Button, ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
 import { outcome, when, type Outcome } from "./outcome.ts";
-import { ReportButton } from "./report.tsx";
+import { ReportForm } from "./report.tsx";
+import { ActionRow, Summary, useReactions } from "./post-actions.tsx";
+import { RoleBadge } from "./roles.tsx";
 
 // A post as a community's feed and its own page show it: who wrote it and
 // when, its text and images, its reactions and its comment count. A
 // moderator also sees what a moderator hid or removed, marked as such. Its
 // author deletes it; everyone else reports it.
-
-const REACTIONS = [
-  ["like", "👍", strings.reaction_like],
-  ["love", "❤️", strings.reaction_love],
-  ["laugh", "😂", strings.reaction_laugh],
-  ["wow", "😮", strings.reaction_wow],
-  ["sad", "😢", strings.reaction_sad],
-] as const;
-type Kind = (typeof REACTIONS)[number][0];
 
 export function authorName(author: Author | null): string {
   if (author === null) return strings.person_deleted;
@@ -93,72 +90,258 @@ export function PostView({
   post,
   linked,
   deleted,
+  changed,
+  moderates,
   community,
 }: Readonly<{
   post: Post;
   linked: boolean;
   deleted: () => void;
-  community?: { communityId: string; name: string } | null;
+  /** Called after the post was pinned or unpinned, so the page loads its posts again. */
+  changed: () => void;
+  /** Whether the caller is the owner or a moderator of the post's community. */
+  moderates: boolean;
+  community?: { communityId: string; name: string; photo: string | null } | null;
 }>) {
-  const mine = useMine(post.author);
-  const path = { to: "/posts/$postId", params: { postId: post.postId } };
+  const reactions = useReactions(post);
   return (
     <article
       aria-label={authorName(post.author)}
       className="flex flex-col gap-2 rounded-md border border-border p-4"
     >
       <StateMark state={post.state} />
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <span className="flex items-center gap-2">
-          <Initials name={post.author.name} className="size-8 rounded-md text-sm" />
-          <AuthorName author={post.author} />
-        </span>
-        <time dateTime={new Date(post.createdAt).toISOString()} className="text-sm text-muted-fg">
-          {when(post.createdAt)}
-        </time>
+      {post.pinned && <PinnedMark />}
+      <header className="flex items-start gap-3">
+        <Avatar
+          kind="person"
+          id={post.author.accountId}
+          name={post.author.name}
+          photo={post.author.photo}
+          className="size-10 rounded-full"
+        />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <AuthorName author={post.author} />
+            <RoleBadge role={post.author.role} />
+          </span>
+          <span className="flex flex-wrap items-center gap-x-2 text-sm text-muted-fg">
+            <time dateTime={new Date(post.createdAt).toISOString()} title={when(post.createdAt)}>
+              {relativeTime(post.createdAt)}
+            </time>
+            {community !== undefined && community !== null && (
+              <Link
+                to="/communities/$communityId"
+                params={{ communityId: community.communityId }}
+                className="inline-flex items-center gap-1 font-medium text-fg"
+              >
+                <Avatar
+                  kind="community"
+                  id={community.communityId}
+                  name={community.name}
+                  photo={community.photo}
+                  className="size-5 rounded text-[0.6rem]"
+                />
+                <span className="underline">{community.name}</span>
+              </Link>
+            )}
+          </span>
+        </div>
+        <PostMenu post={post} deleted={deleted} changed={changed} moderates={moderates} />
       </header>
-      {community !== undefined && community !== null && (
+      {post.body !== "" && <Body post={post} linked={linked} />}
+      {post.media.length > 0 && <Images postId={post.postId} media={post.media} />}
+      <Summary post={post} reactions={reactions} linked={linked} />
+      <ActionRow post={post} reactions={reactions} linked={linked} />
+      {linked && post.latestComment !== null && post.latestComment.state === "visible" && (
+        <LatestComment comment={post.latestComment} />
+      )}
+      {linked && (
         <Link
-          to="/communities/$communityId"
-          params={{ communityId: community.communityId }}
-          className="text-sm font-medium underline"
+          to="/posts/$postId"
+          params={{ postId: post.postId }}
+          className="flex min-h-11 items-center rounded-full bg-muted px-4 text-muted-fg"
         >
-          {community.name}
+          {strings.post_write_comment}
         </Link>
       )}
-      {post.body !== "" &&
-        (linked ? (
-          <Link {...path} className="whitespace-pre-wrap">
-            {post.body}
-          </Link>
-        ) : (
-          <p className="whitespace-pre-wrap">{post.body}</p>
-        ))}
-      {post.media.length > 0 && <Images postId={post.postId} media={post.media} />}
-      <Reactions post={post} />
-      <footer className="flex flex-wrap items-center justify-between gap-2">
-        {linked ? (
-          <Link
-            to="/posts/$postId"
-            params={{ postId: post.postId }}
-            className="inline-flex min-h-11 items-center underline"
-          >
-            {strings.post_comments({ count: post.commentCount })}
-          </Link>
-        ) : (
-          <span>{strings.post_comments({ count: post.commentCount })}</span>
-        )}
-        {mine ? (
-          <DeleteButton
-            ask={strings.post_delete_confirm}
-            remove={() => outcome(deletePost({ path: { postId: post.postId } }), 204)}
-            deleted={deleted}
-          />
-        ) : (
-          <ReportButton target={{ kind: "post", id: post.postId }} />
-        )}
-      </footer>
     </article>
+  );
+}
+
+function PinIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 17v5" />
+      <path d="M9 3h6l-1 7 3 3v2H7v-2l3-3z" />
+    </svg>
+  );
+}
+
+/** The marker on the post pinned to the top of its community. */
+function PinnedMark() {
+  return (
+    <p className="inline-flex items-center gap-1 text-sm font-medium text-muted-fg">
+      <PinIcon />
+      {strings.post_pinned}
+    </p>
+  );
+}
+
+/** The newest comment under a card: picture, name, badge and two lines of text; it opens the post. */
+function LatestComment({ comment }: Readonly<{ comment: Comment }>) {
+  return (
+    <Link
+      to="/posts/$postId"
+      params={{ postId: comment.postId }}
+      className="flex items-start gap-2"
+    >
+      <Avatar
+        kind="person"
+        id={comment.author.accountId}
+        name={comment.author.name}
+        photo={comment.author.photo}
+        className="size-8 rounded-full text-xs"
+      />
+      <span className="flex min-w-0 flex-1 flex-col rounded-2xl bg-muted px-3 py-2">
+        <span className="flex flex-wrap items-center gap-x-2">
+          <span className="font-bold">{authorName(comment.author)}</span>
+          <RoleBadge role={comment.author.role} />
+        </span>
+        <span className="line-clamp-2 whitespace-pre-wrap">{comment.body}</span>
+      </span>
+    </Link>
+  );
+}
+
+/** The text, cut to five lines with Sjá meira when it is longer, and a link to the post in a feed. */
+function Body({ post, linked }: Readonly<{ post: Post; linked: boolean }>) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [cut, setCut] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (el && !expanded) setCut(el.scrollHeight > el.clientHeight + 1);
+  }, [post.body, expanded]);
+  const text = (
+    <p ref={ref} className={`whitespace-pre-wrap ${expanded ? "" : "line-clamp-5"}`}>
+      {post.body}
+    </p>
+  );
+  return (
+    <>
+      {linked ? (
+        <Link to="/posts/$postId" params={{ postId: post.postId }}>
+          {text}
+        </Link>
+      ) : (
+        text
+      )}
+      {cut && !expanded && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="min-h-11 self-start text-sm font-medium underline"
+        >
+          {strings.post_see_more}
+        </button>
+      )}
+    </>
+  );
+}
+
+/** The `⋯` menu: Eyða for the author, Tilkynna for others, Festa or Losa for a moderator. */
+function PostMenu({
+  post,
+  deleted,
+  changed,
+  moderates,
+}: Readonly<{ post: Post; deleted: () => void; changed: () => void; moderates: boolean }>) {
+  const mine = useMine(post.author);
+  const [reporting, setReporting] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [problem, setProblem] = useState<Problem | null>(null);
+
+  async function remove() {
+    if (!confirm(strings.post_delete_confirm)) return;
+    setProblem(null);
+    const done = await outcome(deletePost({ path: { postId: post.postId } }), 204);
+    if (done.ok) deleted();
+    else setProblem(done.problem);
+  }
+
+  async function togglePin() {
+    setProblem(null);
+    const path = { communityId: post.communityId, postId: post.postId };
+    const done = await outcome(post.pinned ? unpinPost({ path }) : pinPost({ path }), 204);
+    if (done.ok) changed();
+    else setProblem(done.problem);
+  }
+
+  return (
+    <div className="flex flex-col items-end">
+      <Menu label={strings.more_options} icon={<DotsIcon />}>
+        {(close) => (
+          <>
+            {moderates && (
+              <MenuItem
+                onSelect={() => {
+                  close();
+                  void togglePin();
+                }}
+              >
+                {post.pinned ? strings.post_unpin : strings.post_pin}
+              </MenuItem>
+            )}
+            {mine ? (
+              <MenuItem
+                tone="danger"
+                onSelect={() => {
+                  close();
+                  void remove();
+                }}
+              >
+                {strings.delete}
+              </MenuItem>
+            ) : (
+              <MenuItem
+                onSelect={() => {
+                  close();
+                  setReporting(true);
+                }}
+              >
+                {strings.report}
+              </MenuItem>
+            )}
+          </>
+        )}
+      </Menu>
+      {sent && <Status>{strings.report_sent}</Status>}
+      {problem && (
+        <Status>
+          <ProblemText problem={problem} />
+        </Status>
+      )}
+      {reporting && (
+        <Dialog title={strings.report_title} onClose={() => setReporting(false)}>
+          <ReportForm
+            target={{ kind: "post", id: post.postId }}
+            onSent={() => {
+              setReporting(false);
+              setSent(true);
+            }}
+          />
+        </Dialog>
+      )}
+    </div>
   );
 }
 
@@ -218,45 +401,5 @@ function Image({
       className={box}
       style={ratio}
     />
-  );
-}
-
-/** The five reactions; the caller's is pressed, and pressing it again takes it back. */
-function Reactions({ post }: Readonly<{ post: Post }>) {
-  const [mine, setMine] = useState<Kind | null>(post.myReaction);
-  const [busy, setBusy] = useState(false);
-  const counts = new Map(post.reactions.map((r) => [r.kind, r.count]));
-  // The count as the server gave it, moved by what the caller changed since.
-  const count = (kind: Kind) =>
-    (counts.get(kind) ?? 0) - (post.myReaction === kind ? 1 : 0) + (mine === kind ? 1 : 0);
-
-  async function choose(kind: Kind) {
-    setBusy(true);
-    const next = mine === kind ? null : kind;
-    const done =
-      next === null
-        ? await outcome(unreact({ path: { postId: post.postId } }), 204)
-        : await outcome(react({ path: { postId: post.postId }, body: { kind: next } }), 204);
-    if (done.ok) setMine(next);
-    setBusy(false);
-  }
-
-  return (
-    <div role="group" aria-label={strings.reactions_title} className="flex flex-wrap gap-1">
-      {REACTIONS.map(([kind, emoji, label]) => (
-        <button
-          key={kind}
-          type="button"
-          aria-label={label}
-          aria-pressed={mine === kind}
-          disabled={busy}
-          onClick={() => void choose(kind)}
-          className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full border border-border px-2 aria-pressed:border-primary aria-pressed:bg-muted"
-        >
-          <span aria-hidden="true">{emoji}</span>
-          {count(kind) > 0 && <span className="text-sm">{count(kind)}</span>}
-        </button>
-      ))}
-    </div>
   );
 }

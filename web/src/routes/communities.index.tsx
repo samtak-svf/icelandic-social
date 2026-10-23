@@ -1,18 +1,22 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useId, useState, type FormEvent } from "react";
 import { useAccount } from "../account.tsx";
 import type { Problem } from "../problem.ts";
 import {
-  createCommunity,
   getFeed,
   listCommunities,
   myCommunities,
+  pinCommunity,
+  unpinCommunity,
   type Community,
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { Initials } from "../social/avatar.tsx";
+import { relativeTime } from "../lib/relative-time.ts";
+import { Avatar } from "../social/avatar.tsx";
 import { outcome, useLoad, type Outcome } from "../social/outcome.ts";
 import { PostView } from "../social/post.tsx";
+import { moderatesAs } from "../social/roles.tsx";
+import { DotsIcon, Menu, MenuItem } from "../ui/menu.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 
 // Communities (decision 0063) in three tabs (decision 0079): the feed of what
@@ -32,14 +36,33 @@ function Communities() {
   const { state } = useAccount();
   // Loaded whatever the tab chosen, so the names of the feed's communities
   // need no second call once the person has been here.
-  const [mine] = useLoad(useCallback(() => outcome(myCommunities(), 200), []));
+  const [mine, reloadMine] = useLoad(useCallback(() => outcome(myCommunities(), 200), []));
   const [tab, setTab] = useState<Tab>("mine");
-  const byName = new Map(
-    (mine?.ok ? mine.data.communities : []).map((c) => [c.communityId, c.name]),
-  );
+  const byId = new Map((mine?.ok ? mine.data.communities : []).map((c) => [c.communityId, c]));
   return (
     <>
-      <h1 className="font-headline text-3xl">{strings.tab_communities}</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="font-headline text-3xl">{strings.tab_communities}</h1>
+        <button
+          type="button"
+          aria-label={strings.communities_find}
+          onClick={() => setTab("discover")}
+          className="inline-flex size-11 items-center justify-center rounded-md hover:bg-muted"
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className="size-6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-4-4" />
+          </svg>
+        </button>
+      </div>
       <div role="group" aria-label={strings.tab_communities} className="mt-2 flex flex-wrap gap-2">
         {TABS.map(([value, label]) => (
           <Button
@@ -52,26 +75,55 @@ function Communities() {
           </Button>
         ))}
       </div>
-      {tab === "feed" && <Feed byName={byName} />}
+      {tab === "feed" && <Feed byId={byId} />}
       {tab === "mine" && (
-        <Mine mine={mine} verified={state.status === "signed-in" && state.me.verified} />
+        <Mine
+          mine={mine}
+          reloadMine={reloadMine}
+          byId={byId}
+          verified={state.status === "signed-in" && state.me.verified}
+        />
       )}
       {tab === "discover" && <Discover />}
     </>
   );
 }
 
-/** The communities the person is in, the find, and, when verified, creating one. */
+/** The communities the person is in, the way to make one, and what is new in them (0080). */
 function Mine({
   mine,
+  reloadMine,
+  byId,
   verified,
-}: Readonly<{ mine: Outcome<{ communities: Community[] }> | null; verified: boolean }>) {
+}: Readonly<{
+  mine: Outcome<{ communities: Community[] }> | null;
+  reloadMine: () => void;
+  byId: Map<string, Community>;
+  verified: boolean;
+}>) {
   return (
     <>
       <section aria-labelledby="mine" className="mt-6">
-        <h2 id="mine" className="text-xl font-semibold">
+        <h2 id="mine" className="sr-only">
           {strings.communities_mine}
         </h2>
+        {verified && (
+          <Link
+            to="/communities/new"
+            className="flex min-h-14 items-center gap-3 rounded-md border border-border px-4 py-2"
+          >
+            <span
+              aria-hidden="true"
+              className="flex size-10 items-center justify-center rounded-lg bg-muted text-2xl"
+            >
+              +
+            </span>
+            <span className="flex min-w-0 flex-col justify-center">
+              <span className="font-semibold">{strings.community_create}</span>
+              <span className="text-sm text-muted-fg">{strings.communities_create_row_hint}</span>
+            </span>
+          </Link>
+        )}
         {mine === null && <Status>{strings.loading}</Status>}
         {mine?.ok === false && (
           <Status>
@@ -81,16 +133,22 @@ function Mine({
         {mine?.ok && mine.data.communities.length === 0 && (
           <p className="mt-2 text-muted-fg">{strings.communities_empty}</p>
         )}
-        {mine?.ok && <CommunityList communities={mine.data.communities} />}
+        {mine?.ok && <CommunityList communities={mine.data.communities} changed={reloadMine} />}
       </section>
-      <Find />
-      {verified && <Create />}
+      {mine?.ok && mine.data.communities.length > 0 && (
+        <section aria-labelledby="from-yours" className="mt-8">
+          <h2 id="from-yours" className="text-xl font-semibold">
+            {strings.communities_from_yours}
+          </h2>
+          <Feed byId={byId} />
+        </section>
+      )}
     </>
   );
 }
 
 /** Everything in the person's communities, newest first (decision 0079). */
-function Feed({ byName }: Readonly<{ byName: Map<string, string> }>) {
+function Feed({ byId }: Readonly<{ byId: Map<string, Community> }>) {
   const [feed, changed] = useLoad(useCallback(() => outcome(getFeed(), 200), []));
   return (
     <section aria-label={strings.communities_tab_feed} className="mt-6 flex flex-col gap-4">
@@ -111,11 +169,9 @@ function Feed({ byName }: Readonly<{ byName: Map<string, string> }>) {
                 post={post}
                 linked
                 deleted={changed}
-                community={
-                  byName.has(post.communityId)
-                    ? { communityId: post.communityId, name: byName.get(post.communityId) ?? "" }
-                    : null
-                }
+                changed={changed}
+                moderates={moderatesAs(byId.get(post.communityId)?.role ?? null)}
+                community={context(byId.get(post.communityId))}
               />
             </li>
           ))}
@@ -125,37 +181,107 @@ function Feed({ byName }: Readonly<{ byName: Map<string, string> }>) {
   );
 }
 
-function CommunityList({ communities }: Readonly<{ communities: Community[] }>) {
+/** What a feed card names of the community it comes from, or nothing for one not known here. */
+function context(community: Community | undefined) {
+  return community === undefined
+    ? null
+    : { communityId: community.communityId, name: community.name, photo: community.photo };
+}
+
+function CommunityList({
+  communities,
+  changed,
+}: Readonly<{ communities: Community[]; changed?: () => void }>) {
   if (communities.length === 0) return null;
   return (
     <ul className="mt-2 flex flex-col gap-2">
       {communities.map((c) => (
         <li key={c.communityId}>
-          <CommunityCard community={c} />
+          <CommunityCard community={c} changed={changed} />
         </li>
       ))}
     </ul>
   );
 }
 
-/** One community among the person's or on its way to discovery (decision 0079). */
-function CommunityCard({ community }: Readonly<{ community: Community }>) {
+/**
+ * One community among the person's or on its way to discovery (decisions 0079
+ * and 0080): its picture and name, in bold with a count and a dot while it has
+ * posts the person has not seen, otherwise when it was last posted in. A
+ * member can pin it to the top of their list from the row's `⋯`.
+ */
+function CommunityCard({
+  community,
+  changed,
+}: Readonly<{ community: Community; changed?: () => void }>) {
+  const unread = community.unread > 0;
+  const [problem, setProblem] = useState<Problem | null>(null);
+  async function togglePin() {
+    setProblem(null);
+    const path = { communityId: community.communityId };
+    const done = await outcome(
+      community.pinned ? unpinCommunity({ path }) : pinCommunity({ path }),
+      204,
+    );
+    if (done.ok) changed?.();
+    else setProblem(done.problem);
+  }
   return (
-    <Link
-      to="/communities/$communityId"
-      params={{ communityId: community.communityId }}
-      className="flex min-h-14 items-center gap-3 rounded-md border border-border px-4 py-2"
-    >
-      <Initials name={community.name} className="size-10 rounded-lg" />
-      <span className="flex min-w-0 flex-col justify-center">
-        <span className="truncate font-semibold">{community.name}</span>
-        <span className="text-sm text-muted-fg">
-          {community.audience === "open" ? strings.community_open : strings.community_private}
-          {community.memberCount !== null &&
-            ` · ${strings.community_members({ count: community.memberCount })}`}
+    <div className="flex min-h-14 items-center gap-1 rounded-md border border-border pr-1">
+      <Link
+        to="/communities/$communityId"
+        params={{ communityId: community.communityId }}
+        className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2"
+      >
+        <Avatar
+          kind="community"
+          id={community.communityId}
+          name={community.name}
+          photo={community.photo}
+          className="size-10 rounded-lg"
+        />
+        <span className="flex min-w-0 flex-col justify-center">
+          <span className={`truncate ${unread ? "font-bold" : "font-semibold"}`}>
+            {community.name}
+          </span>
+          <span className="text-sm text-muted-fg">
+            {unread ? (
+              <span className="inline-flex items-center gap-1 font-medium text-fg">
+                {strings.community_new_posts({ count: community.unread })}
+                <span aria-hidden="true" className="size-2 rounded-full bg-primary" />
+              </span>
+            ) : community.lastPostAt !== null ? (
+              strings.community_last_post({ when: relativeTime(community.lastPostAt) })
+            ) : community.audience === "open" ? (
+              strings.community_open
+            ) : (
+              strings.community_private
+            )}
+            {community.memberCount !== null &&
+              ` · ${strings.community_members({ count: community.memberCount })}`}
+          </span>
         </span>
-      </span>
-    </Link>
+      </Link>
+      {community.role !== null && changed !== undefined && (
+        <Menu label={strings.more_options} icon={<DotsIcon />} align="right">
+          {(close) => (
+            <MenuItem
+              onSelect={() => {
+                close();
+                void togglePin();
+              }}
+            >
+              {community.pinned ? strings.community_unpin : strings.community_pin}
+            </MenuItem>
+          )}
+        </Menu>
+      )}
+      {problem && (
+        <Status>
+          <ProblemText problem={problem} />
+        </Status>
+      )}
+    </div>
   );
 }
 
@@ -221,84 +347,6 @@ function Discover() {
         )}
         {browse?.ok && <CommunityList communities={browse.data.communities} />}
       </section>
-    </section>
-  );
-}
-
-function Create() {
-  const id = useId();
-  const navigate = useNavigate();
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [audience, setAudience] = useState<"open" | "private">("open");
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<Problem | null>(null);
-
-  async function create(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setProblem(null);
-    const made = await outcome(
-      createCommunity({ body: { name: name.trim(), description: description.trim(), audience } }),
-      200,
-    );
-    setBusy(false);
-    if (made.ok) {
-      await navigate({
-        to: "/communities/$communityId",
-        params: { communityId: made.data.communityId },
-      });
-    } else setProblem(made.problem);
-  }
-
-  const field = "min-h-11 rounded-md border border-border-strong bg-surface px-3";
-  return (
-    <section aria-labelledby={`${id}-h`} className="mt-8">
-      <h2 id={`${id}-h`} className="text-xl font-semibold">
-        {strings.community_create}
-      </h2>
-      <form onSubmit={(event) => void create(event)} className="mt-2 flex flex-col gap-2">
-        <label htmlFor={`${id}-name`}>{strings.community_name}</label>
-        <input
-          id={`${id}-name`}
-          required
-          maxLength={80}
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          className={field}
-        />
-        <label htmlFor={`${id}-description`}>{strings.community_description}</label>
-        <textarea
-          id={`${id}-description`}
-          maxLength={500}
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          className={`${field} py-2`}
-        />
-        <fieldset className="flex flex-col">
-          {(["open", "private"] as const).map((value) => (
-            <label key={value} className="flex min-h-11 items-center gap-2">
-              <input
-                type="radio"
-                name="audience"
-                checked={audience === value}
-                onChange={() => setAudience(value)}
-              />
-              <span>
-                <span className="font-semibold">
-                  {value === "open" ? strings.community_open : strings.community_private}
-                </span>
-                {": "}
-                {value === "open" ? strings.community_open_hint : strings.community_private_hint}
-              </span>
-            </label>
-          ))}
-        </fieldset>
-        <Button tone="primary" type="submit" disabled={busy || name.trim() === ""}>
-          {strings.community_create}
-        </Button>
-        <Status>{problem && <ProblemText problem={problem} />}</Status>
-      </form>
     </section>
   );
 }

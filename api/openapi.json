@@ -1601,6 +1601,15 @@
           "verified": {
             "type": "boolean"
           },
+          "photo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b",
+            "description": "The profile photo's version, changed by each upload; null when there is none to show (decision 0039)"
+          },
           "role": {
             "type": "string",
             "enum": [
@@ -1618,6 +1627,7 @@
           "accountId",
           "name",
           "verified",
+          "photo",
           "role",
           "joinedAt"
         ]

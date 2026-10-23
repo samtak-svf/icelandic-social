@@ -60,45 +60,113 @@ export function Shell({ children }: Readonly<{ children: ReactNode }>) {
     case "signed-in":
       break;
   }
+  // Below 640px the four places sit in a bar at the bottom of the screen,
+  // above it in the header; `--tabbar-height` is what a bottom-pinned box
+  // (the comment box) keeps clear of (decision 0080).
   return (
-    <>
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-2 px-4 py-3">
+    <div className="[--tabbar-height:3.5rem] sm:[--tabbar-height:0px]">
+      <header className="sm:border-b sm:border-border">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-2 px-4 py-3">
           <span className="font-headline text-2xl">{strings.app_name}</span>
-          <nav aria-label={strings.main_navigation}>
-            <ul className="flex flex-wrap gap-1">
-              <NavLink to="/">{strings.tab_me}</NavLink>
-              <NavLink to="/communities">{strings.tab_communities}</NavLink>
-              <NavLink to="/notifications">
-                {strings.tab_notifications}
-                <UnreadBadge />
+          <nav
+            aria-label={strings.main_navigation}
+            className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg sm:static sm:border-0"
+          >
+            <ul className="mx-auto flex max-w-2xl justify-around gap-1 sm:justify-end">
+              <NavLink to="/" icon={<PersonIcon />}>
+                {strings.tab_me}
               </NavLink>
-              <NavLink to="/settings">{strings.settings_title}</NavLink>
+              <NavLink to="/communities" icon={<PeopleIcon />}>
+                {strings.tab_communities}
+              </NavLink>
+              <NavLink
+                to="/notifications"
+                icon={
+                  <span className="relative">
+                    <BellIcon />
+                    <UnreadBadge className="absolute -right-2 -top-1 min-w-4 px-1 text-center text-xs" />
+                  </span>
+                }
+              >
+                {strings.tab_notifications}
+              </NavLink>
+              <NavLink to="/settings" icon={<GearIcon />}>
+                {strings.settings_title}
+              </NavLink>
             </ul>
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-2xl px-4 py-6">{children}</main>
-    </>
+      <main className="mx-auto max-w-2xl px-4 py-6 pb-[calc(var(--tabbar-height)+1.5rem)] sm:pb-6">
+        {children}
+      </main>
+    </div>
   );
 }
 
 type Tab = "/" | "/communities" | "/notifications" | "/settings";
 
-function NavLink({ to, children }: Readonly<{ to: Tab; children: ReactNode }>) {
+function NavLink({
+  to,
+  icon,
+  children,
+}: Readonly<{ to: Tab; icon: ReactNode; children: ReactNode }>) {
   return (
-    <li>
+    <li className="flex-1 sm:flex-none">
       <Link
         to={to}
-        className="inline-flex min-h-11 items-center rounded-md px-3"
+        // aria-current="page" is set by the link itself on the place shown.
+        className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-md px-3 text-xs sm:min-h-11 sm:flex-row sm:gap-2 sm:text-base"
         activeProps={{ className: "bg-muted font-semibold" }}
         activeOptions={{ exact: to === "/" }}
       >
-        {children}
+        {icon}
+        <span>{children}</span>
       </Link>
     </li>
   );
 }
+
+function Icon({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-6"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {children}
+    </svg>
+  );
+}
+
+const PersonIcon = () => (
+  <Icon>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21a8 8 0 0 1 16 0" />
+  </Icon>
+);
+const PeopleIcon = () => (
+  <Icon>
+    <circle cx="9" cy="8" r="3.5" />
+    <path d="M2 20a7 7 0 0 1 14 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14a6 6 0 0 1 4 6" />
+  </Icon>
+);
+const BellIcon = () => (
+  <Icon>
+    <path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4" />
+  </Icon>
+);
+const GearIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" />
+  </Icon>
+);
 
 function Frame({ children }: Readonly<{ children: ReactNode }>) {
   return <main className="mx-auto max-w-md px-4 py-16">{children}</main>;

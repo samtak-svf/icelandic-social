@@ -39,7 +39,7 @@
       "description": "The new-conversation picker when nobody else has signed in yet; points at the invite link (docs/decisions/0022, 0036)."
     },
     "people_search": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Placeholder of the name search at the top of the new-conversation picker (docs/decisions/0036)."
     },
     "people_none_found": {
@@ -87,7 +87,7 @@
       "description": "Button on an invite landing that opens a conversation with the inviter."
     },
     "invite": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Share your own invite link or QR code (docs/decisions/0009)."
     },
     "composer_placeholder": {
@@ -399,11 +399,11 @@
       "description": "Quote-reply to a message."
     },
     "copy": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Message menu entry that copies a text message to the clipboard (docs/decisions/0046)."
     },
     "copied": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Brief confirmation that a message was copied, where the system shows none (docs/decisions/0046)."
     },
     "link_open": {
@@ -482,7 +482,7 @@
       "description": "Title of the sheet listing who reacted to a message (docs/decisions/0045)."
     },
     "reaction_count": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Screen-reader text of a bubble's reaction pill: how many reactions it holds (docs/decisions/0045).",
       "plural": true,
       "placeholders": {
@@ -747,19 +747,19 @@
       "description": "Button that repeats the action that failed."
     },
     "cancel": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Dismisses a confirmation without doing anything."
     },
     "back": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Screen-reader label of the back arrow at the top of a screen."
     },
     "more_options": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Screen-reader label of the conversation's menu button (the disappearing timer, block)."
     },
     "share": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Shares the invite link through the system share sheet."
     },
     "devices_title": {
@@ -1727,7 +1727,7 @@
       "description": "Action in the group name dialog that clears the group's name (docs/decisions/0078)."
     },
     "save": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Confirm button that saves a change, such as a group's name (docs/decisions/0078)."
     },
     "name_set_card": {
@@ -1767,6 +1767,165 @@
     "left_banner": {
       "surfaces": ["android", "ios"],
       "description": "Banner shown in a conversation the user has left (docs/decisions/0078)."
+    },
+    "community_picture_choose": {
+      "surfaces": ["web"],
+      "description": "Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080)."
+    },
+    "community_picture_remove": {
+      "surfaces": ["web"],
+      "description": "Button that removes a community's picture (decision 0080)."
+    },
+    "community_cover_choose": {
+      "surfaces": ["web"],
+      "description": "Label of the file picker for a community's wide cover (decision 0080)."
+    },
+    "community_cover_remove": {
+      "surfaces": ["web"],
+      "description": "Button that removes a community's cover (decision 0080)."
+    },
+    "communities_from_yours": {
+      "surfaces": ["web"],
+      "description": "Heading of the cross-community feed under the list on the hub"
+    },
+    "communities_create_row_hint": {
+      "surfaces": ["web"],
+      "description": "Second line of the create row on the hub"
+    },
+    "close": {
+      "surfaces": ["web"],
+      "description": "Closes a dialog or a menu"
+    },
+    "community_open_full": {
+      "surfaces": ["web"],
+      "description": "Audience line of a community header, open"
+    },
+    "community_private_full": {
+      "surfaces": ["web"],
+      "description": "Audience line of a community header, private"
+    },
+    "community_invite_title": {
+      "surfaces": ["web"],
+      "description": "Title of the invitation dialog"
+    },
+    "community_invite_sent": {
+      "surfaces": ["web"],
+      "description": "Told after an invitation went out"
+    },
+    "community_invite_none": {
+      "surfaces": ["web"],
+      "description": "No person matched the invitation search"
+    },
+    "community_link_copied": {
+      "surfaces": ["web"],
+      "description": "Told after the community link was copied"
+    },
+    "community_members_stack": {
+      "surfaces": ["web"],
+      "description": "Name of the picture stack of members in a community header"
+    },
+    "community_cover_alt": {
+      "surfaces": ["web"],
+      "description": "Name of the cover picture"
+    },
+    "time_now": {
+      "surfaces": ["web"],
+      "description": "Relative time of something posted less than a minute ago"
+    },
+    "time_minutes": {
+      "surfaces": ["web"],
+      "description": "Relative time in minutes, as a short label on a post",
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "time_hours": {
+      "surfaces": ["web"],
+      "description": "Relative time in hours, as a short label on a post",
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "time_days": {
+      "surfaces": ["web"],
+      "description": "Relative time in days, as a short label on a post",
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "time_weeks": {
+      "surfaces": ["web"],
+      "description": "Relative time in weeks, as a short label on a post",
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "post_see_more": {
+      "surfaces": ["web"],
+      "description": "Expands a post whose text is cut short in the feed"
+    },
+    "post_like": {
+      "surfaces": ["web"],
+      "description": "Action that likes a post with one press; long press or hover opens the other reactions"
+    },
+    "post_comment_action": {
+      "surfaces": ["web"],
+      "description": "Action that opens the comments of a post"
+    },
+    "post_copy_link": {
+      "surfaces": ["web"],
+      "description": "Menu item that copies the address of a post"
+    },
+    "post_link_copied": {
+      "surfaces": ["web"],
+      "description": "Told after the address of a post was copied"
+    },
+    "post_pin": {
+      "surfaces": ["web"],
+      "description": "Menu item for a moderator or the owner that pins a post to the top of its community (decision 0080)"
+    },
+    "post_write_comment": {
+      "surfaces": ["web"],
+      "description": "Pill under a post card that opens its comments"
+    },
+    "post_reactions_more": {
+      "surfaces": ["web"],
+      "description": "Name of the group of five reactions opened from the like action"
+    },
+    "post_unpin": {
+      "surfaces": ["web"],
+      "description": "Menu item that unpins the community's pinned post"
+    },
+    "post_pinned": {
+      "surfaces": ["web"],
+      "description": "Marker on the card of the post pinned to the top of its community"
+    },
+    "comment_like": {
+      "surfaces": ["web"],
+      "description": "Under a comment: like it with a thumbs up, bold while the caller has liked it (decision 0080)"
+    },
+    "community_new_posts": {
+      "surfaces": ["web"],
+      "description": "On a hub row: how many posts the caller has not seen in the community (decision 0080)",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "community_last_post": {
+      "surfaces": ["web"],
+      "description": "On a hub row of a community with no unread posts: when the latest post was made; {when} is a short age such as '6 klst.' or a date (decision 0080)",
+      "placeholders": {
+        "when": "string"
+      }
+    },
+    "community_pin": {
+      "surfaces": ["web"],
+      "description": "Hub row menu item that pins the community to the top of the caller's list (decision 0080)"
+    },
+    "community_unpin": {
+      "surfaces": ["web"],
+      "description": "Hub row menu item that unpins the community"
     }
   }
 }

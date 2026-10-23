@@ -4,7 +4,6 @@ import type { Problem } from "../problem.ts";
 import {
   getCommunity,
   joinCommunity,
-  leaveCommunity,
   listCommunityPosts,
   restoreCommunity,
   withdrawJoinRequest,
@@ -12,17 +11,17 @@ import {
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { formatIsDate } from "../lib/is-format.ts";
-import { About } from "../social/about.tsx";
+import { CommunityBar, CommunityHeader } from "../social/community-header.tsx";
+import { moderatesAs } from "../social/roles.tsx";
 import { PostComposer } from "../social/composer.tsx";
 import { outcome, useLoad, type Outcome } from "../social/outcome.ts";
-import { Manage } from "../social/moderate.tsx";
 import { PostView } from "../social/post.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 
 // One community (decision 0063): its name and audience, joining, withdrawing
-// a join request or leaving, writing a post, and its posts, newest first.
-// Um samfélagið is the panel the meta row opens (decision 0079), and Stjórna
-// holds what its moderators and its owner reach for. A platform moderator
+// a join request, writing a post, and its posts, newest first. Um samfélagið
+// and Stjórna are screens of their own, reached from the audience line and
+// the `⋯` menu (decision 0080), and leaving is in that menu. A platform moderator
 // alone sees a deleted one, and restores it within its 30 days (decision
 // 0070).
 export const Route = createFileRoute("/communities/$communityId/")({ component: CommunityPage });
@@ -32,7 +31,6 @@ function CommunityPage() {
   const [community, reload] = useLoad(
     useCallback(() => outcome(getCommunity({ path: { communityId } }), 200), [communityId]),
   );
-  const [info, setInfo] = useState(false);
   if (community === null) return <Status>{strings.loading}</Status>;
   if (!community.ok) {
     return (
@@ -44,37 +42,11 @@ function CommunityPage() {
   const c = community.data;
   if (c.deletedAt !== null) return <Deleted community={c} restored={reload} />;
   const reads = c.role !== null || c.audience === "open";
-  const moderates = c.role === "owner" || c.role === "moderator";
   return (
     <>
-      <header className="flex flex-col gap-2">
-        <h1 className="font-headline text-3xl">{c.name}</h1>
-        <button
-          type="button"
-          aria-expanded={info}
-          onClick={() => setInfo(!info)}
-          className="cursor-pointer self-start rounded-md text-left text-sm text-muted-fg"
-        >
-          {c.audience === "open" ? strings.community_open : strings.community_private}
-          {c.memberCount !== null &&
-            ` · ${strings.community_members({ count: c.memberCount })} · ${strings.community_info}`}
-        </button>
-        {c.description !== "" && (
-          <>
-            <p className="line-clamp-3 whitespace-pre-wrap">{c.description}</p>
-            <button
-              type="button"
-              onClick={() => setInfo(true)}
-              className="cursor-pointer self-start rounded-md text-sm underline"
-            >
-              {strings.community_read_more}
-            </button>
-          </>
-        )}
-      </header>
-      {info && <About community={c} />}
+      <CommunityBar community={c} changed={reload} />
+      <CommunityHeader community={c} readable={reads} />
       <Membership community={c} changed={reload} />
-      {moderates && <Manage community={c} changed={reload} />}
       {reads && <Posts community={c} />}
     </>
   );
@@ -130,12 +102,6 @@ function Membership({
         onClick={() => void change(outcome(joinCommunity({ path }), 200))}
       >
         {label}
-      </Button>
-    );
-  } else if (community.role !== "owner") {
-    control = (
-      <Button disabled={busy} onClick={() => void change(outcome(leaveCommunity({ path }), 204))}>
-        {strings.community_leave}
       </Button>
     );
   }
@@ -240,7 +206,13 @@ function Posts({ community }: Readonly<{ community: Community }>) {
         <ul className="flex flex-col gap-4">
           {posts.data.posts.map((post) => (
             <li key={post.postId}>
-              <PostView post={post} linked deleted={reload} />
+              <PostView
+                post={post}
+                linked
+                deleted={reload}
+                changed={reload}
+                moderates={moderatesAs(community.role)}
+              />
             </li>
           ))}
         </ul>

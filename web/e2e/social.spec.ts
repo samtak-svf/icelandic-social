@@ -1,8 +1,18 @@
-import type { Browser, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
 import { png } from "./images.ts";
-import { expect, serveOrigin, test, WEB } from "./origin.ts";
-import { signInVerified } from "./accounts.ts";
+import {
+  cardMenu,
+  expectMember,
+  found,
+  join,
+  openComposer,
+  openMenu,
+  person,
+  post,
+  write,
+} from "./social-helpers.ts";
+import { expect, test, WEB } from "./origin.ts";
 
 // The first social slice on the web (#291), through what a person sees: a
 // member finds and joins a community, posts, comments, reacts, is told of a
@@ -12,38 +22,9 @@ import { signInVerified } from "./accounts.ts";
 /** Where `cf dev` listens, for its dev-only paths. */
 const DEV = process.env.SPJALL_DEV_URL ?? "http://127.0.0.1:8787";
 
-/** A person in a browser of their own, signed in with Google and marked by Kenni as `name`. */
-async function person(browser: Browser, name: string): Promise<Page> {
-  const page = await (await browser.newContext()).newPage();
-  await serveOrigin(page);
-  await signInVerified(page, name);
-  return page;
-}
-
 /** Runs the jobs that are due, as the minute cron would (backend/dev/worker.ts). */
 async function runJobs() {
   expect((await fetch(`${DEV}/dev/jobs`, { method: "POST" })).status).toBe(204);
-}
-
-async function write(page: Page, label: string, action: string, text: string) {
-  await page.getByLabel(label).fill(text);
-  await page.getByRole("button", { name: action }).click();
-  await expect(page.getByLabel(label)).toHaveValue("");
-}
-
-const post = (page: Page, text: string) => page.getByRole("article").filter({ hasText: text });
-
-/** Creates a community as `owner`, who is left on its page; its address. */
-async function found(owner: Page, audience: "open" | "private"): Promise<string> {
-  const name = `Garðyrkjufélagið ${crypto.randomUUID().slice(0, 8)}`;
-  await owner.getByRole("link", { name: strings.tab_communities }).click();
-  await owner.getByLabel(strings.community_name).fill(name);
-  if (audience === "private") {
-    await owner.getByRole("radio", { name: new RegExp(strings.community_private_hint) }).check();
-  }
-  await owner.getByRole("button", { name: strings.community_create }).click();
-  await expect(owner.getByRole("heading", { name })).toBeVisible();
-  return owner.url();
 }
 
 /** Makes the person in `page` a platform moderator, through the dev Worker. */
@@ -60,11 +41,10 @@ async function platformModerator(page: Page) {
   expect((await fetch(url, { method: "POST" })).status).toBe(204);
 }
 
-/** Joins the open community at `address` as `page`. */
-async function join(page: Page, address: string) {
-  await page.goto(address);
-  await page.getByRole("button", { name: strings.community_join }).click();
-  await expect(page.getByRole("button", { name: strings.community_leave })).toBeVisible();
+/** Goes to Stjórna through the `⋯` menu. */
+async function manage(page: Page) {
+  await openMenu(page);
+  await page.getByRole("menuitem", { name: new RegExp(`^${strings.community_manage}`) }).click();
 }
 
 test("a member joins, posts, comments, reacts, is told and reports; a moderator acts", async ({
@@ -80,6 +60,7 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
 
   // The owner creates an open community.
   await owner.getByRole("link", { name: strings.tab_communities }).click();
+  await owner.getByRole("link", { name: new RegExp(`^${strings.community_create}`) }).click();
   await owner.getByLabel(strings.community_name).fill(name);
   await owner.getByLabel(strings.community_description).fill("Allt um garða.");
   await owner.getByRole("button", { name: strings.community_create }).click();
@@ -89,20 +70,29 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
   // The member finds it by name and joins.
   for (const one of [member, spammer]) {
     await one.getByRole("link", { name: strings.tab_communities }).click();
+    // The search sits behind the icon in the hub's header (0080).
+    await one.getByRole("button", { name: strings.communities_find }).first().click();
     await one.getByRole("searchbox").fill(name.slice(0, 18));
-    await one.getByRole("button", { name: strings.communities_find }).click();
-    await one.getByRole("link", { name: new RegExp(name) }).click();
+    await one.getByRole("button", { name: strings.communities_find }).last().click();
+    // The found list and the browse list under it both hold the row.
+    await one
+      .getByRole("link", { name: new RegExp(name) })
+      .first()
+      .click();
     await one.getByRole("button", { name: strings.community_join }).click();
-    await expect(one.getByRole("button", { name: strings.community_leave })).toBeVisible();
+    await expectMember(one);
   }
 
   // The member posts and reacts to their own post.
   await write(member, strings.post_compose, strings.post_publish, "Tómatarnir eru komnir upp.");
   const mine = post(member, "Tómatarnir");
-  const like = mine.getByRole("button", { name: strings.reaction_like });
+  const like = mine.getByRole("button", { name: strings.post_like, exact: true });
   await like.click();
-  await expect(like).toHaveAttribute("aria-pressed", "true");
-  await expect(like).toContainText("1");
+  await expect(mine.getByRole("button", { name: strings.reaction_like })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(mine.getByText(strings.reaction_count({ count: 1 }))).toBeVisible();
 
   // The owner comments on it.
   await owner.goto(community);
@@ -130,13 +120,14 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
   await write(spammer, strings.post_compose, strings.post_publish, "Ódýr úr, smelltu hér.");
   await member.goto(community);
   const spam = post(member, "Ódýr úr");
-  await spam.getByRole("button", { name: strings.report }).click();
+  await cardMenu(spam, strings.report);
   await spam.getByLabel(strings.report_reason_spam).check();
   await spam.getByRole("button", { name: strings.report_send }).click();
   await expect(spam.getByText(strings.report_sent)).toBeVisible();
 
   // The owner reviews the report and hides the post.
   await owner.goto(community);
+  await manage(owner);
   await owner.getByRole("link", { name: strings.moderation_queue }).click();
   const report = owner.getByRole("article", { name: strings.report_reason_spam });
   await expect(report).toContainText("Ódýr úr");
@@ -163,7 +154,8 @@ test("a member posts images, deletes a comment and the post, and withdraws a joi
 
   // Five images, or one over 10 MB, are refused before any upload.
   const image = { name: "mynd.png", mimeType: "image/png", buffer: await png(member) };
-  const pick = member.getByLabel(strings.post_add_images);
+  await openComposer(member);
+  const pick = member.getByRole("dialog").getByLabel(strings.post_add_images);
   await pick.setInputFiles([1, 2, 3, 4, 5].map((n) => ({ ...image, name: `mynd${n}.png` })));
   await expect(member.getByText(strings.post_images_too_many)).toBeVisible();
   const large = Buffer.alloc(10 * 1024 * 1024 + 1);
@@ -193,9 +185,11 @@ test("a member posts images, deletes a comment and the post, and withdraws a joi
   // Someone else sees them too, and has no delete on another's post.
   await owner.goto(open);
   await expect(post(owner, "Myndir úr garðinum").getByRole("img")).toHaveCount(2);
-  await expect(
-    post(owner, "Myndir úr garðinum").getByRole("button", { name: strings.delete }),
-  ).toHaveCount(0);
+  await post(owner, "Myndir úr garðinum")
+    .getByRole("button", { name: strings.more_options })
+    .click();
+  await expect(owner.getByRole("menuitem", { name: strings.delete })).toHaveCount(0);
+  await owner.keyboard.press("Escape");
 
   // The member comments, then deletes the comment and the post, after confirming.
   await mine.getByRole("link", { name: strings.post_comments({ count: 0 }) }).click();
@@ -206,7 +200,7 @@ test("a member posts images, deletes a comment and the post, and withdraws a joi
   await expect(comment).toHaveCount(0);
   await expect(member.getByText(strings.comments_empty)).toBeVisible();
   member.once("dialog", (dialog) => void dialog.accept());
-  await post(member, "Myndir úr garðinum").getByRole("button", { name: strings.delete }).click();
+  await cardMenu(post(member, "Myndir úr garðinum"), strings.delete);
   await member.waitForURL(open);
   await expect(member.getByText(strings.posts_empty)).toBeVisible();
 
@@ -233,13 +227,14 @@ test("a moderator hides, then restores and mutes and unmutes from the closed rep
   await write(writer, strings.post_compose, strings.post_publish, "Kaupið ódýra áburðinn.");
   await reader.reload();
   const spam = post(reader, "ódýra áburðinn");
-  await spam.getByRole("button", { name: strings.report }).click();
+  await cardMenu(spam, strings.report);
   await spam.getByLabel(strings.report_reason_spam).check();
   await spam.getByRole("button", { name: strings.report_send }).click();
   await expect(spam.getByText(strings.report_sent)).toBeVisible();
 
   // Hiding closes the report; the closed side holds it.
   await owner.goto(community);
+  await manage(owner);
   await owner.getByRole("link", { name: strings.moderation_queue }).click();
   const open = owner.getByRole("article", { name: strings.report_reason_spam });
   await open.getByLabel(strings.report_reason).fill("Ruslpóstur");
@@ -281,10 +276,10 @@ test("a moderator hides, then restores and mutes and unmutes from the closed rep
   await act(strings.moderation_mute);
   await writer.reload();
   await expect(writer.getByText(strings.community_muted)).toBeVisible();
-  await expect(writer.getByLabel(strings.post_compose)).toHaveCount(0);
+  await expect(writer.getByRole("button", { name: strings.post_compose_prompt })).toHaveCount(0);
   await act(strings.moderation_unmute);
   await writer.reload();
-  await expect(writer.getByLabel(strings.post_compose)).toBeVisible();
+  await expect(writer.getByRole("button", { name: strings.post_compose_prompt })).toBeVisible();
   await expect(writer.getByText(strings.community_muted)).toHaveCount(0);
 
   // The open side is empty still.
@@ -308,6 +303,7 @@ test("a moderator approves one join request and declines another, who must wait"
 
   // The owner sees how many wait, and answers each.
   await owner.reload();
+  await manage(owner);
   await owner.getByRole("link", { name: strings.join_requests_waiting({ count: 2 }) }).click();
   await expect(owner.getByRole("heading", { name: strings.join_requests_title })).toBeVisible();
   const request = (name: string) => owner.getByRole("article").filter({ hasText: name });
@@ -319,7 +315,7 @@ test("a moderator approves one join request and declines another, who must wait"
 
   // One is a member; the other is told, and offered no way to ask again yet.
   await welcome.reload();
-  await expect(welcome.getByRole("button", { name: strings.community_leave })).toBeVisible();
+  await expectMember(welcome);
   await refused.reload();
   await expect(refused.getByText(strings.community_join_declined)).toBeVisible();
   await expect(refused.getByText(/^Þú getur beðið aftur \d+\. \p{L}+ \d{4}\.$/u)).toBeVisible();
@@ -343,6 +339,7 @@ test("the owner deletes a community, and a platform moderator restores it", asyn
     asked = dialog.message();
     void dialog.accept();
   });
+  await manage(owner);
   await owner.getByRole("button", { name: strings.community_delete }).click();
   await owner.waitForURL(/\/communities$/);
   expect(asked).toBe(strings.community_delete_confirm({ name }));

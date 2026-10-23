@@ -8,14 +8,27 @@ export const strings = {
   app_name: "Hjal",
   /** Bottom tab: own profile, invite link and the way to settings (docs/decisions/0034). */
   tab_me: "Ég",
+  /** Placeholder of the name search at the top of the new-conversation picker (docs/decisions/0036). */
+  people_search: "Leita að nafni",
+  /** Share your own invite link or QR code (docs/decisions/0009). */
+  invite: "Bjóða",
   /** Short form of verified_with_kennitala, under the other person's name at the top of a conversation. */
   verified_short: "Vottað",
   /** Stands in for an account whose name the server has not given, in titles and rows (docs/decisions/0022). */
   person_unnamed: "Nafnlaus",
+  /** Message menu entry that copies a text message to the clipboard (docs/decisions/0046). */
+  copy: "Afrita",
+  /** Brief confirmation that a message was copied, where the system shows none (docs/decisions/0046). */
+  copied: "Afritað",
   /** Add a reaction to a message. */
   react: "Bregðast við",
   /** Title of the sheet listing who reacted to a message (docs/decisions/0045). */
   reactions_title: "Viðbrögð",
+  /** Screen-reader text of a bubble's reaction pill: how many reactions it holds (docs/decisions/0045). */
+  reaction_count: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " viðbragð"
+      : String(args.count) + " viðbrögð",
   /** Under the sign-in button: what Google is asked for, and that Kenni can verify later. */
   sign_in_hint: "Við biðjum Google aðeins um nafn og netfang. Þú getur síðar staðfest auðkenni með rafrænum skilríkjum.",
   /** Primary sign-in button: signs in with Google (docs/decisions/0033). */
@@ -65,6 +78,14 @@ export const strings = {
     "Villunúmer: " + args.id,
   /** Button that repeats the action that failed. */
   try_again: "Reyna aftur",
+  /** Dismisses a confirmation without doing anything. */
+  cancel: "Hætta við",
+  /** Screen-reader label of the back arrow at the top of a screen. */
+  back: "Til baka",
+  /** Screen-reader label of the conversation's menu button (the disappearing timer, block). */
+  more_options: "Fleiri valkostir",
+  /** Shares the invite link through the system share sheet. */
+  share: "Deila",
   /** Confirmation before signing a device out; says what it stops. */
   device_revoke_confirm: "Aftengja tækið? Þá getur það hvorki sent né tekið við skilaboðum.",
   /** Button on Ég that signs this device out, as revoking it does (docs/decisions/0047). */
@@ -455,4 +476,84 @@ export const strings = {
   support_account_heading: "Innskráningar, tæki og eyðing aðgangs",
   /** Body on /support explaining where to manage sessions, unlink devices and delete an account. */
   support_account_body: "Í Stillingum getur þú séð alla vafra og síma þar sem aðgangurinn þinn er skráður inn og skráð út úr þeim. Í símaappinu undir Ég getur þú einnig aftengt einstök tæki eða valið „Eyða aðgangi“ til að eyða aðganginum og öllum gögnum hans af þjóninum.",
+  /** Confirm button that saves a change, such as a group's name (docs/decisions/0078). */
+  save: "Vista",
+  /** Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080). */
+  community_picture_choose: "Velja mynd samfélagsins",
+  /** Button that removes a community's picture (decision 0080). */
+  community_picture_remove: "Fjarlægja mynd samfélagsins",
+  /** Label of the file picker for a community's wide cover (decision 0080). */
+  community_cover_choose: "Velja forsíðumynd",
+  /** Button that removes a community's cover (decision 0080). */
+  community_cover_remove: "Fjarlægja forsíðumynd",
+  /** Heading of the cross-community feed under the list on the hub */
+  communities_from_yours: "Frá samfélögunum þínum",
+  /** Second line of the create row on the hub */
+  communities_create_row_hint: "Safnaðu fólki saman um málefni",
+  /** Closes a dialog or a menu */
+  close: "Loka",
+  /** Audience line of a community header, open */
+  community_open_full: "Opið samfélag",
+  /** Audience line of a community header, private */
+  community_private_full: "Lokað samfélag",
+  /** Title of the invitation dialog */
+  community_invite_title: "Bjóða í samfélagið",
+  /** Told after an invitation went out */
+  community_invite_sent: "Boð sent",
+  /** No person matched the invitation search */
+  community_invite_none: "Enginn fannst",
+  /** Told after the community link was copied */
+  community_link_copied: "Hlekkur samfélagsins afritaður",
+  /** Name of the picture stack of members in a community header */
+  community_members_stack: "Meðlimir samfélagsins",
+  /** Name of the cover picture */
+  community_cover_alt: "Forsíðumynd samfélagsins",
+  /** Relative time of something posted less than a minute ago */
+  time_now: "Núna",
+  /** Relative time in minutes, as a short label on a post */
+  time_minutes: (args: { count: number }): string =>
+    String(args.count) + " mín.",
+  /** Relative time in hours, as a short label on a post */
+  time_hours: (args: { count: number }): string =>
+    String(args.count) + " klst.",
+  /** Relative time in days, as a short label on a post */
+  time_days: (args: { count: number }): string =>
+    String(args.count) + " d.",
+  /** Relative time in weeks, as a short label on a post */
+  time_weeks: (args: { count: number }): string =>
+    String(args.count) + " vik.",
+  /** Expands a post whose text is cut short in the feed */
+  post_see_more: "Sjá meira",
+  /** Action that likes a post with one press; long press or hover opens the other reactions */
+  post_like: "Líkar",
+  /** Action that opens the comments of a post */
+  post_comment_action: "Athugasemd",
+  /** Menu item that copies the address of a post */
+  post_copy_link: "Afrita tengil",
+  /** Told after the address of a post was copied */
+  post_link_copied: "Tengill afritaður",
+  /** Menu item for a moderator or the owner that pins a post to the top of its community (decision 0080) */
+  post_pin: "Festa",
+  /** Pill under a post card that opens its comments */
+  post_write_comment: "Skrifaðu athugasemd…",
+  /** Name of the group of five reactions opened from the like action */
+  post_reactions_more: "Fleiri viðbrögð",
+  /** Menu item that unpins the community's pinned post */
+  post_unpin: "Losa",
+  /** Marker on the card of the post pinned to the top of its community */
+  post_pinned: "Fest efst",
+  /** Under a comment: like it with a thumbs up, bold while the caller has liked it (decision 0080) */
+  comment_like: "Líkar þetta",
+  /** On a hub row: how many posts the caller has not seen in the community (decision 0080) */
+  community_new_posts: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " nýr póstur"
+      : String(args.count) + " nýir póstar",
+  /** On a hub row of a community with no unread posts: when the latest post was made; {when} is a short age such as '6 klst.' or a date (decision 0080) */
+  community_last_post: (args: { when: string }): string =>
+    "Síðasti póstur: " + args.when,
+  /** Hub row menu item that pins the community to the top of the caller's list (decision 0080) */
+  community_pin: "Festa efst",
+  /** Hub row menu item that unpins the community */
+  community_unpin: "Losa",
 } as const;

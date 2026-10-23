@@ -1,7 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect } from "react";
-import { notifications, readNotifications, type Notification } from "../generated/api.ts";
+import {
+  myCommunities,
+  notifications,
+  readNotifications,
+  type Community,
+  type Notification,
+} from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
+import { Avatar } from "../social/avatar.tsx";
 import { outcome, useLoad, when } from "../social/outcome.ts";
 import { authorName } from "../social/post.tsx";
 import { ProblemText, Status } from "../ui/kit.tsx";
@@ -13,6 +20,9 @@ export const Route = createFileRoute("/notifications")({ component: Notification
 
 function Notifications() {
   const [page] = useLoad(useCallback(() => outcome(notifications(), 200), []));
+  // The picture of the community a notice has no person for.
+  const [mine] = useLoad(useCallback(() => outcome(myCommunities(), 200), []));
+  const byId = new Map((mine?.ok ? mine.data.communities : []).map((c) => [c.communityId, c]));
   const newest = page?.ok ? page.data.notifications[0]?.createdAt : undefined;
   useEffect(() => {
     if (newest === undefined) return;
@@ -35,7 +45,7 @@ function Notifications() {
         <ul className="mt-4 flex flex-col gap-2">
           {page.data.notifications.map((n) => (
             <li key={n.notificationId}>
-              <Item notification={n} />
+              <Item notification={n} community={byId.get(n.communityId)} />
             </li>
           ))}
         </ul>
@@ -54,16 +64,38 @@ function text(n: Notification): string {
   }[n.kind]();
 }
 
-function Item({ notification: n }: Readonly<{ notification: Notification }>) {
+function Item({
+  notification: n,
+  community,
+}: Readonly<{ notification: Notification; community: Community | undefined }>) {
   const body = (
     <>
-      <span className={n.read ? "" : "font-semibold"}>{text(n)}</span>
-      <time dateTime={new Date(n.createdAt).toISOString()} className="text-sm text-muted-fg">
-        {when(n.createdAt)}
-      </time>
+      {n.actor !== null ? (
+        <Avatar
+          kind="person"
+          id={n.actor.accountId}
+          name={n.actor.name}
+          photo={n.actor.photo}
+          className="size-10 rounded-md"
+        />
+      ) : (
+        <Avatar
+          kind="community"
+          id={n.communityId}
+          name={community?.name ?? null}
+          photo={community?.photo ?? null}
+          className="size-10 rounded-lg"
+        />
+      )}
+      <span className="flex min-w-0 flex-col">
+        <span className={n.read ? "" : "font-semibold"}>{text(n)}</span>
+        <time dateTime={new Date(n.createdAt).toISOString()} className="text-sm text-muted-fg">
+          {when(n.createdAt)}
+        </time>
+      </span>
     </>
   );
-  const box = "flex min-h-11 flex-col justify-center rounded-md border border-border px-4 py-2";
+  const box = "flex min-h-11 items-center gap-3 rounded-md border border-border px-4 py-2";
   // A removed post is not there to open; its community is.
   if (n.postId !== null && n.kind !== "moderated") {
     return (

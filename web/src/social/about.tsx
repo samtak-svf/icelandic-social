@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { listCommunityMembers, type Community } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { Initials } from "./avatar.tsx";
+import { Avatar } from "./avatar.tsx";
 import { outcome, useLoad } from "./outcome.ts";
 import { ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
 
@@ -36,7 +36,13 @@ export function About({ community }: Readonly<{ community: Community }>) {
         <ul className="flex flex-col gap-2">
           {members.data.members.map((member) => (
             <li key={member.accountId} className="flex items-center gap-2">
-              <Initials name={member.name} className="size-8 rounded-md text-sm" />
+              <Avatar
+                kind="person"
+                id={member.accountId}
+                name={member.name}
+                photo={member.photo}
+                className="size-8 rounded-md text-sm"
+              />
               <span className="flex flex-wrap items-center gap-x-2">
                 <span className="font-semibold">{member.name ?? strings.person_unnamed}</span>
                 {member.verified && <VerifiedMark className="text-sm" />}
