@@ -340,8 +340,9 @@ private struct MemberFaces: View {
             ForEach(Array(members.prefix(5)), id: \.accountId) { member in
                 Avatar(
                     name: member.name, kind: member.verified ? .verified : .unverified, size: 28,
-                    photo: member.photoOf)
-                    .overlay { Circle().strokeBorder(BrandTokens.Colors.bg, lineWidth: 2) }
+                    photo: member.photoOf
+                )
+                .overlay { Circle().strokeBorder(BrandTokens.Colors.bg, lineWidth: 2) }
             }
         }
         .accessibilityElement(children: .ignore)

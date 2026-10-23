@@ -190,7 +190,11 @@ final class PostModel {
         guard let communityId else { return }
         await perform(again: { await self.pin(pinned) }) {
             self.post = try await offMain { () throws -> Post in
-                if pinned { try social.pinPost(communityId, post: id) } else { try social.unpinPost(communityId, post: id) }
+                if pinned {
+                    try social.pinPost(communityId, post: id)
+                } else {
+                    try social.unpinPost(communityId, post: id)
+                }
                 return try social.post(id)
             }
         }
