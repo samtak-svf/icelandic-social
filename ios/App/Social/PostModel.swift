@@ -24,6 +24,9 @@ final class PostModel {
     private(set) var replyingTo: Comment?
     /// This account's id: its own post and comments can be deleted. Nil until it is known.
     private(set) var me: String?
+    /// This account's name and photo, for the comment composer's own picture (decision 0080).
+    private(set) var myName: String?
+    private(set) var myPhoto: PhotoOf?
     /// The post was deleted from here, so the screen goes back to its community.
     private(set) var deleted = false
     private(set) var busy = false
@@ -76,7 +79,11 @@ final class PostModel {
             self.comments = page.comments
             self.next = page.next
             self.loaded = true
-            if self.me == nil { self.me = try? await offMain { try social.me().accountId } }
+            if self.me == nil, let own = try? await offMain({ try social.me() }) {
+                self.me = own.accountId
+                self.myName = own.name
+                self.myPhoto = own.photoOf
+            }
         }
     }
 

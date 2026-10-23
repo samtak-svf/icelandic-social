@@ -59,7 +59,7 @@ struct CommunitiesView: View {
         .task(id: model.part) {
             switch model.part {
             case .feed: await model.loadFeed()
-            case .mine: break
+            case .mine: await model.loadFeed()
             case .discover: await model.search()
             }
         }
@@ -88,7 +88,7 @@ struct CommunitiesView: View {
     private var shown: [String] {
         switch model.part {
         case .feed: model.feedPosts.map(\.postId)
-        case .mine: model.mine.map(\.communityId)
+        case .mine: model.mine.map(\.communityId) + model.feedPosts.map(\.postId)
         case .discover: model.found.map(\.communityId)
         }
     }
@@ -106,6 +106,12 @@ struct CommunitiesView: View {
         if model.feedLoaded && model.feedPosts.isEmpty && model.problem == nil {
             EmptyState(systemImage: "text.bubble", text: "communities_feed_empty")
         }
+        feedRows
+    }
+
+    /// The feed's cards and the sentinel that pages it: shared by the feed part and the one under `Mín samfélög`,
+    /// so there is one feed state and one way to draw it.
+    @ViewBuilder private var feedRows: some View {
         ForEach(model.feedPosts, id: \.postId) { post in
             PostCard(
                 post: post, linked: true, writes: model.writes(post),
@@ -129,6 +135,16 @@ struct CommunitiesView: View {
             EmptyState(systemImage: "person.3", text: "communities_empty")
         }
         rows(model.mine)
+        if !model.mine.isEmpty {
+            Text("communities_from_yours")
+                .font(.sans(13, black: true))
+                .foregroundStyle(BrandTokens.Colors.mutedFg)
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 4)
+                .accessibilityAddTraits(.isHeader)
+            feedRows
+        }
     }
 
     @ViewBuilder private var discoverList: some View {

@@ -70,6 +70,17 @@ final class CommunitiesModelTests: XCTestCase {
         XCTAssertNil(model.feedNext)
     }
 
+    func testTheFeedUnderMyCommunitiesLoadsOnceHoweverOftenThePartOpens() async {
+        let model = await model()
+        social.mine = ["k1"]
+        social.posts = ["k1": [makePost("p1", "k1")]]
+        model.part = .mine
+        await model.loadFeed()
+        await model.loadFeed()
+        XCTAssertEqual(model.feedPosts.map(\.postId), ["p1"])
+        XCTAssertEqual(social.calls.filter { $0.hasPrefix("feed") }.count, 1)
+    }
+
     func testAFeedPostIsReactedToOnlyWhereThisAccountMayWrite() async {
         let model = await model()
         social.mine = ["k1", "k3"]
