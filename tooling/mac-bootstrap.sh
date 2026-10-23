@@ -5,8 +5,11 @@
 #   ssh samtak-mac 'bash -s' < tooling/mac-bootstrap.sh
 #
 # Safe to run again; each step skips what is already there. Xcode is the one
-# step it cannot take: it needs an Apple ID sign-in on the Mac, so the script
-# stops and says so until Xcode is installed.
+# step it cannot take: Apple serves it only to a signed-in developer, so the
+# script stops and says so until Xcode is installed. The Mac itself needs no
+# Apple ID for it: sign in to developer.apple.com in a browser elsewhere, copy
+# its ADCDownloadAuth cookie to the Mac over ssh stdin, fetch the .xip from
+# download.developer.apple.com with curl, delete the cookie, then xip -x.
 #
 # Nothing that signs goes on this Mac: no certificate, no profile, no store
 # key. The release workflow stays on GitHub's hosted runners.
@@ -15,7 +18,7 @@ set -euo pipefail
 say() { printf '==> %s\n' "$*"; }
 
 if ! xcode-select -p 2>/dev/null | grep -q '/Applications/Xcode'; then
-  say "Xcode is not installed. Install it from the App Store (or with xcodes), then:"
+  say "Xcode is not installed (the header of this script says how, with no Apple ID here), then:"
   say "  sudo xcode-select -s /Applications/Xcode.app && sudo xcodebuild -license accept"
   exit 1
 fi
