@@ -6,19 +6,26 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import samtak.spjall.account.FakeAccount
+import samtak.spjall.core.Author
+import samtak.spjall.core.CardCommunity
+import samtak.spjall.core.CommunityMember
+import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.ConversationState
 import samtak.spjall.core.Mute
 import samtak.spjall.core.Person
+import samtak.spjall.social.FakeSocial
+import samtak.spjall.social.community
 
 /** Whose photo an avatar draws; each is decoded once and kept in memory, and a failure is never kept. */
 class PhotosTest {
     private val dispatcher = StandardTestDispatcher()
     private val account = FakeAccount(signedIn = true)
+    private val social = FakeSocial()
     private val decoded = mutableListOf<String>()
 
     private fun cache(capacity: Int = 64) =
-        PhotoCache(account, dispatcher, capacity) { path ->
+        PhotoCache(account, social, dispatcher, capacity) { path ->
             decoded += path
             if (path.endsWith(".webp")) "image of $path" else null
         }
@@ -71,6 +78,42 @@ class PhotosTest {
         assertEquals(PhotoOf("a2", "v3"), of(withPhoto))
         assertNull(of(without))
         assertNull("a group's avatar stays initials (decision 0039)", of(withPhoto, without))
+    }
+
+    @Test
+    fun eachKindAsksTheCoreForItsOwnFileAndIsKeptByIdAndVersion() =
+        runTest(dispatcher) {
+            account.photoFiles = mapOf("c1/v1" to "account.webp")
+            social.pictureFiles = mapOf("c1/v1" to "picture.webp")
+            social.coverFiles = mapOf("c1/v1" to "cover.webp")
+            val cache = cache()
+            val picture = PhotoOf("c1", "v1", PhotoKind.CommunityPicture)
+            val cover = PhotoOf("c1", "v1", PhotoKind.CommunityCover)
+            assertEquals("image of picture.webp", cache.load(picture))
+            assertEquals("image of cover.webp", cache.load(cover))
+            assertEquals("image of account.webp", cache.load(PhotoOf("c1", "v1")))
+            repeat(2) { cache.load(picture) }
+            assertEquals(listOf("communityPicture c1 v1", "communityCover c1 v1"), social.calls)
+            assertEquals(listOf("photo c1 v1"), account.calls.filter { it.startsWith("photo") })
+            assertEquals("image of picture.webp", cache.kept(picture))
+            assertNull("a new version is another photo", cache.kept(PhotoOf("c1", "v2", PhotoKind.CommunityPicture)))
+        }
+
+    @Test
+    fun aCommunityAndAMemberNameTheirImagesByVersion() {
+        val community = community("c1").copy(photo = "p3", cover = "k4")
+        assertEquals(PhotoOf("c1", "p3", PhotoKind.CommunityPicture), community.pictureOf())
+        assertEquals(PhotoOf("c1", "k4", PhotoKind.CommunityCover), community.coverOf())
+        assertNull(community("c1").pictureOf())
+        assertNull(community("c1").coverOf())
+        assertEquals(
+            PhotoOf("a2", "v7"),
+            CommunityMember("a2", "Anna", true, CommunityRole.MEMBER, 1uL, "v7").photoOf(),
+        )
+        assertNull(CommunityMember("a3", null, false, CommunityRole.MEMBER, 1uL, null).photoOf())
+        assertEquals(PhotoOf("c1", "p1", PhotoKind.CommunityPicture), CardCommunity("c1", "K", "p1").pictureOf())
+        assertEquals(PhotoOf("a4", "v2"), Author("a4", "Anna", true, "v2", null).photoOf())
+        assertNull(Author("a5", null, false, null, null).photoOf())
     }
 
     @Test

@@ -112,4 +112,65 @@ class CommunitiesViewModelTest {
             advanceUntilIdle()
             assertNull(model.state.value.problem)
         }
+
+    @Test
+    fun pinnedCommunitiesLeadMine() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", "Kórinn", role = CommunityRole.MEMBER)
+            social.communities["k2"] = community("k2", "Skákfélagið", role = CommunityRole.MEMBER, pinned = true)
+            assertEquals(
+                listOf("k2", "k1"),
+                model()
+                    .state.value.mine
+                    .map { it.communityId },
+            )
+        }
+
+    @Test
+    fun pinningMovesACommunityToTheTopAndUnpinningBack() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", "Kórinn", role = CommunityRole.MEMBER)
+            social.communities["k2"] = community("k2", "Skákfélagið", role = CommunityRole.MEMBER)
+            val model = model()
+            model.pin("k2", true)
+            advanceUntilIdle()
+            assertTrue("pinCommunity k2" in social.calls)
+            assertEquals(
+                "k2",
+                model.state.value.mine
+                    .first()
+                    .communityId,
+            )
+            model.pin("k2", false)
+            advanceUntilIdle()
+            assertTrue("unpinCommunity k2" in social.calls)
+            assertFalse(
+                model.state.value.mine
+                    .first { it.communityId == "k2" }
+                    .pinned,
+            )
+        }
+
+    @Test
+    fun unreadPostsAreReadAgainWhenTheHubIsLoadedAgain() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.MEMBER, unread = 3uL)
+            val model = model()
+            assertEquals(
+                3uL,
+                model.state.value.mine
+                    .single()
+                    .unread,
+            )
+            // Opening the community cleared them on the server; the hub asks again on return.
+            social.communities["k1"] = community("k1", role = CommunityRole.MEMBER, unread = 0uL)
+            model.load()
+            advanceUntilIdle()
+            assertEquals(
+                0uL,
+                model.state.value.mine
+                    .single()
+                    .unread,
+            )
+        }
 }

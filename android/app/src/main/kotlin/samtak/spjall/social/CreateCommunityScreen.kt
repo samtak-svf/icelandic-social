@@ -21,6 +21,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,6 +65,7 @@ fun CreateCommunityScreen(
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                PictureRows(state, actions)
                 Column(modifier = Modifier.selectableGroup()) {
                     Audience(
                         CommunityAudience.OPEN,
@@ -86,6 +88,26 @@ fun CreateCommunityScreen(
                     modifier = Modifier.align(Alignment.End).heightIn(min = 44.dp),
                 ) { Text(stringResource(R.string.community_create)) }
             }
+        }
+    }
+}
+
+/** Choosing the picture and the cover, each removable until the community is made (0080). */
+@Composable
+private fun PictureRows(
+    state: CreateCommunityViewModel.State,
+    actions: CreateCommunityActions,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        TextButton(onClick = actions::pickPicture) { Text(stringResource(R.string.community_picture_choose)) }
+        if (state.hasPicture) {
+            TextButton(onClick = actions::removePicture) { Text(stringResource(R.string.community_picture_remove)) }
+        }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        TextButton(onClick = actions::pickCover) { Text(stringResource(R.string.community_cover_choose)) }
+        if (state.hasCover) {
+            TextButton(onClick = actions::removeCover) { Text(stringResource(R.string.community_cover_remove)) }
         }
     }
 }

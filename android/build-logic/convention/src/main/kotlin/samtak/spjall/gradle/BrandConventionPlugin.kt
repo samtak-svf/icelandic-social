@@ -32,6 +32,8 @@ class BrandConventionPlugin : Plugin<Project> {
                     defaultConfig {
                         applicationId = ids.string("store", "androidApplicationId")
                         buildConfigField("String", "API_BASE_URL", quoted("https://" + ids.string("hosts", "api")))
+                        // Shared links point at the real web, also from a debug build.
+                        buildConfigField("String", "WEB_BASE_URL", quoted("https://" + ids.string("hosts", "web")))
                         buildConfigField(
                             "String",
                             "CHANNEL_MESSAGES",

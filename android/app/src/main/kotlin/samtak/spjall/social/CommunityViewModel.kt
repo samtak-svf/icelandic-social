@@ -199,6 +199,42 @@ class CommunityViewModel(
         }
     }
 
+    /** Sets the community picture from the file [read] makes; the file goes once it is sent (0080). */
+    fun setPicture(read: () -> File) = setImage(::setPicture, read, Social::setCommunityAvatar)
+
+    /** Sets the community cover from the file [read] makes. */
+    fun setCover(read: () -> File) = setImage(::setCover, read, Social::setCommunityCover)
+
+    fun removePicture() = removeImage(::removePicture, Social::removeCommunityAvatar)
+
+    fun removeCover() = removeImage(::removeCover, Social::removeCommunityCover)
+
+    private fun setImage(
+        again: (() -> File) -> Unit,
+        read: () -> File,
+        send: Social.(String, String) -> String,
+    ) {
+        perform({ again(read) }) {
+            val file = read()
+            try {
+                social.send(id, file.path)
+            } finally {
+                file.delete()
+            }
+            _state.update { it.copy(community = social.community(id)) }
+        }
+    }
+
+    private fun removeImage(
+        again: () -> Unit,
+        remove: Social.(String) -> Unit,
+    ) {
+        perform(again) {
+            social.remove(id)
+            _state.update { it.copy(community = social.community(id)) }
+        }
+    }
+
     fun loadModerationLog() {
         perform(::loadModerationLog) {
             val log = social.communityModerationLog(id, null, MODERATION_LOG_PAGE)
@@ -344,6 +380,17 @@ class CommunityViewModel(
             } catch (e: CoreException) {
                 _state.update { it.copy(reacting = it.reacting - postId, problem = e.problem()) }
             }
+        }
+    }
+
+    /** Pins the post to the top of the community, or loosens it; the feed is read again so the pinned post leads. */
+    fun pin(
+        postId: String,
+        pinned: Boolean,
+    ) {
+        perform(again = { pin(postId, pinned) }) {
+            if (pinned) social.pinPost(id, postId) else social.unpinPost(id, postId)
+            reload()
         }
     }
 

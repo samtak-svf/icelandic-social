@@ -44,6 +44,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.NavController
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -59,14 +60,18 @@ import samtak.spjall.conversation.ConversationInfoActions
 import samtak.spjall.conversation.ConversationInfoScreen
 import samtak.spjall.conversation.ConversationScreen
 import samtak.spjall.conversation.ConversationViewModel
+import samtak.spjall.conversation.LocalPostCards
 import samtak.spjall.conversation.Locator
+import samtak.spjall.conversation.PostCards
 import samtak.spjall.conversations.ConversationsActions
 import samtak.spjall.conversations.ConversationsScreen
 import samtak.spjall.conversations.ConversationsViewModel
+import samtak.spjall.conversations.Outgoing
 import samtak.spjall.conversations.PickActions
 import samtak.spjall.conversations.PickScreen
 import samtak.spjall.conversations.PickViewModel
 import samtak.spjall.conversations.forwarding
+import samtak.spjall.core.Body
 import samtak.spjall.core.Item
 import samtak.spjall.core.MuteFor
 import samtak.spjall.core.coreVersion
@@ -89,6 +94,7 @@ import samtak.spjall.signin.UpdateScreen
 import samtak.spjall.signin.VerifyScreen
 import samtak.spjall.social.SocialRoutes
 import samtak.spjall.social.UnreadViewModel
+import samtak.spjall.social.WithPostImages
 import samtak.spjall.social.socialScreens
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.LocalPhotos
@@ -289,7 +295,13 @@ class MainActivity : ComponentActivity() {
             ) {
                 composable(LIST) { Conversations(list, nav) }
                 composable(ME) { Me(signIns, nav) }
-                socialScreens(graph.social, graph.account, graph.files, nav, unread::refresh)
+                socialScreens(
+                    graph.social,
+                    graph.account,
+                    graph.files,
+                    nav,
+                    unread::refresh,
+                ) { post -> nav.navigate("$SHARE/$post") }
                 composable(VERIFY) { Verify(nav) }
                 composable(PEOPLE) { People(nav) }
                 // Adding to a group that exists (0078): the picker, for that conversation's members.
@@ -297,17 +309,25 @@ class MainActivity : ComponentActivity() {
                     entry.arguments?.getString("id")?.let { People(nav, targetConversation = it) }
                 }
                 composable("$CONVERSATION/{id}") { entry ->
-                    entry.arguments?.getString("id")?.let { Conversation(it, nav) }
+                    entry.arguments?.getString("id")?.let { ConversationWithPosts(it, nav) }
                 }
                 composable("$INFO/{id}") { entry ->
                     entry.arguments?.getString("id")?.let { ConversationInfo(it, nav) }
                 }
-                composable("$FORWARD/{from}/{seq}") { entry ->
-                    val from = entry.arguments?.getString("from")
-                    val seq = entry.arguments?.getString("seq")?.toULongOrNull()
-                    if (from != null && seq != null) Forward(from, seq, nav)
-                }
+                sendingRoutes(nav)
             }
+        }
+    }
+
+    /** The two pickers that copy something into the conversations picked: a message (0041) and a post (0080). */
+    private fun NavGraphBuilder.sendingRoutes(nav: NavController) {
+        composable("$SHARE/{postId}") { entry ->
+            entry.arguments?.getString("postId")?.let { SharePost(it, nav) }
+        }
+        composable("$FORWARD/{from}/{seq}") { entry ->
+            val from = entry.arguments?.getString("from")
+            val seq = entry.arguments?.getString("seq")?.toULongOrNull()
+            if (from != null && seq != null) Forward(from, seq, nav)
         }
     }
 
@@ -621,6 +641,33 @@ class MainActivity : ComponentActivity() {
         Pick(stringResource(R.string.forward), R.plurals.forward_done, model, nav)
     }
 
+    /** A conversation whose shared posts are drawn from their cards and opened in the community screens (0080). */
+    @Composable
+    private fun ConversationWithPosts(
+        id: String,
+        nav: NavController,
+    ) {
+        val cards = remember { PostCards(graph.social) { post -> nav.navigate(SocialRoutes.post(post)) } }
+        CompositionLocalProvider(LocalPostCards provides cards) {
+            WithPostImages(graph.social) { Conversation(id, nav) }
+        }
+    }
+
+    /** Sends a community post into the conversations picked (0080), then back to where it was shared from. */
+    @Composable
+    private fun SharePost(
+        postId: String,
+        nav: NavController,
+    ) {
+        val model: PickViewModel =
+            viewModel(key = "share-$postId") {
+                PickViewModel(graph.account, graph.socket, preview = { Outgoing.Post(postId) }) { to ->
+                    send(to, Body.Post(postId))
+                }
+            }
+        Pick(stringResource(R.string.post_share_to_conversation), R.plurals.post_share_done, model, nav)
+    }
+
     /** The conversation picker; once every picked conversation has its copy, says how many and goes back. */
     @Composable
     private fun Pick(
@@ -755,6 +802,7 @@ class MainActivity : ComponentActivity() {
         private const val PEOPLE = "people"
         private const val CONVERSATION = "conversation"
         private const val FORWARD = "forward"
+        private const val SHARE = "share"
         private const val INFO = "info"
         private val TABS = setOf(LIST, SocialRoutes.COMMUNITIES, SocialRoutes.NOTIFICATIONS, ME)
 

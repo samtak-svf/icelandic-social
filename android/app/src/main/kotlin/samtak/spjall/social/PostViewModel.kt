@@ -48,6 +48,8 @@ class PostViewModel(
         val sending: Boolean = false,
         val writes: Boolean = false,
         val reacting: Boolean = false,
+        /** Whether this account moderates the community: it may pin the post. */
+        val moderates: Boolean = false,
         /** The post and comments this account reported from here. */
         val reported: Set<String> = emptySet(),
         /** This account's id: its own post and comments can be deleted. */
@@ -86,6 +88,7 @@ class PostViewModel(
                         next = page.next,
                         me = me,
                         writes = community.writes(now()),
+                        moderates = community.moderates,
                         loaded = true,
                         busy = false,
                     )
@@ -148,6 +151,72 @@ class PostViewModel(
                 _state.update { it.copy(post = changed, reacting = false) }
             } catch (e: CoreException) {
                 _state.update { it.copy(reacting = false, problem = e.problem()) }
+            }
+        }
+    }
+
+    /**
+     * Likes the comment or takes the like back. The thumb shows at once and goes back if the server refuses.
+     */
+    fun likeComment(commentId: String) {
+        val before = _state.value.comments.firstOrNull { it.commentId == commentId } ?: return
+        val after =
+            before.copy(
+                liked = !before.liked,
+                likes =
+                    if (before.liked) {
+                        before.likes - 1uL
+                    } else {
+                        before.likes +
+                            1uL
+                    },
+            )
+        replace(after)
+        viewModelScope.launch {
+            try {
+                withContext(io) { if (after.liked) social.likeComment(commentId) else social.unlikeComment(commentId) }
+            } catch (e: CoreException) {
+                replace(before)
+                _state.update { it.copy(problem = e.problem()) }
+            }
+        }
+    }
+
+    private fun replace(comment: Comment) {
+        _state.update { s ->
+            s.copy(
+                comments =
+                    s.comments.map {
+                        if (it.commentId ==
+                            comment.commentId
+                        ) {
+                            comment
+                        } else {
+                            it
+                        }
+                    },
+            )
+        }
+    }
+
+    /** Pins the post to the top of its community, or loosens it. */
+    fun pin(pinned: Boolean) {
+        val post = _state.value.post ?: return
+        viewModelScope.launch {
+            try {
+                withContext(io) {
+                    if (pinned) {
+                        social.pinPost(
+                            post.communityId,
+                            post.postId,
+                        )
+                    } else {
+                        social.unpinPost(post.communityId, post.postId)
+                    }
+                }
+                _state.update { s -> s.copy(post = s.post?.copy(pinned = pinned)) }
+            } catch (e: CoreException) {
+                _state.update { it.copy(problem = e.problem()) }
             }
         }
     }

@@ -1141,6 +1141,30 @@
         }
       }
     },
+    "post_share_done": {
+      "comment": "Brief confirmation after a post was sent into conversations from its Deila sheet: into how many (docs/decisions/0080).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Sent í %1$lld samtal"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Sent í %1$lld samtöl"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "post_shared": {
       "comment": "A shared Fljótið post in the conversation list and in a notification: fixed, never the post's text or author (docs/decisions/0040).",
       "extractionState": "manual",
@@ -4209,6 +4233,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "Þú hefur yfirgefið þennan hóp."
+          }
+        }
+      }
+    },
+    "post_share_to_conversation": {
+      "comment": "Share sheet entry that sends a post into a conversation (decision 0080).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Senda í samtal"
+          }
+        }
+      }
+    },
+    "communities_search_open": {
+      "comment": "Hub header icon that opens the community search (decision 0080).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leita að samfélögum"
           }
         }
       }

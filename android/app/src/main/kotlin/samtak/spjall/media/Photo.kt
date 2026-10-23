@@ -54,6 +54,34 @@ fun squarePhoto(
     return true
 }
 
+/**
+ * The photo at [path] cropped from its middle to the [width] by [height] proportion, no wider than [width] pixels,
+ * written to [out] as a JPEG (0080 covers). As [squarePhoto], only the pixels are written. False when [path] is not
+ * an image this device can read.
+ */
+fun coverPhoto(
+    path: String,
+    out: File,
+    width: Int,
+    height: Int,
+): Boolean {
+    val photo = decodePhoto(path, width) ?: return false
+    // The largest centred rectangle of the cover's proportion that fits the photo.
+    val cropWidth = minOf(photo.width, photo.height * width / height)
+    val cropHeight = cropWidth * height / width
+    val crop =
+        Bitmap.createBitmap(
+            photo,
+            (photo.width - cropWidth) / 2,
+            (photo.height - cropHeight) / 2,
+            cropWidth,
+            cropHeight,
+        )
+    val small = if (cropWidth > width) crop.scale(width, height) else crop
+    out.outputStream().use { small.compress(Bitmap.CompressFormat.JPEG, QUALITY, it) }
+    return true
+}
+
 private fun rotation(path: String): Float =
     try {
         when (ExifInterface(path).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {

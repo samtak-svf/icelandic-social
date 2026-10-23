@@ -13,11 +13,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
@@ -84,6 +84,7 @@ fun Avatar(
     kind: AvatarKind = AvatarKind.Verified,
     size: Dp = AVATAR_SIZE.dp,
     photo: PhotoOf? = null,
+    shape: Shape = CircleShape,
 ) {
     val (fill, ink) =
         when (kind) {
@@ -92,15 +93,12 @@ fun Avatar(
             AvatarKind.Group -> Palette.secondarySubtle to Palette.fg
             AvatarKind.Me -> Palette.fg to Palette.surface
         }
-    val photos = LocalPhotos.current
-    val image by produceState(photo?.let { photos?.kept(it) }, photos, photo) {
-        value = if (photos == null || photo == null) null else photos.load(photo)
-    }
+    val image = rememberPhoto(photo)
     Box(
         modifier =
             modifier
                 .size(size)
-                .background(fill, CircleShape)
+                .background(fill, shape)
                 .clearAndSetSemantics { testTag = if (image == null) AVATAR_INITIALS else AVATAR_PHOTO },
         contentAlignment = Alignment.Center,
     ) {
@@ -114,12 +112,12 @@ fun Avatar(
                 fontSize = with(LocalDensity.current) { initialsSize(size) },
             )
         } else {
-            val ring = if (kind == AvatarKind.Verified) Modifier.border(RING.dp, fill, CircleShape) else Modifier
+            val ring = if (kind == AvatarKind.Verified) Modifier.border(RING.dp, fill, shape) else Modifier
             Image(
                 bitmap = shown,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().clip(CircleShape).then(ring),
+                modifier = Modifier.fillMaxSize().clip(shape).then(ring),
             )
         }
     }

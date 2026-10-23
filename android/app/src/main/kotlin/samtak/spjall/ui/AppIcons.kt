@@ -47,6 +47,12 @@ object AppIcons {
 
     val Back = outline("back", 20f, 2f, "M12 4l-6 6 6 6")
 
+    /** A padlock: a private community's audience line (0080). */
+    val Lock = outline("lock", 20f, 1.8f, "M5 9h10v8H5z", "M7 9V6a3 3 0 016 0v3")
+
+    /** A pin: a pinned community or post (0080). */
+    val Pin = outline("pin", 20f, 1.8f, "M7 3h6l-1 5 3 3H5l3-3z", "M10 11v6")
+
     /** The conversation's menu: Android's own "more" mark, three dots in a column (0047). */
     val More = outline("more", 20f, 2.6f, "M10 4.5h.01", "M10 10h.01", "M10 15.5h.01")
 

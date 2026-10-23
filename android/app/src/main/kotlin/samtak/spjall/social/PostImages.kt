@@ -81,7 +81,7 @@ fun PostImageGrid(post: Post) {
 }
 
 @Composable
-private fun PostImageView(
+internal fun PostImageView(
     postId: String,
     image: PostImage,
     description: String,

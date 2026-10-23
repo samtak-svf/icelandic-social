@@ -86,7 +86,7 @@ class CommunitiesViewModel(
         viewModelScope.launch {
             try {
                 val verified = withContext(io) { account.me().verified }
-                val mine = withContext(io) { social.myCommunities() }
+                val mine = withContext(io) { social.myCommunities() }.pinnedFirst()
                 val page = withContext(io) { social.communities(query(_state.value.query), null, PAGE) }
                 val feed = withContext(io) { social.feed(null, FEED_PAGE) }
                 failed = null
@@ -117,6 +117,26 @@ class CommunitiesViewModel(
                 delay(SEARCH_DELAY_MS)
                 page(text, after = null)
             }
+    }
+
+    /** Pins the community to the top of the hub, or takes it off, then reads the hub's list again (0080). */
+    fun pin(
+        communityId: String,
+        pinned: Boolean,
+    ) {
+        viewModelScope.launch {
+            try {
+                val mine =
+                    withContext(io) {
+                        if (pinned) social.pinCommunity(communityId) else social.unpinCommunity(communityId)
+                        social.myCommunities()
+                    }
+                _state.update { it.copy(mine = mine.pinnedFirst(), problem = null) }
+            } catch (e: CoreException) {
+                failed = { pin(communityId, pinned) }
+                _state.update { it.copy(problem = e.problem()) }
+            }
+        }
     }
 
     fun selectTab(tab: CommunitiesTab) {
@@ -226,3 +246,6 @@ private const val FEED_PAGE = 20u
 
 /** The longest search the server takes. */
 private const val QUERY_LIMIT = 80
+
+/** The pinned communities first, each group in the order the core gave. */
+private fun List<Community>.pinnedFirst() = sortedByDescending { it.pinned }

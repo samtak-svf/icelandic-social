@@ -4,10 +4,17 @@ import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 
 /** What [CommunitiesScreen] can ask for. */
+@Suppress("TooManyFunctions")
 interface CommunitiesActions {
     fun open(communityId: String)
 
     fun openPost(postId: String)
+
+    /** Opens the post with its comment field focused. */
+    fun comment(postId: String)
+
+    /** Opens the picker that sends the post into conversations. */
+    fun sendToConversation(postId: String)
 
     fun react(
         postId: String,
@@ -21,6 +28,12 @@ interface CommunitiesActions {
     )
 
     fun selectTab(tab: CommunitiesTab)
+
+    /** Pins or unpins a community in this account's hub (0080). */
+    fun pin(
+        communityId: String,
+        pinned: Boolean,
+    )
 
     /** "Stofna samfélag": only offered to a verified account (decision 0063). */
     fun create()

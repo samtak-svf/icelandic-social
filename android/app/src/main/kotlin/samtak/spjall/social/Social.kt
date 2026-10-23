@@ -146,6 +146,60 @@ interface Social {
     /** Takes this account's reaction off a post. */
     fun unreact(postId: String)
 
+    /** Sets the community picture from the image file at [path]; returns its version (0080). */
+    fun setCommunityAvatar(
+        communityId: String,
+        path: String,
+    ): String
+
+    /** Sets the community cover from the image file at [path]; returns its version (0080). */
+    fun setCommunityCover(
+        communityId: String,
+        path: String,
+    ): String
+
+    /** Removes the community picture. */
+    fun removeCommunityAvatar(communityId: String)
+
+    /** Removes the community cover. */
+    fun removeCommunityCover(communityId: String)
+
+    /** The file of a community's picture at [version], its `photo`; null when none is visible (0080). */
+    fun communityPicture(
+        communityId: String,
+        version: String,
+    ): String?
+
+    /** The file of a community's cover at [version], its `cover`; null when none is visible (0080). */
+    fun communityCover(
+        communityId: String,
+        version: String,
+    ): String?
+
+    /** Likes a comment as this account. */
+    fun likeComment(commentId: String)
+
+    /** Takes this account's like off a comment. */
+    fun unlikeComment(commentId: String)
+
+    /** Pins a post to the top of its community (moderators and owners). */
+    fun pinPost(
+        communityId: String,
+        postId: String,
+    )
+
+    /** Unpins a post. */
+    fun unpinPost(
+        communityId: String,
+        postId: String,
+    )
+
+    /** Pins a community to the top of this account's hub. */
+    fun pinCommunity(communityId: String)
+
+    /** Unpins a community. */
+    fun unpinCommunity(communityId: String)
+
     /** A page of a post's comments, oldest first; [after] is the `next` of the page before. */
     fun comments(
         postId: String,
@@ -314,6 +368,48 @@ class CoreSocial(
     ) = client.react(postId, kind)
 
     override fun unreact(postId: String) = client.unreact(postId)
+
+    override fun setCommunityAvatar(
+        communityId: String,
+        path: String,
+    ) = client.setCommunityAvatar(communityId, path)
+
+    override fun setCommunityCover(
+        communityId: String,
+        path: String,
+    ) = client.setCommunityCover(communityId, path)
+
+    override fun removeCommunityAvatar(communityId: String) = client.removeCommunityAvatar(communityId)
+
+    override fun removeCommunityCover(communityId: String) = client.removeCommunityCover(communityId)
+
+    override fun communityPicture(
+        communityId: String,
+        version: String,
+    ) = client.communityPicture(communityId, version)
+
+    override fun communityCover(
+        communityId: String,
+        version: String,
+    ) = client.communityCover(communityId, version)
+
+    override fun likeComment(commentId: String) = client.likeComment(commentId)
+
+    override fun unlikeComment(commentId: String) = client.unlikeComment(commentId)
+
+    override fun pinPost(
+        communityId: String,
+        postId: String,
+    ) = client.pinPost(communityId, postId)
+
+    override fun unpinPost(
+        communityId: String,
+        postId: String,
+    ) = client.unpinPost(communityId, postId)
+
+    override fun pinCommunity(communityId: String) = client.pinCommunity(communityId)
+
+    override fun unpinCommunity(communityId: String) = client.unpinCommunity(communityId)
 
     override fun comments(
         postId: String,

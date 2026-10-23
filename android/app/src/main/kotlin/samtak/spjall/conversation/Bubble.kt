@@ -273,7 +273,7 @@ internal fun Body(
         // Drawn by Bubble as a line of its own.
         Content.Deleted -> Unit
         is Content.Media -> Attachment(item, content, media, foreground, actions)
-        is Content.Post -> SharedCard(foreground)
+        is Content.Post -> SharedCard(content.postId, foreground)
         is Content.Members, is Content.Timer, is Content.Name ->
             Text(text = lastLine(item), style = Type.bubble, color = foreground)
         is Content.Unreadable -> Unreadable(content.code, foreground)

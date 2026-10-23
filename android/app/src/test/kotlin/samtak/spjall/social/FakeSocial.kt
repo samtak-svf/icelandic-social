@@ -314,6 +314,87 @@ class FakeSocial : Social {
 
     override fun unreact(postId: String) = call("unreact $postId")
 
+    override fun setCommunityAvatar(
+        communityId: String,
+        path: String,
+    ): String {
+        call("setCommunityAvatar $communityId $path")
+        return "1"
+    }
+
+    override fun setCommunityCover(
+        communityId: String,
+        path: String,
+    ): String {
+        call("setCommunityCover $communityId $path")
+        return "1"
+    }
+
+    override fun removeCommunityAvatar(communityId: String) = call("removeCommunityAvatar $communityId")
+
+    override fun removeCommunityCover(communityId: String) = call("removeCommunityCover $communityId")
+
+    /** The core's file for each community picture and cover, by "id/version"; one not here has none (0080). */
+    var pictureFiles = mapOf<String, String>()
+    var coverFiles = mapOf<String, String>()
+
+    override fun communityPicture(
+        communityId: String,
+        version: String,
+    ): String? {
+        call("communityPicture $communityId $version")
+        return pictureFiles["$communityId/$version"]
+    }
+
+    override fun communityCover(
+        communityId: String,
+        version: String,
+    ): String? {
+        call("communityCover $communityId $version")
+        return coverFiles["$communityId/$version"]
+    }
+
+    override fun likeComment(commentId: String) = call("likeComment $commentId")
+
+    override fun unlikeComment(commentId: String) = call("unlikeComment $commentId")
+
+    override fun pinPost(
+        communityId: String,
+        postId: String,
+    ) {
+        call("pinPost $communityId $postId")
+        setPinned(communityId, postId, true)
+    }
+
+    override fun unpinPost(
+        communityId: String,
+        postId: String,
+    ) {
+        call("unpinPost $communityId $postId")
+        setPinned(communityId, postId, false)
+    }
+
+    /** The pinned post leads the first page, as the server returns it. */
+    private fun setPinned(
+        communityId: String,
+        postId: String,
+        pinned: Boolean,
+    ) {
+        val list = posts[communityId] ?: return
+        val moved = list.map { if (it.postId == postId) it.copy(pinned = pinned) else it.copy(pinned = false) }
+        posts[communityId] = moved.sortedByDescending { it.pinned }.toMutableList()
+    }
+
+    override fun pinCommunity(communityId: String) {
+        call("pinCommunity $communityId")
+        communities[communityId]?.let { communities[communityId] = it.copy(pinned = true) }
+    }
+
+    override fun unpinCommunity(communityId: String) {
+        call("unpinCommunity $communityId")
+        communities[communityId]?.let { communities[communityId] = it.copy(pinned = false) }
+    }
+
     override fun comments(
         postId: String,
         after: String?,
@@ -439,6 +520,9 @@ fun community(
     mutedUntil: ULong? = null,
     joinDeclinedUntil: ULong? = null,
     pendingJoinRequests: ULong? = null,
+    unread: ULong = 0uL,
+    pinned: Boolean = false,
+    lastPostAt: ULong? = null,
 ) = Community(
     communityId = id,
     name = name,
@@ -454,6 +538,9 @@ fun community(
     deletedAt = null,
     joinDeclinedUntil = joinDeclinedUntil,
     pendingJoinRequests = pendingJoinRequests,
+    unread = unread,
+    pinned = pinned,
+    lastPostAt = lastPostAt,
 )
 
 fun post(

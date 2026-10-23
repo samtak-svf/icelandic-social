@@ -198,6 +198,11 @@
     </plurals>
     <!-- The conversation picker when there is no conversation to send into. -->
     <string name="pick_empty">Ekkert samtal til að senda í.</string>
+    <!-- Brief confirmation after a post was sent into conversations from its Deila sheet: into how many (docs/decisions/0080). -->
+    <plurals name="post_share_done">
+        <item quantity="one">Sent í %1$d samtal</item>
+        <item quantity="other">Sent í %1$d samtöl</item>
+    </plurals>
     <!-- A shared Fljótið post in the conversation list and in a notification: fixed, never the post's text or author (docs/decisions/0040). -->
     <string name="post_shared">Deild færsla</string>
     <!-- A stored message the core cannot read back, shown in its place in the conversation and as the list's last line, with its code under it (docs/decisions/0051). Never says more. -->
@@ -723,4 +728,77 @@
     <string name="leave_group_confirm">Yfirgefa hópinn? Þú færð ekki fleiri skilaboð úr honum.</string>
     <!-- Banner shown in a conversation the user has left (docs/decisions/0078). -->
     <string name="left_banner">Þú hefur yfirgefið þennan hóp.</string>
+    <!-- Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080). -->
+    <string name="community_picture_choose">Velja mynd samfélagsins</string>
+    <!-- Button that removes a community's picture (decision 0080). -->
+    <string name="community_picture_remove">Fjarlægja mynd samfélagsins</string>
+    <!-- Label of the file picker for a community's wide cover (decision 0080). -->
+    <string name="community_cover_choose">Velja forsíðumynd</string>
+    <!-- Button that removes a community's cover (decision 0080). -->
+    <string name="community_cover_remove">Fjarlægja forsíðumynd</string>
+    <!-- Second line of the create row on the hub -->
+    <string name="communities_create_row_hint">Safnaðu fólki saman um málefni</string>
+    <!-- Closes a dialog or a menu -->
+    <string name="close">Loka</string>
+    <!-- Audience line of a community header, open -->
+    <string name="community_open_full">Opið samfélag</string>
+    <!-- Audience line of a community header, private -->
+    <string name="community_private_full">Lokað samfélag</string>
+    <!-- Title of the invitation dialog -->
+    <string name="community_invite_title">Bjóða í samfélagið</string>
+    <!-- Told after an invitation went out -->
+    <string name="community_invite_sent">Boð sent</string>
+    <!-- No person matched the invitation search -->
+    <string name="community_invite_none">Enginn fannst</string>
+    <!-- Told after the community link was copied -->
+    <string name="community_link_copied">Hlekkur samfélagsins afritaður</string>
+    <!-- Name of the picture stack of members in a community header -->
+    <string name="community_members_stack">Meðlimir samfélagsins</string>
+    <!-- Name of the cover picture -->
+    <string name="community_cover_alt">Forsíðumynd samfélagsins</string>
+    <!-- Relative time of something posted less than a minute ago -->
+    <string name="time_now">Núna</string>
+    <!-- Relative time in minutes, as a short label on a post -->
+    <string name="time_minutes">%1$d mín.</string>
+    <!-- Relative time in hours, as a short label on a post -->
+    <string name="time_hours">%1$d klst.</string>
+    <!-- Relative time in days, as a short label on a post -->
+    <string name="time_days">%1$d d.</string>
+    <!-- Relative time in weeks, as a short label on a post -->
+    <string name="time_weeks">%1$d vik.</string>
+    <!-- Expands a post whose text is cut short in the feed -->
+    <string name="post_see_more">Sjá meira</string>
+    <!-- Action that likes a post with one press; long press or hover opens the other reactions -->
+    <string name="post_like">Líkar</string>
+    <!-- Action that opens the comments of a post -->
+    <string name="post_comment_action">Athugasemd</string>
+    <!-- Menu item that copies the address of a post -->
+    <string name="post_copy_link">Afrita tengil</string>
+    <!-- Told after the address of a post was copied -->
+    <string name="post_link_copied">Tengill afritaður</string>
+    <!-- Menu item for a moderator or the owner that pins a post to the top of its community (decision 0080) -->
+    <string name="post_pin">Festa</string>
+    <!-- Pill under a post card that opens its comments -->
+    <string name="post_write_comment">Skrifaðu athugasemd…</string>
+    <!-- Name of the group of five reactions opened from the like action -->
+    <string name="post_reactions_more">Fleiri viðbrögð</string>
+    <!-- Menu item that unpins the community's pinned post -->
+    <string name="post_unpin">Losa</string>
+    <!-- Marker on the card of the post pinned to the top of its community -->
+    <string name="post_pinned">Fest efst</string>
+    <!-- Under a comment: like it with a thumbs up, bold while the caller has liked it (decision 0080) -->
+    <string name="comment_like">Líkar þetta</string>
+    <!-- On a hub row: how many posts the caller has not seen in the community (decision 0080) -->
+    <plurals name="community_new_posts">
+        <item quantity="one">%1$d nýr póstur</item>
+        <item quantity="other">%1$d nýir póstar</item>
+    </plurals>
+    <!-- Hub row menu item that pins the community to the top of the caller's list (decision 0080) -->
+    <string name="community_pin">Festa efst</string>
+    <!-- Hub row menu item that unpins the community -->
+    <string name="community_unpin">Losa</string>
+    <!-- Share sheet entry that sends a post into a conversation (decision 0080). -->
+    <string name="post_share_to_conversation">Senda í samtal</string>
+    <!-- Hub header icon that opens the community search (decision 0080). -->
+    <string name="communities_search_open">Leita að samfélögum</string>
 </resources>

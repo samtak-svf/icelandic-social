@@ -9,6 +9,11 @@ sealed interface Outgoing {
     data class Message(
         val item: Item,
     ) : Outgoing
+
+    /** A community post sent into conversations (0080), shown as the fixed "shared post" line. */
+    data class Post(
+        val postId: String,
+    ) : Outgoing
 }
 
 /** The message at [seq] of [from], for the forward's preview; null when it cannot be read. */

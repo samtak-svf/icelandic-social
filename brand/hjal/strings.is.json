@@ -107,6 +107,10 @@
   },
   "pick_empty": "Ekkert samtal til að senda í.",
   "post_shared": "Deild færsla",
+  "post_share_done": {
+    "one": "Sent í {count} samtal",
+    "other": "Sent í {count} samtöl"
+  },
   "item_unreadable": "Ekki tókst að lesa þessi skilaboð.",
   "post_gone": "Færslan er ekki lengur til",
   "react": "Bregðast við",
@@ -465,5 +469,7 @@
   },
   "community_last_post": "Síðasti póstur: {when}",
   "community_pin": "Festa efst",
-  "community_unpin": "Losa"
+  "community_unpin": "Losa",
+  "post_share_to_conversation": "Senda í samtal",
+  "communities_search_open": "Leita að samfélögum"
 }

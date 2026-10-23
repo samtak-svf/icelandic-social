@@ -21,24 +21,23 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Author
-import samtak.spjall.core.Comment
 import samtak.spjall.core.ModerationState
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
@@ -50,7 +49,11 @@ import samtak.spjall.ui.ProblemCard
 fun PostScreen(
     state: PostViewModel.State,
     actions: PostActions,
+    focusComment: Boolean = false,
 ) {
+    // The comment field, focused at once when the post was opened from a feed's "Skrifaðu athugasemd…".
+    val focus = remember { FocusRequester() }
+    FocusOnOpen(focus, focusComment && state.writes)
     // What is being reported, as "post:<id>" or "comment:<id>", so it survives a rotation.
     var reporting by rememberSaveable { mutableStateOf<String?>(null) }
     val target = reporting?.let(::target)
@@ -82,10 +85,16 @@ fun PostScreen(
                             post = post,
                             reacting = state.reacting,
                             reported = post.postId in state.reported,
-                            onReact = actions::react,
-                            onReport = { reporting = "$POST:${post.postId}" },
-                            onOpen = null,
-                            onDelete = delete("$POST:${post.postId}", post.author),
+                            callbacks =
+                                PostCardCallbacks(
+                                    onReact = actions::react,
+                                    onReport = { reporting = "$POST:${post.postId}" },
+                                    onOpen = null,
+                                    onComment = { focus.requestFocus() },
+                                    onDelete = delete("$POST:${post.postId}", post.author),
+                                    onPin = actions::pin.takeIf { state.moderates },
+                                    onSendToConversation = { actions.sendToConversation(post.postId) },
+                                ),
                         )
                     }
                 }
@@ -95,7 +104,7 @@ fun PostScreen(
                 commentItems(state, actions, delete, onReport = { reporting = it })
             }
             // The box to write in stays at the foot of the screen, reachable without scrolling past every comment.
-            if (post != null) ReplyBox(state, actions)
+            if (post != null) ReplyBox(state, actions, focus)
         }
     }
     Dialogs(target, deleting?.let(::target), actions, onReported = { reporting = null }) { deleting = null }
@@ -110,27 +119,25 @@ private fun LazyListScope.commentItems(
 ) {
     val topLevel = state.comments.filter { it.parentCommentId == null }
     itemsIndexed(topLevel, key = { _, item -> item.commentId }) { index, comment ->
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            CommentCard(
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val replyable = state.writes && !(comment.state == ModerationState.REMOVED && comment.body.isEmpty())
+            CommentItem(
                 comment = comment,
                 reported = comment.commentId in state.reported,
                 onReport = { onReport("$COMMENT:${comment.commentId}") },
                 onDelete = delete("$COMMENT:${comment.commentId}", comment.author),
+                onLike = { actions.likeComment(comment.commentId) },
+                onReply = { actions.onReplyTo(comment) }.takeIf { replyable },
             )
-            if (state.writes &&
-                !(comment.state == ModerationState.REMOVED && comment.body.isEmpty())
-            ) {
-                TextButton(onClick = { actions.onReplyTo(comment) }) {
-                    Text(stringResource(R.string.comment_reply))
-                }
-            }
             state.comments.filter { it.parentCommentId == comment.commentId }.forEach { reply ->
-                CommentCard(
+                CommentItem(
                     comment = reply,
                     reported = reply.commentId in state.reported,
                     onReport = { onReport("$COMMENT:${reply.commentId}") },
                     onDelete = delete("$COMMENT:${reply.commentId}", reply.author),
-                    modifier = Modifier.padding(start = 24.dp),
+                    onLike = { actions.likeComment(reply.commentId) },
+                    onReply = null,
+                    modifier = Modifier.padding(start = 40.dp),
                 )
             }
         }
@@ -145,6 +152,7 @@ private fun LazyListScope.commentItems(
 private fun ReplyBox(
     state: PostViewModel.State,
     actions: PostActions,
+    focus: FocusRequester,
 ) {
     Column(modifier = Modifier.imePadding()) {
         HorizontalDivider(color = Palette.border)
@@ -161,7 +169,7 @@ private fun ReplyBox(
                     }
                 }
             }
-            CommentComposer(state, actions)
+            CommentComposer(state, actions, focus)
         }
     }
 }
@@ -171,6 +179,7 @@ private fun ReplyBox(
 private fun CommentComposer(
     state: PostViewModel.State,
     actions: PostActions,
+    focus: FocusRequester,
 ) {
     Composer(
         label = stringResource(R.string.comment_compose),
@@ -179,6 +188,7 @@ private fun CommentComposer(
         sending = state.sending,
         onText = actions::draft,
         onSend = actions::send,
+        modifier = Modifier.focusRequester(focus),
     )
 }
 
@@ -204,33 +214,6 @@ private fun Dialogs(
     }
 }
 
-@Composable
-private fun CommentCard(
-    comment: Comment,
-    reported: Boolean,
-    onReport: () -> Unit,
-    onDelete: (() -> Unit)?,
-    modifier: Modifier = Modifier,
-) {
-    if (comment.state == ModerationState.REMOVED && comment.body.isEmpty()) {
-        SocialCard(modifier) {
-            Text(
-                stringResource(R.string.comment_tombstone),
-                style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
-                color = Palette.mutedFg,
-            )
-        }
-    } else {
-        SocialCard(modifier) {
-            StateMark(comment.state)
-            Byline(comment.author, comment.createdAt) {
-                CardActions(reported = reported, onReport = onReport, onDelete = onDelete)
-            }
-            Text(text = comment.body, style = MaterialTheme.typography.bodyLarge)
-        }
-    }
-}
-
 private fun target(key: String): ReportTarget? {
     val (kind, id) = key.split(":", limit = 2).takeIf { it.size == 2 } ?: return null
     return when (kind) {
@@ -242,3 +225,18 @@ private fun target(key: String): ReportTarget? {
 
 private const val POST = "post"
 private const val COMMENT = "comment"
+
+/** Focuses [focus] once, the first time [wanted] holds, and not again after a rotation. */
+@Composable
+private fun FocusOnOpen(
+    focus: FocusRequester,
+    wanted: Boolean,
+) {
+    var done by rememberSaveable { mutableStateOf(false) }
+    if (wanted && !done) {
+        LaunchedEffect(Unit) {
+            focus.requestFocus()
+            done = true
+        }
+    }
+}

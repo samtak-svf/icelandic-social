@@ -161,6 +161,8 @@ private fun Preview(outgoing: Outgoing) {
                         maxLines = PREVIEW_LINES,
                         overflow = TextOverflow.Ellipsis,
                     )
+                is Outgoing.Post ->
+                    Text(text = stringResource(R.string.post_shared), style = Type.bubble, color = Palette.fg)
             }
         }
     }
