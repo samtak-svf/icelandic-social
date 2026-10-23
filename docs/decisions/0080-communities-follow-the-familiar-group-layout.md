@@ -1,6 +1,6 @@
 # 0080. Communities follow the group layout most readers already know, and carry a picture
 
-- Status: accepted; implemented (#107, #109, #113, #114, #118, #120, #121, apps 0.10.1); the comment composer's photo button waits for #119
+- Status: accepted; implemented (#107, #109, #113, #114, #118, #120, #121, apps 0.10.1); the comment composer's photo button is designed in 0082
 - Date: 2026-10-22
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0079](0079-community-layout-feed-and-management.md) (hub rows, community header,
