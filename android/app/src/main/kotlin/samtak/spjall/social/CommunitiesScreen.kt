@@ -180,10 +180,6 @@ private fun androidx.compose.foundation.lazy.LazyListScope.mine(
         )
     }
     // What is new in them, from the same feed state as the Feed tab (0080), once there is a community to be in.
-    if (state.mine.isNotEmpty()) {
-        item(key = "mine-feed-title") { SectionLabel(stringResource(R.string.communities_from_yours)) }
-        feedPosts(state, actions, onReport)
-    }
 }
 
 /** "Stofna samfélag" at the top of the list (0080): only a verified account is offered it. */

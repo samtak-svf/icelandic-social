@@ -2,7 +2,7 @@ package samtak.spjall.social
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -52,7 +52,7 @@ internal fun ImageRow(
     onChoose: () -> Unit,
     onRemove: () -> Unit,
 ) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         TextButton(onClick = onChoose, enabled = !busy) { Text(stringResource(choose)) }
         if (present) TextButton(onClick = onRemove, enabled = !busy) { Text(stringResource(remove)) }
     }

@@ -35,7 +35,7 @@ fun CommentComposer(
         verticalAlignment = Alignment.Bottom,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Avatar(name = me?.name, kind = AvatarKind.Me, size = 36.dp, photo = me?.photo)
+        Avatar(name = null, kind = AvatarKind.Me, size = 36.dp, photo = null)
         ComposerField(draft, onText, stringResource(R.string.post_write_comment), modifier.weight(1f))
         RoundButton(
             icon = AppIcons.Send,
