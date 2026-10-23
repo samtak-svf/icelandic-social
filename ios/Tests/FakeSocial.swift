@@ -432,7 +432,7 @@ func makeMember(
     _ account: String, _ name: String? = nil, role: CommunityRole = .member, verified: Bool = false,
     joinedAt: UInt64 = FakeAccount.now
 ) -> CommunityMember {
-    CommunityMember(accountId: account, name: name, verified: verified, role: role, joinedAt: joinedAt)
+    CommunityMember(accountId: account, name: name, verified: verified, role: role, joinedAt: joinedAt, photo: nil)
 }
 
 /// One action in a community's moderation log.
