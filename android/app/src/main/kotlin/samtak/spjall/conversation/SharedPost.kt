@@ -1,10 +1,15 @@
 package samtak.spjall.conversation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -15,20 +20,26 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
+import samtak.spjall.core.Card
 import samtak.spjall.core.Content
 import samtak.spjall.core.Item
 import samtak.spjall.core.Quote
+import samtak.spjall.social.PostImageView
+import samtak.spjall.social.shownName
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.Type
@@ -95,7 +106,7 @@ internal fun QuoteAbove(
                 ),
         ) {
             when {
-                quote.postId != null -> SharedCard(foreground)
+                quote.postId != null -> SharedCard(checkNotNull(quote.postId), foreground)
                 // Never the place in a quote, as in the list (decision 0059).
                 quote.location ->
                     Text(
@@ -127,11 +138,47 @@ private fun Modifier.overlappedBy(by: Dp) =
     }
 
 /**
- * A post shared here under decision 0040. Since 0044 there are no posts: the
- * card shows one fixed line and never asks the server for anything.
+ * A post shared here (0040, 0080): the community, the author, the start of the text and the first image, and a
+ * tap opens the post. While it is being asked for, and when the server cannot be reached, and when the post is
+ * gone, it is the one fixed line.
  */
 @Composable
-internal fun SharedCard(foreground: Color) {
+internal fun SharedCard(
+    postId: String,
+    foreground: Color,
+) {
+    val cards = LocalPostCards.current
+    val card by produceState<Card?>(null, postId, cards) { value = cards?.card(postId) }
+    when (val shown = card) {
+        is Card.Post ->
+            Column(
+                modifier = Modifier.clickable(role = Role.Button) { cards?.open(postId) },
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(shown.community.name, style = MaterialTheme.typography.labelMedium, color = foreground)
+                Text(shown.author.shownName(), style = MaterialTheme.typography.labelLarge, color = foreground)
+                Text(
+                    text = shown.excerpt,
+                    style = Type.bubble,
+                    color = foreground,
+                    maxLines = EXCERPT_LINES,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                shown.image?.let { image ->
+                    PostImageView(
+                        postId,
+                        image,
+                        stringResource(R.string.post_image_alt),
+                        Modifier.fillMaxWidth().aspectRatio(IMAGE_RATIO),
+                    )
+                }
+            }
+        else -> GoneLine(foreground)
+    }
+}
+
+@Composable
+private fun GoneLine(foreground: Color) {
     Row(modifier = Modifier.height(IntrinsicSize.Min)) {
         Box(modifier = Modifier.width(3.dp).fillMaxHeight().background(foreground))
         Text(
@@ -144,6 +191,8 @@ internal fun SharedCard(foreground: Color) {
     }
 }
 
+private const val EXCERPT_LINES = 4
+private const val IMAGE_RATIO = 1.5f
 private const val QUOTE_LINES = 2
 private const val QUOTE_RADIUS = 18
 private const val OVERLAP = 8

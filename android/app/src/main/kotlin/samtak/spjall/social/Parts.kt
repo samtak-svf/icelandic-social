@@ -187,8 +187,8 @@ fun Composer(
     sending: Boolean,
     onText: (String) -> Unit,
     onSend: () -> Unit,
-    ready: Boolean = text.isNotBlank(),
     modifier: Modifier = Modifier,
+    ready: Boolean = text.isNotBlank(),
     extra: @Composable ColumnScope.() -> Unit = {},
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

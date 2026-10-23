@@ -453,6 +453,14 @@
       "surfaces": ["android", "ios"],
       "description": "The conversation picker when there is no conversation to send into."
     },
+    "post_share_done": {
+      "surfaces": ["android", "ios"],
+      "description": "Brief confirmation after a post was sent into conversations from its Deila sheet: into how many (docs/decisions/0080).",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
     "post_shared": {
       "surfaces": ["android", "ios"],
       "description": "A shared Fljótið post in the conversation list and in a notification: fixed, never the post's text or author (docs/decisions/0040)."

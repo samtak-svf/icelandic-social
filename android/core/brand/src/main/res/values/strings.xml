@@ -198,6 +198,11 @@
     </plurals>
     <!-- The conversation picker when there is no conversation to send into. -->
     <string name="pick_empty">Ekkert samtal til að senda í.</string>
+    <!-- Brief confirmation after a post was sent into conversations from its Deila sheet: into how many (docs/decisions/0080). -->
+    <plurals name="post_share_done">
+        <item quantity="one">Sent í %1$d samtal</item>
+        <item quantity="other">Sent í %1$d samtöl</item>
+    </plurals>
     <!-- A shared Fljótið post in the conversation list and in a notification: fixed, never the post's text or author (docs/decisions/0040). -->
     <string name="post_shared">Deild færsla</string>
     <!-- A stored message the core cannot read back, shown in its place in the conversation and as the list's last line, with its code under it (docs/decisions/0051). Never says more. -->

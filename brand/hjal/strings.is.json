@@ -107,6 +107,10 @@
   },
   "pick_empty": "Ekkert samtal til að senda í.",
   "post_shared": "Deild færsla",
+  "post_share_done": {
+    "one": "Sent í {count} samtal",
+    "other": "Sent í {count} samtöl"
+  },
   "item_unreadable": "Ekki tókst að lesa þessi skilaboð.",
   "post_gone": "Færslan er ekki lengur til",
   "react": "Bregðast við",

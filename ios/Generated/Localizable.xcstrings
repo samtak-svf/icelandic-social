@@ -1141,6 +1141,30 @@
         }
       }
     },
+    "post_share_done": {
+      "comment": "Brief confirmation after a post was sent into conversations from its Deila sheet: into how many (docs/decisions/0080).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Sent í %1$lld samtal"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Sent í %1$lld samtöl"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "post_shared": {
       "comment": "A shared Fljótið post in the conversation list and in a notification: fixed, never the post's text or author (docs/decisions/0040).",
       "extractionState": "manual",

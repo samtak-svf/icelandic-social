@@ -1,8 +1,10 @@
 package samtak.spjall.social
 
+import samtak.spjall.BuildConfig
+
 /** The web addresses of a community and a post, the ones a person can share or copy (0080). */
 internal object SocialLinks {
-    private const val ORIGIN = "https://spjall.samtak.is"
+    private val ORIGIN = BuildConfig.WEB_BASE_URL
 
     fun community(communityId: String) = "$ORIGIN/communities/$communityId"
 

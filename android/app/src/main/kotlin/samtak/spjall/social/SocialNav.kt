@@ -294,7 +294,7 @@ private fun CommunityEntry(
 
 /** Provides where a post's images come from to [content]; one the core cannot fetch now shows as a plain box. */
 @Composable
-private fun WithPostImages(
+internal fun WithPostImages(
     social: Social,
     content: @Composable () -> Unit,
 ) {
