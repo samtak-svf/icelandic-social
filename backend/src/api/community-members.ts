@@ -9,7 +9,7 @@ import {
   OWNER_ONLY,
   Role,
 } from "./communities.ts";
-import { ACCOUNT, AUTHED, errorResponse, INVALID, OpaqueId } from "./common.ts";
+import { ACCOUNT, AUTHED, errorResponse, INVALID, OpaqueId, PhotoVersion } from "./common.ts";
 
 // A community's members (decision 0063): who is in it and in what role, the
 // join requests a moderator answers, invitations, and the owner's hand-over.
@@ -19,6 +19,7 @@ const Member = z
     accountId: OpaqueId,
     name: z.string().nullable(),
     verified: z.boolean(),
+    photo: PhotoVersion,
     role: Role,
     joinedAt: z.int().openapi({ description: "Unix milliseconds" }),
   })

@@ -223,7 +223,7 @@ function Roles({ community, changed }: Readonly<{ community: Community; changed:
                   kind="person"
                   id={member.accountId}
                   name={member.name}
-                  photo={null}
+                  photo={member.photo}
                   className="size-8 rounded-md text-sm"
                 />
                 <span className="font-semibold">{member.name ?? strings.person_unnamed}</span>

@@ -356,6 +356,8 @@ export type Member = {
   accountId: string;
   name: string | null;
   verified: boolean;
+  /** The account's photo version, or null without one. */
+  photo: string | null;
   role: Role;
   joinedAt: number;
 };
@@ -369,8 +371,8 @@ export async function members(
 ): Promise<Member[]> {
   const { results } = await db(env)
     .prepare(
-      `SELECT m.account_id AS accountId, a.display_name AS name, a.verified, m.role,
-              m.joined_at AS joinedAt
+      `SELECT m.account_id AS accountId, a.display_name AS name, a.verified,
+              a.photo_version AS photo, m.role, m.joined_at AS joinedAt
          FROM community_members m JOIN accounts a ON a.account_id = m.account_id
         WHERE m.community_id = ?2 AND (?3 = 1 OR ${UNBLOCKED("?1", "m.account_id")})
         ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'moderator' THEN 1 ELSE 2 END,
