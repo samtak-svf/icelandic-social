@@ -1,8 +1,18 @@
-import type { Browser, Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
 import { png } from "./images.ts";
-import { expect, serveOrigin, test, WEB } from "./origin.ts";
-import { signInVerified } from "./accounts.ts";
+import {
+  cardMenu,
+  expectMember,
+  found,
+  join,
+  openComposer,
+  openMenu,
+  person,
+  post,
+  write,
+} from "./social-helpers.ts";
+import { expect, test, WEB } from "./origin.ts";
 
 // The first social slice on the web (#291), through what a person sees: a
 // member finds and joins a community, posts, comments, reacts, is told of a
@@ -12,60 +22,9 @@ import { signInVerified } from "./accounts.ts";
 /** Where `cf dev` listens, for its dev-only paths. */
 const DEV = process.env.SPJALL_DEV_URL ?? "http://127.0.0.1:8787";
 
-/** A person in a browser of their own, signed in with Google and marked by Kenni as `name`. */
-async function person(browser: Browser, name: string): Promise<Page> {
-  const page = await (await browser.newContext()).newPage();
-  await serveOrigin(page);
-  await signInVerified(page, name);
-  return page;
-}
-
 /** Runs the jobs that are due, as the minute cron would (backend/dev/worker.ts). */
 async function runJobs() {
   expect((await fetch(`${DEV}/dev/jobs`, { method: "POST" })).status).toBe(204);
-}
-
-/** Writes a post in the composer's dialog (opened from its pill), or a comment in the box. */
-async function write(page: Page, label: string, action: string, text: string) {
-  if (label === strings.post_compose) {
-    await openComposer(page);
-    await page.getByRole("dialog").getByLabel(label).fill(text);
-    await page.getByRole("dialog").getByRole("button", { name: action }).click();
-    await expect(page.getByRole("dialog")).toHaveCount(0);
-    return;
-  }
-  await page.getByLabel(label).fill(text);
-  await page.getByRole("button", { name: action }).click();
-  await expect(page.getByLabel(label)).toHaveValue("");
-}
-
-/** Opens the post composer's dialog from the one-row composer, unless it is open. */
-async function openComposer(page: Page) {
-  if ((await page.getByRole("dialog").count()) === 0) {
-    await page.getByRole("button", { name: strings.post_compose_prompt }).click();
-  }
-}
-
-/** Presses an item of a post card's `⋯` menu. */
-async function cardMenu(card: Locator, item: string) {
-  await card.getByRole("button", { name: strings.more_options }).click();
-  await card.getByRole("menuitem", { name: item }).click();
-}
-
-const post = (page: Page, text: string) => page.getByRole("article").filter({ hasText: text });
-
-/** Creates a community as `owner`, who is left on its page; its address. */
-async function found(owner: Page, audience: "open" | "private"): Promise<string> {
-  const name = `Garðyrkjufélagið ${crypto.randomUUID().slice(0, 8)}`;
-  await owner.getByRole("link", { name: strings.tab_communities }).click();
-  await owner.getByRole("link", { name: new RegExp(`^${strings.community_create}`) }).click();
-  await owner.getByLabel(strings.community_name).fill(name);
-  if (audience === "private") {
-    await owner.getByRole("radio", { name: new RegExp(strings.community_private_hint) }).check();
-  }
-  await owner.getByRole("button", { name: strings.community_create }).click();
-  await expect(owner.getByRole("heading", { name })).toBeVisible();
-  return owner.url();
 }
 
 /** Makes the person in `page` a platform moderator, through the dev Worker. */
@@ -82,29 +41,10 @@ async function platformModerator(page: Page) {
   expect((await fetch(url, { method: "POST" })).status).toBe(204);
 }
 
-/** Opens the community's `⋯` menu (decision 0080) and leaves it open. */
-async function openMenu(page: Page) {
-  await page.getByRole("button", { name: strings.more_options }).click();
-}
-
 /** Goes to Stjórna through the `⋯` menu. */
 async function manage(page: Page) {
   await openMenu(page);
   await page.getByRole("menuitem", { name: new RegExp(`^${strings.community_manage}`) }).click();
-}
-
-/** Expects the person in `page` to be a member who may leave, which the menu offers. */
-async function expectMember(page: Page) {
-  await openMenu(page);
-  await expect(page.getByRole("menuitem", { name: strings.community_leave })).toBeVisible();
-  await page.keyboard.press("Escape");
-}
-
-/** Joins the open community at `address` as `page`. */
-async function join(page: Page, address: string) {
-  await page.goto(address);
-  await page.getByRole("button", { name: strings.community_join }).click();
-  await expectMember(page);
 }
 
 test("a member joins, posts, comments, reacts, is told and reports; a moderator acts", async ({
@@ -134,7 +74,11 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
     await one.getByRole("button", { name: strings.communities_find }).first().click();
     await one.getByRole("searchbox").fill(name.slice(0, 18));
     await one.getByRole("button", { name: strings.communities_find }).last().click();
-    await one.getByRole("link", { name: new RegExp(name) }).click();
+    // The found list and the browse list under it both hold the row.
+    await one
+      .getByRole("link", { name: new RegExp(name) })
+      .first()
+      .click();
     await one.getByRole("button", { name: strings.community_join }).click();
     await expectMember(one);
   }
