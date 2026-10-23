@@ -152,8 +152,8 @@ test("Líkar, Athugasemd and Deila take equal thirds of a 360px screen, none spi
   const card = post(member, "Póstur á mjóum skjá");
   const actions = [
     card.getByRole("button", { name: strings.post_like, exact: true }),
-    card.getByRole("link", { name: strings.post_comment_action }),
-    card.getByRole("button", { name: strings.share }),
+    card.getByRole("link", { name: strings.post_comment_action, exact: true }),
+    card.getByRole("button", { name: strings.share, exact: true }),
   ];
   const boxes = await Promise.all(
     actions.map((action) =>
