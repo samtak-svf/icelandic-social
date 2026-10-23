@@ -33,9 +33,21 @@ function fixture() {
  * @param {string} path
  */
 function output(root, path) {
-  const file = generate(BRAND, root).files.find((f) => f.path === path);
-  if (!file) throw new Error(`${path} not generated`);
-  return file.content.toString();
+  return generated(root)(path);
+}
+
+/**
+ * Generates once and reads any number of files from that run: a full generation renders the
+ * icons and the fonts, so a test that reads many files must not pay for it per file.
+ * @param {string} root
+ */
+function generated(root) {
+  const files = new Map(generate(BRAND, root).files.map((f) => [f.path, f.content]));
+  return (/** @type {string} */ path) => {
+    const content = files.get(path);
+    if (content === undefined) throw new Error(`${path} not generated`);
+    return content.toString();
+  };
 }
 
 describe("brand-gen", () => {
@@ -216,25 +228,26 @@ describe("brand-gen", () => {
     editJson(root, `brand/${BRAND}/tokens.json`, (t) => {
       t.dark.surface.$value = { colorSpace: "oklch", components: [0, 0, 0] };
     });
-    const kotlin = output(root, KOTLIN);
+    const out = generated(root);
+    const kotlin = out(KOTLIN);
     const block = (/** @type {string} */ name) =>
       new RegExp(`object ${name} \\{([^}]*)\\}`).exec(kotlin)?.[1] ?? "";
     const keys = (/** @type {string} */ text) =>
       [...text.matchAll(/const val (\w+):/g)].map((m) => m[1]);
     expect(keys(block("DarkColors"))).toEqual(keys(block("Colors")));
     expect(block("DarkColors")).toContain("const val SURFACE: Long = 0xFF000000L");
-    expect(output(root, `${RES}/values-night/themes.xml`)).toContain(
+    expect(out(`${RES}/values-night/themes.xml`)).toContain(
       '<item name="android:windowBackground">#FF000000</item>',
     );
-    expect(output(root, `${RES}/values-night/themes.xml`)).toContain("Theme.Material.NoActionBar");
-    expect(output(root, `${RES}/values/themes.xml`)).toContain("Theme.Material.Light.NoActionBar");
+    expect(out(`${RES}/values-night/themes.xml`)).toContain("Theme.Material.NoActionBar");
+    expect(out(`${RES}/values/themes.xml`)).toContain("Theme.Material.Light.NoActionBar");
 
-    const swift = output(root, "ios/Generated/BrandTokens.swift");
+    const swift = out("ios/Generated/BrandTokens.swift");
     const names = [...swift.matchAll(/Color\("Brand\/([a-z0-9-]+)"/g)].map((m) => m[1]);
     expect(names.length).toBeGreaterThan(0);
     for (const name of names) {
       const set = JSON.parse(
-        output(root, `ios/Generated/Assets.xcassets/Brand/${name}.colorset/Contents.json`),
+        out(`ios/Generated/Assets.xcassets/Brand/${name}.colorset/Contents.json`),
       );
       expect(set.colors.map((/** @type {any} */ c) => c.appearances?.[0]?.value ?? "any")).toEqual([
         "any",
@@ -242,7 +255,7 @@ describe("brand-gen", () => {
       ]);
     }
     const surface = JSON.parse(
-      output(root, "ios/Generated/Assets.xcassets/Brand/surface.colorset/Contents.json"),
+      out("ios/Generated/Assets.xcassets/Brand/surface.colorset/Contents.json"),
     );
     expect(surface.colors[1].color.components).toMatchObject({ red: "0x00", green: "0x00" });
   });
