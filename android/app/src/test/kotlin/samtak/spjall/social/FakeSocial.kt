@@ -334,6 +334,26 @@ class FakeSocial : Social {
 
     override fun removeCommunityCover(communityId: String) = call("removeCommunityCover $communityId")
 
+    /** The core's file for each community picture and cover, by "id/version"; one not here has none (0080). */
+    var pictureFiles = mapOf<String, String>()
+    var coverFiles = mapOf<String, String>()
+
+    override fun communityPicture(
+        communityId: String,
+        version: String,
+    ): String? {
+        call("communityPicture $communityId $version")
+        return pictureFiles["$communityId/$version"]
+    }
+
+    override fun communityCover(
+        communityId: String,
+        version: String,
+    ): String? {
+        call("communityCover $communityId $version")
+        return coverFiles["$communityId/$version"]
+    }
+
     override fun likeComment(commentId: String) = call("likeComment $commentId")
 
     override fun unlikeComment(commentId: String) = call("unlikeComment $commentId")

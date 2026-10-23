@@ -41,8 +41,12 @@ import samtak.spjall.core.Quote
 import samtak.spjall.social.PostImageView
 import samtak.spjall.social.shownName
 import samtak.spjall.ui.AppIcons
+import samtak.spjall.ui.Avatar
+import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.Type
+import samtak.spjall.ui.communityTile
+import samtak.spjall.ui.pictureOf
 import samtak.spjall.ui.shownName
 
 /** What a tap on the bubble does: a photo or file opens. */
@@ -155,7 +159,19 @@ internal fun SharedCard(
                 modifier = Modifier.clickable(role = Role.Button) { cards?.open(postId) },
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text(shown.community.name, style = MaterialTheme.typography.labelMedium, color = foreground)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Avatar(
+                        name = shown.community.name,
+                        kind = AvatarKind.Group,
+                        size = COMMUNITY_PICTURE.dp,
+                        photo = shown.community.pictureOf(),
+                        shape = communityTile(COMMUNITY_PICTURE.dp),
+                    )
+                    Text(shown.community.name, style = MaterialTheme.typography.labelMedium, color = foreground)
+                }
                 Text(shown.author.shownName(), style = MaterialTheme.typography.labelLarge, color = foreground)
                 Text(
                     text = shown.excerpt,
@@ -191,6 +207,7 @@ private fun GoneLine(foreground: Color) {
     }
 }
 
+private const val COMMUNITY_PICTURE = 20
 private const val EXCERPT_LINES = 4
 private const val IMAGE_RATIO = 1.5f
 private const val QUOTE_LINES = 2

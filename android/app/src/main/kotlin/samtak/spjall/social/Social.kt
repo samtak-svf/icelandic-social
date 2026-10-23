@@ -164,6 +164,18 @@ interface Social {
     /** Removes the community cover. */
     fun removeCommunityCover(communityId: String)
 
+    /** The file of a community's picture at [version], its `photo`; null when none is visible (0080). */
+    fun communityPicture(
+        communityId: String,
+        version: String,
+    ): String?
+
+    /** The file of a community's cover at [version], its `cover`; null when none is visible (0080). */
+    fun communityCover(
+        communityId: String,
+        version: String,
+    ): String?
+
     /** Likes a comment as this account. */
     fun likeComment(commentId: String)
 
@@ -370,6 +382,16 @@ class CoreSocial(
     override fun removeCommunityAvatar(communityId: String) = client.removeCommunityAvatar(communityId)
 
     override fun removeCommunityCover(communityId: String) = client.removeCommunityCover(communityId)
+
+    override fun communityPicture(
+        communityId: String,
+        version: String,
+    ) = client.communityPicture(communityId, version)
+
+    override fun communityCover(
+        communityId: String,
+        version: String,
+    ) = client.communityCover(communityId, version)
 
     override fun likeComment(commentId: String) = client.likeComment(commentId)
 

@@ -33,7 +33,6 @@ import samtak.spjall.core.ModerationLogAction
 import samtak.spjall.core.ModerationLogEntry
 import samtak.spjall.me.Confirm
 import samtak.spjall.ui.Avatar
-import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.CancelButton
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.SectionLabel
@@ -327,11 +326,7 @@ private fun CommunityMembersDialog(
 @Composable
 private fun CommunityMemberRow(member: CommunityMember) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Avatar(
-            name = member.name,
-            kind = if (member.verified) AvatarKind.Verified else AvatarKind.Unverified,
-            size = 36.dp,
-        )
+        Avatar(member, size = 36.dp)
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(member.name ?: stringResource(R.string.person_unnamed))

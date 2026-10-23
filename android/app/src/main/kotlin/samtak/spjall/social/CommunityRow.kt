@@ -37,6 +37,8 @@ import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.Palette
+import samtak.spjall.ui.communityTile
+import samtak.spjall.ui.pictureOf
 
 /**
  * A community in a list (0080): its picture, its name and a line, and when it last had a post. With posts not yet
@@ -74,7 +76,13 @@ fun CommunityRow(
                 },
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Avatar(name = community.name, kind = AvatarKind.Group, size = 40.dp)
+            Avatar(
+                name = community.name,
+                kind = AvatarKind.Group,
+                size = 40.dp,
+                photo = community.pictureOf(),
+                shape = communityTile(40.dp),
+            )
             CommunityRowText(community, unread, Modifier.weight(1f))
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 community.lastPostAt?.let {

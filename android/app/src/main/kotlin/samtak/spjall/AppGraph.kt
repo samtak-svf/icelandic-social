@@ -60,7 +60,7 @@ class AppGraph(
     val files = Files(context)
 
     /** Profile photos for [samtak.spjall.ui.Avatar], decoded from the core's files and held in memory only. */
-    val photos = CorePhotos(account)
+    val photos = CorePhotos(account, social)
 
     /** Open while the app is in the foreground (SpjallApplication). */
     val socket =

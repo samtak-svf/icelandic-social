@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -27,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -41,7 +43,11 @@ import samtak.spjall.core.CommunityMember
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
+import samtak.spjall.ui.CoverImage
 import samtak.spjall.ui.Palette
+import samtak.spjall.ui.communityTile
+import samtak.spjall.ui.coverOf
+import samtak.spjall.ui.pictureOf
 
 /**
  * The top of a community (0080): a cover band, the picture overlapping it, the name, the audience line, up to
@@ -54,24 +60,18 @@ internal fun CommunityHeader(
     onInfo: () -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxWidth().padding(bottom = PICTURE_OVERLAP.dp)) {
-        // The cover is a plain band until the core can fetch the image of a community.
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(COVER_HEIGHT.dp)
-                    .background(Palette.secondarySubtle, RoundedCornerShape(COVER_RADIUS.dp))
-                    .semantics { contentDescription = "" },
-        )
+        CoverBand(community)
         Avatar(
             name = community.name,
             kind = AvatarKind.Group,
             size = PICTURE.dp,
+            photo = community.pictureOf(),
+            shape = communityTile(PICTURE.dp),
             modifier =
                 Modifier
                     .align(Alignment.BottomStart)
                     .offset(x = 16.dp, y = PICTURE_OVERLAP.dp)
-                    .border(BorderStroke(PICTURE_BORDER.dp, Palette.bg), CircleShape),
+                    .border(BorderStroke(PICTURE_BORDER.dp, Palette.bg), communityTile(PICTURE.dp)),
         )
     }
     Spacer(Modifier.height(PICTURE_OVERLAP.dp - 8.dp))
@@ -84,8 +84,7 @@ internal fun CommunityHeader(
         ) {
             members.take(MEMBER_PICTURES).forEach {
                 Avatar(
-                    name = it.name,
-                    kind = if (it.verified) AvatarKind.Verified else AvatarKind.Unverified,
+                    it,
                     size = MEMBER_PICTURE.dp,
                     modifier = Modifier.border(BorderStroke(2.dp, Palette.bg), CircleShape),
                 )
@@ -104,6 +103,22 @@ internal fun CommunityHeader(
             },
             modifier = Modifier.heightIn(min = 44.dp),
         ) { Text(stringResource(R.string.invite)) }
+    }
+}
+
+/** The cover across the top: a plain band when the community has none. */
+@Composable
+private fun CoverBand(community: Community) {
+    val band = RoundedCornerShape(COVER_RADIUS.dp)
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(COVER_HEIGHT.dp)
+                .clip(band)
+                .background(Palette.secondarySubtle, band),
+    ) {
+        CoverImage(community.coverOf(), stringResource(R.string.community_cover_alt), Modifier.fillMaxSize())
     }
 }
 
