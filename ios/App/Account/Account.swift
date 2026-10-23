@@ -22,6 +22,11 @@ protocol Account: Sendable {
     /// A new link, which ends the one before.
     func rotateInvite() throws -> String
     func revokeDevice(deviceId: String) throws
+    /// The browser's pending link request the code names, once its keys match the code's (decision 0077).
+    func inspectLink(code: String) throws -> LinkRequest
+    /// Approves that request; with `send`, sends the history since `since` (ms; nil is all) to the new device.
+    /// Returns the sealed size, 0 when nothing was sent.
+    func approveLink(code: String, since: UInt64?, send: Bool) throws -> UInt64
     func deleteAccount() throws
     /// The token the socket authenticates with; nil when signed out.
     func deviceToken() throws -> String?
@@ -179,6 +184,12 @@ final class CoreAccount: Account, @unchecked Sendable {
     func rotateInvite() throws -> String { try core().rotateInvite() }
 
     func revokeDevice(deviceId: String) throws { try core().revokeDevice(deviceId: deviceId) }
+
+    func inspectLink(code: String) throws -> LinkRequest { try core().inspectLink(code: code) }
+
+    func approveLink(code: String, since: UInt64?, send: Bool) throws -> UInt64 {
+        try core().approveLink(code: code, since: since, send: send)
+    }
 
     func deleteAccount() throws { try core().deleteAccount() }
 

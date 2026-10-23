@@ -17,6 +17,7 @@ struct HomeView: View {
 
     enum MeRoute: Hashable {
         case verify
+        case link
     }
 
     let signIn: SignInModel
@@ -218,18 +219,22 @@ struct HomeView: View {
 
     private var meStack: some View {
         NavigationStack(path: $mePath) {
-            MeView(model: me, push: push, onVerify: { mePath.append(.verify) })
-                .navigationDestination(for: MeRoute.self) { route in
-                    switch route {
-                    case .verify:
-                        VerifyView(
-                            model: signIn,
-                            onVerify: { Task { await signIn.verify(browser: browser) } },
-                            onLater: { mePath.removeLast() },
-                            onRetry: { Task { await signIn.retry(browser: browser) } }
-                        )
-                    }
+            MeView(
+                model: me, push: push, onVerify: { mePath.append(.verify) }, onLink: { mePath.append(.link) }
+            )
+            .navigationDestination(for: MeRoute.self) { route in
+                switch route {
+                case .link:
+                    LinkView(model: LinkModel(account: signIn.account))
+                case .verify:
+                    VerifyView(
+                        model: signIn,
+                        onVerify: { Task { await signIn.verify(browser: browser) } },
+                        onLater: { mePath.removeLast() },
+                        onRetry: { Task { await signIn.retry(browser: browser) } }
+                    )
                 }
+            }
         }
     }
 
