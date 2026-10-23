@@ -91,6 +91,12 @@ final class PostModelTests: XCTestCase {
         XCTAssertTrue(model.deleted)
     }
 
+    func testTheCommentComposerKnowsTheReadersOwnNameAndPhoto() async {
+        let model = await model()
+        XCTAssertEqual(model.myName, "Jón Jónsson")
+        XCTAssertNil(model.myPhoto)
+    }
+
     func testAFailedDeleteStaysAndRetries() async {
         let model = await model()
         social.failNext = unreachable

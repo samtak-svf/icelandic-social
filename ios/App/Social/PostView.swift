@@ -52,8 +52,8 @@ struct PostView: View {
                     if let comment = model.replyingTo {
                         ReplyBar(name: authorName(comment.author)) { model.cancelReply() }
                     }
-                    SocialComposer(
-                        placeholder: "comment_compose", send: "comment_publish",
+                    CommentComposer(
+                        name: model.myName, photo: model.myPhoto,
                         draft: Binding(get: { model.draft }, set: { model.draft = $0 }),
                         limit: PostModel.commentLimit, enabled: model.sendable && !model.busy,
                         onSend: { Task { await model.publish() } })
@@ -140,5 +140,60 @@ private struct ReplyBar: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
         .background(BrandTokens.Colors.primarySubtle)
+    }
+}
+
+/// The comment box, one row pinned to the bottom: the reader's own picture, a field that grows to five lines, and
+/// a send arrow that waits for something to send (decision 0080). Comments carry no media, so there is no photo
+/// button.
+private struct CommentComposer: View {
+    let name: String?
+    let photo: PhotoOf?
+    @Binding var draft: String
+    let limit: Int
+    let enabled: Bool
+    let onSend: () -> Void
+
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Divider()
+            HStack(alignment: .bottom, spacing: 8) {
+                Avatar(name: name, kind: .me, size: 34, photo: photo)
+                    .padding(.bottom, 3)
+                TextField("post_write_comment", text: $draft, axis: .vertical)
+                    .font(.sans(14))
+                    .lineLimit(1...5)
+                    .focused($focused)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .frame(minHeight: 40)
+                    .background(
+                        focused ? BrandTokens.Colors.surface : BrandTokens.Colors.muted,
+                        in: RoundedRectangle(cornerRadius: 20)
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20)
+                            .strokeBorder(focused ? BrandTokens.Colors.borderStrong : BrandTokens.Colors.border)
+                    }
+                    .onChange(of: draft) { _, text in
+                        if text.count > limit { draft = String(text.prefix(limit)) }
+                    }
+                Button(action: onSend) {
+                    Image(systemName: "paperplane.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(enabled ? BrandTokens.Colors.primary : BrandTokens.Colors.mutedFg)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!enabled)
+                .accessibilityLabel(Text("comment_publish"))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+        }
+        .background(BrandTokens.Colors.surface)
     }
 }

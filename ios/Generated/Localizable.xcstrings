@@ -4285,6 +4285,18 @@
         }
       }
     },
+    "communities_from_yours": {
+      "comment": "Heading of the cross-community feed under the list on the hub",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frá samfélögunum þínum"
+          }
+        }
+      }
+    },
     "communities_create_row_hint": {
       "comment": "Second line of the create row on the hub",
       "extractionState": "manual",
