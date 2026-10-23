@@ -22,6 +22,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.SemanticsPropertyKey
+import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -99,7 +101,10 @@ fun Avatar(
             modifier
                 .size(size)
                 .background(fill, shape)
-                .clearAndSetSemantics { testTag = if (image == null) AVATAR_INITIALS else AVATAR_PHOTO },
+                .clearAndSetSemantics {
+                    testTag = if (image == null) AVATAR_INITIALS else AVATAR_PHOTO
+                    if (image == null) avatarInitials = initials(name)
+                },
         contentAlignment = Alignment.Center,
     ) {
         val shown = image
@@ -126,6 +131,14 @@ fun Avatar(
 /** What a screen test finds an [Avatar] by: drawn with its photo, or with initials. */
 const val AVATAR_PHOTO = "avatar_photo"
 const val AVATAR_INITIALS = "avatar_initials"
+
+/**
+ * The letters an [Avatar] draws when it has no photo. Its semantics are cleared, so a screen reader hears nothing
+ * and a test cannot find the letters by text; this key, which accessibility services do not read, lets a test
+ * check them.
+ */
+val AvatarInitials = SemanticsPropertyKey<String>("AvatarInitials")
+private var SemanticsPropertyReceiver.avatarInitials by AvatarInitials
 
 /** The avatar's fill for a conversation: a group, or its one member verified or not. */
 fun Conversation.avatarKind(): AvatarKind =

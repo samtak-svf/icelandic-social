@@ -4,12 +4,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -26,6 +26,7 @@ import samtak.spjall.core.Author
 import samtak.spjall.core.Comment
 import samtak.spjall.core.ModerationState
 import samtak.spjall.ui.AVATAR_INITIALS
+import samtak.spjall.ui.AvatarInitials
 import samtak.spjall.ui.SpjallTheme
 
 @RunWith(AndroidJUnit4::class)
@@ -67,8 +68,8 @@ class CommentComposerTest {
     fun theReadersOwnInitialsShowAndNeverAQuestionMark() {
         show()
         compose.onNodeWithTag(AVATAR_INITIALS).assertIsDisplayed()
-        compose.onNodeWithText("JJ").assertIsDisplayed()
-        compose.onAllNodesWithText("?").assertCountEquals(0)
+        compose.onNode(SemanticsMatcher.expectValue(AvatarInitials, "JJ")).assertIsDisplayed()
+        compose.onAllNodes(SemanticsMatcher.expectValue(AvatarInitials, "?")).assertCountEquals(0)
     }
 
     @Test

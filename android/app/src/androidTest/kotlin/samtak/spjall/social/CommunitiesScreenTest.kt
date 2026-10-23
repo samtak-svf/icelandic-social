@@ -107,13 +107,13 @@ class CommunitiesScreenTest {
     @Test
     fun theMineTabShowsTheFeedUnderTheListOnceThereIsACommunity() {
         show(CommunitiesViewModel.State(mine = listOf(community()), feed = listOf(post()), loaded = true))
-        compose.onNodeWithText(text(R.string.communities_from_yours)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.communities_from_yours), ignoreCase = true).assertIsDisplayed()
         compose.onNodeWithText("Æfing á fimmtudag").assertIsDisplayed()
     }
 
     @Test
     fun theMineTabHasNoFeedHeadingWithoutACommunity() {
         show(CommunitiesViewModel.State(feed = listOf(post()), loaded = true))
-        compose.onAllNodesWithText(text(R.string.communities_from_yours)).assertCountEquals(0)
+        compose.onAllNodesWithText(text(R.string.communities_from_yours), ignoreCase = true).assertCountEquals(0)
     }
 }
