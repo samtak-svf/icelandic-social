@@ -21,8 +21,11 @@ extension EnvironmentValues {
     }
 }
 
+/// The web app's origin this build names (Info.plist `SpjallWebHost`, from identifiers/ids.json `hosts.web`).
+let webOrigin = "https://" + (Bundle.main.object(forInfoDictionaryKey: "SpjallWebHost") as? String ?? "")
+
 /// The address of a post on the web (the route `posts/$postId`), which the app opens as well.
-func postLink(_ postId: String) -> String { "https://spjall.samtak.is/posts/\(postId)" }
+func postLink(_ postId: String) -> String { "\(webOrigin)/posts/\(postId)" }
 
 /// Puts `link` on the pasteboard, for this device alone.
 @MainActor func copyLink(_ link: String) {

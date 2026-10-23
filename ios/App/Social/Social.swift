@@ -297,7 +297,7 @@ func audienceLineFull(_ community: Community) -> String {
 
 /// The web address of a community, which is what an open community shares (decision 0080).
 func communityLink(_ communityId: String) -> URL? {
-    URL(string: "https://spjall.samtak.is/communities/\(communityId)")
+    URL(string: "\(webOrigin)/communities/\(communityId)")
 }
 
 /// The words for a reaction, which a screen reader says in place of its emoji.

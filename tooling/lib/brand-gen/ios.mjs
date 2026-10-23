@@ -101,6 +101,7 @@ function idsXcconfig(brand) {
     `SPJALL_APP_GROUP = ${store.appGroup}`,
     `SPJALL_URL_SCHEME = ${store.urlScheme}`,
     `SPJALL_API_HOST = ${hosts.api}`,
+    `SPJALL_WEB_HOST = ${hosts.web}`,
     `DEVELOPMENT_TEAM = ${services.appleTeamId ?? ""}`,
     "",
   ].join("\n");
