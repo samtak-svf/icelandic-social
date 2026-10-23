@@ -76,6 +76,7 @@ class FakeSocial : Social {
 
     /** This account's id. */
     var me = "a1"
+    var myName: String? = "Ég"
 
     /** The server's refusal of the next image uploaded, none taking it. */
     var refuseImage: CoreException? = null
@@ -228,9 +229,9 @@ class FakeSocial : Social {
         list[index] = list[index].copy(role = role)
     }
 
-    override fun me(): String {
+    override fun me(): OwnAccount {
         call("me")
-        return me
+        return OwnAccount(me, myName, null)
     }
 
     override fun feed(

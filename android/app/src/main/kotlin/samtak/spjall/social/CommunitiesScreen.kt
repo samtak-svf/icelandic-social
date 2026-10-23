@@ -110,7 +110,7 @@ private fun Content(
         state.problem?.let { problem -> item(key = "problem") { ProblemCard(problem) { actions.retry() } } }
         when (state.tab) {
             CommunitiesTab.FEED -> feed(state, actions, onReport)
-            CommunitiesTab.MINE -> mine(state, actions)
+            CommunitiesTab.MINE -> mine(state, actions, onReport)
             CommunitiesTab.DISCOVER -> discover(state, actions)
         }
     }
@@ -124,6 +124,15 @@ private fun androidx.compose.foundation.lazy.LazyListScope.feed(
     if (state.loaded && state.feed.isEmpty()) {
         item(key = "feed-empty") { EmptyState(AppIcons.Communities, stringResource(R.string.communities_feed_empty)) }
     }
+    feedPosts(state, actions, onReport)
+}
+
+/** The hub's post cards, newest first with the next page asked for at the end: the Feed tab and the foot of Mine. */
+private fun androidx.compose.foundation.lazy.LazyListScope.feedPosts(
+    state: CommunitiesViewModel.State,
+    actions: CommunitiesActions,
+    onReport: (String) -> Unit,
+) {
     itemsIndexed(state.feed, key = { _, post -> "feed-${post.postId}" }) { index, post ->
         val communityName = state.mine.firstOrNull { it.communityId == post.communityId }?.name
         if (communityName != null) {
@@ -156,6 +165,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.feed(
 private fun androidx.compose.foundation.lazy.LazyListScope.mine(
     state: CommunitiesViewModel.State,
     actions: CommunitiesActions,
+    onReport: (String) -> Unit,
 ) {
     if (state.verified) item(key = "create-row") { CreateRow(actions::create) }
     item(key = "mine-title") { SectionLabel(stringResource(R.string.communities_mine)) }
@@ -168,6 +178,11 @@ private fun androidx.compose.foundation.lazy.LazyListScope.mine(
             onOpen = { actions.open(community.communityId) },
             onPin = { actions.pin(community.communityId, it) },
         )
+    }
+    // What is new in them, from the same feed state as the Feed tab (0080), once there is a community to be in.
+    if (state.mine.isNotEmpty()) {
+        item(key = "mine-feed-title") { SectionLabel(stringResource(R.string.communities_from_yours)) }
+        feedPosts(state, actions, onReport)
     }
 }
 

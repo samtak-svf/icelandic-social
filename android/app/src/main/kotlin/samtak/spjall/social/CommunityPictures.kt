@@ -1,13 +1,13 @@
 package samtak.spjall.social
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
@@ -38,9 +38,13 @@ internal fun PictureRows(
     )
 }
 
-/** A community picture or cover: a button to pick one, and one to take it away while there is one (0080). */
+/**
+ * A community picture or cover: a button to pick one, and one to take it away while there is one (0080). A button
+ * that does not fit beside the other wraps whole to the next line, never letter by letter.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ImageRow(
+internal fun ImageRow(
     choose: Int,
     remove: Int,
     present: Boolean,
@@ -48,7 +52,7 @@ private fun ImageRow(
     onChoose: () -> Unit,
     onRemove: () -> Unit,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         TextButton(onClick = onChoose, enabled = !busy) { Text(stringResource(choose)) }
         if (present) TextButton(onClick = onRemove, enabled = !busy) { Text(stringResource(remove)) }
     }

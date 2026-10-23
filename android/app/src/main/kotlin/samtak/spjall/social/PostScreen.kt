@@ -62,8 +62,7 @@ fun PostScreen(
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     val delete: (String, Author) -> (() -> Unit)? = { key, author ->
         { deleting = key }.takeIf {
-            author.accountId ==
-                state.me
+            author.accountId == state.me?.id
         }
     }
     val post = state.post
@@ -169,27 +168,16 @@ private fun ReplyBox(
                     }
                 }
             }
-            CommentComposer(state, actions, focus)
+            CommentComposer(
+                me = state.me,
+                draft = state.draft,
+                sending = state.sending,
+                onText = actions::draft,
+                onSend = actions::send,
+                modifier = Modifier.focusRequester(focus),
+            )
         }
     }
-}
-
-/** The box to add a comment in. */
-@Composable
-private fun CommentComposer(
-    state: PostViewModel.State,
-    actions: PostActions,
-    focus: FocusRequester,
-) {
-    Composer(
-        label = stringResource(R.string.comment_compose),
-        action = stringResource(R.string.comment_publish),
-        text = state.draft,
-        sending = state.sending,
-        onText = actions::draft,
-        onSend = actions::send,
-        modifier = Modifier.focusRequester(focus),
-    )
 }
 
 /** The report being written, or the delete being asked about, for the post or one of its comments. */

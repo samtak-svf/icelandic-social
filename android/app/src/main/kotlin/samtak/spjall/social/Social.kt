@@ -96,8 +96,8 @@ interface Social {
         role: samtak.spjall.core.CommunityRole,
     )
 
-    /** This account's id, to tell its own posts and comments from others'. */
-    fun me(): String
+    /** This account: its id, to tell its own posts and comments from others', and its name and photo. */
+    fun me(): OwnAccount
 
     /** A page of posts across every community this account belongs to. */
     fun feed(
@@ -328,7 +328,7 @@ class CoreSocial(
         role: samtak.spjall.core.CommunityRole,
     ) = client.setCommunityRole(communityId, accountId, role)
 
-    override fun me() = client.me().accountId
+    override fun me() = client.me().own()
 
     override fun feed(
         before: String?,

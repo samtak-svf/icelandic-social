@@ -176,8 +176,8 @@ fun Byline(
 }
 
 /**
- * The box a post and a comment are both written in, with its button under it; [extra] goes between them (a
- * post's images), and [ready] says whether there is something to send.
+ * The box a post is written in, with its button under it; [extra] goes between them (the post's images), and
+ * [ready] says whether there is something to send.
  */
 @Composable
 fun Composer(

@@ -736,6 +736,8 @@
     <string name="community_cover_choose">Velja forsíðumynd</string>
     <!-- Button that removes a community's cover (decision 0080). -->
     <string name="community_cover_remove">Fjarlægja forsíðumynd</string>
+    <!-- Heading of the cross-community feed under the list on the hub -->
+    <string name="communities_from_yours">Frá samfélögunum þínum</string>
     <!-- Second line of the create row on the hub -->
     <string name="communities_create_row_hint">Safnaðu fólki saman um málefni</string>
     <!-- Closes a dialog or a menu -->
