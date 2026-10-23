@@ -8,6 +8,7 @@ import {
   platformReportsRoute,
   reportRoute,
 } from "../../api/moderation.ts";
+import { pinPostRoute, unpinPostRoute } from "../../api/social-hub.ts";
 import type { AppEnv } from "../../app.ts";
 import { db } from "../../env/index.ts";
 import { fail } from "../../errors.ts";
@@ -15,12 +16,25 @@ import { log } from "../../log.ts";
 import { moderates, standing } from "../communities/index.ts";
 import { act, actor } from "./actions.ts";
 import { entry, logPage } from "./log.ts";
+import { setPostPin } from "./pins.ts";
 import { closing, fileReport, isPlatformModerator, openReport, reportPage } from "./reports.ts";
 
 // The routes of moderation (decisions 0063, 0066). A log line carries ids and
 // counts, never a report's note or a reason (0008).
 
 export function moderationRoutes(app: OpenAPIHono<AppEnv>): void {
+  for (const [route, on] of [
+    [pinPostRoute, true],
+    [unpinPostRoute, false],
+  ] as const) {
+    app.openapi(route, async (c) => {
+      const { communityId, postId } = c.req.valid("param");
+      const refused = await setPostPin(c.env, c.var.session.accountId, communityId, postId, on);
+      if (refused) return fail(c, refused === "not_found" ? 404 : 403, refused);
+      return c.body(null, 204);
+    });
+  }
+
   app.openapi(reportRoute, async (c) => {
     const { accountId } = c.var.session;
     const input = c.req.valid("json");

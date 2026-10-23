@@ -9,10 +9,12 @@ const at = (parentCommentId: string | null): Comment => ({
   commentId: `post-1-${Math.random().toString(36).slice(2, 8)}`,
   postId: "post-1",
   parentCommentId,
-  author: { accountId: "a", name: "Nafn", verified: true },
+  author: { accountId: "a", name: "Nafn", verified: true, photo: null, role: null },
   body: "",
   createdAt: Date.now(),
   state: "visible",
+  likes: 0,
+  liked: false,
 });
 
 describe("initials", () => {

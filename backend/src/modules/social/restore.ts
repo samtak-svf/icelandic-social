@@ -1,7 +1,8 @@
 import { db, space } from "../../env/index.ts";
 import type { ContentState } from "./do/space.ts";
 import { deleteKeys } from "./media.ts";
-import { authors, unindex } from "./posts.ts";
+import { authors } from "./bylines.ts";
+import { unindex } from "./posts.ts";
 
 // Restoring one community's space to a point in time (decision 0068). The
 // space's SQLite storage goes back; D1 does not, and D1 stays the truth of

@@ -69,6 +69,17 @@ const Community = z
       description:
         "The community's cover version, changed by each upload; null when it has none (decision 0080). The cover is GET /v1/communities/{communityId}/cover",
     }),
+    unread: z.int().openapi({
+      description:
+        "Posts made since the caller last opened the community's feed, counted from a sequence the server keeps: a post later deleted or removed still counts. 0 for a caller who is not a member (decision 0080)",
+    }),
+    lastPostAt: z.int().nullable().openapi({
+      description:
+        "When the latest post was made (Unix milliseconds); null when there is none, or for a private community the caller is not a member of (decision 0080)",
+    }),
+    pinned: z.boolean().openapi({
+      description: "The caller pinned it to the top of its own list (decision 0080)",
+    }),
   })
   .openapi("Community");
 
@@ -159,6 +170,35 @@ export const myCommunitiesRoute = createRoute({
   responses: {
     200: json("The communities", z.object({ communities: z.array(Community) })),
     ...AUTHED,
+  },
+});
+
+export const pinCommunityRoute = createRoute({
+  method: "put",
+  path: "/v1/communities/{communityId}/pin",
+  operationId: "pinCommunity",
+  tags: ["communities"],
+  summary: "Pin a community to the top of the caller's own list",
+  description:
+    "Stored per account, so the pin follows the caller to every device; the pinned communities come first in `myCommunities`, the earliest pin first. Pinning twice is one pin (decision 0080).",
+  security: ACCOUNT,
+  request: { params: community },
+  responses: { 204: { description: "Pinned" }, ...INVALID, ...AUTHED, ...NOT_FOUND },
+});
+
+export const unpinCommunityRoute = createRoute({
+  method: "delete",
+  path: "/v1/communities/{communityId}/pin",
+  operationId: "unpinCommunity",
+  tags: ["communities"],
+  summary: "Unpin a community",
+  security: ACCOUNT,
+  request: { params: community },
+  responses: {
+    204: { description: "Not pinned, whether it was or not" },
+    ...INVALID,
+    ...AUTHED,
+    ...NOT_FOUND,
   },
 });
 

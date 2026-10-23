@@ -52,6 +52,8 @@ export const OWNERS = {
   community_join_requests: "communities",
   community_invitations: "communities",
   community_bans: "communities",
+  community_reads: "communities",
+  community_pins: "communities",
   post_index: "social",
   social_media: "social",
   space_authors: "social",

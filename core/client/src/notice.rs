@@ -18,7 +18,7 @@ pub enum NoticeKind {
     Photo,
     File,
     /// A post shared under 0040. Its notice is a fixed sentence: it
-    /// carries no text, and nothing fetches the post (0044).
+    /// carries no text and never names the post (0080).
     Post,
     /// A location (0059). Its notice is a fixed sentence: a notice is shown
     /// on a locked screen, so it never carries the place.

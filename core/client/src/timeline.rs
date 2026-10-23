@@ -70,8 +70,9 @@ pub enum Content {
     Timer { seconds: Option<u32> },
     /// The group was named, or its name cleared (0078).
     Name { name: Option<String> },
-    /// A post shared here under 0040: only its id. Since 0044 the post is
-    /// gone and nothing fetches it; the app shows a fixed line.
+    /// A post shared here under 0040: only its id. Since 0080 the app resolves
+    /// it as a card (#288), which shows only what the post's own access
+    /// check shows; where that fails, a fixed line.
     Post { post_id: String },
     /// A place sent once (0059), in WGS 84 microdegrees, and the fix's
     /// radius in metres when the system gave one.

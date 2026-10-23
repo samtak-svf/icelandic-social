@@ -1553,6 +1553,14 @@
       "surfaces": ["android", "ios", "web"],
       "description": "A log entry: a moderator removed the community's cover (decision 0080)."
     },
+    "moderation_log_post_pinned": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A log entry: a moderator pinned a post to the top of the community (decision 0080)."
+    },
+    "moderation_log_post_unpinned": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A log entry: a moderator unpinned the community's pinned post (decision 0080)."
+    },
     "moderation_closed_by": {
       "surfaces": ["android", "ios", "web"],
       "description": "Who closed a report and when; {date} is a formatted date.",

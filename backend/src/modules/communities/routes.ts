@@ -7,7 +7,9 @@ import {
   leaveCommunityRoute,
   listCommunitiesRoute,
   myCommunitiesRoute,
+  pinCommunityRoute,
   restoreCommunityRoute,
+  unpinCommunityRoute,
   updateCommunityRoute,
   withdrawJoinRequestRoute,
 } from "../../api/communities.ts";
@@ -35,6 +37,7 @@ import {
   updateCommunity,
   view,
 } from "./communities.ts";
+import { pinCommunity, unpinCommunity } from "./hub.ts";
 import {
   addMember,
   approve,
@@ -75,6 +78,24 @@ export function communityRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleHooks)
   app.openapi(myCommunitiesRoute, async (c) =>
     c.json({ communities: (await communitiesOf(c.env, c.var.session.accountId)).map(view) }, 200),
   );
+
+  app.openapi(pinCommunityRoute, async (c) => {
+    const { accountId } = c.var.session;
+    const { communityId } = c.req.valid("param");
+    const found = await standing(c.env, accountId, communityId);
+    if (!found || !canRead(found)) return fail(c, 404, "not_found");
+    await pinCommunity(c.env, accountId, communityId);
+    return c.body(null, 204);
+  });
+
+  app.openapi(unpinCommunityRoute, async (c) => {
+    const { accountId } = c.var.session;
+    const { communityId } = c.req.valid("param");
+    const found = await standing(c.env, accountId, communityId);
+    if (!found || !canRead(found)) return fail(c, 404, "not_found");
+    await unpinCommunity(c.env, accountId, communityId);
+    return c.body(null, 204);
+  });
 
   app.openapi(getCommunityRoute, async (c) => {
     const { communityId } = c.req.valid("param");

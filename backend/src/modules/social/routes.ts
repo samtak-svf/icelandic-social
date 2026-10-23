@@ -14,18 +14,19 @@ import {
   unreactRoute,
   uploadSocialMediaRoute,
 } from "../../api/social.ts";
+import { likeCommentRoute, unlikeCommentRoute } from "../../api/social-hub.ts";
 import type { AppEnv } from "../../app.ts";
 import { space, withinLimit } from "../../env/index.ts";
 import { blockedEither } from "../../identity/index.ts";
 import { fail } from "../../errors.ts";
 import { log } from "../../log.ts";
+import { markRead } from "../communities/index.ts";
 import { askAssistant, notice } from "../jobs/index.ts";
 import { cardRoutes } from "./cards.ts";
 import { commentAccess, postAccess, refusal, replyRefusal, spaceAccess } from "./access.ts";
-import type { CommentContent } from "./do/space.ts";
+import { authors, named } from "./bylines.ts";
 import { deleteKeys, postImage, upload } from "./media.ts";
 import {
-  authors,
   communityPosts,
   createPost,
   feed,
@@ -39,30 +40,6 @@ import {
 // The routes of a community's content (decisions 0060, 0063). Each asks
 // access.ts whether the caller may see what it names before anything else.
 // A log line carries ids and counts, never a text or an image (0008).
-
-/** Comments with their authors' names; a deleted author's go. */
-async function named(env: Env, comments: CommentContent[]) {
-  const names = await authors(
-    env,
-    comments.map((c) => c.author),
-  );
-  return comments.flatMap((c) => {
-    // A tombstone's slot (decision 0071): its author is gone and its body
-    // never reaches an ordinary reader, only its place in the thread.
-    if (c.author === "") {
-      return [
-        {
-          ...c,
-          author: { accountId: "deleted", name: null, verified: false },
-          body: "",
-          state: "removed" as const,
-        },
-      ];
-    }
-    const author = names.get(c.author);
-    return author ? [{ ...c, author }] : [];
-  });
-}
 
 export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
   cardRoutes(app);
@@ -81,10 +58,13 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
       access.moderator ? [] : askAssistant(c.env, communityId, postId),
     );
     if (created === "invalid_media") return fail(c, 400, "invalid_media");
-    const author = (await authors(c.env, [accountId])).get(accountId);
+    const author = (await authors(c.env, [accountId], communityId)).get(accountId);
     if (!author) return fail(c, 404, "not_found");
     log("post.created", { accountId, communityId, postId: created.postId });
-    return c.json({ ...created, communityId, author, state: "visible" as const }, 200);
+    return c.json(
+      { ...created, communityId, author, state: "visible" as const, pinned: false },
+      200,
+    );
   });
 
   app.openapi(uploadSocialMediaRoute, async (c) => {
@@ -123,8 +103,26 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     const { before, limit, q } = c.req.valid("query");
     const access = await spaceAccess(c.env, c.var.session.accountId, communityId);
     if (!access) return fail(c, 404, "not_found");
-    const page = await communityPosts(c.env, communityId, access.viewer, before, limit, q);
-    return c.json({ posts: await render(c.env, page.rows, access.viewer), next: page.next }, 200);
+    // The pinned post leads the first page (decision 0080); a search lists matches only.
+    const pinnedId = q?.trim() ? null : await space(c.env, communityId).pinnedPost();
+    const page = await communityPosts(
+      c.env,
+      communityId,
+      access.viewer,
+      before,
+      limit,
+      q,
+      pinnedId,
+    );
+    // Opening the feed (its first page, not a search) is what reading the
+    // community means: the member's unread count goes to zero (decision 0080).
+    if (before === undefined && !q?.trim() && access.standing.role !== null) {
+      await markRead(c.env, c.var.session.accountId, communityId).run();
+    }
+    return c.json(
+      { posts: await render(c.env, page.rows, access.viewer, pinnedId), next: page.next },
+      200,
+    );
   });
 
   app.openapi(feedRoute, async (c) => {
@@ -140,7 +138,8 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(getPostRoute, async (c) => {
     const found = await postAccess(c.env, c.var.session.accountId, c.req.valid("param").postId);
     if (!found) return fail(c, 404, "not_found");
-    const [post] = await render(c.env, [found.post], found.access.viewer);
+    const pinnedId = await space(c.env, found.post.communityId).pinnedPost();
+    const [post] = await render(c.env, [found.post], found.access.viewer, pinnedId);
     return post ? c.json(post, 200) : fail(c, 404, "not_found");
   });
 
@@ -183,7 +182,7 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     const last = page.at(-1);
     return c.json(
       {
-        comments: await named(c.env, page),
+        comments: await named(c.env, page, found.post.communityId),
         next: comments.length > limit && last ? `${last.createdAt}-${last.commentId}` : null,
       },
       200,
@@ -204,7 +203,9 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     );
     if (written && "refused" in written) return fail(c, 403, written.refused);
     if (written && "invalidParent" in written) return fail(c, 400, "invalid_parent_comment");
-    const [comment] = written ? await named(c.env, [written.comment]) : [];
+    const [comment] = written
+      ? await named(c.env, [written.comment], written.post.communityId)
+      : [];
     if (!written || !comment) return fail(c, 404, "not_found");
     log("comment.created", { accountId, communityId: written.post.communityId, postId });
     return c.json(comment, 200);
@@ -253,6 +254,38 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     const found = await postAccess(c.env, accountId, postId);
     if (!found) return fail(c, 404, "not_found");
     await space(c.env, found.post.communityId).react(postId, accountId, null);
+    return c.body(null, 204);
+  });
+
+  // A comment's 👍 (decision 0080) follows the rule of commenting and tells
+  // nobody, so no notice is written. noteAuthor still records that the account
+  // wrote in the space, so deleting the account reaches its likes.
+  app.openapi(likeCommentRoute, async (c) => {
+    const { accountId } = c.var.session;
+    const found = await commentAccess(c.env, accountId, c.req.valid("param").commentId);
+    if (!found) return fail(c, 404, "not_found");
+    const refused = replyRefusal(found.access, found.post);
+    if (refused) return fail(c, 403, refused);
+    if (found.access.between.includes(found.comment.author)) return fail(c, 403, "blocked");
+    const { communityId } = found.post;
+    await noteAuthor(c.env, communityId, accountId);
+    const liked = await space(c.env, communityId).likeComment(
+      found.comment.commentId,
+      accountId,
+      true,
+    );
+    return liked ? c.body(null, 204) : fail(c, 404, "not_found");
+  });
+
+  app.openapi(unlikeCommentRoute, async (c) => {
+    const { accountId } = c.var.session;
+    const found = await commentAccess(c.env, accountId, c.req.valid("param").commentId);
+    if (!found) return fail(c, 404, "not_found");
+    await space(c.env, found.post.communityId).likeComment(
+      found.comment.commentId,
+      accountId,
+      false,
+    );
     return c.body(null, 204);
   });
 }

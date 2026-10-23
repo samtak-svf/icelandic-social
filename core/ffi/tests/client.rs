@@ -771,16 +771,31 @@ fn google_links_and_one_to_ones_cross_the_exported_api() {
         Err(CoreError::Invalid { .. })
     ));
 
-    // Nothing sends a new shared post (0044).
-    assert!(matches!(
-        b1.client.send(
-            one,
-            Body::Post {
-                post_id: "post_0001".into()
-            }
-        ),
-        Err(CoreError::Invalid { .. })
-    ));
+    // A post is shared by its id (0080, amending 0044): a well-formed id is
+    // queued, a malformed one is `Invalid`.
+    let post_id = format!("p_{}", "0123456789abcdef".repeat(2));
+    assert!(
+        !b1.client
+            .send(
+                one.clone(),
+                Body::Post {
+                    post_id: post_id.clone()
+                }
+            )
+            .unwrap()
+            .is_empty()
+    );
+    for bad in ["", "p 1", "p_é"] {
+        assert!(matches!(
+            b1.client.send(
+                one.clone(),
+                Body::Post {
+                    post_id: bad.into()
+                }
+            ),
+            Err(CoreError::Invalid { .. })
+        ));
+    }
 }
 
 /// The social calls through the exported API: what each sends, and the
@@ -834,7 +849,9 @@ fn the_social_calls_cross_the_exported_api() {
         Author {
             account_id: "a".into(),
             name: None,
-            verified: false
+            verified: false,
+            photo: None,
+            role: None,
         }
     );
     assert_eq!(
@@ -851,6 +868,15 @@ fn the_social_calls_cross_the_exported_api() {
 
     answer(204, "");
     a1.client.react("p_1".into(), ReactionKind::Wow).unwrap();
+    for _ in 0..6 {
+        answer(204, "");
+    }
+    a1.client.pin_community("c".into()).unwrap();
+    a1.client.unpin_community("c".into()).unwrap();
+    a1.client.pin_post("c".into(), "p_1".into()).unwrap();
+    a1.client.unpin_post("c".into(), "p_1".into()).unwrap();
+    a1.client.like_comment("p_1-0a".into()).unwrap();
+    a1.client.unlike_comment("p_1-0a".into()).unwrap();
     answer(204, "");
     a1.client
         .report(
@@ -1018,6 +1044,12 @@ fn the_social_calls_cross_the_exported_api() {
                 "/v1/communities/cm_1/posts?q=Hall%C3%B3&limit=10".into()
             ),
             (HttpMethod::Put, "/v1/posts/p_1/reaction".into()),
+            (HttpMethod::Put, "/v1/communities/c/pin".into()),
+            (HttpMethod::Delete, "/v1/communities/c/pin".into()),
+            (HttpMethod::Put, "/v1/communities/c/posts/p_1/pin".into()),
+            (HttpMethod::Delete, "/v1/communities/c/posts/p_1/pin".into()),
+            (HttpMethod::Put, "/v1/comments/p_1-0a/like".into()),
+            (HttpMethod::Delete, "/v1/comments/p_1-0a/like".into()),
             (HttpMethod::Post, "/v1/reports".into()),
             (HttpMethod::Post, "/v1/communities/cm_1/actions".into()),
             (HttpMethod::Post, "/v1/cards".into()),

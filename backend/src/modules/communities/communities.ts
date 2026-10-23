@@ -40,6 +40,19 @@ export type Standing = {
   photo: string | null;
   /** The cover's version (decision 0080), or null when it has none. */
   cover: string | null;
+  /**
+   * Posts made since the viewer last opened the feed (decision 0080), counted
+   * from D1's sequence alone. A post later deleted or removed still counts as
+   * posted, the accepted trade-off for never asking a space. 0 for a viewer
+   * who is not a member.
+   */
+  unread: number;
+  /** When the latest post was made, or null: hidden from a private community's outsiders. */
+  lastPostAt: number | null;
+  /** The viewer pinned it to the top of its list (decision 0080). */
+  pinned: boolean;
+  /** When the viewer pinned it, to order the pinned; not part of the contract. */
+  pinnedAt: number | null;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -52,6 +65,13 @@ export const DECLINED_MS = 30 * DAY_MS;
 const COLUMNS = `c.community_id, c.name, c.description, c.audience, c.created_at,
        c.read_only_since, c.deleted_at, c.purged_at, c.photo_version, c.cover_version,
        m.role, m.muted_until,
+       CASE WHEN m.role IS NOT NULL
+            THEN MAX(0, c.post_seq - COALESCE((SELECT x.read_seq FROM community_reads x
+                          WHERE x.community_id = c.community_id AND x.account_id = ?1), 0))
+            ELSE 0 END AS unread,
+       CASE WHEN c.audience = 'open' OR m.role IS NOT NULL THEN c.last_post_at END AS last_post_at,
+       (SELECT x.pinned_at FROM community_pins x
+         WHERE x.community_id = c.community_id AND x.account_id = ?1) AS pinned_at,
        EXISTS (SELECT 1 FROM platform_moderators p WHERE p.account_id = ?1) AS platform,
        EXISTS (SELECT 1 FROM community_bans x
                 WHERE x.community_id = c.community_id AND x.account_id = ?1) AS banned,
@@ -90,6 +110,9 @@ type Row = {
   purged_at: number | null;
   photo_version: string | null;
   cover_version: string | null;
+  unread: number;
+  last_post_at: number | null;
+  pinned_at: number | null;
   role: Role | null;
   muted_until: number | null;
   platform: number;
@@ -127,6 +150,10 @@ function standingOf(row: Row): Standing {
     openReports: row.open_reports,
     photo: row.photo_version,
     cover: row.cover_version,
+    unread: row.unread,
+    lastPostAt: row.last_post_at,
+    pinned: row.pinned_at !== null,
+    pinnedAt: row.pinned_at,
   };
 }
 
@@ -156,11 +183,14 @@ export async function standing(
 }
 
 /** The public face of a standing: the flags the contract does not carry are dropped. */
-export function view(s: Standing): Omit<Standing, "banned" | "platformModerator" | "purged"> {
-  const { banned, platformModerator, purged, ...community } = s;
+export function view(
+  s: Standing,
+): Omit<Standing, "banned" | "platformModerator" | "purged" | "pinnedAt"> {
+  const { banned, platformModerator, purged, pinnedAt, ...community } = s;
   void banned;
   void platformModerator;
   void purged;
+  void pinnedAt;
   return community;
 }
 
@@ -229,6 +259,10 @@ export async function createCommunity(
     openReports: 0,
     photo: null,
     cover: null,
+    unread: 0,
+    lastPostAt: null,
+    pinned: false,
+    pinnedAt: null,
   };
 }
 
@@ -263,12 +297,17 @@ export async function discover(
   };
 }
 
-/** The communities `viewer` is a member of, by name. */
+/**
+ * The communities `viewer` is a member of: the ones it pinned first, the
+ * earliest pin first (decision 0080), then the rest by name. Everything,
+ * unread counts included, is read from D1; no space is asked.
+ */
 export async function communitiesOf(env: Env, viewer: string): Promise<Standing[]> {
   const { results } = await db(env)
     .prepare(
       `SELECT ${COLUMNS} FROM ${FROM}
-        WHERE m.account_id IS NOT NULL ORDER BY c.name_key, c.community_id`,
+        WHERE m.account_id IS NOT NULL
+        ORDER BY pinned_at IS NULL, pinned_at, c.name_key, c.community_id`,
     )
     .bind(viewer)
     .all<Row>();

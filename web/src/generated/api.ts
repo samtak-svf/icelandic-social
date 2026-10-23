@@ -449,6 +449,12 @@ export interface Community {
   photo: string | null;
   /** The community's cover version, changed by each upload; null when it has none (decision 0080). The cover is GET /v1/communities/{communityId}/cover */
   cover: string | null;
+  /** Posts made since the caller last opened the community's feed, counted from a sequence the server keeps: a post later deleted or removed still counts. 0 for a caller who is not a member (decision 0080) */
+  unread: number;
+  /** When the latest post was made (Unix milliseconds); null when there is none, or for a private community the caller is not a member of (decision 0080) */
+  lastPostAt: number | null;
+  /** The caller pinned it to the top of its own list (decision 0080) */
+  pinned: boolean;
 }
 
 export interface CommunityPage {
@@ -542,6 +548,10 @@ export interface Author {
   accountId: string;
   name: string | null;
   verified: boolean;
+  /** The profile photo's version, changed by each upload; null when there is none to show (decision 0039) */
+  photo: string | null;
+  /** The account's role in the community the post or comment belongs to, null for a member and wherever no community is in context (decision 0080) */
+  role: "owner" | "moderator" | null;
 }
 
 /** A re-encoded WebP image */
@@ -566,19 +576,11 @@ export interface Post {
   }>;
   myReaction: "like" | "love" | "laugh" | "wow" | "sad" | null;
   commentCount: number;
+  latestComment: Comment | null;
   /** Only a moderator sees what is not visible: hidden or removed by a moderator */
   state: "visible" | "hidden" | "removed";
-}
-
-export interface PostPage {
-  posts: Array<Post>;
-  /** The cursor of the next, older page, or null when there is none. A page may be short, or empty, with more after it */
-  next: string | null;
-}
-
-export interface CommentPage {
-  comments: Array<Comment>;
-  next: string | null;
+  /** A moderator pinned it to the top of the community (decision 0080). On a community's posts it is the first post of the first page, and only there; `getFeed` never pins */
+  pinned: boolean;
 }
 
 export interface Comment {
@@ -593,6 +595,21 @@ export interface Comment {
   createdAt: number;
   /** Only a moderator sees what is not visible: hidden or removed by a moderator */
   state: "visible" | "hidden" | "removed";
+  /** How many accounts liked it, but those a block hides from the caller (decision 0080) */
+  likes: number;
+  /** The caller liked it */
+  liked: boolean;
+}
+
+export interface PostPage {
+  posts: Array<Post>;
+  /** The cursor of the next, older page, or null when there is none. A page may be short, or empty, with more after it */
+  next: string | null;
+}
+
+export interface CommentPage {
+  comments: Array<Comment>;
+  next: string | null;
 }
 
 /** What a report or an action is about */
@@ -643,7 +660,7 @@ export interface ModerationLogEntry {
   actor: Author | null;
   /** Done as one of Samtak's platform moderators */
   asPlatform: boolean;
-  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "close_report" | "delete_community" | "restore_community" | "set_community_picture" | "remove_community_picture" | "set_community_cover" | "remove_community_cover";
+  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "close_report" | "delete_community" | "restore_community" | "set_community_picture" | "remove_community_picture" | "set_community_cover" | "remove_community_cover" | "pin_post" | "unpin_post";
   target: {
     kind: "post" | "comment" | "community" | "account" | "report";
     id: string;
@@ -1045,6 +1062,40 @@ export function myCommunities(init?: CallInit): Promise<
   | { status: 426; data: ApiError }
 > {
   return call("GET", "/v1/me/communities", undefined, init);
+}
+
+/**
+ * Pin a community to the top of the caller's own list
+ *
+ * Stored per account, so the pin follows the caller to every device; the pinned communities come first in `myCommunities`, the earliest pin first. Pinning twice is one pin (decision 0080).
+ */
+export function pinCommunity(args: {
+  path: {
+    communityId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("PUT", "/v1/communities/{communityId}/pin", args, init);
+}
+
+/** Unpin a community */
+export function unpinCommunity(args: {
+  path: {
+    communityId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/communities/{communityId}/pin", args, init);
 }
 
 /** One community */
@@ -1705,6 +1756,81 @@ export function unreact(args: {
   | { status: 426; data: ApiError }
 > {
   return call("DELETE", "/v1/posts/{postId}/reaction", args, init);
+}
+
+/**
+ * Like a comment
+ *
+ * One 👍 per account and comment; liking twice is one like, and nobody is notified (decision 0080). The same rule as commenting applies.
+ */
+export function likeComment(args: {
+  path: {
+    /** The post's id, a hyphen, and the comment's own part */
+    commentId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("PUT", "/v1/comments/{commentId}/like", args, init);
+}
+
+/** Take back a like on a comment */
+export function unlikeComment(args: {
+  path: {
+    /** The post's id, a hyphen, and the comment's own part */
+    commentId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/comments/{commentId}/like", args, init);
+}
+
+/**
+ * Pin a post to the top of the community
+ *
+ * One post is pinned at a time: pinning another replaces it. Only the owner and the moderators pin, and each change is a moderation log entry. A removed or deleted post is unpinned (decision 0080).
+ */
+export function pinPost(args: {
+  path: {
+    communityId: string;
+    postId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("PUT", "/v1/communities/{communityId}/posts/{postId}/pin", args, init);
+}
+
+/** Unpin the community's pinned post */
+export function unpinPost(args: {
+  path: {
+    communityId: string;
+    postId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/communities/{communityId}/posts/{postId}/pin", args, init);
 }
 
 /**

@@ -103,8 +103,8 @@ pub enum Body {
         active: bool,
     },
     /// A post shared into the conversation (0040): its id and nothing
-    /// else. No client sends one since 0044, and the posts are deleted;
-    /// it stays decodable so a conversation that holds one does not break.
+    /// else. A post is shared by its id since 0080 (which amends 0044); the
+    /// receiver resolves it as a card through the social `cards` call.
     Post {
         post_id: String,
         /// Shared again by `forward` from another conversation (0041).

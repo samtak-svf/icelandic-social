@@ -1,6 +1,18 @@
 import { DurableObject } from "cloudflare:workers";
 import type { REACTIONS } from "../../../api/social.ts";
+import {
+  type CommentContent,
+  type CommentRecord,
+  type CommentRow,
+  type ContentState,
+  type Viewer,
+  comment,
+  latestComments,
+  listComments,
+} from "./comment-reads.ts";
 import { REMOVED_KEPT_MS, SCHEMA } from "./space-schema.ts";
+
+export type { CommentContent, CommentRecord, ContentState, Viewer } from "./comment-reads.ts";
 
 export type Reaction = (typeof REACTIONS)[number];
 
@@ -17,66 +29,11 @@ export type PostContent = {
   reactions: { kind: Reaction; count: number }[];
   myReaction: Reaction | null;
   commentCount: number;
+  /** The newest comment the viewer may read, or null (decision 0080). */
+  latestComment: CommentContent | null;
 };
-
-export type ContentState = "visible" | "hidden" | "removed";
-
-export type CommentContent = {
-  commentId: string;
-  postId: string;
-  /** The top-level comment this replies to, or null (decision 0071). */
-  parentCommentId: string | null;
-  author: string;
-  body: string;
-  createdAt: number;
-  state: ContentState;
-};
-
-/**
- * Who is looking: the viewer, and the accounts a block stands between it and
- * (decision 0063), whose comments and reactions it does not see. The Worker
- * has already decided the viewer may read the space; a moderator's `hidden`
- * is empty, since a block does not hide content from moderation, and only a
- * moderator sees a hidden or removed comment.
- */
-export type Viewer = { account: string; hidden: string[]; moderator: boolean };
 
 type PostRow = { post_id: string; author: string; body: string; media: string; created_at: number };
-type CommentRow = {
-  comment_id: string;
-  post_id: string;
-  parent_comment_id: string | null;
-  author: string;
-  body: string;
-  created_at: number;
-  state: ContentState;
-};
-
-const comment = (r: CommentRow): CommentContent => ({
-  commentId: r.comment_id,
-  postId: r.post_id,
-  parentCommentId: r.parent_comment_id,
-  author: r.author,
-  body: r.body,
-  createdAt: r.created_at,
-  state: r.state,
-});
-
-/**
- * A tombstone keeps the slot of a hidden, removed or author-deleted top-level
- * comment that still has a visible reply (decision 0071): no author, no body,
- * shown as removed, so the replies underneath keep their place.
- */
-const tombstone = (r: CommentRow): CommentContent => ({
-  commentId: r.comment_id,
-  postId: r.post_id,
-  parentCommentId: null,
-  author: "",
-  body: "",
-  createdAt: r.created_at,
-  state: "removed",
-});
-
 /**
  * One space's content (decisions 0060, 0063): its posts, the comments on
  * them and one reaction per account on each. It is hosted, not encrypted:
@@ -163,6 +120,7 @@ export class Space extends DurableObject<Env> {
         .toArray()
         .map((r) => [r.post_id, r.count]),
     );
+    const latest = latestComments(this.sql, ids, viewer);
     const byId = new Map(rows.map((r) => [r.post_id, r]));
     return ids.flatMap((id) => {
       const row = byId.get(id);
@@ -179,6 +137,7 @@ export class Space extends DurableObject<Env> {
             .map(({ kind, count }) => ({ kind, count })),
           myReaction: mine.get(id) ?? null,
           commentCount: comments.get(id) ?? 0,
+          latestComment: latest.get(id) ?? null,
         },
       ];
     });
@@ -204,20 +163,54 @@ export class Space extends DurableObject<Env> {
   /** Deletes a post with its comments and reactions. */
   deletePost(postId: string): void {
     this.ctx.storage.transactionSync(() => {
+      this.sql.exec(
+        `DELETE FROM comment_reactions
+          WHERE comment_id IN (SELECT comment_id FROM comments WHERE post_id = ?)`,
+        postId,
+      );
       this.sql.exec("DELETE FROM posts WHERE post_id = ?", postId);
       this.sql.exec("DELETE FROM comments WHERE post_id = ?", postId);
       this.sql.exec("DELETE FROM reactions WHERE post_id = ?", postId);
+      // A deleted post is no longer pinned (decision 0080).
+      this.sql.exec("DELETE FROM pinned_post WHERE post_id = ?", postId);
     });
   }
 
   /**
-   * A post's comments, oldest first, after the cursor `after`. A reply sits
-   * in the chronological order at the level of its own `created_at`, one
-   * level under its top-level comment (decision 0071). A moderator reads
-   * every comment in the order it was written; an ordinary reader reads the
-   * visible ones minus those of a block, and keeps a tombstone in the slot
-   * of a hidden, removed or author-deleted parent that still has a visible
-   * reply to show under, with nothing on it but its place.
+   * Pins `postId` to the top of the community's feed, replacing any other
+   * (decision 0080); false when the post is not here. True too when it was
+   * pinned already.
+   */
+  pinPost(postId: string): boolean {
+    const exists = this.sql.exec("SELECT 1 FROM posts WHERE post_id = ?", postId).toArray().length;
+    if (!exists) return false;
+    this.sql.exec(
+      `INSERT INTO pinned_post (slot, post_id, pinned_at) VALUES (1, ?, ?)
+       ON CONFLICT (slot) DO UPDATE SET post_id = excluded.post_id,
+         pinned_at = CASE WHEN pinned_post.post_id = excluded.post_id
+                          THEN pinned_post.pinned_at ELSE excluded.pinned_at END`,
+      postId,
+      Date.now(),
+    );
+    return true;
+  }
+
+  /** Unpins `postId` when it is the pinned one; whether it was. */
+  unpinPost(postId: string): boolean {
+    return this.sql.exec("DELETE FROM pinned_post WHERE post_id = ?", postId).rowsWritten > 0;
+  }
+
+  /** The id of the pinned post, or null. */
+  pinnedPost(): string | null {
+    return (
+      this.sql.exec<{ post_id: string }>("SELECT post_id FROM pinned_post").toArray()[0]?.post_id ??
+      null
+    );
+  }
+
+  /**
+   * A post's comments as `viewer` sees them, oldest first, after the cursor
+   * `after` (decisions 0071, 0080).
    */
   comments(
     postId: string,
@@ -225,59 +218,7 @@ export class Space extends DurableObject<Env> {
     after: { createdAt: number; id: string } | null,
     limit: number,
   ): CommentContent[] {
-    const afterSql = "AND (?3 IS NULL OR created_at > ?3 OR (created_at = ?3 AND comment_id > ?4))";
-    const binds = [
-      postId,
-      JSON.stringify(viewer.hidden),
-      after?.createdAt ?? null,
-      after?.id ?? null,
-    ];
-    const rows = viewer.moderator
-      ? this.sql
-          .exec<CommentRow>(
-            `SELECT * FROM comments
-              WHERE post_id = ?1 AND author NOT IN (SELECT value FROM json_each(?2))
-                AND (?6 = 1 OR state = 'visible')
-                ${afterSql}
-              ORDER BY created_at, comment_id LIMIT ?5`,
-            ...binds,
-            limit,
-            1,
-          )
-          .toArray()
-          .map(comment)
-      : [
-          ...this.sql
-            .exec<CommentRow>(
-              `SELECT * FROM comments
-                WHERE post_id = ?1 AND state = 'visible'
-                  AND author NOT IN (SELECT value FROM json_each(?2))
-                  ${afterSql}
-                ORDER BY created_at, comment_id LIMIT ?5`,
-              ...binds,
-              limit,
-            )
-            .toArray()
-            .map(comment),
-          ...this.sql
-            .exec<CommentRow>(
-              `SELECT t.* FROM comments t
-                WHERE t.post_id = ?1 AND t.parent_comment_id IS NULL
-                  AND (t.state != 'visible' OR t.author IN (SELECT value FROM json_each(?2)))
-                  AND EXISTS (SELECT 1 FROM comments r
-                               WHERE r.parent_comment_id = t.comment_id AND r.state = 'visible'
-                                 AND r.author NOT IN (SELECT value FROM json_each(?2)))
-                  ${afterSql}
-                ORDER BY t.created_at, t.comment_id LIMIT ?5`,
-              ...binds,
-              limit,
-            )
-            .toArray()
-            .map(tombstone),
-        ];
-    return rows
-      .sort((a, b) => a.createdAt - b.createdAt || (a.commentId < b.commentId ? -1 : 1))
-      .slice(0, limit);
+    return listComments(this.sql, postId, viewer, after, limit);
   }
 
   /**
@@ -287,7 +228,7 @@ export class Space extends DurableObject<Env> {
    * nests deeper than one level.
    */
   addComment(
-    input: Omit<CommentContent, "state">,
+    input: Omit<CommentRecord, "state">,
   ): CommentContent | "invalid_parent_comment" | null {
     const exists = this.sql
       .exec("SELECT 1 FROM posts WHERE post_id = ?", input.postId)
@@ -316,10 +257,11 @@ export class Space extends DurableObject<Env> {
       input.body,
       input.createdAt,
     );
-    return { ...input, state: "visible" };
+    return { ...input, state: "visible", likes: 0, liked: false };
   }
 
-  comment(commentId: string): CommentContent | null {
+  /** One comment as stored, without its likes; `likes` counts them for a viewer. */
+  comment(commentId: string): CommentRecord | null {
     const row = this.sql
       .exec<CommentRow>("SELECT * FROM comments WHERE comment_id = ?", commentId)
       .toArray()[0];
@@ -334,6 +276,8 @@ export class Space extends DurableObject<Env> {
    * it has one effect.
    */
   deleteComment(commentId: string): void {
+    // Its likes go with it, a tombstone's too (decision 0080).
+    this.sql.exec("DELETE FROM comment_reactions WHERE comment_id = ?", commentId);
     const tombstoned =
       this.sql
         .exec(
@@ -378,6 +322,10 @@ export class Space extends DurableObject<Env> {
       at,
       commentId,
     ).rowsWritten;
+    // A removed comment loses its likes (decision 0080); hiding keeps them.
+    if (changed > 0 && state === "removed") {
+      this.sql.exec("DELETE FROM comment_reactions WHERE comment_id = ?", commentId);
+    }
     if (changed > 0 && state === "removed" && (await this.ctx.storage.getAlarm()) === null) {
       await this.ctx.storage.setAlarm(at + REMOVED_KEPT_MS);
     }
@@ -394,6 +342,9 @@ export class Space extends DurableObject<Env> {
     const now = Date.now();
     const kept = "state = 'removed' AND moderated_at <= ? AND author != ''";
     this.sql.exec(`DELETE FROM comments WHERE ${kept}`, now - REMOVED_KEPT_MS);
+    this.sql.exec(
+      "DELETE FROM comment_reactions WHERE comment_id NOT IN (SELECT comment_id FROM comments)",
+    );
     const next = this.sql
       .exec<{ at: number | null }>(
         `SELECT MIN(moderated_at) AS at FROM comments WHERE ${kept}`,
@@ -423,6 +374,34 @@ export class Space extends DurableObject<Env> {
   }
 
   /**
+   * Sets or (with `on` false) removes `account`'s 👍 on a comment, the one
+   * reaction a comment takes (decision 0080). False when the comment is not
+   * here, or is not visible to like. Liking twice is one like.
+   */
+  likeComment(commentId: string, account: string, on: boolean): boolean {
+    const row = this.sql
+      .exec<{ state: ContentState }>("SELECT state FROM comments WHERE comment_id = ?", commentId)
+      .toArray()[0];
+    if (!row) return false;
+    if (!on) {
+      this.sql.exec(
+        "DELETE FROM comment_reactions WHERE comment_id = ? AND account = ?",
+        commentId,
+        account,
+      );
+      return true;
+    }
+    if (row.state !== "visible") return false;
+    this.sql.exec(
+      "INSERT OR IGNORE INTO comment_reactions (comment_id, account, created_at) VALUES (?, ?, ?)",
+      commentId,
+      account,
+      Date.now(),
+    );
+    return true;
+  }
+
+  /**
    * Deletes everything `account` wrote here, for the deletion of its account
    * (decision 0063): its posts with every comment and reaction on them, and
    * its comments and reactions elsewhere. The ids of its posts, for the Worker
@@ -438,6 +417,7 @@ export class Space extends DurableObject<Env> {
         this.sql.exec("DELETE FROM reactions WHERE post_id = ?", post_id);
       }
       this.sql.exec("DELETE FROM posts WHERE author = ?", account);
+      this.sql.exec("DELETE FROM pinned_post WHERE post_id NOT IN (SELECT post_id FROM posts)");
       // A top-level comment of the account that still carries someone else's
       // visible reply stays as a tombstone, so the reply keeps its place
       // (decision 0071); the account's other comments go.
@@ -453,6 +433,13 @@ export class Space extends DurableObject<Env> {
       );
       this.sql.exec("DELETE FROM comments WHERE author = ?", account);
       this.sql.exec("DELETE FROM reactions WHERE account = ?", account);
+      // Its likes on comments, and every like on a comment that is gone or
+      // was blanked to a tombstone (decision 0080).
+      this.sql.exec("DELETE FROM comment_reactions WHERE account = ?", account);
+      this.sql.exec(
+        `DELETE FROM comment_reactions WHERE comment_id NOT IN (SELECT comment_id FROM comments)
+            OR comment_id IN (SELECT comment_id FROM comments WHERE author = '')`,
+      );
     });
     return posts.map((p) => p.post_id);
   }
@@ -475,7 +462,8 @@ export class Space extends DurableObject<Env> {
       accounts: column(
         `SELECT author AS id FROM posts WHERE author != ''
           UNION SELECT author FROM comments WHERE author != ''
-          UNION SELECT account FROM reactions`,
+          UNION SELECT account FROM reactions
+          UNION SELECT account FROM comment_reactions`,
       ),
     };
   }

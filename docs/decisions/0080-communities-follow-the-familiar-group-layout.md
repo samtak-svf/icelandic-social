@@ -7,6 +7,8 @@
   composer, post card, post screen), [0071](0071-comment-replies-and-reactions.md) (comments
   take one like), [0063](0063-communities-audiences-and-moderation.md) (a community has a
   picture and a cover)
+- Amends: [0044](0044-no-fljotid-in-v1.md) (a post is shared into a conversation again, by id,
+  resolved as a card)
 
 ## Decision
 

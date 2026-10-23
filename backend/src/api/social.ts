@@ -1,5 +1,13 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import { ACCOUNT, AUTHED, errorResponse, INVALID, OpaqueId, RATE_LIMITED } from "./common.ts";
+import {
+  ACCOUNT,
+  AUTHED,
+  errorResponse,
+  INVALID,
+  OpaqueId,
+  PhotoVersion,
+  RATE_LIMITED,
+} from "./common.ts";
 
 // A community's content (decisions 0060, 0063): posts, comments on them and
 // one reaction per account on each. It is hosted and access-controlled, not
@@ -31,12 +39,41 @@ const State = z.enum(["visible", "hidden", "removed"]).openapi({
 });
 
 export const Author = z
-  .object({ accountId: OpaqueId, name: z.string().nullable(), verified: z.boolean() })
+  .object({
+    accountId: OpaqueId,
+    name: z.string().nullable(),
+    verified: z.boolean(),
+    photo: PhotoVersion,
+    role: z.enum(["owner", "moderator"]).nullable().openapi({
+      description:
+        "The account's role in the community the post or comment belongs to, null for a member and wherever no community is in context (decision 0080)",
+    }),
+  })
   .openapi("Author");
 
 export const Media = z
   .object({ mediaId: MediaId, width: z.int(), height: z.int() })
   .openapi("SocialMedia", { description: "A re-encoded WebP image" });
+
+const Comment = z
+  .object({
+    commentId: CommentId,
+    postId: PostId,
+    parentCommentId: CommentId.nullable().openapi({
+      description:
+        "The top-level comment this replies to; null on a top-level comment (decision 0071)",
+    }),
+    author: Author,
+    body: z.string(),
+    createdAt: z.int().openapi({ description: "Unix milliseconds" }),
+    state: State,
+    likes: z.int().openapi({
+      description:
+        "How many accounts liked it, but those a block hides from the caller (decision 0080)",
+    }),
+    liked: z.boolean().openapi({ description: "The caller liked it" }),
+  })
+  .openapi("Comment");
 
 const Post = z
   .object({
@@ -51,24 +88,17 @@ const Post = z
       .openapi({ description: "Each reaction the caller can see, with its count" }),
     myReaction: Reaction.nullable(),
     commentCount: z.int(),
+    // The newest comment the caller may read, as the comment list would show it;
+    // null when there is none (decision 0080). A union, not `.nullable()`
+    // plus `.openapi()`: those rewrite the shared Comment schema as nullable everywhere.
+    latestComment: z.union([Comment, z.null()]),
     state: State,
+    pinned: z.boolean().openapi({
+      description:
+        "A moderator pinned it to the top of the community (decision 0080). On a community's posts it is the first post of the first page, and only there; `getFeed` never pins",
+    }),
   })
   .openapi("Post");
-
-const Comment = z
-  .object({
-    commentId: CommentId,
-    postId: PostId,
-    parentCommentId: CommentId.nullable().openapi({
-      description:
-        "The top-level comment this replies to; null on a top-level comment (decision 0071)",
-    }),
-    author: Author,
-    body: z.string(),
-    createdAt: z.int().openapi({ description: "Unix milliseconds" }),
-    state: State,
-  })
-  .openapi("Comment");
 
 const Cursor = z
   .string()
@@ -106,7 +136,7 @@ const MEMBERS_POST = {
     "not_a_member: only members post, comment and react; read_only: the community takes nothing new; muted: a moderator muted the caller here for now",
   ),
 };
-const MEMBERS_REPLY = {
+export const MEMBERS_REPLY = {
   403: errorResponse(
     "not_a_member: only members comment and react; read_only: the community takes nothing new; muted: a moderator muted the caller here for now; not_permitted: the post was hidden or removed; blocked: a block stands between the caller and the post's author",
   ),

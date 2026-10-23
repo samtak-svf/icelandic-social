@@ -72,7 +72,13 @@ function RequestItem({
     if (done.ok) answered();
     else setProblem(done.problem);
   }
-  const author = { accountId: request.accountId, name: request.name, verified: request.verified };
+  const author = {
+    accountId: request.accountId,
+    name: request.name,
+    verified: request.verified,
+    photo: null,
+    role: null,
+  };
   return (
     <article className="flex flex-col gap-2 rounded-md border border-border p-4">
       <header className="flex flex-wrap items-baseline justify-between gap-2">

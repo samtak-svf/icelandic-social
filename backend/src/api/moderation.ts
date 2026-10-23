@@ -38,6 +38,9 @@ export const COMMUNITY_IMAGE_ACTIONS = [
   "remove_community_cover",
 ] as const;
 
+/** What the log records of the post pinned to the top of a community (decision 0080). */
+export const COMMUNITY_PIN_ACTIONS = ["pin_post", "unpin_post"] as const;
+
 /** How a report was closed: the action taken on its target, none, or its community deleted. */
 const DECISIONS = [
   ...(Object.keys(ACTIONS) as [Action, ...Action[]]),
@@ -118,6 +121,7 @@ const LogEntry = z
       "delete_community",
       "restore_community",
       ...COMMUNITY_IMAGE_ACTIONS,
+      ...COMMUNITY_PIN_ACTIONS,
     ]),
     target: z.object({ kind: z.enum([...REPORT_KINDS, "report"]), id: OpaqueId }),
     targetAccount: z.union([Author, z.null()]),

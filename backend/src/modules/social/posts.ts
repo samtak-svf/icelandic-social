@@ -1,7 +1,9 @@
 import { db, space } from "../../env/index.ts";
 import { blockedEither, UNBLOCKED } from "../../identity/index.ts";
+import { notePost } from "../communities/index.ts";
 import { notice } from "../jobs/index.ts";
-import type { CommentContent, MediaRef, PostContent, Viewer } from "./do/space.ts";
+import type { CommentContent, CommentRecord, MediaRef, PostContent, Viewer } from "./do/space.ts";
+import { type Author, bylineKey, bylines } from "./bylines.ts";
 import { type IndexedPost, postAccess, replyRefusal } from "./access.ts";
 
 // Posts across D1 and the space (decision 0060): D1's post_index is what the
@@ -12,11 +14,13 @@ import { type IndexedPost, postAccess, replyRefusal } from "./access.ts";
 /** The feed reads this far back at a time (docs/d1-social-workload.md, #275). */
 const FEED_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
-export type Author = { accountId: string; name: string | null; verified: boolean };
-export type Post = Omit<PostContent, "author"> & {
+export type Post = Omit<PostContent, "author" | "latestComment"> & {
   communityId: string;
   author: Author;
+  latestComment: (Omit<CommentContent, "author"> & { author: Author }) | null;
   state: IndexedPost["state"];
+  /** The community's moderators pinned it to the top of its feed (decision 0080). */
+  pinned: boolean;
 };
 
 const hex = (n: number) =>
@@ -30,25 +34,16 @@ const newCommentId = (postId: string) => `${postId}-${hex(8)}`;
 /** The post a post id or a comment id names. */
 export const postOf = (id: string) => id.split("-")[0]!;
 
-/** The names and marks of `ids`; an account deleted since is left out. */
-export async function authors(env: Env, ids: string[]): Promise<Map<string, Author>> {
-  const unique = [...new Set(ids)];
-  if (unique.length === 0) return new Map();
-  const { results } = await db(env)
-    .prepare(
-      `SELECT account_id AS accountId, display_name AS name, verified FROM accounts
-        WHERE account_id IN (SELECT value FROM json_each(?))`,
-    )
-    .bind(JSON.stringify(unique))
-    .all<{ accountId: string; name: string | null; verified: number }>();
-  return new Map(results.map((r) => [r.accountId, { ...r, verified: r.verified === 1 }]));
-}
-
 /**
  * The content of indexed posts as `viewer` sees them, in the order given:
  * each community's space is asked once, in parallel, for its posts.
  */
-export async function render(env: Env, rows: IndexedPost[], viewer: Viewer): Promise<Post[]> {
+export async function render(
+  env: Env,
+  rows: IndexedPost[],
+  viewer: Viewer,
+  pinnedId: string | null = null,
+): Promise<Post[]> {
   const byCommunity = Map.groupBy(rows, (r) => r.communityId);
   const contents = new Map<string, PostContent & { communityId: string }>();
   await Promise.all(
@@ -60,14 +55,31 @@ export async function render(env: Env, rows: IndexedPost[], viewer: Viewer): Pro
       for (const content of found) contents.set(content.postId, { ...content, communityId });
     }),
   );
-  const names = await authors(
-    env,
-    [...contents.values()].map((c) => c.author),
-  );
+  // One query for every (account, community) pair of the posts and their
+  // newest comments, so a feed across communities costs the same as one.
+  const pairs = [...contents.values()].flatMap((c) => [
+    { accountId: c.author, communityId: c.communityId },
+    ...(c.latestComment && c.latestComment.author !== ""
+      ? [{ accountId: c.latestComment.author, communityId: c.communityId }]
+      : []),
+  ]);
+  const names = await bylines(env, pairs);
   return rows.flatMap((row) => {
     const content = contents.get(row.postId);
-    const author = content && names.get(content.author);
-    return content && author ? [{ ...content, author, state: row.state }] : [];
+    const author = content && names.get(bylineKey(content.author, content.communityId));
+    if (!content || !author) return [];
+    const latest = content.latestComment;
+    const latestAuthor = latest && names.get(bylineKey(latest.author, content.communityId));
+    return [
+      {
+        ...content,
+        author,
+        // A comment whose author is gone is left out, as the comment list leaves it.
+        latestComment: latest && latestAuthor ? { ...latest, author: latestAuthor } : null,
+        state: row.state,
+        pinned: row.postId === pinnedId,
+      },
+    ];
   });
 }
 
@@ -88,7 +100,8 @@ export function parseCursor(cursor: string | undefined): { t: number; id: string
  * viewer. With `query` (decision 0079) the community's own space names the
  * posts whose text matches it, so the index reads only those, and every page
  * and its `next` follow the same rule without the search: keyset pagination,
- * visibility and block filtering stay exact.
+ * visibility and block filtering stay exact. A search page pins nothing: the
+ * caller passes no `pinnedId` with a `query`.
  */
 export async function communityPosts(
   env: Env,
@@ -97,9 +110,11 @@ export async function communityPosts(
   before: string | undefined,
   limit: number,
   query?: string,
+  pinnedId: string | null = null,
 ): Promise<{ rows: IndexedPost[]; next: string | null }> {
   const cursor = parseCursor(before);
-  const matched = query?.trim() ? await space(env, communityId).searchPosts(query.trim()) : null;
+  const text = query?.trim() ?? "";
+  const matched = text ? await space(env, communityId).searchPosts(text) : null;
   if (matched !== null && matched.length === 0) return { rows: [], next: null };
   const { results } = await db(env)
     .prepare(
@@ -121,9 +136,40 @@ export async function communityPosts(
       limit + 1,
     )
     .all<IndexedPost>();
-  const rows = results.slice(0, limit);
-  const last = rows.at(-1);
-  return { rows, next: results.length > limit && last ? `${last.createdAt}-${last.postId}` : null };
+  const page = results.slice(0, limit);
+  const last = page.at(-1);
+  const next = results.length > limit && last ? `${last.createdAt}-${last.postId}` : null;
+  return { rows: await leadWithPinned(env, communityId, viewer, before, pinnedId, page), next };
+}
+
+/**
+ * `page` with the pinned post (decision 0080) leading the first page and
+ * appearing nowhere else, so a client never shows it twice. It is read from
+ * the index, so a pin on a post that is no longer visible, or whose author the
+ * viewer blocked, shows nothing.
+ */
+async function leadWithPinned(
+  env: Env,
+  communityId: string,
+  viewer: Viewer,
+  before: string | undefined,
+  pinnedId: string | null,
+  page: IndexedPost[],
+): Promise<IndexedPost[]> {
+  if (!pinnedId) return page;
+  const rest = page.filter((r) => r.postId !== pinnedId);
+  if (before !== undefined) return rest;
+  const pinned =
+    page.find((r) => r.postId === pinnedId) ??
+    (await db(env)
+      .prepare(
+        `SELECT ${INDEXED} FROM post_index p
+          WHERE p.post_id = ?1 AND p.community_id = ?2 AND p.state = 'visible'
+            AND p.author_id NOT IN (SELECT value FROM json_each(?3))`,
+      )
+      .bind(pinnedId, communityId, JSON.stringify(viewer.hidden))
+      .first<IndexedPost>());
+  return pinned ? [pinned, ...rest] : rest;
 }
 
 /**
@@ -204,12 +250,13 @@ export async function createPost(
   author: string,
   input: { body: string; media: string[] },
   also: (postId: string) => D1PreparedStatement[] = () => [],
-): Promise<PostContent | "invalid_media"> {
+): Promise<(Omit<PostContent, "latestComment"> & { latestComment: null }) | "invalid_media"> {
   const media = await unattached(env, communityId, author, input.media);
   if (!media) return "invalid_media";
   const postId = newPostId();
   const createdAt = Date.now();
   await db(env).batch([
+    ...notePost(env, communityId, author, createdAt),
     db(env)
       .prepare(
         "INSERT INTO post_index (post_id, community_id, author_id, created_at) VALUES (?, ?, ?, ?)",
@@ -228,7 +275,7 @@ export async function createPost(
   ]);
   const content = { postId, author, body: input.body, media, createdAt };
   await space(env, communityId).createPost(content);
-  return { ...content, reactions: [], myReaction: null, commentCount: 0 };
+  return { ...content, reactions: [], myReaction: null, commentCount: 0, latestComment: null };
 }
 
 /** Records that `account` wrote in `communityId`, so deleting the account reaches the space. */
@@ -276,7 +323,7 @@ export async function writeComment(
   const { post } = found;
   // The parent is checked before anything is written, and the space checks
   // it again as the comment is written, so a refused parent tells nobody.
-  let parent: CommentContent | null = null;
+  let parent: CommentRecord | null = null;
   if (parentCommentId !== null) {
     parent = await space(env, post.communityId).comment(parentCommentId);
     if (!parent || parent.postId !== postId || parent.parentCommentId !== null) {

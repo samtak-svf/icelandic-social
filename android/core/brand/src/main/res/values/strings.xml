@@ -675,6 +675,10 @@
     <string name="moderation_log_community_cover_set">Forsíðumynd samfélagsins var sett.</string>
     <!-- A log entry: a moderator removed the community's cover (decision 0080). -->
     <string name="moderation_log_community_cover_removed">Forsíðumynd samfélagsins var fjarlægð.</string>
+    <!-- A log entry: a moderator pinned a post to the top of the community (decision 0080). -->
+    <string name="moderation_log_post_pinned">Færsla var fest efst í samfélaginu.</string>
+    <!-- A log entry: a moderator unpinned the community's pinned post (decision 0080). -->
+    <string name="moderation_log_post_unpinned">Færsla var losuð úr festingu.</string>
     <!-- Who closed a report and when; {date} is a formatted date. -->
     <string name="moderation_closed_by">%1$s afgreiddi tilkynninguna %2$s.</string>
     <!-- When a report was closed, when no account is named. -->

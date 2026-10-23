@@ -1020,9 +1020,10 @@ impl<T: Transport> Client<T> {
     }
 
     /// Queues an envelope with this body; it is sealed and sent by `sync`.
-    /// Returns the envelope's id, which is also its `clientMsgId`. The apps
-    /// never send a `Post` since 0044 (the FFI refuses one); it is taken
-    /// here only so tests can stand in for an app from before.
+    /// Returns the envelope's id, which is also its `clientMsgId`. A `Post`
+    /// shares a community post by its id (0080, which amends 0044); the
+    /// receiver resolves it as a card through `cards` (#288), so it shows
+    /// only what the post's own access check shows.
     pub fn send(&mut self, conversation: &str, body: Body) -> Result<String, ClientError> {
         if matches!(body, Body::Typing { .. }) {
             return Err(ClientError::Invalid(

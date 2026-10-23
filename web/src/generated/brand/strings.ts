@@ -404,6 +404,10 @@ export const strings = {
   moderation_log_community_cover_set: "Forsíðumynd samfélagsins var sett.",
   /** A log entry: a moderator removed the community's cover (decision 0080). */
   moderation_log_community_cover_removed: "Forsíðumynd samfélagsins var fjarlægð.",
+  /** A log entry: a moderator pinned a post to the top of the community (decision 0080). */
+  moderation_log_post_pinned: "Færsla var fest efst í samfélaginu.",
+  /** A log entry: a moderator unpinned the community's pinned post (decision 0080). */
+  moderation_log_post_unpinned: "Færsla var losuð úr festingu.",
   /** Who closed a report and when; {date} is a formatted date. */
   moderation_closed_by: (args: { name: string; date: string }): string =>
     args.name + " afgreiddi tilkynninguna " + args.date + ".",
