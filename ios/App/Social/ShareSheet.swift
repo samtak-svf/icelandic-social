@@ -52,48 +52,73 @@ private struct PostSharingModifier: ViewModifier {
                 if let id = postId {
                     ShareOptions(
                         canSend: sharing != nil,
-                        onSend: {
-                            picker = sharing?.picker(id)
-                            postId = nil
-                        },
-                        onCopy: {
-                            copyLink(postLink(id))
-                            notice = localized("post_link_copied")
-                            postId = nil
-                        }
+                        onSend: { send(id) },
+                        onCopy: { copy(id) }
                     )
                     .presentationDetents([.height(220)])
                 }
             }
             .sheet(isPresented: Binding(get: { picker != nil }, set: { if !$0 { picker = nil } })) {
                 if let picker {
-                    PickView(model: picker, title: "post_share_to_conversation") { self.picker = nil }
-                        .onChange(of: picker.done) { _, done in
-                            guard let done else { return }
-                            self.picker = nil
-                            notice = plural("forward_done", done)
-                        }
+                    SharePick(model: picker, onClose: { self.picker = nil }, onDone: { picked($0) })
                 }
             }
-            .overlay(alignment: .top) {
-                if let notice {
-                    Text(verbatim: notice)
-                        .font(.sans(13, black: true))
-                        .foregroundStyle(BrandTokens.Colors.fg)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(BrandTokens.Colors.surface, in: Capsule())
-                        .overlay { Capsule().strokeBorder(BrandTokens.Colors.border) }
-                        .padding(.top, 8)
-                        .transition(.opacity)
-                        .accessibilityAddTraits(.updatesFrequently)
-                        .task(id: notice) {
-                            AccessibilityNotification.Announcement(notice).post()
-                            try? await Task.sleep(for: .seconds(2.5))
-                            if !Task.isCancelled { self.notice = nil }
-                        }
-                }
+            .overlay(alignment: .top) { ShareNotice(notice: $notice) }
+    }
+
+    private func send(_ id: String) {
+        picker = sharing?.picker(id)
+        postId = nil
+    }
+
+    private func copy(_ id: String) {
+        copyLink(postLink(id))
+        notice = localized("post_link_copied")
+        postId = nil
+    }
+
+    private func picked(_ count: Int) {
+        picker = nil
+        notice = plural("forward_done", count)
+    }
+}
+
+/// The conversation picker for a post, closed once the post went into every conversation picked.
+private struct SharePick: View {
+    let model: PickModel
+    let onClose: () -> Void
+    let onDone: (Int) -> Void
+
+    var body: some View {
+        PickView(model: model, title: "post_share_to_conversation", onClose: onClose)
+            .onChange(of: model.done) { _, done in
+                if let done { onDone(done) }
             }
+    }
+}
+
+/// The short notice after a share, read aloud and gone after a moment.
+private struct ShareNotice: View {
+    @Binding var notice: String?
+
+    var body: some View {
+        if let notice {
+            Text(verbatim: notice)
+                .font(.sans(13, black: true))
+                .foregroundStyle(BrandTokens.Colors.fg)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(BrandTokens.Colors.surface, in: Capsule())
+                .overlay { Capsule().strokeBorder(BrandTokens.Colors.border) }
+                .padding(.top, 8)
+                .transition(.opacity)
+                .accessibilityAddTraits(.updatesFrequently)
+                .task(id: notice) {
+                    AccessibilityNotification.Announcement(notice).post()
+                    try? await Task.sleep(for: .seconds(2.5))
+                    if !Task.isCancelled { self.notice = nil }
+                }
+        }
     }
 }
 
