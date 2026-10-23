@@ -184,8 +184,8 @@ pub enum Body {
     Typing {
         active: bool,
     },
-    /// A post shared under 0040: its id and nothing else. Still decoded
-    /// so a conversation that holds one does not break (0044).
+    /// A post shared under 0040: its id and nothing else. Sent again
+    /// since 0080 (amending 0044); the receiver resolves it as a card.
     Post {
         post_id: String,
     },

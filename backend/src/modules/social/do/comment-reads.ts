@@ -146,8 +146,10 @@ export function listComments(
  * tombstone has none.
  */
 function withLikes(sql: SqlStorage, records: CommentRecord[], viewer: Viewer): CommentContent[] {
-  if (records.length === 0) return [];
-  const wanted = JSON.stringify(records.map((r) => r.commentId));
+  // A tombstone (author "") has no likes to show, whatever its row still holds.
+  const real = records.filter((r) => r.author !== "");
+  if (real.length === 0) return records.map((r) => ({ ...r, likes: 0, liked: false }));
+  const wanted = JSON.stringify(real.map((r) => r.commentId));
   const counts = new Map(
     sql
       .exec<{ comment_id: string; count: number }>(
@@ -174,7 +176,39 @@ function withLikes(sql: SqlStorage, records: CommentRecord[], viewer: Viewer): C
   );
   return records.map((r) => ({
     ...r,
-    likes: counts.get(r.commentId) ?? 0,
-    liked: mine.has(r.commentId),
+    likes: r.author === "" ? 0 : (counts.get(r.commentId) ?? 0),
+    liked: r.author === "" ? false : mine.has(r.commentId),
   }));
+}
+
+/**
+ * The newest comment of each of `postIds` that `viewer` may read (decision
+ * 0080): the same rule as the list's real rows, a moderator reading every
+ * state and anyone else only visible ones, minus the authors a block hides.
+ * A tombstone is a slot, not a comment, so it is never chosen. Posts with no
+ * such comment are absent from the map.
+ */
+export function latestComments(
+  sql: SqlStorage,
+  postIds: string[],
+  viewer: Viewer,
+): Map<string, CommentContent> {
+  if (postIds.length === 0) return new Map();
+  const rows = sql
+    .exec<CommentRow>(
+      `SELECT comment_id, post_id, parent_comment_id, author, body, created_at, state FROM (
+         SELECT *, ROW_NUMBER() OVER (
+                  PARTITION BY post_id ORDER BY created_at DESC, comment_id DESC) AS n
+           FROM comments
+          WHERE post_id IN (SELECT value FROM json_each(?1))
+            AND author != '' AND author NOT IN (SELECT value FROM json_each(?2))
+            AND (?3 = 1 OR state = 'visible'))
+        WHERE n = 1`,
+      JSON.stringify(postIds),
+      JSON.stringify(viewer.hidden),
+      viewer.moderator ? 1 : 0,
+    )
+    .toArray()
+    .map(comment);
+  return new Map(withLikes(sql, rows, viewer).map((c) => [c.postId, c]));
 }

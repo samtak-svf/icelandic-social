@@ -3,6 +3,7 @@ import { blockedEither, UNBLOCKED } from "../../identity/index.ts";
 import { notePost } from "../communities/index.ts";
 import { notice } from "../jobs/index.ts";
 import type { CommentContent, CommentRecord, MediaRef, PostContent, Viewer } from "./do/space.ts";
+import { type Author, bylineKey, bylines } from "./bylines.ts";
 import { type IndexedPost, postAccess, replyRefusal } from "./access.ts";
 
 // Posts across D1 and the space (decision 0060): D1's post_index is what the
@@ -13,10 +14,10 @@ import { type IndexedPost, postAccess, replyRefusal } from "./access.ts";
 /** The feed reads this far back at a time (docs/d1-social-workload.md, #275). */
 const FEED_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
-export type Author = { accountId: string; name: string | null; verified: boolean };
-export type Post = Omit<PostContent, "author"> & {
+export type Post = Omit<PostContent, "author" | "latestComment"> & {
   communityId: string;
   author: Author;
+  latestComment: (Omit<CommentContent, "author"> & { author: Author }) | null;
   state: IndexedPost["state"];
   /** The community's moderators pinned it to the top of its feed (decision 0080). */
   pinned: boolean;
@@ -32,20 +33,6 @@ const newCommentId = (postId: string) => `${postId}-${hex(8)}`;
 
 /** The post a post id or a comment id names. */
 export const postOf = (id: string) => id.split("-")[0]!;
-
-/** The names and marks of `ids`; an account deleted since is left out. */
-export async function authors(env: Env, ids: string[]): Promise<Map<string, Author>> {
-  const unique = [...new Set(ids)];
-  if (unique.length === 0) return new Map();
-  const { results } = await db(env)
-    .prepare(
-      `SELECT account_id AS accountId, display_name AS name, verified FROM accounts
-        WHERE account_id IN (SELECT value FROM json_each(?))`,
-    )
-    .bind(JSON.stringify(unique))
-    .all<{ accountId: string; name: string | null; verified: number }>();
-  return new Map(results.map((r) => [r.accountId, { ...r, verified: r.verified === 1 }]));
-}
 
 /**
  * The content of indexed posts as `viewer` sees them, in the order given:
@@ -68,16 +55,31 @@ export async function render(
       for (const content of found) contents.set(content.postId, { ...content, communityId });
     }),
   );
-  const names = await authors(
-    env,
-    [...contents.values()].map((c) => c.author),
-  );
+  // One query for every (account, community) pair of the posts and their
+  // newest comments, so a feed across communities costs the same as one.
+  const pairs = [...contents.values()].flatMap((c) => [
+    { accountId: c.author, communityId: c.communityId },
+    ...(c.latestComment && c.latestComment.author !== ""
+      ? [{ accountId: c.latestComment.author, communityId: c.communityId }]
+      : []),
+  ]);
+  const names = await bylines(env, pairs);
   return rows.flatMap((row) => {
     const content = contents.get(row.postId);
-    const author = content && names.get(content.author);
-    return content && author
-      ? [{ ...content, author, state: row.state, pinned: row.postId === pinnedId }]
-      : [];
+    const author = content && names.get(bylineKey(content.author, content.communityId));
+    if (!content || !author) return [];
+    const latest = content.latestComment;
+    const latestAuthor = latest && names.get(bylineKey(latest.author, content.communityId));
+    return [
+      {
+        ...content,
+        author,
+        // A comment whose author is gone is left out, as the comment list leaves it.
+        latestComment: latest && latestAuthor ? { ...latest, author: latestAuthor } : null,
+        state: row.state,
+        pinned: row.postId === pinnedId,
+      },
+    ];
   });
 }
 
@@ -248,7 +250,7 @@ export async function createPost(
   author: string,
   input: { body: string; media: string[] },
   also: (postId: string) => D1PreparedStatement[] = () => [],
-): Promise<PostContent | "invalid_media"> {
+): Promise<(Omit<PostContent, "latestComment"> & { latestComment: null }) | "invalid_media"> {
   const media = await unattached(env, communityId, author, input.media);
   if (!media) return "invalid_media";
   const postId = newPostId();
@@ -273,7 +275,7 @@ export async function createPost(
   ]);
   const content = { postId, author, body: input.body, media, createdAt };
   await space(env, communityId).createPost(content);
-  return { ...content, reactions: [], myReaction: null, commentCount: 0 };
+  return { ...content, reactions: [], myReaction: null, commentCount: 0, latestComment: null };
 }
 
 /** Records that `account` wrote in `communityId`, so deleting the account reaches the space. */

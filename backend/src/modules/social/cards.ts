@@ -3,7 +3,8 @@ import { EXCERPT_LENGTH, REF_KINDS, resolveCardsRoute } from "../../api/cards.ts
 import type { AppEnv } from "../../app.ts";
 import { standing } from "../communities/index.ts";
 import { commentAccess, postAccess } from "./access.ts";
-import { authors, render } from "./posts.ts";
+import { authors } from "./bylines.ts";
+import { render } from "./posts.ts";
 
 // What a typed reference shows when shared (#288). Each kind is resolved
 // through its own access check (access.ts), so a card never shows what the
@@ -56,7 +57,9 @@ async function card(env: Env, viewer: string, ref: Ref) {
     };
   }
   const found = await commentAccess(env, viewer, ref.id);
-  const author = found && (await authors(env, [found.comment.author])).get(found.comment.author);
+  const author =
+    found &&
+    (await authors(env, [found.comment.author], found.post.communityId)).get(found.comment.author);
   if (!found || !author) return unavailable;
   return {
     kind: "comment" as const,

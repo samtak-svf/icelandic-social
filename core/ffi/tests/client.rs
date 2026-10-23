@@ -771,16 +771,31 @@ fn google_links_and_one_to_ones_cross_the_exported_api() {
         Err(CoreError::Invalid { .. })
     ));
 
-    // Nothing sends a new shared post (0044).
-    assert!(matches!(
-        b1.client.send(
-            one,
-            Body::Post {
-                post_id: "post_0001".into()
-            }
-        ),
-        Err(CoreError::Invalid { .. })
-    ));
+    // A post is shared by its id (0080, amending 0044): a well-formed id is
+    // queued, a malformed one is `Invalid`.
+    let post_id = format!("p_{}", "0123456789abcdef".repeat(2));
+    assert!(
+        !b1.client
+            .send(
+                one.clone(),
+                Body::Post {
+                    post_id: post_id.clone()
+                }
+            )
+            .unwrap()
+            .is_empty()
+    );
+    for bad in ["", "p 1", "p_é"] {
+        assert!(matches!(
+            b1.client.send(
+                one.clone(),
+                Body::Post {
+                    post_id: bad.into()
+                }
+            ),
+            Err(CoreError::Invalid { .. })
+        ));
+    }
 }
 
 /// The social calls through the exported API: what each sends, and the
@@ -834,7 +849,9 @@ fn the_social_calls_cross_the_exported_api() {
         Author {
             account_id: "a".into(),
             name: None,
-            verified: false
+            verified: false,
+            photo: None,
+            role: None,
         }
     );
     assert_eq!(

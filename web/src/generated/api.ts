@@ -548,6 +548,10 @@ export interface Author {
   accountId: string;
   name: string | null;
   verified: boolean;
+  /** The profile photo's version, changed by each upload; null when there is none to show (decision 0039) */
+  photo: string | null;
+  /** The account's role in the community the post or comment belongs to, null for a member and wherever no community is in context (decision 0080) */
+  role: "owner" | "moderator" | null;
 }
 
 /** A re-encoded WebP image */
@@ -572,21 +576,11 @@ export interface Post {
   }>;
   myReaction: "like" | "love" | "laugh" | "wow" | "sad" | null;
   commentCount: number;
+  latestComment: Comment | null;
   /** Only a moderator sees what is not visible: hidden or removed by a moderator */
   state: "visible" | "hidden" | "removed";
   /** A moderator pinned it to the top of the community (decision 0080). On a community's posts it is the first post of the first page, and only there; `getFeed` never pins */
   pinned: boolean;
-}
-
-export interface PostPage {
-  posts: Array<Post>;
-  /** The cursor of the next, older page, or null when there is none. A page may be short, or empty, with more after it */
-  next: string | null;
-}
-
-export interface CommentPage {
-  comments: Array<Comment>;
-  next: string | null;
 }
 
 export interface Comment {
@@ -605,6 +599,17 @@ export interface Comment {
   likes: number;
   /** The caller liked it */
   liked: boolean;
+}
+
+export interface PostPage {
+  posts: Array<Post>;
+  /** The cursor of the next, older page, or null when there is none. A page may be short, or empty, with more after it */
+  next: string | null;
+}
+
+export interface CommentPage {
+  comments: Array<Comment>;
+  next: string | null;
 }
 
 /** What a report or an action is about */

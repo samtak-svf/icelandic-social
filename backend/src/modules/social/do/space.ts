@@ -7,6 +7,7 @@ import {
   type ContentState,
   type Viewer,
   comment,
+  latestComments,
   listComments,
 } from "./comment-reads.ts";
 import { REMOVED_KEPT_MS, SCHEMA } from "./space-schema.ts";
@@ -28,6 +29,8 @@ export type PostContent = {
   reactions: { kind: Reaction; count: number }[];
   myReaction: Reaction | null;
   commentCount: number;
+  /** The newest comment the viewer may read, or null (decision 0080). */
+  latestComment: CommentContent | null;
 };
 
 type PostRow = { post_id: string; author: string; body: string; media: string; created_at: number };
@@ -117,6 +120,7 @@ export class Space extends DurableObject<Env> {
         .toArray()
         .map((r) => [r.post_id, r.count]),
     );
+    const latest = latestComments(this.sql, ids, viewer);
     const byId = new Map(rows.map((r) => [r.post_id, r]));
     return ids.flatMap((id) => {
       const row = byId.get(id);
@@ -133,6 +137,7 @@ export class Space extends DurableObject<Env> {
             .map(({ kind, count }) => ({ kind, count })),
           myReaction: mine.get(id) ?? null,
           commentCount: comments.get(id) ?? 0,
+          latestComment: latest.get(id) ?? null,
         },
       ];
     });

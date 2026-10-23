@@ -1468,7 +1468,7 @@ fn a_shared_post_from_before_0044_reads_as_its_id_and_asks_the_server_nothing() 
     let shared = Content::Post {
         post_id: "post_0001".into(),
     };
-    // b stands in for an app from before 0044, which still sent shares.
+    // b shares a post by its id (0080).
     b1.client
         .send(
             &conversation,
@@ -2478,8 +2478,8 @@ fn a_message_under_a_timer_deleted_or_not_a_message_is_not_forwarded() {
     assert!(items(&mut a1, &with_c).is_empty());
 }
 
-/// 0044: a shared post is not forwarded, so nothing sends a new one; the
-/// forward is refused as no message and nothing is queued. A reply to a
+/// 0044: a shared post is not forwarded as a copy (a post is shared by its id
+/// since 0080); the forward is refused as no message and nothing is queued. A reply to a
 /// share still quotes the post's id, so the app draws the quote as the
 /// share's fixed line.
 #[test]

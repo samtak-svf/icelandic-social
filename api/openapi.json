@@ -1943,12 +1943,35 @@
           },
           "verified": {
             "type": "boolean"
+          },
+          "photo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b",
+            "description": "The profile photo's version, changed by each upload; null when there is none to show (decision 0039)"
+          },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "owner",
+              "moderator",
+              null
+            ],
+            "description": "The account's role in the community the post or comment belongs to, null for a member and wherever no community is in context (decision 0080)"
           }
         },
         "required": [
           "accountId",
           "name",
-          "verified"
+          "verified",
+          "photo",
+          "role"
         ]
       },
       "SocialMedia": {
@@ -2045,6 +2068,16 @@
           "commentCount": {
             "type": "integer"
           },
+          "latestComment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Comment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "state": {
             "type": "string",
             "enum": [
@@ -2069,51 +2102,9 @@
           "reactions",
           "myReaction",
           "commentCount",
+          "latestComment",
           "state",
           "pinned"
-        ]
-      },
-      "PostPage": {
-        "type": "object",
-        "properties": {
-          "posts": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Post"
-            }
-          },
-          "next": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "The cursor of the next, older page, or null when there is none. A page may be short, or empty, with more after it"
-          }
-        },
-        "required": [
-          "posts",
-          "next"
-        ]
-      },
-      "CommentPage": {
-        "type": "object",
-        "properties": {
-          "comments": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Comment"
-            }
-          },
-          "next": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "comments",
-          "next"
         ]
       },
       "Comment": {
@@ -2177,6 +2168,49 @@
           "state",
           "likes",
           "liked"
+        ]
+      },
+      "PostPage": {
+        "type": "object",
+        "properties": {
+          "posts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Post"
+            }
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The cursor of the next, older page, or null when there is none. A page may be short, or empty, with more after it"
+          }
+        },
+        "required": [
+          "posts",
+          "next"
+        ]
+      },
+      "CommentPage": {
+        "type": "object",
+        "properties": {
+          "comments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            }
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "comments",
+          "next"
         ]
       },
       "ReportTarget": {

@@ -696,9 +696,10 @@ pub enum Content {
     Timer { seconds: Option<u32> },
     /// The group was named, or its name cleared (0078).
     Name { name: Option<String> },
-    /// A post shared here under 0040: only its id. Since 0044 nothing
-    /// fetches it: the card, the list's last line and a notice each show
-    /// a fixed sentence.
+    /// A post shared here under 0040: only its id. Since 0080 the app
+    /// resolves it as a card through `cards` (#288), which shows only what
+    /// the post's own access check shows; the list's last line and a notice
+    /// show a fixed sentence.
     Post { post_id: String },
     /// A place sent once (0059). The card draws it from `place_links`, and
     /// the list's last line and a notice show a fixed sentence.
@@ -1261,14 +1262,11 @@ impl CoreClient {
     }
 
     /// Queues a message; it is sent on the next `sync`. Returns the
-    /// envelope id. A `Post` is `Invalid`: nothing sends a new shared
-    /// post (0044).
+    /// envelope id. A `Post` shares a community post by its id (0080, which
+    /// amends 0044); the receiver resolves it as a card through `cards`
+    /// (#288), so it shows only what the post's own access check shows. A
+    /// malformed id is `Invalid`.
     pub fn send(&self, conversation: String, body: Body) -> Result<String, CoreError> {
-        if matches!(body, Body::Post { .. }) {
-            return Err(CoreError::Invalid {
-                detail: "a shared post (0044)".into(),
-            });
-        }
         Ok(self.client()?.send(&conversation, body.into())?)
     }
 

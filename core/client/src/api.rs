@@ -525,6 +525,25 @@ pub struct Author {
     pub account_id: String,
     pub name: Option<String>,
     pub verified: bool,
+    /// The version of the account's profile photo, which `profile_photo`
+    /// takes; none without one (0080).
+    #[serde(default)]
+    pub photo: Option<String>,
+    /// The role in the community the post or comment belongs to; none for
+    /// a member and where no community is in context (0080).
+    #[serde(default)]
+    pub role: Option<AuthorRole>,
+}
+
+/// A role worth a badge (0080). A role this core does not know decodes as
+/// `Unknown` rather than failing the page.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AuthorRole {
+    Owner,
+    Moderator,
+    #[serde(other)]
+    Unknown,
 }
 
 /// Who reads a community and how one joins it (0063).
@@ -722,6 +741,9 @@ pub struct Post {
     pub reactions: Vec<ReactionCount>,
     pub my_reaction: Option<ReactionKind>,
     pub comment_count: u64,
+    /// The newest comment the caller may read, for a preview (0080).
+    #[serde(default)]
+    pub latest_comment: Option<Comment>,
     pub state: ModerationState,
     /// A moderator pinned it to the top of the community (0080); the first
     /// post of the community's first page.

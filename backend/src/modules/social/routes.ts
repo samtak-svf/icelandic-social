@@ -24,10 +24,9 @@ import { markRead } from "../communities/index.ts";
 import { askAssistant, notice } from "../jobs/index.ts";
 import { cardRoutes } from "./cards.ts";
 import { commentAccess, postAccess, refusal, replyRefusal, spaceAccess } from "./access.ts";
-import type { CommentContent } from "./do/space.ts";
+import { authors, named } from "./bylines.ts";
 import { deleteKeys, postImage, upload } from "./media.ts";
 import {
-  authors,
   communityPosts,
   createPost,
   feed,
@@ -41,30 +40,6 @@ import {
 // The routes of a community's content (decisions 0060, 0063). Each asks
 // access.ts whether the caller may see what it names before anything else.
 // A log line carries ids and counts, never a text or an image (0008).
-
-/** Comments with their authors' names; a deleted author's go. */
-async function named(env: Env, comments: CommentContent[]) {
-  const names = await authors(
-    env,
-    comments.map((c) => c.author),
-  );
-  return comments.flatMap((c) => {
-    // A tombstone's slot (decision 0071): its author is gone and its body
-    // never reaches an ordinary reader, only its place in the thread.
-    if (c.author === "") {
-      return [
-        {
-          ...c,
-          author: { accountId: "deleted", name: null, verified: false },
-          body: "",
-          state: "removed" as const,
-        },
-      ];
-    }
-    const author = names.get(c.author);
-    return author ? [{ ...c, author }] : [];
-  });
-}
 
 export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
   cardRoutes(app);
@@ -83,7 +58,7 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
       access.moderator ? [] : askAssistant(c.env, communityId, postId),
     );
     if (created === "invalid_media") return fail(c, 400, "invalid_media");
-    const author = (await authors(c.env, [accountId])).get(accountId);
+    const author = (await authors(c.env, [accountId], communityId)).get(accountId);
     if (!author) return fail(c, 404, "not_found");
     log("post.created", { accountId, communityId, postId: created.postId });
     return c.json(
@@ -207,7 +182,7 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     const last = page.at(-1);
     return c.json(
       {
-        comments: await named(c.env, page),
+        comments: await named(c.env, page, found.post.communityId),
         next: comments.length > limit && last ? `${last.createdAt}-${last.commentId}` : null,
       },
       200,
@@ -228,7 +203,9 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     );
     if (written && "refused" in written) return fail(c, 403, written.refused);
     if (written && "invalidParent" in written) return fail(c, 400, "invalid_parent_comment");
-    const [comment] = written ? await named(c.env, [written.comment]) : [];
+    const [comment] = written
+      ? await named(c.env, [written.comment], written.post.communityId)
+      : [];
     if (!written || !comment) return fail(c, 404, "not_found");
     log("comment.created", { accountId, communityId: written.post.communityId, postId });
     return c.json(comment, 200);

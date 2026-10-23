@@ -3,8 +3,9 @@
 //! and nothing from where it came: not the author, not the conversation,
 //! not the message a reply answered. A file is sealed again under a fresh
 //! key and uploaded into the target, because an object and its key belong
-//! to one conversation (0023). A shared post is not forwarded: since 0044
-//! nothing sends a new one, and it only stays readable where it is.
+//! to one conversation (0023). A shared post is not forwarded as a copy: a
+//! post is shared into a conversation by its id since 0080, a new share of
+//! the post itself, resolved as a card by the receiver.
 
 use spjall_envelope::Body;
 

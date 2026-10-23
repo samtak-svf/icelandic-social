@@ -16,11 +16,11 @@ use std::sync::{Arc, Mutex};
 use relay::{Link, Relay};
 use serde_json::{Value, json};
 use spjall_client::api::{
-    ApiError, Audience, Author, Card, CardCommunity, JoinState, LogTargetKind, Method, Moderation,
-    ModerationAction, ModerationLogAction, ModerationState, NewReport, NotificationKind, Platform,
-    Provider, ReactionCount, ReactionKind, Ref, RefKind, ReportDecision, ReportReason, ReportState,
-    Request, Response, Role, SocialMedia, Target, TargetKind, TargetStanding, TargetState,
-    Transport, Unreachable,
+    ApiError, Audience, Author, AuthorRole, Card, CardCommunity, JoinState, LogTargetKind, Method,
+    Moderation, ModerationAction, ModerationLogAction, ModerationState, NewReport,
+    NotificationKind, Platform, Provider, ReactionCount, ReactionKind, Ref, RefKind,
+    ReportDecision, ReportReason, ReportState, Request, Response, Role, SocialMedia, Target,
+    TargetKind, TargetStanding, TargetState, Transport, Unreachable,
 };
 use spjall_client::{Client, ClientError};
 use tempfile::TempDir;
@@ -310,9 +310,12 @@ fn posts_comments_and_reactions_go_by_their_ids() {
         Author {
             account_id: "acc_b".into(),
             name: Some("Sigrún Jónsdóttir".into()),
-            verified: true
+            verified: true,
+            photo: None,
+            role: None,
         }
     );
+    assert_eq!(first.latest_comment, None);
 
     phone.answer(200, post("p_2"));
     c.create_post("cm_1", "Æfing fellur niður í kvöld.", &[])
@@ -654,6 +657,48 @@ fn notifications_are_paged_and_read_and_an_unknown_kind_is_left_out() {
             ),
         ]
     );
+}
+
+/// 0080: a byline carries its photo and role, and a post its newest comment;
+/// a server from before sends none of them, and a role this core does not
+/// know decodes as `Unknown` instead of failing the page.
+#[test]
+fn a_byline_and_a_latest_comment_decode_with_or_without_the_new_fields() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+    let mut byline = author("acc_b");
+    byline["photo"] = json!("ph_0123");
+    byline["role"] = json!("owner");
+    let mut with = post("p_1");
+    with["author"] = byline;
+    with["latestComment"] = {
+        let mut latest = comment("p_1-0a");
+        latest["author"]["role"] = json!("curator");
+        latest["author"]["photo"] = Value::Null;
+        latest
+    };
+    phone.answer(200, with);
+    let found = c.post("p_1").unwrap();
+    assert_eq!(found.author.photo.as_deref(), Some("ph_0123"));
+    assert_eq!(found.author.role, Some(AuthorRole::Owner));
+    let latest = found.latest_comment.unwrap();
+    assert_eq!(latest.comment_id, "p_1-0a");
+    assert_eq!(latest.author.role, Some(AuthorRole::Unknown));
+    assert_eq!(latest.author.photo, None);
+
+    let mut explicit_null = post("p_2");
+    explicit_null["author"]["photo"] = Value::Null;
+    explicit_null["author"]["role"] = Value::Null;
+    explicit_null["latestComment"] = Value::Null;
+    phone.answer(200, explicit_null);
+    let none = c.post("p_2").unwrap();
+    assert_eq!(
+        (none.author.photo, none.author.role, none.latest_comment),
+        (None, None, None)
+    );
+
+    phone.answer(200, post("p_3"));
+    assert_eq!(c.post("p_3").unwrap().latest_comment, None);
 }
 
 #[test]

@@ -19,6 +19,30 @@ pub struct Author {
     /// None for an account that never gave one.
     pub name: Option<String>,
     pub verified: bool,
+    /// The version of the account's photo, which `profile_photo` takes (0080).
+    #[uniffi(default = None)]
+    pub photo: Option<String>,
+    /// The role in the community the content belongs to (0080).
+    #[uniffi(default = None)]
+    pub role: Option<AuthorRole>,
+}
+
+/// A role worth a badge. `Unknown` is a role a newer server added.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum AuthorRole {
+    Owner,
+    Moderator,
+    Unknown,
+}
+
+impl From<api::AuthorRole> for AuthorRole {
+    fn from(role: api::AuthorRole) -> Self {
+        match role {
+            api::AuthorRole::Owner => Self::Owner,
+            api::AuthorRole::Moderator => Self::Moderator,
+            api::AuthorRole::Unknown => Self::Unknown,
+        }
+    }
 }
 
 impl From<api::Author> for Author {
@@ -27,6 +51,8 @@ impl From<api::Author> for Author {
             account_id: author.account_id,
             name: author.name,
             verified: author.verified,
+            photo: author.photo,
+            role: author.role.map(Into::into),
         }
     }
 }
@@ -330,6 +356,9 @@ pub struct Post {
     pub reactions: Vec<ReactionCount>,
     pub my_reaction: Option<ReactionKind>,
     pub comment_count: u64,
+    /// The newest comment this account may read, for a preview (0080).
+    #[uniffi(default = None)]
+    pub latest_comment: Option<Comment>,
     pub state: ModerationState,
     /// A moderator pinned it to the top of the community (0080).
     #[uniffi(default = false)]
@@ -355,6 +384,7 @@ impl From<api::Post> for Post {
                 .collect(),
             my_reaction: post.my_reaction.map(Into::into),
             comment_count: post.comment_count,
+            latest_comment: post.latest_comment.map(Into::into),
             state: post.state.into(),
             pinned: post.pinned,
         }
