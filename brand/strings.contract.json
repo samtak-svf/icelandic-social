@@ -7,7 +7,7 @@
       "description": "Launcher label, home-screen name, store-facing display name."
     },
     "tab_conversations": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Bottom tab: the conversation list."
     },
     "tab_me": {
@@ -19,7 +19,7 @@
       "description": "Action that starts a new conversation."
     },
     "conversations_empty": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "The conversation list when there is none yet; points at the invite link (docs/decisions/0022)."
     },
     "conversations_search": {
@@ -91,7 +91,7 @@
       "description": "Share your own invite link or QR code (docs/decisions/0009)."
     },
     "composer_placeholder": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Empty message composer."
     },
     "send": {
@@ -99,11 +99,11 @@
       "description": "Send button."
     },
     "message_sending": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Status of an own message that is still being sent."
     },
     "message_failed": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Status of an own message that could not be sent; the bubble offers try_again."
     },
     "day_today": {
@@ -430,7 +430,7 @@
       "description": "Confirmation before deleting an own message for everyone."
     },
     "message_deleted": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Tombstone left where a deleted message was."
     },
     "forwarded_marker": {
@@ -1946,6 +1946,133 @@
     "community_pinned": {
       "surfaces": ["ios"],
       "description": "Accessible label of the pin shown on a pinned community row."
+    },
+    "device_link_action": {
+      "surfaces": ["android", "ios"],
+      "description": "Entry on the devices list that starts scanning a browser's link code (docs/decisions/0064, 0077)."
+    },
+    "device_link_scan_title": {
+      "surfaces": ["android", "ios"],
+      "description": "Title of the screen that scans a browser's link code."
+    },
+    "device_link_scan_hint": {
+      "surfaces": ["android", "ios"],
+      "description": "Under the camera view: where the code comes from."
+    },
+    "device_link_paste": {
+      "surfaces": ["android", "ios"],
+      "description": "Action that switches from the camera to typing or pasting the link code."
+    },
+    "device_link_code_field": {
+      "surfaces": ["android", "ios"],
+      "description": "Label of the field that takes a pasted link code."
+    },
+    "device_link_continue": {
+      "surfaces": ["android", "ios"],
+      "description": "Button that checks a pasted link code."
+    },
+    "device_link_camera_denied": {
+      "surfaces": ["android", "ios"],
+      "description": "Shown in place of the camera view when the camera is not allowed."
+    },
+    "device_link_approve_title": {
+      "surfaces": ["android", "ios"],
+      "description": "Title of the approve screen after a code is scanned and checked."
+    },
+    "device_link_approve_body": {
+      "surfaces": ["android", "ios"],
+      "description": "What approving gives the browser; label is the session's browser and system as the server named them.",
+      "placeholders": {
+        "label": "string"
+      }
+    },
+    "device_link_history_title": {
+      "surfaces": ["android", "ios"],
+      "description": "Heading over the choice of older messages to send (0077)."
+    },
+    "device_link_history_recent": {
+      "surfaces": ["android", "ios"],
+      "description": "History choice: the last 90 days."
+    },
+    "device_link_history_all": {
+      "surfaces": ["android", "ios"],
+      "description": "History choice: everything on this phone."
+    },
+    "device_link_history_none": {
+      "surfaces": ["android", "ios"],
+      "description": "History choice: send nothing."
+    },
+    "device_link_approve": {
+      "surfaces": ["android", "ios"],
+      "description": "Button that approves the link."
+    },
+    "device_link_sending_history": {
+      "surfaces": ["android", "ios"],
+      "description": "Progress while the phone seals and uploads the history (0074)."
+    },
+    "device_link_done": {
+      "surfaces": ["android", "ios"],
+      "description": "Shown once the browser is linked."
+    },
+    "device_link_invalid": {
+      "surfaces": ["android", "ios"],
+      "description": "The scanned or pasted text is not a link code."
+    },
+    "device_link_mismatch": {
+      "surfaces": ["android", "ios"],
+      "description": "The server's keys differ from the code's, so nothing was approved (0077)."
+    },
+    "device_link_expired": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The link request has expired or is gone."
+    },
+    "device_link_already": {
+      "surfaces": ["android", "ios"],
+      "description": "The link request was approved already (409 already_approved)."
+    },
+    "device_kind_web": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A linked browser on the account's device list."
+    },
+    "device_link_web_title": {
+      "surfaces": ["web"],
+      "description": "Title of the web page that shows the link code."
+    },
+    "device_link_web_start": {
+      "surfaces": ["web"],
+      "description": "Button that creates a link request and shows its code."
+    },
+    "device_link_web_hint": {
+      "surfaces": ["web"],
+      "description": "Under the QR code: what to do on the phone."
+    },
+    "device_link_web_copy": {
+      "surfaces": ["web"],
+      "description": "Copies the link code as text, for a phone that pastes it."
+    },
+    "device_link_web_waiting": {
+      "surfaces": ["web"],
+      "description": "While the link waits for the phone's approval."
+    },
+    "device_link_web_receiving": {
+      "surfaces": ["web"],
+      "description": "While the browser downloads and opens the history (0074)."
+    },
+    "device_link_web_no_phone": {
+      "surfaces": ["web"],
+      "description": "The account has no phone, so it cannot link a browser (0064)."
+    },
+    "chat_other_tab": {
+      "surfaces": ["web"],
+      "description": "Another tab owns the store (0064): the chat is open there."
+    },
+    "chat_use_here": {
+      "surfaces": ["web"],
+      "description": "Moves the chat to this tab."
+    },
+    "chat_device_lost": {
+      "surfaces": ["web"],
+      "description": "The store is gone or the device was removed: link again (0064)."
     }
   }
 }

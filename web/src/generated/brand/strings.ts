@@ -6,12 +6,22 @@ const plural = new Intl.PluralRules("is");
 export const strings = {
   /** Launcher label, home-screen name, store-facing display name. */
   app_name: "Hjal",
+  /** Bottom tab: the conversation list. */
+  tab_conversations: "Hjal",
   /** Bottom tab: own profile, invite link and the way to settings (docs/decisions/0034). */
   tab_me: "Ég",
+  /** The conversation list when there is none yet; points at the invite link (docs/decisions/0022). */
+  conversations_empty: "Engin samtöl enn. Deildu hlekknum þínum til að hefja samtal.",
   /** Placeholder of the name search at the top of the new-conversation picker (docs/decisions/0036). */
   people_search: "Leita að nafni",
   /** Share your own invite link or QR code (docs/decisions/0009). */
   invite: "Bjóða",
+  /** Empty message composer. */
+  composer_placeholder: "Skrifaðu skilaboð…",
+  /** Status of an own message that is still being sent. */
+  message_sending: "Í sendingu",
+  /** Status of an own message that could not be sent; the bubble offers try_again. */
+  message_failed: "Ekki send.",
   /** Short form of verified_with_kennitala, under the other person's name at the top of a conversation. */
   verified_short: "Vottað",
   /** Stands in for an account whose name the server has not given, in titles and rows (docs/decisions/0022). */
@@ -20,6 +30,8 @@ export const strings = {
   copy: "Afrita",
   /** Brief confirmation that a message was copied, where the system shows none (docs/decisions/0046). */
   copied: "Afritað",
+  /** Tombstone left where a deleted message was. */
+  message_deleted: "Skilaboðin voru tekin til baka.",
   /** Add a reaction to a message. */
   react: "Bregðast við",
   /** Title of the sheet listing who reacted to a message (docs/decisions/0045). */
@@ -560,4 +572,28 @@ export const strings = {
   post_share_to_conversation: "Senda í samtal",
   /** Hub header icon that opens the community search (decision 0080). */
   communities_search_open: "Leita að samfélögum",
+  /** The link request has expired or is gone. */
+  device_link_expired: "Kóðinn er útrunninn. Búðu til nýjan í vafranum.",
+  /** A linked browser on the account's device list. */
+  device_kind_web: "Vafri",
+  /** Title of the web page that shows the link code. */
+  device_link_web_title: "Tengja vafrann",
+  /** Button that creates a link request and shows its code. */
+  device_link_web_start: "Sýna tengikóða",
+  /** Under the QR code: what to do on the phone. */
+  device_link_web_hint: "Í símanum: opnaðu Ég, veldu Tengja vafra og skannaðu kóðann.",
+  /** Copies the link code as text, for a phone that pastes it. */
+  device_link_web_copy: "Afrita kóðann",
+  /** While the link waits for the phone's approval. */
+  device_link_web_waiting: "Bíð eftir samþykki í símanum…",
+  /** While the browser downloads and opens the history (0074). */
+  device_link_web_receiving: "Sæki eldri skilaboð…",
+  /** The account has no phone, so it cannot link a browser (0064). */
+  device_link_web_no_phone: "Til að tengja vafrann þarf appið að vera í síma sem er skráður inn á sama aðgang.",
+  /** Another tab owns the store (0064): the chat is open there. */
+  chat_other_tab: "Samtölin eru opin í öðrum flipa.",
+  /** Moves the chat to this tab. */
+  chat_use_here: "Nota hér",
+  /** The store is gone or the device was removed: link again (0064). */
+  chat_device_lost: "Vafrinn er ekki lengur tengdur. Tengdu hann aftur með símanum.",
 } as const;
