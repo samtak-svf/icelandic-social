@@ -177,7 +177,7 @@ private fun ColumnScope.Feed(
                         onReport = { onReport(post.postId) },
                         onOpen = { actions.open(post.postId) },
                         onComment = { actions.comment(post.postId) },
-                        onDelete = { onDelete(post.postId) }.takeIf { post.author.accountId == state.me },
+                        onDelete = { onDelete(post.postId) }.takeIf { post.author.accountId == state.me?.id },
                         onPin =
                             { pinned: Boolean -> actions.pin(post.postId, pinned) }.takeIf {
                                 state.community?.moderates ==
@@ -214,7 +214,7 @@ private fun ComposerPillOrBox(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Avatar(name = null, kind = AvatarKind.Me, size = 36.dp)
+                Avatar(name = state.me?.name, kind = AvatarKind.Me, size = 36.dp, photo = state.me?.photo)
                 Text(
                     text = stringResource(R.string.post_compose_prompt),
                     color = Palette.mutedFg,

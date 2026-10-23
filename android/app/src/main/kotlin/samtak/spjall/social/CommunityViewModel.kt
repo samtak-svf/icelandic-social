@@ -62,8 +62,8 @@ class CommunityViewModel(
         /** Why the last image picked or sent was not taken, until the next is picked or the post goes. */
         val imageNotice: ImageNotice? = null,
         val publishing: Boolean = false,
-        /** This account's id: its own posts can be deleted. */
-        val me: String? = null,
+        /** This account: its own posts can be deleted, and its name and photo go on the composer row. */
+        val me: OwnAccount? = null,
         /** The posts whose reaction is on its way. */
         val reacting: Set<String> = emptySet(),
         /** The posts and comments this account reported from here. */

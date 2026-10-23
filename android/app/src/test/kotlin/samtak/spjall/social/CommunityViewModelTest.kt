@@ -48,6 +48,20 @@ class CommunityViewModelTest {
         CommunityViewModel(id, social, { now }, dispatcher).also { advanceUntilIdle() }
 
     @Test
+    fun keepsThisAccountsNameForTheComposerAvatarFromTheOneRead() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.MEMBER)
+            social.myName = "Jón Jónsson"
+            val model = model()
+            assertEquals(
+                "Jón Jónsson",
+                model.state.value.me
+                    ?.name,
+            )
+            assertEquals(1, social.calls.count { it == "me" })
+        }
+
+    @Test
     fun aMemberSeesThePostsNewestFirstAndMayWrite() =
         runTest(dispatcher) {
             social.communities["k1"] = community("k1", role = CommunityRole.MEMBER)
@@ -309,7 +323,11 @@ class CommunityViewModelTest {
             social.communities["k1"] = community("k1", role = CommunityRole.MEMBER)
             social.posts["k1"] = mutableListOf(post("p2", author = self), post("p1"))
             val model = model()
-            assertEquals("a1", model.state.value.me)
+            assertEquals(
+                "a1",
+                model.state.value.me
+                    ?.id,
+            )
             model.delete("p2")
             advanceUntilIdle()
             assertTrue("deletePost p2" in social.calls)

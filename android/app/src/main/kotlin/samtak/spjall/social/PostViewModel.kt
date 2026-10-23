@@ -52,8 +52,8 @@ class PostViewModel(
         val moderates: Boolean = false,
         /** The post and comments this account reported from here. */
         val reported: Set<String> = emptySet(),
-        /** This account's id: its own post and comments can be deleted. */
-        val me: String? = null,
+        /** This account: its own post and comments can be deleted, and its name and photo go on the composer. */
+        val me: OwnAccount? = null,
         val problem: Problem? = null,
     )
 

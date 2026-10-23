@@ -71,7 +71,7 @@ class SocialScreenshotTest {
             community = choir,
             posts = listOf(withImages, post("p2", body = "Næsta æfing fellur niður", author = self)),
             loaded = true,
-            me = self.accountId,
+            me = OwnAccount(self.accountId, self.name, null),
             writes = true,
         )
 
@@ -84,7 +84,7 @@ class SocialScreenshotTest {
                     comment("c2", "p1", body = "Sammála", author = self),
                 ),
             loaded = true,
-            me = self.accountId,
+            me = OwnAccount(self.accountId, self.name, null),
         )
 
     private val reportsState =

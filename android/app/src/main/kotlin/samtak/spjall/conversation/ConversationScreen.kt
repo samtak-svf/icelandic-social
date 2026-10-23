@@ -2,8 +2,6 @@ package samtak.spjall.conversation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,7 +11,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
@@ -26,7 +23,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
@@ -48,8 +44,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
@@ -59,12 +53,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import samtak.spjall.brand.R
@@ -73,11 +64,11 @@ import samtak.spjall.core.ConversationState
 import samtak.spjall.core.Item
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.CancelButton
+import samtak.spjall.ui.ComposerField
 import samtak.spjall.ui.LocalReduceMotion
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.RoundButton
-import samtak.spjall.ui.SansFamily
 import samtak.spjall.ui.SectionLabel
 import samtak.spjall.ui.lastLine
 import samtak.spjall.ui.rowMotion
@@ -312,7 +303,7 @@ private fun Composer(
         ) {
             Spacer(Modifier.width(12.dp))
             val placeholder = state.attachment?.let { R.string.caption_placeholder } ?: R.string.composer_placeholder
-            Field(state.draft, actions::draft, placeholder, Modifier.weight(1f))
+            ComposerField(state.draft, actions::draft, stringResource(placeholder), Modifier.weight(1f))
             // One action at a time, in one place (0043): camera and attach while the
             // field is empty (0047), send once it has text or a photo or file waits (0048);
             // replying or editing keeps send.
@@ -344,42 +335,6 @@ private fun Composer(
 }
 
 @Composable
-private fun Field(
-    value: String,
-    onChange: (String) -> Unit,
-    placeholder: Int,
-    modifier: Modifier,
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(FIELD_RADIUS.dp)
-    BasicTextField(
-        value = value,
-        onValueChange = onChange,
-        maxLines = COMPOSER_LINES,
-        textStyle = FIELD.copy(color = Palette.fg),
-        cursorBrush = SolidColor(Palette.fg),
-        interactionSource = interaction,
-        modifier =
-            modifier
-                .heightIn(min = FIELD_HEIGHT.dp)
-                .background(if (focused) Palette.surface else Palette.muted, shape)
-                .border(FIELD_EDGE.dp, if (focused) Palette.fg else Color.Transparent, shape),
-        decorationBox = { inner ->
-            Box(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                if (value.isEmpty()) {
-                    Text(text = stringResource(placeholder), style = FIELD, color = Palette.mutedFg)
-                }
-                inner()
-            }
-        },
-    )
-}
-
-@Composable
 private fun ModeLine(
     label: Int,
     text: String,
@@ -406,17 +361,10 @@ private fun ModeLine(
 }
 
 private const val OLDER_AHEAD = 10
-private const val COMPOSER_LINES = 5
 private const val BANNER_RADIUS = 14
 private const val BUBBLE_PILL = 18
 private const val DOT = 6
 private const val SEND = 40
-private const val FIELD_HEIGHT = 40
-private const val FIELD_RADIUS = 20
-private const val FIELD_EDGE = 1.5f
 
 /** The typing dots fade from left to right, as in the design. */
 private val DOT_ALPHAS = listOf(1f, 0.7f, 0.4f)
-
-private val FIELD =
-    TextStyle(fontFamily = SansFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp)

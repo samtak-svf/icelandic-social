@@ -42,6 +42,20 @@ class PostViewModelTest {
     private fun TestScope.model() = PostViewModel("p1", social, dispatcher).also { advanceUntilIdle() }
 
     @Test
+    fun keepsThisAccountsNameForTheComposerAvatarFromTheOneRead() =
+        runTest(dispatcher) {
+            social.posts["k1"] = mutableListOf(post("p1"))
+            social.myName = "Jón Jónsson"
+            val model = model()
+            assertEquals(
+                "Jón Jónsson",
+                model.state.value.me
+                    ?.name,
+            )
+            assertEquals(1, social.calls.count { it == "me" })
+        }
+
+    @Test
     fun showsThePostAndItsCommentsOldestFirst() =
         runTest(dispatcher) {
             val state = model().state.value
@@ -228,7 +242,11 @@ class PostViewModelTest {
         runTest(dispatcher) {
             social.posts["k1"] = mutableListOf(post("p1", author = self))
             val model = model()
-            assertEquals("a1", model.state.value.me)
+            assertEquals(
+                "a1",
+                model.state.value.me
+                    ?.id,
+            )
             val gone = mutableListOf<String>()
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { model.deleted.toList(gone) }
             model.deletePost()
