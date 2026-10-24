@@ -347,7 +347,7 @@
         "properties": {
           "error": {
             "type": "string",
-            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, pin_limit, invalid_media, muted, expired, incomplete, internal_error",
+            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, pin_limit, poll_closed, invalid_media, muted, expired, incomplete, internal_error",
             "example": "unauthorized"
           },
           "requestId": {
@@ -1809,6 +1809,9 @@
             ],
             "description": "Only a moderator sees what is not visible: hidden or removed by a moderator"
           },
+          "poll": {
+            "$ref": "#/components/schemas/Poll"
+          },
           "pinned": {
             "type": "boolean",
             "description": "A moderator features it (decision 0088); it stays in its place in the feed, marked, and is also in the community's `featured`. `getFeed` never marks it"
@@ -1968,6 +1971,62 @@
           "liked",
           "media"
         ]
+      },
+      "Poll": {
+        "type": "object",
+        "properties": {
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "optionId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                  "example": "c_9f3a1b"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "votes": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "How many votes the option has, or null while the caller has not voted: the author, the community's owner and moderators, and every reader of a closed poll see it at once (decision 0090)"
+                }
+              },
+              "required": [
+                "optionId",
+                "text",
+                "votes"
+              ]
+            }
+          },
+          "total": {
+            "type": "integer",
+            "description": "How many votes the poll has, always shown"
+          },
+          "mine": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b",
+            "description": "The option the caller voted for"
+          },
+          "closed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "options",
+          "total",
+          "mine",
+          "closed"
+        ],
+        "description": "Present when the post is a poll (decision 0090)"
       },
       "CommunityPage": {
         "type": "object",
@@ -2729,7 +2788,8 @@
               "set_community_cover",
               "remove_community_cover",
               "pin_post",
-              "unpin_post"
+              "unpin_post",
+              "close_poll"
             ]
           },
           "target": {
@@ -9717,6 +9777,25 @@
                     },
                     "maxItems": 4,
                     "default": []
+                  },
+                  "poll": {
+                    "type": "object",
+                    "properties": {
+                      "options": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "minItems": 2,
+                        "maxItems": 6
+                      }
+                    },
+                    "required": [
+                      "options"
+                    ],
+                    "description": "Makes the post a poll (decision 0090): the body is the question and is required, there are two to six distinct options, and no image"
                   }
                 }
               }
@@ -9735,7 +9814,7 @@
             }
           },
           "400": {
-            "description": "invalid_request: neither a text nor an image; invalid_media: an image that is not the caller's upload to this community, or is already in a post",
+            "description": "invalid_request: neither a text nor an image, or a poll with no question, repeated options or an image; invalid_media: an image that is not the caller's upload to this community, or is already in a post",
             "content": {
               "application/json": {
                 "schema": {
@@ -10961,6 +11040,208 @@
         }
       }
     },
+    "/v1/posts/{postId}/vote": {
+      "put": {
+        "operationId": "votePoll",
+        "tags": [
+          "social"
+        ],
+        "summary": "Vote in a poll, or change the caller's vote",
+        "description": "Whoever may comment may vote, once; voting again changes the vote (decision 0090). Nobody is told, and no route says who voted or how.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "p_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+            },
+            "required": true,
+            "name": "postId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "optionId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                    "example": "o0"
+                  }
+                },
+                "required": [
+                  "optionId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The poll's post, as the caller now sees it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: the post has no such option",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_a_member: only members comment and react; read_only: the community takes nothing new; muted: a moderator muted the caller here for now; not_permitted: the post was hidden or removed; blocked: a block stands between the caller and the post's author",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such post the caller can see, or it is not a poll",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "poll_closed: the poll takes no more votes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "withdrawVote",
+        "tags": [
+          "social"
+        ],
+        "summary": "Withdraw the caller's vote in a poll",
+        "description": "Withdrawing when there is no vote changes nothing (decision 0090).",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "p_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+            },
+            "required": true,
+            "name": "postId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The poll's post, as the caller now sees it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such post the caller can see, or it is not a poll",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "poll_closed: the poll takes no more changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/comments/{commentId}/like": {
       "put": {
         "operationId": "likeComment",
@@ -11298,6 +11579,88 @@
           },
           "404": {
             "description": "not_found: no such post the caller can see in that community",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/posts/{postId}/poll/close": {
+      "post": {
+        "operationId": "closePoll",
+        "tags": [
+          "social"
+        ],
+        "summary": "Close a poll",
+        "description": "The post's author, or the community's owner or a moderator, closes it; a moderator's close is in the moderation log. Closing a closed poll changes and logs nothing. A closed poll shows its results to every reader (decision 0090).",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "p_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+            },
+            "required": true,
+            "name": "postId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The post, closed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: only its author and the community's moderators close it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such post the caller can see, or it is not a poll",
             "content": {
               "application/json": {
                 "schema": {
