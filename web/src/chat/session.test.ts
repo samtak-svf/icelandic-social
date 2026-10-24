@@ -1,13 +1,13 @@
 import { describe, expect, test, vi } from "vitest";
 import type { CoreEvent } from "../generated/core.d.ts";
-import type { Owned } from "./owner.ts";
+import type { Owned, OwnOptions } from "./owner.ts";
 import { ChatFailure, type ChatCall, type Start } from "./protocol.ts";
 import { chatSession, type ChatState, type SessionDeps } from "./session.ts";
 import type { SocketDeps } from "./socket.ts";
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
-function setup(opts: { owns?: (steal: boolean) => Owned | "elsewhere"; start?: Start } = {}) {
+function setup(opts: { owns?: (options: OwnOptions) => Promise<Owned>; start?: Start } = {}) {
   const states: ChatState[] = [];
   const events: CoreEvent[][] = [];
   const call = stubCall();
@@ -15,7 +15,9 @@ function setup(opts: { owns?: (steal: boolean) => Owned | "elsewhere"; start?: S
   const release = vi.fn();
   const owned: Owned = { call, taken: new Promise((r) => (take = r)), release };
   const sockets: { url: string; deps: SocketDeps; close: ReturnType<typeof vi.fn> }[] = [];
-  const own = vi.fn((steal: boolean) => Promise.resolve(opts.owns ? opts.owns(steal) : owned));
+  const own = vi.fn((options: OwnOptions) =>
+    opts.owns ? opts.owns(options) : Promise.resolve(owned),
+  );
   const deps: SessionDeps = {
     own,
     start: () => Promise.resolve(opts.start ?? { state: "ready", deviceId: "d1" }),
@@ -45,20 +47,41 @@ describe("chatSession", () => {
     expect(t.sockets.map((s) => s.url)).toEqual(["wss://x/v1/ws"]);
   });
 
-  test("another tab holds the chat: elsewhere, and no socket", async () => {
-    const t = setup({ owns: () => "elsewhere" });
+  test("another tab holds the chat: elsewhere and no socket, then ready once it lets go", async () => {
+    let grant!: (owned: Owned) => void;
+    const t = setup({
+      owns: ({ onWaiting }) => {
+        onWaiting?.();
+        return new Promise((r) => (grant = r));
+      },
+    });
     await tick();
     expect(t.states).toEqual(["starting", "elsewhere"]);
     expect(t.sockets).toEqual([]);
+    grant(ownedStub());
+    await tick();
+    expect(t.states.at(-1)).toBe("ready");
   });
 
-  test("use here takes the chat with the lock stolen", async () => {
-    const t = setup({ owns: (steal) => (steal ? ownedStub() : "elsewhere") });
+  test("use here takes the chat with the lock stolen and gives up the wait", async () => {
+    const signals: AbortSignal[] = [];
+    const t = setup({
+      owns: ({ steal, signal, onWaiting }) => {
+        if (steal) return Promise.resolve(ownedStub());
+        signals.push(signal!);
+        onWaiting?.();
+        return new Promise((_, reject) =>
+          signal!.addEventListener("abort", () => reject(new Error("aborted"))),
+        );
+      },
+    });
     await tick();
     t.session.useHere();
     await tick();
-    expect(t.own.mock.calls.map((c) => c[0])).toEqual([false, true]);
+    expect(t.own.mock.calls.map((c) => c[0].steal)).toEqual([false, true]);
+    expect(signals[0]!.aborted).toBe(true);
     expect(t.states.at(-1)).toBe("ready");
+    expect(t.states).not.toContain("failed");
   });
 
   test.each(["unlinked", "lost", "signed-out"] as const)("start answers %s", async (state) => {
@@ -68,13 +91,22 @@ describe("chatSession", () => {
     expect(t.sockets).toEqual([]);
   });
 
-  test("losing the lock closes the socket and shows elsewhere", async () => {
-    const t = setup();
+  test("losing the lock closes the socket, shows elsewhere and waits to get it back", async () => {
+    let calls = 0;
+    const owned = ownedTakeable();
+    const t = setup({
+      owns: ({ onWaiting }) => {
+        if (calls++ === 0) return Promise.resolve(owned.owned);
+        onWaiting?.();
+        return new Promise(() => {});
+      },
+    });
     await tick();
-    t.take();
+    owned.take();
     await tick();
     expect(t.sockets[0]!.close).toHaveBeenCalled();
     expect(t.states.at(-1)).toBe("elsewhere");
+    expect(t.own).toHaveBeenCalledTimes(2);
   });
 
   test("a device-lost failure from the socket shows lost; others show failed", async () => {
@@ -106,6 +138,12 @@ describe("chatSession", () => {
     expect(t.states.length).toBe(seen);
   });
 });
+
+function ownedTakeable() {
+  let take!: () => void;
+  const owned: Owned = { call: stubCall(), taken: new Promise((r) => (take = r)), release() {} };
+  return { owned, take: () => take() };
+}
 
 function ownedStub(): Owned {
   return {

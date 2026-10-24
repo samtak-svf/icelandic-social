@@ -35,13 +35,13 @@ const ChatContext = createContext<ChatValue | null>(null);
 
 function browserDeps(): SessionDeps {
   return {
-    own: (steal) =>
+    own: (options) =>
       ownChat(
         {
           locks: navigator.locks,
           spawn: () => new Worker(new URL("./worker.ts", import.meta.url), { type: "module" }),
         },
-        steal,
+        options,
       ),
     start: startChat,
     socket: chatSocket,

@@ -5,14 +5,14 @@
 
 import type { CoreEvent } from "../generated/core.d.ts";
 import { type ChatCall, ChatFailure, type Start } from "./protocol.ts";
-import type { Owned } from "./owner.ts";
+import type { Owned, OwnOptions } from "./owner.ts";
 import { chatSocket } from "./socket.ts";
 
 /** Where the chat stands in this tab. */
 export type ChatState =
   /** Taking the chat or starting the worker. */
   | "starting"
-  /** Another tab runs the chat. */
+  /** Another tab runs the chat; this one waits its turn. */
   | "elsewhere"
   /** Linked and running. */
   | "ready"
@@ -26,7 +26,7 @@ export type ChatState =
   | "failed";
 
 export interface SessionDeps {
-  own(steal: boolean): Promise<Owned | "elsewhere">;
+  own(options: OwnOptions): Promise<Owned>;
   start(call: ChatCall): Promise<Start>;
   socket: typeof chatSocket;
   socketUrl(): string;
@@ -51,6 +51,8 @@ export function chatSession(
 ): ChatSession {
   let owned: Owned | undefined;
   let socket: { close(): void } | undefined;
+  /** Ends this round's wait for the lock. */
+  let waiting: AbortController | undefined;
   let closed = false;
   /** Bumped by each take-over, so a late answer from an older one is dropped. */
   let round = 0;
@@ -60,6 +62,8 @@ export function chatSession(
   }
 
   function drop() {
+    waiting?.abort();
+    waiting = undefined;
     socket?.close();
     socket = undefined;
     owned?.release();
@@ -70,24 +74,26 @@ export function chatSession(
     const mine = ++round;
     drop();
     emit(mine, "starting");
+    const wait = new AbortController();
+    waiting = wait;
     try {
-      const taken = await deps.own(steal);
+      const taken = await deps.own({
+        steal,
+        signal: wait.signal,
+        onWaiting: () => emit(mine, "elsewhere"),
+      });
       if (closed || mine !== round) {
-        if (taken !== "elsewhere") taken.release();
+        taken.release();
         return;
       }
-      if (taken === "elsewhere") return emit(mine, "elsewhere");
       owned = taken;
+      // Another tab took the chat: wait for it to come back.
       void taken.taken.then(() => {
-        if (owned !== taken) return;
-        socket?.close();
-        socket = undefined;
-        owned = undefined;
-        emit(mine, "elsewhere");
+        if (owned === taken) void begin(false);
       });
       await run(mine, taken);
     } catch {
-      emit(mine, "failed");
+      if (!wait.signal.aborted) emit(mine, "failed");
     }
   }
 

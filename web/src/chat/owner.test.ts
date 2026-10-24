@@ -3,9 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import { type ChatWorker, ownChat, type OwnerDeps, startChat } from "./owner";
 import { type ChatCall, ChatFailure } from "./protocol";
 
-/** One origin's locks, as far as `ifAvailable` and `steal` go. */
+/** One origin's locks, as far as `ifAvailable`, `steal`, `signal` and the queue go. */
 function fakeLocks() {
-  let holder: { fail: (error: unknown) => void } | undefined;
+  type Holder = { fail: (error: unknown) => void };
+  let holder: Holder | undefined;
+  const queue: (() => void)[] = [];
   function request<T>(name: string, callback: LockGrantedCallback<T>): Promise<Awaited<T>>;
   function request<T>(
     name: string,
@@ -25,11 +27,23 @@ function fakeLocks() {
       holder = undefined;
     }
     return new Promise((resolve, reject) => {
-      const mine = { fail: reject };
-      holder = mine;
-      void Promise.resolve(callback({ name: CHAT, mode: "exclusive" })).then((value) => {
-        if (holder === mine) holder = undefined;
-        resolve(value);
+      if (options.signal?.aborted) return reject(new DOMException("aborted", "AbortError"));
+      const mine: Holder = { fail: reject };
+      const grant = () => {
+        holder = mine;
+        void Promise.resolve(callback({ name: CHAT, mode: "exclusive" })).then((value) => {
+          if (holder === mine) {
+            holder = undefined;
+            queue.shift()?.();
+          }
+          resolve(value);
+        });
+      };
+      if (holder === undefined) return grant();
+      queue.push(grant);
+      options.signal?.addEventListener("abort", () => {
+        queue.splice(queue.indexOf(grant), 1);
+        reject(new DOMException("aborted", "AbortError"));
       });
     });
   }
@@ -61,12 +75,30 @@ function tab(locks: OwnerDeps["locks"]) {
 }
 
 describe("which tab runs the chat (decision 0064)", () => {
-  it("lets the first tab own it, and tells the second it is open elsewhere", async () => {
+  it("lets the first tab own it; the second is told it is open elsewhere and waits", async () => {
     const locks = fakeLocks();
     const first = tab(locks);
     const second = tab(locks);
-    expect(await ownChat(first.deps)).toMatchObject({ call: expect.any(Function) });
-    expect(await ownChat(second.deps)).toBe("elsewhere");
+    const owned = await ownChat(first.deps);
+    const onWaiting = vi.fn();
+    const later = ownChat(second.deps, { onWaiting });
+    await vi.waitFor(() => expect(onWaiting).toHaveBeenCalledOnce());
+    expect(second.workers).toHaveLength(0);
+    // The holder lets go (the tab closes, or the page that held it a moment
+    // ago is gone): the waiting tab takes the chat without being asked.
+    owned.release();
+    expect(await later).toMatchObject({ call: expect.any(Function) });
+    await vi.waitFor(() => expect(first.terminates[0]!).toHaveBeenCalled());
+    expect(second.workers).toHaveLength(1);
+  });
+
+  it("gives up the wait when its signal aborts", async () => {
+    const locks = fakeLocks();
+    await ownChat(tab(locks).deps);
+    const second = tab(locks);
+    const wait = new AbortController();
+    const later = ownChat(second.deps, { signal: wait.signal, onWaiting: () => wait.abort() });
+    await expect(later).rejects.toThrow("aborted");
     expect(second.workers).toHaveLength(0);
   });
 
@@ -74,9 +106,8 @@ describe("which tab runs the chat (decision 0064)", () => {
     const locks = fakeLocks();
     const first = tab(locks);
     const owned = await ownChat(first.deps);
-    if (owned === "elsewhere") throw new Error("not owned");
     const second = tab(locks);
-    expect(await ownChat(second.deps, true)).not.toBe("elsewhere");
+    await ownChat(second.deps, { steal: true });
     await owned.taken;
     expect(first.terminates[0]!).toHaveBeenCalled();
     expect(second.terminates[0]!).not.toHaveBeenCalled();
@@ -86,10 +117,11 @@ describe("which tab runs the chat (decision 0064)", () => {
     const locks = fakeLocks();
     const first = tab(locks);
     const owned = await ownChat(first.deps);
-    if (owned === "elsewhere") throw new Error("not owned");
     owned.release();
     await vi.waitFor(() => expect(first.terminates[0]!).toHaveBeenCalled());
-    expect(await ownChat(tab(locks).deps)).not.toBe("elsewhere");
+    const onWaiting = vi.fn();
+    await ownChat(tab(locks).deps, { onWaiting });
+    expect(onWaiting).not.toHaveBeenCalled();
   });
 });
 
