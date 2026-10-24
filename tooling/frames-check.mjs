@@ -9,9 +9,18 @@
 // image. A vector for a ratio the API no longer documents, or a documented
 // size that is not whole pixels, fails here before a client cuts a wrong crop.
 //
+// The Rust core keeps the same sizes as constants in core/client/src/frames.rs
+// (COVER_COMPACT, PHOTO_SQUARE, ...), one `FrameSize { w: N, h: N }` per line;
+// they must equal x-frame-specs exactly, with none missing and none extra.
+//
 //   node tooling/frames-check.mjs
 
-import { readJson } from "./lib/repo.mjs";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { ROOT, readJson } from "./lib/repo.mjs";
+
+/** Where the Rust core keeps its copy of the frame sizes. */
+export const RUST_FRAMES = "core/client/src/frames.rs";
 
 /**
  * @typedef {{ w: number, h: number }} Size
@@ -65,16 +74,62 @@ function caseProblems(c, group, specs, where) {
 }
 
 /**
+ * The frame-size constants of the Rust source, as `{ cover: { compact: Size } }`.
+ * @param {string} source the text of core/client/src/frames.rs
+ * @returns {Specs}
+ */
+export function rustSpecs(source) {
+  /** @type {Specs} */
+  const specs = {};
+  const line =
+    /^\s*pub const (COVER|PHOTO)_([A-Z]+): FrameSize = FrameSize \{ w: (\d+), h: (\d+) \};/gm;
+  for (const [, kind = "", name = "", w, h] of source.matchAll(line)) {
+    (specs[kind.toLowerCase()] ??= {})[name.toLowerCase()] = { w: Number(w), h: Number(h) };
+  }
+  return specs;
+}
+
+/**
+ * @param {any} specs x-frame-specs
+ * @param {string} source the text of core/client/src/frames.rs
+ * @returns {string[]}
+ */
+function rustProblems(specs, source) {
+  const rust = rustSpecs(source);
+  if (Object.keys(rust).length === 0) return [`${RUST_FRAMES} has no frame-size constants`];
+  /** @type {string[]} */
+  const problems = [];
+  for (const kind of new Set([...Object.keys(specs), ...Object.keys(rust)])) {
+    for (const name of new Set([
+      ...Object.keys(specs[kind] ?? {}),
+      ...Object.keys(rust[kind] ?? {}),
+    ])) {
+      const want = specs[kind]?.[name];
+      const have = rust[kind]?.[name];
+      if (!want) problems.push(`${RUST_FRAMES} has ${kind}.${name}, x-frame-specs does not`);
+      else if (!have) problems.push(`${RUST_FRAMES} lacks ${kind}.${name} of x-frame-specs`);
+      else if (want.w !== have.w || want.h !== have.h)
+        problems.push(
+          `${RUST_FRAMES} ${kind}.${name} is ${have.w}x${have.h}, x-frame-specs says ${want.w}x${want.h}`,
+        );
+    }
+  }
+  return problems;
+}
+
+/**
  * @param {any} openapi the parsed api/openapi.json
  * @param {any} vectors the parsed api/frames.vectors.json
- * @returns {string[]} what is wrong, empty when the two agree
+ * @param {string} [rustSource] the text of core/client/src/frames.rs, when it is to be held to the specs
+ * @returns {string[]} what is wrong, empty when they agree
  */
-export function check(openapi, vectors) {
+export function check(openapi, vectors, rustSource) {
   const specs = openapi?.["x-frame-specs"];
   if (!specs || typeof specs !== "object" || Object.keys(specs).length === 0) {
     return ["api/openapi.json has no x-frame-specs"];
   }
   const problems = specProblems(specs);
+  if (rustSource !== undefined) problems.push(...rustProblems(specs, rustSource));
   for (const group of /** @type {const} */ (["place", "override"])) {
     const cases = vectors?.[group];
     if (!Array.isArray(cases) || cases.length === 0) {
@@ -90,10 +145,16 @@ export function check(openapi, vectors) {
 }
 
 if (import.meta.main) {
-  const problems = check(readJson("api/openapi.json"), readJson("api/frames.vectors.json"));
+  const problems = check(
+    readJson("api/openapi.json"),
+    readJson("api/frames.vectors.json"),
+    readFileSync(join(ROOT, RUST_FRAMES), "utf8"),
+  );
   if (problems.length > 0) {
     for (const problem of problems) console.error(`❌ ${problem}`);
     process.exit(1);
   }
-  console.log("✓ the frame sizes in api/openapi.json and api/frames.vectors.json agree");
+  console.log(
+    "✓ the frame sizes in api/openapi.json, api/frames.vectors.json and the Rust core agree",
+  );
 }
