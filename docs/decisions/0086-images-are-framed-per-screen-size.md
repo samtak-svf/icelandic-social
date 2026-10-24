@@ -1,6 +1,7 @@
 # 0086. A picture is framed by the person who sets it, and a cover once for each screen size
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the Worker (#162), the web (#163), the core (#164, 0.39.0) and
+  both apps (#166, #167; 0.12.0)
 - Date: 2026-10-24
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0039](0039-profile-photo.md) (a stored master beside the fixed size; a framed crop
