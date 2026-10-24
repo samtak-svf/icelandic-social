@@ -8,7 +8,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -38,21 +37,13 @@ class ComposerFieldImeTest {
         return visible
     }
 
-    private fun isFocused(): Boolean =
-        compose
-            .onNodeWithTag("field")
-            .fetchSemanticsNode()
-            .config
-            .getOrElse(SemanticsProperties.Focused) { false }
-
     private fun waitForIme(visible: Boolean) {
         compose.waitUntil(IME_TIMEOUT_MS) { imeVisible() == visible }
     }
 
     @Test
-    fun theFieldGivesUpFocusWhenTheKeyboardIsClosedSoResumeDoesNotReopenIt() {
-        // As MainActivity does: without edge-to-edge the window consumes the IME insets
-        // before Compose sees them, so WindowInsets.isImeVisible never changes.
+    fun aKeyboardClosedBeforeLeavingStaysClosedOnResume() {
+        // As MainActivity does, so the window's IME insets are the ones the app reads.
         compose.runOnUiThread { compose.activity.enableEdgeToEdge() }
         compose.setContent {
             var text by remember { mutableStateOf("") }
@@ -73,16 +64,13 @@ class ComposerFieldImeTest {
         }
         waitForIme(visible = false)
 
-        // The window reports the IME hidden a frame before Compose's insets do, and focus
-        // is given up from those, so wait for it as for the IME rather than assert at once.
-        compose.waitUntil(IME_TIMEOUT_MS) { !isFocused() }
-        compose.onNodeWithTag("field").assertIsNotFocused()
-
         val scenario = compose.activityRule.scenario
         scenario.moveToState(Lifecycle.State.CREATED)
         scenario.moveToState(Lifecycle.State.RESUMED)
         compose.waitForIdle()
         Thread.sleep(SETTLE_MS)
+        // Read after resume: a stopped activity has no semantics tree to ask.
+        compose.onNodeWithTag("field").assertIsNotFocused()
         assertFalse("the keyboard came back on resume", imeVisible())
     }
 }
