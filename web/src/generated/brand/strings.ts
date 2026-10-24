@@ -579,6 +579,32 @@ export const strings = {
   post_pinned: "Fest",
   /** Told when a fourth post is featured: three are featured already and one must be released first (decision 0088) */
   post_pin_full: "Þrjár færslur eru festar. Losaðu eina fyrst.",
+  /** Button in the post form that turns the post into a poll (decision 0090). */
+  composer_poll: "Könnun",
+  /** Placeholder of the n-th option field of a poll being written (decision 0090). */
+  composer_poll_option: (args: { n: number }): string =>
+    "Valkostur " + String(args.n),
+  /** Button that adds an option field to a poll being written, up to six (decision 0090). */
+  composer_poll_add_option: "Bæta við valkosti",
+  /** Accessible name of the button that removes an option field, down to two (decision 0090). */
+  composer_poll_remove_option: "Fjarlægja valkost",
+  /** How many votes a poll has, always shown (decision 0090). */
+  poll_votes: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " atkvæði"
+      : String(args.count) + " atkvæði",
+  /** Button that withdraws the reader's vote while a poll is open (decision 0090). */
+  poll_withdraw: "Draga atkvæði til baka",
+  /** Menu item that closes a poll, for its author and the moderators (decision 0090). */
+  poll_close: "Loka könnun",
+  /** Marker on a poll that takes no more votes and shows its final results (decision 0090). */
+  poll_closed: "Könnun lokið",
+  /** Told when a vote is sent to a poll that was closed meanwhile (decision 0090). */
+  poll_closed_problem: "Könnuninni er lokið.",
+  /** Accessible mark on the option the reader voted for (decision 0090). */
+  poll_your_choice: "Þitt val",
+  /** Entry in the moderation log: a moderator closed a poll (decision 0090). */
+  moderation_log_poll_closed: "Könnun var lokað.",
   /** Heading of the community's featured posts, in the aside on a wide screen (decision 0088) */
   community_featured: "Fest",
   /** Accessible name of the row of tabs under a community's header (decision 0089) */

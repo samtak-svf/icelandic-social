@@ -5,6 +5,7 @@ import { notice } from "../jobs/index.ts";
 import type { CommentContent, CommentRecord, MediaRef, PostContent, Viewer } from "./do/space.ts";
 import { type Author, bylineKey, bylines } from "./bylines.ts";
 import { commentMedia } from "./media.ts";
+import { optionId } from "./do/space-schema.ts";
 import { type IndexedPost, postAccess, replyRefusal, spaceAccess } from "./access.ts";
 
 // Posts across D1 and the space (decision 0060): D1's post_index is what the
@@ -260,7 +261,7 @@ export async function createPost(
   env: Env,
   communityId: string,
   author: string,
-  input: { body: string; media: string[] },
+  input: { body: string; media: string[]; poll?: string[] },
 ): Promise<(Omit<PostContent, "latestComment"> & { latestComment: null }) | "invalid_media"> {
   const media = await unattached(env, communityId, author, input.media);
   if (!media) return "invalid_media";
@@ -284,8 +285,33 @@ export async function createPost(
       .bind(communityId, author),
   ]);
   const content = { postId, author, body: input.body, media, createdAt };
-  await space(env, communityId).createPost(content);
-  return { ...content, reactions: [], myReaction: null, commentCount: 0, latestComment: null };
+  await space(env, communityId).createPost({ ...content, poll: input.poll });
+  // Its author sees a new poll's counts at once, all of them none (decision 0090).
+  const poll = input.poll && {
+    options: input.poll.map((text, i) => ({ optionId: optionId(i), text, votes: 0 })),
+    total: 0,
+    mine: null,
+    closed: false,
+  };
+  return {
+    ...content,
+    reactions: [],
+    myReaction: null,
+    commentCount: 0,
+    latestComment: null,
+    ...(poll ? { poll } : {}),
+  };
+}
+
+/**
+ * One post as `accountId` reads it, or null when it may not see it: the answer
+ * of a route that changes a post and returns it (decision 0090).
+ */
+export async function viewPost(env: Env, accountId: string, postId: string): Promise<Post | null> {
+  const found = await postAccess(env, accountId, postId);
+  if (!found) return null;
+  const featured = new Set(await space(env, found.post.communityId).featured());
+  return (await render(env, [found.post], found.access.viewer, featured))[0] ?? null;
 }
 
 /** Records that `account` wrote in `communityId`, so deleting the account reaches the space. */

@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { useAccount } from "../account.tsx";
 import type { Problem } from "../problem.ts";
 import {
+  closePoll,
   deletePost,
   pinPost,
   unpinPost,
@@ -20,6 +21,7 @@ import { Button, ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
 import { outcome, when, type Outcome } from "./outcome.ts";
 import { ReportForm } from "./report.tsx";
 import { ActionRow, Summary, useReactions } from "./post-actions.tsx";
+import { PollCard } from "./poll.tsx";
 import { RoleBadge } from "./roles.tsx";
 import { CommentImage } from "./comment-image.tsx";
 import { useMediaSrc, useViewer, type ViewerItem } from "./viewer.tsx";
@@ -150,6 +152,7 @@ export function PostView({
         <PostMenu post={post} deleted={deleted} changed={changed} moderates={moderates} />
       </header>
       {post.body !== "" && <Body post={post} linked={linked} />}
+      {post.poll !== undefined && <PollCard post={post} />}
       {post.media.length > 0 && <Images postId={post.postId} media={post.media} />}
       <Summary post={post} reactions={reactions} linked={linked} />
       <ActionRow post={post} reactions={reactions} linked={linked} />
@@ -291,11 +294,30 @@ function PostMenu({
     else setProblem(done.problem);
   }
 
+  async function closeThePoll() {
+    setProblem(null);
+    const done = await outcome(closePoll({ path: { postId: post.postId } }), 200);
+    if (done.ok) changed();
+    else setProblem(done.problem);
+  }
+
+  const closable = post.poll !== undefined && !post.poll.closed && (mine || moderates);
+
   return (
     <div className="flex flex-col items-end">
       <Menu label={strings.more_options} icon={<DotsIcon />}>
         {(close) => (
           <>
+            {closable && (
+              <MenuItem
+                onSelect={() => {
+                  close();
+                  void closeThePoll();
+                }}
+              >
+                {strings.poll_close}
+              </MenuItem>
+            )}
             {moderates && (
               <MenuItem
                 onSelect={() => {

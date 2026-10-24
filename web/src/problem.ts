@@ -14,6 +14,7 @@ const NAMED: Record<string, string> = {
   not_found: strings.problem_not_found,
   join_declined: strings.problem_join_declined,
   pin_limit: strings.post_pin_full,
+  poll_closed: strings.poll_closed_problem,
 };
 
 function text(data: object, field: string): string | null {

@@ -8,6 +8,7 @@ import {
   platformReportsRoute,
   reportRoute,
 } from "../../api/moderation.ts";
+import { closePollRoute } from "../../api/polls.ts";
 import { pinPostRoute, unpinPostRoute } from "../../api/social-hub.ts";
 import type { AppEnv } from "../../app.ts";
 import { db } from "../../env/index.ts";
@@ -16,6 +17,7 @@ import { log } from "../../log.ts";
 import { moderates, standing } from "../communities/index.ts";
 import { act, actor } from "./actions.ts";
 import { entry, logPage } from "./log.ts";
+import { closePoll } from "./polls.ts";
 import { setPostPin } from "./pins.ts";
 import { closing, fileReport, isPlatformModerator, openReport, reportPage } from "./reports.ts";
 
@@ -40,6 +42,13 @@ export function moderationRoutes(app: OpenAPIHono<AppEnv>): void {
       return c.body(null, 204);
     });
   }
+
+  app.openapi(closePollRoute, async (c) => {
+    const { accountId } = c.var.session;
+    const closed = await closePoll(c.env, accountId, c.req.valid("param").postId);
+    if (closed === "not_permitted") return fail(c, 403, closed);
+    return closed === "not_found" ? fail(c, 404, closed) : c.json(closed, 200);
+  });
 
   app.openapi(reportRoute, async (c) => {
     const { accountId } = c.var.session;

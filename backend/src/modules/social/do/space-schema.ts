@@ -1,6 +1,9 @@
 /** A removed post's or comment's text is deleted this long after its removal (decision 0063). */
 export const REMOVED_KEPT_MS = 90 * 24 * 60 * 60 * 1000;
 
+/** The id of a poll's option at `position` (decision 0090): stable, and says nothing else. */
+export const optionId = (position: number) => `o${position}`;
+
 /** How many posts a community features at once (decision 0088). */
 export const MAX_FEATURED = 3;
 
@@ -8,7 +11,11 @@ export const MAX_FEATURED = 3;
  * The Space DO's tables (decisions 0060, 0063, 0080): one community's content.
  * `comment_reactions` holds a comment's one 👍 per account (decision 0080);
  * `pinned_posts` holds the featured posts, at most three (decision 0088), each
- * with the time it was pinned.
+ * with the time it was pinned. A poll (decision 0090) is a post with rows in
+ * `poll_options` (its question is the post's body); `poll_votes` keeps one row
+ * per account and post only so a vote stays one and can change, and is read
+ * only as counts and as the reader's own row. A closed poll has a row in
+ * `poll_closed`. All three go with the post, and the votes with the account.
  */
 export const SCHEMA = `
   CREATE TABLE IF NOT EXISTS posts (
@@ -50,5 +57,23 @@ export const SCHEMA = `
   CREATE TABLE IF NOT EXISTS pinned_posts (
     post_id TEXT PRIMARY KEY,
     pinned_at INTEGER NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS poll_options (
+    post_id TEXT NOT NULL,
+    option_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    PRIMARY KEY (post_id, option_id)
+  );
+  CREATE TABLE IF NOT EXISTS poll_votes (
+    post_id TEXT NOT NULL,
+    account TEXT NOT NULL,
+    option_id TEXT NOT NULL,
+    PRIMARY KEY (post_id, account)
+  );
+  CREATE INDEX IF NOT EXISTS poll_votes_by_account ON poll_votes (account);
+  CREATE TABLE IF NOT EXISTS poll_closed (
+    post_id TEXT PRIMARY KEY,
+    closed_at INTEGER NOT NULL
   );
 `;

@@ -1,6 +1,6 @@
 # 0090. A post can be a poll, and a vote is counted, never shown
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the Worker and the web; the apps follow
 - Date: 2026-10-24
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0009](0009-v1-scope.md) (polls in communities are in v1),
