@@ -4,6 +4,7 @@ import { notePost } from "../communities/index.ts";
 import { notice } from "../jobs/index.ts";
 import type { CommentContent, CommentRecord, MediaRef, PostContent, Viewer } from "./do/space.ts";
 import { type Author, bylineKey, bylines } from "./bylines.ts";
+import { commentMedia } from "./media.ts";
 import { type IndexedPost, postAccess, replyRefusal } from "./access.ts";
 
 // Posts across D1 and the space (decision 0060): D1's post_index is what the
@@ -17,7 +18,7 @@ const FEED_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 export type Post = Omit<PostContent, "author" | "latestComment"> & {
   communityId: string;
   author: Author;
-  latestComment: (Omit<CommentContent, "author"> & { author: Author }) | null;
+  latestComment: (Omit<CommentContent, "author"> & { author: Author; media: MediaRef[] }) | null;
   state: IndexedPost["state"];
   /** The community's moderators pinned it to the top of its feed (decision 0080). */
   pinned: boolean;
@@ -63,7 +64,13 @@ export async function render(
       ? [{ accountId: c.latestComment.author, communityId: c.communityId }]
       : []),
   ]);
-  const names = await bylines(env, pairs);
+  const [names, media] = await Promise.all([
+    bylines(env, pairs),
+    commentMedia(
+      env,
+      [...contents.values()].flatMap((c) => (c.latestComment ? [c.latestComment.commentId] : [])),
+    ),
+  ]);
   return rows.flatMap((row) => {
     const content = contents.get(row.postId);
     const author = content && names.get(bylineKey(content.author, content.communityId));
@@ -75,7 +82,10 @@ export async function render(
         ...content,
         author,
         // A comment whose author is gone is left out, as the comment list leaves it.
-        latestComment: latest && latestAuthor ? { ...latest, author: latestAuthor } : null,
+        latestComment:
+          latest && latestAuthor
+            ? { ...latest, author: latestAuthor, media: media.get(latest.commentId) ?? [] }
+            : null,
         state: row.state,
         pinned: row.postId === pinnedId,
       },
@@ -293,11 +303,26 @@ export async function noteAuthor(
   ]);
 }
 
+/** The top-level visible comment of `post` a reply answers, or "invalid". */
+async function replyParent(
+  env: Env,
+  post: IndexedPost,
+  parentCommentId: string,
+): Promise<CommentRecord | "invalid"> {
+  const parent = await space(env, post.communityId).comment(parentCommentId);
+  const valid =
+    parent &&
+    parent.postId === post.postId &&
+    parent.parentCommentId === null &&
+    parent.state === "visible";
+  return valid ? parent : "invalid";
+}
+
 /**
  * Comments `body` on `postId` as `author`, when it may reply there: the one
  * way a comment is written, from the route and from the assistant (decision
- * 0076). With `parentCommentId` it is a reply to a top-level comment on the
- * post, whose author is told too (0071), deduplicated when it is the post's
+ * 0076). With `media`, at most one image (0082). With `parentCommentId` it
+ * is a reply to a top-level comment on the post, whose author is told too (0071), deduplicated when it is the post's
  * author, and never across a block. The post's author is told, and `also`
  * adds the jobs of the comment's id to that batch. The notice is written
  * first; its job finds no comment to tell of if the space then fails to
@@ -310,10 +335,12 @@ export async function writeComment(
   body: string,
   also: (post: IndexedPost, commentId: string) => D1PreparedStatement[] = () => [],
   parentCommentId: string | null = null,
+  media: string[] = [],
 ): Promise<
   | { comment: CommentContent; post: IndexedPost }
   | { refused: NonNullable<ReturnType<typeof replyRefusal>> }
   | { invalidParent: true }
+  | { invalidMedia: true }
   | null
 > {
   const found = await postAccess(env, author, postId);
@@ -323,17 +350,23 @@ export async function writeComment(
   const { post } = found;
   // The parent is checked before anything is written, and the space checks
   // it again as the comment is written, so a refused parent tells nobody.
-  let parent: CommentRecord | null = null;
-  if (parentCommentId !== null) {
-    parent = await space(env, post.communityId).comment(parentCommentId);
-    if (!parent || parent.postId !== postId || parent.parentCommentId !== null) {
-      return { invalidParent: true };
-    }
-    if (parent.state !== "visible") return { invalidParent: true };
-    if ((await blockedEither(env, author)).includes(parent.author)) return { refused: "blocked" };
+  const parent = parentCommentId === null ? null : await replyParent(env, post, parentCommentId);
+  if (parent === "invalid") return { invalidParent: true };
+  if (parent && (await blockedEither(env, author)).includes(parent.author)) {
+    return { refused: "blocked" };
   }
+  // The image is the caller's own unattached upload to this community, as a post's is (0082).
+  if (!(await unattached(env, post.communityId, author, media))) return { invalidMedia: true };
   const commentId = newCommentId(postId);
   await noteAuthor(env, post.communityId, author, [
+    // The row records the comment's post, so every path that deletes a post's images reaches it.
+    db(env)
+      .prepare(
+        `UPDATE social_media SET post_id = ?1, comment_id = ?2
+          WHERE media_id IN (SELECT value FROM json_each(?3)) AND post_id IS NULL
+            AND community_id = ?4 AND uploader_id = ?5`,
+      )
+      .bind(postId, commentId, JSON.stringify(media), post.communityId, author),
     notice(env, commentId, {
       kind: "comment",
       accountId: post.authorId,

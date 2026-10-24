@@ -98,6 +98,10 @@ const Report = z
     targetState: z.enum(TARGET_STATES).nullable().openapi({
       description: "What the reported post or comment is now; null for a community or an account",
     }),
+    targetMedia: z.array(OpaqueId).openapi({
+      description:
+        "The media id of the reported comment's image, to read through `GET /v1/posts/{postId}/media/{mediaId}`; empty for anything else (decision 0082)",
+    }),
   })
   .openapi("Report", { description: "A report, without the account that made it" });
 

@@ -2,6 +2,7 @@ import { db, images, socialBucket } from "../../env/index.ts";
 import { communityCoverKey, communityPictureKey, deleteImage } from "../../images.ts";
 import { log } from "../../log.ts";
 import type { MediaRef } from "./do/space.ts";
+import { REMOVED_KEPT_MS } from "./do/space-schema.ts";
 import { mediaKey } from "./posts.ts";
 
 // The images of posts (decision 0065): validated and re-encoded by the
@@ -92,18 +93,100 @@ export async function upload(
   return { mediaId, width: encoded.width, height: encoded.height };
 }
 
-/** An image of `postId`, or null when the post holds no such image. */
-export async function postImage(
+/**
+ * The image of `postId` named `mediaId`: the comment that carries it, or null
+ * for a post's own image; undefined when the post holds no such image.
+ */
+export async function postImageOwner(
   env: Env,
   communityId: string,
   postId: string,
   mediaId: string,
-): Promise<R2ObjectBody | null> {
+): Promise<{ commentId: string | null } | undefined> {
   const row = await db(env)
-    .prepare("SELECT 1 FROM social_media WHERE media_id = ? AND post_id = ? AND community_id = ?")
+    .prepare(
+      `SELECT comment_id AS commentId FROM social_media
+        WHERE media_id = ? AND post_id = ? AND community_id = ?`,
+    )
     .bind(mediaId, postId, communityId)
-    .first();
-  return row ? socialBucket(env).get(mediaKey(communityId, mediaId)) : null;
+    .first<{ commentId: string | null }>();
+  return row ?? undefined;
+}
+
+/** The stored image `mediaId` of `communityId`, once the caller has checked who may read it. */
+export const readImage = (env: Env, communityId: string, mediaId: string) =>
+  socialBucket(env).get(mediaKey(communityId, mediaId));
+
+/**
+ * The images comments carry (decision 0082), by comment id, one query for any
+ * number of comments. A comment without one has no entry.
+ */
+export async function commentMedia(
+  env: Env,
+  commentIds: string[],
+): Promise<Map<string, MediaRef[]>> {
+  const found = new Map<string, MediaRef[]>();
+  if (commentIds.length === 0) return found;
+  const { results } = await db(env)
+    .prepare(
+      `SELECT comment_id AS commentId, media_id AS mediaId, width, height FROM social_media
+        WHERE comment_id IN (SELECT value FROM json_each(?)) ORDER BY created_at, media_id`,
+    )
+    .bind(JSON.stringify(commentIds))
+    .all<MediaRef & { commentId: string }>();
+  for (const { commentId, ...ref } of results)
+    found.set(commentId, [...(found.get(commentId) ?? []), ref]);
+  return found;
+}
+
+/**
+ * Deletes the images comments carry once their comment was removed
+ * REMOVED_KEPT_MS before `now`, the window in which the space deletes the
+ * comment's text (decision 0082); the number deleted.
+ */
+export async function purgeRemovedCommentMedia(env: Env, now: number): Promise<number> {
+  const { results } = await db(env)
+    .prepare(
+      `DELETE FROM social_media WHERE removed_at IS NOT NULL AND removed_at <= ?
+        RETURNING community_id, media_id`,
+    )
+    .bind(now - REMOVED_KEPT_MS)
+    .all<{ community_id: string; media_id: string }>();
+  await deleteKeys(
+    env,
+    results.map((r) => mediaKey(r.community_id, r.media_id)),
+  );
+  return results.length;
+}
+
+/** Deletes the image of `commentId` (its author's delete): row and object, in the same request. */
+export async function deleteCommentMedia(env: Env, commentId: string): Promise<void> {
+  const { results } = await db(env)
+    .prepare("DELETE FROM social_media WHERE comment_id = ? RETURNING community_id, media_id")
+    .bind(commentId)
+    .all<{ community_id: string; media_id: string }>();
+  await deleteKeys(
+    env,
+    results.map((r) => mediaKey(r.community_id, r.media_id)),
+  );
+}
+
+/**
+ * Deletes every comment image `accountId` uploaded, in other people's posts
+ * too (decision 0082); called before the account's rows go.
+ */
+export async function deleteCommentMediaOf(env: Env, accountId: string): Promise<void> {
+  const { results } = await db(env)
+    .prepare(
+      `DELETE FROM social_media WHERE uploader_id = ? AND comment_id IS NOT NULL
+        RETURNING community_id, media_id`,
+    )
+    .bind(accountId)
+    .all<{ community_id: string; media_id: string }>();
+  await deleteKeys(
+    env,
+    results.map((r) => mediaKey(r.community_id, r.media_id)),
+  );
 }
 
 /** Deletes the images under `keys`. */

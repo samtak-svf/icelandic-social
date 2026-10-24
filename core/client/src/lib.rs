@@ -54,7 +54,7 @@ pub use notice::{Notice, NoticeKind, Notices};
 pub use photo::MAX_PHOTO;
 pub use read::Settings;
 use serde::Deserialize;
-pub use social::{MAX_CARDS, MAX_POST_IMAGE, MAX_POST_MEDIA};
+pub use social::{MAX_CARDS, MAX_COMMENT_MEDIA, MAX_POST_IMAGE, MAX_POST_MEDIA};
 use spjall_envelope::{Body, Envelope, EnvelopeError, is_place};
 use spjall_mls::group::{
     Claimed, Device, Group, GroupError, Identity, Received, generate_device_key, is_commit,

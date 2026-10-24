@@ -25,7 +25,7 @@ import { askAssistant, notice } from "../jobs/index.ts";
 import { cardRoutes } from "./cards.ts";
 import { commentAccess, postAccess, refusal, replyRefusal, spaceAccess } from "./access.ts";
 import { authors, named } from "./bylines.ts";
-import { deleteKeys, postImage, upload } from "./media.ts";
+import { deleteCommentMedia, deleteKeys, postImageOwner, readImage, upload } from "./media.ts";
 import {
   communityPosts,
   createPost,
@@ -158,7 +158,15 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(getPostMediaRoute, async (c) => {
     const { postId, mediaId } = c.req.valid("param");
     const found = await postAccess(c.env, c.var.session.accountId, postId);
-    const image = found && (await postImage(c.env, found.post.communityId, postId, mediaId));
+    const owner = found && (await postImageOwner(c.env, found.post.communityId, postId, mediaId));
+    if (!found || !owner) return fail(c, 404, "not_found");
+    // A comment's image is served while the comment is: never once it is removed,
+    // and a hidden one's only to a moderator, as commentAccess decides (decision 0082).
+    if (owner.commentId !== null) {
+      const shown = await commentAccess(c.env, c.var.session.accountId, owner.commentId);
+      if (!shown || shown.comment.state === "removed") return fail(c, 404, "not_found");
+    }
+    const image = await readImage(c.env, found.post.communityId, mediaId);
     if (!image) return fail(c, 404, "not_found");
     return c.body(image.body, 200, {
       "content-type": "image/webp",
@@ -193,6 +201,8 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     const { accountId } = c.var.session;
     const { postId } = c.req.valid("param");
     const input = c.req.valid("json");
+    // A comment is a text, an image or both, never neither (decision 0082).
+    if (input.body === "" && input.media.length === 0) return fail(c, 400, "invalid_request");
     const written = await writeComment(
       c.env,
       accountId,
@@ -200,9 +210,11 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
       input.body,
       (post, commentId) => askAssistant(c.env, post.communityId, commentId),
       input.parentCommentId ?? null,
+      input.media,
     );
     if (written && "refused" in written) return fail(c, 403, written.refused);
     if (written && "invalidParent" in written) return fail(c, 400, "invalid_parent_comment");
+    if (written && "invalidMedia" in written) return fail(c, 400, "invalid_media");
     const [comment] = written
       ? await named(c.env, [written.comment], written.post.communityId)
       : [];
@@ -218,6 +230,7 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     const { post, comment } = found;
     if (comment.author !== accountId) return fail(c, 403, "not_author");
     await space(c.env, post.communityId).deleteComment(comment.commentId);
+    await deleteCommentMedia(c.env, comment.commentId);
     log("comment.deleted", { accountId, communityId: post.communityId, postId: post.postId });
     return c.body(null, 204);
   });

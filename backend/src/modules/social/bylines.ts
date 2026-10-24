@@ -1,4 +1,5 @@
 import { db } from "../../env/index.ts";
+import { commentMedia } from "./media.ts";
 import type { CommentContent } from "./do/space.ts";
 
 // The bylines of posts and comments (decision 0080): a name, a mark, a photo
@@ -88,6 +89,10 @@ export async function named(env: Env, comments: CommentContent[], communityId: s
     comments.map((c) => c.author),
     communityId,
   );
+  const media = await commentMedia(
+    env,
+    comments.map((c) => c.commentId),
+  );
   return comments.flatMap((c) => {
     // A tombstone's slot (decision 0071): its author is gone and its body
     // never reaches an ordinary reader, only its place in the thread.
@@ -98,10 +103,11 @@ export async function named(env: Env, comments: CommentContent[], communityId: s
           author: { accountId: "deleted", name: null, verified: false, photo: null, role: null },
           body: "",
           state: "removed" as const,
+          media: [],
         },
       ];
     }
     const author = names.get(c.author);
-    return author ? [{ ...c, author }] : [];
+    return author ? [{ ...c, author, media: media.get(c.commentId) ?? [] }] : [];
   });
 }

@@ -15,6 +15,7 @@ const at = (parentCommentId: string | null): Comment => ({
   state: "visible",
   likes: 0,
   liked: false,
+  media: [],
 });
 
 describe("initials", () => {

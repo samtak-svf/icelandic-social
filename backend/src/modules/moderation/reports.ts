@@ -11,6 +11,7 @@ import {
   authors,
   commentAccess,
   commentContent,
+  commentMedia,
   postAccess,
   postContent,
 } from "../social/index.ts";
@@ -169,6 +170,10 @@ export async function reportPage(
   );
   const named = (id: string | null) => (id === null ? null : (names.get(id) ?? null));
   const known = (id: string | null) => id !== null && names.has(id);
+  const media = await commentMedia(
+    env,
+    page.filter((r) => r.target_kind === "comment").map((r) => r.target_id),
+  );
   const last = page.at(-1);
   return {
     reports: await Promise.all(
@@ -187,6 +192,8 @@ export async function reportPage(
         closedBy: named(r.closed_by),
         targetStanding: await standingOf(env, r, known(r.target_account)),
         targetState: await stateOf(env, r),
+        // A comment's report carries its image, so the moderator sees it (decision 0082).
+        targetMedia: (media.get(r.target_id) ?? []).map((m) => m.mediaId),
       })),
     ),
     next: results.length > query.limit && last ? `${last.created_at}-${last.report_id}` : null,

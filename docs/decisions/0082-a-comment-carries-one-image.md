@@ -1,6 +1,6 @@
 # 0082. A comment carries at most one image, through the post image pipeline
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented on the server and in the core (#119), clients not yet
 - Date: 2026-10-23
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0009](0009-v1-scope.md) (comment images join v1),
