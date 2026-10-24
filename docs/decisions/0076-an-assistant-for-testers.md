@@ -1,8 +1,9 @@
 # 0076. An automated assistant answers testers and queues them for the tester lists
 
-- Status: accepted; implemented in the Worker and `backend/scripts/testers.ts`
+- Status: accepted; implemented in the Worker and `backend/scripts/testers.ts`; superseded by 0084
 - Date: 2026-10-21
 - Decided by: Guðröður
+- Superseded by: [0084](0084-testers-reach-the-maintainer-directly.md) (testers reach the maintainer directly; the assistant is removed)
 - Amends: [0001](0001-eu-storage-and-residency-wording.md) (one community's posts reach a model provider),
   [0009](0009-v1-scope.md) (an automated account, outside its table)
 

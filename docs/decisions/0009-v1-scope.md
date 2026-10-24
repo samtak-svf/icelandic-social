@@ -1,6 +1,6 @@
 # 0009. The first release is chat only, for a closed test group
 
-- Status: accepted; amended by 0033, 0034, 0036, 0039, 0040, 0041, 0042, 0044, 0046, 0059, 0060, 0063, 0071, 0076, 0078, 0079 and 0082
+- Status: accepted; amended by 0033, 0034, 0036, 0039, 0040, 0041, 0042, 0044, 0046, 0059, 0060, 0063, 0071, 0076, 0078, 0079, 0082 and 0084
 - Date: 2026-10-05
 - Decided by: Guðröður (the scope questions); the implementation choices below follow from them
 - Amended by: [0033](0033-google-sign-in-and-kenni-verification.md) (the invite is no longer the beta gate),
@@ -20,7 +20,8 @@
   [0078](0078-a-group-name-leaving-and-who-changes-members.md) (a group name, leaving a group),
   [0079](0079-community-layout-feed-and-management.md) (the community hub's feed, the member
   list and the management screens),
-  [0082](0082-a-comment-carries-one-image.md) (a comment carries one image)
+  [0082](0082-a-comment-carries-one-image.md) (a comment carries one image),
+  [0084](0084-testers-reach-the-maintainer-directly.md) (the automated assistant of 0076 is removed)
 - Built on by: [0022](0022-the-conversation-surfaces.md) (the list, the conversation, the
   toggles), [0023](0023-media-as-encrypted-blobs.md) (photos and files),
   [0024](0024-block.md) (block)

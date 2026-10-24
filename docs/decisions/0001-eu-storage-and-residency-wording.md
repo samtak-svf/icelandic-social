@@ -1,9 +1,10 @@
 # 0001. Data is stored in the EU on Cloudflare, and the app says exactly that
 
-- Status: accepted; amended by 0076
+- Status: accepted; amended by 0076 and 0084
 - Date: 2026-10-05
 - Decided by: Guðröður
 - Amended by: [0076](0076-an-assistant-for-testers.md) (the testers' community's text reaches a model provider)
+- Amended by: [0084](0084-testers-reach-the-maintainer-directly.md) (0076 is superseded: no community text reaches a model provider)
 
 ## Decision
 
