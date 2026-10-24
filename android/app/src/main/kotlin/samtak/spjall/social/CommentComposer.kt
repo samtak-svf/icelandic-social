@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
@@ -38,6 +39,9 @@ fun CommentComposer(
     onRemoveImage: () -> Unit = {},
 ) {
     val ready = (draft.isNotBlank() || image != null) && !sending
+    // At a large text size the field would be left too narrow for its own hint, so the photo button goes above it.
+    val roomy = LocalDensity.current.fontScale <= ROOMY_SCALE
+    val photo = @Composable { PhotoButton(sending, onAddImage) }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (image != null) {
             PickedImages(listOf(image)) { onRemoveImage() }
@@ -45,6 +49,7 @@ fun CommentComposer(
         notice?.let {
             Text(text = it.text(), style = MaterialTheme.typography.bodyMedium, color = Palette.danger)
         }
+        if (!roomy) photo()
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Bottom,
@@ -52,15 +57,7 @@ fun CommentComposer(
         ) {
             Avatar(name = me?.name, kind = AvatarKind.Me, size = 36.dp, photo = me?.photo)
             ComposerField(draft, onText, stringResource(R.string.post_write_comment), modifier.weight(1f))
-            RoundButton(
-                icon = AppIcons.Photo,
-                description = stringResource(R.string.comment_add_image),
-                onClick = onAddImage,
-                enabled = !sending,
-                fill = Palette.muted,
-                tint = if (sending) Palette.mutedFg else Palette.fg,
-                size = 40.dp,
-            )
+            if (roomy) photo()
             RoundButton(
                 icon = AppIcons.Send,
                 description = stringResource(R.string.comment_publish),
@@ -73,3 +70,20 @@ fun CommentComposer(
         }
     }
 }
+
+@Composable
+private fun PhotoButton(
+    sending: Boolean,
+    onClick: () -> Unit,
+) = RoundButton(
+    icon = AppIcons.Photo,
+    description = stringResource(R.string.comment_add_image),
+    onClick = onClick,
+    enabled = !sending,
+    fill = Palette.muted,
+    tint = if (sending) Palette.mutedFg else Palette.fg,
+    size = 40.dp,
+)
+
+/** The largest text scale at which the photo button still fits beside the field. */
+private const val ROOMY_SCALE = 1.3f
