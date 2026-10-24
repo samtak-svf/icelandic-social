@@ -165,8 +165,14 @@ jobs:
           curl -sO $B/chromedriver-linux64.zip
           unzip -q chrome-linux64.zip
           unzip -q chromedriver-linux64.zip
-          echo "CHROME=$PWD/chrome-linux64/chrome" >> "$GITHUB_ENV"
           echo "CHROMEDRIVER=$PWD/chromedriver-linux64/chromedriver" >> "$GITHUB_ENV"
+          # The runner reads no CHROME variable: without a binary in the
+          # capabilities the driver starts the image's own Chrome, whose
+          # version is not the driver's. The runner adds its headless flags
+          # to these options.
+          jq -n --arg bin "$PWD/chrome-linux64/chrome" \
+            '{"goog:chromeOptions": {binary: $bin}}' > webdriver.json
+          echo "WASM_BINDGEN_TEST_WEBDRIVER_JSON=$PWD/webdriver.json" >> "$GITHUB_ENV"
 
       - name: The store on the browser's VFS
         env:
