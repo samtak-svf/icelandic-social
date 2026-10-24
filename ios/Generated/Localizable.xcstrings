@@ -4040,7 +4040,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Færsla var fest efst í samfélaginu."
+            "value": "Færsla var fest í samfélaginu."
           }
         }
       }
@@ -4586,7 +4586,7 @@
       }
     },
     "post_pin": {
-      "comment": "Menu item for a moderator or the owner that pins a post to the top of its community (decision 0080)",
+      "comment": "Menu item for a moderator or the owner that features a post in its community (decisions 0080, 0088)",
       "extractionState": "manual",
       "localizations": {
         "is": {
@@ -4622,7 +4622,7 @@
       }
     },
     "post_unpin": {
-      "comment": "Menu item that unpins the community's pinned post",
+      "comment": "Menu item that releases a featured post",
       "extractionState": "manual",
       "localizations": {
         "is": {
@@ -4634,13 +4634,37 @@
       }
     },
     "post_pinned": {
-      "comment": "Marker on the card of the post pinned to the top of its community",
+      "comment": "Marker on the card of a featured post, in its place in the feed and on the strip (decision 0088)",
       "extractionState": "manual",
       "localizations": {
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fest efst"
+            "value": "Fest"
+          }
+        }
+      }
+    },
+    "post_pin_full": {
+      "comment": "Told when a fourth post is featured: three are featured already and one must be released first (decision 0088)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þrjár færslur eru festar. Losaðu eina fyrst."
+          }
+        }
+      }
+    },
+    "community_featured": {
+      "comment": "Heading of the community's featured posts, in the aside on a wide screen (decision 0088)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fest"
           }
         }
       }

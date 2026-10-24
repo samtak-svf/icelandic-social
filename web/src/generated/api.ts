@@ -84,7 +84,7 @@ export interface SignInConfig {
 }
 
 export interface ApiError {
-  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, invalid_media, muted, expired, incomplete, internal_error */
+  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, pin_limit, invalid_media, muted, expired, incomplete, internal_error */
   error: string;
   /** The request's id, also in the x-request-id header: opaque, for support to find the request by (decision 0037) */
   requestId: string;
@@ -488,6 +488,67 @@ export interface Community {
   lastPostAt: number | null;
   /** The caller pinned it to the top of its own list (decision 0080) */
   pinned: boolean;
+  /** The posts its moderators feature, up to three, newest pin first, as the caller may read them (decision 0088). Filled by getCommunity only, empty elsewhere and for a caller who may not read the community */
+  featured: Array<Post>;
+}
+
+export interface Post {
+  postId: string;
+  communityId: string;
+  author: Author;
+  body: string;
+  media: Array<SocialMedia>;
+  /** Unix milliseconds */
+  createdAt: number;
+  /** Each reaction the caller can see, with its count */
+  reactions: Array<{
+    kind: "like" | "love" | "laugh" | "wow" | "sad";
+    count: number;
+  }>;
+  myReaction: "like" | "love" | "laugh" | "wow" | "sad" | null;
+  commentCount: number;
+  latestComment: Comment | null;
+  /** Only a moderator sees what is not visible: hidden or removed by a moderator */
+  state: "visible" | "hidden" | "removed";
+  /** A moderator features it (decision 0088); it stays in its place in the feed, marked, and is also in the community's `featured`. `getFeed` never marks it */
+  pinned: boolean;
+}
+
+export interface Author {
+  accountId: string;
+  name: string | null;
+  verified: boolean;
+  /** The profile photo's version, changed by each upload; null when there is none to show (decision 0039) */
+  photo: string | null;
+  /** The account's role in the community the post or comment belongs to, null for a member and wherever no community is in context (decision 0080) */
+  role: "owner" | "moderator" | null;
+}
+
+/** A re-encoded WebP image */
+export interface SocialMedia {
+  mediaId: string;
+  width: number;
+  height: number;
+}
+
+export interface Comment {
+  /** The post's id, a hyphen, and the comment's own part */
+  commentId: string;
+  postId: string;
+  /** The top-level comment this replies to; null on a top-level comment (decision 0071) */
+  parentCommentId: string | null;
+  author: Author;
+  body: string;
+  /** Unix milliseconds */
+  createdAt: number;
+  /** Only a moderator sees what is not visible: hidden or removed by a moderator */
+  state: "visible" | "hidden" | "removed";
+  /** How many accounts liked it, but those a block hides from the caller (decision 0080) */
+  likes: number;
+  /** The caller liked it */
+  liked: boolean;
+  /** The comment's image, none or one (decision 0082) */
+  media: Array<SocialMedia>;
 }
 
 export interface CommunityPage {
@@ -577,65 +638,6 @@ export type Card = {
 export interface Ref {
   kind: "post" | "comment" | "community";
   id: string;
-}
-
-export interface Author {
-  accountId: string;
-  name: string | null;
-  verified: boolean;
-  /** The profile photo's version, changed by each upload; null when there is none to show (decision 0039) */
-  photo: string | null;
-  /** The account's role in the community the post or comment belongs to, null for a member and wherever no community is in context (decision 0080) */
-  role: "owner" | "moderator" | null;
-}
-
-/** A re-encoded WebP image */
-export interface SocialMedia {
-  mediaId: string;
-  width: number;
-  height: number;
-}
-
-export interface Post {
-  postId: string;
-  communityId: string;
-  author: Author;
-  body: string;
-  media: Array<SocialMedia>;
-  /** Unix milliseconds */
-  createdAt: number;
-  /** Each reaction the caller can see, with its count */
-  reactions: Array<{
-    kind: "like" | "love" | "laugh" | "wow" | "sad";
-    count: number;
-  }>;
-  myReaction: "like" | "love" | "laugh" | "wow" | "sad" | null;
-  commentCount: number;
-  latestComment: Comment | null;
-  /** Only a moderator sees what is not visible: hidden or removed by a moderator */
-  state: "visible" | "hidden" | "removed";
-  /** A moderator pinned it to the top of the community (decision 0080). On a community's posts it is the first post of the first page, and only there; `getFeed` never pins */
-  pinned: boolean;
-}
-
-export interface Comment {
-  /** The post's id, a hyphen, and the comment's own part */
-  commentId: string;
-  postId: string;
-  /** The top-level comment this replies to; null on a top-level comment (decision 0071) */
-  parentCommentId: string | null;
-  author: Author;
-  body: string;
-  /** Unix milliseconds */
-  createdAt: number;
-  /** Only a moderator sees what is not visible: hidden or removed by a moderator */
-  state: "visible" | "hidden" | "removed";
-  /** How many accounts liked it, but those a block hides from the caller (decision 0080) */
-  likes: number;
-  /** The caller liked it */
-  liked: boolean;
-  /** The comment's image, none or one (decision 0082) */
-  media: Array<SocialMedia>;
 }
 
 export interface PostPage {
@@ -1965,9 +1967,9 @@ export function unlikeComment(args: {
 }
 
 /**
- * Pin a post to the top of the community
+ * Feature a post in the community
  *
- * One post is pinned at a time: pinning another replaces it. Only the owner and the moderators pin, and each change is a moderation log entry. A removed or deleted post is unpinned (decision 0080).
+ * A community features up to three posts, shown apart from its feed (decision 0088). Only the owner and the moderators pin, and each change is a moderation log entry. A removed or deleted post is unpinned. A fourth is refused: release one first.
  */
 export function pinPost(args: {
   path: {
@@ -1980,12 +1982,13 @@ export function pinPost(args: {
   | { status: 401; data: ApiError }
   | { status: 403; data: ApiError }
   | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
   | { status: 426; data: ApiError }
 > {
   return call("PUT", "/v1/communities/{communityId}/posts/{postId}/pin", args, init);
 }
 
-/** Unpin the community's pinned post */
+/** Release a featured post */
 export function unpinPost(args: {
   path: {
     communityId: string;

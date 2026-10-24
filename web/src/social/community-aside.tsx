@@ -4,6 +4,7 @@ import { strings } from "../generated/brand/strings.ts";
 import { LAYOUTS } from "../ui/layout.ts";
 import { AboutFacts } from "./about.tsx";
 import { Avatar } from "./avatar.tsx";
+import { FeaturedList } from "./featured.tsx";
 import type { Members } from "./members.ts";
 
 // Um samfélagið beside the feed on an expanded window (decision 0087): the
@@ -22,6 +23,7 @@ export function CommunityAside({
       className="hidden flex-col gap-4 rounded-md border border-border p-4 expanded:sticky expanded:top-6 expanded:flex expanded:max-h-[calc(100dvh-3rem)] expanded:overflow-y-auto"
     >
       <h2 className="text-lg font-semibold">{strings.community_info}</h2>
+      <FeaturedList featured={community.featured} />
       <AboutFacts community={community} />
       {members?.ok && (
         <>

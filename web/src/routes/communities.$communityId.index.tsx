@@ -12,6 +12,7 @@ import {
 import { strings } from "../generated/brand/strings.ts";
 import { formatIsDate } from "../lib/is-format.ts";
 import { CommunityAside } from "../social/community-aside.tsx";
+import { FeaturedStrip } from "../social/featured.tsx";
 import { CommunityBar, CommunityHeader } from "../social/community-header.tsx";
 import { useMembers, type Members } from "../social/members.ts";
 import { moderatesAs } from "../social/roles.tsx";
@@ -73,7 +74,7 @@ function Columns({
         <CommunityBar community={community} changed={changed} />
         <CommunityHeader community={community} members={members} />
         <Membership community={community} changed={changed} />
-        {members !== undefined && <Posts community={community} />}
+        {members !== undefined && <Posts community={community} refresh={changed} />}
       </div>
       <CommunityAside community={community} members={members} />
     </div>
@@ -178,7 +179,7 @@ function Deleted({
   );
 }
 
-function Posts({ community }: Readonly<{ community: Community }>) {
+function Posts({ community, refresh }: Readonly<{ community: Community; refresh: () => void }>) {
   const { communityId } = community;
   // A letter typed starts the search 300 ms after it lands, so the list is
   // not called everything someone writes (#0079).
@@ -208,6 +209,7 @@ function Posts({ community }: Readonly<{ community: Community }>) {
         <PostComposer communityId={communityId} posted={reload} />
       )}
       {muted && <p>{strings.community_muted}</p>}
+      {searched === "" && <FeaturedStrip featured={community.featured} />}
       <label className="sr-only" htmlFor="community-posts-search">
         {strings.community_search_posts}
       </label>
@@ -238,7 +240,10 @@ function Posts({ community }: Readonly<{ community: Community }>) {
                 post={post}
                 linked
                 deleted={reload}
-                changed={reload}
+                changed={() => {
+                  reload();
+                  refresh();
+                }}
                 moderates={moderatesAs(community.role)}
               />
             </li>

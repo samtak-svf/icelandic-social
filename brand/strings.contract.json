@@ -1876,7 +1876,7 @@
     },
     "post_pin": {
       "surfaces": ["android", "web", "ios"],
-      "description": "Menu item for a moderator or the owner that pins a post to the top of its community (decision 0080)"
+      "description": "Menu item for a moderator or the owner that features a post in its community (decisions 0080, 0088)"
     },
     "post_write_comment": {
       "surfaces": ["android", "web", "ios"],
@@ -1888,11 +1888,19 @@
     },
     "post_unpin": {
       "surfaces": ["android", "web", "ios"],
-      "description": "Menu item that unpins the community's pinned post"
+      "description": "Menu item that releases a featured post"
     },
     "post_pinned": {
       "surfaces": ["android", "web", "ios"],
-      "description": "Marker on the card of the post pinned to the top of its community"
+      "description": "Marker on the card of a featured post, in its place in the feed and on the strip (decision 0088)"
+    },
+    "post_pin_full": {
+      "surfaces": ["android", "web", "ios"],
+      "description": "Told when a fourth post is featured: three are featured already and one must be released first (decision 0088)"
+    },
+    "community_featured": {
+      "surfaces": ["android", "web", "ios"],
+      "description": "Heading of the community's featured posts, in the aside on a wide screen (decision 0088)"
     },
     "comment_like": {
       "surfaces": ["android", "web", "ios"],

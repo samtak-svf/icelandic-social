@@ -1,3 +1,4 @@
+import type { PostView } from "../../api/social.ts";
 import { type Framing, parseFraming } from "../../api/image-frames.ts";
 import { db } from "../../env/index.ts";
 import { UNBLOCKED } from "../../identity/index.ts";
@@ -195,13 +196,16 @@ export async function standing(
 /** The public face of a standing: the flags the contract does not carry are dropped. */
 export function view(
   s: Standing,
-): Omit<Standing, "banned" | "platformModerator" | "purged" | "pinnedAt"> {
+  featured: PostView[] = [],
+): Omit<Standing, "banned" | "platformModerator" | "purged" | "pinnedAt"> & {
+  featured: PostView[];
+} {
   const { banned, platformModerator, purged, pinnedAt, ...community } = s;
   void banned;
   void platformModerator;
   void purged;
   void pinnedAt;
-  return community;
+  return { ...community, featured };
 }
 
 /** A new community id: 16 random bytes, hex. */

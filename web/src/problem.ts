@@ -13,6 +13,7 @@ const NAMED: Record<string, string> = {
   not_permitted: strings.problem_not_permitted,
   not_found: strings.problem_not_found,
   join_declined: strings.problem_join_declined,
+  pin_limit: strings.post_pin_full,
 };
 
 function text(data: object, field: string): string | null {

@@ -72,11 +72,14 @@ export function communityRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleHooks)
       after: id === undefined ? undefined : { createdAt: Number(createdAt), id },
       limit,
     });
-    return c.json({ communities: found.items.map(view), next: found.next }, 200);
+    return c.json({ communities: found.items.map((s) => view(s)), next: found.next }, 200);
   });
 
   app.openapi(myCommunitiesRoute, async (c) =>
-    c.json({ communities: (await communitiesOf(c.env, c.var.session.accountId)).map(view) }, 200),
+    c.json(
+      { communities: (await communitiesOf(c.env, c.var.session.accountId)).map((s) => view(s)) },
+      200,
+    ),
   );
 
   app.openapi(pinCommunityRoute, async (c) => {
@@ -100,7 +103,9 @@ export function communityRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleHooks)
   app.openapi(getCommunityRoute, async (c) => {
     const { communityId } = c.req.valid("param");
     const found = await standing(c.env, c.var.session.accountId, communityId, { deleted: true });
-    return found ? c.json(view(found), 200) : fail(c, 404, "not_found");
+    if (!found) return fail(c, 404, "not_found");
+    const featured = await hooks.featured(c.env, c.var.session.accountId, communityId);
+    return c.json(view(found, featured), 200);
   });
 
   app.openapi(updateCommunityRoute, async (c) => {

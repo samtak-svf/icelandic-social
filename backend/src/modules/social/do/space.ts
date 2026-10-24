@@ -10,7 +10,7 @@ import {
   latestComments,
   listComments,
 } from "./comment-reads.ts";
-import { REMOVED_KEPT_MS, SCHEMA } from "./space-schema.ts";
+import { MAX_FEATURED, REMOVED_KEPT_MS, SCHEMA } from "./space-schema.ts";
 
 export type { CommentContent, CommentRecord, ContentState, Viewer } from "./comment-reads.ts";
 
@@ -54,6 +54,19 @@ export class Space extends DurableObject<Env> {
       this.sql.exec("ALTER TABLE comments ADD COLUMN parent_comment_id TEXT");
     }
     this.sql.exec("CREATE INDEX IF NOT EXISTS comments_by_parent ON comments (parent_comment_id)");
+    // The single pin of decision 0080 becomes the first featured post (0088):
+    // copied across and dropped in one step, so a repeat finds nothing to do.
+    const old = this.sql
+      .exec("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'pinned_post'")
+      .toArray();
+    if (old.length > 0) {
+      this.ctx.storage.transactionSync(() => {
+        this.sql.exec(
+          "INSERT OR IGNORE INTO pinned_posts (post_id, pinned_at) SELECT post_id, pinned_at FROM pinned_post",
+        );
+        this.sql.exec("DROP TABLE pinned_post");
+      });
+    }
   }
 
   createPost(input: {
@@ -172,40 +185,44 @@ export class Space extends DurableObject<Env> {
       this.sql.exec("DELETE FROM comments WHERE post_id = ?", postId);
       this.sql.exec("DELETE FROM reactions WHERE post_id = ?", postId);
       // A deleted post is no longer pinned (decision 0080).
-      this.sql.exec("DELETE FROM pinned_post WHERE post_id = ?", postId);
+      this.sql.exec("DELETE FROM pinned_posts WHERE post_id = ?", postId);
     });
   }
 
   /**
-   * Pins `postId` to the top of the community's feed, replacing any other
-   * (decision 0080); false when the post is not here. True too when it was
-   * pinned already.
+   * Features `postId` in the community's strip (decisions 0080, 0088): "absent"
+   * when the post is not here, "full" when three others are featured already,
+   * "pinned" when it is now featured, "already" when it was.
    */
-  pinPost(postId: string): boolean {
+  pinPost(postId: string): "absent" | "full" | "pinned" | "already" {
     const exists = this.sql.exec("SELECT 1 FROM posts WHERE post_id = ?", postId).toArray().length;
-    if (!exists) return false;
+    if (!exists) return "absent";
+    if (this.sql.exec("SELECT 1 FROM pinned_posts WHERE post_id = ?", postId).toArray().length) {
+      return "already";
+    }
+    const count = this.sql.exec<{ n: number }>("SELECT COUNT(*) AS n FROM pinned_posts").one().n;
+    if (count >= MAX_FEATURED) return "full";
     this.sql.exec(
-      `INSERT INTO pinned_post (slot, post_id, pinned_at) VALUES (1, ?, ?)
-       ON CONFLICT (slot) DO UPDATE SET post_id = excluded.post_id,
-         pinned_at = CASE WHEN pinned_post.post_id = excluded.post_id
-                          THEN pinned_post.pinned_at ELSE excluded.pinned_at END`,
+      "INSERT INTO pinned_posts (post_id, pinned_at) VALUES (?, ?)",
       postId,
       Date.now(),
     );
-    return true;
+    return "pinned";
   }
 
-  /** Unpins `postId` when it is the pinned one; whether it was. */
+  /** Releases `postId` when it is featured; whether it was. */
   unpinPost(postId: string): boolean {
-    return this.sql.exec("DELETE FROM pinned_post WHERE post_id = ?", postId).rowsWritten > 0;
+    return this.sql.exec("DELETE FROM pinned_posts WHERE post_id = ?", postId).rowsWritten > 0;
   }
 
-  /** The id of the pinned post, or null. */
-  pinnedPost(): string | null {
-    return (
-      this.sql.exec<{ post_id: string }>("SELECT post_id FROM pinned_post").toArray()[0]?.post_id ??
-      null
-    );
+  /** The ids of the featured posts, newest pin first. */
+  featured(): string[] {
+    return this.sql
+      .exec<{ post_id: string }>(
+        "SELECT post_id FROM pinned_posts ORDER BY pinned_at DESC, rowid DESC",
+      )
+      .toArray()
+      .map((r) => r.post_id);
   }
 
   /**
@@ -417,7 +434,7 @@ export class Space extends DurableObject<Env> {
         this.sql.exec("DELETE FROM reactions WHERE post_id = ?", post_id);
       }
       this.sql.exec("DELETE FROM posts WHERE author = ?", account);
-      this.sql.exec("DELETE FROM pinned_post WHERE post_id NOT IN (SELECT post_id FROM posts)");
+      this.sql.exec("DELETE FROM pinned_posts WHERE post_id NOT IN (SELECT post_id FROM posts)");
       // A top-level comment of the account that still carries someone else's
       // visible reply stays as a tombstone, so the reply keeps its place
       // (decision 0071); the account's other comments go.

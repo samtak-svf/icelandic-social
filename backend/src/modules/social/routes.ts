@@ -100,24 +100,16 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     const { before, limit, q } = c.req.valid("query");
     const access = await spaceAccess(c.env, c.var.session.accountId, communityId);
     if (!access) return fail(c, 404, "not_found");
-    // The pinned post leads the first page (decision 0080); a search lists matches only.
-    const pinnedId = q?.trim() ? null : await space(c.env, communityId).pinnedPost();
-    const page = await communityPosts(
-      c.env,
-      communityId,
-      access.viewer,
-      before,
-      limit,
-      q,
-      pinnedId,
-    );
+    // Featured posts keep their place in time, marked (decision 0088).
+    const featured = new Set(await space(c.env, communityId).featured());
+    const page = await communityPosts(c.env, communityId, access.viewer, before, limit, q);
     // Opening the feed (its first page, not a search) is what reading the
     // community means: the member's unread count goes to zero (decision 0080).
     if (before === undefined && !q?.trim() && access.standing.role !== null) {
       await markRead(c.env, c.var.session.accountId, communityId).run();
     }
     return c.json(
-      { posts: await render(c.env, page.rows, access.viewer, pinnedId), next: page.next },
+      { posts: await render(c.env, page.rows, access.viewer, featured), next: page.next },
       200,
     );
   });
@@ -135,8 +127,8 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(getPostRoute, async (c) => {
     const found = await postAccess(c.env, c.var.session.accountId, c.req.valid("param").postId);
     if (!found) return fail(c, 404, "not_found");
-    const pinnedId = await space(c.env, found.post.communityId).pinnedPost();
-    const [post] = await render(c.env, [found.post], found.access.viewer, pinnedId);
+    const featured = new Set(await space(c.env, found.post.communityId).featured());
+    const [post] = await render(c.env, [found.post], found.access.viewer, featured);
     return post ? c.json(post, 200) : fail(c, 404, "not_found");
   });
 

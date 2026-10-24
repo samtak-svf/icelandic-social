@@ -1,6 +1,8 @@
+import { runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { communitiesOf } from "../src/modules/communities/communities.ts";
+import { Space } from "../src/modules/social/do/space.ts";
 import { community, errorOf, ok, person, type Person } from "./people.ts";
 
 // The server half of the community hub (decision 0080): unread counts and pins
@@ -32,6 +34,9 @@ const pageOf = async (by: Person, communityId: string, query = "") =>
   ok<{ posts: Post[]; next: string | null }>(
     await by.call("GET", `/v1/communities/${communityId}/posts${query}`),
   );
+
+const featuredOf = async (by: Person, communityId: string) =>
+  (await ok<{ featured: Post[] }>(await by.call("GET", `/v1/communities/${communityId}`))).featured;
 
 const pinPost = (by: Person, communityId: string, postId: string) =>
   by.call("PUT", `/v1/communities/${communityId}/posts/${postId}/pin`);
@@ -136,7 +141,7 @@ describe("pinning a post", () => {
       )
     ).entries;
 
-  it("is done by a moderator, one post at a time, with a log entry each way", async () => {
+  it("is done by a moderator, with a log entry each way, and leaves the feed chronological", async () => {
     const [owner, moderator, member] = [
       await person("Eigandi"),
       await person("Umsjón"),
@@ -156,27 +161,23 @@ describe("pinning a post", () => {
     expect((await pageOf(member, id)).posts.some((p) => p.pinned)).toBe(false);
 
     expect((await pinPost(moderator, id, first.postId)).status).toBe(204);
-    // The pinned post leads the first page, flagged, and appears once.
+    // The feed stays newest first; the featured post is flagged in its own place.
     const page = await pageOf(member, id);
-    expect(page.posts.map((p) => p.postId)).toEqual([first.postId, third.postId, second.postId]);
-    expect(page.posts.map((p) => p.pinned)).toEqual([true, false, false]);
+    expect(page.posts.map((p) => p.postId)).toEqual([third.postId, second.postId, first.postId]);
+    expect(page.posts.map((p) => p.pinned)).toEqual([false, false, true]);
     const single = await ok<Post>(await member.call("GET", `/v1/posts/${first.postId}`));
     expect(single.pinned).toBe(true);
-    // A later page does not repeat it.
-    const later = await pageOf(member, id, `?before=${Date.now() + 1000}-zzz`);
-    expect(later.posts.map((p) => p.postId)).not.toContain(first.postId);
 
-    // Pinning it again changes and logs nothing; a second pin replaces the first.
+    // Pinning it again changes and logs nothing; a second pin joins the first.
     expect((await pinPost(owner, id, first.postId)).status).toBe(204);
     expect((await pinPost(moderator, id, second.postId)).status).toBe(204);
-    expect((await pageOf(member, id)).posts.map((p) => p.pinned)).toEqual([true, false, false]);
-    expect((await pageOf(member, id)).posts[0]?.postId).toBe(second.postId);
+    expect((await pageOf(member, id)).posts.map((p) => p.pinned)).toEqual([false, true, true]);
 
-    // Unpinning a post that is not the pinned one does nothing.
-    expect((await unpinPost(moderator, id, first.postId)).status).toBe(204);
-    expect((await pageOf(member, id)).posts[0]?.pinned).toBe(true);
+    // Unpinning a post that is not pinned does nothing.
+    expect((await unpinPost(moderator, id, third.postId)).status).toBe(204);
     expect((await unpinPost(member, id, second.postId)).status).toBe(403);
     expect((await unpinPost(moderator, id, second.postId)).status).toBe(204);
+    expect((await unpinPost(moderator, id, first.postId)).status).toBe(204);
     expect((await pageOf(member, id)).posts.some((p) => p.pinned)).toBe(false);
 
     const log = (await logOf(owner, id)).filter((e) => e.action.endsWith("pin_post"));
@@ -185,8 +186,101 @@ describe("pinning a post", () => {
         `pin_post ${first.postId}`,
         `pin_post ${second.postId}`,
         `unpin_post ${second.postId}`,
+        `unpin_post ${first.postId}`,
       ].sort(),
     );
+  });
+
+  it("features up to three, newest pin first, and refuses a fourth without a log entry", async () => {
+    const [owner, member] = [await person("Eigandi"), await person("Meðlimur")];
+    const id = await community(owner, "open", member);
+    const posts = [];
+    for (const n of [1, 2, 3, 4]) posts.push(await posted(member, id, `Færsla ${n}`));
+    const [a, b, c, d] = posts as [Post, Post, Post, Post];
+    for (const p of [b, a, c]) expect((await pinPost(owner, id, p.postId)).status).toBe(204);
+    const full = await pinPost(owner, id, d.postId);
+    expect(full.status).toBe(409);
+    expect(await errorOf(full)).toBe("pin_limit");
+    // Pinning one that is featured already still succeeds when full.
+    expect((await pinPost(owner, id, a.postId)).status).toBe(204);
+    expect((await featuredOf(member, id)).map((p) => p.postId)).toEqual([
+      c.postId,
+      a.postId,
+      b.postId,
+    ]);
+    expect((await pageOf(member, id)).posts.map((p) => p.pinned)).toEqual([
+      false,
+      true,
+      true,
+      true,
+    ]);
+    const pins = (await logOf(owner, id)).filter((e) => e.action === "pin_post");
+    expect(pins.map((e) => e.target.id)).not.toContain(d.postId);
+    expect(pins).toHaveLength(3);
+    // Releasing one makes room.
+    expect((await unpinPost(owner, id, b.postId)).status).toBe(204);
+    expect((await pinPost(owner, id, d.postId)).status).toBe(204);
+    expect((await featuredOf(member, id)).map((p) => p.postId)).toEqual([
+      d.postId,
+      c.postId,
+      a.postId,
+    ]);
+  });
+
+  it("leaves the strip with a removed or deleted post and respects a block and a private audience", async () => {
+    const [owner, member, writer, outsider] = [
+      await person("Eigandi"),
+      await person("Meðlimur"),
+      await person("Höfundur"),
+      await person("Utangarðs"),
+    ];
+    const id = await community(owner, "private", member, writer);
+    const kept = await posted(writer, id, "Haldið");
+    const removed = await posted(writer, id, "Fjarlægð");
+    const own = await posted(writer, id, "Eytt");
+    for (const p of [kept, removed, own]) await pinPost(owner, id, p.postId);
+    expect((await featuredOf(member, id)).map((p) => p.postId)).toEqual([
+      own.postId,
+      removed.postId,
+      kept.postId,
+    ]);
+    expect((await featuredOf(member, id)).every((p) => p.pinned)).toBe(true);
+    // A private community shows its strip to its readers only.
+    expect(await featuredOf(outsider, id)).toEqual([]);
+    await owner.call("POST", `/v1/communities/${id}/actions`, {
+      action: "remove_post",
+      targetId: removed.postId,
+      reason: "Prófun",
+    });
+    expect((await writer.call("DELETE", `/v1/posts/${own.postId}`)).status).toBe(204);
+    expect((await featuredOf(member, id)).map((p) => p.postId)).toEqual([kept.postId]);
+    // A block hides the writer's featured post from the blocker, as it hides the feed.
+    await member.call("PUT", `/v1/blocks/${writer.accountId}`);
+    expect(await featuredOf(member, id)).toEqual([]);
+    expect((await featuredOf(owner, id)).map((p) => p.postId)).toEqual([kept.postId]);
+  });
+
+  it("migrates the single-pin table as the first featured post", async () => {
+    const stub = env.SPACE.getByName("featured-migration");
+    await runInDurableObject(stub, async (_, state) => {
+      state.storage.sql.exec("DROP TABLE pinned_posts");
+      state.storage.sql.exec(
+        "CREATE TABLE pinned_post (slot INTEGER PRIMARY KEY CHECK (slot = 1), post_id TEXT NOT NULL, pinned_at INTEGER NOT NULL)",
+      );
+      state.storage.sql.exec("INSERT INTO pinned_post VALUES (1, 'p_old', 1234)");
+      // Opening the object again is what repairs it.
+      expect(new Space(state, env)).toBeInstanceOf(Space);
+      const tables = state.storage.sql
+        .exec<{ name: string }>("SELECT name FROM sqlite_master WHERE name LIKE 'pinned_post%'")
+        .toArray();
+      expect(tables.map((t) => t.name)).toEqual(["pinned_posts"]);
+      expect(
+        state.storage.sql.exec("SELECT post_id, pinned_at FROM pinned_posts").toArray(),
+      ).toEqual([{ post_id: "p_old", pinned_at: 1234 }]);
+      // And again, with nothing left to migrate.
+      expect(new Space(state, env)).toBeInstanceOf(Space);
+      expect(state.storage.sql.exec("SELECT COUNT(*) AS n FROM pinned_posts").one().n).toBe(1);
+    });
   });
 
   it("is cleared when the pinned post is removed, hidden or deleted", async () => {
