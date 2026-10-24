@@ -39,17 +39,21 @@ export function Invite({ community }: Readonly<{ community: Community }>) {
     const done = await shareLink(communityLink(community.communityId), community.name);
     setTold(done === "copied" ? strings.community_link_copied : null);
   }
+  // One box, so a row that spreads its children puts the button at its end;
+  // the status hangs below it, so the button centres on the row.
   return (
-    <>
+    <div className="relative ms-auto">
       <Button
         tone="primary"
         onClick={() => (community.audience === "private" ? setOpen(true) : void link())}
       >
         {strings.invite}
       </Button>
-      <Status>{told}</Status>
+      <div className="absolute end-0 top-full whitespace-nowrap">
+        <Status>{told}</Status>
+      </div>
       {open && <InviteDialog community={community} onClose={() => setOpen(false)} />}
-    </>
+    </div>
   );
 }
 

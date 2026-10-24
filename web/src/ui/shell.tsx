@@ -60,47 +60,57 @@ export function Shell({ children }: Readonly<{ children: ReactNode }>) {
     case "signed-in":
       break;
   }
-  // Below 640px the five places sit in a bar at the bottom of the screen,
-  // above it in the header; `--tabbar-height` is what a bottom-pinned box
-  // (the comment box) keeps clear of (decision 0080).
+  // A compact window has the five places in a bar at the bottom of the
+  // screen and the name above the page; from medium up both give way to a
+  // rail down the left edge (decisions 0080, 0087). The size classes are the
+  // contract's (`medium:`, generated). `--tabbar-height` is what a
+  // bottom-pinned box (the comment box) keeps clear of.
   return (
-    <div className="[--tabbar-height:3.5rem] sm:[--tabbar-height:0px]">
-      <header className="sm:border-b sm:border-border">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-2 px-4 py-3">
-          <span className="font-headline text-2xl">{strings.app_name}</span>
-          <nav
-            aria-label={strings.main_navigation}
-            className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg sm:static sm:border-0"
-          >
-            <ul className="mx-auto flex max-w-2xl justify-around gap-1 sm:justify-end">
-              <NavLink to="/" icon={<PersonIcon />}>
-                {strings.tab_me}
-              </NavLink>
-              <NavLink to="/communities" icon={<PeopleIcon />}>
-                {strings.tab_communities}
-              </NavLink>
-              <NavLink to="/conversations" icon={<ChatIcon />}>
-                {strings.tab_conversations}
-              </NavLink>
-              <NavLink
-                to="/notifications"
-                icon={
-                  <span className="relative">
-                    <BellIcon />
-                    <UnreadBadge className="absolute -right-2 -top-1 min-w-4 px-1 text-center text-xs" />
-                  </span>
-                }
-              >
-                {strings.tab_notifications}
-              </NavLink>
-              <NavLink to="/settings" icon={<GearIcon />}>
-                {strings.settings_title}
-              </NavLink>
-            </ul>
-          </nav>
+    <div className="[--tabbar-height:3.5rem] medium:pl-24 medium:[--tabbar-height:0px]">
+      <header className="medium:hidden">
+        <div className="mx-auto max-w-2xl px-4 py-3">
+          <span data-app-name className="font-headline text-2xl">
+            {strings.app_name}
+          </span>
         </div>
       </header>
-      <main className="mx-auto max-w-2xl px-4 py-6 pb-[calc(var(--tabbar-height)+1.5rem)] sm:pb-6">
+      <nav
+        aria-label={strings.main_navigation}
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg medium:inset-x-auto medium:top-0 medium:left-0 medium:flex medium:w-24 medium:flex-col medium:items-center medium:gap-4 medium:border-t-0 medium:border-r medium:py-4"
+      >
+        <span
+          data-app-name
+          className="hidden max-w-full px-2 text-center font-headline text-2xl [overflow-wrap:anywhere] medium:block"
+        >
+          {strings.app_name}
+        </span>
+        <ul className="mx-auto flex max-w-2xl justify-around gap-1 medium:mx-0 medium:w-full medium:flex-col medium:px-2">
+          <NavLink to="/" icon={<PersonIcon />}>
+            {strings.tab_me}
+          </NavLink>
+          <NavLink to="/communities" icon={<PeopleIcon />}>
+            {strings.tab_communities}
+          </NavLink>
+          <NavLink to="/conversations" icon={<ChatIcon />}>
+            {strings.tab_conversations}
+          </NavLink>
+          <NavLink
+            to="/notifications"
+            icon={
+              <span className="relative">
+                <BellIcon />
+                <UnreadBadge className="absolute -right-2 -top-1 min-w-4 px-1 text-center text-xs" />
+              </span>
+            }
+          >
+            {strings.tab_notifications}
+          </NavLink>
+          <NavLink to="/settings" icon={<GearIcon />}>
+            {strings.settings_title}
+          </NavLink>
+        </ul>
+      </nav>
+      <main className="mx-auto max-w-2xl px-4 py-6 pb-[calc(var(--tabbar-height)+1.5rem)] medium:pb-6">
         {children}
       </main>
     </div>
@@ -115,11 +125,11 @@ function NavLink({
   children,
 }: Readonly<{ to: Tab; icon: ReactNode; children: ReactNode }>) {
   return (
-    <li className="flex-1 sm:flex-none">
+    <li className="flex-1 medium:flex-none">
       <Link
         to={to}
         // aria-current="page" is set by the link itself on the place shown.
-        className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-md px-3 text-xs sm:min-h-11 sm:flex-row sm:gap-2 sm:text-base"
+        className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-md px-1 text-center text-xs [overflow-wrap:anywhere] medium:min-h-16"
         activeProps={{ className: "bg-muted font-semibold" }}
         activeOptions={{ exact: to === "/" }}
       >
