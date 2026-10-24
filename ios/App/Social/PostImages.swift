@@ -72,8 +72,10 @@ struct PostImageGrid: View {
     private var grid: some View {
         if let single = post.images.first, post.images.count == 1 {
             let ratio = single.height > 0 ? CGFloat(single.width) / CGFloat(single.height) : 1
-            PostImageView(postId: post.postId, image: single, ratio: min(max(ratio, 0.75), 2), number: 1, count: 1,
-                onOpen: { opening = ImageViewerOpening(index: 0, count: post.images.count) })
+            PostImageView(
+                postId: post.postId, image: single, ratio: min(max(ratio, 0.75), 2), number: 1, count: 1,
+                onOpen: { opening = ImageViewerOpening(index: 0, count: post.images.count) }
+            )
         } else if !post.images.isEmpty {
             let rows = stride(from: 0, to: post.images.count, by: 2).map {
                 Array(post.images[$0..<min($0 + 2, post.images.count)])
