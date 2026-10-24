@@ -29,6 +29,7 @@ import samtak.spjall.core.ModerationState
 import samtak.spjall.ui.AVATAR_INITIALS
 import samtak.spjall.ui.AvatarInitials
 import samtak.spjall.ui.SpjallTheme
+import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class CommentComposerTest {
@@ -69,7 +70,7 @@ class CommentComposerTest {
     fun thePhotoButtonAsksForAPickAndAPickedImageShowsOnceWithAnXThatRemovesIt() {
         var picks = 0
         var removed = 0
-        val file = java.io.File.createTempFile("picked", ".jpg").apply { deleteOnExit() }
+        val file = File.createTempFile("picked", ".jpg").apply { deleteOnExit() }
         compose.setContent {
             var image by remember { mutableStateOf<String?>(null) }
             SpjallTheme {

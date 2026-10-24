@@ -155,22 +155,13 @@ class PostViewModel(
         val state = _state.value
         val body = state.draft.trim()
         val path = state.image
-        val community = state.post?.communityId
-        if ((body.isEmpty() && path == null) || state.sending || (path != null && community == null)) return
+        if (!state.sendable || state.sending || state.post == null) return
         _state.update { it.copy(sending = true, problem = null, imageNotice = null) }
         viewModelScope.launch {
             try {
                 val comment =
                     withContext(io) {
-                        val media =
-                            if (path == null || community == null) {
-                                emptyList()
-                            } else {
-                                val known = uploaded?.takeIf { it.first == path }?.second
-                                val id = known ?: social.uploadPostImage(community, path).mediaId
-                                uploaded = path to id
-                                listOf(id)
-                            }
+                        val media = listOfNotNull(path?.let { upload(state.post.communityId, it) })
                         social.createComment(id, body, state.replyingTo?.commentId, media)
                     }
                 failed = null
@@ -201,6 +192,14 @@ class PostViewModel(
             }
         }
     }
+
+    /** The media id of the picked image, uploaded once however many times the send is tried. */
+    private fun upload(
+        communityId: String,
+        path: String,
+    ): String =
+        uploaded?.takeIf { it.first == path }?.second
+            ?: social.uploadPostImage(communityId, path).mediaId.also { uploaded = path to it }
 
     fun react(kind: ReactionKind) {
         val state = _state.value
