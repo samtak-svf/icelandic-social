@@ -867,3 +867,70 @@ fn a_browser_session_links_to_a_phone_through_the_worker() {
             .any(|d| d.kind == DeviceKind::Web)
     );
 }
+
+/// Waits for a file the browser's side writes, and reads it.
+fn awaited(path: &Path) -> String {
+    let deadline = Instant::now() + Duration::from_secs(120);
+    loop {
+        if let Ok(text) = std::fs::read_to_string(path) {
+            return text.trim().to_owned();
+        }
+        assert!(Instant::now() < deadline, "no {}", path.display());
+        std::thread::sleep(Duration::from_millis(200));
+    }
+}
+
+/// The phone's half of web/e2e/chat.spec.ts (0081): a real browser, running
+/// the core in its worker, links from this phone's account and talks to a
+/// second account. The two halves meet in `SPJALL_BROWSER_DIR`: the spec
+/// writes `subject` (the Google subject it signed in as) and later `code`
+/// (read off the link page); this side writes `ready` once the conversation
+/// has a message, and returns once the browser's reply arrives. Without the
+/// directory it does nothing, so the plain interop run passes over it.
+#[test]
+#[ignore = "driven by web/e2e/chat.spec.ts under `cf dev --mode interop`"]
+fn a_phone_links_a_real_browser() {
+    let Ok(dir) = std::env::var("SPJALL_BROWSER_DIR") else {
+        return;
+    };
+    let dir = Path::new(&dir);
+    let run = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let subject = awaited(&dir.join("subject"));
+    let mut phone = Phone::signed_in(Person::Google(&subject), None);
+    let mut other = Phone::signed_in(Person::Google(&format!("interop-{run}-other")), None);
+
+    let conversation = phone
+        .client
+        .create_conversation(std::slice::from_ref(&other.account))
+        .unwrap();
+    phone.sync();
+    other.deliver_until(has(Event::Joined {
+        conversation: conversation.clone(),
+    }));
+    phone.send(&conversation, "halló vafri");
+    phone.sync();
+    other.deliver_until(count(1));
+    std::fs::write(dir.join("ready"), &conversation).unwrap();
+
+    // The browser shows its code; the phone approves it with its history.
+    let code = awaited(&dir.join("code"));
+    phone.client.approve_link(&code, None, true).unwrap();
+
+    // The browser's reply reaches the other account, and the phone's own.
+    assert_eq!(
+        texts(&other.deliver_until(count(1))),
+        strings(&["svar úr vafra"])
+    );
+    assert!(
+        phone
+            .client
+            .me()
+            .unwrap()
+            .devices
+            .iter()
+            .any(|d| d.kind == DeviceKind::Web)
+    );
+}
