@@ -1,6 +1,6 @@
 # 0065. A community's content is in a `Space` object, and its images in the profiles bucket
 
-- Status: accepted; implemented (#28)
+- Status: accepted; implemented (#28); amended by 0082
 - Date: 2026-10-18
 - Decided by: Guðröður Atli Jónsson (phase 4, #306)
 - Builds on: [0060](0060-a-social-platform-with-an-encrypted-messenger.md) (content in a
@@ -8,6 +8,8 @@
   what deleting removes), [0039](0039-profile-photo.md) (the re-encoded photo)
 - Amends: [0004](0004-frozen-identifiers-vs-brand.md) (`cloudflare.durableObjects.space` is a
   frozen id)
+- Amended by: [0082](0082-a-comment-carries-one-image.md) (a stored image belongs to a post or
+  to one of its comments)
 
 ## Decision
 
