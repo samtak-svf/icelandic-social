@@ -186,7 +186,7 @@ private struct CommentComposer: View {
                     .padding(.bottom, 3)
                 RoundButton(
                     systemImage: "photo", label: "comment_add_image", fill: BrandTokens.Colors.muted,
-                    tint: BrandTokens.Colors.fg, size: 40, enabled: !busy
+                    tint: BrandTokens.Colors.fg, size: 40, enabled: !busy && image == nil
                 ) { picking = true }
                 TextField("post_write_comment", text: $draft, axis: .vertical)
                     .font(.sans(14))
