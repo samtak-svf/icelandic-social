@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { conversation, inbox } from "../src/env/index.ts";
 import { connect } from "./socket.ts";
 import { device, euEnv, linkedBrowser, revoke } from "./support.ts";
-import { worker } from "./main.ts";
+import { bareWorker, worker } from "./main.ts";
 
 // The socket of decision 0015 against the real Inbox and Conversation DOs:
 // hello and catch-up, ack, typing, push for a device with no socket, and
@@ -205,6 +205,21 @@ describe("the socket", () => {
         state.storage.sql.exec("SELECT device_id FROM cursors").toArray(),
       );
       expect(cursors).toEqual([{ device_id: enrolled!.deviceId }]);
+    });
+
+    it("names the browser's build in the query, since a browser socket carries no header", async () => {
+      const { browser } = await linkedBrowser();
+      const upgrade = (query: string) =>
+        bareWorker.fetch(`https://spjall.test/v1/ws${query}`, {
+          headers: { upgrade: "websocket", ...browser.web },
+        });
+      const unnamed = await upgrade("");
+      expect(unnamed.status).toBe(426);
+      expect(await unnamed.json()).toMatchObject({ error: "client_too_old" });
+      const named = await upgrade(`?client=web/${env.MIN_CLIENT_VERSION_WEB}`);
+      expect(named.status).toBe(101);
+      named.webSocket?.accept();
+      named.webSocket?.close();
     });
 
     it("refuses another origin, and none", async () => {
