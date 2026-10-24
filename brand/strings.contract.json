@@ -250,7 +250,7 @@
     },
     "update_url_android": {
       "surfaces": ["android", "backend"],
-      "description": "Default URL opened by the Android update screen and shared with the tester assistant (#99)."
+      "description": "Default URL opened by the Android update screen."
     },
     "new_group": {
       "surfaces": ["android", "ios"],
@@ -1687,44 +1687,6 @@
     "support_account_body": {
       "surfaces": ["web"],
       "description": "Body on /support explaining where to manage sessions, unlink devices and delete an account."
-    },
-    "assistant_name": {
-      "surfaces": ["backend"],
-      "description": "Display name of the testers' assistant, the automated account that answers in the testers' community (docs/decisions/0076). It says that it is automated."
-    },
-    "assistant_prompt": {
-      "surfaces": ["backend"],
-      "description": "The testers' assistant's instructions to its model (docs/decisions/0076): who it is, what it answers, how one becomes a tester. {android} is assistant_android_group or assistant_android_manual. The model answers with assistant_silence when a comment needs no answer.",
-      "placeholders": {
-        "android": "string"
-      }
-    },
-    "assistant_silence": {
-      "surfaces": ["backend"],
-      "description": "The one word the testers' assistant's model answers with when a comment needs no answer; nothing is posted then (docs/decisions/0076). assistant_prompt names it."
-    },
-    "assistant_android_group": {
-      "surfaces": ["backend"],
-      "description": "How one becomes an Android tester when the open tester group exists, for assistant_prompt (docs/decisions/0076). {group_url} is the group's address; {play_url} is the Android test link (update_url_android).",
-      "placeholders": {
-        "group_url": "string",
-        "play_url": "string"
-      }
-    },
-    "assistant_android_manual": {
-      "surfaces": ["backend"],
-      "description": "How one becomes an Android tester before the open tester group exists, for assistant_prompt (docs/decisions/0076). {play_url} is the Android test link (update_url_android).",
-      "placeholders": {
-        "play_url": "string"
-      }
-    },
-    "assistant_added_ios": {
-      "surfaces": ["backend"],
-      "description": "The testers' assistant's fixed reply once the Apple ID a tester gave is added to the iPhone test (docs/decisions/0076). Never repeats the address."
-    },
-    "assistant_failed_ios": {
-      "surfaces": ["backend"],
-      "description": "The testers' assistant's fixed reply when the Apple ID a tester gave could not be added to the iPhone test (docs/decisions/0076). Never repeats the address."
     },
     "add_people": {
       "surfaces": ["android", "ios"],

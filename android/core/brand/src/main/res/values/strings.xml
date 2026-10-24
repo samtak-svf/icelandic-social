@@ -110,7 +110,7 @@
     <string name="update_required_body">Þessi útgáfa er orðin of gömul. Sæktu nýjustu útgáfuna til að halda áfram.</string>
     <!-- Button on the update screen that opens the app's store page. -->
     <string name="update_required_action">Uppfæra</string>
-    <!-- Default URL opened by the Android update screen and shared with the tester assistant (#99). -->
+    <!-- Default URL opened by the Android update screen. -->
     <string name="update_url_android">https://play.google.com/apps/internaltest/4701643324608289838</string>
     <!-- Action that starts a new group. -->
     <string name="new_group">Nýr hópur</string>

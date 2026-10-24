@@ -168,73 +168,19 @@ cf d1 execute spjall-db --remote --command \
 
 ## Testers
 
-The testers' assistant ([decision 0076](decisions/0076-an-assistant-for-testers.md)) answers
-in one community and queues the iPhone addresses testers give there. The maintainer's machine
-adds them to TestFlight:
-
-```bash
-node scripts/testers.ts --dry-run   # how many wait
-node scripts/testers.ts             # add them to "Prufuflug" and tell each tester
-```
-
-It reads `OPS_TOKEN` and the App Store Connect key (`ASC_API_KEY_ID`, `ASC_API_ISSUER_ID`,
-`ASC_API_KEY_P8`) from the environment, or from the vault when they are unset. A systemd user
-timer runs it every five minutes:
-
-```ini
-# ~/.config/systemd/user/spjall-testers.service
-[Unit]
-Description=Add queued testers to TestFlight
-
-[Service]
-Type=oneshot
-WorkingDirectory=%h/Development/projects/samtak-spjall/backend
-ExecStart=/usr/bin/node scripts/testers.ts
-
-# ~/.config/systemd/user/spjall-testers.timer
-[Unit]
-Description=Add queued testers to TestFlight every five minutes
-
-[Timer]
-OnCalendar=*:0/5
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-```
-
-```bash
-systemctl --user daemon-reload && systemctl --user enable --now spjall-testers.timer
-journalctl --user -u spjall-testers.service -n 20   # what the last runs did
-```
-
-The assistant is set up once after a deploy, and its spending read at any time:
-
-```bash
-curl -fsS -X POST -H "authorization: Bearer $OPS_TOKEN" https://spjall.samtak.is/ops/assistant/account
-curl -fsS -H "authorization: Bearer $OPS_TOKEN" https://spjall.samtak.is/ops/assistant/usage
-```
-
-The vars are `ASSISTANT_COMMUNITY_ID` (empty turns it off), `ASSISTANT_MONTHLY_CAP_USD` and
-`ASSISTANT_ANDROID_GROUP_URL` (the open Google Group linked to the internal track; while it is
-empty, Android addresses are queued too, for the maintainer to add by hand). A Claude Code
-session reaches the same tools at `/ops/mcp`:
-
-```bash
-claude mcp add --transport http spjall-ops https://spjall.samtak.is/ops/mcp \
-  --header "Authorization: Bearer $OPS_TOKEN"
-```
+Testers reach the maintainer directly and are added by hand
+([decision 0084](decisions/0084-testers-reach-the-maintainer-directly.md)). Nothing in the
+Worker queues them, and no job runs on the maintainer's machine for them.
 
 ## Monitoring
 
 The daily cron logs these with counts only (decision 0008):
 
-| Event         | Fields                                   | Means                                                                                                                     |
-| ------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `jobs.failed` | `code` (kind), `count`                   | jobs of that kind failed in the last day                                                                                  |
-| `jobs.stuck`  | `code` (kind), `count`                   | jobs of that kind due for over an hour                                                                                    |
-| `ops.*`       | `code`, `count`, `requestId`             | a maintainer's call to `/ops`                                                                                             |
-| `assistant.*` | `communityId`, `postId`, `code`, `count` | the testers' assistant answered (`code` posted or refused), stayed silent, or was over its cap (`count` calls this month) |
+| Event         | Fields                       | Means                                    |
+| ------------- | ---------------------------- | ---------------------------------------- |
+| `jobs.failed` | `code` (kind), `count`       | jobs of that kind failed in the last day |
+| `jobs.stuck`  | `code` (kind), `count`       | jobs of that kind due for over an hour   |
+| `ops.*`       | `code`, `count`, `requestId` | a maintainer's call to `/ops`            |
 
 Find them in Workers Logs (dashboard → spjall-api → Logs) by `event`.
 

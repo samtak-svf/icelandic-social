@@ -32,9 +32,6 @@ const hex = (n: number) =>
 const newPostId = () => `p_${hex(16)}`;
 const newCommentId = (postId: string) => `${postId}-${hex(8)}`;
 
-/** The post a post id or a comment id names. */
-export const postOf = (id: string) => id.split("-")[0]!;
-
 /**
  * The content of indexed posts as `viewer` sees them, in the order given:
  * each community's space is asked once, in parallel, for its posts.
@@ -259,7 +256,6 @@ export async function createPost(
   communityId: string,
   author: string,
   input: { body: string; media: string[] },
-  also: (postId: string) => D1PreparedStatement[] = () => [],
 ): Promise<(Omit<PostContent, "latestComment"> & { latestComment: null }) | "invalid_media"> {
   const media = await unattached(env, communityId, author, input.media);
   if (!media) return "invalid_media";
@@ -281,7 +277,6 @@ export async function createPost(
     db(env)
       .prepare("INSERT OR IGNORE INTO space_authors (community_id, account_id) VALUES (?, ?)")
       .bind(communityId, author),
-    ...also(postId),
   ]);
   const content = { postId, author, body: input.body, media, createdAt };
   await space(env, communityId).createPost(content);
@@ -320,11 +315,9 @@ async function replyParent(
 
 /**
  * Comments `body` on `postId` as `author`, when it may reply there: the one
- * way a comment is written, from the route and from the assistant (decision
- * 0076). With `media`, at most one image (0082). With `parentCommentId` it
+ * way a comment is written. With `media`, at most one image (0082). With `parentCommentId` it
  * is a reply to a top-level comment on the post, whose author is told too (0071), deduplicated when it is the post's
- * author, and never across a block. The post's author is told, and `also`
- * adds the jobs of the comment's id to that batch. The notice is written
+ * author, and never across a block. The post's author is told. The notice is written
  * first; its job finds no comment to tell of if the space then fails to
  * take it.
  */
@@ -333,7 +326,6 @@ export async function writeComment(
   author: string,
   postId: string,
   body: string,
-  also: (post: IndexedPost, commentId: string) => D1PreparedStatement[] = () => [],
   parentCommentId: string | null = null,
   media: string[] = [],
 ): Promise<
@@ -389,7 +381,6 @@ export async function writeComment(
           }),
         ]
       : []),
-    ...also(post, commentId),
   ]);
   const comment = await space(env, post.communityId).addComment({
     commentId,
@@ -403,43 +394,6 @@ export async function writeComment(
   if (comment === "invalid_parent_comment") return { invalidParent: true };
   return { comment, post };
 }
-
-/** What someone said in a space: a post, or a comment on one. */
-export type Said = { id: string; author: string; body: string; visible: boolean };
-
-/**
- * A post or a comment, with the post and its first comments, as `reader` sees
- * them: what the testers' assistant answers (decision 0076). Null when it or
- * its post is gone.
- */
-export async function thread(
-  env: Env,
-  communityId: string,
-  saidId: string,
-  reader: string,
-): Promise<{ said: Said; post: PostContent; comments: CommentContent[] } | null> {
-  const stub = space(env, communityId);
-  const postId = postOf(saidId);
-  const viewer: Viewer = { account: reader, hidden: [], moderator: false };
-  const [post] = await stub.posts([postId], viewer);
-  if (!post) return null;
-  const comment = saidId === postId ? null : await stub.comment(saidId);
-  const said: Said | null =
-    saidId === postId
-      ? { id: postId, author: post.author, body: post.body, visible: true }
-      : comment && {
-          id: comment.commentId,
-          author: comment.author,
-          body: comment.body,
-          visible: comment.state === "visible",
-        };
-  if (!said) return null;
-  const comments = await stub.comments(postId, viewer, null, THREAD_LIMIT);
-  return { said, post, comments };
-}
-
-/** The most comments of a post the assistant reads before answering. */
-const THREAD_LIMIT = 50;
 
 /** Drops posts from the index, with their images' rows; the R2 keys to delete. */
 export async function unindex(env: Env, communityId: string, postIds: string[]): Promise<string[]> {

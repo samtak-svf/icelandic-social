@@ -38,7 +38,6 @@ describe("worker-secrets", () => {
       "APNS_KEY_P8",
       "APNS_KEY_ID",
       "OPS_TOKEN",
-      "ANTHROPIC_API_KEY",
     ]);
   });
 

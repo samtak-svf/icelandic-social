@@ -21,7 +21,7 @@ import { blockedEither } from "../../identity/index.ts";
 import { fail } from "../../errors.ts";
 import { log } from "../../log.ts";
 import { markRead } from "../communities/index.ts";
-import { askAssistant, notice } from "../jobs/index.ts";
+import { notice } from "../jobs/index.ts";
 import { cardRoutes } from "./cards.ts";
 import { commentAccess, postAccess, refusal, replyRefusal, spaceAccess } from "./access.ts";
 import { authors, named } from "./bylines.ts";
@@ -53,10 +53,7 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     if (refused) return fail(c, 403, refused);
     const input = c.req.valid("json");
     if (input.body === "" && input.media.length === 0) return fail(c, 400, "invalid_request");
-    // A moderator's post is an announcement: only a member's wakes the assistant.
-    const created = await createPost(c.env, communityId, accountId, input, (postId) =>
-      access.moderator ? [] : askAssistant(c.env, communityId, postId),
-    );
+    const created = await createPost(c.env, communityId, accountId, input);
     if (created === "invalid_media") return fail(c, 400, "invalid_media");
     const author = (await authors(c.env, [accountId], communityId)).get(accountId);
     if (!author) return fail(c, 404, "not_found");
@@ -208,7 +205,6 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
       accountId,
       postId,
       input.body,
-      (post, commentId) => askAssistant(c.env, post.communityId, commentId),
       input.parentCommentId ?? null,
       input.media,
     );
