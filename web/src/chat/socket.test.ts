@@ -18,7 +18,7 @@ class FakeSocket implements SocketLike {
     (this.listeners[type] ??= []).push(listener);
   }
   emit(type: "open" | "close" | "message", data?: string) {
-    for (const l of this.listeners[type] ?? []) l({ data } as MessageEvent);
+    for (const l of this.listeners[type] ?? []) l(new MessageEvent("message", { data }));
   }
 }
 
@@ -27,6 +27,8 @@ const settle = () => new Promise((r) => setTimeout(r, 0));
 function harness(answer: (op: string, ...args: unknown[]) => Promise<Outcome>) {
   const sockets: FakeSocket[] = [];
   const waits: number[] = [];
+  // The fake answers only `sync` and `frame`, both with an `Outcome`; `ChatCall` cannot say so.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double for a generic call
   const call = vi.fn(answer) as unknown as ChatCall;
   const deps = {
     call,

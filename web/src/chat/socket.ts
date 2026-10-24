@@ -23,7 +23,7 @@ export interface SocketDeps {
   onEvents(events: CoreEvent[]): void;
   /** A call failed for good: the device is lost or the core failed (`ChatFailure`). */
   onFailure(failure: ChatFailure): void;
-  wait?(ms: number): Promise<void>;
+  wait?: (ms: number) => Promise<void>;
 }
 
 /** `/v1/ws` on this host, naming the build in the query (backend `namedClient`). */

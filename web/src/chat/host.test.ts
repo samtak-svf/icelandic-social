@@ -23,7 +23,7 @@ function fakeCore(over: Partial<CoreLike> = {}): CoreLike {
     history: () => [],
     send: () => "env-1",
     me: () => ({ accountId: "acc-1", name: null, verified: false, photo: null, devices: [] }),
-    wipe: vi.fn(async () => undefined),
+    wipe: async () => undefined,
     ...over,
   };
 }
@@ -31,7 +31,8 @@ function fakeCore(over: Partial<CoreLike> = {}): CoreLike {
 function deps(over: { share?: Share; core?: CoreLike; record?: SealedStoreKey } = {}) {
   let record = over.record;
   const opened: Uint8Array[] = [];
-  const core = over.core ?? fakeCore();
+  const wipe = vi.fn(async () => undefined);
+  const core = over.core ?? fakeCore({ wipe });
   const d = {
     open: vi.fn(async (key: Uint8Array<ArrayBuffer>) => {
       opened.push(key.slice());
@@ -55,7 +56,7 @@ function deps(over: { share?: Share; core?: CoreLike; record?: SealedStoreKey } 
     }),
     revoke: vi.fn(async () => undefined),
   } satisfies HostDeps;
-  return { d, core, opened, record: () => record };
+  return { d, core, wipe, opened, record: () => record };
 }
 
 /** Links a browser through the host and returns what it stored. */
@@ -136,16 +137,18 @@ describe("the chat worker's key flow (decisions 0064, 0081)", () => {
 
   it("loses the device when its store turns out empty", async () => {
     const { record, share } = await linked();
+    const wipe = vi.fn(async () => undefined);
     const core = fakeCore({
       sync: () => {
         throw notRegistered;
       },
+      wipe,
     });
     const b = deps({ record, share: { deviceId: "dev-1", share }, core });
     const host = chatHost(b.d);
     await host.start();
     await expect(host.sync()).rejects.toEqual(DEVICE_LOST);
-    expect(core.wipe).toHaveBeenCalled();
+    expect(wipe).toHaveBeenCalled();
     expect(b.d.revoke).toHaveBeenCalledWith("dev-1");
     await expect(host.conversations()).rejects.toMatchObject({ code: "closed" });
   });
@@ -154,7 +157,8 @@ describe("the chat worker's key flow (decisions 0064, 0081)", () => {
     const { record, share } = await linked();
     const b = deps({ record, share: { deviceId: "dev-1", share } });
     await chatHost(b.d).start();
-    const given = (await b.d.share.mock.results[0]!.value) as { share: Uint8Array };
+    const given: Share = await b.d.share.mock.results[0]!.value;
+    if (typeof given === "string") throw new Error("no share was given");
     expect(given.share.every((byte) => byte === 0)).toBe(true);
   });
 
@@ -184,7 +188,7 @@ describe("the chat worker's key flow (decisions 0064, 0081)", () => {
     const host = chatHost(b.d);
     await host.start();
     await host.wipe();
-    expect(b.core.wipe).toHaveBeenCalled();
+    expect(b.wipe).toHaveBeenCalled();
     expect(b.record()).toBeUndefined();
     expect(await host.start()).toEqual({ state: "unlinked" });
   });

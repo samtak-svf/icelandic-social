@@ -10,7 +10,7 @@ import { getLinkedStoreKey, revokeDevice } from "../generated/api.ts";
 import type { Failure } from "../generated/core.d.ts";
 import { Core, init, wasm } from "virtual:spjall-core";
 import { chatHost, type Share } from "./host.ts";
-import { type Port, serve } from "./protocol.ts";
+import { serve } from "./protocol.ts";
 import { deleteSealed, loadSealed, saveSealed } from "./store-key.ts";
 
 const OUTDATED: Failure = { code: "outdated", message: "this web app is too old for the server" };
@@ -29,7 +29,7 @@ async function share(): Promise<Share> {
       return "signed-out";
     case 404:
       return "none";
-    case 426:
+    default:
       throw OUTDATED;
   }
 }
@@ -59,4 +59,4 @@ const handlers = chatHost({
 });
 
 // A dedicated worker's global scope is its port; the web's types are the window's.
-serve(self as unknown as Port, handlers);
+serve(self, handlers);

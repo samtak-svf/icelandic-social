@@ -8,7 +8,7 @@ import { type ChatCall, ChatFailure, chatClient, type Port } from "./protocol.ts
 import type { Start } from "./protocol.ts";
 
 /** The lock every tab of this origin asks for. */
-export const CHAT_LOCK = "spjall-chat-store";
+const CHAT_LOCK = "spjall-chat-store";
 
 /** The chat worker as the page holds it. */
 export interface ChatWorker extends Port {

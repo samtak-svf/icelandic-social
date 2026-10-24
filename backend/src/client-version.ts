@@ -42,7 +42,7 @@ export function belowFloor(env: Env, header: string | undefined): FloorRefusal |
  * upgrade, the `client` query parameter, since a browser cannot set a
  * header on its socket (decision 0081).
  */
-export function namedClient(request: HonoRequest): string | undefined {
+function namedClient(request: HonoRequest): string | undefined {
   const header = request.header(CLIENT_HEADER);
   if (header !== undefined) return header;
   if (request.header("upgrade")?.toLowerCase() !== "websocket") return undefined;

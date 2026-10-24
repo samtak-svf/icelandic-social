@@ -14,7 +14,7 @@ import type {
   Message,
   Outcome,
 } from "../generated/core.d.ts";
-import type { Handlers, Start } from "./protocol.ts";
+import { type Handlers, isFailure, type Start } from "./protocol.ts";
 import { newStoreKey, seal, type SealedStoreKey, StoreKeyLost, unseal } from "./store-key.ts";
 
 /** The part of the core's `Core` the host calls. */
@@ -60,10 +60,7 @@ export const DEVICE_LOST: Failure = {
   message: "this browser's store is gone",
 };
 
-const failureCode = (error: unknown) =>
-  typeof error === "object" && error !== null && "code" in error
-    ? (error as Failure).code
-    : undefined;
+const failureCode = (error: unknown) => (isFailure(error) ? error.code : undefined);
 
 export function chatHost(deps: HostDeps): Handlers {
   let core: CoreLike | undefined;

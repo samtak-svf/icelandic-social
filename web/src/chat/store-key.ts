@@ -137,7 +137,7 @@ async function run<T>(
 
 /** The sealed record this browser keeps, if any. */
 export function loadSealed(): Promise<SealedStoreKey | undefined> {
-  return run("readonly", (s) => s.get(RECORD) as IDBRequest<SealedStoreKey | undefined>);
+  return run<SealedStoreKey | undefined>("readonly", (s) => s.get(RECORD));
 }
 
 /** Keeps the sealed record; the `CryptoKey` is stored as itself, never as bytes. */

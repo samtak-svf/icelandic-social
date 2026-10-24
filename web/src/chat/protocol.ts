@@ -50,31 +50,57 @@ export interface Ops {
 
 export type Op = keyof Ops;
 
-export interface Request<O extends Op = Op> {
+interface Request<O extends Op = Op> {
   id: number;
   op: O;
   args: Ops[O]["args"];
 }
 
-export type Response =
+type Response =
   | { id: number; ok: true; value: unknown }
   | { id: number; ok: false; error: Failure };
 
+/** Whether `value` has the shape of a `Failure`. */
+export function isFailure(value: unknown): value is Failure {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "code" in value &&
+    typeof value.code === "string" &&
+    "message" in value &&
+    typeof value.message === "string"
+  );
+}
+
 /** Whatever was thrown, as the page may see it: a `Failure`, never a stack. */
 export function asFailure(error: unknown): Failure {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    typeof (error as Failure).code === "string" &&
-    typeof (error as Failure).message === "string"
-  ) {
-    const { code, message } = error as Failure;
+  if (isFailure(error)) {
+    const { code, message } = error;
     return { code, message };
   }
   if (error instanceof Error && error.name === "StoreKeyLost") {
     return { code: "store-key-lost", message: "the store cannot be opened" };
   }
   return { code: "internal", message: "the chat worker failed" };
+}
+
+function isResponse(value: unknown): value is Response {
+  if (typeof value !== "object" || value === null) return false;
+  if (!("id" in value) || typeof value.id !== "number" || !("ok" in value)) return false;
+  return value.ok === true ? "value" in value : "error" in value && isFailure(value.error);
+}
+
+function isRequest(value: unknown): value is Request {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "id" in value &&
+    typeof value.id === "number" &&
+    "op" in value &&
+    typeof value.op === "string" &&
+    "args" in value &&
+    Array.isArray(value.args)
+  );
 }
 
 /** A rejected call from the worker. */
@@ -96,22 +122,24 @@ export interface Port {
 /** The page's typed handle on the worker. Calls run in order, one at a time, as the core does. */
 export function chatClient(port: Port) {
   let next = 0;
-  const pending = new Map<
-    number,
-    { resolve: (v: unknown) => void; reject: (e: unknown) => void }
-  >();
-  port.addEventListener("message", (event) => {
-    const response = event.data as Response;
+  const pending = new Map<number, (response: Response) => void>();
+  port.addEventListener("message", (event: MessageEvent<unknown>) => {
+    const response = event.data;
+    if (!isResponse(response)) return;
     const waiting = pending.get(response.id);
     if (waiting === undefined) return;
     pending.delete(response.id);
-    if (response.ok) waiting.resolve(response.value);
-    else waiting.reject(new ChatFailure(response.error));
+    waiting(response);
   });
   return function call<O extends Op>(op: O, ...args: Ops[O]["args"]): Promise<Ops[O]["result"]> {
     const id = next++;
     return new Promise((resolve, reject) => {
-      pending.set(id, { resolve: resolve as (v: unknown) => void, reject });
+      pending.set(id, (response) => {
+        if (!response.ok) return reject(new ChatFailure(response.error));
+        // The worker answers each op with its `Ops` result; a message cannot carry that type.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- structured-clone boundary
+        resolve(response.value as Ops[O]["result"]);
+      });
       port.postMessage({ id, op, args } satisfies Request<O>);
     });
   };
@@ -124,18 +152,27 @@ export type Handlers = {
   [O in Op]: (...args: Ops[O]["args"]) => Promise<Ops[O]["result"]> | Ops[O]["result"];
 };
 
+function dispatch<O extends Op>(
+  handlers: Handlers,
+  op: O,
+  args: Ops[O]["args"],
+): Promise<Ops[O]["result"]> | Ops[O]["result"] {
+  return handlers[op](...args);
+}
+
 /**
  * Answers each request on `port` with its handler. Requests are taken one at a
  * time: the core blocks, and two calls at once would interleave its store.
  */
 export function serve(port: Port, handlers: Handlers): void {
   let queue: Promise<void> = Promise.resolve();
-  port.addEventListener("message", (event) => {
-    const { id, op, args } = event.data as Request;
+  port.addEventListener("message", (event: MessageEvent<unknown>) => {
+    const request = event.data;
+    if (!isRequest(request)) return;
+    const { id, op, args } = request;
     queue = queue.then(async () => {
       try {
-        const handler = handlers[op] as (...a: unknown[]) => unknown;
-        const value = await handler(...(args as unknown[]));
+        const value = await dispatch(handlers, op, args);
         port.postMessage({ id, ok: true, value } satisfies Response);
       } catch (error) {
         port.postMessage({ id, ok: false, error: asFailure(error) } satisfies Response);
