@@ -34,7 +34,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.collapse
@@ -88,7 +87,7 @@ fun FrameSheet(session: FrameSession = LocalFrameSession.current) {
                         kind = s.request.kind,
                         image = s.image,
                         base = s.base,
-                        widthDp = LocalConfiguration.current.screenWidthDp,
+                        widthDp = windowWidthDp(),
                         saving = s.saving,
                         problem = s.problem,
                         onSave = session::save,

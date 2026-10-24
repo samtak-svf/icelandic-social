@@ -19,7 +19,10 @@ import kotlinx.coroutines.withContext
 import samtak.spjall.account.Account
 import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.FrameKind
 import samtak.spjall.core.Person
+import samtak.spjall.frames.LocalFrameRules
+import samtak.spjall.frames.windowWidthDp
 import samtak.spjall.media.decodePhoto
 import samtak.spjall.social.Social
 
@@ -73,14 +76,19 @@ fun rememberPhoto(photo: PhotoOf?): ImageBitmap? {
     return image
 }
 
-/** A community's cover: the image across the band, or nothing while it loads or when it cannot be had. */
+/**
+ * A community's cover: the image across the band, or nothing while it loads or when it cannot be had. The frame
+ * comes from the window's width (0086), so a rotation or a resize across a size class fetches the other one.
+ */
 @Composable
 fun CoverImage(
     photo: PhotoOf?,
     contentDescription: String,
     modifier: Modifier = Modifier,
 ) {
-    val image = rememberPhoto(photo) ?: return
+    val rules = LocalFrameRules.current
+    val width = windowWidthDp()
+    val image = rememberPhoto(photo?.copy(frame = rules.frameForWidth(FrameKind.COVER, width))) ?: return
     Image(
         bitmap = image,
         contentDescription = contentDescription,
@@ -127,9 +135,9 @@ class PhotoCache<T : Any>(
         val path =
             try {
                 when (photo.kind) {
-                    PhotoKind.Account -> account.photo(photo.owner, photo.version)
-                    PhotoKind.CommunityPicture -> social.communityPicture(photo.owner, photo.version)
-                    PhotoKind.CommunityCover -> social.communityCover(photo.owner, photo.version)
+                    PhotoKind.Account -> account.photoFramed(photo.owner, photo.version, photo.frame)
+                    PhotoKind.CommunityPicture -> social.communityPictureFramed(photo.owner, photo.version, photo.frame)
+                    PhotoKind.CommunityCover -> social.communityCoverFramed(photo.owner, photo.version, photo.frame)
                 }
             } catch (_: CoreException) {
                 // Offline, or refused: the initials stand in, and the next draw asks again.

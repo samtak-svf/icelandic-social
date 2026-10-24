@@ -5,6 +5,7 @@ import samtak.spjall.core.CardCommunity
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.Conversation
+import samtak.spjall.core.Frame
 import samtak.spjall.core.Person
 
 /** Whose image a [PhotoOf] is, and so which core call fetches it (decisions 0039, 0080). */
@@ -16,6 +17,8 @@ data class PhotoOf(
     val owner: String,
     val version: String,
     val kind: PhotoKind = PhotoKind.Account,
+    /** The frame to fetch (0086): `SQUARE` for a photo or picture, the window's size class for a cover. */
+    val frame: Frame = Frame.SQUARE,
 )
 
 /** The photo to draw for this person, or null when the server gave none. */

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.Density
@@ -29,6 +30,8 @@ import samtak.spjall.core.ReactionCount
 import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportTargetKind
 import samtak.spjall.core.SocialNotificationKind
+import samtak.spjall.frames.FakeFrameRules
+import samtak.spjall.frames.LocalFrameRules
 import samtak.spjall.ui.IcelandZone
 import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.wordsCut
@@ -146,12 +149,16 @@ class SocialScreenshotTest {
         )
 
     private fun shoot(screen: @Composable () -> Unit) {
-        compose.setContent { SpjallTheme { screen() } }
+        compose.setContent {
+            CompositionLocalProvider(LocalFrameRules provides FakeFrameRules) { SpjallTheme { screen() } }
+        }
         compose.onRoot().captureRoboImage()
     }
 
     private fun noWordCut(screen: @Composable () -> Unit) {
-        compose.setContent { SpjallTheme { screen() } }
+        compose.setContent {
+            CompositionLocalProvider(LocalFrameRules provides FakeFrameRules) { SpjallTheme { screen() } }
+        }
         assertEquals(emptyList<String>(), compose.wordsCut())
     }
 

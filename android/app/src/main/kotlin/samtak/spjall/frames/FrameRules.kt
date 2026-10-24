@@ -1,11 +1,25 @@
 package samtak.spjall.frames
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import samtak.spjall.core.Frame
 import samtak.spjall.core.FrameKind
 import samtak.spjall.core.framesOf
 import samtak.spjall.core.frameForWidth as coreFrameForWidth
 import samtak.spjall.core.frameSize as coreFrameSize
 import samtak.spjall.core.placeFrame as corePlaceFrame
+
+/** The window's width in dp, which picks a cover's frame; it follows a rotation or a resize. */
+@Composable
+fun windowWidthDp(): Int {
+    val width = LocalWindowInfo.current.containerSize.width
+    return (width / LocalDensity.current.density).toInt()
+}
+
+/** The rules the screens read; a screen test that cannot load the native library provides a stand-in. */
+val LocalFrameRules = compositionLocalOf<FrameRules> { CoreFrameRules }
 
 /**
  * What the core decides about frames (decision 0086), behind a seam so a screen test needs no native library. The

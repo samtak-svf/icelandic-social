@@ -12,6 +12,7 @@ import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.ConversationState
+import samtak.spjall.core.Frame
 import samtak.spjall.core.Mute
 import samtak.spjall.core.Person
 import samtak.spjall.social.FakeSocial
@@ -42,7 +43,7 @@ class PhotosTest {
             assertEquals("image of photos/a2/v1.webp", cache.kept(anna))
             assertEquals("image of photos/a2/v1.webp", cache.load(anna))
             assertEquals(listOf("photos/a2/v1.webp"), decoded)
-            assertEquals(1, account.calls.count { it == "photo a2 v1" })
+            assertEquals(1, account.calls.count { it == "photoFramed a2 v1 SQUARE" })
         }
 
     @Test
@@ -59,7 +60,7 @@ class PhotosTest {
         runTest(dispatcher) {
             val cache = cache()
             assertNull("the server has none", cache.load(anna))
-            account.failOn = "photo a2 v1"
+            account.failOn = "photoFramed a2 v1 SQUARE"
             assertNull("offline", cache.load(anna))
             account.failOn = null
             account.photoFiles = mapOf("a2/v1" to "a2/v1.broken")
@@ -88,15 +89,31 @@ class PhotosTest {
             social.coverFiles = mapOf("c1/v1" to "cover.webp")
             val cache = cache()
             val picture = PhotoOf("c1", "v1", PhotoKind.CommunityPicture)
-            val cover = PhotoOf("c1", "v1", PhotoKind.CommunityCover)
+            val cover = PhotoOf("c1", "v1", PhotoKind.CommunityCover, Frame.COMPACT)
             assertEquals("image of picture.webp", cache.load(picture))
             assertEquals("image of cover.webp", cache.load(cover))
             assertEquals("image of account.webp", cache.load(PhotoOf("c1", "v1")))
             repeat(2) { cache.load(picture) }
-            assertEquals(listOf("communityPicture c1 v1", "communityCover c1 v1"), social.calls)
-            assertEquals(listOf("photo c1 v1"), account.calls.filter { it.startsWith("photo") })
+            val asked = listOf("communityPictureFramed c1 v1 SQUARE", "communityCoverFramed c1 v1 COMPACT")
+            assertEquals(asked, social.calls)
+            assertEquals(listOf("photoFramed c1 v1 SQUARE"), account.calls.filter { it.startsWith("photo") })
             assertEquals("image of picture.webp", cache.kept(picture))
             assertNull("a new version is another photo", cache.kept(PhotoOf("c1", "v2", PhotoKind.CommunityPicture)))
+        }
+
+    @Test
+    fun aCoverIsFetchedAndKeptPerFrame() =
+        runTest(dispatcher) {
+            social.coverFiles = mapOf("c1/v1" to "cover.webp")
+            val cache = cache()
+            val compact = PhotoOf("c1", "v1", PhotoKind.CommunityCover, Frame.COMPACT)
+            val expanded = compact.copy(frame = Frame.EXPANDED)
+            cache.load(compact)
+            assertNull("the other frame is another image", cache.kept(expanded))
+            cache.load(expanded)
+            cache.load(compact)
+            val fetched = listOf("communityCoverFramed c1 v1 COMPACT", "communityCoverFramed c1 v1 EXPANDED")
+            assertEquals(fetched, social.calls)
         }
 
     @Test
