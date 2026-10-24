@@ -21,11 +21,15 @@ import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.FrameKind
 import samtak.spjall.core.ModerationLogEntry
 import samtak.spjall.core.Post
 import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
+import samtak.spjall.frames.FrameRequest
+import samtak.spjall.frames.newImageRequest
+import samtak.spjall.frames.storedImageRequest
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -199,31 +203,53 @@ class CommunityViewModel(
         }
     }
 
-    /** Sets the community picture from the file [read] makes; the file goes once it is sent (0080). */
-    fun setPicture(read: () -> File) = setImage(::setPicture, read, Social::setCommunityAvatar)
+    /** The crop sheet's request for a picture just picked: the master from [read], then its framing (0080, 0086). */
+    fun pictureRequest(read: () -> File): FrameRequest =
+        newImageRequest(FrameKind.PHOTO, read) { file, framing ->
+            social.setCommunityAvatar(id, file.path)
+            social.setCommunityPictureFraming(id, framing)
+            refresh()
+        }
 
-    /** Sets the community cover from the file [read] makes. */
-    fun setCover(read: () -> File) = setImage(::setCover, read, Social::setCommunityCover)
+    /** The crop sheet's request for a cover just picked. */
+    fun coverRequest(read: () -> File): FrameRequest =
+        newImageRequest(FrameKind.COVER, read) { file, framing ->
+            social.setCommunityCover(id, file.path)
+            social.setCommunityCoverFraming(id, framing)
+            refresh()
+        }
+
+    /** The request to frame the picture again from its stored master; [temp] makes the file it comes down to. */
+    fun reframePictureRequest(temp: () -> File): FrameRequest =
+        storedImageRequest(
+            FrameKind.PHOTO,
+            { _state.value.community?.photoFrames },
+            { social.communityPictureSource(id, it) },
+            temp,
+        ) { framing ->
+            social.setCommunityPictureFraming(id, framing)
+            refresh()
+        }
+
+    /** The request to frame the cover again from its stored master. */
+    fun reframeCoverRequest(temp: () -> File): FrameRequest =
+        storedImageRequest(
+            FrameKind.COVER,
+            { _state.value.community?.coverFrames },
+            { social.communityCoverSource(id, it) },
+            temp,
+        ) { framing ->
+            social.setCommunityCoverFraming(id, framing)
+            refresh()
+        }
+
+    private fun refresh() {
+        _state.update { it.copy(community = social.community(id)) }
+    }
 
     fun removePicture() = removeImage(::removePicture, Social::removeCommunityAvatar)
 
     fun removeCover() = removeImage(::removeCover, Social::removeCommunityCover)
-
-    private fun setImage(
-        again: (() -> File) -> Unit,
-        read: () -> File,
-        send: Social.(String, String) -> String,
-    ) {
-        perform({ again(read) }) {
-            val file = read()
-            try {
-                social.send(id, file.path)
-            } finally {
-                file.delete()
-            }
-            _state.update { it.copy(community = social.community(id)) }
-        }
-    }
 
     private fun removeImage(
         again: () -> Unit,

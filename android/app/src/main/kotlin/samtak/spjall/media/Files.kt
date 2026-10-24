@@ -95,6 +95,12 @@ class Files(
         }
     }
 
+    /** An empty file in the outgoing folder, for the core to write a stored master to (0086); the caller deletes it. */
+    fun temp(): File {
+        outgoing.mkdirs()
+        return File.createTempFile("master", ".jpg", outgoing)
+    }
+
     /**
      * Opens the file at [path] in another app, read-only, as a copy under the
      * sender's [name] when there is one. With no app for its type, starting

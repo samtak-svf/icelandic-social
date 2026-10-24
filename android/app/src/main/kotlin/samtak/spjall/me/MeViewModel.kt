@@ -14,9 +14,13 @@ import samtak.spjall.account.Account
 import samtak.spjall.account.Problem
 import samtak.spjall.account.problem
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.FrameKind
 import samtak.spjall.core.Me
 import samtak.spjall.core.Person
 import samtak.spjall.core.Settings
+import samtak.spjall.frames.FrameRequest
+import samtak.spjall.frames.newImageRequest
+import samtak.spjall.frames.storedImageRequest
 import java.io.File
 import java.io.IOException
 
@@ -109,20 +113,26 @@ class MeViewModel(
     }
 
     /**
-     * Sets the photo from the file [read] makes, already a small square (decision 0039), and deletes that file
-     * once the core has sent it, whether or not the server took it: the server keeps the only copy.
+     * The crop sheet's request for a photo just picked (decisions 0039 and 0086): [read] makes the master, saving
+     * sends it and then the framing, and the file goes when the sheet closes, whether or not the server took it.
      */
-    fun setPhoto(read: () -> File) {
-        perform({ setPhoto(read) }) {
-            val file = read()
-            try {
-                account.setPhoto(file.path)
-            } finally {
-                file.delete()
-            }
-            val me = account.me()
-            _state.update { it.copy(me = me) }
+    fun photoRequest(read: () -> File): FrameRequest =
+        newImageRequest(FrameKind.PHOTO, read) { file, framing ->
+            account.setPhoto(file.path)
+            account.setPhotoFraming(framing)
+            refresh()
         }
+
+    /** The request to frame the photo again from the master the server kept; [temp] makes the file it comes down to. */
+    fun reframePhotoRequest(temp: () -> File): FrameRequest =
+        storedImageRequest(FrameKind.PHOTO, account::photoFraming, account::photoSource, temp) { framing ->
+            account.setPhotoFraming(framing)
+            refresh()
+        }
+
+    private fun refresh() {
+        val me = account.me()
+        _state.update { it.copy(me = me) }
     }
 
     /** Removes the photo, for everyone. */

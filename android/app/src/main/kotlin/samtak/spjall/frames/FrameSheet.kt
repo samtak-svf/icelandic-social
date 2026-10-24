@@ -87,7 +87,7 @@ fun FrameSheet(session: FrameSession = LocalFrameSession.current) {
                     FrameSheetContent(
                         kind = s.request.kind,
                         image = s.image,
-                        base = s.request.base,
+                        base = s.base,
                         widthDp = LocalConfiguration.current.screenWidthDp,
                         saving = s.saving,
                         problem = s.problem,

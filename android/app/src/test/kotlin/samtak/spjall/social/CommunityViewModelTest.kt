@@ -23,6 +23,9 @@ import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.Focus
+import samtak.spjall.core.FrameKind
+import samtak.spjall.core.Framing
 import samtak.spjall.core.LogTarget
 import samtak.spjall.core.LogTargetKind
 import samtak.spjall.core.ModerationLogAction
@@ -522,14 +525,20 @@ class CommunityViewModelTest {
         }
 
     @Test
-    fun aPictureIsSentFromTheFileThatCutItAndTheFileGoes() =
+    fun aCoverIsSentThenFramedAndItsFileGoes() =
         runTest(dispatcher) {
             social.communities["k1"] = community("k1", role = CommunityRole.OWNER)
             val file = File.createTempFile("cover", ".jpg")
             val model = model()
-            model.setCover { file }
-            advanceUntilIdle()
-            assertTrue("setCommunityCover k1 ${file.path}" in social.calls)
+            val request = model.coverRequest { file }
+            assertEquals(FrameKind.COVER, request.kind)
+            request.master()
+            request.save(Framing(Focus(0.5, 0.5), emptyList()))
+            assertEquals(
+                listOf("setCommunityCover k1 ${file.path}", "setCommunityCoverFraming k1 0.5,0.5 0"),
+                social.calls.filter { it.startsWith("setCommunityCover") },
+            )
+            request.release(file, true)
             assertFalse(file.exists())
             model.removePicture()
             advanceUntilIdle()

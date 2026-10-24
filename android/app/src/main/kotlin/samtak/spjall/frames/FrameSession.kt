@@ -28,8 +28,8 @@ import java.io.IOException
  */
 class FrameRequest(
     val kind: FrameKind,
-    /** How the image is framed now; null for a new one. */
-    val base: Framing?,
+    /** How the image is framed now, or null for a new one. Off the main thread. */
+    val base: suspend () -> Framing?,
     /** The master to crop, or null when there is none (an image set before masters were kept). Off the main thread. */
     val master: suspend () -> File?,
     /** Sends the person's framing, and the master first when it is new. Throws [CoreException]. Off the main thread. */
@@ -52,6 +52,7 @@ sealed interface FrameState {
     data class Editing(
         val request: FrameRequest,
         val image: ImageBitmap,
+        val base: Framing?,
         val saving: Boolean = false,
         val problem: Problem? = null,
     ) : FrameState
@@ -97,7 +98,7 @@ class FrameSession(
         return when {
             master == null -> FrameState.Unavailable()
             bitmap == null -> FrameState.Unavailable(Problem.Generic())
-            else -> FrameState.Editing(request, bitmap.asImageBitmap())
+            else -> FrameState.Editing(request, bitmap.asImageBitmap(), request.base())
         }
     }
 
