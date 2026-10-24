@@ -53,6 +53,19 @@ final class FrameEditorTests: XCTestCase {
         XCTAssertEqual(framing.focus.y, after.y + after.h / 2, accuracy: 1e-9)
     }
 
+    func testAnAdvancedEditKeepsTheStoredFocusAndPlacesTheOtherFramesFromIt() {
+        let base = Framing(focus: Focus(x: 0.3, y: 0.6), overrides: [])
+        let cover = editor(.cover, current: .compact, base: base)
+        cover.advancedOpen = true
+        let untouched = cover.rect(.compact)
+        cover.drag(.medium, dx: 0, dy: -20, viewport: CGSize(width: 400, height: 100))
+        XCTAssertEqual(cover.rect(.compact), untouched, "an untouched frame stays where it shows")
+        let framing = cover.framing()
+        XCTAssertEqual(framing.focus.x, 0.3, accuracy: 1e-9)
+        XCTAssertEqual(framing.focus.y, 0.6, accuracy: 1e-9)
+        XCTAssertEqual(framing.overrides.map(\.frame), [.medium])
+    }
+
     func testZoomAndTheSliderAgree() {
         let photo = editor(.photo, current: .square)
         XCTAssertEqual(photo.zoomLevel(.square), 1, accuracy: 1e-9)
