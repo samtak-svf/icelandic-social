@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useId, useState } from "react";
 import type { Problem } from "../problem.ts";
 import {
@@ -12,6 +12,7 @@ import {
   type ReportTarget,
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
+import { ManageFrame } from "../social/manage-frame.tsx";
 import { outcome, useLoad, when } from "../social/outcome.ts";
 import { AuthorName, authorName } from "../social/post.tsx";
 import { verbs } from "../social/verbs.ts";
@@ -24,7 +25,10 @@ import { Button, ProblemText, Status } from "../ui/kit.tsx";
 // An action on an open report closes it; on a closed one it acts alone. Only
 // the verbs that apply to the target as it stands now are offered (#361), and
 // a closed report says what was decided, by whom and when (#360).
-export const Route = createFileRoute("/communities/$communityId/reports")({ component: Reports });
+export const Route = createFileRoute("/communities/$communityId/reports")({
+  component: ReportsPage,
+  staticData: { width: "wide" },
+});
 
 const REASONS = {
   unlawful: strings.report_reason_unlawful,
@@ -60,8 +64,16 @@ const MUTES = [
 
 type Queue = "open" | "closed";
 
-function Reports() {
+function ReportsPage() {
   const { communityId } = Route.useParams();
+  return (
+    <ManageFrame communityId={communityId}>
+      {(_, changed) => <Reports communityId={communityId} changed={changed} />}
+    </ManageFrame>
+  );
+}
+
+function Reports({ communityId, changed }: Readonly<{ communityId: string; changed: () => void }>) {
   const [state, setState] = useState<Queue>("open");
   const [queue, reload] = useLoad(
     useCallback(async () => {
@@ -74,15 +86,12 @@ function Reports() {
   );
   // A queue is shown only once it is the one chosen, not the one before.
   const shown = queue?.ok && queue.data.state === state ? queue.data.reports : null;
+  const done = useCallback(() => {
+    reload();
+    changed();
+  }, [reload, changed]);
   return (
     <>
-      <Link
-        to="/communities/$communityId"
-        params={{ communityId }}
-        className="inline-flex min-h-11 items-center underline"
-      >
-        {strings.post_back}
-      </Link>
       <h1 className="font-headline text-3xl">{strings.moderation_queue}</h1>
       <div role="group" aria-label={strings.moderation_queue} className="mt-4 flex gap-2">
         {(
@@ -108,7 +117,7 @@ function Reports() {
       ) : shown === null ? (
         <Status>{strings.loading}</Status>
       ) : (
-        <ReportList reports={shown} state={state} communityId={communityId} done={reload} />
+        <ReportList reports={shown} state={state} communityId={communityId} done={done} />
       )}
     </>
   );

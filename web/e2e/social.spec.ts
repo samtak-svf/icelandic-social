@@ -304,7 +304,10 @@ test("a moderator approves one join request and declines another, who must wait"
   // The owner sees how many wait, and answers each.
   await owner.reload();
   await manage(owner);
-  await owner.getByRole("link", { name: strings.join_requests_waiting({ count: 2 }) }).click();
+  // The side navigation of an expanded window (decision 0087) says how many wait.
+  const requests = owner.getByRole("link", { name: strings.join_requests_title });
+  await expect(requests).toHaveText(`${strings.join_requests_title}2`);
+  await requests.click();
   await expect(owner.getByRole("heading", { name: strings.join_requests_title })).toBeVisible();
   const request = (name: string) => owner.getByRole("article").filter({ hasText: name });
   await expect(request("Velkomin").getByText(strings.verified_short)).toBeVisible();

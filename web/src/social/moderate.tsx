@@ -12,16 +12,22 @@ import {
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { Avatar } from "./avatar.tsx";
+import { Waiting } from "./manage-frame.tsx";
 import { useMembers } from "./members.ts";
 import { CommunityPictures } from "./picture-pick.tsx";
 import { outcome, useLoad, when } from "./outcome.ts";
 import { Button, ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
+import { LAYOUTS } from "../ui/layout.ts";
+import { useSizeClass } from "../ui/size-class.ts";
 
 // Stjórna (decision 0079): what a community's owner and moderators reach
 // for, on a page of its own (decision 0080) that the community's `⋯` menu opens. The reports and the join requests each with
 // what waits for them, the details the owner changes (decision 0063), the
 // members whose role the owner names, the actions kept (decision 0063), and
-// the delete only the owner may do (decision 0070).
+// the delete only the owner may do (decision 0070). On an expanded window
+// (decision 0087) the side navigation of `ManageFrame` reaches the queues,
+// the members and the log, each a page of its own, and this page keeps the
+// details and the delete.
 
 /** The actions on a community that are kept, told with the words the queue uses. */
 const LOGGED: Record<ModerationLogEntry["action"], string> = {
@@ -53,6 +59,9 @@ export function Manage({
   changed,
 }: Readonly<{ community: Community; changed: () => void }>) {
   const { communityId } = community;
+  // The stylesheet leaves out what the side navigation reaches, so a server
+  // render is right at every width; only the details' first state needs the size class.
+  const sideNav = LAYOUTS[useSizeClass()].manage === "side-nav";
   const waiting = (community.openReports ?? 0) + (community.pendingJoinRequests ?? 0);
   const owner = community.role === "owner";
   return (
@@ -63,18 +72,14 @@ export function Manage({
           : strings.community_manage}
       </h1>
       <div className="mt-3 flex flex-col gap-4">
-        <nav className="flex flex-wrap gap-x-6">
+        <nav className="flex flex-wrap gap-x-6 expanded:hidden">
           <Link
             to="/communities/$communityId/reports"
             params={{ communityId }}
             className="inline-flex min-h-11 items-center underline"
           >
             {strings.moderation_queue}
-            {(community.openReports ?? 0) > 0 && (
-              <span className="ml-2 rounded-full bg-primary px-2 text-sm text-primary-fg">
-                {community.openReports}
-              </span>
-            )}
+            <Waiting count={community.openReports} />
           </Link>
           <Link
             to="/communities/$communityId/requests"
@@ -86,9 +91,15 @@ export function Manage({
               : strings.join_requests_title}
           </Link>
         </nav>
-        <Edit community={community} changed={changed} owner={owner} />
-        {owner && <Roles community={community} changed={changed} />}
-        <Log communityId={communityId} />
+        <Edit community={community} changed={changed} owner={owner} open={sideNav} />
+        {owner && (
+          <div className="expanded:hidden">
+            <Roles community={community} changed={changed} heading="section" />
+          </div>
+        )}
+        <div className="expanded:hidden">
+          <Log communityId={communityId} heading="section" />
+        </div>
         {owner && <Delete community={community} />}
       </div>
     </section>
@@ -100,7 +111,8 @@ function Edit({
   community,
   changed,
   owner,
-}: Readonly<{ community: Community; changed: () => void; owner: boolean }>) {
+  open,
+}: Readonly<{ community: Community; changed: () => void; owner: boolean; open: boolean }>) {
   const id = useId();
   const [name, setName] = useState(community.name);
   const [description, setDescription] = useState(community.description);
@@ -126,7 +138,7 @@ function Edit({
 
   const field = "min-h-11 rounded-md border border-border-strong bg-surface px-3";
   return (
-    <details>
+    <details open={open}>
       <summary className="cursor-pointer text-base font-semibold">{strings.community_edit}</summary>
       <div className="mt-2">
         <CommunityPictures community={community} changed={changed} />
@@ -177,8 +189,23 @@ function Edit({
   );
 }
 
+/** A part of Stjórna's title: the page's own, or a section's on the one screen. */
+function Title({ heading, children }: Readonly<{ heading: Heading; children: string }>) {
+  return heading === "page" ? (
+    <h1 className="font-headline text-3xl">{children}</h1>
+  ) : (
+    <h3 className="font-semibold">{children}</h3>
+  );
+}
+
+type Heading = "page" | "section";
+
 /** The members whose role the owner names (decision 0063), and each one as it is. */
-function Roles({ community, changed }: Readonly<{ community: Community; changed: () => void }>) {
+export function Roles({
+  community,
+  changed,
+  heading,
+}: Readonly<{ community: Community; changed: () => void; heading: Heading }>) {
   const [members, reload] = useMembers(community.communityId);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -202,7 +229,7 @@ function Roles({ community, changed }: Readonly<{ community: Community; changed:
 
   return (
     <section aria-label={strings.community_members_title} className="flex flex-col gap-2">
-      <h3 className="font-semibold">{strings.community_members_title}</h3>
+      <Title heading={heading}>{strings.community_members_title}</Title>
       {members === null && <Status>{strings.loading}</Status>}
       {members?.ok === false && (
         <Status>
@@ -247,7 +274,7 @@ function Roles({ community, changed }: Readonly<{ community: Community; changed:
 }
 
 /** The log, newest first (decision 0063), kept a year (decision 0070). */
-function Log({ communityId }: Readonly<{ communityId: string }>) {
+export function Log({ communityId, heading }: Readonly<{ communityId: string; heading: Heading }>) {
   const [log] = useLoad(
     useCallback(
       () => outcome(communityModerationLog({ path: { communityId } }), 200),
@@ -256,7 +283,7 @@ function Log({ communityId }: Readonly<{ communityId: string }>) {
   );
   return (
     <section aria-label={strings.moderation_log_title} className="flex flex-col gap-2">
-      <h3 className="font-semibold">{strings.moderation_log_title}</h3>
+      <Title heading={heading}>{strings.moderation_log_title}</Title>
       {log === null && <Status>{strings.loading}</Status>}
       {log?.ok === false && (
         <Status>
