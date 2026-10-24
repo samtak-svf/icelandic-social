@@ -3,6 +3,7 @@
 - Status: accepted; implemented in the backend (9892cd5), the core (6f404ca) and the apps (bb44d91)
 - Date: 2026-10-10
 - Decided by: the maintainer, choosing it from a comparison with an established messenger
+- Amended by: [0086](0086-images-are-framed-per-screen-size.md) (a metadata-free master is kept, and the photo is framed by the person)
 - Builds on: [0001](0001-eu-storage-and-residency-wording.md), [0004](0004-frozen-identifiers-vs-brand.md),
   [0008](0008-no-pii-in-logs.md), [0023](0023-media-as-encrypted-blobs.md),
   [0034](0034-fljotid-and-the-wall.md), [0036](0036-everyone-signed-in-is-in-the-picker.md)
