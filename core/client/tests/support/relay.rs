@@ -119,6 +119,10 @@ struct State {
     identities: BTreeMap<String, BTreeSet<String>>,
     /// account → its photo's version and the "re-encoded" image (0039).
     photos: BTreeMap<String, (String, Vec<u8>)>,
+    /// account → the image as uploaded, the master a re-framing cuts from (0086).
+    masters: BTreeMap<String, Vec<u8>>,
+    /// account → the framing its photo was last cut with.
+    photo_frames: BTreeMap<String, Value>,
     /// Photo versions handed out.
     minted_photos: usize,
     /// The server's clock, in milliseconds, when a test sets it.
@@ -218,6 +222,13 @@ impl Relay {
             page: 3,
             ..State::default()
         })))
+    }
+
+    /// Makes `account`'s photo one stored before masters were kept (0086).
+    pub fn forget_master(&self, account: &str) {
+        let mut state = self.state();
+        state.masters.remove(account);
+        state.photo_frames.remove(account);
     }
 
     pub fn requests(&self, device: &str) -> Vec<Request> {
@@ -807,8 +818,11 @@ impl State {
             }
             (Method::Delete, ["me", "photo"]) => {
                 self.photos.remove(account);
+                self.masters.remove(account);
+                self.photo_frames.remove(account);
                 answer(204, Value::Null)
             }
+            (Method::Patch, ["me", "photo", "frames"]) => self.frame_photo(account, &body),
             (Method::Delete, ["me", "invite"]) => {
                 self.invites.retain(|_, a| a != account);
                 answer(204, Value::Null)
@@ -828,6 +842,7 @@ impl State {
                         json!({
                             "accountId": id, "name": format!("Name of {id}"), "verified": true,
                             "photo": self.photo_for(account, id),
+                            "photoFrames": self.photo_frames.get(*id),
                         }),
                     )
                 } else {
@@ -1456,7 +1471,37 @@ impl State {
         let webp = [b"webp:".as_slice(), blob].concat();
         self.photos
             .insert(account.to_owned(), (version.clone(), webp));
+        self.masters.insert(account.to_owned(), blob.to_vec());
+        self.photo_frames.remove(account);
         answer(200, json!({ "photo": version }))
+    }
+
+    /// `setPhotoFrames` (0086): cut again from the master as a new version;
+    /// 409 `no_master` for a photo that has none.
+    fn frame_photo(&mut self, account: &str, framing: &Value) -> Response {
+        let Some(master) = self.masters.get(account) else {
+            return refuse(409, "no_master");
+        };
+        self.minted_photos += 1;
+        let version = format!("ph_{:08}", self.minted_photos);
+        let webp = [
+            format!("webp:framed:{}:", framing["focus"]["x"]).as_bytes(),
+            master,
+        ]
+        .concat();
+        self.photos
+            .insert(account.to_owned(), (version.clone(), webp));
+        self.photo_frames
+            .insert(account.to_owned(), framing.clone());
+        answer(200, json!({ "photo": version }))
+    }
+
+    /// `getPhotoSource` (0086): the master, 404 when there is none.
+    fn get_photo_source(&self, account: &str) -> (Response, Option<Vec<u8>>) {
+        match self.masters.get(account) {
+            Some(master) => (answer(200, Value::Null), Some(master.clone())),
+            None => (refuse(404, "not_found"), None),
+        }
     }
 
     /// `getPhoto`: 404 when it has none, or across a block either way.
@@ -1678,8 +1723,15 @@ impl Transport for Link {
     fn download(&self, request: Request, to: &Path) -> Result<Response, Unreachable> {
         assert_eq!(request.method, Method::Get);
         self.through(request, |state, account, device, request| {
-            let photo = request
-                .path
+            let path = request.path.split('?').next().unwrap_or_default();
+            if path == "/v1/me/photo/source" {
+                let (response, blob) = state.get_photo_source(account);
+                if let Some(blob) = blob {
+                    std::fs::write(to, blob).unwrap();
+                }
+                return response;
+            }
+            let photo = path
                 .strip_prefix("/v1/accounts/")
                 .and_then(|p| p.strip_suffix("/photo"));
             let history = request

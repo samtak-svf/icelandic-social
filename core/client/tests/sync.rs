@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use relay::{Link, Relay};
 use spjall_client::api::{ApiError, Platform, Provider};
+use spjall_client::frames::{Focus, Frame, FrameRect, Framing};
 use spjall_client::{
     Client, ClientError, Content, Event, HistoryError, Imported, Item, LinkCode, LinkError,
     MediaError, Mute, MuteFor, NoticeKind, Settings, State, Status, Unforwardable, history_key,
@@ -2710,6 +2711,105 @@ fn a_photo_is_fetched_once_per_version_and_goes_when_removed() {
         b1.client.photo("a", "../../x"),
         Err(ClientError::Invalid(_))
     ));
+}
+
+#[test]
+fn a_photo_is_framed_again_from_its_master_and_the_old_frames_go() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let image = a1.dir.path().join("picked.jpg");
+    std::fs::write(&image, b"image:first").unwrap();
+    let first = a1.client.set_photo(&image).unwrap();
+
+    // Nothing stored yet: the editor opens at the centre, with the master.
+    assert_eq!(a1.client.photo_framing().unwrap(), None);
+    let source = a1.dir.path().join("master.webp");
+    assert!(a1.client.photo_source(&source).unwrap());
+    assert_eq!(std::fs::read(&source).unwrap(), b"image:first");
+    assert!(!source.with_extension("part").exists());
+
+    // The square frame is fetched under its name and kept in a folder of its own.
+    let square = a1
+        .client
+        .photo_framed("a", &first, Frame::Square)
+        .unwrap()
+        .unwrap();
+    assert!(square.ends_with(format!("photos/a/square/{first}.webp")));
+    assert_eq!(
+        a1.client.photo_framed("a", &first, Frame::Square).unwrap(),
+        Some(square.clone())
+    );
+    assert!(
+        relay
+            .requests("a1")
+            .iter()
+            .any(|r| r.path == "/v1/accounts/a/photo?frame=square")
+    );
+    // A cover frame is no frame of a photo, and asks nothing.
+    let asked = relay.requests("a1").len();
+    assert!(matches!(
+        a1.client.photo_framed("a", &first, Frame::Compact),
+        Err(ClientError::Invalid(_))
+    ));
+    assert_eq!(relay.requests("a1").len(), asked);
+    let plain = a1.client.photo("a", &first).unwrap().unwrap();
+
+    // Re-framing makes a new version and clears every kept file of the old.
+    let mut framing = Framing::centred();
+    framing.focus = Focus { x: 0.25, y: 0.75 };
+    let second = a1.client.set_photo_framing(&framing).unwrap();
+    assert_ne!(second, first);
+    assert!(!square.exists() && !plain.exists());
+    assert!(!a1.dir.path().join("photos/a/square").exists());
+    assert_eq!(
+        a1.client.me().unwrap().photo.as_deref(),
+        Some(second.as_str())
+    );
+    assert_eq!(a1.client.photo_framing().unwrap(), Some(framing));
+    let cut = a1
+        .client
+        .photo_framed("a", &second, Frame::Square)
+        .unwrap()
+        .unwrap();
+    assert!(std::fs::read(&cut).unwrap().starts_with(b"webp:framed:"));
+
+    // A framing the server would refuse never leaves the device.
+    let mut wrong = Framing::centred();
+    wrong.overrides.insert(
+        Frame::Compact,
+        FrameRect {
+            x: 0.0,
+            y: 0.0,
+            w: 1.0,
+            h: 1.0,
+        },
+    );
+    let asked = relay.requests("a1").len();
+    assert!(matches!(
+        a1.client.set_photo_framing(&wrong),
+        Err(ClientError::Invalid(_))
+    ));
+    assert_eq!(relay.requests("a1").len(), asked);
+}
+
+#[test]
+fn a_photo_without_a_master_is_its_own_error() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let image = a1.dir.path().join("picked.jpg");
+    std::fs::write(&image, b"image:old").unwrap();
+    let old = a1.client.set_photo(&image).unwrap();
+    relay.forget_master("a");
+
+    assert!(matches!(
+        a1.client.set_photo_framing(&Framing::centred()),
+        Err(ClientError::NoMaster)
+    ));
+    // The photo is untouched, and there is no master to write.
+    assert_eq!(a1.client.me().unwrap().photo.as_deref(), Some(old.as_str()));
+    let source = a1.dir.path().join("master.webp");
+    assert!(!a1.client.photo_source(&source).unwrap());
+    assert!(!source.exists() && !source.with_extension("part").exists());
 }
 
 #[test]
