@@ -40,6 +40,17 @@ object AppIcons {
             "M18 15.5c0-2-1.2-3.2-3-3.5",
         )
 
+    /** The photo button of the comment box (0082): a frame with a sun and a hill. */
+    val Photo =
+        outline(
+            "photo",
+            20f,
+            1.8f,
+            "M4 4h12a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z",
+            "M7.8 8a1.1 1.1 0 11-2.2 0a1.1 1.1 0 112.2 0z",
+            "M3.5 14.5l4.2-4l3 3l2-2l3.8 3.5",
+        )
+
     /** The blocked list: a circle struck through. */
     val Blocked = outline("blocked", 20f, 1.8f, "M17 10a7 7 0 1 1-14 0a7 7 0 1 1 14 0z", "M5 5l10 10")
 

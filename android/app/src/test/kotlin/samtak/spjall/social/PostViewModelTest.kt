@@ -17,8 +17,11 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.io.File
 import samtak.spjall.account.Problem
 import samtak.spjall.account.unreachable
+import samtak.spjall.conversation.Picked
+import samtak.spjall.core.CoreException
 import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
@@ -134,6 +137,87 @@ class PostViewModelTest {
             model.send()
             advanceUntilIdle()
             assertFalse(social.calls.any { it.startsWith("createComment") })
+        }
+
+    private fun picked(): Pair<File, Picked> {
+        val file = File.createTempFile("picked", ".jpg").apply { deleteOnExit() }
+        file.writeBytes(byteArrayOf(1, 2, 3))
+        return file to Picked("image/jpeg", file.length()) { file }
+    }
+
+    @Test
+    fun aPickedImageIsUploadedToThePostsCommunityAndSentWithTheComment() =
+        runTest(dispatcher) {
+            val model = model()
+            val (file, one) = picked()
+            model.pick(one)
+            advanceUntilIdle()
+            assertEquals(file.path, model.state.value.image)
+            model.draft("Mynd")
+            model.send()
+            advanceUntilIdle()
+            val media = "m-${file.name}"
+            assertTrue("uploadPostImage k1 ${file.path}" in social.calls)
+            assertTrue("createComment p1 Mynd media=$media" in social.calls)
+            val sent = model.state.value.comments.last()
+            assertEquals(listOf(media), sent.images.map { it.mediaId })
+            assertEquals(null, model.state.value.image)
+            assertEquals("", model.state.value.draft)
+        }
+
+    @Test
+    fun aCommentMayBeAnImageAloneButNotNothing() =
+        runTest(dispatcher) {
+            val model = model()
+            model.send()
+            advanceUntilIdle()
+            assertFalse(social.calls.any { it.startsWith("createComment") })
+            model.pick(picked().second)
+            advanceUntilIdle()
+            assertTrue(model.state.value.sendable)
+            model.send()
+            advanceUntilIdle()
+            assertTrue(social.calls.any { it.startsWith("createComment p1 media=") })
+        }
+
+    @Test
+    fun aFailedSendKeepsTheTextAndTheImageAndAnotherPickReplacesIt() =
+        runTest(dispatcher) {
+            val model = model()
+            val (first, one) = picked()
+            model.pick(one)
+            model.draft("Mynd")
+            advanceUntilIdle()
+            social.refuseImage = CoreException.Refused(422u, "too_large", null)
+            model.send()
+            advanceUntilIdle()
+            val state = model.state.value
+            assertEquals("Mynd", state.draft)
+            assertEquals(first.path, state.image)
+            assertEquals(CommunityViewModel.ImageNotice.TooLarge, state.imageNotice)
+            assertFalse(state.sending)
+            val (second, two) = picked()
+            model.pick(two)
+            advanceUntilIdle()
+            assertEquals(second.path, model.state.value.image)
+            assertFalse(first.exists())
+        }
+
+    @Test
+    fun anImageOverTheLimitIsNotTakenAndRemovingOneEmptiesTheBox() =
+        runTest(dispatcher) {
+            val model = model()
+            model.pick(Picked("image/jpeg", IMAGE_LIMIT + 1) { error("not read") })
+            advanceUntilIdle()
+            assertEquals(null, model.state.value.image)
+            assertEquals(CommunityViewModel.ImageNotice.TooLarge, model.state.value.imageNotice)
+            val (file, one) = picked()
+            model.pick(one)
+            advanceUntilIdle()
+            model.unpick()
+            advanceUntilIdle()
+            assertEquals(null, model.state.value.image)
+            assertFalse(file.exists())
         }
 
     @Test

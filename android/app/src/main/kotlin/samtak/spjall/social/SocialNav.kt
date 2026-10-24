@@ -55,7 +55,7 @@ fun NavGraphBuilder.socialScreens(
     }
     screen(SocialRoutes.POST_PATTERN) { entry ->
         entry.arguments?.getString("id")?.let {
-            PostEntry(it, entry.arguments?.getString("focus") == "true", social, nav, sharePost)
+            PostEntry(it, entry.arguments?.getString("focus") == "true", social, files, nav, sharePost)
         }
     }
     screen("${SocialRoutes.REPORTS}/{id}") { entry ->
@@ -316,11 +316,17 @@ private fun PostEntry(
     id: String,
     focusComment: Boolean,
     social: Social,
+    files: Files,
     nav: NavController,
     sharePost: (String) -> Unit,
 ) {
     val model: PostViewModel = viewModel(key = "post-$id") { PostViewModel(id, social) }
     val state by model.state.collectAsStateWithLifecycle()
+    // The comment's one image (0082), through the same picker as a post's.
+    val image =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            uri?.let { model.pick(files.pickedPhoto(it)) }
+        }
     // Back when the post was opened from its community, otherwise (a notification) into it, in place of the post.
     val community: (String, Boolean) -> Unit = { communityId, gone ->
         val route = SocialRoutes.community(communityId)
@@ -349,6 +355,11 @@ private fun PostEntry(
                 override fun draft(text: String) = model.draft(text)
 
                 override fun send() = model.send()
+
+                override fun addImage() =
+                    image.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+
+                override fun removeImage() = model.unpick()
 
                 override fun onReplyTo(comment: samtak.spjall.core.Comment?) = model.onReplyTo(comment)
 

@@ -410,9 +410,14 @@ class FakeSocial : Social {
         postId: String,
         body: String,
         parentCommentId: String?,
+        media: List<String>,
     ): Comment {
-        call("createComment $postId $body ${parentCommentId.orEmpty()}".trim())
-        val comment = comment("c-new${made++}", postId, body).copy(parentCommentId = parentCommentId)
+        call("createComment $postId $body ${parentCommentId.orEmpty()}".trim() + media.joinToString("") { " media=$it" })
+        val comment =
+            comment("c-new${made++}", postId, body).copy(
+                parentCommentId = parentCommentId,
+                images = media.map { PostImage(it, 640u, 480u) },
+            )
         comments.getOrPut(postId) { mutableListOf() }.add(comment)
         return comment
     }

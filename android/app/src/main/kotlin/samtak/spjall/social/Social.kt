@@ -207,10 +207,12 @@ interface Social {
         limit: UInt,
     ): CommentPage
 
+    /** A comment of text, one image from [uploadPostImage] by its media id, or both (0082). */
     fun createComment(
         postId: String,
         body: String,
         parentCommentId: String? = null,
+        media: List<String> = emptyList(),
     ): Comment
 
     /** Deletes this account's own comment. */
@@ -421,7 +423,8 @@ class CoreSocial(
         postId: String,
         body: String,
         parentCommentId: String?,
-    ) = client.createComment(postId, body, parentCommentId)
+        media: List<String>,
+    ) = client.createComment(postId, body, parentCommentId, media)
 
     override fun deleteComment(commentId: String) = client.deleteComment(commentId)
 

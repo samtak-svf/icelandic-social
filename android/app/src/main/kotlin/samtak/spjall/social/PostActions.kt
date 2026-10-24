@@ -15,6 +15,12 @@ interface PostActions {
 
     fun send()
 
+    /** Opens the picker for the comment's one image. */
+    fun addImage()
+
+    /** Takes the comment's picked image out. */
+    fun removeImage()
+
     fun onReplyTo(comment: Comment?)
 
     fun react(kind: ReactionKind)
