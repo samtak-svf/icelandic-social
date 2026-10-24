@@ -1,6 +1,7 @@
 package samtak.spjall.ui
 
 import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,9 +27,14 @@ import org.junit.runner.RunWith
 class ComposerFieldImeTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
+    /** Read on the main thread: the window's insets belong to the view hierarchy's own thread. */
     private fun imeVisible(): Boolean {
-        val view = compose.activity.window.decorView
-        return ViewCompat.getRootWindowInsets(view)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+        var visible = false
+        compose.runOnUiThread {
+            val view = compose.activity.window.decorView
+            visible = ViewCompat.getRootWindowInsets(view)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+        }
+        return visible
     }
 
     private fun waitForIme(visible: Boolean) {
@@ -37,6 +43,9 @@ class ComposerFieldImeTest {
 
     @Test
     fun theFieldGivesUpFocusWhenTheKeyboardIsClosedSoResumeDoesNotReopenIt() {
+        // As MainActivity does: without edge-to-edge the window consumes the IME insets
+        // before Compose sees them, so WindowInsets.isImeVisible never changes.
+        compose.runOnUiThread { compose.activity.enableEdgeToEdge() }
         compose.setContent {
             var text by remember { mutableStateOf("") }
             ComposerField(
@@ -50,8 +59,10 @@ class ComposerFieldImeTest {
         compose.onNodeWithTag("field").assertIsFocused()
         waitForIme(visible = true)
 
-        WindowInsetsControllerCompat(compose.activity.window, compose.activity.window.decorView)
-            .hide(WindowInsetsCompat.Type.ime())
+        compose.runOnUiThread {
+            WindowInsetsControllerCompat(compose.activity.window, compose.activity.window.decorView)
+                .hide(WindowInsetsCompat.Type.ime())
+        }
         waitForIme(visible = false)
 
         compose.onNodeWithTag("field").assertIsNotFocused()
