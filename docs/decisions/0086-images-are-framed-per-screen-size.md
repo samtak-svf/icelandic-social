@@ -4,6 +4,7 @@
   both apps (#166, #167; 0.12.0)
 - Date: 2026-10-24
 - Decided by: Guðröður Atli Jónsson
+- Amended by: [0087](0087-wide-screens-get-their-own-layout.md) (the breakpoints are defined in the contract and drive the layout)
 - Amends: [0039](0039-profile-photo.md) (a stored master beside the fixed size; a framed crop
   instead of the centre), [0080](0080-communities-follow-the-familiar-group-layout.md) (the cover has
   one frame per window size class), [0009](0009-v1-scope.md) (the image editor is in v1)
