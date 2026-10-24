@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsFocused
@@ -37,6 +38,9 @@ class ComposerFieldImeTest {
         return visible
     }
 
+    private fun isFocused(): Boolean =
+        compose.onNodeWithTag("field").fetchSemanticsNode().config.getOrElse(SemanticsProperties.Focused) { false }
+
     private fun waitForIme(visible: Boolean) {
         compose.waitUntil(IME_TIMEOUT_MS) { imeVisible() == visible }
     }
@@ -65,6 +69,9 @@ class ComposerFieldImeTest {
         }
         waitForIme(visible = false)
 
+        // The window reports the IME hidden a frame before Compose's insets do, and focus
+        // is given up from those, so wait for it as for the IME rather than assert at once.
+        compose.waitUntil(IME_TIMEOUT_MS) { !isFocused() }
         compose.onNodeWithTag("field").assertIsNotFocused()
 
         val scenario = compose.activityRule.scenario
