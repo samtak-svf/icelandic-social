@@ -40,15 +40,20 @@ const TEMPLATE = {
 // shares one.
 const fetched = new Map<string, Promise<string | null>>();
 
-function pictureUrl(kind: PictureKind, id: string, version: string): Promise<string | null> {
-  const key = `${kind}:${id}:${version}`;
+function pictureUrl(
+  kind: PictureKind,
+  id: string,
+  version: string,
+  frame?: CoverFrame,
+): Promise<string | null> {
+  const key = `${kind}:${id}:${version}:${frame ?? ""}`;
   let pending = fetched.get(key);
   if (pending === undefined) {
     const path: Record<string, string> =
       kind === "person" ? { accountId: id } : { communityId: id };
     pending = call<{ status: number; data: unknown }>("GET", TEMPLATE[kind], {
       path,
-      query: { v: version },
+      query: { v: version, frame },
     })
       .then((answer) =>
         answer.status === 200 && answer.data instanceof Blob
@@ -104,32 +109,56 @@ export function Avatar({
   );
 }
 
-/** A community's wide cover, or nothing while it has none or has not come. */
+/** The cover's frames, one for each window size class (decision 0086). */
+type CoverFrame = "compact" | "medium" | "expanded";
+
+/** The media query that picks each frame: compact below 600, medium to below 840, expanded from 840. */
+const COVER_MEDIA = {
+  compact: "(max-width: 599px)",
+  medium: "(min-width: 600px) and (max-width: 839px)",
+} as const;
+
+/** The cover's box takes the shape of the frame shown, so no frame is cut again by a fixed height. */
+const COVER_BOX = "aspect-[3/1] min-[600px]:aspect-[4/1] min-[840px]:aspect-[8/3]";
+
+/**
+ * A community's cover, or nothing while it has none or has not come. One
+ * source for each size class; an image with no master serves its one object
+ * for every frame, which the box then crops as it always did.
+ */
 export function Cover({
   communityId,
   version,
   className = "",
 }: Readonly<{ communityId: string; version: string | null; className?: string }>) {
-  const [src, setSrc] = useState<string | null>(null);
+  const [srcs, setSrcs] = useState<Record<CoverFrame, string | null> | null>(null);
   useEffect(() => {
     let live = true;
-    setSrc(null);
+    setSrcs(null);
     if (version !== null) {
-      void pictureUrl("cover", communityId, version).then((url) => {
-        if (live) setSrc(url);
+      void Promise.all(
+        (["compact", "medium", "expanded"] as const).map((frame) =>
+          pictureUrl("cover", communityId, version, frame),
+        ),
+      ).then(([compact = null, medium = null, expanded = null]) => {
+        if (live) setSrcs({ compact, medium, expanded });
       });
     }
     return () => {
       live = false;
     };
   }, [communityId, version]);
-  if (src === null) return null;
+  if (srcs?.expanded == null) return null;
   return (
-    <img
-      src={src}
-      alt=""
-      aria-hidden="true"
-      className={`aspect-[8/3] w-full bg-muted object-cover ${className}`}
-    />
+    <picture>
+      <source media={COVER_MEDIA.compact} srcSet={srcs.compact ?? srcs.expanded} />
+      <source media={COVER_MEDIA.medium} srcSet={srcs.medium ?? srcs.expanded} />
+      <img
+        src={srcs.expanded}
+        alt=""
+        aria-hidden="true"
+        className={`${COVER_BOX} w-full bg-muted object-cover ${className}`}
+      />
+    </picture>
   );
 }

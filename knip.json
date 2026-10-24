@@ -16,7 +16,12 @@
       "project": ["*.mjs", "page/*.js"]
     },
     "web": {
-      "entry": ["src/routes/**/*.tsx", "src/generated/api.ts", "e2e/**/*.spec.ts"],
+      "entry": [
+        "src/routes/**/*.tsx",
+        "src/generated/api.ts",
+        "src/generated/frames.ts",
+        "e2e/**/*.spec.ts"
+      ],
       "project": ["src/**/*.{ts,tsx,css}", "e2e/**/*.ts"]
     }
   }

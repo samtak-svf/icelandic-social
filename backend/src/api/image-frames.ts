@@ -1,4 +1,6 @@
+// @web-omit-start
 import { z } from "@hono/zod-openapi";
+// @web-omit-end
 
 // Per-screen image framing (decision 0086). Pure: no Worker imports, so the
 // same module runs in tests, tooling and the contract. The placing rule below
@@ -40,6 +42,7 @@ export const FRAME_NAMES = {
   photo: ["square"],
 } as const satisfies Record<FrameKind, readonly AnyFrame[]>;
 
+// @web-omit-start
 /** The point of the image the person wants kept in view, as fractions of its width and height. */
 const Focus = z
   .object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })
@@ -70,6 +73,7 @@ export const Framing = z
   })
   .openapi("Framing");
 export type Framing = z.infer<typeof Framing>;
+// @web-omit-end
 
 /** A pixel rectangle of an image. */
 export type PixelRect = { x: number; y: number; w: number; h: number };
@@ -132,6 +136,7 @@ export function framesFor<K extends FrameKind>(
   return out as Record<FrameName<K>, PixelRect>;
 }
 
+// @web-omit-start
 /** The framing stored as JSON beside an image's version, or null when there is none or it does not parse. */
 export function parseFraming(stored: string | null): Framing | null {
   if (stored === null) return null;
@@ -142,6 +147,8 @@ export function parseFraming(stored: string | null): Framing | null {
     return null;
   }
 }
+
+// @web-omit-end
 
 /** Whether every override of `framing` names a frame `kind` has. */
 export function framingFits(kind: FrameKind, framing: Framing): boolean {

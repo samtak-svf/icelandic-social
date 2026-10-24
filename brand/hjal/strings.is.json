@@ -502,5 +502,14 @@
   "device_link_web_no_phone": "Til að tengja vafrann þarf appið að vera í síma sem er skráður inn á sama aðgang.",
   "chat_other_tab": "Samtölin eru opin í öðrum flipa.",
   "chat_use_here": "Nota hér",
-  "chat_device_lost": "Vafrinn er ekki lengur tengdur. Tengdu hann aftur með símanum."
+  "chat_device_lost": "Vafrinn er ekki lengur tengdur. Tengdu hann aftur með símanum.",
+  "image_frames_title": "Afmarka mynd",
+  "image_frames_hint": "Dragðu til að velja hvað sést",
+  "image_frames_zoom": "Stækkun",
+  "image_frames_advanced": "Sérsníða fyrir hvern skjá",
+  "image_frames_compact": "Sími",
+  "image_frames_medium": "Spjaldtölva",
+  "image_frames_expanded": "Tölva",
+  "image_frames_reset": "Nota sjálfvirka afmörkun",
+  "image_frames_no_master": "Settu myndina inn aftur til að breyta afmörkun"
 }

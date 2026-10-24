@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useId, useState, type ChangeEvent } from "react";
 import { useAccount } from "../account.tsx";
-import { refused, type Problem } from "../problem.ts";
-import { getPhoto, removePhoto, setPhoto, type Me } from "../generated/api.ts";
+import { refused } from "../problem.ts";
+import { getPhoto, removePhoto, type Me } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { squarePhoto } from "../photo.ts";
+import { useFrameSession } from "../social/frame-session.tsx";
+import { putFramed, type SendProblem } from "../social/frame-send.ts";
 import { Button, ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
 import { VerifyCta } from "../ui/verify.tsx";
 
@@ -87,29 +88,26 @@ function PhotoControls({ me }: Readonly<{ me: Me }>) {
   const { refresh } = useAccount();
   const input = useId();
   const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<Problem | "rejected" | null>(null);
+  const [problem, setProblem] = useState<SendProblem | null>(null);
+  const { sheet, choose, reframe } = useFrameSession();
 
   async function upload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    setBusy(true);
     setProblem(null);
-    try {
-      const body = await squarePhoto(file).catch(() => null);
-      if (body === null) {
-        setProblem("rejected");
-        return;
-      }
-      const answer = await setPhoto({ body });
-      if (answer.status === 200) await refresh();
-      else if (answer.status === 400 || answer.status === 413) setProblem("rejected");
-      else setProblem(refused(answer.data));
-    } catch {
-      setProblem({ kind: "unreachable" });
-    } finally {
-      setBusy(false);
-    }
+    setProblem(
+      await choose("photo", file, async (master, framing) => {
+        const failed = await putFramed({ kind: "account" }, master, framing);
+        if (failed === null) await refresh();
+        return failed;
+      }),
+    );
+  }
+
+  async function frameAgain() {
+    setProblem(null);
+    setProblem(await reframe("photo", { kind: "account" }, null, () => void refresh()));
   }
 
   async function remove() {
@@ -146,6 +144,11 @@ function PhotoControls({ me }: Readonly<{ me: Me }>) {
           />
         </label>
         {me.photo !== null && (
+          <Button disabled={busy} onClick={() => void frameAgain()}>
+            {strings.image_frames_title}
+          </Button>
+        )}
+        {me.photo !== null && (
           <Button tone="danger" disabled={busy} onClick={() => void remove()}>
             {strings.photo_remove}
           </Button>
@@ -155,10 +158,13 @@ function PhotoControls({ me }: Readonly<{ me: Me }>) {
       <Status>
         {busy
           ? strings.loading
-          : problem === "rejected"
-            ? strings.photo_upload_failed
-            : problem !== null && <ProblemText problem={problem} />}
+          : problem === "no_master"
+            ? strings.image_frames_no_master
+            : typeof problem === "string"
+              ? strings.photo_upload_failed
+              : problem !== null && <ProblemText problem={problem} />}
       </Status>
+      {sheet}
     </section>
   );
 }
