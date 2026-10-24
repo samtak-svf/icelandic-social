@@ -1,3 +1,4 @@
+import type { HonoRequest } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { AppEnv } from "./app.ts";
 import { minClientVersions, updateUrls } from "./env/index.ts";
@@ -36,9 +37,21 @@ export function belowFloor(env: Env, header: string | undefined): FloorRefusal |
   return belowFloorOf(minClientVersions(env), header, updateUrls(env));
 }
 
+/**
+ * The build a request names: its Spjall-Client header, or, on a WebSocket
+ * upgrade, the `client` query parameter, since a browser cannot set a
+ * header on its socket (decision 0081).
+ */
+function namedClient(request: HonoRequest): string | undefined {
+  const header = request.header(CLIENT_HEADER);
+  if (header !== undefined) return header;
+  if (request.header("upgrade")?.toLowerCase() !== "websocket") return undefined;
+  return request.query("client");
+}
+
 /** Every /v1 route refuses a build below its platform's floor (decision 0030). */
 export const clientFloor = createMiddleware<AppEnv>(async (c, next) => {
-  const refusal = belowFloor(c.env, c.req.header(CLIENT_HEADER));
+  const refusal = belowFloor(c.env, namedClient(c.req));
   if (!refusal) return next();
   if (refusal.error === "invalid_request") return fail(c, 400, refusal.error);
   return fail(c, 426, refusal.error, {

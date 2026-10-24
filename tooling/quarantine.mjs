@@ -40,7 +40,11 @@ export function findSkips(file, source) {
   const how = /\.(ts|mjs)$/.test(file)
     ? [
         /\b(?:it|test|describe)\.(?:skip|todo|skipIf\([^)]*\))\s*\(\s*(?:(["'`])(.*?)\1)?/g,
-        (m) => m[2],
+        // A conditional skip (a condition first, then a reason) skips the test
+        // that follows it, and is named by that test.
+        (m, at) =>
+          m[2] ??
+          /\b(?:it|test|describe)\s*\(\s*(["'`])(.*?)\1/.exec(source.slice(at + m[0].length))?.[2],
       ]
     : file.endsWith(".rs")
       ? [/#\[ignore\b/g, (_, at) => /\bfn (\w+)/.exec(source.slice(at))?.[1]]

@@ -15,5 +15,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "build.ts", "vitest.config.ts"]
+  "include": ["src", "build.ts", "integrity.ts", "vitest.config.ts"]
 }

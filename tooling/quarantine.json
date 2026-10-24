@@ -15,6 +15,16 @@
       "file": "core/client/tests/backend.rs",
       "name": "a_browser_session_links_to_a_phone_through_the_worker",
       "reason": "Needs cf dev --mode interop; interop.yml runs it with --ignored."
+    },
+    {
+      "file": "core/client/tests/backend.rs",
+      "name": "a_phone_links_a_real_browser",
+      "reason": "The phone's half of web/e2e/chat.spec.ts; interop.yml runs it through that spec, with SPJALL_BROWSER_DIR."
+    },
+    {
+      "file": "web/e2e/chat.spec.ts",
+      "name": "a phone links this browser, which shows the phone's message and replies",
+      "reason": "Needs cf dev --mode interop and the phone's half in core/; interop.yml runs it with SPJALL_BROWSER_PHONE."
     }
   ]
 }

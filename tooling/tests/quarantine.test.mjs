@@ -28,6 +28,11 @@ describe("quarantine", () => {
     expect(found).toEqual(["reconnects", "later", "writes_it", "signs in", "testUpload"]);
   });
 
+  it("names a conditional skip by the test it skips", () => {
+    const source = `test.${"skip"}(!process.env.X, "needs X");\n\ntest("links a browser", () => {});`;
+    expect(findSkips("e.spec.ts", source).map((s) => s.name)).toEqual(["links a browser"]);
+  });
+
   it("fails on a skip with no entry, and on an entry with no skip", () => {
     const skip = { file: "a.test.ts", name: "reconnects", line: 3 };
     expect(checkQuarantine([], [skip], "2026-10-10").join()).toContain("without a");

@@ -2,7 +2,7 @@ import { test as base, type Page } from "@playwright/test";
 import ids from "../../identifiers/ids.json" with { type: "json" };
 
 /** Where `cf dev` listens. */
-const DEV = process.env.SPJALL_DEV_URL ?? "http://127.0.0.1:8787";
+export const DEV = process.env.SPJALL_DEV_URL ?? "http://127.0.0.1:8787";
 
 /** The web's real origin, which the session cookie and its Origin check name. */
 export const WEB = `https://${ids.hosts.web}`;

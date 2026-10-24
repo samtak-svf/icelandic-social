@@ -5,6 +5,7 @@ import viteReact, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Plugin, PluginOption } from "vite";
+import { integrity } from "./integrity.ts";
 
 /**
  * The web app's Vite plugins, after `cloudflare()` in backend/vite.config.ts,
@@ -21,6 +22,7 @@ export function web(): PluginOption[] {
     viteReact(),
     babel({ presets: [reactCompilerPreset()] }),
     preloadClosure(),
+    integrity(),
   ];
 }
 

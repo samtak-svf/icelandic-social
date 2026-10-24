@@ -1,7 +1,8 @@
 # 0081. The browser runs the blocking core in a worker, over synchronous requests
 
 - Status: accepted; implemented in the core (`spjall-wasm`: the worker transport, the blob store, the
-  link QR); the web client not yet (#43)
+  link QR) and the web client (the chat worker, the page's socket, the integrity of every
+  asset, the policy; #43)
 - Date: 2026-10-23
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0064](0064-non-phone-devices-are-linked-devices.md) (browser chat waits for the

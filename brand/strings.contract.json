@@ -71,7 +71,7 @@
       "description": "Banner in a conversation no other account is in any more, as a 1:1 after a block; nothing can be sent there (docs/decisions/0024)."
     },
     "conversation_alone_title": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Title of a conversation no other account is in any more; a conversation is otherwise titled by its members (docs/decisions/0022)."
     },
     "conversation_excluded_banner": {
@@ -95,8 +95,12 @@
       "description": "Empty message composer."
     },
     "send": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Send button."
+    },
+    "history_load_older": {
+      "surfaces": ["web"],
+      "description": "Button above a conversation's messages: load the older ones."
     },
     "message_sending": {
       "surfaces": ["android", "ios", "web"],
@@ -138,7 +142,7 @@
       }
     },
     "unread_count": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Unread messages in a conversation.",
       "plural": true,
       "placeholders": {

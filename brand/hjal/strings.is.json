@@ -23,6 +23,7 @@
   "invite": "Bjóða",
   "composer_placeholder": "Skrifaðu skilaboð…",
   "send": "Senda",
+  "history_load_older": "Sækja eldri skilaboð",
   "message_sending": "Í sendingu",
   "message_failed": "Ekki send.",
   "day_today": "Í dag",

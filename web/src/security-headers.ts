@@ -6,6 +6,10 @@
 // injected script too. No third-party origin appears anywhere: every script,
 // style, image and request is this host's own.
 //
+// 'wasm-unsafe-eval' lets the chat worker compile the core's wasm, and
+// nothing else (decision 0081): it allows no eval of JavaScript. The worker
+// runs only from this host (worker-src 'self').
+//
 // style-src keeps 'unsafe-inline' and carries no nonce: a nonce makes browsers
 // ignore 'unsafe-inline', and React's `style={}` attributes cannot carry one.
 // Inline style cannot run script.
@@ -23,7 +27,8 @@ export function cspNonce(): string {
 function contentSecurityPolicy(nonce: string, devHost?: string): string {
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}'`,
+    `script-src 'self' 'nonce-${nonce}' 'wasm-unsafe-eval'`,
+    "worker-src 'self'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data:",
     `connect-src 'self'${devHost ? ` ws://${devHost}` : ""}`,

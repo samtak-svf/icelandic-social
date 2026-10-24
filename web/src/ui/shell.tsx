@@ -60,7 +60,7 @@ export function Shell({ children }: Readonly<{ children: ReactNode }>) {
     case "signed-in":
       break;
   }
-  // Below 640px the four places sit in a bar at the bottom of the screen,
+  // Below 640px the five places sit in a bar at the bottom of the screen,
   // above it in the header; `--tabbar-height` is what a bottom-pinned box
   // (the comment box) keeps clear of (decision 0080).
   return (
@@ -78,6 +78,9 @@ export function Shell({ children }: Readonly<{ children: ReactNode }>) {
               </NavLink>
               <NavLink to="/communities" icon={<PeopleIcon />}>
                 {strings.tab_communities}
+              </NavLink>
+              <NavLink to="/conversations" icon={<ChatIcon />}>
+                {strings.tab_conversations}
               </NavLink>
               <NavLink
                 to="/notifications"
@@ -104,7 +107,7 @@ export function Shell({ children }: Readonly<{ children: ReactNode }>) {
   );
 }
 
-type Tab = "/" | "/communities" | "/notifications" | "/settings";
+type Tab = "/" | "/communities" | "/conversations" | "/notifications" | "/settings";
 
 function NavLink({
   to,
@@ -154,6 +157,11 @@ const PeopleIcon = () => (
   <Icon>
     <circle cx="9" cy="8" r="3.5" />
     <path d="M2 20a7 7 0 0 1 14 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14a6 6 0 0 1 4 6" />
+  </Icon>
+);
+const ChatIcon = () => (
+  <Icon>
+    <path d="M4 5h16v11H9l-5 4z" />
   </Icon>
 );
 const BellIcon = () => (
