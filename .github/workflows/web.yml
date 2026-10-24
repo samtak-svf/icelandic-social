@@ -42,6 +42,14 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
+      # The chat worker's core (decision 0081): the pinned build, checksum-verified.
+      - name: Toolchain
+        working-directory: core
+        run: rustup toolchain install
+      - name: Core for the web (pinned, checksum-verified)
+        working-directory: core
+        run: cargo xtask fetch web
+
       - name: The Worker builds, with the web app
         run: pnpm --filter spjall-backend build
 
