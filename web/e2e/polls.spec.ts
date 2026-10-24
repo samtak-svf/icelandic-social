@@ -26,6 +26,7 @@ test("a poll shows its total until you vote, then results; the author closes it"
   await join(voter, address);
   const card = post(voter, "Hvar á fundurinn að vera?");
   await expect(card.getByText(strings.poll_votes({ count: 0 }))).toBeVisible();
+  await expect(card.getByText("%")).toHaveCount(0);
   await card.getByRole("radio", { name: "Í salnum" }).click();
   await expect(card.getByText("1 · 100 %")).toBeVisible();
   await expect(card.getByText(strings.poll_votes({ count: 1 }))).toBeVisible();
