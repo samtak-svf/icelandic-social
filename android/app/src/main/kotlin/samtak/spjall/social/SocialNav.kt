@@ -318,6 +318,26 @@ internal fun WithPostImages(
     CompositionLocalProvider(LocalPostImages provides images, content = content)
 }
 
+/**
+ * Leaves the post on top of the back stack for its community. Back when the post was opened from that community;
+ * otherwise (a link, a notification) into it in place of the post, so the community's own back never returns to the
+ * post. A copy of the community already on top is left alone, so it is never stacked twice.
+ */
+internal fun NavController.leavePostForCommunity(communityId: String) {
+    fun isThisCommunity(entry: NavBackStackEntry?) =
+        entry?.destination?.route == "${SocialRoutes.COMMUNITY}/{id}" &&
+            entry.arguments?.getString("id") == communityId
+    when {
+        // A second tap while the post is leaving finds the community already on top.
+        isThisCommunity(currentBackStackEntry) -> Unit
+        isThisCommunity(previousBackStackEntry) -> popBackStack()
+        else ->
+            navigate(SocialRoutes.community(communityId)) {
+                popUpTo(SocialRoutes.POST_PATTERN) { inclusive = true }
+            }
+    }
+}
+
 @Composable
 private fun PostEntry(
     id: String,
@@ -334,26 +354,13 @@ private fun PostEntry(
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
             uri?.let { model.pick(files.pickedPhoto(it)) }
         }
-    // Back when the post was opened from its community, otherwise (a notification) into it, in place of the post.
-    val community: (String, Boolean) -> Unit = { communityId, gone ->
-        val route = SocialRoutes.community(communityId)
-        val previous = nav.previousBackStackEntry
-        val fromIt =
-            previous?.destination?.route == "${SocialRoutes.COMMUNITY}/{id}" &&
-                previous.arguments?.getString("id") == communityId
-        when {
-            fromIt -> nav.popBackStack()
-            gone -> nav.navigate(route) { popUpTo(SocialRoutes.POST_PATTERN) { inclusive = true } }
-            else -> nav.navigate(route)
-        }
-    }
-    LaunchedEffect(model) { model.deleted.collect { community(it, true) } }
+    LaunchedEffect(model) { model.deleted.collect { nav.leavePostForCommunity(it) } }
     PostScreen(
         state,
         focusComment = focusComment,
         actions =
             object : PostActions {
-                override fun community(communityId: String) = community(communityId, false)
+                override fun community(communityId: String) = nav.leavePostForCommunity(communityId)
 
                 override fun deletePost() = model.deletePost()
 

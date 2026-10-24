@@ -7,11 +7,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -74,21 +77,39 @@ fun FrameSheet(session: FrameSession = LocalFrameSession.current) {
         onDismissRequest = session::close,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
-        Box(Modifier.fillMaxSize().background(Palette.bg)) {
-            when (val s = state) {
+        FrameSheetRoot(state, session::save, session::close)
+    }
+}
+
+/**
+ * What the dialog shows for [state]. The background draws edge to edge, the content stays inside [insets]: the
+ * status and navigation bars, and a cutout, would otherwise cover the title and the Save row.
+ */
+@Composable
+internal fun FrameSheetRoot(
+    state: FrameState,
+    onSave: (Framing) -> Unit,
+    onClose: () -> Unit,
+    insets: WindowInsets = WindowInsets.safeDrawing,
+    rules: FrameRules = CoreFrameRules,
+) {
+    Box(Modifier.fillMaxSize().background(Palette.bg)) {
+        Box(Modifier.fillMaxSize().windowInsetsPadding(insets)) {
+            when (state) {
                 FrameState.Closed -> Unit
                 FrameState.Loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
-                is FrameState.Unavailable -> Unavailable(s.problem, session::close)
+                is FrameState.Unavailable -> Unavailable(state.problem, onClose)
                 is FrameState.Editing ->
                     FrameSheetContent(
-                        kind = s.request.kind,
-                        image = s.image,
-                        base = s.base,
+                        kind = state.request.kind,
+                        image = state.image,
+                        base = state.base,
                         widthDp = windowWidthDp(),
-                        saving = s.saving,
-                        problem = s.problem,
-                        onSave = session::save,
-                        onCancel = session::close,
+                        saving = state.saving,
+                        problem = state.problem,
+                        onSave = onSave,
+                        onCancel = onClose,
+                        rules = rules,
                     )
             }
         }
@@ -102,7 +123,11 @@ private fun Unavailable(
 ) {
     Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(GAP.dp)) {
         if (problem == null) {
-            Text(stringResource(R.string.image_frames_no_master), color = Palette.fg)
+            Text(
+                stringResource(R.string.image_frames_no_master),
+                color = Palette.fg,
+                modifier = Modifier.testTag("frame-unavailable"),
+            )
         } else {
             ProblemCard(problem, onClose)
         }
@@ -142,7 +167,11 @@ fun FrameSheetContent(
         modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(GAP.dp),
     ) {
-        Text(stringResource(R.string.image_frames_title), color = Palette.fg)
+        Text(
+            stringResource(R.string.image_frames_title),
+            color = Palette.fg,
+            modifier = Modifier.testTag("frame-title"),
+        )
         Text(stringResource(R.string.image_frames_hint), style = HINT, color = Palette.fg)
         val shown = if (advanced) rules.frames(kind) else listOf(device)
         // Side by side from the medium size class up, which the core defines (decision 0087).
