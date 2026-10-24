@@ -300,6 +300,8 @@
   "comment_add_image": "Bæta við mynd",
   "comment_image_alt": "Mynd í athugasemdinni",
   "image_viewer": "Mynd á öllum skjánum",
+  "image_viewer_previous": "Fyrri mynd",
+  "image_viewer_next": "Næsta mynd",
   "comment_publish": "Senda",
   "comments_empty": "Engar athugasemdir enn.",
   "comment_reply": "Svara",

@@ -1221,6 +1221,14 @@
       "surfaces": ["web", "android", "ios"],
       "description": "Accessible name of the full-screen view of a post or comment image (decision 0082)."
     },
+    "image_viewer_previous": {
+      "surfaces": ["web", "android", "ios"],
+      "description": "Accessible name of the full-screen viewer's button that shows the previous image (decision 0082)."
+    },
+    "image_viewer_next": {
+      "surfaces": ["web", "android", "ios"],
+      "description": "Accessible name of the full-screen viewer's button that shows the next image (decision 0082)."
+    },
     "comment_publish": {
       "surfaces": ["android", "ios", "web"],
       "description": "Button: send the comment being written."

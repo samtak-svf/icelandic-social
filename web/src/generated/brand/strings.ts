@@ -269,6 +269,10 @@ export const strings = {
   comment_image_alt: "Mynd í athugasemdinni",
   /** Accessible name of the full-screen view of a post or comment image (decision 0082). */
   image_viewer: "Mynd á öllum skjánum",
+  /** Accessible name of the full-screen viewer's button that shows the previous image (decision 0082). */
+  image_viewer_previous: "Fyrri mynd",
+  /** Accessible name of the full-screen viewer's button that shows the next image (decision 0082). */
+  image_viewer_next: "Næsta mynd",
   /** Button: send the comment being written. */
   comment_publish: "Senda",
   /** A post with no comments yet. */
