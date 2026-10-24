@@ -7,5 +7,12 @@
 //! clippy cover it.
 
 pub mod blobs;
+pub mod dto;
+pub mod error;
 pub mod qr;
 pub mod request;
+
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+mod api;
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+pub mod xhr;

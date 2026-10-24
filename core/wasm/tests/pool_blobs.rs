@@ -33,7 +33,10 @@ fn every_method(blobs: &PoolBlobs) {
     assert_eq!(blobs.len(Path::new("/m/a.bin")).unwrap(), 5);
 
     // A missing blob is NotFound, as on a file system.
-    let missing = blobs.open_read(Path::new("/m/none")).err().expect("missing");
+    let missing = blobs
+        .open_read(Path::new("/m/none"))
+        .err()
+        .expect("missing");
     assert_eq!(missing.kind(), std::io::ErrorKind::NotFound);
     assert_eq!(
         blobs.len(Path::new("/m/none")).unwrap_err().kind(),
@@ -52,9 +55,13 @@ fn every_method(blobs: &PoolBlobs) {
     assert!(!blobs.exists(Path::new("/m/b.bin")));
 
     // Copy keeps the source; rename does not.
-    blobs.copy(Path::new("/m/a.bin"), Path::new("/m/c.bin")).unwrap();
+    blobs
+        .copy(Path::new("/m/a.bin"), Path::new("/m/c.bin"))
+        .unwrap();
     assert_eq!(get(blobs, "/m/c.bin"), b"hi");
-    blobs.rename(Path::new("/m/c.bin"), Path::new("/m/d.bin")).unwrap();
+    blobs
+        .rename(Path::new("/m/c.bin"), Path::new("/m/d.bin"))
+        .unwrap();
     assert!(!blobs.exists(Path::new("/m/c.bin")));
     assert_eq!(get(blobs, "/m/d.bin"), b"hi");
     assert!(blobs.copy(Path::new("/m/none"), Path::new("/m/x")).is_err());

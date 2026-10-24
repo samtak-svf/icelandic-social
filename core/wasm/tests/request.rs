@@ -53,7 +53,10 @@ fn a_range_includes_both_ends() {
 #[test]
 fn a_plain_request_carries_only_the_client() {
     let headers = request_headers(&request());
-    assert_eq!(header(&headers, "Spjall-Client").unwrap(), client_header(&request()));
+    assert_eq!(
+        header(&headers, "Spjall-Client").unwrap(),
+        client_header(&request())
+    );
     assert_eq!(header(&headers, "Authorization"), None);
     assert_eq!(header(&headers, "Content-Type"), None);
     assert_eq!(header(&headers, "Range"), None);
