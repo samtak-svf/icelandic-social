@@ -17,9 +17,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.test.platform.app.InstrumentationRegistry
 import com.github.takahirom.roborazzi.captureRoboImage
-import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -38,8 +36,8 @@ import samtak.spjall.core.Mute
 import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
 import samtak.spjall.socket.item
+import samtak.spjall.ui.IcelandZone
 import samtak.spjall.ui.clockTime
-import java.util.TimeZone
 import android.graphics.Color as AndroidColor
 
 /**
@@ -55,6 +53,8 @@ class ConversationInfoScreenshotTest {
     val folder = TemporaryFolder()
 
     @get:Rule val compose = createComposeRule()
+
+    @get:Rule val zone = IcelandZone()
 
     private val calls = mutableListOf<String>()
 
@@ -111,15 +111,6 @@ class ConversationInfoScreenshotTest {
 
     private val anna = Person("a2", "Anna Jónsdóttir", true)
     private val bjorn = Person("a3", "Björn Sigurðsson", false)
-
-    // Times show on a 24-hour clock in the device's zone; fixing it keeps the images still.
-    private val savedZone = TimeZone.getDefault()
-
-    @Before
-    fun fixZone() = TimeZone.setDefault(TimeZone.getTimeZone("Atlantic/Reykjavik"))
-
-    @After
-    fun restoreZone() = TimeZone.setDefault(savedZone)
 
     private fun media(
         seq: ULong,

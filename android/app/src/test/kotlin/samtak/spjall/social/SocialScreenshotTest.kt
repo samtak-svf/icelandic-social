@@ -29,6 +29,7 @@ import samtak.spjall.core.ReactionCount
 import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportTargetKind
 import samtak.spjall.core.SocialNotificationKind
+import samtak.spjall.ui.IcelandZone
 import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.wordsCut
 import java.lang.reflect.Proxy
@@ -43,6 +44,8 @@ import java.lang.reflect.Proxy
 @Config(sdk = [SCREENSHOT_SDK], qualifiers = SCREENSHOT_DEVICE, fontScale = 1f)
 class SocialScreenshotTest {
     @get:Rule val compose = createComposeRule()
+
+    @get:Rule val zone = IcelandZone()
 
     private val choir = community("k1", role = CommunityRole.OWNER).copy(description = "Æfingar á þriðjudögum")
     private val withImages =

@@ -6,8 +6,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
-import org.junit.After
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -24,8 +22,8 @@ import samtak.spjall.core.Mute
 import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
 import samtak.spjall.socket.Connection
+import samtak.spjall.ui.IcelandZone
 import samtak.spjall.ui.SpjallTheme
-import java.util.TimeZone
 
 /**
  * What the conversation list looks like, compared pixel by pixel with the images in
@@ -38,6 +36,8 @@ import java.util.TimeZone
 @Config(sdk = [SCREENSHOT_SDK], qualifiers = SCREENSHOT_DEVICE, fontScale = 1f)
 class ConversationsScreenshotTest {
     @get:Rule val compose = createComposeRule()
+
+    @get:Rule val zone = IcelandZone()
 
     private val actions =
         object : ConversationsActions {
@@ -65,16 +65,6 @@ class ConversationsScreenshotTest {
 
     private val anna = Person("a2", "Anna Jónsdóttir", true)
     private val bjarni = Person("a3", "Bjarni Pálsson", false)
-
-    // The row stamps a message by how long ago it was; one from a past year shows its date, the
-    // same on any day the test runs, once the zone is fixed.
-    private val savedZone = TimeZone.getDefault()
-
-    @Before
-    fun fixZone() = TimeZone.setDefault(TimeZone.getTimeZone("Atlantic/Reykjavik"))
-
-    @After
-    fun restoreZone() = TimeZone.setDefault(savedZone)
 
     private fun last(
         sender: Person,
