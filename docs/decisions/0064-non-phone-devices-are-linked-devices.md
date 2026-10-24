@@ -2,7 +2,8 @@
 
 - Status: accepted; implemented in the core seams, the backend enrolment and history from a
   sibling device (#40, #41, #42; the format and upload are 0074), and the phone's approval
-  (0077, #82); the web client not yet (#43)
+  (0077, #82), and the web client: the store's two-part key, one tab
+  owning the store, and the link page (#43)
 - Date: 2026-10-17
 - Decided by: Guðröður Atli Jónsson
 - Builds on: [0002](0002-mls-end-to-end-encryption.md), [0014](0014-accounts-devices-and-auth.md)
