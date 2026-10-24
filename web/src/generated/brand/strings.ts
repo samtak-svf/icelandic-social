@@ -263,6 +263,12 @@ export const strings = {
   post_back: "Til baka í samfélagið",
   /** Label of the field where a member writes a comment. */
   comment_compose: "Skrifa athugasemd",
+  /** Opens the picker for the one image a comment may carry (decision 0082). */
+  comment_add_image: "Bæta við mynd",
+  /** Text alternative of the image in a comment (decision 0082). */
+  comment_image_alt: "Mynd í athugasemdinni",
+  /** Accessible name of the full-screen view of a post or comment image (decision 0082). */
+  image_viewer: "Mynd á öllum skjánum",
   /** Button: send the comment being written. */
   comment_publish: "Senda",
   /** A post with no comments yet. */
