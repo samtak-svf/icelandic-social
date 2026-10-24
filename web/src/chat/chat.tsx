@@ -27,6 +27,8 @@ interface ChatValue {
   useHere: () => void;
   /** Asks the worker again where it stands, after a link completed. */
   restart: () => void;
+  /** Sends what the core has queued, as after a send. */
+  sync: () => void;
   /** Calls `listener` with each batch of events the core reports; returns the way to stop. */
   subscribe: (listener: (events: CoreEvent[]) => void) => () => void;
 }
@@ -70,14 +72,15 @@ export function ChatProvider({
   }, [deps]);
   const useHere = useCallback(() => session.current?.useHere(), []);
   const restart = useCallback(() => session.current?.restart(), []);
+  const sync = useCallback(() => session.current?.sync(), []);
   const subscribe = useCallback((listener: (events: CoreEvent[]) => void) => {
     listeners.current.add(listener);
     return () => void listeners.current.delete(listener);
   }, []);
   const call = state === "starting" ? undefined : session.current?.call();
   const value = useMemo(
-    () => ({ state, call, useHere, restart, subscribe }),
-    [state, call, useHere, restart, subscribe],
+    () => ({ state, call, useHere, restart, sync, subscribe }),
+    [state, call, useHere, restart, sync, subscribe],
   );
   return <ChatContext value={value}>{children}</ChatContext>;
 }

@@ -6,7 +6,7 @@
 import type { CoreEvent } from "../generated/core.d.ts";
 import { type ChatCall, ChatFailure, type Start } from "./protocol.ts";
 import type { Owned, OwnOptions } from "./owner.ts";
-import { chatSocket } from "./socket.ts";
+import { type ChatSocket, chatSocket } from "./socket.ts";
 
 /** Where the chat stands in this tab. */
 export type ChatState =
@@ -40,6 +40,8 @@ export interface ChatSession {
   useHere(): void;
   /** Asks the worker where it stands again, after a link completed. */
   restart(): void;
+  /** Sends what the core has queued; nothing until the chat is ready. */
+  sync(): void;
   /** Ends the worker, the socket and the lock. */
   close(): void;
 }
@@ -50,7 +52,7 @@ export function chatSession(
   onEvents: (events: CoreEvent[]) => void,
 ): ChatSession {
   let owned: Owned | undefined;
-  let socket: { close(): void } | undefined;
+  let socket: ChatSocket | undefined;
   /** Ends this round's wait for the lock. */
   let waiting: AbortController | undefined;
   let closed = false;
@@ -121,6 +123,7 @@ export function chatSession(
       const mine = round;
       run(mine, current).catch(() => emit(mine, "failed"));
     },
+    sync: () => socket?.sync(),
     close() {
       closed = true;
       drop();

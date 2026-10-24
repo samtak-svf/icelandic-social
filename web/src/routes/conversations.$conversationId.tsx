@@ -16,7 +16,7 @@ export const Route = createFileRoute("/conversations/$conversationId")({ compone
 
 function Thread() {
   const { conversationId } = Route.useParams();
-  const { call, subscribe } = useChat();
+  const { call, subscribe, sync } = useChat();
   const [items, setItems] = useState<Item[]>([]);
   const [more, setMore] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -80,7 +80,9 @@ function Thread() {
     try {
       await call("send", conversationId, body);
       setText("");
+      // Queued: it shows as being sent now, and goes out with the sync.
       reload();
+      sync();
     } catch {
       setFailed(true);
     } finally {

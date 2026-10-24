@@ -117,4 +117,23 @@ describe("the page's socket (decision 0081)", () => {
     await settle();
     expect(h.sockets).toHaveLength(1);
   });
+
+  it("syncs on request, so a queued send goes out, and sends the answer only on an open socket", async () => {
+    const h = harness(async (op) => (op === "sync" ? { events: [], frames: ["ack"] } : nothing));
+    h.handle.sync();
+    await settle();
+    expect(h.call).toHaveBeenCalledWith("sync");
+    expect(h.sockets[0]!.sent).toEqual([]);
+
+    h.sockets[0]!.emit("open");
+    await settle();
+    h.handle.sync();
+    await settle();
+    expect(h.sockets[0]!.sent).toEqual(["ack", "ack"]);
+
+    h.sockets[0]!.emit("close");
+    h.handle.sync();
+    await settle();
+    expect(h.sockets[0]!.sent).toHaveLength(2);
+  });
 });

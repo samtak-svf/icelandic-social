@@ -14,7 +14,12 @@ function setup(opts: { owns?: (options: OwnOptions) => Promise<Owned>; start?: S
   let take!: () => void;
   const release = vi.fn();
   const owned: Owned = { call, taken: new Promise((r) => (take = r)), release };
-  const sockets: { url: string; deps: SocketDeps; close: ReturnType<typeof vi.fn> }[] = [];
+  const sockets: {
+    url: string;
+    deps: SocketDeps;
+    close: ReturnType<typeof vi.fn>;
+    sync: ReturnType<typeof vi.fn>;
+  }[] = [];
   const own = vi.fn((options: OwnOptions) =>
     opts.owns ? opts.owns(options) : Promise.resolve(owned),
   );
@@ -23,8 +28,9 @@ function setup(opts: { owns?: (options: OwnOptions) => Promise<Owned>; start?: S
     start: () => Promise.resolve(opts.start ?? { state: "ready", deviceId: "d1" }),
     socket: (url, socketDeps) => {
       const close = vi.fn();
-      sockets.push({ url, deps: socketDeps, close });
-      return { close };
+      const sync = vi.fn();
+      sockets.push({ url, deps: socketDeps, close, sync });
+      return { close, sync };
     },
     socketUrl: () => "wss://x/v1/ws",
     connect: () => {
@@ -124,6 +130,14 @@ describe("chatSession", () => {
     const batch: CoreEvent[] = [{ kind: "joined", conversation: "c" }];
     t.sockets[0]!.deps.onEvents(batch);
     expect(t.events).toEqual([batch]);
+  });
+
+  test("sync asks the socket, and does nothing before the chat is ready", async () => {
+    const t = setup();
+    t.session.sync();
+    await tick();
+    t.session.sync();
+    expect(t.sockets[0]!.sync).toHaveBeenCalledTimes(1);
   });
 
   test("close releases the lock, closes the socket and goes quiet", async () => {
