@@ -119,8 +119,12 @@ next try is from an Apple device. Until the team exists:
   waits for the maintainer to approve the `testflight` environment.
 - Testers are in the internal group "Prufuflug", which has access to every build, so a new
   build needs no assignment (App Store Connect refuses one for an internal group with 422).
-  Add a tester by email: `POST /v1/betaTesters` with the email and the group. Linking an
-  existing tester record to the group answers 409 "Tester(s) cannot be assigned".
+  An internal tester must first be an App Store Connect user (decision 0084): invite them with
+  the role Marketing only and access to the beta app only, never every app. Once they have
+  accepted, add them by email: `POST /v1/betaTesters` with the email and the group. Linking an
+  existing tester record to the group answers 409 "Tester(s) cannot be assigned". Changing a
+  user's role removes them from every internal group without a word, so add them again and
+  read the group back.
 - App Store Connect reports a refused upload under `/v1/apps/{id}/buildUploads` (state
   `FAILED`, with the error codes), while the upload step can keep waiting. That endpoint takes
   no `sort`.
