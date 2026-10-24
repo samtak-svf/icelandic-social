@@ -1,5 +1,6 @@
 import type {
   Action,
+  COMMUNITY_ANONYMOUS_ACTIONS,
   COMMUNITY_IMAGE_ACTIONS,
   COMMUNITY_PIN_ACTIONS,
   COMMUNITY_POLL_ACTIONS,
@@ -19,7 +20,8 @@ type Logged =
   | "restore_community"
   | (typeof COMMUNITY_IMAGE_ACTIONS)[number]
   | (typeof COMMUNITY_PIN_ACTIONS)[number]
-  | (typeof COMMUNITY_POLL_ACTIONS)[number];
+  | (typeof COMMUNITY_POLL_ACTIONS)[number]
+  | (typeof COMMUNITY_ANONYMOUS_ACTIONS)[number];
 type Kind = (typeof REPORT_KINDS)[number] | "report";
 
 export type Entry = {
@@ -40,7 +42,12 @@ export function entry(env: Env, e: Entry): D1PreparedStatement {
       `INSERT INTO moderation_log
          (community_id, actor_id, as_platform, action, target_kind, target_id, target_account,
           reason, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6,
+               -- An anonymous post's author is named in no entry (decision 0091).
+               CASE WHEN ?5 = 'post' AND EXISTS (SELECT 1 FROM post_index x
+                                                  WHERE x.post_id = ?6 AND x.anonymous = 1)
+                    THEN NULL ELSE ?7 END,
+               ?8, ?9)`,
     )
     .bind(
       e.communityId,

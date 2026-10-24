@@ -36,6 +36,25 @@ const IMAGE_ACTIONS = {
   cover: { set: "set_community_cover", remove: "remove_community_cover" },
 } as const;
 
+/** The entry for the owner switching anonymous posts on or off (decision 0091). */
+export function anonymousRecord(
+  env: Env,
+  communityId: string,
+  by: string,
+  on: boolean,
+): D1PreparedStatement {
+  return entry(env, {
+    communityId,
+    actorId: by,
+    asPlatform: false,
+    action: on ? "anonymous_posts_on" : "anonymous_posts_off",
+    targetKind: "community",
+    targetId: communityId,
+    targetAccount: null,
+    reason: "",
+  });
+}
+
 /**
  * The entry for a change of a community's picture or cover (decision 0080),
  * made by its owner or a moderator, written in the same batch as the change.

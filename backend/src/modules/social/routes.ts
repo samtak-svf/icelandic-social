@@ -62,6 +62,7 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     const refused = refusal(access);
     if (refused) return fail(c, 403, refused);
     const input = c.req.valid("json");
+    if (input.anonymous && !access.standing.anonymousPosts) return fail(c, 409, "anonymous_off");
     if (input.body === "" && input.media.length === 0) return fail(c, 400, "invalid_request");
     // A poll's body is its question, and it takes no image; its options differ (decision 0090).
     if (input.poll) {
@@ -75,13 +76,23 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
       body: input.body,
       media: input.media,
       poll: input.poll?.options,
+      anonymous: input.anonymous,
     });
     if (created === "invalid_media") return fail(c, 400, "invalid_media");
     const author = (await authors(c.env, [accountId], communityId)).get(accountId);
     if (!author) return fail(c, 404, "not_found");
     log("post.created", { accountId, communityId, postId: created.postId });
     return c.json(
-      { ...created, communityId, author, state: "visible" as const, pinned: false },
+      {
+        ...created,
+        communityId,
+        author,
+        anonymous: input.anonymous,
+        mine: true,
+        // An anonymous post waits for a moderator before anyone else sees it (0091).
+        state: input.anonymous ? ("pending" as const) : ("visible" as const),
+        pinned: false,
+      },
       200,
     );
   });

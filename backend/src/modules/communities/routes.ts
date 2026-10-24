@@ -118,7 +118,17 @@ export function communityRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleHooks)
     if (found.audience === "private" && change.audience === "open") {
       return fail(c, 409, "audience_locked");
     }
-    await updateCommunity(c.env, communityId, change);
+    // Only a change of the switch is logged (decision 0091), in the batch that makes it.
+    const switched =
+      change.anonymousPosts !== undefined && change.anonymousPosts !== found.anonymousPosts;
+    await updateCommunity(
+      c.env,
+      communityId,
+      change,
+      switched
+        ? [hooks.recordAnonymous(c.env, communityId, accountId, !!change.anonymousPosts)]
+        : [],
+    );
     log("community.updated", { accountId, communityId });
     const updated = await standing(c.env, accountId, communityId);
     return updated ? c.json(view(updated), 200) : fail(c, 404, "not_found");

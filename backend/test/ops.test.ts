@@ -225,14 +225,14 @@ describe("a restored space, reconciled with D1", () => {
     await runInDurableObject(env.SPACE.getByName(id), (_instance, state) => {
       const sql = state.storage.sql;
       sql.exec(
-        "INSERT INTO posts VALUES ('p_deleted_since', ?, 'Eytt', '[]', ?)",
+        "INSERT INTO posts (post_id, author, body, media, created_at) VALUES ('p_deleted_since', ?, 'Eytt', '[]', ?)",
         member.accountId,
         now - MINUTE,
       );
       sql.exec("UPDATE comments SET state = 'visible', moderated_at = NULL");
       sql.exec("DELETE FROM posts WHERE post_id = ?", written.postId);
       sql.exec(
-        "INSERT INTO posts VALUES ('p_of_leaver', 'acct_deleted_since', 'Farinn', '[]', ?)",
+        "INSERT INTO posts (post_id, author, body, media, created_at) VALUES ('p_of_leaver', 'acct_deleted_since', 'Farinn', '[]', ?)",
         now - MINUTE,
       );
       sql.exec(

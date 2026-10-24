@@ -152,6 +152,8 @@ export async function act(
   const target = await targetOf(env, communityId, input);
   const standingThere = target && (await standing(env, target.targetAccount, communityId));
   if (!target || !standingThere) return "not_found";
+  // A post waiting for approval is published or declined, not hidden or removed (0091).
+  if ((target.content?.state as string | undefined) === "pending") return "invalid_request";
   if (rank(standingThere) >= rank(me)) return "not_permitted";
   const verb = input.action.split("_")[0] as Sanction["action"];
   if (!target.content && !applies(verb, standingThere)) return "not_found";

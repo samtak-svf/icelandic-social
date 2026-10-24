@@ -54,6 +54,13 @@ const Community = z
     openReports: z.int().nullable().openapi({
       description: "How many open reports wait; null unless the caller moderates the community",
     }),
+    anonymousPosts: z.boolean().openapi({
+      description:
+        "Members may post without their name, for a moderator's approval (decision 0091)",
+    }),
+    pendingAnonymous: z.int().openapi({
+      description: "How many anonymous posts wait for approval; 0 unless the caller moderates",
+    }),
     photo: PhotoVersion.openapi({
       description:
         "The community's picture version, changed by each upload; null when it has none (decision 0080). The picture is GET /v1/communities/{communityId}/avatar",
@@ -236,6 +243,10 @@ export const updateCommunityRoute = createRoute({
             name: Name.optional(),
             description: Description.optional(),
             audience: Audience.optional(),
+            anonymousPosts: z.boolean().optional().openapi({
+              description:
+                "Let members post without their name (decision 0091); every such post waits for a moderator's approval. A change is logged",
+            }),
           }),
         },
       },

@@ -30,6 +30,8 @@ export type LifecycleHooks = {
     kind: "photo" | "cover",
     change: "set" | "remove",
   ) => D1PreparedStatement;
+  /** The statement that logs the owner switching anonymous posts on or off (decision 0091). */
+  recordAnonymous: (env: Env, communityId: string, by: string, on: boolean) => D1PreparedStatement;
   /** The posts the account reads as featured in the community (decision 0088). */
   featured: (env: Env, accountId: string, communityId: string) => Promise<PostView[]>;
   /** What a purge removes beyond the graph: the space's content and images. */

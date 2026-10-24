@@ -40,7 +40,9 @@ const Card = z
       kind: z.literal("post"),
       ref: Ref,
       community: CardCommunity,
-      author: Author,
+      author: z.union([Author, z.null()]).openapi({
+        description: "Null on an anonymous post (decision 0091)",
+      }),
       excerpt: Excerpt,
       image: z.union([Media, z.null()]),
       createdAt: CreatedAt,
