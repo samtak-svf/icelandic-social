@@ -7,6 +7,7 @@ import {
   found,
   join,
   openComposer,
+  openHubFeed,
   openMenu,
   person,
   post,
@@ -64,7 +65,7 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
   await owner.getByLabel(strings.community_name).fill(name);
   await owner.getByLabel(strings.community_description).fill("Allt um garða.");
   await owner.getByRole("button", { name: strings.community_create }).click();
-  await expect(owner.getByRole("heading", { name })).toBeVisible();
+  await expect(owner.getByRole("heading", { level: 1, name })).toBeVisible();
   const community = owner.url();
 
   // The member finds it by name and joins.
@@ -470,7 +471,7 @@ test("the feed shows more than one page of posts after scrolling", async ({ brow
   expect(made).toBe(COUNT);
 
   await owner.getByRole("link", { name: strings.tab_communities }).click();
-  await owner.getByRole("button", { name: strings.communities_tab_feed }).click();
+  await openHubFeed(owner);
   const cards = owner
     .getByRole("region", { name: strings.communities_tab_feed })
     .getByRole("article");
