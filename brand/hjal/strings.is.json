@@ -464,6 +464,13 @@
   "post_pinned": "Fest",
   "post_pin_full": "Þrjár færslur eru festar. Losaðu eina fyrst.",
   "community_featured": "Fest",
+  "community_tabs": "Flipar samfélagsins",
+  "community_tab_discussion": "Umræða",
+  "community_tab_featured": "Fest",
+  "community_tab_images": "Myndir",
+  "community_tab_members": "Meðlimir",
+  "community_tab_about": "Um",
+  "community_images_empty": "Engar myndir hafa verið birtar enn.",
   "comment_like": "Líkar þetta",
   "community_new_posts": {
     "one": "{count} nýr póstur",

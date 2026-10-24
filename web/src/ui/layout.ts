@@ -20,6 +20,8 @@ export type Layout = {
   hub: "tabs" | "column";
   /** Stofna samfélag: the form alone, or the form beside a live preview of the community's header. */
   create: "form" | "form-and-preview";
+  /** The community's tab row: it scrolls sideways when it does not fit, or lies in one row (0089). */
+  tabs: "scroll" | "row";
 };
 
 export const LAYOUTS: Readonly<Record<SizeClass, Layout>> = {
@@ -31,6 +33,7 @@ export const LAYOUTS: Readonly<Record<SizeClass, Layout>> = {
     featured: "strip",
     hub: "tabs",
     create: "form",
+    tabs: "scroll",
   },
   medium: {
     navigation: "rail",
@@ -40,6 +43,7 @@ export const LAYOUTS: Readonly<Record<SizeClass, Layout>> = {
     featured: "strip",
     hub: "tabs",
     create: "form",
+    tabs: "row",
   },
   expanded: {
     navigation: "rail",
@@ -49,6 +53,7 @@ export const LAYOUTS: Readonly<Record<SizeClass, Layout>> = {
     featured: "aside",
     hub: "column",
     create: "form-and-preview",
+    tabs: "row",
   },
 };
 

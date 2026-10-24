@@ -1906,6 +1906,34 @@
       "surfaces": ["android", "web", "ios"],
       "description": "Heading of the community's featured posts, in the aside on a wide screen (decision 0088)"
     },
+    "community_tabs": {
+      "surfaces": ["android", "web", "ios"],
+      "description": "Accessible name of the row of tabs under a community's header (decision 0089)"
+    },
+    "community_tab_discussion": {
+      "surfaces": ["android", "web", "ios"],
+      "description": "Label of the community tab Umræða, the feed (decision 0089)"
+    },
+    "community_tab_featured": {
+      "surfaces": ["android", "web", "ios"],
+      "description": "Label of the community tab Fest, the featured posts (decision 0089)"
+    },
+    "community_tab_images": {
+      "surfaces": ["android", "web", "ios"],
+      "description": "Label of the community tab Myndir, the images grid (decision 0089)"
+    },
+    "community_tab_members": {
+      "surfaces": ["android", "web", "ios"],
+      "description": "Label of the community tab Meðlimir, the member list (decision 0089)"
+    },
+    "community_tab_about": {
+      "surfaces": ["android", "web", "ios"],
+      "description": "Label of the community tab Um, the facts about the community (decision 0089)"
+    },
+    "community_images_empty": {
+      "surfaces": ["android", "web", "ios"],
+      "description": "Shown under Myndir while the community has no image yet (decision 0089)"
+    },
     "comment_like": {
       "surfaces": ["android", "web", "ios"],
       "description": "Under a comment: like it with a thumbs up, bold while the caller has liked it (decision 0080)"

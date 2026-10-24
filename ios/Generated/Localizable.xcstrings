@@ -4669,6 +4669,90 @@
         }
       }
     },
+    "community_tabs": {
+      "comment": "Accessible name of the row of tabs under a community's header (decision 0089)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flipar samfélagsins"
+          }
+        }
+      }
+    },
+    "community_tab_discussion": {
+      "comment": "Label of the community tab Umræða, the feed (decision 0089)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umræða"
+          }
+        }
+      }
+    },
+    "community_tab_featured": {
+      "comment": "Label of the community tab Fest, the featured posts (decision 0089)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fest"
+          }
+        }
+      }
+    },
+    "community_tab_images": {
+      "comment": "Label of the community tab Myndir, the images grid (decision 0089)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Myndir"
+          }
+        }
+      }
+    },
+    "community_tab_members": {
+      "comment": "Label of the community tab Meðlimir, the member list (decision 0089)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meðlimir"
+          }
+        }
+      }
+    },
+    "community_tab_about": {
+      "comment": "Label of the community tab Um, the facts about the community (decision 0089)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um"
+          }
+        }
+      }
+    },
+    "community_images_empty": {
+      "comment": "Shown under Myndir while the community has no image yet (decision 0089)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engar myndir hafa verið birtar enn."
+          }
+        }
+      }
+    },
     "comment_like": {
       "comment": "Under a comment: like it with a thumbs up, bold while the caller has liked it (decision 0080)",
       "extractionState": "manual",

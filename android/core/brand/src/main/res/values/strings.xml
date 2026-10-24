@@ -806,6 +806,20 @@
     <string name="post_pin_full">Þrjár færslur eru festar. Losaðu eina fyrst.</string>
     <!-- Heading of the community's featured posts, in the aside on a wide screen (decision 0088) -->
     <string name="community_featured">Fest</string>
+    <!-- Accessible name of the row of tabs under a community's header (decision 0089) -->
+    <string name="community_tabs">Flipar samfélagsins</string>
+    <!-- Label of the community tab Umræða, the feed (decision 0089) -->
+    <string name="community_tab_discussion">Umræða</string>
+    <!-- Label of the community tab Fest, the featured posts (decision 0089) -->
+    <string name="community_tab_featured">Fest</string>
+    <!-- Label of the community tab Myndir, the images grid (decision 0089) -->
+    <string name="community_tab_images">Myndir</string>
+    <!-- Label of the community tab Meðlimir, the member list (decision 0089) -->
+    <string name="community_tab_members">Meðlimir</string>
+    <!-- Label of the community tab Um, the facts about the community (decision 0089) -->
+    <string name="community_tab_about">Um</string>
+    <!-- Shown under Myndir while the community has no image yet (decision 0089) -->
+    <string name="community_images_empty">Engar myndir hafa verið birtar enn.</string>
     <!-- Under a comment: like it with a thumbs up, bold while the caller has liked it (decision 0080) -->
     <string name="comment_like">Líkar þetta</string>
     <!-- On a hub row: how many posts the caller has not seen in the community (decision 0080) -->

@@ -12,6 +12,7 @@ describe("layout", () => {
       featured: "strip",
       hub: "tabs",
       create: "form",
+      tabs: "scroll",
     });
   });
 
@@ -46,6 +47,12 @@ describe("layout", () => {
       hub: "column",
       create: "form-and-preview",
     });
+  });
+
+  it("scrolls the community's tabs sideways on a compact window only", () => {
+    expect(layoutOf(SIZE_CLASSES.medium - 1).tabs).toBe("scroll");
+    expect(layoutOf(SIZE_CLASSES.medium).tabs).toBe("row");
+    expect(layoutOf(SIZE_CLASSES.expanded).tabs).toBe("row");
   });
 
   it("never shows fewer members' pictures on a wider window", () => {

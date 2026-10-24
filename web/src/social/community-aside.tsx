@@ -29,7 +29,7 @@ export function CommunityAside({
         <>
           <h3 className="font-semibold">
             <Link
-              to="/communities/$communityId/about"
+              to="/communities/$communityId/people"
               params={{ communityId: community.communityId }}
               className="underline"
             >
