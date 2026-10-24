@@ -1,5 +1,6 @@
 package samtak.spjall.me
 
+import android.Manifest
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -11,6 +12,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -53,6 +55,21 @@ class LinkApproveScreenTest {
         } as Account
 
     private fun text(id: Int) = InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
+
+    /**
+     * The camera the scan screen asks for when it opens. Left unanswered, the request puts the system's
+     * permission dialog in front of this host, and the Compose rule loses its root: the test fails at its
+     * first tap with "No compose hierarchies found" (measured on the API-34 emulator, 2026-10-24).
+     * Granted, the screen shows the preview and the field below it.
+     */
+    @Before
+    fun grantTheCamera() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.uiAutomation.grantRuntimePermission(
+            instrumentation.targetContext.packageName,
+            Manifest.permission.CAMERA,
+        )
+    }
 
     @Test
     fun pasteAChooseNoHistoryAndApprove() {

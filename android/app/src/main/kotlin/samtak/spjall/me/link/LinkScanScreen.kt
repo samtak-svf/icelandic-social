@@ -156,19 +156,20 @@ private fun CameraView(
             PreviewView(ctx).also { view ->
                 val providerFuture = ProcessCameraProvider.getInstance(ctx)
                 providerFuture.addListener({
-                    val preview = Preview.Builder().build().also { it.surfaceProvider = view.surfaceProvider }
-                    val main = ContextCompat.getMainExecutor(ctx)
-                    val analyzer = LinkScanAnalyzer(accepts) { text -> main.execute { onCode(text) } }
-                    val analysis =
-                        ImageAnalysis
-                            .Builder()
-                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                            .build()
-                            .also { it.setAnalyzer(executor, analyzer) }
-                    val provider = providerFuture.get()
-                    provider.unbindAll()
-                    // A phone without a back camera shows an empty box; the field below still works.
+                    // A phone without a working back camera shows an empty box; the field below still works.
+                    // The provider itself fails on such a phone, so the whole body is inside the catch.
                     runCatching {
+                        val preview = Preview.Builder().build().also { it.surfaceProvider = view.surfaceProvider }
+                        val main = ContextCompat.getMainExecutor(ctx)
+                        val analyzer = LinkScanAnalyzer(accepts) { text -> main.execute { onCode(text) } }
+                        val analysis =
+                            ImageAnalysis
+                                .Builder()
+                                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                .build()
+                                .also { it.setAnalyzer(executor, analyzer) }
+                        val provider = providerFuture.get()
+                        provider.unbindAll()
                         provider.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
                     }
                 }, ContextCompat.getMainExecutor(context))
