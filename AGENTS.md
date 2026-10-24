@@ -56,7 +56,7 @@ Consequences, all enforced by `tooling/brand-leak-guard.mjs`:
 pnpm install           # also installs the lefthook hooks
 pnpm check             # lint, types, format, ids, critical rules, drills, quarantine, brand, brand-gen, brand-leak,
                        # þankastrik, PII, peer names, seams, modules, jurisdiction, migrations, core lock, ws-kotlin, web-api,
-                       # workflows, knip
+                       # frames, workflows, knip
 pnpm brand:gen         # regenerate the platform files from brand/$BRAND
 pnpm test              # guard tests (vitest); each guard is proven to fail when it should
                        # what deserves a test, and the known sources of noise: docs/testing.md
