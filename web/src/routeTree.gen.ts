@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ConversationsRouteImport } from './routes/conversations'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -17,6 +18,9 @@ import { Route as SupportRouteImport } from './routes/support'
 import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as CommunitiesIndexRouteImport } from './routes/communities.index'
 import { Route as CommunitiesNewRouteImport } from './routes/communities.new'
+import { Route as ConversationsIndexRouteImport } from './routes/conversations.index'
+import { Route as ConversationsConversationIdRouteImport } from './routes/conversations.$conversationId'
+import { Route as ConversationsLinkRouteImport } from './routes/conversations.link'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as CommunitiesCommunityIdIndexRouteImport } from './routes/communities.$communityId.index'
 import { Route as CommunitiesCommunityIdAboutRouteImport } from './routes/communities.$communityId.about'
@@ -27,6 +31,11 @@ import { Route as CommunitiesCommunityIdRequestsRouteImport } from './routes/com
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConversationsRoute = ConversationsRouteImport.update({
+  id: '/conversations',
+  path: '/conversations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificationsRoute = NotificationsRouteImport.update({
@@ -63,6 +72,22 @@ const CommunitiesNewRoute = CommunitiesNewRouteImport.update({
   id: '/communities/new',
   path: '/communities/new',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ConversationsIndexRoute = ConversationsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ConversationsRoute,
+} as any)
+const ConversationsConversationIdRoute =
+  ConversationsConversationIdRouteImport.update({
+    id: '/$conversationId',
+    path: '/$conversationId',
+    getParentRoute: () => ConversationsRoute,
+  } as any)
+const ConversationsLinkRoute = ConversationsLinkRouteImport.update({
+  id: '/link',
+  path: '/link',
+  getParentRoute: () => ConversationsRoute,
 } as any)
 const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/posts/$postId',
@@ -102,14 +127,18 @@ const CommunitiesCommunityIdRequestsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/conversations': typeof ConversationsRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
   '/verify': typeof VerifyRoute
   '/communities/new': typeof CommunitiesNewRoute
+  '/conversations/$conversationId': typeof ConversationsConversationIdRoute
+  '/conversations/link': typeof ConversationsLinkRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities/': typeof CommunitiesIndexRoute
+  '/conversations/': typeof ConversationsIndexRoute
   '/communities/$communityId/about': typeof CommunitiesCommunityIdAboutRoute
   '/communities/$communityId/manage': typeof CommunitiesCommunityIdManageRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
@@ -124,8 +153,11 @@ export interface FileRoutesByTo {
   '/support': typeof SupportRoute
   '/verify': typeof VerifyRoute
   '/communities/new': typeof CommunitiesNewRoute
+  '/conversations/$conversationId': typeof ConversationsConversationIdRoute
+  '/conversations/link': typeof ConversationsLinkRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities': typeof CommunitiesIndexRoute
+  '/conversations': typeof ConversationsIndexRoute
   '/communities/$communityId/about': typeof CommunitiesCommunityIdAboutRoute
   '/communities/$communityId/manage': typeof CommunitiesCommunityIdManageRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
@@ -135,14 +167,18 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/conversations': typeof ConversationsRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
   '/verify': typeof VerifyRoute
   '/communities/new': typeof CommunitiesNewRoute
+  '/conversations/$conversationId': typeof ConversationsConversationIdRoute
+  '/conversations/link': typeof ConversationsLinkRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities/': typeof CommunitiesIndexRoute
+  '/conversations/': typeof ConversationsIndexRoute
   '/communities/$communityId/about': typeof CommunitiesCommunityIdAboutRoute
   '/communities/$communityId/manage': typeof CommunitiesCommunityIdManageRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
@@ -153,14 +189,18 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/conversations'
     | '/notifications'
     | '/privacy'
     | '/settings'
     | '/support'
     | '/verify'
     | '/communities/new'
+    | '/conversations/$conversationId'
+    | '/conversations/link'
     | '/posts/$postId'
     | '/communities/'
+    | '/conversations/'
     | '/communities/$communityId/about'
     | '/communities/$communityId/manage'
     | '/communities/$communityId/reports'
@@ -175,8 +215,11 @@ export interface FileRouteTypes {
     | '/support'
     | '/verify'
     | '/communities/new'
+    | '/conversations/$conversationId'
+    | '/conversations/link'
     | '/posts/$postId'
     | '/communities'
+    | '/conversations'
     | '/communities/$communityId/about'
     | '/communities/$communityId/manage'
     | '/communities/$communityId/reports'
@@ -185,14 +228,18 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/conversations'
     | '/notifications'
     | '/privacy'
     | '/settings'
     | '/support'
     | '/verify'
     | '/communities/new'
+    | '/conversations/$conversationId'
+    | '/conversations/link'
     | '/posts/$postId'
     | '/communities/'
+    | '/conversations/'
     | '/communities/$communityId/about'
     | '/communities/$communityId/manage'
     | '/communities/$communityId/reports'
@@ -202,6 +249,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ConversationsRoute: typeof ConversationsRouteWithChildren
   NotificationsRoute: typeof NotificationsRoute
   PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
@@ -224,6 +272,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/conversations': {
+      id: '/conversations'
+      path: '/conversations'
+      fullPath: '/conversations'
+      preLoaderRoute: typeof ConversationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -275,6 +330,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CommunitiesNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/conversations/': {
+      id: '/conversations/'
+      path: '/'
+      fullPath: '/conversations/'
+      preLoaderRoute: typeof ConversationsIndexRouteImport
+      parentRoute: typeof ConversationsRoute
+    }
+    '/conversations/$conversationId': {
+      id: '/conversations/$conversationId'
+      path: '/$conversationId'
+      fullPath: '/conversations/$conversationId'
+      preLoaderRoute: typeof ConversationsConversationIdRouteImport
+      parentRoute: typeof ConversationsRoute
+    }
+    '/conversations/link': {
+      id: '/conversations/link'
+      path: '/link'
+      fullPath: '/conversations/link'
+      preLoaderRoute: typeof ConversationsLinkRouteImport
+      parentRoute: typeof ConversationsRoute
+    }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/posts/$postId'
@@ -320,8 +396,25 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ConversationsRouteChildren {
+  ConversationsConversationIdRoute: typeof ConversationsConversationIdRoute
+  ConversationsLinkRoute: typeof ConversationsLinkRoute
+  ConversationsIndexRoute: typeof ConversationsIndexRoute
+}
+
+const ConversationsRouteChildren: ConversationsRouteChildren = {
+  ConversationsConversationIdRoute: ConversationsConversationIdRoute,
+  ConversationsLinkRoute: ConversationsLinkRoute,
+  ConversationsIndexRoute: ConversationsIndexRoute,
+}
+
+const ConversationsRouteWithChildren = ConversationsRoute._addFileChildren(
+  ConversationsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ConversationsRoute: ConversationsRouteWithChildren,
   NotificationsRoute: NotificationsRoute,
   PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,
