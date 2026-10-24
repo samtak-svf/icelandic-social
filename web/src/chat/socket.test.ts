@@ -7,18 +7,20 @@ import { chatSocket, type SocketLike, socketUrl } from "./socket";
 class FakeSocket implements SocketLike {
   sent: string[] = [];
   closed = false;
-  private listeners: Record<string, ((event: MessageEvent) => void)[]> = {};
+  private listeners: Record<string, ((event: never) => void)[]> = {};
   send(data: string) {
     this.sent.push(data);
   }
   close() {
     this.closed = true;
   }
-  addEventListener(type: string, listener: (event: MessageEvent) => void) {
+  addEventListener(type: string, listener: (event: never) => void) {
     (this.listeners[type] ??= []).push(listener);
   }
-  emit(type: "open" | "close" | "message", data?: string) {
-    for (const l of this.listeners[type] ?? []) l(new MessageEvent("message", { data }));
+  emit(type: "open" | "close" | "message", data?: string, code = 1006) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- one fake event serves all three types
+    const event = (type === "close" ? { code } : new MessageEvent("message", { data })) as never;
+    for (const l of this.listeners[type] ?? []) l(event);
   }
 }
 
@@ -98,6 +100,27 @@ describe("the page's socket (decision 0081)", () => {
     h.sockets[0]!.emit("close");
     await settle();
     expect(h.sockets).toHaveLength(1);
+  });
+
+  it("ends the session at once when the server closes the socket with 4401 (revoked)", async () => {
+    const h = harness(async () => nothing);
+    h.sockets[0]!.emit("open");
+    h.sockets[0]!.emit("close", undefined, 4401);
+    await settle();
+    expect(h.deps.onFailure).toHaveBeenCalledTimes(1);
+    expect(h.deps.onFailure).toHaveBeenCalledWith(expect.objectContaining({ code: "device-lost" }));
+    expect(h.deps.onFailure.mock.calls[0]![0]).toBeInstanceOf(ChatFailure);
+    expect(h.waits).toEqual([]);
+    expect(h.sockets).toHaveLength(1);
+  });
+
+  it("reconnects after any other close code, such as an abnormal 1006", async () => {
+    const h = harness(async () => nothing);
+    h.sockets[0]!.emit("close", undefined, 1006);
+    await settle();
+    expect(h.deps.onFailure).not.toHaveBeenCalled();
+    expect(h.waits).toEqual([1_000]);
+    expect(h.sockets).toHaveLength(2);
   });
 
   it("keeps going after a passing failure", async () => {
