@@ -107,6 +107,7 @@ private fun ViewerPage(
         var scale by remember { mutableFloatStateOf(1f) }
         var offset by remember { mutableStateOf(Offset.Zero) }
         val photo = rememberUpdatedState(bitmap)
+
         // The fitted image's size at scale 1, the bound of how far a zoomed one may be dragged.
         fun fitted(area: IntSize): Pair<Float, Float> {
             val b = photo.value ?: return area.width.toFloat() to area.height.toFloat()
@@ -146,8 +147,7 @@ private fun ViewerPage(
                             }
                         },
                     )
-                }
-                .graphicsLayer(
+                }.graphicsLayer(
                     scaleX = scale,
                     scaleY = scale,
                     translationX = offset.x,
