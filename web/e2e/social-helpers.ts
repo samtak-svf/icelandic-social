@@ -101,6 +101,15 @@ export async function manage(page: Page) {
   await page.getByRole("menuitem", { name: new RegExp(`^${strings.community_manage}`) }).click();
 }
 
+/** Opens Stjórna with Breyta samfélagi unfolded. */
+export async function manageDetails(page: Page) {
+  await manage(page);
+  // Beside the side navigation of an expanded window the details start open (decision 0087).
+  if (layoutOf(page.viewportSize()!.width).manage === "one-screen") {
+    await page.locator("summary", { hasText: strings.community_edit }).click();
+  }
+}
+
 /** Expects the person in `page` to be a member who may leave, which the menu offers. */
 export async function expectMember(page: Page) {
   await openMenu(page);

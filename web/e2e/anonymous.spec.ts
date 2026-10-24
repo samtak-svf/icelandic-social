@@ -1,5 +1,5 @@
 import { strings } from "../src/generated/brand/strings.ts";
-import { found, join, manage, person, post, write } from "./social-helpers.ts";
+import { found, join, manage, manageDetails, person, post, write } from "./social-helpers.ts";
 import { expect, test } from "./origin.ts";
 
 // An anonymous post is approved before it shows and names no author (decision 0091).
@@ -12,8 +12,7 @@ test("an anonymous post waits for approval, shows no name, and a moderator can r
   const address = await found(owner, "open");
 
   // The owner turns the switch on in Breyta samfélagi.
-  await manage(owner);
-  await owner.locator("summary", { hasText: strings.community_edit }).click();
+  await manageDetails(owner);
   await owner.getByRole("switch", { name: new RegExp(strings.community_anonymous_posts) }).check();
   await owner.getByRole("button", { name: strings.community_edit }).last().click();
 
@@ -38,9 +37,13 @@ test("an anonymous post waits for approval, shows no name, and a moderator can r
   await expect(post(reader, "Spurning sem ég þori ekki að spyrja")).toHaveCount(0);
 
   // The owner approves it from the queue, after the count shows.
+  // On an expanded window Stjórna's side navigation (decision 0087) says how many wait.
   await owner.goto(address);
   await manage(owner);
-  await owner.getByRole("link", { name: strings.anonymous_queue_waiting({ count: 1 }) }).click();
+  const nav = owner.getByRole("navigation", { name: strings.community_manage });
+  const queue = nav.getByRole("link", { name: strings.anonymous_queue_title });
+  await expect(queue).toHaveText(`${strings.anonymous_queue_title}1`);
+  await queue.click();
   await expect(owner.getByText("Spurning sem ég þori ekki að spyrja")).toBeVisible();
   await expect(owner.getByText("Höfundur Falinsson")).toHaveCount(0);
 
@@ -52,13 +55,9 @@ test("an anonymous post waits for approval, shows no name, and a moderator can r
   ).toBeVisible();
   await owner.getByRole("button", { name: strings.anonymous_approve }).click();
   await expect(owner.getByText(strings.anonymous_queue_empty)).toBeVisible();
-  await owner.goto(address);
-  await manage(owner);
-  await expect(
-    owner
-      .getByRole("region", { name: strings.moderation_log_title })
-      .getByText(strings.moderation_log_author_revealed),
-  ).toBeVisible();
+  await expect(queue).toHaveText(strings.anonymous_queue_title);
+  await nav.getByRole("link", { name: strings.moderation_log_title }).click();
+  await expect(owner.getByText(strings.moderation_log_author_revealed)).toBeVisible();
 
   // Readers now see the post under the neutral byline; the author sees theirs.
   await reader.reload();
