@@ -459,7 +459,7 @@ export const strings = {
   /** A log entry: a moderator removed the community's cover (decision 0080). */
   moderation_log_community_cover_removed: "Forsíðumynd samfélagsins var fjarlægð.",
   /** A log entry: a moderator pinned a post to the top of the community (decision 0080). */
-  moderation_log_post_pinned: "Færsla var fest efst í samfélaginu.",
+  moderation_log_post_pinned: "Færsla var fest í samfélaginu.",
   /** A log entry: a moderator unpinned the community's pinned post (decision 0080). */
   moderation_log_post_unpinned: "Færsla var losuð úr festingu.",
   /** Who closed a report and when; {date} is a formatted date. */
@@ -565,16 +565,20 @@ export const strings = {
   post_copy_link: "Afrita tengil",
   /** Told after the address of a post was copied */
   post_link_copied: "Tengill afritaður",
-  /** Menu item for a moderator or the owner that pins a post to the top of its community (decision 0080) */
+  /** Menu item for a moderator or the owner that features a post in its community (decisions 0080, 0088) */
   post_pin: "Festa",
   /** Pill under a post card that opens its comments */
   post_write_comment: "Skrifaðu athugasemd…",
   /** Name of the group of five reactions opened from the like action */
   post_reactions_more: "Fleiri viðbrögð",
-  /** Menu item that unpins the community's pinned post */
+  /** Menu item that releases a featured post */
   post_unpin: "Losa",
-  /** Marker on the card of the post pinned to the top of its community */
-  post_pinned: "Fest efst",
+  /** Marker on the card of a featured post, in its place in the feed and on the strip (decision 0088) */
+  post_pinned: "Fest",
+  /** Told when a fourth post is featured: three are featured already and one must be released first (decision 0088) */
+  post_pin_full: "Þrjár færslur eru festar. Losaðu eina fyrst.",
+  /** Heading of the community's featured posts, in the aside on a wide screen (decision 0088) */
+  community_featured: "Fest",
   /** Under a comment: like it with a thumbs up, bold while the caller has liked it (decision 0080) */
   comment_like: "Líkar þetta",
   /** On a hub row: how many posts the caller has not seen in the community (decision 0080) */

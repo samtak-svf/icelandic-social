@@ -5,7 +5,7 @@ import { notice } from "../jobs/index.ts";
 import type { CommentContent, CommentRecord, MediaRef, PostContent, Viewer } from "./do/space.ts";
 import { type Author, bylineKey, bylines } from "./bylines.ts";
 import { commentMedia } from "./media.ts";
-import { type IndexedPost, postAccess, replyRefusal } from "./access.ts";
+import { type IndexedPost, postAccess, replyRefusal, spaceAccess } from "./access.ts";
 
 // Posts across D1 and the space (decision 0060): D1's post_index is what the
 // feed and the access checks read, the Space object holds what was written.
@@ -32,6 +32,8 @@ const hex = (n: number) =>
 const newPostId = () => `p_${hex(16)}`;
 const newCommentId = (postId: string) => `${postId}-${hex(8)}`;
 
+const NONE: ReadonlySet<string> = new Set();
+
 /**
  * The content of indexed posts as `viewer` sees them, in the order given:
  * each community's space is asked once, in parallel, for its posts.
@@ -40,7 +42,7 @@ export async function render(
   env: Env,
   rows: IndexedPost[],
   viewer: Viewer,
-  pinnedId: string | null = null,
+  featured: ReadonlySet<string> = NONE,
 ): Promise<Post[]> {
   const byCommunity = Map.groupBy(rows, (r) => r.communityId);
   const contents = new Map<string, PostContent & { communityId: string }>();
@@ -84,7 +86,7 @@ export async function render(
             ? { ...latest, author: latestAuthor, media: media.get(latest.commentId) ?? [] }
             : null,
         state: row.state,
-        pinned: row.postId === pinnedId,
+        pinned: featured.has(row.postId),
       },
     ];
   });
@@ -107,8 +109,8 @@ export function parseCursor(cursor: string | undefined): { t: number; id: string
  * viewer. With `query` (decision 0079) the community's own space names the
  * posts whose text matches it, so the index reads only those, and every page
  * and its `next` follow the same rule without the search: keyset pagination,
- * visibility and block filtering stay exact. A search page pins nothing: the
- * caller passes no `pinnedId` with a `query`.
+ * visibility and block filtering stay exact. Featured posts keep their place
+ * in time (decision 0088).
  */
 export async function communityPosts(
   env: Env,
@@ -117,7 +119,6 @@ export async function communityPosts(
   before: string | undefined,
   limit: number,
   query?: string,
-  pinnedId: string | null = null,
 ): Promise<{ rows: IndexedPost[]; next: string | null }> {
   const cursor = parseCursor(before);
   const text = query?.trim() ?? "";
@@ -146,37 +147,41 @@ export async function communityPosts(
   const page = results.slice(0, limit);
   const last = page.at(-1);
   const next = results.length > limit && last ? `${last.createdAt}-${last.postId}` : null;
-  return { rows: await leadWithPinned(env, communityId, viewer, before, pinnedId, page), next };
+  return { rows: page, next };
 }
 
 /**
- * `page` with the pinned post (decision 0080) leading the first page and
- * appearing nowhere else, so a client never shows it twice. It is read from
- * the index, so a pin on a post that is no longer visible, or whose author the
- * viewer blocked, shows nothing.
+ * The posts a community features (decision 0088) as `viewer` reads them,
+ * newest pin first, each flagged `pinned`. They are read from the index like
+ * the feed, so a removed or deleted post, and one by an author the viewer
+ * blocked, shows nothing. The caller has already asked the access check
+ * whether `viewer` reads the community.
  */
-async function leadWithPinned(
+async function featuredPosts(env: Env, communityId: string, viewer: Viewer): Promise<Post[]> {
+  const ids = await space(env, communityId).featured();
+  if (ids.length === 0) return [];
+  const { results } = await db(env)
+    .prepare(
+      `SELECT ${INDEXED} FROM post_index p
+        WHERE p.community_id = ?1 AND p.state = 'visible'
+          AND p.post_id IN (SELECT value FROM json_each(?2))
+          AND p.author_id NOT IN (SELECT value FROM json_each(?3))`,
+    )
+    .bind(communityId, JSON.stringify(ids), JSON.stringify(viewer.hidden))
+    .all<IndexedPost>();
+  const byId = new Map(results.map((r) => [r.postId, r]));
+  const rows = ids.flatMap((id) => byId.get(id) ?? []);
+  return render(env, rows, viewer, new Set(ids));
+}
+
+/** The posts `accountId` reads as featured in `communityId`: none when it may not read it. */
+export async function featuredFor(
   env: Env,
+  accountId: string,
   communityId: string,
-  viewer: Viewer,
-  before: string | undefined,
-  pinnedId: string | null,
-  page: IndexedPost[],
-): Promise<IndexedPost[]> {
-  if (!pinnedId) return page;
-  const rest = page.filter((r) => r.postId !== pinnedId);
-  if (before !== undefined) return rest;
-  const pinned =
-    page.find((r) => r.postId === pinnedId) ??
-    (await db(env)
-      .prepare(
-        `SELECT ${INDEXED} FROM post_index p
-          WHERE p.post_id = ?1 AND p.community_id = ?2 AND p.state = 'visible'
-            AND p.author_id NOT IN (SELECT value FROM json_each(?3))`,
-      )
-      .bind(pinnedId, communityId, JSON.stringify(viewer.hidden))
-      .first<IndexedPost>());
-  return pinned ? [pinned, ...rest] : rest;
+): Promise<Post[]> {
+  const access = await spaceAccess(env, accountId, communityId);
+  return access ? featuredPosts(env, communityId, access.viewer) : [];
 }
 
 /**

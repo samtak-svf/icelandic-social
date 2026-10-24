@@ -3,7 +3,8 @@
 - Status: accepted; implemented (#107, #109, #113, #114, #118, #120, #121, apps 0.10.1); the comment composer's photo button is designed in 0082
 - Date: 2026-10-22
 - Decided by: Guðröður Atli Jónsson
-- Amended by: [0086](0086-images-are-framed-per-screen-size.md) (the cover is framed once for each window size class)
+- Amended by: [0086](0086-images-are-framed-per-screen-size.md) (the cover is framed once for each window size class),
+  [0088](0088-a-community-features-several-posts.md) (up to three featured posts, shown as a strip)
 - Amended by: [0087](0087-wide-screens-get-their-own-layout.md) (wide screens: a rail, an aside, `Stjórna` as a side navigation),
   [0088](0088-a-community-features-several-posts.md) (up to three featured posts, shown as a strip),
   [0089](0089-a-community-has-tabs.md) (tabs under the header), [0090](0090-a-post-can-be-a-poll.md) (a poll button),

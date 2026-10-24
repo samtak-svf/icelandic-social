@@ -1,3 +1,4 @@
+import type { PostView } from "../../api/social.ts";
 import { db } from "../../env/index.ts";
 import { DECLINED_MS, READ_ONLY_MS } from "./communities.ts";
 
@@ -29,6 +30,8 @@ export type LifecycleHooks = {
     kind: "photo" | "cover",
     change: "set" | "remove",
   ) => D1PreparedStatement;
+  /** The posts the account reads as featured in the community (decision 0088). */
+  featured: (env: Env, accountId: string, communityId: string) => Promise<PostView[]>;
   /** What a purge removes beyond the graph: the space's content and images. */
   purgeContent: (env: Env, communityId: string) => Promise<void>;
   /**

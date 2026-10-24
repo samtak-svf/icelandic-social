@@ -30,7 +30,13 @@ export function moderationRoutes(app: OpenAPIHono<AppEnv>): void {
     app.openapi(route, async (c) => {
       const { communityId, postId } = c.req.valid("param");
       const refused = await setPostPin(c.env, c.var.session.accountId, communityId, postId, on);
-      if (refused) return fail(c, refused === "not_found" ? 404 : 403, refused);
+      if (refused) {
+        return fail(
+          c,
+          refused === "not_found" ? 404 : refused === "pin_limit" ? 409 : 403,
+          refused,
+        );
+      }
       return c.body(null, 204);
     });
   }

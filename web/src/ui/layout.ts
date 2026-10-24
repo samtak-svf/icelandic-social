@@ -14,16 +14,31 @@ export type Layout = {
   memberPictures: number;
   /** Stjórna: one screen, or a side navigation with a page for each part. */
   manage: "one-screen" | "side-nav";
+  /** The featured posts: a row between the composer and the feed, or in the aside (0088). */
+  featured: "strip" | "aside";
 };
 
 export const LAYOUTS: Readonly<Record<SizeClass, Layout>> = {
-  compact: { navigation: "bar", community: "column", memberPictures: 5, manage: "one-screen" },
-  medium: { navigation: "rail", community: "column", memberPictures: 12, manage: "one-screen" },
+  compact: {
+    navigation: "bar",
+    community: "column",
+    memberPictures: 5,
+    manage: "one-screen",
+    featured: "strip",
+  },
+  medium: {
+    navigation: "rail",
+    community: "column",
+    memberPictures: 12,
+    manage: "one-screen",
+    featured: "strip",
+  },
   expanded: {
     navigation: "rail",
     community: "feed-and-aside",
     memberPictures: 12,
     manage: "side-nav",
+    featured: "aside",
   },
 };
 

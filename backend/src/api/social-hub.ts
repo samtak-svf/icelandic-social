@@ -55,9 +55,9 @@ export const pinPostRoute = createRoute({
   path: "/v1/communities/{communityId}/posts/{postId}/pin",
   operationId: "pinPost",
   tags,
-  summary: "Pin a post to the top of the community",
+  summary: "Feature a post in the community",
   description:
-    "One post is pinned at a time: pinning another replaces it. Only the owner and the moderators pin, and each change is a moderation log entry. A removed or deleted post is unpinned (decision 0080).",
+    "A community features up to three posts, shown apart from its feed (decision 0088). Only the owner and the moderators pin, and each change is a moderation log entry. A removed or deleted post is unpinned. A fourth is refused: release one first.",
   security: ACCOUNT,
   request: { params: pinnedPost },
   responses: {
@@ -66,6 +66,7 @@ export const pinPostRoute = createRoute({
     ...AUTHED,
     403: errorResponse("not_permitted: only the owner and the moderators pin"),
     404: errorResponse("not_found: no such post the caller can see in that community"),
+    409: errorResponse("pin_limit: three posts are featured already; release one first"),
   },
 });
 
@@ -74,11 +75,11 @@ export const unpinPostRoute = createRoute({
   path: "/v1/communities/{communityId}/posts/{postId}/pin",
   operationId: "unpinPost",
   tags,
-  summary: "Unpin the community's pinned post",
+  summary: "Release a featured post",
   security: ACCOUNT,
   request: { params: pinnedPost },
   responses: {
-    204: { description: "Not pinned, whether it was or not" },
+    204: { description: "Not featured, whether it was or not" },
     ...INVALID,
     ...AUTHED,
     403: errorResponse("not_permitted: only the owner and the moderators unpin"),

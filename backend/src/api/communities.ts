@@ -1,5 +1,6 @@
 import { createRoute, z } from "@hono/zod-openapi";
 import { Framing } from "./image-frames.ts";
+import { Post } from "./social.ts";
 import { ACCOUNT, AUTHED, errorResponse, INVALID, OpaqueId, PhotoVersion } from "./common.ts";
 
 // Communities (decision 0063): open or private, joined at once or by a
@@ -79,6 +80,10 @@ const Community = z
     }),
     pinned: z.boolean().openapi({
       description: "The caller pinned it to the top of its own list (decision 0080)",
+    }),
+    featured: z.array(Post).openapi({
+      description:
+        "The posts its moderators feature, up to three, newest pin first, as the caller may read them (decision 0088). Filled by getCommunity only, empty elsewhere and for a caller who may not read the community",
     }),
   })
   .openapi("Community");

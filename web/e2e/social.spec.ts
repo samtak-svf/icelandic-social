@@ -217,6 +217,9 @@ test("a member posts images, deletes a comment and the post, and withdraws a joi
 test("a moderator hides, then restores and mutes and unmutes from the closed reports", async ({
   browser,
 }) => {
+  // Three browsers sign in before the story starts (about 7 s each on a busy
+  // runner), which leaves the default 30 s too little for the moderation itself.
+  test.slow();
   const owner = await person(browser, "Eigandi Stjórnadóttir");
   const writer = await person(browser, "Höfundur Stjórnason");
   const reader = await person(browser, "Lesandi Stjórnason");

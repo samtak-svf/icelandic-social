@@ -78,7 +78,7 @@ const Comment = z
   })
   .openapi("Comment");
 
-const Post = z
+export const Post = z
   .object({
     postId: PostId,
     communityId: CommunityId,
@@ -98,10 +98,12 @@ const Post = z
     state: State,
     pinned: z.boolean().openapi({
       description:
-        "A moderator pinned it to the top of the community (decision 0080). On a community's posts it is the first post of the first page, and only there; `getFeed` never pins",
+        "A moderator features it (decision 0088); it stays in its place in the feed, marked, and is also in the community's `featured`. `getFeed` never marks it",
     }),
   })
   .openapi("Post");
+
+export type PostView = z.infer<typeof Post>;
 
 const Cursor = z
   .string()

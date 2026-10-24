@@ -9,6 +9,7 @@ describe("layout", () => {
       community: "column",
       memberPictures: 5,
       manage: "one-screen",
+      featured: "strip",
     });
   });
 
@@ -27,6 +28,12 @@ describe("layout", () => {
   it("splits Stjórna into pages only beside a side navigation, on expanded", () => {
     expect(layoutOf(SIZE_CLASSES.expanded - 1).manage).toBe("one-screen");
     expect(layoutOf(SIZE_CLASSES.expanded).manage).toBe("side-nav");
+  });
+
+  it("moves the featured posts from a strip above the feed into the aside from expanded", () => {
+    expect(layoutOf(SIZE_CLASSES.medium).featured).toBe("strip");
+    expect(layoutOf(SIZE_CLASSES.expanded - 1).featured).toBe("strip");
+    expect(layoutOf(SIZE_CLASSES.expanded).featured).toBe("aside");
   });
 
   it("never shows fewer members' pictures on a wider window", () => {

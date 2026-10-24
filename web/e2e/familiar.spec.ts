@@ -60,8 +60,8 @@ test("a pinned community leads the list, and unpinning gives the place back", as
 });
 
 test("a moderator pins a post to the top of the feed and takes it back", async ({ browser }) => {
-  const owner = await person(browser, "Eigandi Festingardóttir");
-  const member = await person(browser, "Meðlimur Festingarson");
+  const owner = await person(browser, "Eigandi Nælingardóttir");
+  const member = await person(browser, "Meðlimur Nælingarson");
   const community = await found(owner, "open");
   await join(member, community);
   await write(member, strings.post_compose, strings.post_publish, "Eldri pósturinn.");
@@ -78,15 +78,17 @@ test("a moderator pins a post to the top of the feed and takes it back", async (
   const cards = owner.getByRole("article");
   await expect(cards.first()).toContainText("Nýrri");
   await cardMenu(post(owner, "Eldri"), strings.post_pin);
-  await expect(cards.first()).toContainText("Eldri");
-  await expect(cards.first()).toContainText(strings.post_pinned);
-  await expect(owner.getByText(strings.post_pinned)).toHaveCount(1);
+  // It stays in its place in the feed (0088), marked, and is also featured apart.
+  await expect(cards.first()).toContainText("Nýrri");
+  const marked = owner.getByRole("article").filter({ hasText: strings.post_pinned });
+  await expect(marked).toHaveCount(1);
+  await expect(marked).toContainText("Eldri");
 
-  // Everyone sees it first, then unpinned it falls back into the order.
+  // Everyone sees the mark, and unpinned it goes.
   await member.reload();
-  await expect(member.getByRole("article").first()).toContainText(strings.post_pinned);
-  await cardMenu(cards.first(), strings.post_unpin);
-  await expect(owner.getByText(strings.post_pinned)).toHaveCount(0);
+  await expect(member.getByRole("article").filter({ hasText: strings.post_pinned })).toHaveCount(1);
+  await cardMenu(marked, strings.post_unpin);
+  await expect(marked).toHaveCount(0);
   await expect(cards.first()).toContainText("Nýrri");
 });
 
