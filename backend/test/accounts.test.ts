@@ -91,6 +91,7 @@ describe("GET /v1/accounts/{accountId}", () => {
       name: "Bjarni Prófsson",
       verified: true,
       photo: null,
+      photoFrames: null,
     });
   });
 
@@ -106,6 +107,7 @@ describe("GET /v1/accounts/{accountId}", () => {
       name: "Ókunnug Prófsdóttir",
       verified: true,
       photo: null,
+      photoFrames: null,
     });
   });
 

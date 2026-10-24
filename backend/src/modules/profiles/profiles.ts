@@ -1,3 +1,4 @@
+import { type Framing, parseFraming } from "../../api/image-frames.ts";
 import { base64url } from "../../bytes.ts";
 import { db } from "../../env/index.ts";
 import { UNBLOCKED } from "../../identity/index.ts";
@@ -10,6 +11,8 @@ export type Profile = {
   name: string | null;
   verified: boolean;
   photo: string | null;
+  /** How the photo is framed (decision 0086), or null. */
+  photoFrames: Framing | null;
 };
 
 /**
@@ -26,12 +29,26 @@ export async function profile(
   const row = await db(env)
     .prepare(
       `SELECT display_name AS name, verified,
-              CASE WHEN ${UNBLOCKED("?1", "?2")} THEN photo_version END AS photo
+              CASE WHEN ${UNBLOCKED("?1", "?2")} THEN photo_version END AS photo,
+              CASE WHEN ${UNBLOCKED("?1", "?2")} THEN photo_frames END AS frames
          FROM accounts WHERE account_id = ?2`,
     )
     .bind(viewer, accountId)
-    .first<{ name: string | null; verified: number; photo: string | null }>();
-  return row ? { accountId, name: row.name, verified: row.verified === 1, photo: row.photo } : null;
+    .first<{
+      name: string | null;
+      verified: number;
+      photo: string | null;
+      frames: string | null;
+    }>();
+  return row
+    ? {
+        accountId,
+        name: row.name,
+        verified: row.verified === 1,
+        photo: row.photo,
+        photoFrames: parseFraming(row.frames),
+      }
+    : null;
 }
 
 /** The Icelandic letters a search folds, as migrations/0010_directory.sql folds `name_key`. */
@@ -110,7 +127,7 @@ export async function directory(
   const { results } = await db(env)
     .prepare(
       `SELECT a.account_id AS accountId, a.display_name AS name, a.verified, a.name_key AS key,
-              a.photo_version AS photo
+              a.photo_version AS photo, a.photo_frames AS frames
          FROM accounts a
         WHERE a.display_name IS NOT NULL
           AND a.account_id != ?1
@@ -142,6 +159,7 @@ export async function directory(
       verified: number;
       key: string;
       photo: string | null;
+      frames: string | null;
     }>();
   const page = results.slice(0, limit);
   const last = page.at(-1);
@@ -152,6 +170,7 @@ export async function directory(
       name: r.name,
       verified: r.verified === 1,
       photo: r.photo,
+      photoFrames: parseFraming(r.frames),
     })),
     next:
       results.length > limit && last

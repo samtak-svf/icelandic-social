@@ -4,6 +4,28 @@
     "title": "spjall-api",
     "version": "0.1.0"
   },
+  "x-frame-specs": {
+    "cover": {
+      "compact": {
+        "w": 1200,
+        "h": 400
+      },
+      "medium": {
+        "w": 1600,
+        "h": 400
+      },
+      "expanded": {
+        "w": 1600,
+        "h": 600
+      }
+    },
+    "photo": {
+      "square": {
+        "w": 512,
+        "h": 512
+      }
+    }
+  },
   "components": {
     "securitySchemes": {
       "deviceToken": {
@@ -321,7 +343,7 @@
         "properties": {
           "error": {
             "type": "string",
-            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, invalid_media, muted, expired, incomplete, internal_error",
+            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, invalid_media, muted, expired, incomplete, internal_error",
             "example": "unauthorized"
           },
           "requestId": {
@@ -1333,13 +1355,100 @@
             "pattern": "^[A-Za-z0-9_-]{1,128}$",
             "example": "c_9f3a1b",
             "description": "The profile photo's version, changed by each upload; null when there is none to show (decision 0039)"
+          },
+          "photoFrames": {
+            "$ref": "#/components/schemas/Framing"
           }
         },
         "required": [
           "accountId",
           "name",
           "verified",
-          "photo"
+          "photo",
+          "photoFrames"
+        ]
+      },
+      "Framing": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "focus": {
+            "$ref": "#/components/schemas/Focus"
+          },
+          "overrides": {
+            "type": "object",
+            "properties": {
+              "compact": {
+                "$ref": "#/components/schemas/FrameRect"
+              },
+              "medium": {
+                "$ref": "#/components/schemas/FrameRect"
+              },
+              "expanded": {
+                "$ref": "#/components/schemas/FrameRect"
+              },
+              "square": {
+                "$ref": "#/components/schemas/FrameRect"
+              }
+            },
+            "description": "A rectangle for each frame set by hand; it wins over the focus"
+          }
+        },
+        "required": [
+          "focus"
+        ],
+        "description": "How the photo is framed (decision 0086); null without a photo or for one stored before frames"
+      },
+      "Focus": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "y": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ]
+      },
+      "FrameRect": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "y": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "w": {
+            "type": "number",
+            "minimum": 0.001,
+            "maximum": 1
+          },
+          "h": {
+            "type": "number",
+            "minimum": 0.001,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "w",
+          "h"
         ]
       },
       "PeoplePage": {
@@ -1536,6 +1645,26 @@
             "example": "c_9f3a1b",
             "description": "The community's cover version, changed by each upload; null when it has none (decision 0080). The cover is GET /v1/communities/{communityId}/cover"
           },
+          "photoFrames": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Framing"
+              },
+              {
+                "description": "How the picture is framed (decision 0086); null without a picture or for one stored before frames"
+              }
+            ]
+          },
+          "coverFrames": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Framing"
+              },
+              {
+                "description": "How the cover is framed, with the rectangle of each size class set by hand (decision 0086); null without a cover or for one stored before frames"
+              }
+            ]
+          },
           "unread": {
             "type": "integer",
             "description": "Posts made since the caller last opened the community's feed, counted from a sequence the server keeps: a post later deleted or removed still counts. 0 for a caller who is not a member (decision 0080)"
@@ -1570,6 +1699,8 @@
           "openReports",
           "photo",
           "cover",
+          "photoFrames",
+          "coverFrames",
           "unread",
           "lastPostAt",
           "pinned"
@@ -6345,6 +6476,167 @@
         }
       }
     },
+    "/v1/me/photo/frames": {
+      "patch": {
+        "operationId": "setPhotoFrames",
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Frame this account's profile photo again, from its stored master (decision 0086)",
+        "description": "The body is the focus and any rectangle set by hand. The server cuts the frames again from the master it kept and gives the photo a new version; nothing is uploaded.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Framing"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Framed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoSet"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: the body is not a framing, or names a frame a photo does not have",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: the account has no photo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "no_master: the photo was uploaded before masters were kept; upload it again to frame it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: too many requests in the last minute; try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/photo/source": {
+      "get": {
+        "operationId": "getPhotoSource",
+        "tags": [
+          "accounts"
+        ],
+        "summary": "This account's photo master, to frame it again (decision 0086)",
+        "description": "A WebP without metadata, at most 2400 px on its long edge. Only the account itself reads it.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The master",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no photo, or one stored before masters were kept",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/accounts/{accountId}/photo": {
       "get": {
         "operationId": "getPhoto",
@@ -6370,6 +6662,19 @@
             "required": true,
             "name": "accountId",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "square"
+              ],
+              "description": "The frame to serve; the only one is the default"
+            },
+            "required": false,
+            "description": "The frame to serve; the only one is the default",
+            "name": "frame",
+            "in": "query"
           }
         ],
         "responses": {
@@ -8410,6 +8715,19 @@
             "required": true,
             "name": "communityId",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "square"
+              ],
+              "description": "The frame to serve, one of square; without it the one an app from before decision 0086 knows"
+            },
+            "required": false,
+            "description": "The frame to serve, one of square; without it the one an app from before decision 0086 knows",
+            "name": "frame",
+            "in": "query"
           }
         ],
         "responses": {
@@ -8697,6 +9015,21 @@
             "required": true,
             "name": "communityId",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "compact",
+                "medium",
+                "expanded"
+              ],
+              "description": "The frame to serve, one of compact, medium, expanded; without it the one an app from before decision 0086 knows"
+            },
+            "required": false,
+            "description": "The frame to serve, one of compact, medium, expanded; without it the one an app from before decision 0086 knows",
+            "name": "frame",
+            "in": "query"
           }
         ],
         "responses": {
@@ -8733,6 +9066,416 @@
           },
           "404": {
             "description": "not_found: no such community, no cover, or the caller may not read the community",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/communities/{communityId}/avatar/frames": {
+      "patch": {
+        "tags": [
+          "communities"
+        ],
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "operationId": "setCommunityAvatarFrames",
+        "summary": "Frame a community's picture again, from its stored master (decision 0086)",
+        "description": "The body is the focus and any rectangle set by hand. The server cuts the frames again from the master it kept and gives the image a new version. Only the community's owner and its moderators may; the change is a moderation log entry, as for an upload.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "cm_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+            },
+            "required": true,
+            "name": "communityId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Framing"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Framed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunityAvatarSet"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: the body is not a framing, or names a frame a picture does not have",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: only the community's moderators and its owner may do this",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such community, or it has no picture",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "no_master: the picture was uploaded before masters were kept; upload it again to frame it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: too many requests in the last minute; try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/communities/{communityId}/cover/frames": {
+      "patch": {
+        "tags": [
+          "communities"
+        ],
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "operationId": "setCommunityCoverFrames",
+        "summary": "Frame a community's cover again, from its stored master (decision 0086)",
+        "description": "The body is the focus and any rectangle set by hand. The server cuts the frames again from the master it kept and gives the image a new version. Only the community's owner and its moderators may; the change is a moderation log entry, as for an upload.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "cm_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+            },
+            "required": true,
+            "name": "communityId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Framing"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Framed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunityCoverSet"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: the body is not a framing, or names a frame a cover does not have",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: only the community's moderators and its owner may do this",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such community, or it has no cover",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "no_master: the cover was uploaded before masters were kept; upload it again to frame it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: too many requests in the last minute; try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/communities/{communityId}/avatar/source": {
+      "get": {
+        "tags": [
+          "communities"
+        ],
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "operationId": "getCommunityAvatarSource",
+        "summary": "A community's picture master, to frame it again (decision 0086)",
+        "description": "A WebP without metadata, at most 2400 px on its long edge. Only the community's owner and its moderators read it.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "cm_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+            },
+            "required": true,
+            "name": "communityId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The master",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such community, no picture, one stored before masters were kept, or the caller may not change it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/communities/{communityId}/cover/source": {
+      "get": {
+        "tags": [
+          "communities"
+        ],
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "operationId": "getCommunityCoverSource",
+        "summary": "A community's cover master, to frame it again (decision 0086)",
+        "description": "A WebP without metadata, at most 2400 px on its long edge. Only the community's owner and its moderators read it.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "cm_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+            },
+            "required": true,
+            "name": "communityId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The master",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such community, no cover, one stored before masters were kept, or the caller may not change it",
             "content": {
               "application/json": {
                 "schema": {

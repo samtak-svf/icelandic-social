@@ -1,3 +1,4 @@
+import { type Framing, parseFraming } from "../../api/image-frames.ts";
 import { db } from "../../env/index.ts";
 import { UNBLOCKED } from "../../identity/index.ts";
 import { transfer } from "./membership.ts";
@@ -40,6 +41,10 @@ export type Standing = {
   photo: string | null;
   /** The cover's version (decision 0080), or null when it has none. */
   cover: string | null;
+  /** How the picture is framed (decision 0086), or null. */
+  photoFrames: Framing | null;
+  /** How the cover is framed (decision 0086), or null. */
+  coverFrames: Framing | null;
   /**
    * Posts made since the viewer last opened the feed (decision 0080), counted
    * from D1's sequence alone. A post later deleted or removed still counts as
@@ -64,6 +69,7 @@ export const DECLINED_MS = 30 * DAY_MS;
 // ?1 is the viewer in every query that uses these.
 const COLUMNS = `c.community_id, c.name, c.description, c.audience, c.created_at,
        c.read_only_since, c.deleted_at, c.purged_at, c.photo_version, c.cover_version,
+       c.photo_frames, c.cover_frames,
        m.role, m.muted_until,
        CASE WHEN m.role IS NOT NULL
             THEN MAX(0, c.post_seq - COALESCE((SELECT x.read_seq FROM community_reads x
@@ -110,6 +116,8 @@ type Row = {
   purged_at: number | null;
   photo_version: string | null;
   cover_version: string | null;
+  photo_frames: string | null;
+  cover_frames: string | null;
   unread: number;
   last_post_at: number | null;
   pinned_at: number | null;
@@ -150,6 +158,8 @@ function standingOf(row: Row): Standing {
     openReports: row.open_reports,
     photo: row.photo_version,
     cover: row.cover_version,
+    photoFrames: parseFraming(row.photo_frames),
+    coverFrames: parseFraming(row.cover_frames),
     unread: row.unread,
     lastPostAt: row.last_post_at,
     pinned: row.pinned_at !== null,
@@ -259,6 +269,8 @@ export async function createCommunity(
     openReports: 0,
     photo: null,
     cover: null,
+    photoFrames: null,
+    coverFrames: null,
     unread: 0,
     lastPostAt: null,
     pinned: false,
@@ -345,11 +357,16 @@ export function imageVersion(
   communityId: string,
   which: "photo" | "cover",
   version: string | null,
+  framing: Framing | null,
 ): D1PreparedStatement {
-  const column = which === "photo" ? "photo_version" : "cover_version";
+  const [column, frames] =
+    which === "photo" ? ["photo_version", "photo_frames"] : ["cover_version", "cover_frames"];
   return db(env)
-    .prepare(`UPDATE communities SET ${column} = ?2 WHERE community_id = ?1 AND deleted_at IS NULL`)
-    .bind(communityId, version);
+    .prepare(
+      `UPDATE communities SET ${column} = ?2, ${frames} = ?3
+        WHERE community_id = ?1 AND deleted_at IS NULL`,
+    )
+    .bind(communityId, version, framing && JSON.stringify(framing));
 }
 
 export type Member = {

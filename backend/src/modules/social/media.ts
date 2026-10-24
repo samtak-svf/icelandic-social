@@ -202,8 +202,8 @@ export async function deleteKeys(env: Env, keys: string[]): Promise<void> {
  * its posts' images, and its picture and cover (decision 0080).
  */
 export async function deleteCommunityMedia(env: Env, communityId: string): Promise<void> {
-  await deleteImage(env, communityPictureKey(communityId));
-  await deleteImage(env, communityCoverKey(communityId));
+  await deleteImage(env, communityPictureKey(communityId), "photo");
+  await deleteImage(env, communityCoverKey(communityId), "cover");
   const prefix = `social/${communityId}/`;
   let cursor: string | undefined;
   do {

@@ -3,21 +3,27 @@ import {
   deleteCommunityAvatarRoute,
   deleteCommunityCoverRoute,
   getCommunityAvatarRoute,
+  getCommunityAvatarSourceRoute,
   getCommunityCoverRoute,
+  getCommunityCoverSourceRoute,
+  patchCommunityAvatarFramesRoute,
+  patchCommunityCoverFramesRoute,
   putCommunityAvatarRoute,
   putCommunityCoverRoute,
-} from "../../api/communities.ts";
+} from "../../api/community-images.ts";
 import { MAX_PHOTO_UPLOAD } from "../../api/accounts.ts";
 import type { AppEnv } from "../../app.ts";
-import { db, profilesBucket } from "../../env/index.ts";
+import { framingFits } from "../../api/image-frames.ts";
+import { db, withinLimit } from "../../env/index.ts";
 import { fail } from "../../errors.ts";
 import {
   communityCoverKey,
   communityPictureKey,
-  COVER,
   deleteImage,
+  getFrame,
+  getMaster,
   imageHeaders,
-  SQUARE,
+  renderFrames,
   storeImage,
   takeUpload,
 } from "../../images.ts";
@@ -34,8 +40,8 @@ import type { LifecycleHooks } from "./lifecycle.ts";
 // ids and a size, never a name or the image (0008).
 
 const KINDS = {
-  photo: { shape: SQUARE, key: communityPictureKey },
-  cover: { shape: COVER, key: communityCoverKey },
+  photo: { frames: "photo", key: communityPictureKey },
+  cover: { frames: "cover", key: communityCoverKey },
 } as const;
 
 type Kind = keyof typeof KINDS;
@@ -50,10 +56,10 @@ export function communityImageRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleH
       if (!moderates(found)) return fail(c, 403, "not_permitted");
       const upload = await takeUpload(c, accountId, MAX_PHOTO_UPLOAD);
       if ("error" in upload) return fail(c, upload.status, upload.error);
-      const { shape, key } = KINDS[kind];
+      const { frames, key } = KINDS[kind];
       let stored: Awaited<ReturnType<typeof storeImage>>;
       try {
-        stored = await storeImage(c.env, key(communityId), shape, upload.body, upload.length);
+        stored = await storeImage(c.env, key(communityId), frames, upload.body, upload.length);
       } catch {
         // The body ended short of, or ran past, its Content-Length.
         return fail(c, 400, "invalid_request");
@@ -61,12 +67,12 @@ export function communityImageRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleH
       if (stored === "invalid_image") return fail(c, 400, "invalid_image");
       // The object first, then the version, so none names an image not there yet.
       const [written] = await db(c.env).batch([
-        imageVersion(c.env, communityId, kind, stored.version),
+        imageVersion(c.env, communityId, kind, stored.version, stored.framing),
         hooks.recordImage(c.env, communityId, accountId, kind, "set"),
       ]);
       // The community was deleted while the image was on its way: keep nothing.
       if (!written || written.meta.changes === 0) {
-        await deleteImage(c.env, key(communityId));
+        await deleteImage(c.env, key(communityId), frames);
         return fail(c, 404, "not_found");
       }
       log(`community.${kind}_set`, { accountId, communityId, size: stored.size });
@@ -83,12 +89,12 @@ export function communityImageRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleH
       // The version first, so none names a missing image; nothing to log if there was none.
       if (found[kind] !== null) {
         await db(c.env).batch([
-          imageVersion(c.env, communityId, kind, null),
+          imageVersion(c.env, communityId, kind, null, null),
           hooks.recordImage(c.env, communityId, accountId, kind, "remove"),
         ]);
         log(`community.${kind}_removed`, { accountId, communityId });
       }
-      await deleteImage(c.env, KINDS[kind].key(communityId));
+      await deleteImage(c.env, KINDS[kind].key(communityId), KINDS[kind].frames);
       return c.body(null, 204);
     });
 
@@ -100,7 +106,46 @@ export function communityImageRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleH
       if (!found || found[kind] === null || !(canRead(found) || found.platformModerator)) {
         return fail(c, 404, "not_found");
       }
-      const object = await profilesBucket(c.env).get(KINDS[kind].key(communityId));
+      const { frames, key } = KINDS[kind];
+      const object = await getFrame(c.env, key(communityId), frames, c.req.valid("query").frame);
+      return object ? c.body(object.body, 200, imageHeaders(object)) : fail(c, 404, "not_found");
+    });
+
+  const frame = (route: typeof patchCommunityAvatarFramesRoute, kind: Kind) =>
+    app.openapi(route, async (c) => {
+      const { accountId } = c.var.session;
+      const { communityId } = c.req.valid("param");
+      const framing = c.req.valid("json");
+      const found = await standing(c.env, accountId, communityId);
+      if (!found) return fail(c, 404, "not_found");
+      if (!moderates(found)) return fail(c, 403, "not_permitted");
+      const { frames, key } = KINDS[kind];
+      if (found[kind] === null) return fail(c, 404, "not_found");
+      if (!framingFits(frames, framing)) return fail(c, 400, "invalid_request");
+      if (!(await withinLimit(c.env, "photos", accountId))) {
+        log("request.rate_limited", { code: "photos", requestId: c.var.requestId });
+        return fail(c, 429, "rate_limited");
+      }
+      const rendered = await renderFrames(c.env, key(communityId), frames, framing);
+      if (rendered === "no_master") return fail(c, 409, "no_master");
+      if (rendered === "invalid_image") return fail(c, 400, "invalid_image");
+      // A re-framing is a change of the image, logged as a set.
+      const [written] = await db(c.env).batch([
+        imageVersion(c.env, communityId, kind, rendered.version, framing),
+        hooks.recordImage(c.env, communityId, accountId, kind, "set"),
+      ]);
+      if (!written || written.meta.changes === 0) return fail(c, 404, "not_found");
+      log(`community.${kind}_framed`, { accountId, communityId, size: rendered.size });
+      return c.json({ version: rendered.version }, 200);
+    });
+
+  const source = (route: typeof getCommunityAvatarSourceRoute, kind: Kind) =>
+    app.openapi(route, async (c) => {
+      const { communityId } = c.req.valid("param");
+      const found = await standing(c.env, c.var.session.accountId, communityId);
+      // Who may change the image may read its master; everyone else gets the same 404 as for none.
+      if (!found || found[kind] === null || !moderates(found)) return fail(c, 404, "not_found");
+      const object = await getMaster(c.env, KINDS[kind].key(communityId));
       return object ? c.body(object.body, 200, imageHeaders(object)) : fail(c, 404, "not_found");
     });
 
@@ -110,4 +155,8 @@ export function communityImageRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleH
   remove(deleteCommunityCoverRoute, "cover");
   read(getCommunityAvatarRoute, "photo");
   read(getCommunityCoverRoute, "cover");
+  frame(patchCommunityAvatarFramesRoute, "photo");
+  frame(patchCommunityCoverFramesRoute, "cover");
+  source(getCommunityAvatarSourceRoute, "photo");
+  source(getCommunityCoverSourceRoute, "cover");
 }

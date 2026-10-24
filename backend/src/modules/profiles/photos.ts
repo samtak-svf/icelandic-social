@@ -2,14 +2,25 @@ import type { OpenAPIHono } from "@hono/zod-openapi";
 import {
   deletePhotoRoute,
   getPhotoRoute,
+  getPhotoSourceRoute,
   MAX_PHOTO_UPLOAD,
+  patchPhotoFramesRoute,
   putPhotoRoute,
 } from "../../api/accounts.ts";
+import { framingFits } from "../../api/image-frames.ts";
 import type { AppEnv } from "../../app.ts";
 import { setPhotoVersion, UNBLOCKED } from "../../identity/index.ts";
-import { db, profilesBucket } from "../../env/index.ts";
+import { db, withinLimit } from "../../env/index.ts";
 import { fail } from "../../errors.ts";
-import { deleteImage, imageHeaders, SQUARE, storeImage, takeUpload } from "../../images.ts";
+import {
+  deleteImage,
+  getFrame,
+  getMaster,
+  imageHeaders,
+  renderFrames,
+  storeImage,
+  takeUpload,
+} from "../../images.ts";
 import { log } from "../../log.ts";
 
 // The profile photo (decision 0039): one per account, shown to every signed-in
@@ -30,10 +41,10 @@ async function setPhoto(
   body: ReadableStream<Uint8Array>,
   size: number,
 ): Promise<{ version: string; size: number } | "invalid_image"> {
-  const stored = await storeImage(env, accountId, SQUARE, body, size);
+  const stored = await storeImage(env, accountId, "photo", body, size);
   if (stored === "invalid_image") return stored;
   // The account was deleted while the photo was on its way: keep nothing.
-  if (!(await setPhotoVersion(env, accountId, stored.version))) {
+  if (!(await setPhotoVersion(env, accountId, stored.version, stored.framing))) {
     await deleteAccountPhoto(env, accountId);
   }
   return stored;
@@ -41,13 +52,13 @@ async function setPhoto(
 
 /** Removes `accountId`'s photo: the version first, so none names a missing photo. */
 async function removePhoto(env: Env, accountId: string): Promise<void> {
-  await setPhotoVersion(env, accountId, null);
+  await setPhotoVersion(env, accountId, null, null);
   await deleteAccountPhoto(env, accountId);
 }
 
 /** Deletes the stored photo, if any (`DELETE /v1/me`, decision 0039). */
 export async function deleteAccountPhoto(env: Env, accountId: string): Promise<void> {
-  await deleteImage(env, accountId);
+  await deleteImage(env, accountId, "photo");
 }
 
 /**
@@ -55,7 +66,12 @@ export async function deleteAccountPhoto(env: Env, accountId: string): Promise<v
  * account, or a block between the two, which all answer alike so the answer
  * does not say who blocked whom.
  */
-async function photoFor(env: Env, viewer: string, owner: string): Promise<R2ObjectBody | null> {
+async function photoFor(
+  env: Env,
+  viewer: string,
+  owner: string,
+  frame: string | undefined,
+): Promise<R2ObjectBody | null> {
   const row = await db(env)
     .prepare(
       `SELECT 1 FROM accounts WHERE account_id = ?2 AND photo_version IS NOT NULL
@@ -63,7 +79,7 @@ async function photoFor(env: Env, viewer: string, owner: string): Promise<R2Obje
     )
     .bind(viewer, owner)
     .first();
-  return row ? profilesBucket(env).get(owner) : null;
+  return row ? getFrame(env, owner, "photo", frame) : null;
 }
 
 export function photoRoutes(app: OpenAPIHono<AppEnv>): void {
@@ -84,6 +100,39 @@ export function photoRoutes(app: OpenAPIHono<AppEnv>): void {
     return c.json({ photo: stored.version }, 200);
   });
 
+  app.openapi(patchPhotoFramesRoute, async (c) => {
+    const { accountId } = c.var.session;
+    const framing = c.req.valid("json");
+    if (!framingFits("photo", framing)) return fail(c, 400, "invalid_request");
+    const row = await db(c.env)
+      .prepare("SELECT 1 FROM accounts WHERE account_id = ? AND photo_version IS NOT NULL")
+      .bind(accountId)
+      .first();
+    if (!row) return fail(c, 404, "not_found");
+    if (!(await withinLimit(c.env, "photos", accountId))) {
+      log("request.rate_limited", { code: "photos", requestId: c.var.requestId });
+      return fail(c, 429, "rate_limited");
+    }
+    const rendered = await renderFrames(c.env, accountId, "photo", framing);
+    if (rendered === "no_master") return fail(c, 409, "no_master");
+    if (rendered === "invalid_image") return fail(c, 400, "invalid_image");
+    if (!(await setPhotoVersion(c.env, accountId, rendered.version, framing))) {
+      return fail(c, 404, "not_found");
+    }
+    log("photo.framed", { accountId, size: rendered.size });
+    return c.json({ photo: rendered.version }, 200);
+  });
+
+  app.openapi(getPhotoSourceRoute, async (c) => {
+    const { accountId } = c.var.session;
+    const row = await db(c.env)
+      .prepare("SELECT 1 FROM accounts WHERE account_id = ? AND photo_version IS NOT NULL")
+      .bind(accountId)
+      .first();
+    const object = row ? await getMaster(c.env, accountId) : null;
+    return object ? c.body(object.body, 200, imageHeaders(object)) : fail(c, 404, "not_found");
+  });
+
   app.openapi(deletePhotoRoute, async (c) => {
     const { accountId } = c.var.session;
     await removePhoto(c.env, accountId);
@@ -93,7 +142,12 @@ export function photoRoutes(app: OpenAPIHono<AppEnv>): void {
 
   app.openapi(getPhotoRoute, async (c) => {
     const owner = c.req.valid("param").accountId;
-    const object = await photoFor(c.env, c.var.session.accountId, owner);
+    const object = await photoFor(
+      c.env,
+      c.var.session.accountId,
+      owner,
+      c.req.valid("query").frame,
+    );
     if (!object) return fail(c, 404, "not_found");
     return c.body(object.body, 200, imageHeaders(object));
   });

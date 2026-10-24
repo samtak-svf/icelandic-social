@@ -1,3 +1,4 @@
+import type { Framing } from "../api/image-frames.ts";
 import { base64url } from "../bytes.ts";
 import { db, kennitalaKeys, type ProviderName } from "../env/index.ts";
 import type { Person } from "./providers.ts";
@@ -102,17 +103,18 @@ export async function dropDeadPushToken(
 }
 
 /**
- * Sets or clears the account's photo version (decision 0039). False when the
+ * Sets or clears the account's photo version and framing (decisions 0039, 0086). False when the
  * account no longer exists.
  */
 export async function setPhotoVersion(
   env: Env,
   accountId: string,
   version: string | null,
+  framing: Framing | null,
 ): Promise<boolean> {
   const updated = await db(env)
-    .prepare("UPDATE accounts SET photo_version = ? WHERE account_id = ?")
-    .bind(version, accountId)
+    .prepare("UPDATE accounts SET photo_version = ?, photo_frames = ? WHERE account_id = ?")
+    .bind(version, framing && JSON.stringify(framing), accountId)
     .run();
   return updated.meta.changes > 0;
 }
