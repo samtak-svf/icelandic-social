@@ -137,8 +137,9 @@ private fun Unavailable(
 
 /**
  * The crop sheet itself (decision 0086): the frame of this window's size class to drag and pinch, Save and Cancel,
- * and for a cover a quiet link to adjust the other two sizes. It reads no state of the app, so a test and a screenshot
- * drive it directly.
+ * and for a cover a quiet link to adjust the other two sizes. Only the single-frame sheet moves the focus (kept in
+ * `focus` until Save); the advanced one overrides the frames dragged and leaves it where it is. It reads no state of
+ * the app, so a test and a screenshot drive it directly.
  */
 @Composable
 fun FrameSheetContent(
@@ -156,13 +157,13 @@ fun FrameSheetContent(
 ) {
     val size = remember(image) { ImageSize(image.width, image.height) }
     val edits = remember { mutableStateMapOf<Frame, FrameRect>() }
-    var last by remember { mutableStateOf<Frame?>(null) }
+    var focus by remember { mutableStateOf<Focus?>(null) }
     var cleared by remember { mutableStateOf(false) }
     var advanced by remember { mutableStateOf(initiallyAdvanced) }
     val device = rules.frameForWidth(kind, widthDp)
     // After a reset the stored overrides are gone, though the focus they were placed from stays.
     val effective = if (cleared && base != null) Framing(base.focus, emptyList()) else base
-    val save = { onSave(FrameMath.framingOf(effective, edits, last)) }
+    val save = { onSave(FrameMath.framingOf(effective, edits, focus)) }
     Column(
         modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(GAP.dp),
@@ -177,7 +178,9 @@ fun FrameSheetContent(
         // Side by side from the medium size class up, which the core defines (decision 0087).
         val sideBySide = advanced && rules.frameForWidth(FrameKind.COVER, widthDp) != Frame.COMPACT
         val panes: @Composable (Frame) -> Unit = { frame ->
-            Pane(frame, kind, image, size, effective, edits, rules, labelled = advanced) { last = frame }
+            Pane(frame, kind, image, size, effective, focus, edits, rules, labelled = advanced) {
+                if (!advanced) focus = FrameMath.focusOf(it)
+            }
         }
         if (sideBySide) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(GAP.dp)) {
@@ -192,27 +195,36 @@ fun FrameSheetContent(
                 onToggle = { advanced = !advanced },
                 onReset = {
                     edits.clear()
-                    last = null
+                    focus = null
                     cleared = true
                 },
             )
         }
         problem?.let { ProblemCard(it, save) }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(GAP.dp)) {
-            Pill(
-                stringResource(R.string.cancel),
-                filled = false,
-                onClick = onCancel,
-                modifier = Modifier.weight(1f).testTag("frame-cancel"),
-            )
-            Pill(
-                stringResource(R.string.save),
-                filled = true,
-                onClick = save,
-                enabled = !saving,
-                modifier = Modifier.weight(1f).testTag("frame-save"),
-            )
-        }
+        SaveBar(onCancel, save, saving)
+    }
+}
+
+@Composable
+private fun SaveBar(
+    onCancel: () -> Unit,
+    onSave: () -> Unit,
+    saving: Boolean,
+) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(GAP.dp)) {
+        Pill(
+            stringResource(R.string.cancel),
+            filled = false,
+            onClick = onCancel,
+            modifier = Modifier.weight(1f).testTag("frame-cancel"),
+        )
+        Pill(
+            stringResource(R.string.save),
+            filled = true,
+            onClick = onSave,
+            enabled = !saving,
+            modifier = Modifier.weight(1f).testTag("frame-save"),
+        )
     }
 }
 
@@ -247,20 +259,22 @@ private fun Pane(
     image: ImageBitmap,
     size: ImageSize,
     framing: Framing?,
+    pending: Focus?,
     edits: SnapshotStateMap<Frame, FrameRect>,
     rules: FrameRules,
     labelled: Boolean,
-    onEdit: () -> Unit,
+    onEdit: (FrameRect) -> Unit,
 ) {
     val aspect = rules.aspect(kind, frame)
     val whole = remember(size, aspect) { FrameMath.whole(size, aspect, rules.place) }
     val stored = framing?.overrides?.firstOrNull { it.frame == frame }?.rect
-    val rect = edits[frame] ?: FrameMath.start(size, aspect, framing?.focus ?: Focus(0.5, 0.5), stored, rules.place)
+    val focus = pending ?: framing?.focus ?: FrameMath.CENTRE
+    val rect = edits[frame] ?: FrameMath.start(size, aspect, focus, stored, rules.place)
     val zoomLabel = stringResource(R.string.image_frames_zoom)
 
     fun edit(next: FrameRect) {
         edits[frame] = next
-        onEdit()
+        onEdit(next)
     }
     Column(verticalArrangement = Arrangement.spacedBy(GAP.dp / 2)) {
         if (labelled) frameLabel(frame)?.let { Text(stringResource(it), style = HINT, color = Palette.fg) }

@@ -5,7 +5,14 @@ import { Button } from "../ui/kit.tsx";
 import { Dialog } from "../ui/dialog.tsx";
 import { currentSizeClass } from "../ui/size-class.ts";
 import { FrameCropper, FrameHint } from "./frame-cropper.tsx";
-import { framingOf, startRect, type Aspect, type FrameRect, type ImageSize } from "./frame-math.ts";
+import {
+  focusOf,
+  framingOf,
+  startRect,
+  type Aspect,
+  type FrameRect,
+  type ImageSize,
+} from "./frame-math.ts";
 import { ImageProblem } from "./image-problem.tsx";
 import type { SendProblem } from "./frame-send.ts";
 
@@ -49,7 +56,8 @@ export function FrameSheet({
   const [url, setUrl] = useState<string | null>(null);
   const [image, setImage] = useState<ImageSize | null>(null);
   const [edits, setEdits] = useState<Partial<Record<AnyFrame, FrameRect>>>({});
-  const [last, setLast] = useState<AnyFrame | null>(null);
+  // The focus the single-frame sheet chose; the advanced sheet never moves it (#171).
+  const [focus, setFocus] = useState<{ x: number; y: number } | null>(null);
   const [reset, setReset] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -78,7 +86,7 @@ export function FrameSheet({
   const framing = framingOf(
     reset ? { focus: stored?.focus ?? { x: 0.5, y: 0.5 } } : stored,
     edits,
-    last,
+    focus,
     reset,
   );
 
@@ -91,13 +99,13 @@ export function FrameSheet({
 
   function adjust(frame: AnyFrame, rect: FrameRect) {
     setEdits((now) => ({ ...now, [frame]: rect }));
-    setLast(frame);
+    if (!advanced) setFocus(focusOf(rect));
   }
 
   async function submit() {
     setBusy(true);
     setProblem(null);
-    const dirty = reset || last !== null;
+    const dirty = reset || Object.keys(edits).length > 0;
     const failed = await save(dirty ? framing : null);
     // On success the host closes the sheet, which unmounts it.
     if (failed !== null) {
@@ -148,7 +156,7 @@ export function FrameSheet({
               <Button
                 onClick={() => {
                   setEdits({});
-                  setLast(null);
+                  setFocus(null);
                   setReset(true);
                 }}
               >

@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeUp
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -127,5 +128,16 @@ class FrameSheetTest {
         compose.onNodeWithTag("frame-reset").performClick()
         compose.onNodeWithTag("frame-save").performClick()
         assertTrue(saved.last().overrides.isEmpty())
+    }
+
+    @Test
+    fun anAdvancedDragLeavesTheStoredFocusAlone() {
+        val stored = samtak.spjall.core.Focus(0.5, 0.5)
+        show(FrameKind.COVER, base = Framing(stored, emptyList()))
+        compose.onNodeWithTag("frame-advanced").performClick()
+        compose.onNodeWithTag("frame-pane-EXPANDED").performTouchInput { swipeUp() }
+        compose.onNodeWithTag("frame-save").performClick()
+        assertEquals(stored, saved.single().focus)
+        assertEquals(listOf(Frame.EXPANDED), saved.single().overrides.map { it.frame })
     }
 }

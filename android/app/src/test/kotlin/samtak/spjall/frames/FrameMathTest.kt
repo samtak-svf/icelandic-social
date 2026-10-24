@@ -128,7 +128,7 @@ class FrameMathTest {
     @Test
     fun theChosenRectangleBecomesItsFramesOverrideAndItsCentreTheFocus() {
         val rect = FrameRect(0.2, 0.1, 0.4, 0.2)
-        val framing = FrameMath.framingOf(null, mapOf(Frame.COMPACT to rect), Frame.COMPACT)
+        val framing = FrameMath.framingOf(null, mapOf(Frame.COMPACT to rect), FrameMath.focusOf(rect))
         assertEquals(0.4, framing.focus.x, 1e-9)
         assertEquals(0.2, framing.focus.y, 1e-9)
         assertEquals(listOf(FrameOverride(Frame.COMPACT, rect)), framing.overrides)
@@ -139,9 +139,18 @@ class FrameMathTest {
         val medium = FrameOverride(Frame.MEDIUM, FrameRect(0.0, 0.0, 1.0, 0.25))
         val stored = Framing(Focus(0.5, 0.5), listOf(medium))
         val rect = FrameRect(0.2, 0.1, 0.4, 0.2)
-        val framing = FrameMath.framingOf(stored, mapOf(Frame.EXPANDED to rect), Frame.EXPANDED)
+        val framing = FrameMath.framingOf(stored, mapOf(Frame.EXPANDED to rect), null)
         assertEquals(setOf(medium, FrameOverride(Frame.EXPANDED, rect)), framing.overrides.toSet())
         assertEquals(Framing(Focus(0.5, 0.5), emptyList()), FrameMath.framingOf(stored, emptyMap(), null, reset = true))
+    }
+
+    @Test
+    fun anAdvancedEditKeepsTheStoredFocus() {
+        val rect = FrameRect(0.2, 0.1, 0.4, 0.2)
+        val stored = Framing(Focus(0.3, 0.6), emptyList())
+        val framing = FrameMath.framingOf(stored, mapOf(Frame.MEDIUM to rect), null)
+        assertEquals(Focus(0.3, 0.6), framing.focus)
+        assertEquals(listOf(FrameOverride(Frame.MEDIUM, rect)), framing.overrides)
     }
 
     @Test
@@ -154,7 +163,7 @@ class FrameMathTest {
         val first = FrameRect(0.1, 0.1, 0.2, 0.2)
         val second = FrameRect(0.3, 0.3, 0.2, 0.2)
         val stored = Framing(Focus(0.5, 0.5), listOf(FrameOverride(Frame.SQUARE, first)))
-        val framing = FrameMath.framingOf(stored, mapOf(Frame.SQUARE to second), Frame.SQUARE)
+        val framing = FrameMath.framingOf(stored, mapOf(Frame.SQUARE to second), null)
         assertEquals(listOf(FrameOverride(Frame.SQUARE, second)), framing.overrides)
     }
 

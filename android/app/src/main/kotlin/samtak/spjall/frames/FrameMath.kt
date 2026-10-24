@@ -37,7 +37,7 @@ object FrameMath {
     /** How far past the whole frame a person may zoom in. */
     const val MAX_ZOOM = 8.0
 
-    private val CENTRE = Focus(0.5, 0.5)
+    val CENTRE = Focus(0.5, 0.5)
 
     private fun fractions(
         px: PixelRect,
@@ -124,21 +124,22 @@ object FrameMath {
     fun focusOf(rect: FrameRect): Focus = Focus(rect.x + rect.w / 2, rect.y + rect.h / 2)
 
     /**
-     * The framing to send: the stored one with the rectangles the person adjusted as overrides, and the centre of the
-     * one adjusted last as the focus. [reset] drops every override and keeps the focus.
+     * The framing to send: the stored one with the rectangles the person adjusted as overrides. [focus] is the point
+     * the single-frame sheet chose, which every frame without an override is placed from; null keeps the stored
+     * focus, as the advanced sheet does, so a pane left alone is saved where it was shown. [reset] drops every
+     * override.
      */
     fun framingOf(
         base: Framing?,
         edits: Map<Frame, FrameRect>,
-        last: Frame?,
+        focus: Focus?,
         reset: Boolean = false,
     ): Framing {
-        val lastRect = last?.let(edits::get)
-        val focus = lastRect?.let(::focusOf) ?: base?.focus ?: CENTRE
-        if (reset) return Framing(focus, emptyList())
+        val kept = focus ?: base?.focus ?: CENTRE
+        if (reset) return Framing(kept, emptyList())
         val merged = LinkedHashMap<Frame, FrameRect>()
         base?.overrides?.forEach { merged[it.frame] = it.rect }
         merged.putAll(edits)
-        return Framing(focus, merged.map { FrameOverride(it.key, it.value) })
+        return Framing(kept, merged.map { FrameOverride(it.key, it.value) })
     }
 }
