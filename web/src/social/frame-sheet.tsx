@@ -3,15 +3,9 @@ import { strings } from "../generated/brand/strings.ts";
 import { FRAME_SPECS, type AnyFrame, type FrameKind, type Framing } from "../generated/frames.ts";
 import { Button } from "../ui/kit.tsx";
 import { Dialog } from "../ui/dialog.tsx";
+import { currentSizeClass } from "../ui/size-class.ts";
 import { FrameCropper, FrameHint } from "./frame-cropper.tsx";
-import {
-  currentFrame,
-  framingOf,
-  startRect,
-  type Aspect,
-  type FrameRect,
-  type ImageSize,
-} from "./frame-math.ts";
+import { framingOf, startRect, type Aspect, type FrameRect, type ImageSize } from "./frame-math.ts";
 import { ImageProblem } from "./image-problem.tsx";
 import type { SendProblem } from "./frame-send.ts";
 
@@ -61,9 +55,7 @@ export function FrameSheet({
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<SendProblem | null>(null);
   // The frame this screen shows now; read once, so a resize does not move the window under the person.
-  const [here] = useState(() =>
-    kind === "cover" ? currentFrame(globalThis.innerWidth) : ("square" as const),
-  );
+  const [here] = useState(() => (kind === "cover" ? currentSizeClass() : ("square" as const)));
 
   useEffect(() => {
     const object = URL.createObjectURL(source);
@@ -123,7 +115,7 @@ export function FrameSheet({
         ) : (
           <div
             data-testid="frame-panes"
-            className={advanced ? "grid gap-4 min-[600px]:grid-cols-3" : "grid"}
+            className={advanced ? "grid gap-4 medium:grid-cols-3" : "grid"}
           >
             {frames.map((frame) => (
               <div key={frame} className="flex flex-col gap-1">

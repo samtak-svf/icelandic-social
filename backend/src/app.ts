@@ -20,7 +20,7 @@ import {
   signInConfigRoute,
 } from "./api/devices.ts";
 import { WsFrame } from "./api/frames.ts";
-import { FRAME_SPECS } from "./api/image-frames.ts";
+import { FRAME_SPECS, SIZE_CLASSES } from "./api/image-frames.ts";
 import { healthRoute } from "./api/health.ts";
 import { claimKeyPackagesRoute, uploadKeyPackagesRoute } from "./api/key-packages.ts";
 import { getMediaRoute, putMediaRoute } from "./api/media.ts";
@@ -81,12 +81,15 @@ import { opsRoutes } from "./ops/index.ts";
 /**
  * OpenAPI 3.1 document metadata; the routes and schemas come from src/api/.
  * `x-frame-specs` is the pixel size of every image frame (decision 0086), for
- * the clients that cut previews and for `tooling/frames-check.mjs`.
+ * the clients that cut previews and for `tooling/frames-check.mjs`;
+ * `x-size-classes` is where each window size class begins (decisions 0086,
+ * 0087), the one definition every client's layout keys off.
  */
 export const DOCUMENT_INFO = {
   openapi: "3.1.0",
   info: { title: "spjall-api", version: "0.1.0" },
   "x-frame-specs": FRAME_SPECS,
+  "x-size-classes": SIZE_CLASSES,
 } as const;
 
 /**

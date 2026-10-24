@@ -26,6 +26,10 @@
       }
     }
   },
+  "x-size-classes": {
+    "medium": 600,
+    "expanded": 840
+  },
   "components": {
     "securitySchemes": {
       "deviceToken": {

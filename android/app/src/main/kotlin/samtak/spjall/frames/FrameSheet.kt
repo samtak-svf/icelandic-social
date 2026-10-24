@@ -61,9 +61,6 @@ import samtak.spjall.ui.ProblemCard
 val LocalFrameSession =
     compositionLocalOf<FrameSession> { error("no FrameSession provided") }
 
-/** Width in dp from which the advanced panel lays the frames side by side. */
-const val SIDE_BY_SIDE_DP = 600
-
 private const val SQUARE_MAX_DP = 280
 private const val PANE_RADIUS = 12
 private const val GAP = 12
@@ -148,7 +145,8 @@ fun FrameSheetContent(
         Text(stringResource(R.string.image_frames_title), color = Palette.fg)
         Text(stringResource(R.string.image_frames_hint), style = HINT, color = Palette.fg)
         val shown = if (advanced) rules.frames(kind) else listOf(device)
-        val sideBySide = advanced && widthDp >= SIDE_BY_SIDE_DP
+        // Side by side from the medium size class up, which the core defines (decision 0087).
+        val sideBySide = advanced && rules.frameForWidth(FrameKind.COVER, widthDp) != Frame.COMPACT
         val panes: @Composable (Frame) -> Unit = { frame ->
             Pane(frame, kind, image, size, effective, edits, rules, labelled = advanced) { last = frame }
         }

@@ -9,14 +9,32 @@ export type Framing = NonNullable<Contract>;
 // same module runs in tests, tooling and the contract. The placing rule below
 // is also implemented by the Rust core, and both run api/frames.vectors.json.
 
+/**
+ * The window size classes (decisions 0086, 0087): a window is compact below
+ * `medium`, medium from `medium` to below `expanded`, and expanded from
+ * `expanded`, in dp, pt or CSS px. They pick a cover's frame and a screen's
+ * layout on every client, and this is their one definition: the contract
+ * carries it as `x-size-classes`, and `tooling/frames-check.mjs` holds the
+ * clients to it.
+ */
+export const SIZE_CLASSES = { medium: 600, expanded: 840 } as const;
+
+export type SizeClass = "compact" | "medium" | "expanded";
+
+/** The size class of a window `width` wide (dp, pt or CSS px). */
+export function sizeClassOf(width: number): SizeClass {
+  if (width < SIZE_CLASSES.medium) return "compact";
+  if (width < SIZE_CLASSES.expanded) return "medium";
+  return "expanded";
+}
+
 /** A frame's stored size in pixels. */
 export type FrameSize = { w: number; h: number };
 
 /**
  * The frames of each image kind and the size each is stored at. `photo` is an
  * account's photo and a community's picture, `cover` a community's cover. The
- * frames of a cover follow the window size classes (compact below 600, medium
- * from 600 to below 840, expanded from 840).
+ * frames of a cover follow the window size classes (`SIZE_CLASSES`).
  */
 export const FRAME_SPECS = {
   cover: {

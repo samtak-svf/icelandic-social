@@ -13,14 +13,29 @@
 // (COVER_COMPACT, PHOTO_SQUARE, ...), one `FrameSize { w: N, h: N }` per line;
 // they must equal x-frame-specs exactly, with none missing and none extra.
 //
+// `x-size-classes` is where the medium and expanded window size classes begin
+// (decisions 0086, 0087). The core keeps them as MEDIUM_FROM and EXPANDED_FROM,
+// which must equal the contract; the web generates its breakpoints from it,
+// and the apps ask the core. So no client source may type one of the widths
+// as a breakpoint itself: a media query, a Tailwind `min-[…]` variant, a width
+// compared with it, or a constant set to it are refused under CLIENT_ROOTS.
+//
 //   node tooling/frames-check.mjs
 
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, readdirSync } from "node:fs";
+import { join, relative } from "node:path";
 import { ROOT, readJson } from "./lib/repo.mjs";
 
 /** Where the Rust core keeps its copy of the frame sizes. */
 export const RUST_FRAMES = "core/client/src/frames.rs";
+
+/** The client sources that must take their breakpoints from the contract or the core. */
+export const CLIENT_ROOTS = ["web/src", "ios/App", "android/app/src/main"];
+
+/** Generated files, which carry the contract's widths by design, and tests, which feed widths in. */
+const NOT_SCANNED = /(^|\/)generated\/|\.test\.tsx?$/;
+
+const SOURCE = /\.(ts|tsx|css|swift|kt)$/;
 
 /**
  * @typedef {{ w: number, h: number }} Size
@@ -118,18 +133,127 @@ function rustProblems(specs, source) {
 }
 
 /**
+ * @param {any} classes x-size-classes
+ * @returns {string[]}
+ */
+function sizeClassProblems(classes) {
+  if (!classes || typeof classes !== "object") return ["api/openapi.json has no x-size-classes"];
+  const { medium, expanded } = classes;
+  if (
+    !Number.isInteger(medium) ||
+    !Number.isInteger(expanded) ||
+    !(0 < medium && medium < expanded)
+  )
+    return [
+      `x-size-classes needs whole widths with 0 < medium < expanded, not ${JSON.stringify(classes)}`,
+    ];
+  return [];
+}
+
+/**
+ * The core's size-class constants against the contract's.
+ * @param {{ medium: number, expanded: number }} classes x-size-classes
+ * @param {string} source the text of core/client/src/frames.rs
+ * @returns {string[]}
+ */
+function rustClassProblems(classes, source) {
+  /** @type {string[]} */
+  const problems = [];
+  for (const [name, key] of /** @type {const} */ ([
+    ["MEDIUM_FROM", "medium"],
+    ["EXPANDED_FROM", "expanded"],
+  ])) {
+    const found = new RegExp(`^\\s*pub const ${name}: u32 = (\\d+);`, "m").exec(source);
+    if (!found) problems.push(`${RUST_FRAMES} lacks ${name}`);
+    else if (Number(found[1]) !== classes[key])
+      problems.push(`${RUST_FRAMES} ${name} is ${found[1]}, x-size-classes says ${classes[key]}`);
+  }
+  return problems;
+}
+
+/**
+ * Where a client source types a size-class width as a breakpoint: a media
+ * query, a Tailwind arbitrary variant, a width compared with it, or a
+ * constant whose name says it is a width set to it. Comments are skipped.
+ *
+ * @param {{ path: string, text: string }[]} files
+ * @param {{ medium: number, expanded: number }} classes x-size-classes
+ * @returns {string[]}
+ */
+export function handTypedBreakpoints(files, classes) {
+  const widths = [classes.medium, classes.expanded].join("|");
+  const patterns = [
+    new RegExp(`\\b(?:min|max)-\\[(?:${widths})(?:px)?\\]`),
+    new RegExp(`\\b(?:min|max)-width:\\s*(?:${widths})(?:px)?\\b`),
+    new RegExp(`(?:width|Width|Dp|dp)\\b[^\\n]{0,24}?(?:>=|<=|<|>)\\s*(?:${widths})(?:\\.0)?\\b`),
+    new RegExp(
+      `\\b[A-Z_]*(?:DP|WIDTH|BREAKPOINT|FROM)[A-Z_]*\\s*(?::\\s*\\w+\\s*)?=\\s*(?:${widths})\\b`,
+    ),
+  ];
+  /** @type {string[]} */
+  const problems = [];
+  for (const { path, text } of files) {
+    for (const [index, line] of text.split("\n").entries()) {
+      if (/^\s*(?:\/\/|\*|\/\*)/.test(line)) continue;
+      if (patterns.some((p) => p.test(line)))
+        problems.push(`${path}:${index + 1} types a size-class width by hand: ${line.trim()}`);
+    }
+  }
+  return problems;
+}
+
+/**
+ * The client sources under CLIENT_ROOTS, as the scan reads them.
+ * @returns {{ path: string, text: string }[]}
+ */
+export function clientSources() {
+  /** @type {{ path: string, text: string }[]} */
+  const files = [];
+  for (const root of CLIENT_ROOTS) {
+    for (const entry of readdirSync(join(ROOT, root), { recursive: true, withFileTypes: true })) {
+      if (!entry.isFile() || !SOURCE.test(entry.name)) continue;
+      const full = join(entry.parentPath, entry.name);
+      const path = relative(ROOT, full);
+      if (!NOT_SCANNED.test(path)) files.push({ path, text: readFileSync(full, "utf8") });
+    }
+  }
+  return files;
+}
+
+/**
+ * The size classes, then the core and the clients against them; the last two
+ * only when the classes themselves are sound.
+ * @param {any} classes x-size-classes
+ * @param {string} [rustSource] the text of core/client/src/frames.rs
+ * @param {{ path: string, text: string }[]} [clients] client sources
+ * @returns {string[]}
+ */
+function classesProblems(classes, rustSource, clients) {
+  const problems = sizeClassProblems(classes);
+  if (problems.length > 0) return problems;
+  if (rustSource !== undefined) problems.push(...rustClassProblems(classes, rustSource));
+  if (clients !== undefined) {
+    if (clients.length === 0) problems.push("no client source was found to scan for breakpoints");
+    problems.push(...handTypedBreakpoints(clients, classes));
+  }
+  return problems;
+}
+
+/**
  * @param {any} openapi the parsed api/openapi.json
  * @param {any} vectors the parsed api/frames.vectors.json
  * @param {string} [rustSource] the text of core/client/src/frames.rs, when it is to be held to the specs
+ * @param {{ path: string, text: string }[]} [clients] client sources, when they are to be scanned
  * @returns {string[]} what is wrong, empty when they agree
  */
-export function check(openapi, vectors, rustSource) {
+export function check(openapi, vectors, rustSource, clients) {
   const specs = openapi?.["x-frame-specs"];
   if (!specs || typeof specs !== "object" || Object.keys(specs).length === 0) {
     return ["api/openapi.json has no x-frame-specs"];
   }
   const problems = specProblems(specs);
   if (rustSource !== undefined) problems.push(...rustProblems(specs, rustSource));
+  problems.push(...classesProblems(openapi["x-size-classes"], rustSource, clients));
   for (const group of /** @type {const} */ (["place", "override"])) {
     const cases = vectors?.[group];
     if (!Array.isArray(cases) || cases.length === 0) {
@@ -149,12 +273,13 @@ if (import.meta.main) {
     readJson("api/openapi.json"),
     readJson("api/frames.vectors.json"),
     readFileSync(join(ROOT, RUST_FRAMES), "utf8"),
+    clientSources(),
   );
   if (problems.length > 0) {
     for (const problem of problems) console.error(`❌ ${problem}`);
     process.exit(1);
   }
   console.log(
-    "✓ the frame sizes in api/openapi.json, api/frames.vectors.json and the Rust core agree",
+    "✓ the frame sizes and size classes in api/openapi.json, api/frames.vectors.json, the Rust core and the clients agree",
   );
 }

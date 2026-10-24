@@ -2,6 +2,7 @@
 /* The build runs from backend/ (vite.config.ts), so the classes are looked for here. */
 @source ".";
 @import "./generated/brand/theme.css";
+@import "./generated/size-classes.css";
 
 /* Every control shows where the keyboard is. */
 @layer base {

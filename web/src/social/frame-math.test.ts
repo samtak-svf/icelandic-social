@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  currentFrame,
   dragRect,
   focusOf,
   framingOf,
@@ -143,18 +142,5 @@ describe("focus and framing", () => {
     });
     expect(r.x + r.w).toBeLessThanOrEqual(1);
     expect(r.y + r.h).toBeLessThanOrEqual(1);
-  });
-});
-
-describe("currentFrame", () => {
-  it("follows the size classes: below 600, 600 to below 840, from 840", () => {
-    expect([390, 599, 600, 839, 840, 1280].map(currentFrame)).toEqual([
-      "compact",
-      "compact",
-      "medium",
-      "medium",
-      "expanded",
-      "expanded",
-    ]);
   });
 });
