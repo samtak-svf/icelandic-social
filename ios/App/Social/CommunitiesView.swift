@@ -299,10 +299,30 @@ private struct CreateCommunitySheet: View {
     /// The picks, kept until the community is made (decision 0080).
     @State private var picture: Picked?
     @State private var cover: Picked?
+    /// How the person framed each pick in the crop sheet, sent after the community exists (decision 0086).
+    @State private var pictureFraming: Framing?
+    @State private var coverFraming: Framing?
+    @State private var framing: FrameRequest?
     @Environment(\.dismiss) private var dismiss
 
     private var ready: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !model.busy
+    }
+
+    /// A pick goes to the crop sheet before it is kept; Cancel drops it (decision 0086).
+    private func frame(_ pick: Picked, cover isCover: Bool) {
+        Task {
+            guard let master = try? await masterFile(pick) else {
+                // Not an image the sheet can open: kept as it is, so the creation reports it as it always did.
+                if isCover { cover = pick; coverFraming = nil } else { picture = pick; pictureFraming = nil }
+                return
+            }
+            framing = FrameRequest(kind: isCover ? .cover : .photo, master: master, start: nil) { framed in
+                try? FileManager.default.removeItem(at: master)
+                guard let framed else { return }
+                if isCover { cover = pick; coverFraming = framed } else { picture = pick; pictureFraming = framed }
+            }
+        }
     }
 
     var body: some View {
@@ -314,8 +334,9 @@ private struct CreateCommunitySheet: View {
                 Section {
                     CommunityPictureFields(
                         hasPicture: picture != nil, hasCover: cover != nil,
-                        onPicture: { picture = $0 }, onCover: { cover = $0 },
-                        onRemovePicture: { picture = nil }, onRemoveCover: { cover = nil })
+                        onPicture: { frame($0, cover: false) }, onCover: { frame($0, cover: true) },
+                        onRemovePicture: { picture = nil; pictureFraming = nil },
+                        onRemoveCover: { cover = nil; coverFraming = nil })
                 }
                 Section {
                     CommunityAudiencePicker(audience: $audience)
@@ -328,15 +349,16 @@ private struct CreateCommunitySheet: View {
                 Section {
                     Button {
                         let makePicture: (@Sendable () async throws -> URL)? = picture.map { pick in
-                            { @Sendable in try await profilePhoto(pick) }
+                            { @Sendable in try await masterFile(pick) }
                         }
                         let makeCover: (@Sendable () async throws -> URL)? = cover.map { pick in
-                            { @Sendable in try await communityCover(pick) }
+                            { @Sendable in try await masterFile(pick) }
                         }
                         Task {
                             await model.create(
                                 name: name, description: description, audience: audience,
-                                picture: makePicture, cover: makeCover)
+                                picture: makePicture, cover: makeCover,
+                                pictureFraming: pictureFraming, coverFraming: coverFraming)
                         }
                     } label: {
                         Text("community_create").frame(maxWidth: .infinity)
@@ -346,6 +368,7 @@ private struct CreateCommunitySheet: View {
             }
             .navigationTitle(Text("community_create"))
             .navigationBarTitleDisplayMode(.inline)
+            .frameSheet($framing)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {

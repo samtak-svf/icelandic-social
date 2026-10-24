@@ -190,22 +190,9 @@ struct CommunityView: View {
         }
     }
 
-    /// The cover band: the cover cut 8:3 by whoever set it, shown 110 points high, or a plain band.
+    /// The cover band, in the shape of the current screen's frame (decision 0086), or a plain band.
     private func cover(_ community: Community) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 14)
-        return LoadedPhoto(community.coverOf) { image in
-            Color.clear
-                .overlay {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .accessibilityLabel(Text("community_cover_alt"))
-                }
-                .clipShape(shape)
-        } placeholder: {
-            shape.fill(BrandTokens.Colors.secondarySubtle).accessibilityHidden(true)
-        }
-        .frame(height: 110)
+        CoverBand(community: community)
     }
 
     /// `Bjóða`: an open community's link goes through the system share sheet. A private community's invitation has

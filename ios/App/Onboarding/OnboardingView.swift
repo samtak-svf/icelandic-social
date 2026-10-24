@@ -9,6 +9,7 @@ struct OnboardingView: View {
     let me: MeModel
 
     @State private var picked: PhotosPickerItem?
+    @State private var framing: FrameRequest?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -27,7 +28,21 @@ struct OnboardingView: View {
             guard let item else { return }
             picked = nil
             let photo = Picked(photo: item)
-            Task { await me.setPhoto { try await profilePhoto(photo) } }
+            Task { await startFraming(photo) }
+        }
+        .frameSheet($framing)
+    }
+
+    /// The pick goes to the crop sheet first; Save uploads the master, then the framing (decision 0086).
+    private func startFraming(_ photo: Picked) async {
+        guard let master = try? await masterFile(photo) else {
+            await me.setPhoto { try await masterFile(photo) }
+            return
+        }
+        framing = FrameRequest(kind: .photo, master: master, start: nil) { framing in
+            try? FileManager.default.removeItem(at: master)
+            guard let framing else { return }
+            Task { await me.setPhoto({ try await masterFile(photo) }, framing: framing) }
         }
     }
 

@@ -97,12 +97,18 @@ private struct PhotoControls: View {
     @Binding var picked: PhotosPickerItem?
 
     @State private var removing = false
+    @State private var framing: FrameRequest?
 
     @ViewBuilder private var pills: some View {
         PhotosPicker(selection: $picked, matching: .images) {
             PillLabel(text: hasPhoto ? "photo_change" : "photo_choose", filled: false, wide: false)
         }
         if hasPhoto {
+            Button {
+                Task { await reframe() }
+            } label: {
+                PillLabel(text: "image_frames_title", filled: false, wide: false)
+            }
             Button {
                 removing = true
             } label: {
@@ -130,8 +136,9 @@ private struct PhotoControls: View {
             guard let item else { return }
             picked = nil
             let photo = Picked(photo: item)
-            Task { await model.setPhoto { try await profilePhoto(photo) } }
+            Task { await startFraming(photo) }
         }
+        .frameSheet($framing)
         .confirmationDialog("photo_remove_confirm", isPresented: $removing, titleVisibility: .visible) {
             Button("photo_remove", role: .destructive) { Task { await model.removePhoto() } }
             Button("cancel", role: .cancel) {}
@@ -139,11 +146,30 @@ private struct PhotoControls: View {
     }
 }
 
-/// The pick made small and square off the main thread; the copy of the original is deleted.
-func profilePhoto(_ photo: Picked) async throws -> URL {
-    let copy = try await photo.read()
-    defer { try? FileManager.default.removeItem(at: copy) }
-    return try await offMain { try squarePhoto(copy, side: 1024) }
+extension PhotoControls {
+    /// A new pick goes to the crop sheet first; Save uploads the master, then the framing (decision 0086). The
+    /// upload makes its own master from the pick, so trying again after a failure still has one.
+    fileprivate func startFraming(_ photo: Picked) async {
+        guard let master = try? await masterFile(photo) else {
+            await model.setPhoto { try await masterFile(photo) }
+            return
+        }
+        framing = FrameRequest(kind: .photo, master: master, start: nil) { framing in
+            try? FileManager.default.removeItem(at: master)
+            guard let framing else { return }
+            Task { await model.setPhoto({ try await masterFile(photo) }, framing: framing) }
+        }
+    }
+
+    /// The photo already set, framed again from the master the server kept.
+    fileprivate func reframe() async {
+        guard let found = await model.photoMaster() else { return }
+        framing = FrameRequest(kind: .photo, master: found.file, start: found.framing) { framing in
+            try? FileManager.default.removeItem(at: found.file)
+            guard let framing else { return }
+            Task { await model.reframePhoto(framing) }
+        }
+    }
 }
 
 /// Small capitals over a card.
@@ -297,12 +323,4 @@ struct PillLabel: View {
             }
             .contentShape(Capsule())
     }
-}
-
-/// The pick cut into a band for a community's cover (decision 0080), off the main thread; the copy of the
-/// original is deleted.
-func communityCover(_ photo: Picked) async throws -> URL {
-    let copy = try await photo.read()
-    defer { try? FileManager.default.removeItem(at: copy) }
-    return try await offMain { try coverPhoto(copy) }
 }

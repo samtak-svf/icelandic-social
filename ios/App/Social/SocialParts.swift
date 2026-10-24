@@ -141,7 +141,7 @@ struct CommunityTextFields: View {
 
 /// A community's picture and cover (decision 0080): choose or replace each, and take each away. The form that
 /// makes a community keeps the picks until it is made; the one that changes it sends them at once. The picks
-/// are cut small off the main thread by the caller.
+/// go through the crop sheet (decision 0086) in the caller.
 struct CommunityPictureFields: View {
     let hasPicture: Bool
     let hasCover: Bool
@@ -149,6 +149,10 @@ struct CommunityPictureFields: View {
     let onCover: (Picked) -> Void
     let onRemovePicture: () -> Void
     let onRemoveCover: () -> Void
+    /// Opens the crop sheet on the image already set (decision 0086); nil where there is no master to open it on
+    /// yet, as in the form that makes a community.
+    var onFramePicture: (() -> Void)?
+    var onFrameCover: (() -> Void)?
     var disabled = false
 
     @State private var picture: PhotosPickerItem?
@@ -172,6 +176,9 @@ struct CommunityPictureFields: View {
             onPicture(Picked(photo: item))
         }
         if hasPicture {
+            if let onFramePicture {
+                Button(action: onFramePicture) { Text("image_frames_title") }
+            }
             Button(role: .destructive, action: onRemovePicture) {
                 Text("community_picture_remove")
             }
@@ -189,6 +196,9 @@ struct CommunityPictureFields: View {
             onCover(Picked(photo: item))
         }
         if hasCover {
+            if let onFrameCover {
+                Button(action: onFrameCover) { Text("image_frames_title") }
+            }
             Button(role: .destructive, action: onRemoveCover) {
                 Text("community_cover_remove")
             }
