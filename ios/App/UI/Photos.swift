@@ -18,6 +18,8 @@ struct PhotoOf: Hashable, Sendable {
     let owner: String
     let version: String
     var kind = Kind.account
+    /// The frame to fetch (decision 0086): a cover's follows the window's size class, everything else is square.
+    var frame = Frame.square
 }
 
 extension Person {
@@ -39,8 +41,10 @@ extension Community {
     /// The community's picture, or nil when it has none (decision 0080).
     var pictureOf: PhotoOf? { photo.map { PhotoOf(owner: communityId, version: $0, kind: .communityPicture) } }
 
-    /// The community's cover, or nil when it has none (decision 0080).
-    var coverOf: PhotoOf? { cover.map { PhotoOf(owner: communityId, version: $0, kind: .communityCover) } }
+    /// The community's cover in `frame`, or nil when it has none (decisions 0080, 0086).
+    func coverOf(_ frame: Frame) -> PhotoOf? {
+        cover.map { PhotoOf(owner: communityId, version: $0, kind: .communityCover, frame: frame) }
+    }
 }
 
 extension CardCommunity {
@@ -100,9 +104,12 @@ final class PhotoCache<Image: Sendable>: @unchecked Sendable {
             let image = try? await offMain({ () throws -> Image? in
                 let path: String?
                 switch photo.kind {
-                case .account: path = try account.photo(account: photo.owner, version: photo.version)
-                case .communityPicture: path = try social.communityPicture(photo.owner, version: photo.version)
-                case .communityCover: path = try social.communityCover(photo.owner, version: photo.version)
+                case .account:
+                    path = try account.photoFramed(account: photo.owner, version: photo.version, frame: photo.frame)
+                case .communityPicture:
+                    path = try social.communityPictureFramed(photo.owner, version: photo.version, frame: photo.frame)
+                case .communityCover:
+                    path = try social.communityCoverFramed(photo.owner, version: photo.version, frame: photo.frame)
                 }
                 return path.flatMap { decode(photo.kind, $0) }
             })
@@ -179,88 +186,55 @@ private func downsampled(_ path: String, maxPixel: Int) -> UIImage? {
     return UIImage(cgImage: image)
 }
 
-/// The photo at `url` as an upright square from its middle, no larger than `side` pixels, written to a new
-/// temporary JPEG (decision 0039). Only the pixels are written, so none of the original's metadata goes with
-/// it; the server re-encodes it anyway, and that is the guarantee. Throws when `url` is not an image.
-func squarePhoto(_ url: URL, side: Int) throws -> URL {
-    let unreadable = CocoaError(.fileReadCorruptFile)
-    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-        let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
-        let width = properties[kCGImagePropertyPixelWidth] as? Int,
-        let height = properties[kCGImagePropertyPixelHeight] as? Int,
-        min(width, height) > 0
-    else { throw unreadable }
-    // Made only as small as keeps the short side, the square's edge, at `side` or more.
-    let options: [CFString: Any] = [
-        kCGImageSourceCreateThumbnailFromImageAlways: true,
-        kCGImageSourceCreateThumbnailWithTransform: true,
-        kCGImageSourceThumbnailMaxPixelSize: side * max(width, height) / min(width, height),
-    ]
-    guard let upright = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
-        throw unreadable
-    }
-    let edge = min(upright.width, upright.height)
-    let middle = CGRect(x: (upright.width - edge) / 2, y: (upright.height - edge) / 2, width: edge, height: edge)
-    let out = min(edge, side)
-    guard let square = upright.cropping(to: middle),
-        let context = CGContext(
-            data: nil, width: out, height: out, bitsPerComponent: 8, bytesPerRow: 0,
-            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
-    else { throw unreadable }
-    context.interpolationQuality = .high
-    context.draw(square, in: CGRect(x: 0, y: 0, width: out, height: out))
-    let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
-    guard let small = context.makeImage(),
-        let destination = CGImageDestinationCreateWithURL(file as CFURL, UTType.jpeg.identifier as CFString, 1, nil)
-    else { throw unreadable }
-    CGImageDestinationAddImage(destination, small, [kCGImageDestinationLossyCompressionQuality: 0.9] as CFDictionary)
-    guard CGImageDestinationFinalize(destination) else { throw unreadable }
-    return file
-}
+/// The longest edge of a master, in pixels (decision 0086).
+let masterLongEdge = 2400
 
-/// The photo at `url` as an upright band 8:3 wide from its middle, no wider than 1600 pixels, written to a new
-/// temporary JPEG: a community's cover (decision 0080). As `squarePhoto`, only the pixels are written. Throws
-/// when `url` is not an image.
-func coverPhoto(_ url: URL) throws -> URL {
+/// What a master may weigh: the server refuses more than 10 MB.
+let masterByteLimit = 10_000_000
+
+/// The photo at `url` as the master the server keeps and frames (decision 0086): upright, its long edge no longer
+/// than `longEdge` pixels (never scaled up), written to a new temporary JPEG at quality 0.9, stepping down to 0.6
+/// until it weighs no more than `limit` bytes. Only the pixels are written, so none of the original's metadata goes
+/// with it; the server re-encodes it anyway, and that is the guarantee. Throws when `url` is not an image, or when
+/// even the lowest quality is over `limit`.
+func masterPhoto(_ url: URL, longEdge: Int = masterLongEdge, limit: Int = masterByteLimit) throws -> URL {
     let unreadable = CocoaError(.fileReadCorruptFile)
-    let wide = 1600
-    let high = 600
     guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
         let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
         let width = properties[kCGImagePropertyPixelWidth] as? Int,
         let height = properties[kCGImagePropertyPixelHeight] as? Int,
         min(width, height) > 0
     else { throw unreadable }
-    // The longer side as it is, up to 2400 pixels: the band is cut from an upright picture either way.
     let options: [CFString: Any] = [
         kCGImageSourceCreateThumbnailFromImageAlways: true,
         kCGImageSourceCreateThumbnailWithTransform: true,
-        kCGImageSourceThumbnailMaxPixelSize: min(max(width, height), 2400),
+        kCGImageSourceThumbnailMaxPixelSize: min(max(width, height), longEdge),
     ]
-    guard let upright = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
-        throw unreadable
-    }
-    let cutWidth = min(upright.width, upright.height * wide / high)
-    let cutHeight = cutWidth * high / wide
-    guard cutWidth > 0, cutHeight > 0 else { throw unreadable }
-    let middle = CGRect(
-        x: (upright.width - cutWidth) / 2, y: (upright.height - cutHeight) / 2, width: cutWidth, height: cutHeight)
-    let outWidth = min(cutWidth, wide)
-    let outHeight = outWidth * high / wide
-    guard let band = upright.cropping(to: middle),
+    guard let upright = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary),
         let context = CGContext(
-            data: nil, width: outWidth, height: outHeight, bitsPerComponent: 8, bytesPerRow: 0,
+            data: nil, width: upright.width, height: upright.height, bitsPerComponent: 8, bytesPerRow: 0,
             space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
     else { throw unreadable }
+    // Drawn into an opaque bitmap, so a transparent corner is white rather than whatever JPEG makes of alpha.
+    context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+    context.fill(CGRect(x: 0, y: 0, width: upright.width, height: upright.height))
     context.interpolationQuality = .high
-    context.draw(band, in: CGRect(x: 0, y: 0, width: outWidth, height: outHeight))
-    let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
-    guard let small = context.makeImage(),
-        let destination = CGImageDestinationCreateWithURL(file as CFURL, UTType.jpeg.identifier as CFString, 1, nil)
-    else { throw unreadable }
-    CGImageDestinationAddImage(destination, small, [kCGImageDestinationLossyCompressionQuality: 0.9] as CFDictionary)
-    guard CGImageDestinationFinalize(destination) else { throw unreadable }
-    return file
+    context.draw(upright, in: CGRect(x: 0, y: 0, width: upright.width, height: upright.height))
+    guard let pixels = context.makeImage() else { throw unreadable }
+    for quality in stride(from: 0.9, through: 0.55, by: -0.1) {
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil)
+        else { throw unreadable }
+        CGImageDestinationAddImage(
+            destination, pixels, [kCGImageDestinationLossyCompressionQuality: quality] as CFDictionary)
+        guard CGImageDestinationFinalize(destination) else { throw unreadable }
+        if data.length <= limit {
+            let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+            try (data as Data).write(to: file)
+            return file
+        }
+    }
+    throw CocoaError(.fileWriteOutOfSpace)
 }
 
 /// The photo at `url` without where it was taken (decision 0048), in a new temporary file of the same type:

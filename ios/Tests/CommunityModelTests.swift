@@ -264,6 +264,49 @@ final class CommunityModelTests: XCTestCase {
         XCTAssertNil(model.community?.cover)
     }
 
+    func testSavingTheFramingOfANewCoverSendsItAfterTheUpload() async throws {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .owner))
+        let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+        try Data("x".utf8).write(to: file)
+        let framing = Framing(focus: Focus(x: 0.2, y: 0.7), overrides: [])
+        await model.setCover({ file }, framing: framing)
+        let calls = social.calls.filter { $0.hasPrefix("setCommunityCover") }
+        XCTAssertEqual(calls, ["setCommunityCover k1 \(file.path)", "setCommunityCoverFraming k1"])
+        XCTAssertEqual(social.framings.map(\.image), ["cover"])
+        XCTAssertEqual(social.framings.first?.framing, framing)
+    }
+
+    func testReframingSendsOnlyTheFramingAndTheOwnerAlone() async {
+        let owner = await model(makeCommunity("k1", "Fuglar", role: .owner))
+        let framing = Framing(focus: Focus(x: 0.5, y: 0.5), overrides: [])
+        await owner.reframe(cover: false, framing)
+        XCTAssertEqual(social.calls.filter { $0.contains("Framing") }, ["setCommunityPictureFraming k1"])
+        XCTAssertFalse(social.calls.contains { $0.hasPrefix("setCommunityAvatar") }, "no new upload")
+        let member = await model(makeCommunity("k2", "Fiskar", role: .member))
+        let before = social.calls.count
+        await member.reframe(cover: true, framing)
+        XCTAssertEqual(social.calls.count, before)
+    }
+
+    func testACoverSetBeforeMastersWereKeptHasNoMasterToFrame() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .owner))
+        social.hasMaster = false
+        let file = await model.master(cover: true)
+        XCTAssertNil(file)
+        XCTAssertEqual(model.problem, .noMaster)
+        await model.reframe(cover: true, Framing(focus: Focus(x: 0.5, y: 0.5), overrides: []))
+        XCTAssertEqual(model.problem, .noMaster)
+    }
+
+    func testTheMasterIsHandedOverInAFileTheCallerDeletes() async throws {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .owner))
+        let made = await model.master(cover: true)
+        let file = try XCTUnwrap(made)
+        defer { try? FileManager.default.removeItem(at: file) }
+        XCTAssertEqual(try Data(contentsOf: file), Data("master".utf8))
+        XCTAssertTrue(social.calls.contains("communityCoverSource k1"))
+    }
+
     func testAMemberSetsNeitherPictureNorCover() async {
         let model = await model(makeCommunity("k1", "Fuglar", role: .member))
         let before = social.calls.count

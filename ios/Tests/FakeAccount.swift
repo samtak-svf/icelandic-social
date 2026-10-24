@@ -185,6 +185,50 @@ final class FakeAccount: Account, @unchecked Sendable {
         return lock.withLock { _photoFiles["\(account)/\(version)"] }
     }
 
+    /// The framings `setPhotoFraming` was given, in order.
+    var framings: [Framing] { lock.withLock { _framings } }
+    private var _framings: [Framing] = []
+    /// What `photoFraming` returns.
+    var storedFraming: Framing? {
+        get { lock.withLock { _storedFraming } }
+        set { lock.withLock { _storedFraming = newValue } }
+    }
+    private var _storedFraming: Framing?
+    /// Whether the photo has a master to frame again; a photo set before masters were kept has none.
+    var hasMaster: Bool {
+        get { lock.withLock { _hasMaster } }
+        set { lock.withLock { _hasMaster = newValue } }
+    }
+    private var _hasMaster = true
+
+    func setPhotoFraming(_ framing: Framing) throws -> String {
+        try call("setPhotoFraming")
+        return try lock.withLock {
+            guard _hasMaster else { throw CoreError.NoMaster }
+            _framings.append(framing)
+            photoVersions += 1
+            _myPhoto = "v\(photoVersions)"
+            return "v\(photoVersions)"
+        }
+    }
+
+    func photoFraming() throws -> Framing? {
+        try call("photoFraming")
+        return lock.withLock { _storedFraming }
+    }
+
+    func photoSource(path: String) throws -> Bool {
+        try call("photoSource")
+        guard lock.withLock({ _hasMaster }) else { return false }
+        try Data("master".utf8).write(to: URL(filePath: path))
+        return true
+    }
+
+    func photoFramed(account: String, version: String, frame: Frame) throws -> String? {
+        try call("photoFramed \(account) \(version) \(frame)")
+        return lock.withLock { _photoFiles["\(account)/\(version)"] }
+    }
+
     func inviteLink() throws -> String? {
         try call("inviteLink")
         return link

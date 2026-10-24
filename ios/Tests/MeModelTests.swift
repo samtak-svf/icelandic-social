@@ -131,6 +131,41 @@ final class MeModelTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
     }
 
+    func testSavingTheFramingOfAChosenPhotoSendsItAfterTheUpload() async {
+        let model = await model()
+        let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+        let framing = Framing(focus: Focus(x: 0.3, y: 0.4), overrides: [])
+        await model.setPhoto({ try pick(file) }, framing: framing)
+        XCTAssertEqual(account.calls.filter { $0.hasPrefix("setPhoto") }, ["setPhoto", "setPhotoFraming"])
+        XCTAssertEqual(account.framings, [framing])
+    }
+
+    func testReframingTheOwnPhotoSendsOnlyTheFraming() async {
+        let model = await model()
+        let framing = Framing(focus: Focus(x: 0.6, y: 0.5), overrides: [])
+        await model.reframePhoto(framing)
+        XCTAssertEqual(account.framings, [framing])
+        XCTAssertFalse(account.calls.contains("setPhoto"), "no new upload")
+    }
+
+    func testThePhotoMasterComesWithItsStoredFraming() async throws {
+        let stored = Framing(focus: Focus(x: 0.1, y: 0.9), overrides: [])
+        account.storedFraming = stored
+        let model = await model()
+        let master = await model.photoMaster()
+        let found = try XCTUnwrap(master)
+        defer { try? FileManager.default.removeItem(at: found.file) }
+        XCTAssertEqual(found.framing, stored)
+    }
+
+    func testAPhotoSetBeforeMastersWereKeptShowsNoSheetAndTheNoMasterProblem() async {
+        account.hasMaster = false
+        let model = await model()
+        let found = await model.photoMaster()
+        XCTAssertNil(found)
+        XCTAssertEqual(model.problem, .noMaster)
+    }
+
     func testAPickThatIsNotAPhotoIsAProblemNotACrash() async {
         let model = await model()
         await model.setPhoto { throw CocoaError(.fileReadCorruptFile) }
