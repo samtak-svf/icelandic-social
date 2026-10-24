@@ -88,7 +88,8 @@ cargo xtask fetch android    # the pinned published artifact, checksum-verified
 
 # The apps (they read the core from the paths xtask fills, never build it)
 cd android && ./gradlew check assembleDebug   # ktlint, detekt, lint (warnings are errors), unit tests
-ios/scripts/test.sh --prepare   # macOS only: the iOS tests, as ios.yml runs them
+ios/scripts/test.sh --prepare   # macOS only: the iOS tests, as ios.yml runs them (runs lint.sh first)
+ios/scripts/lint.sh             # macOS only: swift-format --strict, the same command ios.yml runs
 node tooling/mac-remote.mjs android   # the Android checks and emulator tests on that Mac (`-- android/scripts/test.sh` alone: check + assembleDebug)
 node tooling/mac-remote.mjs     # the same from Linux, on Samtak's own Mac over ssh (set up by tooling/mac-bootstrap.sh)
 ```
