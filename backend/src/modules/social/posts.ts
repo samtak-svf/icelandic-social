@@ -321,8 +321,8 @@ async function replyParent(
 /**
  * Comments `body` on `postId` as `author`, when it may reply there: the one
  * way a comment is written, from the route and from the assistant (decision
- * 0076). With `media`, at most one image (0082). With `parentCommentId` it is a reply to a top-level comment on the
- * post, whose author is told too (0071), deduplicated when it is the post's
+ * 0076). With `media`, at most one image (0082). With `parentCommentId` it
+ * is a reply to a top-level comment on the post, whose author is told too (0071), deduplicated when it is the post's
  * author, and never across a block. The post's author is told, and `also`
  * adds the jobs of the comment's id to that batch. The notice is written
  * first; its job finds no comment to tell of if the space then fails to
@@ -363,9 +363,10 @@ export async function writeComment(
     db(env)
       .prepare(
         `UPDATE social_media SET post_id = ?1, comment_id = ?2
-          WHERE media_id IN (SELECT value FROM json_each(?3)) AND post_id IS NULL`,
+          WHERE media_id IN (SELECT value FROM json_each(?3)) AND post_id IS NULL
+            AND community_id = ?4 AND uploader_id = ?5`,
       )
-      .bind(postId, commentId, JSON.stringify(media)),
+      .bind(postId, commentId, JSON.stringify(media), post.communityId, author),
     notice(env, commentId, {
       kind: "comment",
       accountId: post.authorId,
