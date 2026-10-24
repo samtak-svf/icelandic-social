@@ -60,8 +60,8 @@ test("a pinned community leads the list, and unpinning gives the place back", as
 });
 
 test("a moderator pins a post to the top of the feed and takes it back", async ({ browser }) => {
-  const owner = await person(browser, "Eigandi Festingardóttir");
-  const member = await person(browser, "Meðlimur Festingarson");
+  const owner = await person(browser, "Eigandi Nælingardóttir");
+  const member = await person(browser, "Meðlimur Nælingarson");
   const community = await found(owner, "open");
   await join(member, community);
   await write(member, strings.post_compose, strings.post_publish, "Eldri pósturinn.");
