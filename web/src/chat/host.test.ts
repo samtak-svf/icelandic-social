@@ -48,7 +48,11 @@ function deps(over: { share?: Share; core?: CoreLike; record?: SealedStoreKey } 
         record = undefined;
       }),
     },
-    share: vi.fn(async () => over.share ?? ("none" as Share)),
+    // A fresh copy per call, as each fetch of the share is.
+    share: vi.fn(async (): Promise<Share> => {
+      const s = over.share ?? "none";
+      return typeof s === "string" ? s : { ...s, share: s.share.slice() };
+    }),
     revoke: vi.fn(async () => undefined),
   } satisfies HostDeps;
   return { d, core, opened, record: () => record };
@@ -117,12 +121,17 @@ describe("the chat worker's key flow (decisions 0064, 0081)", () => {
     expect(b.d.revoke).toHaveBeenCalledWith("dev-1");
   });
 
-  it("loses the device when the store does not open under its key", async () => {
+  it("keeps the store and its key when the store cannot open now", async () => {
     const { record, share } = await linked();
     const b = deps({ record, share: { deviceId: "dev-1", share } });
-    b.d.open.mockRejectedValueOnce({ code: "storage", message: "did not open" });
-    expect(await chatHost(b.d).start()).toEqual({ state: "lost" });
-    expect(b.d.wipeFiles).toHaveBeenCalled();
+    const busy = { code: "storage", message: "the browser's file store did not open" };
+    b.d.open.mockRejectedValueOnce(busy);
+    const host = chatHost(b.d);
+    await expect(host.start()).rejects.toEqual(busy);
+    expect(b.d.wipeFiles).not.toHaveBeenCalled();
+    expect(b.d.keys.delete).not.toHaveBeenCalled();
+    expect(b.d.revoke).not.toHaveBeenCalled();
+    expect(await host.start()).toEqual({ state: "ready", deviceId: "dev-1" });
   });
 
   it("loses the device when its store turns out empty", async () => {
@@ -143,10 +152,10 @@ describe("the chat worker's key flow (decisions 0064, 0081)", () => {
 
   it("zeroes the share it was given", async () => {
     const { record, share } = await linked();
-    const given = share.slice();
-    const b = deps({ record, share: { deviceId: "dev-1", share: given } });
+    const b = deps({ record, share: { deviceId: "dev-1", share } });
     await chatHost(b.d).start();
-    expect(given.every((byte) => byte === 0)).toBe(true);
+    const given = (await b.d.share.mock.results[0]!.value) as { share: Uint8Array };
+    expect(given.share.every((byte) => byte === 0)).toBe(true);
   });
 
   it("revokes the device when the sealed key cannot be saved", async () => {

@@ -133,11 +133,12 @@ export function chatHost(deps: HostDeps): Handlers {
       } finally {
         share.share.fill(0);
       }
+      // The key unsealed, so it is the store's own: a store that does not open
+      // now is held by another tab's worker or out of room, not lost. Its
+      // failure goes to the page and nothing is deleted. A store that is gone
+      // opens empty and is found lost on the first call (`onCore`).
       try {
         core = await deps.open(key);
-      } catch {
-        await lose(record.deviceId);
-        return { state: "lost" };
       } finally {
         key.fill(0);
       }
