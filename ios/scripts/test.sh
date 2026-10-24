@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# The iOS unit tests in a simulator, signed ad hoc. ios.yml runs this, and so
-# does tooling/mac-remote.mjs on a Mac of our own, so the two cannot drift.
+# swift-format lint (lint.sh), then the iOS unit tests in a simulator, signed
+# ad hoc. ios.yml runs this, and so does tooling/mac-remote.mjs on a Mac of our
+# own, so the two cannot drift.
 #
 #   ios/scripts/test.sh             the core fetched and the project generated already (CI)
 #   ios/scripts/test.sh --prepare   fetch the core when the lock changed, then xcodegen first
@@ -25,6 +26,8 @@ if [ "${1:-}" = "--prepare" ]; then
   fi
   (cd "$IOS" && xcodegen generate --quiet)
 fi
+
+"$IOS/scripts/lint.sh"
 
 SIM_UDID=$(xcrun simctl list devices available -j | jq -r '[.devices | to_entries[] | select(.key | startswith("com.apple.CoreSimulator.SimRuntime.iOS-")) | {runtime: .key, devices: [.value[] | select(.name | startswith("iPhone"))]} | select(.devices | length > 0)] | sort_by(.runtime) | (last // {}) | (.devices // []) | .[0] | .udid? // empty')
 if [ -z "$SIM_UDID" ]; then
