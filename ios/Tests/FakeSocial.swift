@@ -340,13 +340,16 @@ final class FakeSocial: Social, @unchecked Sendable {
         return CommentPage(comments: found, next: next)
     }
 
-    func createComment(_ post: String, body: String, parentCommentId: String?) throws -> Comment {
-        try call("createComment \(post) \(body)" + (parentCommentId.map { " on \($0)" } ?? ""))
-        let created = Comment(
+    func createComment(_ post: String, body: String, parentCommentId: String?, media: [String]) throws -> Comment {
+        try call(
+            "createComment \(post) \(body)" + (parentCommentId.map { " on \($0)" } ?? "")
+                + (media.isEmpty ? "" : " media \(media.joined(separator: ","))"))
+        var created = Comment(
             commentId: "c\(post)-\((comments[post] ?? []).count + 1)", postId: post,
             parentCommentId: parentCommentId,
             author: Author(accountId: "a1", name: "Jón Jónsson", verified: true), body: body,
             createdAt: FakeAccount.now, state: .visible)
+        created.images = media.map { PostImage(mediaId: $0, width: 640, height: 480) }
         comments[post, default: []].append(created)
         return created
     }

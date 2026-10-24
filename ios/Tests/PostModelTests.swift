@@ -127,6 +127,81 @@ final class PostModelTests: XCTestCase {
         XCTAssertNil(model.replyingTo)
     }
 
+    /// A picked image as a local copy, the way the picker hands one over.
+    private func image(_ model: PostModel, _ name: String = "mynd.jpg") async throws -> String {
+        let file = FileManager.default.temporaryDirectory.appending(path: "\(UUID().uuidString)-\(name)")
+        try Data([1, 2, 3, 4]).write(to: file)
+        await model.pick(Picked(mime: "image/jpeg", size: 4) { file })
+        return try XCTUnwrap(model.image)
+    }
+
+    func testACommentOfAnImageAloneIsUploadedForThePostsCommunityAndSent() async throws {
+        let model = await model()
+        XCTAssertFalse(model.sendable)
+        let path = try await image(model, "ein.jpg")
+        XCTAssertTrue(model.sendable)
+        await model.publish()
+        XCTAssertTrue(social.calls.contains { $0.hasPrefix("uploadPostImage ") && $0.hasSuffix("ein.jpg") })
+        XCTAssertTrue(social.calls.contains("createComment p1  media m-\(URL(filePath: path).lastPathComponent)"))
+        XCTAssertEqual(social.comments["p1"]?.last?.images.count, 1)
+        XCTAssertNil(model.image)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: path))
+    }
+
+    func testACommentOfTextAndAnImageGoesAsAReplyToo() async throws {
+        let model = await model()
+        model.reply(to: model.comments[0])
+        _ = try await image(model)
+        model.draft = "Sjáðu"
+        await model.publish()
+        XCTAssertTrue(social.calls.contains { $0.hasPrefix("createComment p1 Sjáðu on c1 media m-") })
+    }
+
+    func testAtMostOneImageAndASecondReplacesNothing() async throws {
+        let model = await model()
+        let first = try await image(model, "fyrsta.jpg")
+        await model.pick(Picked(mime: "image/jpeg", size: 4) { throw CancellationError() })
+        XCTAssertEqual(model.image, first)
+        XCTAssertEqual(model.imageNotice, .tooMany)
+        model.unpick()
+        XCTAssertNil(model.image)
+        XCTAssertNil(model.imageNotice)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: first))
+    }
+
+    func testAnImageOverTenMegabytesIsRefusedBeforeItIsRead() async {
+        let model = await model()
+        await model.pick(Picked(mime: "image/jpeg", size: CommunityModel.imageLimit + 1) { throw CancellationError() })
+        XCTAssertEqual(model.imageNotice, .tooLarge)
+        XCTAssertNil(model.image)
+    }
+
+    func testAFailedSendKeepsTheTextAndTheImageAndARetryDoesNotUploadAgain() async throws {
+        let model = await model()
+        let path = try await image(model)
+        model.draft = "Sjáðu"
+        social.failOn = "createComment"
+        await model.publish()
+        XCTAssertEqual(model.problem, .unreachable)
+        XCTAssertEqual(model.draft, "Sjáðu")
+        XCTAssertEqual(model.image, path)
+        social.failOn = nil
+        await model.retry()
+        XCTAssertNil(model.image)
+        XCTAssertEqual(social.calls.filter { $0.hasPrefix("uploadPostImage") }.count, 1)
+    }
+
+    func testAnImageTheServerRefusesIsNamedAndNothingIsSent() async throws {
+        let model = await model()
+        let path = try await image(model)
+        social.refuseImage = CoreError.Refused(status: 415, code: "invalid_image", requestId: nil)
+        await model.publish()
+        XCTAssertEqual(model.imageNotice, .invalid)
+        XCTAssertNil(model.problem)
+        XCTAssertEqual(model.image, path)
+        XCTAssertFalse(social.calls.contains { $0.hasPrefix("createComment") })
+    }
+
     func testAThreadTakesOneLevelSoAReplyIsNotAnsweredAndATombstoneIsNotEither() async {
         social.comments = [
             "p1": [

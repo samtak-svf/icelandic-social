@@ -102,6 +102,35 @@ struct PostImageGrid: View {
     }
 }
 
+/// A comment's one image under its text, at the bubble's width, which opens full screen on a tap (decision 0082).
+struct CommentImage: View {
+    let postId: String
+    let image: PostImage
+
+    @Environment(\.postImages) private var images
+    @State private var opening = false
+
+    var body: some View {
+        let ratio = image.height > 0 ? CGFloat(image.width) / CGFloat(image.height) : 1
+        PostImageView(
+            postId: postId, image: image, ratio: min(max(ratio, 0.75), 2), number: 1, count: 1,
+            alt: "comment_image_alt", onOpen: { opening = true }
+        )
+        .fullScreenCover(isPresented: $opening) {
+            let postId = postId
+            let images = images
+            let mediaId = image.mediaId
+            ImageViewer(
+                images: [
+                    ViewerImage(
+                        id: mediaId, label: Text("comment_image_alt"),
+                        load: { side in await images?.load(postId, mediaId, side: side) })
+                ], start: 0
+            ) { opening = false }
+        }
+    }
+}
+
 /// One of a post's images, cropped to `ratio` (width over height) across the card.
 private struct PostImageView: View {
     let postId: String
@@ -110,6 +139,8 @@ private struct PostImageView: View {
     /// Which of the post's images this is, counting from 1, and how many there are (#355).
     let number: Int
     let count: Int
+    /// What VoiceOver calls it instead of the post's label, for a comment's image.
+    var alt: LocalizedStringKey?
     /// A tap on the image opens it full screen.
     let onOpen: () -> Void
 
@@ -140,7 +171,7 @@ private struct PostImageView: View {
     }
 
     /// The image's label, numbered when the post has more than one.
-    private var label: Text { postImageLabel(number: number, count: count) }
+    private var label: Text { alt.map { Text($0) } ?? postImageLabel(number: number, count: count) }
 }
 
 /// A post image's label, numbered when the post has more than one.

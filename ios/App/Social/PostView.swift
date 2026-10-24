@@ -1,3 +1,4 @@
+import PhotosUI
 import SpjallCore
 import SwiftUI
 
@@ -56,6 +57,9 @@ struct PostView: View {
                         name: model.myName, photo: model.myPhoto,
                         draft: Binding(get: { model.draft }, set: { model.draft = $0 }),
                         limit: PostModel.commentLimit, enabled: model.sendable && !model.busy,
+                        image: model.image, notice: model.imageNotice, busy: model.busy,
+                        onPick: { item in Task { await model.pick(Picked(photo: item)) } },
+                        onUnpick: { model.unpick() },
                         onSend: { Task { await model.publish() } })
                 }
             }
@@ -144,24 +148,46 @@ private struct ReplyBar: View {
 }
 
 /// The comment box, one row pinned to the bottom: the reader's own picture, a field that grows to five lines, and
-/// a send arrow that waits for something to send (decision 0080). Comments carry no media, so there is no photo
-/// button.
+/// a send arrow that waits for something to send (decision 0080). The photo button takes one image (decision
+/// 0082), shown above the row with an X until it is sent.
 private struct CommentComposer: View {
     let name: String?
     let photo: PhotoOf?
     @Binding var draft: String
     let limit: Int
     let enabled: Bool
+    /// The picked image's local copy, if there is one, and why the last one was not taken.
+    let image: String?
+    let notice: CommunityModel.ImageNotice?
+    let busy: Bool
+    let onPick: (PhotosPickerItem) -> Void
+    let onUnpick: () -> Void
     let onSend: () -> Void
 
     @FocusState private var focused: Bool
+    @State private var picking = false
+    @State private var selection: PhotosPickerItem?
 
     var body: some View {
         VStack(spacing: 0) {
             Divider()
+            if let image {
+                PickedImages(paths: [image]) { _ in onUnpick() }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if let notice {
+                SocialNote(text: noticeText(notice))
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             HStack(alignment: .bottom, spacing: 8) {
                 Avatar(name: name, kind: .me, size: 34, photo: photo)
                     .padding(.bottom, 3)
+                RoundButton(
+                    systemImage: "photo", label: "comment_add_image", fill: BrandTokens.Colors.muted,
+                    tint: BrandTokens.Colors.fg, size: 40, enabled: !busy && image == nil
+                ) { picking = true }
                 TextField("post_write_comment", text: $draft, axis: .vertical)
                     .font(.sans(14))
                     .lineLimit(1...5)
@@ -195,5 +221,18 @@ private struct CommentComposer: View {
             .padding(.vertical, 6)
         }
         .background(BrandTokens.Colors.surface)
+        .photosPicker(isPresented: $picking, selection: $selection, matching: .images)
+        .onChange(of: selection) { _, item in
+            guard let item else { return }
+            selection = nil
+            onPick(item)
+        }
+    }
+
+    private func noticeText(_ notice: CommunityModel.ImageNotice) -> LocalizedStringKey {
+        switch notice {
+        case .tooMany, .invalid: "post_image_failed"
+        case .tooLarge: "post_image_too_large"
+        }
     }
 }

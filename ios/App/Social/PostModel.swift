@@ -19,6 +19,12 @@ final class PostModel {
     private(set) var loaded = false
     /// The comment being written.
     var draft = ""
+    /// The image picked for it, as a local copy; a comment takes at most one (decision 0082).
+    private(set) var image: String?
+    /// Why the image picked or sent was not taken, until the next is picked or the comment goes.
+    private(set) var imageNotice: CommunityModel.ImageNotice?
+    /// The media id of the picked image once uploaded, so a retry does not send it again.
+    private var uploaded: String?
     /// The comment this account is answering, which the composer names above it (decision 0071); nil for a
     /// comment on the post itself.
     private(set) var replyingTo: Comment?
@@ -57,10 +63,39 @@ final class PostModel {
     /// The post or comment is this account's own, which it may delete.
     func mine(_ author: Author) -> Bool { me != nil && author.accountId == me }
 
-    /// The draft may be sent: something written, and not over the limit.
+    /// The draft may be sent: something written, an image picked, or both, and the text not over the limit.
     var sendable: Bool {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        return writes && !body.isEmpty && body.count <= Self.commentLimit
+        return writes && (!body.isEmpty || image != nil) && body.count <= Self.commentLimit
+    }
+
+    /// Takes the image picked for the comment as a local copy. A comment holds one: another is refused with a
+    /// sentence, as is one over 10 MB or one that cannot be read.
+    func pick(_ picked: Picked) async {
+        guard image == nil else {
+            imageNotice = .tooMany
+            return
+        }
+        imageNotice = nil
+        switch await CommunityModel.readImage(picked) {
+        case .failure(let notice):
+            imageNotice = notice
+        case .success(let file):
+            guard image == nil else {
+                try? FileManager.default.removeItem(at: file)
+                imageNotice = .tooMany
+                return
+            }
+            image = file.path
+        }
+    }
+
+    /// Takes the picked image out of the comment, and deletes its copy.
+    func unpick() {
+        if let image { try? FileManager.default.removeItem(atPath: image) }
+        image = nil
+        uploaded = nil
+        imageNotice = nil
     }
 
     func load() async {
@@ -146,20 +181,43 @@ final class PostModel {
     /// Sends the draft, as a reply when a comment is being answered. It goes last, as the newest; while newer
     /// pages are still to come it arrives with them.
     func publish() async {
-        guard sendable else { return }
+        guard sendable, !busy, let community = post?.communityId else { return }
         let social = social
         let id = postId
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         let parent = replyingTo?.commentId
-        await perform(again: { await self.publish() }) {
+        let picked = image
+        busy = true
+        problem = nil
+        imageNotice = nil
+        do {
+            if let picked, uploaded == nil {
+                uploaded = try await offMain { try social.uploadPostImage(community, path: picked).mediaId }
+            }
+            let media = uploaded.map { [$0] } ?? []
             let comment = try await offMain {
-                try social.createComment(id, body: body, parentCommentId: parent)
+                try social.createComment(id, body: body, parentCommentId: parent, media: media)
             }
             if self.next == nil { self.comments.append(comment) }
             self.post?.commentCount += 1
-            self.draft = ""
-            self.replyingTo = nil
+            if let picked { try? FileManager.default.removeItem(atPath: picked) }
+            image = nil
+            uploaded = nil
+            draft = ""
+            replyingTo = nil
+            failed = nil
+        } catch {
+            // A media id the server no longer knows (over a day old): the next try uploads again.
+            if case CoreError.Refused(_, "invalid_media", _) = error { uploaded = nil }
+            if let notice = CommunityModel.notice(for: error) {
+                failed = nil
+                imageNotice = notice
+            } else {
+                failed = { await self.publish() }
+                problem = Problem(error)
+            }
         }
+        busy = false
     }
 
     /// Sets this account's reaction to `kind`, or takes it off when it is `kind` already, shown at once and

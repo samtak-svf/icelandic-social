@@ -55,8 +55,9 @@ protocol Social: Sendable {
     func unreact(_ post: String) throws
     /// A page of a post's comments, oldest first.
     func comments(_ post: String, after: String?, limit: UInt32) throws -> CommentPage
-    /// Comments on a post, a reply when `parentCommentId` names the comment it answers (decision 0071).
-    func createComment(_ post: String, body: String, parentCommentId: String?) throws -> Comment
+    /// Comments on a post, a reply when `parentCommentId` names the comment it answers (decision 0071), with at most one image from
+    /// `uploadPostImage` by its media id (decision 0082).
+    func createComment(_ post: String, body: String, parentCommentId: String?, media: [String]) throws -> Comment
     /// Deletes this account's own comment.
     func deleteComment(_ id: String) throws
     /// Reports to the moderators, who are never told who reported; the server sends what is unlawful to the
@@ -107,7 +108,7 @@ extension Social {
 
     /// A comment on a post, rather than a reply to one.
     func createComment(_ post: String, body: String) throws -> Comment {
-        try createComment(post, body: body, parentCommentId: nil)
+        try createComment(post, body: body, parentCommentId: nil, media: [])
     }
 }
 
@@ -194,8 +195,8 @@ extension CoreAccount: Social {
         try core().comments(postId: post, after: after, limit: limit)
     }
 
-    func createComment(_ post: String, body: String, parentCommentId: String?) throws -> Comment {
-        try core().createComment(postId: post, body: body, parentCommentId: parentCommentId)
+    func createComment(_ post: String, body: String, parentCommentId: String?, media: [String]) throws -> Comment {
+        try core().createComment(postId: post, body: body, parentCommentId: parentCommentId, media: media)
     }
 
     func deleteComment(_ id: String) throws { try core().deleteComment(commentId: id) }

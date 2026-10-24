@@ -726,12 +726,18 @@ struct CommentCard: View {
                 if comment.author.verified == true { VerifiedMark(size: 11) }
                 RoleBadge(role: comment.author.role)
             }
-            Text(verbatim: comment.body)
-                .font(TypeStyle.bubble)
-                .foregroundStyle(BrandTokens.Colors.fg)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
-                .textSelection(.enabled)
+            if !comment.body.isEmpty {
+                Text(verbatim: comment.body)
+                    .font(TypeStyle.bubble)
+                    .foregroundStyle(BrandTokens.Colors.fg)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+            }
+            if let image = comment.images.first {
+                CommentImage(postId: comment.postId, image: image)
+                    .padding(.top, 4)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
