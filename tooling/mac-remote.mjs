@@ -18,6 +18,10 @@
 //     ios (the default) runs ios/scripts/test.sh --prepare there
 //     android runs android/scripts/test.sh --connected (checks and emulator tests)
 //
+// Without --dir the shared script picks the remote directory itself, one per
+// checkout (remote/<repo>-<hash of the checkout path>), so two worktrees never
+// share a directory or its lock; --dir <dir> is forwarded only when given.
+//
 // The host is an ssh alias (~/.ssh/config), by default SPJALL_MAC_HOST or
 // samtak-mac; the Mac is set up once with tooling/mac-bootstrap.sh. The shared
 // script is MAC_REMOTE_SCRIPT, by default ~/agent-config/scripts/mac-remote.mjs.
@@ -35,11 +39,12 @@ const TASKS = {
 
 /**
  * @param {string[]} argv
- * @returns {{ host: string, dir: string, command: string }}
+ * @returns {{ host: string, dir?: string, command: string }}
  */
 export function parseArgs(argv) {
   let host = process.env.SPJALL_MAC_HOST || "samtak-mac";
-  let dir = "spjall";
+  /** @type {string | undefined} */
+  let dir;
   let command = TASKS.ios;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -64,12 +69,12 @@ export function parseArgs(argv) {
 
 /**
  * The arguments for the shared script: this checkout, the host, the
- * directory, then the command after `--`.
- * @param {{ host: string, dir: string, command: string }} options
+ * directory only when the user gave one, then the command after `--`.
+ * @param {{ host: string, dir?: string, command: string }} options
  * @param {string} [root]
  */
 export function sharedArgs({ host, dir, command }, root = ROOT) {
-  return ["--repo", root, "--host", host, "--dir", dir, "--", command];
+  return ["--repo", root, "--host", host, ...(dir ? ["--dir", dir] : []), "--", command];
 }
 
 /** @param {NodeJS.ProcessEnv} [env] */

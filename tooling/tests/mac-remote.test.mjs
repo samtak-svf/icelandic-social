@@ -5,7 +5,7 @@ import { parseArgs, sharedArgs, sharedScript } from "../mac-remote.mjs";
 describe("parseArgs", () => {
   it("defaults to the iOS tests", () => {
     expect(parseArgs([]).command).toBe("ios/scripts/test.sh --prepare");
-    expect(parseArgs([]).dir).toBe("spjall");
+    expect(parseArgs([]).dir).toBeUndefined();
   });
 
   it("names the Android checks and emulator tests as a task", () => {
@@ -28,6 +28,24 @@ describe("parseArgs", () => {
 });
 
 describe("sharedArgs", () => {
+  it("forwards no --dir when none was given, so the shared script picks the per-worktree default", () => {
+    const args = sharedArgs(parseArgs(["android"]), "/src/repo");
+    expect(args).not.toContain("--dir");
+    expect(args).toEqual([
+      "--repo",
+      "/src/repo",
+      "--host",
+      "samtak-mac",
+      "--",
+      "android/scripts/test.sh --connected",
+    ]);
+  });
+
+  it("forwards --dir x when the user gave one", () => {
+    const args = sharedArgs(parseArgs(["--dir", "x"]), "/src/repo");
+    expect(args.slice(args.indexOf("--dir"), args.indexOf("--dir") + 2)).toEqual(["--dir", "x"]);
+  });
+
   it("hands the shared script this checkout, the host, the directory and the command", () => {
     expect(sharedArgs({ host: "mac2", dir: "w", command: "true" }, "/src/repo")).toEqual([
       "--repo",
