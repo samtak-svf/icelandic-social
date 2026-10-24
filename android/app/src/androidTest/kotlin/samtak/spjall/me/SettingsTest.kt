@@ -186,7 +186,14 @@ class SettingsTest {
     fun blockedNotificationsSayWhereToTurnThemOn() {
         show(notificationsOff = true)
         compose.onNodeWithText(text(R.string.notifications_off)).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText(text(R.string.notifications_settings)).performClick()
+        // The button, not the sentence above it: on a short screen the sentence can be
+        // in view while the button under it is still below the fold, and a tap on a
+        // node with no visible bounds goes nowhere (measured at 1080x1920, 2026-10-24).
+        compose
+            .onNodeWithText(text(R.string.notifications_settings))
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
         assertEquals(listOf("notificationSettings"), calls)
     }
 
