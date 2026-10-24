@@ -17,12 +17,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 
-/** The rounded one-to-five-line field a message or a comment is written in, shared by both composers. */
+/**
+ * The rounded one-to-five-line field a message or a comment is written in, shared by both composers.
+ *
+ * Closing the keyboard (BACK) leaves the field focused, and the window shows the keyboard again on resume. So when
+ * the screen stops with the field focused and the keyboard closed, the field lets go of focus, and resume has no
+ * keyboard to bring back (#125). The window's own insets decide, read once at that moment: Compose's IME insets
+ * did not follow the keyboard on an API 34 emulator with animations off.
+ */
 @Composable
 fun ComposerField(
     value: String,
@@ -33,6 +46,12 @@ fun ComposerField(
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val shape = RoundedCornerShape(FIELD_RADIUS.dp)
+    val focusManager = LocalFocusManager.current
+    val view = LocalView.current
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        val imeVisible = ViewCompat.getRootWindowInsets(view)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+        if (focused && !imeVisible) focusManager.clearFocus()
+    }
     BasicTextField(
         value = value,
         onValueChange = onChange,
