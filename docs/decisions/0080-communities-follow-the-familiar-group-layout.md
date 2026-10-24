@@ -4,6 +4,10 @@
 - Date: 2026-10-22
 - Decided by: Guðröður Atli Jónsson
 - Amended by: [0086](0086-images-are-framed-per-screen-size.md) (the cover is framed once for each window size class)
+- Amended by: [0087](0087-wide-screens-get-their-own-layout.md) (wide screens: a rail, an aside, `Stjórna` as a side navigation),
+  [0088](0088-a-community-features-several-posts.md) (up to three featured posts, shown as a strip),
+  [0089](0089-a-community-has-tabs.md) (tabs under the header), [0090](0090-a-post-can-be-a-poll.md) (a poll button),
+  [0091](0091-anonymous-posts-in-a-community.md) (anonymous posts)
 - Amends: [0079](0079-community-layout-feed-and-management.md) (hub rows, community header,
   composer, post card, post screen), [0071](0071-comment-replies-and-reactions.md) (comments
   take one like), [0063](0063-communities-audiences-and-moderation.md) (a community has a
