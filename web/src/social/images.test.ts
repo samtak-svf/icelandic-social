@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_IMAGE_BYTES, refusal } from "./images.ts";
+import { MAX_COMMENT_IMAGES, MAX_IMAGE_BYTES, refusal } from "./images.ts";
 
 const image = (size = 1000) => ({ size });
 
@@ -19,5 +19,18 @@ describe("refusal", () => {
   it("refuses an image over 10 MB", () => {
     expect(refusal(0, [image(MAX_IMAGE_BYTES + 1)])).toBe("too_large");
     expect(refusal(1, [image(), image(MAX_IMAGE_BYTES + 1)])).toBe("too_large");
+  });
+});
+
+describe("refusal for a comment", () => {
+  it("takes one image and refuses a second, chosen at once or after the first", () => {
+    expect(MAX_COMMENT_IMAGES).toBe(1);
+    expect(refusal(0, [image()], MAX_COMMENT_IMAGES)).toBeNull();
+    expect(refusal(1, [image()], MAX_COMMENT_IMAGES)).toBe("too_many");
+    expect(refusal(0, [image(), image()], MAX_COMMENT_IMAGES)).toBe("too_many");
+  });
+
+  it("holds the comment's image to the same size", () => {
+    expect(refusal(0, [image(MAX_IMAGE_BYTES + 1)], MAX_COMMENT_IMAGES)).toBe("too_large");
   });
 });
