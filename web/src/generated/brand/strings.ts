@@ -581,6 +581,20 @@ export const strings = {
   post_pin_full: "Þrjár færslur eru festar. Losaðu eina fyrst.",
   /** Heading of the community's featured posts, in the aside on a wide screen (decision 0088) */
   community_featured: "Fest",
+  /** Accessible name of the row of tabs under a community's header (decision 0089) */
+  community_tabs: "Flipar samfélagsins",
+  /** Label of the community tab Umræða, the feed (decision 0089) */
+  community_tab_discussion: "Umræða",
+  /** Label of the community tab Fest, the featured posts (decision 0089) */
+  community_tab_featured: "Fest",
+  /** Label of the community tab Myndir, the images grid (decision 0089) */
+  community_tab_images: "Myndir",
+  /** Label of the community tab Meðlimir, the member list (decision 0089) */
+  community_tab_members: "Meðlimir",
+  /** Label of the community tab Um, the facts about the community (decision 0089) */
+  community_tab_about: "Um",
+  /** Shown under Myndir while the community has no image yet (decision 0089) */
+  community_images_empty: "Engar myndir hafa verið birtar enn.",
   /** Under a comment: like it with a thumbs up, bold while the caller has liked it (decision 0080) */
   comment_like: "Líkar þetta",
   /** On a hub row: how many posts the caller has not seen in the community (decision 0080) */

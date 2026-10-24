@@ -25,12 +25,12 @@ const MAX_POST_MEDIA = 4;
 export const REACTIONS = ["like", "love", "laugh", "wow", "sad"] as const;
 
 const CommunityId = OpaqueId;
-const PostId = OpaqueId.openapi({ example: "p_3f9a1b2c3d4e5f60718293a4b5c6d7e8" });
-const CommentId = OpaqueId.openapi({
+export const PostId = OpaqueId.openapi({ example: "p_3f9a1b2c3d4e5f60718293a4b5c6d7e8" });
+export const CommentId = OpaqueId.openapi({
   example: "p_3f9a1b2c3d4e5f60718293a4b5c6d7e8-0a1b2c3d4e5f6071",
   description: "The post's id, a hyphen, and the comment's own part",
 });
-const MediaId = OpaqueId.openapi({ example: "sm_3f9a1b2c3d4e5f60718293a4b5c6d7e8" });
+export const MediaId = OpaqueId.openapi({ example: "sm_3f9a1b2c3d4e5f60718293a4b5c6d7e8" });
 
 const Reaction = z.enum(REACTIONS);
 
@@ -105,7 +105,7 @@ export const Post = z
 
 export type PostView = z.infer<typeof Post>;
 
-const Cursor = z
+export const Cursor = z
   .string()
   .regex(/^\d{1,16}(-[A-Za-z0-9_-]{1,160})?$/)
   .openapi({ description: "The `next` of the page before" });
@@ -129,13 +129,15 @@ const CommentPage = z
   .object({ comments: z.array(Comment), next: z.string().nullable() })
   .openapi("CommentPage");
 
-const json = <T extends z.ZodType>(description: string, schema: T) => ({
+export const json = <T extends z.ZodType>(description: string, schema: T) => ({
   description,
   content: { "application/json": { schema } },
 });
 
 const NO_POST = { 404: errorResponse("not_found: no such post the caller can see") };
-const NO_COMMUNITY = { 404: errorResponse("not_found: no such community the caller can see") };
+export const NO_COMMUNITY = {
+  404: errorResponse("not_found: no such community the caller can see"),
+};
 const MEMBERS_POST = {
   403: errorResponse(
     "not_a_member: only members post, comment and react; read_only: the community takes nothing new; muted: a moderator muted the caller here for now",

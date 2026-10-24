@@ -397,7 +397,7 @@ export async function members(
          FROM community_members m JOIN accounts a ON a.account_id = m.account_id
         WHERE m.community_id = ?2 AND (?3 = 1 OR ${UNBLOCKED("?1", "m.account_id")})
         ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'moderator' THEN 1 ELSE 2 END,
-                 m.joined_at, m.account_id`,
+                 a.display_name IS NULL, a.display_name COLLATE NOCASE, m.joined_at, m.account_id`,
     )
     .bind(viewer, communityId, moderating ? 1 : 0)
     .all<Omit<Member, "verified"> & { verified: number }>();

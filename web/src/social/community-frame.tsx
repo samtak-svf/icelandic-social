@@ -1,40 +1,41 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { Outlet, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
+import { createContext, useCallback, useContext, useState } from "react";
 import type { Problem } from "../problem.ts";
 import {
   getCommunity,
   joinCommunity,
-  listCommunityPosts,
   restoreCommunity,
   withdrawJoinRequest,
   type Community,
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { formatIsDate } from "../lib/is-format.ts";
-import { CommunityAside } from "../social/community-aside.tsx";
-import { FeaturedStrip } from "../social/featured.tsx";
-import { CommunityBar, CommunityHeader } from "../social/community-header.tsx";
-import { useMembers, type Members } from "../social/members.ts";
-import { moderatesAs } from "../social/roles.tsx";
-import { PostComposer } from "../social/composer.tsx";
-import { outcome, useLoad, type Outcome } from "../social/outcome.ts";
-import { PostView } from "../social/post.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
+import { CommunityAside } from "./community-aside.tsx";
+import { CommunityBar, CommunityHeader } from "./community-header.tsx";
+import { CommunityTabs, tabOf } from "./community-tabs.tsx";
+import { useMembers, type Members } from "./members.ts";
+import { outcome, useLoad, type Outcome } from "./outcome.ts";
 
-// One community (decision 0063): its name and audience, joining, withdrawing
-// a join request, writing a post, and its posts, newest first. Um samfélagið
-// and Stjórna are screens of their own, reached from the audience line and
-// the `⋯` menu (decision 0080), and leaving is in that menu. A platform moderator
-// alone sees a deleted one, and restores it within its 30 days (decision
-// 0070). On an expanded window the facts and the members sit in an aside
-// beside the feed (decision 0087).
-export const Route = createFileRoute("/communities/$communityId/")({
-  component: CommunityPage,
-  staticData: { width: "wide" },
-});
+// What every tab of a community shares (decisions 0063, 0080, 0089): the bar,
+// the header, joining and withdrawing a join request, the row of tabs and,
+// on an expanded window, the aside beside the tab. The community and its
+// members are loaded once here; a tab reads them from `useCommunityTab`. A
+// platform moderator alone sees a deleted one, and restores it within its 30
+// days (decision 0070).
 
-function CommunityPage() {
-  const { communityId } = Route.useParams();
+type Shared = { community: Community; members: Members | undefined; changed: () => void };
+
+const Tab = createContext<Shared | null>(null);
+
+/** The community the tab belongs to, its members (undefined where the reader may not see them) and the reload. */
+export function useCommunityTab(): Shared {
+  const shared = useContext(Tab);
+  if (shared === null) throw new Error("useCommunityTab outside a community");
+  return shared;
+}
+
+export function CommunityFrame({ communityId }: Readonly<{ communityId: string }>) {
   const [community, reload] = useLoad(
     useCallback(() => outcome(getCommunity({ path: { communityId } }), 200), [communityId]),
   );
@@ -56,25 +57,51 @@ function CommunityPage() {
   );
 }
 
-/** A community the reader may read: its members are loaded once, for the header and the aside. */
+/** A community the reader may read: its members are loaded once, for the header, the aside and Meðlimir. */
 function Readable({ community, changed }: Readonly<{ community: Community; changed: () => void }>) {
   const [members] = useMembers(community.communityId);
   return <Columns community={community} changed={changed} members={members} />;
 }
 
-/** The feed, and beside it on an expanded window the aside. */
+/** The tab, and beside it on an expanded window the aside. */
 function Columns({
   community,
   changed,
   members,
 }: Readonly<{ community: Community; changed: () => void; members?: Members }>) {
+  const { communityId } = community;
+  const readable = members !== undefined;
+  const active = tabOf(useLocation({ select: (l) => l.pathname }));
+  const searching = useSearch({ strict: false, select: (s) => s.search === true });
+  const navigate = useNavigate();
   return (
     <div className="expanded:grid expanded:grid-cols-[minmax(0,1fr)_18rem] expanded:items-start expanded:gap-8">
       <div className="min-w-0">
         <CommunityBar community={community} changed={changed} />
         <CommunityHeader community={community} members={members} />
         <Membership community={community} changed={changed} />
-        {members !== undefined && <Posts community={community} refresh={changed} />}
+        <CommunityTabs
+          communityId={communityId}
+          active={active}
+          readable={readable}
+          hasFeatured={community.featured.length > 0}
+          searching={searching && active === "discussion"}
+          onSearch={() =>
+            void navigate({
+              to: "/communities/$communityId",
+              params: { communityId },
+              search: searching && active === "discussion" ? {} : { search: true },
+              replace: active === "discussion",
+            })
+          }
+        />
+        <div className="mt-4">
+          {(readable || active === "about") && (
+            <Tab.Provider value={{ community, members, changed }}>
+              <Outlet />
+            </Tab.Provider>
+          )}
+        </div>
       </div>
       <CommunityAside community={community} members={members} />
     </div>
@@ -176,80 +203,5 @@ function Deleted({
         <Status>{problem && <ProblemText problem={problem} />}</Status>
       </div>
     </>
-  );
-}
-
-function Posts({ community, refresh }: Readonly<{ community: Community; refresh: () => void }>) {
-  const { communityId } = community;
-  // A letter typed starts the search 300 ms after it lands, so the list is
-  // not called everything someone writes (#0079).
-  const [query, setQuery] = useState("");
-  const [searched, setSearched] = useState("");
-  useEffect(() => {
-    const timer = setTimeout(() => setSearched(query.trim()), 300);
-    return () => clearTimeout(timer);
-  }, [query]);
-  const [posts, reload] = useLoad(
-    useCallback(
-      () =>
-        outcome(
-          listCommunityPosts({
-            path: { communityId },
-            query: searched === "" ? {} : { q: searched },
-          }),
-          200,
-        ),
-      [communityId, searched],
-    ),
-  );
-  const muted = community.mutedUntil !== null && community.mutedUntil > Date.now();
-  return (
-    <section className="mt-6 flex flex-col gap-4">
-      {community.role !== null && !muted && (
-        <PostComposer communityId={communityId} posted={reload} />
-      )}
-      {muted && <p>{strings.community_muted}</p>}
-      {searched === "" && <FeaturedStrip featured={community.featured} />}
-      <label className="sr-only" htmlFor="community-posts-search">
-        {strings.community_search_posts}
-      </label>
-      <input
-        id="community-posts-search"
-        type="search"
-        placeholder={strings.community_search_posts}
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        className="min-h-11 rounded-md border border-border-strong bg-surface px-3"
-      />
-      {posts === null && <Status>{strings.loading}</Status>}
-      {posts?.ok === false && (
-        <Status>
-          <ProblemText problem={posts.problem} />
-        </Status>
-      )}
-      {posts?.ok && posts.data.posts.length === 0 && (
-        <p className="text-muted-fg">
-          {searched === "" ? strings.posts_empty : strings.community_search_empty}
-        </p>
-      )}
-      {posts?.ok && (
-        <ul className="flex flex-col gap-4">
-          {posts.data.posts.map((post) => (
-            <li key={post.postId}>
-              <PostView
-                post={post}
-                linked
-                deleted={reload}
-                changed={() => {
-                  reload();
-                  refresh();
-                }}
-                moderates={moderatesAs(community.role)}
-              />
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
   );
 }

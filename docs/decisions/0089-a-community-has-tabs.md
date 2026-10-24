@@ -1,6 +1,6 @@
 # 0089. A community has tabs: Umræða, Fest, Myndir, Meðlimir, Um
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the Worker and the web; the apps follow
 - Date: 2026-10-24
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0080](0080-communities-follow-the-familiar-group-layout.md) (the community page

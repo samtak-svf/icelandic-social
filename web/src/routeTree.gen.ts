@@ -22,13 +22,17 @@ import { Route as ConversationsIndexRouteImport } from './routes/conversations.i
 import { Route as ConversationsConversationIdRouteImport } from './routes/conversations.$conversationId'
 import { Route as ConversationsLinkRouteImport } from './routes/conversations.link'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
-import { Route as CommunitiesCommunityIdIndexRouteImport } from './routes/communities.$communityId.index'
-import { Route as CommunitiesCommunityIdAboutRouteImport } from './routes/communities.$communityId.about'
+import { Route as CommunitiesCommunityIdTabsRouteImport } from './routes/communities.$communityId._tabs'
 import { Route as CommunitiesCommunityIdLogRouteImport } from './routes/communities.$communityId.log'
 import { Route as CommunitiesCommunityIdManageRouteImport } from './routes/communities.$communityId.manage'
 import { Route as CommunitiesCommunityIdMembersRouteImport } from './routes/communities.$communityId.members'
 import { Route as CommunitiesCommunityIdReportsRouteImport } from './routes/communities.$communityId.reports'
 import { Route as CommunitiesCommunityIdRequestsRouteImport } from './routes/communities.$communityId.requests'
+import { Route as CommunitiesCommunityIdTabsIndexRouteImport } from './routes/communities.$communityId._tabs.index'
+import { Route as CommunitiesCommunityIdTabsAboutRouteImport } from './routes/communities.$communityId._tabs.about'
+import { Route as CommunitiesCommunityIdTabsFeaturedRouteImport } from './routes/communities.$communityId._tabs.featured'
+import { Route as CommunitiesCommunityIdTabsImagesRouteImport } from './routes/communities.$communityId._tabs.images'
+import { Route as CommunitiesCommunityIdTabsPeopleRouteImport } from './routes/communities.$communityId._tabs.people'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -96,16 +100,10 @@ const PostsPostIdRoute = PostsPostIdRouteImport.update({
   path: '/posts/$postId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CommunitiesCommunityIdIndexRoute =
-  CommunitiesCommunityIdIndexRouteImport.update({
-    id: '/communities/$communityId/',
-    path: '/communities/$communityId/',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const CommunitiesCommunityIdAboutRoute =
-  CommunitiesCommunityIdAboutRouteImport.update({
-    id: '/communities/$communityId/about',
-    path: '/communities/$communityId/about',
+const CommunitiesCommunityIdTabsRoute =
+  CommunitiesCommunityIdTabsRouteImport.update({
+    id: '/communities/$communityId/_tabs',
+    path: '/communities/$communityId',
     getParentRoute: () => rootRouteImport,
   } as any)
 const CommunitiesCommunityIdLogRoute =
@@ -138,6 +136,36 @@ const CommunitiesCommunityIdRequestsRoute =
     path: '/communities/$communityId/requests',
     getParentRoute: () => rootRouteImport,
   } as any)
+const CommunitiesCommunityIdTabsIndexRoute =
+  CommunitiesCommunityIdTabsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => CommunitiesCommunityIdTabsRoute,
+  } as any)
+const CommunitiesCommunityIdTabsAboutRoute =
+  CommunitiesCommunityIdTabsAboutRouteImport.update({
+    id: '/about',
+    path: '/about',
+    getParentRoute: () => CommunitiesCommunityIdTabsRoute,
+  } as any)
+const CommunitiesCommunityIdTabsFeaturedRoute =
+  CommunitiesCommunityIdTabsFeaturedRouteImport.update({
+    id: '/featured',
+    path: '/featured',
+    getParentRoute: () => CommunitiesCommunityIdTabsRoute,
+  } as any)
+const CommunitiesCommunityIdTabsImagesRoute =
+  CommunitiesCommunityIdTabsImagesRouteImport.update({
+    id: '/images',
+    path: '/images',
+    getParentRoute: () => CommunitiesCommunityIdTabsRoute,
+  } as any)
+const CommunitiesCommunityIdTabsPeopleRoute =
+  CommunitiesCommunityIdTabsPeopleRouteImport.update({
+    id: '/people',
+    path: '/people',
+    getParentRoute: () => CommunitiesCommunityIdTabsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -153,13 +181,17 @@ export interface FileRoutesByFullPath {
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities/': typeof CommunitiesIndexRoute
   '/conversations/': typeof ConversationsIndexRoute
-  '/communities/$communityId/about': typeof CommunitiesCommunityIdAboutRoute
+  '/communities/$communityId': typeof CommunitiesCommunityIdTabsRouteWithChildren
   '/communities/$communityId/log': typeof CommunitiesCommunityIdLogRoute
   '/communities/$communityId/manage': typeof CommunitiesCommunityIdManageRoute
   '/communities/$communityId/members': typeof CommunitiesCommunityIdMembersRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
   '/communities/$communityId/requests': typeof CommunitiesCommunityIdRequestsRoute
-  '/communities/$communityId/': typeof CommunitiesCommunityIdIndexRoute
+  '/communities/$communityId/about': typeof CommunitiesCommunityIdTabsAboutRoute
+  '/communities/$communityId/featured': typeof CommunitiesCommunityIdTabsFeaturedRoute
+  '/communities/$communityId/images': typeof CommunitiesCommunityIdTabsImagesRoute
+  '/communities/$communityId/people': typeof CommunitiesCommunityIdTabsPeopleRoute
+  '/communities/$communityId/': typeof CommunitiesCommunityIdTabsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -174,13 +206,16 @@ export interface FileRoutesByTo {
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities': typeof CommunitiesIndexRoute
   '/conversations': typeof ConversationsIndexRoute
-  '/communities/$communityId/about': typeof CommunitiesCommunityIdAboutRoute
   '/communities/$communityId/log': typeof CommunitiesCommunityIdLogRoute
   '/communities/$communityId/manage': typeof CommunitiesCommunityIdManageRoute
   '/communities/$communityId/members': typeof CommunitiesCommunityIdMembersRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
   '/communities/$communityId/requests': typeof CommunitiesCommunityIdRequestsRoute
-  '/communities/$communityId': typeof CommunitiesCommunityIdIndexRoute
+  '/communities/$communityId/about': typeof CommunitiesCommunityIdTabsAboutRoute
+  '/communities/$communityId/featured': typeof CommunitiesCommunityIdTabsFeaturedRoute
+  '/communities/$communityId/images': typeof CommunitiesCommunityIdTabsImagesRoute
+  '/communities/$communityId/people': typeof CommunitiesCommunityIdTabsPeopleRoute
+  '/communities/$communityId': typeof CommunitiesCommunityIdTabsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -197,13 +232,17 @@ export interface FileRoutesById {
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities/': typeof CommunitiesIndexRoute
   '/conversations/': typeof ConversationsIndexRoute
-  '/communities/$communityId/about': typeof CommunitiesCommunityIdAboutRoute
+  '/communities/$communityId/_tabs': typeof CommunitiesCommunityIdTabsRouteWithChildren
   '/communities/$communityId/log': typeof CommunitiesCommunityIdLogRoute
   '/communities/$communityId/manage': typeof CommunitiesCommunityIdManageRoute
   '/communities/$communityId/members': typeof CommunitiesCommunityIdMembersRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
   '/communities/$communityId/requests': typeof CommunitiesCommunityIdRequestsRoute
-  '/communities/$communityId/': typeof CommunitiesCommunityIdIndexRoute
+  '/communities/$communityId/_tabs/about': typeof CommunitiesCommunityIdTabsAboutRoute
+  '/communities/$communityId/_tabs/featured': typeof CommunitiesCommunityIdTabsFeaturedRoute
+  '/communities/$communityId/_tabs/images': typeof CommunitiesCommunityIdTabsImagesRoute
+  '/communities/$communityId/_tabs/people': typeof CommunitiesCommunityIdTabsPeopleRoute
+  '/communities/$communityId/_tabs/': typeof CommunitiesCommunityIdTabsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -221,12 +260,16 @@ export interface FileRouteTypes {
     | '/posts/$postId'
     | '/communities/'
     | '/conversations/'
-    | '/communities/$communityId/about'
+    | '/communities/$communityId'
     | '/communities/$communityId/log'
     | '/communities/$communityId/manage'
     | '/communities/$communityId/members'
     | '/communities/$communityId/reports'
     | '/communities/$communityId/requests'
+    | '/communities/$communityId/about'
+    | '/communities/$communityId/featured'
+    | '/communities/$communityId/images'
+    | '/communities/$communityId/people'
     | '/communities/$communityId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -242,12 +285,15 @@ export interface FileRouteTypes {
     | '/posts/$postId'
     | '/communities'
     | '/conversations'
-    | '/communities/$communityId/about'
     | '/communities/$communityId/log'
     | '/communities/$communityId/manage'
     | '/communities/$communityId/members'
     | '/communities/$communityId/reports'
     | '/communities/$communityId/requests'
+    | '/communities/$communityId/about'
+    | '/communities/$communityId/featured'
+    | '/communities/$communityId/images'
+    | '/communities/$communityId/people'
     | '/communities/$communityId'
   id:
     | '__root__'
@@ -264,13 +310,17 @@ export interface FileRouteTypes {
     | '/posts/$postId'
     | '/communities/'
     | '/conversations/'
-    | '/communities/$communityId/about'
+    | '/communities/$communityId/_tabs'
     | '/communities/$communityId/log'
     | '/communities/$communityId/manage'
     | '/communities/$communityId/members'
     | '/communities/$communityId/reports'
     | '/communities/$communityId/requests'
-    | '/communities/$communityId/'
+    | '/communities/$communityId/_tabs/about'
+    | '/communities/$communityId/_tabs/featured'
+    | '/communities/$communityId/_tabs/images'
+    | '/communities/$communityId/_tabs/people'
+    | '/communities/$communityId/_tabs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -284,13 +334,12 @@ export interface RootRouteChildren {
   CommunitiesNewRoute: typeof CommunitiesNewRoute
   PostsPostIdRoute: typeof PostsPostIdRoute
   CommunitiesIndexRoute: typeof CommunitiesIndexRoute
-  CommunitiesCommunityIdAboutRoute: typeof CommunitiesCommunityIdAboutRoute
+  CommunitiesCommunityIdTabsRoute: typeof CommunitiesCommunityIdTabsRouteWithChildren
   CommunitiesCommunityIdLogRoute: typeof CommunitiesCommunityIdLogRoute
   CommunitiesCommunityIdManageRoute: typeof CommunitiesCommunityIdManageRoute
   CommunitiesCommunityIdMembersRoute: typeof CommunitiesCommunityIdMembersRoute
   CommunitiesCommunityIdReportsRoute: typeof CommunitiesCommunityIdReportsRoute
   CommunitiesCommunityIdRequestsRoute: typeof CommunitiesCommunityIdRequestsRoute
-  CommunitiesCommunityIdIndexRoute: typeof CommunitiesCommunityIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -386,18 +435,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsPostIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/communities/$communityId/': {
-      id: '/communities/$communityId/'
+    '/communities/$communityId/_tabs': {
+      id: '/communities/$communityId/_tabs'
       path: '/communities/$communityId'
-      fullPath: '/communities/$communityId/'
-      preLoaderRoute: typeof CommunitiesCommunityIdIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/communities/$communityId/about': {
-      id: '/communities/$communityId/about'
-      path: '/communities/$communityId/about'
-      fullPath: '/communities/$communityId/about'
-      preLoaderRoute: typeof CommunitiesCommunityIdAboutRouteImport
+      fullPath: '/communities/$communityId'
+      preLoaderRoute: typeof CommunitiesCommunityIdTabsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/communities/$communityId/log': {
@@ -435,6 +477,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CommunitiesCommunityIdRequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/communities/$communityId/_tabs/': {
+      id: '/communities/$communityId/_tabs/'
+      path: '/'
+      fullPath: '/communities/$communityId/'
+      preLoaderRoute: typeof CommunitiesCommunityIdTabsIndexRouteImport
+      parentRoute: typeof CommunitiesCommunityIdTabsRoute
+    }
+    '/communities/$communityId/_tabs/about': {
+      id: '/communities/$communityId/_tabs/about'
+      path: '/about'
+      fullPath: '/communities/$communityId/about'
+      preLoaderRoute: typeof CommunitiesCommunityIdTabsAboutRouteImport
+      parentRoute: typeof CommunitiesCommunityIdTabsRoute
+    }
+    '/communities/$communityId/_tabs/featured': {
+      id: '/communities/$communityId/_tabs/featured'
+      path: '/featured'
+      fullPath: '/communities/$communityId/featured'
+      preLoaderRoute: typeof CommunitiesCommunityIdTabsFeaturedRouteImport
+      parentRoute: typeof CommunitiesCommunityIdTabsRoute
+    }
+    '/communities/$communityId/_tabs/images': {
+      id: '/communities/$communityId/_tabs/images'
+      path: '/images'
+      fullPath: '/communities/$communityId/images'
+      preLoaderRoute: typeof CommunitiesCommunityIdTabsImagesRouteImport
+      parentRoute: typeof CommunitiesCommunityIdTabsRoute
+    }
+    '/communities/$communityId/_tabs/people': {
+      id: '/communities/$communityId/_tabs/people'
+      path: '/people'
+      fullPath: '/communities/$communityId/people'
+      preLoaderRoute: typeof CommunitiesCommunityIdTabsPeopleRouteImport
+      parentRoute: typeof CommunitiesCommunityIdTabsRoute
+    }
   }
 }
 
@@ -454,6 +531,31 @@ const ConversationsRouteWithChildren = ConversationsRoute._addFileChildren(
   ConversationsRouteChildren,
 )
 
+interface CommunitiesCommunityIdTabsRouteChildren {
+  CommunitiesCommunityIdTabsAboutRoute: typeof CommunitiesCommunityIdTabsAboutRoute
+  CommunitiesCommunityIdTabsFeaturedRoute: typeof CommunitiesCommunityIdTabsFeaturedRoute
+  CommunitiesCommunityIdTabsImagesRoute: typeof CommunitiesCommunityIdTabsImagesRoute
+  CommunitiesCommunityIdTabsPeopleRoute: typeof CommunitiesCommunityIdTabsPeopleRoute
+  CommunitiesCommunityIdTabsIndexRoute: typeof CommunitiesCommunityIdTabsIndexRoute
+}
+
+const CommunitiesCommunityIdTabsRouteChildren: CommunitiesCommunityIdTabsRouteChildren =
+  {
+    CommunitiesCommunityIdTabsAboutRoute: CommunitiesCommunityIdTabsAboutRoute,
+    CommunitiesCommunityIdTabsFeaturedRoute:
+      CommunitiesCommunityIdTabsFeaturedRoute,
+    CommunitiesCommunityIdTabsImagesRoute:
+      CommunitiesCommunityIdTabsImagesRoute,
+    CommunitiesCommunityIdTabsPeopleRoute:
+      CommunitiesCommunityIdTabsPeopleRoute,
+    CommunitiesCommunityIdTabsIndexRoute: CommunitiesCommunityIdTabsIndexRoute,
+  }
+
+const CommunitiesCommunityIdTabsRouteWithChildren =
+  CommunitiesCommunityIdTabsRoute._addFileChildren(
+    CommunitiesCommunityIdTabsRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConversationsRoute: ConversationsRouteWithChildren,
@@ -465,13 +567,12 @@ const rootRouteChildren: RootRouteChildren = {
   CommunitiesNewRoute: CommunitiesNewRoute,
   PostsPostIdRoute: PostsPostIdRoute,
   CommunitiesIndexRoute: CommunitiesIndexRoute,
-  CommunitiesCommunityIdAboutRoute: CommunitiesCommunityIdAboutRoute,
+  CommunitiesCommunityIdTabsRoute: CommunitiesCommunityIdTabsRouteWithChildren,
   CommunitiesCommunityIdLogRoute: CommunitiesCommunityIdLogRoute,
   CommunitiesCommunityIdManageRoute: CommunitiesCommunityIdManageRoute,
   CommunitiesCommunityIdMembersRoute: CommunitiesCommunityIdMembersRoute,
   CommunitiesCommunityIdReportsRoute: CommunitiesCommunityIdReportsRoute,
   CommunitiesCommunityIdRequestsRoute: CommunitiesCommunityIdRequestsRoute,
-  CommunitiesCommunityIdIndexRoute: CommunitiesCommunityIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

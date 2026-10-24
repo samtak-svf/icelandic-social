@@ -65,6 +65,7 @@ describe("the delivery contract", () => {
       "get /v1/communities/{communityId}/avatar/source getCommunityAvatarSource",
       "get /v1/communities/{communityId}/cover getCommunityCover",
       "get /v1/communities/{communityId}/cover/source getCommunityCoverSource",
+      "get /v1/communities/{communityId}/images listCommunityImages",
       "get /v1/communities/{communityId}/join-requests listJoinRequests",
       "get /v1/communities/{communityId}/members listCommunityMembers",
       "get /v1/communities/{communityId}/moderation-log communityModerationLog",
