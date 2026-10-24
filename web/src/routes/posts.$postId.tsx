@@ -15,6 +15,7 @@ import { strings } from "../generated/brand/strings.ts";
 import { Avatar } from "../social/avatar.tsx";
 import { relativeTime } from "../lib/relative-time.ts";
 import { commentThreads, isTombstone } from "../social/comments.ts";
+import { CommentImage } from "../social/comment-image.tsx";
 import { CommentComposer } from "../social/composer.tsx";
 import { outcome, useLoad, when } from "../social/outcome.ts";
 import {
@@ -158,18 +159,19 @@ function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () 
           className="sticky bottom-[var(--tabbar-height,0px)] -mx-4 border-t border-border bg-bg px-4 py-2"
         >
           <CommentComposer
+            communityId={communityId}
             label={strings.comment_compose}
             placeholder={strings.post_write_comment}
             action={strings.comment_publish}
             max={2000}
-            send={async (body) => {
+            send={async (body, media) => {
               const sent = await outcome(
                 createComment({
                   path: { postId },
                   body:
                     replyingTo === null
-                      ? { body }
-                      : { body, parentCommentId: replyingTo.commentId },
+                      ? { body, media }
+                      : { body, media, parentCommentId: replyingTo.commentId },
                 }),
                 200,
               );
@@ -212,7 +214,10 @@ function CommentView({
             <AuthorName author={comment.author} />
             <RoleBadge role={comment.author.role} />
           </span>
-          <p className="whitespace-pre-wrap">{comment.body}</p>
+          {comment.body !== "" && <p className="whitespace-pre-wrap">{comment.body}</p>}
+          {comment.media[0] !== undefined && (
+            <CommentImage postId={comment.postId} media={comment.media[0]} />
+          )}
           {like.likes > 0 && (
             <span className="absolute -bottom-3 right-2 rounded-full border border-border bg-bg px-2 text-xs">
               <span aria-hidden="true">👍</span> {like.likes}

@@ -1,10 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useAccount } from "../account.tsx";
 import type { Problem } from "../problem.ts";
 import {
   deletePost,
-  getPostMedia,
   pinPost,
   unpinPost,
   type Author,
@@ -22,6 +21,8 @@ import { outcome, when, type Outcome } from "./outcome.ts";
 import { ReportForm } from "./report.tsx";
 import { ActionRow, Summary, useReactions } from "./post-actions.tsx";
 import { RoleBadge } from "./roles.tsx";
+import { CommentImage } from "./comment-image.tsx";
+import { useMediaSrc, useViewer, type ViewerItem } from "./viewer.tsx";
 
 // A post as a community's feed and its own page show it: who wrote it and
 // when, its text and images, its reactions and its comment count. A
@@ -198,12 +199,9 @@ function PinnedMark() {
 
 /** The newest comment under a card: picture, name, badge and two lines of text; it opens the post. */
 function LatestComment({ comment }: Readonly<{ comment: Comment }>) {
+  const image = comment.media[0];
   return (
-    <Link
-      to="/posts/$postId"
-      params={{ postId: comment.postId }}
-      className="flex items-start gap-2"
-    >
+    <div className="flex items-start gap-2">
       <Avatar
         kind="person"
         id={comment.author.accountId}
@@ -211,14 +209,21 @@ function LatestComment({ comment }: Readonly<{ comment: Comment }>) {
         photo={comment.author.photo}
         className="size-8 rounded-full text-xs"
       />
-      <span className="flex min-w-0 flex-1 flex-col rounded-2xl bg-muted px-3 py-2">
-        <span className="flex flex-wrap items-center gap-x-2">
-          <span className="font-bold">{authorName(comment.author)}</span>
-          <RoleBadge role={comment.author.role} />
-        </span>
-        <span className="line-clamp-2 whitespace-pre-wrap">{comment.body}</span>
-      </span>
-    </Link>
+      <div className="flex min-w-0 flex-1 flex-col gap-1 rounded-2xl bg-muted px-3 py-2">
+        <Link
+          to="/posts/$postId"
+          params={{ postId: comment.postId }}
+          className="flex min-w-0 flex-col"
+        >
+          <span className="flex flex-wrap items-center gap-x-2">
+            <span className="font-bold">{authorName(comment.author)}</span>
+            <RoleBadge role={comment.author.role} />
+          </span>
+          <span className="line-clamp-2 whitespace-pre-wrap">{comment.body}</span>
+        </Link>
+        {image !== undefined && <CommentImage postId={comment.postId} media={image} />}
+      </div>
+    </div>
   );
 }
 
@@ -345,61 +350,44 @@ function PostMenu({
   );
 }
 
-/** A post's images, up to four, two to a row when there are several. */
+/** A post's images, up to four, two to a row when there are several; pressing one opens the viewer. */
 function Images({ postId, media }: Readonly<{ postId: string; media: SocialMedia[] }>) {
+  const { open, viewer } = useViewer();
+  const items: ViewerItem[] = media.map((m, i) => ({
+    postId,
+    media: m,
+    alt:
+      media.length > 1
+        ? strings.post_image_alt_numbered({ n: i + 1, count: media.length })
+        : strings.post_image_alt,
+  }));
   return (
     <div className={`grid gap-1 ${media.length > 1 ? "grid-cols-2" : ""}`}>
-      {media.map((m, i) => (
-        <Image
-          key={m.mediaId}
-          postId={postId}
-          media={m}
-          alt={
-            media.length > 1
-              ? strings.post_image_alt_numbered({ n: i + 1, count: media.length })
-              : strings.post_image_alt
-          }
-        />
+      {items.map((item, i) => (
+        <Image key={item.media.mediaId} item={item} onOpen={() => open(items, i)} />
       ))}
+      {viewer}
     </div>
   );
 }
 
 /** One image, fetched with the client header the API asks of every call. */
-function Image({
-  postId,
-  media,
-  alt,
-}: Readonly<{ postId: string; media: SocialMedia; alt: string }>) {
-  const [src, setSrc] = useState<string | null>(null);
-  const { mediaId } = media;
-  useEffect(() => {
-    let url: string | null = null;
-    let live = true;
-    void getPostMedia({ path: { postId, mediaId } })
-      .then((answer) => {
-        if (!live || answer.status !== 200) return;
-        url = URL.createObjectURL(answer.data);
-        setSrc(url);
-      })
-      .catch(() => undefined);
-    return () => {
-      live = false;
-      if (url !== null) URL.revokeObjectURL(url);
-      setSrc(null);
-    };
-  }, [postId, mediaId]);
+function Image({ item, onOpen }: Readonly<{ item: ViewerItem; onOpen: () => void }>) {
+  const { media, alt } = item;
+  const src = useMediaSrc(item.postId, media.mediaId);
   const box = "w-full rounded-md bg-muted object-cover";
   const ratio = { aspectRatio: `${media.width} / ${media.height}` };
   if (src === null) return <div className={box} style={ratio} />;
   return (
-    <img
-      src={src}
-      alt={alt}
-      width={media.width}
-      height={media.height}
-      className={box}
-      style={ratio}
-    />
+    <button type="button" onClick={onOpen} className="block rounded-md">
+      <img
+        src={src}
+        alt={alt}
+        width={media.width}
+        height={media.height}
+        className={box}
+        style={ratio}
+      />
+    </button>
   );
 }
