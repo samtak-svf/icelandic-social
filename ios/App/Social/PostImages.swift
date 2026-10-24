@@ -46,10 +46,36 @@ func postPhoto(_ path: String, side: Int) -> UIImage? {
 struct PostImageGrid: View {
     let post: Post
 
+    @Environment(\.postImages) private var images
+    @State private var opening: ImageViewerOpening?
+
     var body: some View {
+        grid
+            .fullScreenCover(item: $opening) { opening in
+                ImageViewer(images: viewerImages, start: opening.index) { self.opening = nil }
+            }
+    }
+
+    /// The post's images as the full-screen viewer takes them.
+    private var viewerImages: [ViewerImage] {
+        let postId = post.postId
+        let images = images
+        let count = post.images.count
+        return post.images.enumerated().map { position, image in
+            ViewerImage(
+                id: image.mediaId, label: postImageLabel(number: position + 1, count: count),
+                load: { side in await images?.load(postId, image.mediaId, side: side) })
+        }
+    }
+
+    @ViewBuilder
+    private var grid: some View {
         if let single = post.images.first, post.images.count == 1 {
             let ratio = single.height > 0 ? CGFloat(single.width) / CGFloat(single.height) : 1
-            PostImageView(postId: post.postId, image: single, ratio: min(max(ratio, 0.75), 2), number: 1, count: 1)
+            PostImageView(
+                postId: post.postId, image: single, ratio: min(max(ratio, 0.75), 2), number: 1, count: 1,
+                onOpen: { opening = ImageViewerOpening(index: 0, count: post.images.count) }
+            )
         } else if !post.images.isEmpty {
             let rows = stride(from: 0, to: post.images.count, by: 2).map {
                 Array(post.images[$0..<min($0 + 2, post.images.count)])
@@ -61,7 +87,12 @@ struct PostImageGrid: View {
                             PostImageView(
                                 postId: post.postId, image: image, ratio: 1,
                                 number: (post.images.firstIndex { $0.mediaId == image.mediaId } ?? 0) + 1,
-                                count: post.images.count)
+                                count: post.images.count,
+                                onOpen: {
+                                    opening = ImageViewerOpening(
+                                        index: post.images.firstIndex { $0.mediaId == image.mediaId } ?? 0,
+                                        count: post.images.count)
+                                })
                         }
                         if row.count == 1 { Color.clear.aspectRatio(1, contentMode: .fit) }
                     }
@@ -79,6 +110,8 @@ private struct PostImageView: View {
     /// Which of the post's images this is, counting from 1, and how many there are (#355).
     let number: Int
     let count: Int
+    /// A tap on the image opens it full screen.
+    let onOpen: () -> Void
 
     @Environment(\.postImages) private var images
     @Environment(\.displayScale) private var scale
@@ -97,7 +130,9 @@ private struct PostImageView: View {
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .accessibilityElement()
             .accessibilityLabel(label)
-            .accessibilityAddTraits(.isImage)
+            .accessibilityAddTraits([.isImage, .isButton])
+            .contentShape(RoundedRectangle(cornerRadius: 10))
+            .onTapGesture(perform: onOpen)
             .task(id: image.mediaId) {
                 guard loaded == nil, let images else { return }
                 loaded = await images.load(postId, image.mediaId, side: Int(480 * scale))
@@ -105,9 +140,12 @@ private struct PostImageView: View {
     }
 
     /// The image's label, numbered when the post has more than one.
-    private var label: Text {
-        count > 1 ? Text(verbatim: localized("post_image_alt_numbered", number, count)) : Text("post_image_alt")
-    }
+    private var label: Text { postImageLabel(number: number, count: count) }
+}
+
+/// A post image's label, numbered when the post has more than one.
+func postImageLabel(number: Int, count: Int) -> Text {
+    count > 1 ? Text(verbatim: localized("post_image_alt_numbered", number, count)) : Text("post_image_alt")
 }
 
 /// The images picked for the post being written, each with an X that takes it out.
