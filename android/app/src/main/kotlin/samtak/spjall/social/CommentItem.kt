@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
@@ -21,6 +22,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,9 +35,12 @@ import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Comment
 import samtak.spjall.core.ModerationState
+import samtak.spjall.core.PostImage
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
+import samtak.spjall.ui.ImageViewer
 import samtak.spjall.ui.Palette
+import samtak.spjall.ui.ViewerImage
 import samtak.spjall.ui.photoOf
 
 /**
@@ -95,8 +101,32 @@ private fun CommentBubble(comment: Comment) {
             Text(text = comment.author.shownName(), style = MaterialTheme.typography.labelLarge)
             RoleBadge(comment.author.role)
         }
-        Text(text = comment.body, style = MaterialTheme.typography.bodyMedium)
+        if (comment.body.isNotEmpty()) Text(text = comment.body, style = MaterialTheme.typography.bodyMedium)
+        comment.images.firstOrNull()?.let { CommentImage(comment.postId, it) }
     }
+}
+
+/** A comment's one image (0082) under its text at the bubble's width; a tap opens it in the full-screen viewer. */
+@Composable
+private fun CommentImage(
+    postId: String,
+    image: PostImage,
+) {
+    val description = stringResource(R.string.comment_image_alt)
+    var viewing by rememberSaveable(image.mediaId) { mutableStateOf(false) }
+    val source = LocalPostImages.current
+    if (viewing) {
+        ImageViewer(listOf(ViewerImage(image.mediaId, description) { source?.path(postId, image.mediaId) }), 0) {
+            viewing = false
+        }
+    }
+    val ratio = if (image.height > 0u) image.width.toFloat() / image.height.toFloat() else 1f
+    PostImageView(
+        postId,
+        image,
+        description,
+        Modifier.padding(top = 6.dp).fillMaxWidth().aspectRatio(ratio.coerceIn(MIN_RATIO, MAX_RATIO)),
+    ) { viewing = true }
 }
 
 /** The thumb and how many liked, on the corner of a comment's bubble. */

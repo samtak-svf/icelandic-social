@@ -175,6 +175,10 @@ private fun ReplyBox(
                 onText = actions::draft,
                 onSend = actions::send,
                 modifier = Modifier.focusRequester(focus),
+                image = state.image,
+                notice = state.imageNotice,
+                onAddImage = actions::addImage,
+                onRemoveImage = actions::removeImage,
             )
         }
     }

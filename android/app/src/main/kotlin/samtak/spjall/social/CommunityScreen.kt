@@ -260,14 +260,7 @@ private fun ImagesPicked(
     if (state.images.isNotEmpty()) PickedImages(state.images, actions::removeImage)
     state.imageNotice?.let { notice ->
         Text(
-            text =
-                stringResource(
-                    when (notice) {
-                        CommunityViewModel.ImageNotice.TooMany -> R.string.post_images_too_many
-                        CommunityViewModel.ImageNotice.TooLarge -> R.string.post_image_too_large
-                        CommunityViewModel.ImageNotice.Invalid -> R.string.post_image_failed
-                    },
-                ),
+            text = notice.text(),
             style = MaterialTheme.typography.bodyMedium,
             color = Palette.danger,
         )

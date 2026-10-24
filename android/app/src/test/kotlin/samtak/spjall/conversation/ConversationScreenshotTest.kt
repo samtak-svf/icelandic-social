@@ -18,8 +18,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.captureScreenRoboImage
-import org.junit.After
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -41,8 +39,8 @@ import samtak.spjall.core.PlaceLinks
 import samtak.spjall.core.Quote
 import samtak.spjall.core.Reaction
 import samtak.spjall.media.LocalPhotoDecoding
+import samtak.spjall.ui.IcelandZone
 import samtak.spjall.ui.SpjallTheme
-import java.util.TimeZone
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.math.abs
 import android.graphics.Color as AndroidColor
@@ -60,6 +58,8 @@ class ConversationScreenshotTest {
     val folder = TemporaryFolder()
 
     @get:Rule val compose = createComposeRule()
+
+    @get:Rule val zone = IcelandZone()
 
     private val actions =
         object : ConversationActions {
@@ -125,15 +125,6 @@ class ConversationScreenshotTest {
 
     private val anna = Person("a2", "Anna Jónsdóttir", true)
     private val me = Person("a1", "Jón Jónsson", true)
-
-    // Times show on a 24-hour clock in the device's zone; fixing it keeps the images still.
-    private val savedZone = TimeZone.getDefault()
-
-    @Before
-    fun fixZone() = TimeZone.setDefault(TimeZone.getTimeZone("Atlantic/Reykjavik"))
-
-    @After
-    fun restoreZone() = TimeZone.setDefault(savedZone)
 
     private fun item(
         seq: ULong?,

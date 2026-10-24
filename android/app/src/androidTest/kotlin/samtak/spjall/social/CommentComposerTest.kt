@@ -10,6 +10,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -28,6 +29,7 @@ import samtak.spjall.core.ModerationState
 import samtak.spjall.ui.AVATAR_INITIALS
 import samtak.spjall.ui.AvatarInitials
 import samtak.spjall.ui.SpjallTheme
+import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class CommentComposerTest {
@@ -62,6 +64,60 @@ class CommentComposerTest {
             SpjallTheme { CommentComposer(null, "Halló", true, onText = {}, onSend = {}) }
         }
         compose.onNodeWithContentDescription(text(R.string.comment_publish)).assertIsNotEnabled()
+    }
+
+    @Test
+    fun thePhotoButtonAsksForAPickAndAPickedImageShowsOnceWithAnXThatRemovesIt() {
+        var picks = 0
+        var removed = 0
+        val file = File.createTempFile("picked", ".jpg").apply { deleteOnExit() }
+        compose.setContent {
+            var image by remember { mutableStateOf<String?>(null) }
+            SpjallTheme {
+                CommentComposer(
+                    OwnAccount("a1", "Jón Jónsson", null),
+                    "",
+                    false,
+                    onText = {},
+                    onSend = {},
+                    image = image,
+                    onAddImage = {
+                        picks++
+                        image = file.path
+                    },
+                    onRemoveImage = {
+                        removed++
+                        image = null
+                    },
+                )
+            }
+        }
+        compose.onNodeWithContentDescription(text(R.string.comment_publish)).assertIsNotEnabled()
+        compose.onNodeWithContentDescription(text(R.string.comment_add_image)).performClick()
+        assertEquals(1, picks)
+        compose.onAllNodesWithContentDescription(text(R.string.post_image_remove)).assertCountEquals(1)
+        compose.onNodeWithContentDescription(text(R.string.comment_publish)).assertIsEnabled()
+        compose.onNodeWithContentDescription(text(R.string.post_image_remove)).performClick()
+        assertEquals(1, removed)
+        compose.onAllNodesWithContentDescription(text(R.string.post_image_remove)).assertCountEquals(0)
+        compose.onNodeWithContentDescription(text(R.string.comment_publish)).assertIsNotEnabled()
+    }
+
+    @Test
+    fun aRefusedImageIsNamedInTheBrandsWords() {
+        compose.setContent {
+            SpjallTheme {
+                CommentComposer(
+                    null,
+                    "",
+                    false,
+                    onText = {},
+                    onSend = {},
+                    notice = CommunityViewModel.ImageNotice.TooLarge,
+                )
+            }
+        }
+        compose.onNodeWithText(text(R.string.post_image_too_large)).assertIsDisplayed()
     }
 
     @Test

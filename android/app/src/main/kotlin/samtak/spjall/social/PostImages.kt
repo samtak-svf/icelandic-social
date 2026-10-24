@@ -136,6 +136,17 @@ internal fun PostImageView(
     } ?: Box(modifier = shaped.background(Palette.muted))
 }
 
+/** Why an image did not go with the post or comment, in the words of the brand. */
+@Composable
+internal fun CommunityViewModel.ImageNotice.text(): String =
+    stringResource(
+        when (this) {
+            CommunityViewModel.ImageNotice.TooMany -> R.string.post_images_too_many
+            CommunityViewModel.ImageNotice.TooLarge -> R.string.post_image_too_large
+            CommunityViewModel.ImageNotice.Invalid -> R.string.post_image_failed
+        },
+    )
+
 /** The images picked for the post being written, each with an X that takes it out. */
 @Composable
 fun PickedImages(
@@ -176,5 +187,5 @@ private const val RADIUS = 10
 private const val GAP = 6
 
 /** A tall or wide image alone is cropped to no more than this. */
-private const val MIN_RATIO = 0.75f
-private const val MAX_RATIO = 2f
+internal const val MIN_RATIO = 0.75f
+internal const val MAX_RATIO = 2f

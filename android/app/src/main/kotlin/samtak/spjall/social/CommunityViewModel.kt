@@ -476,7 +476,7 @@ class CommunityViewModel(
 }
 
 /** What the server's refusal of an image says, or null when it is not about an image. */
-private fun CoreException.imageNotice(): CommunityViewModel.ImageNotice? =
+internal fun CoreException.imageNotice(): CommunityViewModel.ImageNotice? =
     when ((this as? CoreException.Refused)?.code) {
         "too_large" -> CommunityViewModel.ImageNotice.TooLarge
         "invalid_image" -> CommunityViewModel.ImageNotice.Invalid

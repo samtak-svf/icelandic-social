@@ -91,6 +91,38 @@ class ImageViewerTest {
     }
 
     @Test
+    fun aCommentsImageSitsUnderItsTextAndATapOpensItInTheViewer() {
+        val file =
+            folder.newFile("comment.png").also { out ->
+                out.outputStream().use { stream ->
+                    Bitmap
+                        .createBitmap(80, 60, Bitmap.Config.ARGB_8888)
+                        .apply { eraseColor(0xFF3366AA.toInt()) }
+                        .compress(Bitmap.CompressFormat.PNG, 100, stream)
+                }
+            }
+        val comment = comment("c1", "p1", "Sjáið þetta").copy(images = listOf(PostImage("m1", 80u, 60u)))
+        compose.setContent {
+            CompositionLocalProvider(
+                LocalPostImages provides PostImages { _, _ -> file.path },
+                LocalPhotoDecoding provides EmptyCoroutineContext,
+            ) {
+                SpjallTheme {
+                    CommentItem(comment, reported = false, onReport = {}, onDelete = null, onLike = {}, onReply = null)
+                }
+            }
+        }
+        compose.waitForIdle()
+        val alt = context.getString(R.string.comment_image_alt)
+        opened().assertCountEquals(0)
+        compose.onNodeWithContentDescription(alt).performClick()
+        compose.waitForIdle()
+        opened().assertCountEquals(1)
+        // The bubble's image and the viewer's single page both carry the comment's description.
+        compose.onAllNodesWithContentDescription(alt).assertCountEquals(2)
+    }
+
+    @Test
     fun aSingleImageOpensTheViewerWithItsDescription() {
         show(1)
         compose.onNodeWithContentDescription(context.getString(R.string.post_image_alt)).performClick()
