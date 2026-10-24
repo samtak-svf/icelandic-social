@@ -1013,7 +1013,7 @@ fn the_social_calls_cross_the_exported_api() {
     );
     let reply = a1
         .client
-        .create_comment("p_1".into(), "Svar".into(), Some("p_1-0a1a".into()))
+        .create_comment("p_1".into(), "Svar".into(), Some("p_1-0a1a".into()), vec![])
         .unwrap();
     assert_eq!(reply.parent_comment_id.as_deref(), Some("p_1-0a1a"));
 

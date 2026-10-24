@@ -2179,6 +2179,13 @@
           "liked": {
             "type": "boolean",
             "description": "The caller liked it"
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SocialMedia"
+            },
+            "description": "The comment's image, none or one (decision 0082)"
           }
         },
         "required": [
@@ -2190,7 +2197,8 @@
           "createdAt",
           "state",
           "likes",
-          "liked"
+          "liked",
+          "media"
         ]
       },
       "PostPage": {
@@ -2411,6 +2419,15 @@
               null
             ],
             "description": "What the reported post or comment is now; null for a community or an account"
+          },
+          "targetMedia": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "description": "The media id of the reported comment's image, to read through `GET /v1/posts/{postId}/media/{mediaId}`; empty for anything else (decision 0082)"
           }
         },
         "required": [
@@ -2427,7 +2444,8 @@
           "resolution",
           "closedBy",
           "targetStanding",
-          "targetState"
+          "targetState",
+          "targetMedia"
         ],
         "description": "A report, without the account that made it"
       },
@@ -9631,7 +9649,7 @@
           "social"
         ],
         "summary": "Comment on a post",
-        "description": "With `parentCommentId` the comment is a reply to a top-level comment on this post; a parent that is itself a reply, of another post, or not visible answers 400 invalid_parent_comment (decision 0071).",
+        "description": "With `parentCommentId` the comment is a reply to a top-level comment on this post; a parent that is itself a reply, of another post, or not visible answers 400 invalid_parent_comment (decision 0071). A comment is a text, an image or both: `media` names at most one of the caller's own unattached uploads to the post's community, or the answer is 400 invalid_media (decision 0082).",
         "security": [
           {
             "deviceToken": []
@@ -9661,8 +9679,8 @@
                 "properties": {
                   "body": {
                     "type": "string",
-                    "minLength": 1,
-                    "maxLength": 2000
+                    "maxLength": 2000,
+                    "default": ""
                   },
                   "parentCommentId": {
                     "type": [
@@ -9672,11 +9690,18 @@
                     "pattern": "^[A-Za-z0-9_-]{1,128}$",
                     "example": "p_3f9a1b2c3d4e5f60718293a4b5c6d7e8-0a1b2c3d4e5f6071",
                     "description": "The post's id, a hyphen, and the comment's own part"
+                  },
+                  "media": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                      "example": "sm_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+                    },
+                    "maxItems": 1,
+                    "default": []
                   }
-                },
-                "required": [
-                  "body"
-                ]
+                }
               }
             }
           }

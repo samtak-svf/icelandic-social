@@ -72,6 +72,9 @@ const Comment = z
         "How many accounts liked it, but those a block hides from the caller (decision 0080)",
     }),
     liked: z.boolean().openapi({ description: "The caller liked it" }),
+    media: z.array(Media).openapi({
+      description: "The comment's image, none or one (decision 0082)",
+    }),
   })
   .openapi("Comment");
 
@@ -319,7 +322,9 @@ export const createCommentRoute = createRoute({
   description:
     "With `parentCommentId` the comment is a reply to a top-level comment on this post; " +
     "a parent that is itself a reply, of another post, or not visible answers " +
-    "400 invalid_parent_comment (decision 0071).",
+    "400 invalid_parent_comment (decision 0071). A comment is a text, an image or both: " +
+    "`media` names at most one of the caller's own unattached uploads to the post's " +
+    "community, or the answer is 400 invalid_media (decision 0082).",
   security: ACCOUNT,
   request: {
     params: post,
@@ -328,8 +333,9 @@ export const createCommentRoute = createRoute({
       content: {
         "application/json": {
           schema: z.object({
-            body: z.string().trim().min(1).max(2000),
+            body: z.string().trim().max(2000).default(""),
             parentCommentId: CommentId.nullable().optional(),
+            media: z.array(MediaId).max(1).default([]),
           }),
         },
       },

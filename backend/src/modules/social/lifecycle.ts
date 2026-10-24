@@ -1,5 +1,10 @@
 import { db, space } from "../../env/index.ts";
-import { deleteCommunityMedia, deleteKeys, deleteUnattached } from "./media.ts";
+import {
+  deleteCommentMediaOf,
+  deleteCommunityMedia,
+  deleteKeys,
+  deleteUnattached,
+} from "./media.ts";
 import { unindex } from "./posts.ts";
 
 // What deleting a community or an account removes of the content (decisions
@@ -19,10 +24,12 @@ export async function dropSpace(env: Env, communityId: string): Promise<void> {
 
 /**
  * Deletes everything `accountId` wrote in any space: its posts with their
- * comments, reactions and images, its comments and reactions on other posts,
+ * comments, reactions and images, its comments, their images and reactions on other posts,
  * and its uploads no post took. Called before the account's row goes.
  */
 export async function forgetAccount(env: Env, accountId: string): Promise<void> {
+  // Its comment images first, in posts of other people too (decision 0082).
+  await deleteCommentMediaOf(env, accountId);
   const { results } = await db(env)
     .prepare("SELECT community_id FROM space_authors WHERE account_id = ?")
     .bind(accountId)

@@ -783,6 +783,9 @@ pub struct Comment {
     /// The caller liked it.
     #[serde(default)]
     pub liked: bool,
+    /// The comment's image, none or one (0082).
+    #[serde(default)]
+    pub media: Vec<SocialMedia>,
 }
 
 /// A page of a post's comments, oldest first, and the cursor of the next.
@@ -800,6 +803,9 @@ pub struct NewComment<'a> {
     pub body: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_comment_id: Option<&'a str>,
+    /// At most one image from `upload_social_media` (0082).
+    #[serde(skip_serializing_if = "<[String]>::is_empty")]
+    pub media: &'a [String],
 }
 
 /// What a report or a moderator's action is about.
@@ -2130,17 +2136,19 @@ impl<T: Transport + ?Sized> Api<'_, T> {
         self.call(Method::Get, path, None, "listComments")
     }
 
-    /// `createComment`: a text, and the comment it answers when it is a
-    /// reply.
+    /// `createComment`: a text, an image, or both, and the comment it
+    /// answers when it is a reply.
     pub fn create_comment(
         &self,
         post: &str,
         body: &str,
         parent_comment_id: Option<&str>,
+        media: &[String],
     ) -> Result<Comment, ApiError> {
         let comment = NewComment {
             body,
             parent_comment_id,
+            media,
         };
         self.call(
             Method::Post,

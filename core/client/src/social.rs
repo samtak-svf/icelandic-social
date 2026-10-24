@@ -19,6 +19,9 @@ pub const MAX_CARDS: usize = 50;
 /// The most images a post holds (0065); the server refuses more.
 pub const MAX_POST_MEDIA: usize = 4;
 
+/// The most images a comment carries (0082).
+pub const MAX_COMMENT_MEDIA: usize = 1;
+
 /// The largest image the server takes for a post, in bytes (0065).
 pub const MAX_POST_IMAGE: u64 = 10 * 1024 * 1024;
 
@@ -370,23 +373,31 @@ impl<T: Transport> Client<T> {
         Ok(api.comments(post, after, size.clamp(1, 100))?)
     }
 
-    /// Comments on a post, a reply when `parent_comment_id` names the
-    /// comment it answers.
+    /// Comments on a post: a text, an image `upload_social_media` returned,
+    /// or both (0082). A reply when `parent_comment_id` names the comment it
+    /// answers.
     pub fn create_comment(
         &self,
         post: &str,
         body: &str,
         parent_comment_id: Option<&str>,
+        media: &[String],
     ) -> Result<Comment, ClientError> {
         id(post, "post id")?;
-        if body.trim().is_empty() {
+        if body.trim().is_empty() && media.is_empty() {
             return Err(ClientError::Invalid("an empty comment"));
+        }
+        if media.len() > MAX_COMMENT_MEDIA {
+            return Err(ClientError::Invalid("over 1 image in a comment"));
+        }
+        for m in media {
+            id(m, "media id")?;
         }
         if let Some(parent) = parent_comment_id {
             id(parent, "comment id")?;
         }
         let api = authed(&self.transport, &self.token, &self.client)?;
-        Ok(api.create_comment(post, body, parent_comment_id)?)
+        Ok(api.create_comment(post, body, parent_comment_id, media)?)
     }
 
     pub fn delete_comment(&self, comment: &str) -> Result<(), ClientError> {

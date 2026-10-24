@@ -605,6 +605,8 @@ export interface Comment {
   likes: number;
   /** The caller liked it */
   liked: boolean;
+  /** The comment's image, none or one (decision 0082) */
+  media: Array<SocialMedia>;
 }
 
 export interface PostPage {
@@ -652,6 +654,8 @@ export interface Report {
   targetStanding: "owner" | "moderator" | "member" | "muted" | "banned" | "not_member" | "gone" | null;
   /** What the reported post or comment is now; null for a community or an account */
   targetState: "visible" | "hidden" | "removed" | "gone" | null;
+  /** The media id of the reported comment's image, to read through `GET /v1/posts/{postId}/media/{mediaId}`; empty for anything else (decision 0082) */
+  targetMedia: Array<string>;
 }
 
 export interface ModerationLogPage {
@@ -1691,16 +1695,17 @@ export function listComments(args: {
 /**
  * Comment on a post
  *
- * With `parentCommentId` the comment is a reply to a top-level comment on this post; a parent that is itself a reply, of another post, or not visible answers 400 invalid_parent_comment (decision 0071).
+ * With `parentCommentId` the comment is a reply to a top-level comment on this post; a parent that is itself a reply, of another post, or not visible answers 400 invalid_parent_comment (decision 0071). A comment is a text, an image or both: `media` names at most one of the caller's own unattached uploads to the post's community, or the answer is 400 invalid_media (decision 0082).
  */
 export function createComment(args: {
   path: {
     postId: string;
   };
   body: {
-    body: string;
+    body?: string;
     /** The post's id, a hyphen, and the comment's own part */
     parentCommentId?: string | null;
+    media?: Array<string>;
   };
 }, init?: CallInit): Promise<
   | { status: 200; data: Comment }

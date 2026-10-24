@@ -338,7 +338,7 @@ fn posts_comments_and_reactions_go_by_their_ids() {
     assert_eq!(comments.next.as_deref(), Some("1760000200000-0a1b"));
     phone.answer(200, comment("p_1-0a1c"));
     let made = c
-        .create_comment("p_1", "Takk fyrir að láta vita.", None)
+        .create_comment("p_1", "Takk fyrir að láta vita.", None, &[])
         .unwrap();
     assert_eq!(made.comment_id, "p_1-0a1c");
     phone.ok();
@@ -727,7 +727,9 @@ fn a_refusal_keeps_its_code_and_a_bad_id_is_never_sent() {
         c.post("p_1?x=1").map(drop),
         c.delete_comment("").map(drop),
         c.react("p 1", ReactionKind::Like),
-        c.create_comment("p_1", "  ", None).map(drop),
+        c.create_comment("p_1", "  ", None, &[]).map(drop),
+        c.create_comment("p_1", "", None, &["sm_1".into(), "sm_2".into()])
+            .map(drop),
         c.close_report("r_1", " ").map(drop),
         c.create_community(" ", "", Audience::Open).map(drop),
         c.moderate("cm_1", &mute(None)),
@@ -1128,7 +1130,7 @@ fn a_reply_names_the_comment_it_answers() {
     answered["parentCommentId"] = json!("p_1-0a1b");
     phone.answer(200, answered);
     let made = c
-        .create_comment("p_1", "Rétt hjá þér.", Some("p_1-0a1b"))
+        .create_comment("p_1", "Rétt hjá þér.", Some("p_1-0a1b"), &[])
         .unwrap();
     assert_eq!(made.parent_comment_id.as_deref(), Some("p_1-0a1b"));
 
@@ -1142,7 +1144,7 @@ fn a_reply_names_the_comment_it_answers() {
     );
 
     assert!(matches!(
-        c.create_comment("p_1", "Svar", Some("../x")),
+        c.create_comment("p_1", "Svar", Some("../x"), &[]),
         Err(ClientError::Invalid("comment id"))
     ));
     assert!(phone.sent().is_empty());
@@ -1426,4 +1428,34 @@ fn a_bad_community_picture_id_is_refused_without_a_request() {
         Err(ClientError::Invalid(_))
     ));
     assert!(phone.sent().is_empty());
+}
+
+#[test]
+fn a_comment_carries_one_image() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+
+    let mut with_image = comment("p_1-0a1e");
+    with_image["media"] = json!([{ "mediaId": "sm_1", "width": 30, "height": 20 }]);
+    phone.answer(200, with_image);
+    let made = c.create_comment("p_1", "", None, &["sm_1".into()]).unwrap();
+    assert_eq!(made.media.len(), 1);
+    assert_eq!(made.media[0].media_id, "sm_1");
+    assert_eq!(
+        phone.sent(),
+        [(
+            Method::Post,
+            "/v1/posts/p_1/comments".into(),
+            json!({ "body": "", "media": ["sm_1"] })
+        )]
+    );
+
+    // A comment from a server before 0082 has no `media`.
+    phone.answer(200, comment("p_1-0a1f"));
+    assert!(
+        c.create_comment("p_1", "Text", None, &[])
+            .unwrap()
+            .media
+            .is_empty()
+    );
 }

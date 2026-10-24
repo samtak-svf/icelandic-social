@@ -4,7 +4,7 @@
 
 export { dropSpace, forgetAccount } from "./lifecycle.ts";
 export { commentAccess, postAccess } from "./access.ts";
-export { deleteUnattached } from "./media.ts";
+export { commentMedia, deleteUnattached } from "./media.ts";
 export {
   commentContent,
   moderateComment,

@@ -699,9 +699,9 @@ describe("the image of a comment (decision 0082)", () => {
     expect((await imageOf(reader, postId, mediaId)).status).toBe(404);
     expect((await imageOf(owner, postId, mediaId)).status).toBe(404);
     expect(await stored(id, mediaId)).toBe(true);
-    await purgeRemoved(env, Date.now() + REMOVED_KEPT_MS - DAY_MS);
+    await purgeRemoved(euEnv(env), Date.now() + REMOVED_KEPT_MS - DAY_MS);
     expect(await stored(id, mediaId)).toBe(true);
-    await purgeRemoved(env, Date.now() + REMOVED_KEPT_MS + DAY_MS);
+    await purgeRemoved(euEnv(env), Date.now() + REMOVED_KEPT_MS + DAY_MS);
     expect(await rowOf(mediaId)).toBeNull();
     expect(await stored(id, mediaId)).toBe(false);
   });
@@ -710,7 +710,7 @@ describe("the image of a comment (decision 0082)", () => {
     const { owner, id, mediaId, written } = await scene();
     await act(owner, id, "remove_comment", written.commentId);
     await act(owner, id, "restore_comment", written.commentId);
-    await purgeRemoved(env, Date.now() + REMOVED_KEPT_MS + DAY_MS);
+    await purgeRemoved(euEnv(env), Date.now() + REMOVED_KEPT_MS + DAY_MS);
     expect(await stored(id, mediaId)).toBe(true);
   });
 
@@ -721,7 +721,7 @@ describe("the image of a comment (decision 0082)", () => {
     const written = await ok<Comment>(await withImage(member, postId, "Mynd", [own]));
     expect(written.media).toHaveLength(1);
     expect((await act(owner, id, "remove_post", postId)).status).toBe(204);
-    await purgeRemoved(env, Date.now() + REMOVED_KEPT_MS + DAY_MS);
+    await purgeRemoved(euEnv(env), Date.now() + REMOVED_KEPT_MS + DAY_MS);
     expect(await rowOf(own)).toBeNull();
     expect(await stored(id, own)).toBe(false);
     expect(await stored(id, mediaId)).toBe(true);

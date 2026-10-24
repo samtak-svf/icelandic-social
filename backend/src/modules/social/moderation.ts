@@ -2,7 +2,7 @@ import { db, space } from "../../env/index.ts";
 import type { IndexedPost } from "./access.ts";
 import type { ContentState } from "./do/space.ts";
 import { REMOVED_KEPT_MS } from "./do/space-schema.ts";
-import { deleteKeys } from "./media.ts";
+import { deleteKeys, purgeRemovedCommentMedia } from "./media.ts";
 import { unindex } from "./posts.ts";
 
 // What moderation does to a community's content (decisions 0063, 0066): it
@@ -67,12 +67,24 @@ export async function moderateComment(
   state: ContentState,
   entries: D1PreparedStatement[],
 ): Promise<void> {
-  await db(env).batch(entries);
+  await db(env).batch([
+    ...entries,
+    // The image of a removed comment is purged when the comment's text is (0082).
+    db(env)
+      .prepare("UPDATE social_media SET removed_at = ? WHERE comment_id = ?")
+      .bind(state === "removed" ? Date.now() : null, commentId),
+  ]);
   await space(env, communityId).moderateComment(commentId, state, Date.now());
 }
 
-/** Deletes the posts removed REMOVED_KEPT_MS ago, with their comments and images. */
+/**
+ * Deletes the posts removed REMOVED_KEPT_MS ago, with their comments and
+ * images, and the images of comments removed that long ago (decision 0082:
+ * the space's alarm deletes those comments' text, and cannot reach D1 or R2).
+ * The number of posts.
+ */
 export async function purgeRemoved(env: Env, now = Date.now()): Promise<number> {
+  await purgeRemovedCommentMedia(env, now);
   const { results } = await db(env)
     .prepare(
       `SELECT community_id AS communityId, post_id AS postId FROM post_index

@@ -422,6 +422,9 @@ pub struct Comment {
     /// This account liked it.
     #[uniffi(default = false)]
     pub liked: bool,
+    /// The comment's image, none or one (0082).
+    #[uniffi(default = [])]
+    pub images: Vec<PostImage>,
 }
 
 impl From<api::Comment> for Comment {
@@ -436,6 +439,7 @@ impl From<api::Comment> for Comment {
             state: comment.state.into(),
             likes: comment.likes,
             liked: comment.liked,
+            images: comment.media.into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -1462,18 +1466,20 @@ impl CoreClient {
         })
     }
 
-    /// Comments on a post, a reply when `parent_comment_id` names the
-    /// comment it answers. `Invalid` for a blank comment or a bad id.
-    #[uniffi::method(default(parent_comment_id = None))]
+    /// Comments on a post: a text, one image from `upload_post_image`, or
+    /// both (0082); a reply when `parent_comment_id` names the comment it
+    /// answers. `Invalid` for neither, for over one image, or a bad id.
+    #[uniffi::method(default(parent_comment_id = None, media = []))]
     pub fn create_comment(
         &self,
         post_id: String,
         body: String,
         parent_comment_id: Option<String>,
+        media: Vec<String>,
     ) -> Result<Comment, CoreError> {
         Ok(self
             .client()?
-            .create_comment(&post_id, &body, parent_comment_id.as_deref())?
+            .create_comment(&post_id, &body, parent_comment_id.as_deref(), &media)?
             .into())
     }
 
