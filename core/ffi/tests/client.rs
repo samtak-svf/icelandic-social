@@ -55,6 +55,7 @@ impl App {
             body: request.body,
             bearer: request.bearer,
             client: request.client,
+            range: None,
         }
     }
 

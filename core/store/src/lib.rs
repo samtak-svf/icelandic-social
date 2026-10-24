@@ -573,6 +573,23 @@ const MIGRATIONS: &[(u32, &str)] = &[
              SELECT group_id, seq, account, emoji FROM reactions_0078;
          DROP TABLE reactions_0078;",
     ),
+    (
+        17,
+        // Decisions 0064 and 0081: a browser session linking itself.
+        "-- The link this session asked for, and the one-time private key its
+         -- phone's history is sealed to. `requested` until the session
+         -- completes it into a device; then the row stays only while that
+         -- history is still to be received (`history_expected`), and goes
+         -- with the key when it is. One link at a time.
+         CREATE TABLE device_link (
+             id               INTEGER PRIMARY KEY CHECK (id = 1),
+             link_id          TEXT NOT NULL,
+             history_private  BLOB NOT NULL,
+             expires_at       INTEGER NOT NULL,
+             phase            TEXT NOT NULL DEFAULT 'requested'
+                              CHECK (phase IN ('requested', 'completed'))
+         ) STRICT;",
+    ),
 ];
 
 /// The migrations every store has run before `REPAIRS` apply: from 15 on,

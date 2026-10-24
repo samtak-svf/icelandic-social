@@ -25,7 +25,7 @@ use spjall_envelope::Body;
 use spjall_mls::hpke;
 use spjall_store::rusqlite::{self, Transaction, params};
 
-use crate::api::{Transport, base64, from_base64};
+use crate::api::{Piece, Transport, base64, from_base64};
 use crate::blobs::BlobStore;
 use crate::clock::now;
 use crate::media::{MediaError, Opener, Sealer, file_name, is_object, remove, uncarried};
@@ -33,6 +33,10 @@ use crate::{Client, ClientError, authed};
 
 /// The largest history, in plaintext bytes (0064).
 pub const MAX_HISTORY: u64 = 1024 * 1024 * 1024;
+
+/// How much of a history one request fetches (0081): the size of a part
+/// the server names, so a browser's synchronous request holds one at most.
+pub const HISTORY_PIECE: u64 = 64 * 1024 * 1024;
 const MAGIC: &[u8; 4] = b"SPJH";
 const VERSION: u8 = 1;
 /// What the HPKE key is bound to, so it opens nothing but a history.
@@ -652,7 +656,17 @@ impl<T: Transport> Client<T> {
     /// one-time key and adds it to the store. Nothing is written unless all
     /// of it opens; importing it again adds nothing.
     pub fn import_history(&mut self, from: &Path, private: &[u8]) -> Result<Imported, ClientError> {
-        let mut reader = self.blobs.open_read(from).map_err(HistoryError::from)?;
+        self.import_parts(&[from.to_path_buf()], private)
+    }
+
+    /// `import_history` over a history held in `parts`, read one after the
+    /// other as if they were one file.
+    fn import_parts(&mut self, parts: &[PathBuf], private: &[u8]) -> Result<Imported, ClientError> {
+        let mut reader = Chain {
+            blobs: &*self.blobs,
+            parts: parts.iter().collect(),
+            current: None,
+        };
         let mut header = [0u8; HEADER];
         reader.read_exact(&mut header).map_err(tampered)?;
         if &header[..MAGIC.len()] != MAGIC || header[MAGIC.len()] != VERSION {
@@ -723,22 +737,94 @@ impl<T: Transport> Client<T> {
     /// Receives the history the phone that approved `link` sent this
     /// device, opens it with the private half of the link's one-time key,
     /// and then deletes it from the server (0074).
+    ///
+    /// It is fetched in pieces of `HISTORY_PIECE` bytes (0081), so a
+    /// transport never holds more than one in memory.
     pub fn receive_history(&mut self, link: &str, private: &[u8]) -> Result<Imported, ClientError> {
+        self.receive_history_in(link, private, HISTORY_PIECE)
+    }
+
+    /// `receive_history` with pieces of `piece` bytes.
+    ///
+    /// Each piece is a `Range` request written to its own file. A piece
+    /// shorter than asked for, or a 416, ends the file; a 200 is the whole
+    /// file from a server that ignores ranges (0081). The pieces are read
+    /// back as one stream, never joined on disk.
+    pub fn receive_history_in(
+        &mut self,
+        link: &str,
+        private: &[u8],
+        piece: u64,
+    ) -> Result<Imported, ClientError> {
+        let piece = piece.max(1);
         let incoming = self.media.join("in");
+        let _ = self.blobs.remove_dir_all(&incoming);
         self.blobs
             .create_dir_all(&incoming)
             .map_err(HistoryError::from)?;
-        let blob = incoming.join("history");
         let received = (|| {
-            authed(&self.transport, &self.token, &self.client)?.get_history(link, &blob)?;
-            let imported = self.import_history(&blob, private)?;
+            let mut parts: Vec<PathBuf> = Vec::new();
+            let mut first = 0u64;
+            let api = authed(&self.transport, &self.token, &self.client)?;
+            loop {
+                // The server keeps at most `MAX_HISTORY` of ciphertext and
+                // framing; a server that goes on is broken, not generous.
+                if first > MAX_HISTORY + MAX_RECORD {
+                    return Err(HistoryError::TooLarge.into());
+                }
+                let part = incoming.join(format!("history.{}", parts.len()));
+                match api.get_history_range(link, first, first + piece - 1, &part)? {
+                    Piece::Past => break,
+                    Piece::Whole => {
+                        parts = vec![part];
+                        break;
+                    }
+                    Piece::Slice => {
+                        let size = self.blobs.len(&part).map_err(HistoryError::from)?;
+                        parts.push(part);
+                        if size < piece {
+                            break;
+                        }
+                        first += piece;
+                    }
+                }
+            }
+            if parts.is_empty() {
+                return Err(HistoryError::Tampered.into());
+            }
+            let imported = self.import_parts(&parts, private)?;
             // Kept on a failure: the server deletes it after 24 hours, and
             // it opens only with the key this device drops.
             let _ = authed(&self.transport, &self.token, &self.client)?.delete_history(link);
             Ok::<_, ClientError>(imported)
         })();
-        remove(&*self.blobs, &blob);
+        let _ = self.blobs.remove_dir_all(&incoming);
         received
+    }
+}
+
+/// Files read one after the other as one.
+struct Chain<'a> {
+    blobs: &'a dyn BlobStore,
+    parts: VecDeque<&'a PathBuf>,
+    current: Option<Box<dyn Read>>,
+}
+
+impl Read for Chain<'_> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        loop {
+            let Some(reader) = &mut self.current else {
+                let Some(next) = self.parts.pop_front() else {
+                    return Ok(0);
+                };
+                self.current = Some(self.blobs.open_read(next)?);
+                continue;
+            };
+            match reader.read(buf)? {
+                0 => self.current = None,
+                n => return Ok(n),
+            }
+        }
     }
 }
 

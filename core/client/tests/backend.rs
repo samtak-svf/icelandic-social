@@ -16,9 +16,9 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 
 use spjall_client::api::{
-    ApiError, Method, Platform, Provider, Request, Response, Transport, Unreachable,
+    ApiError, DeviceKind, Method, Platform, Provider, Request, Response, Transport, Unreachable,
 };
-use spjall_client::{Client, ClientError, Content, Event, invite_token};
+use spjall_client::{Client, ClientError, Content, Event, LinkError, LinkState, invite_token};
 use spjall_envelope::Body;
 use tempfile::TempDir;
 use tungstenite::client::IntoClientRequest as _;
@@ -71,28 +71,55 @@ fn answered(mut answer: ureq::http::Response<ureq::Body>) -> Result<Response, Un
 struct Http {
     agent: ureq::Agent,
     base: String,
+    /// A browser's session cookies, sent where there is no bearer token.
+    cookie: Option<String>,
     /// The status of each `setPushToken` the core made.
     pushes: Arc<Mutex<Vec<u16>>>,
+}
+
+impl Http {
+    /// The request's credential: the core's token, or else what a browser
+    /// sends with its session cookie, the web host's Origin included, which
+    /// the Worker requires of a cookie on any request that changes state.
+    fn credential<B>(
+        &self,
+        call: ureq::RequestBuilder<B>,
+        bearer: Option<&str>,
+    ) -> ureq::RequestBuilder<B> {
+        if let Some(token) = bearer {
+            call.header("authorization", format!("Bearer {token}"))
+        } else if let Some(cookie) = &self.cookie {
+            call.header("cookie", cookie).header("origin", web_origin())
+        } else {
+            call
+        }
+    }
+}
+
+/// The origin the Worker takes a session cookie from, read from the frozen
+/// ids the way the Worker reads it.
+fn web_origin() -> String {
+    let ids: serde_json::Value = serde_json::from_str(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../identifiers/ids.json"
+    )))
+    .unwrap();
+    format!("https://{}", ids["hosts"]["web"].as_str().unwrap())
 }
 
 impl Transport for Http {
     fn request(&self, request: Request) -> Result<Response, Unreachable> {
         let url = format!("{}{}", self.base, request.path);
-        let auth = request.bearer.map(|token| format!("Bearer {token}"));
         let client = request.client.unwrap_or_default();
         let answer = match request.method {
             Method::Get => {
                 let mut call = self.agent.get(&url).header("spjall-client", &client);
-                if let Some(auth) = &auth {
-                    call = call.header("authorization", auth);
-                }
+                call = self.credential(call, request.bearer.as_deref());
                 call.call()
             }
             Method::Delete => {
                 let mut call = self.agent.delete(&url).header("spjall-client", &client);
-                if let Some(auth) = &auth {
-                    call = call.header("authorization", auth);
-                }
+                call = self.credential(call, request.bearer.as_deref());
                 call.call()
             }
             Method::Post => {
@@ -101,16 +128,12 @@ impl Transport for Http {
                     .post(&url)
                     .header("content-type", "application/json")
                     .header("spjall-client", &client);
-                if let Some(auth) = &auth {
-                    call = call.header("authorization", auth);
-                }
+                call = self.credential(call, request.bearer.as_deref());
                 call.send(request.body.unwrap_or_default())
             }
             Method::Put => {
                 let mut call = self.agent.put(&url).header("spjall-client", &client);
-                if let Some(auth) = &auth {
-                    call = call.header("authorization", auth);
-                }
+                call = self.credential(call, request.bearer.as_deref());
                 match request.body {
                     Some(body) => call.header("content-type", "application/json").send(body),
                     None => call.send_empty(),
@@ -122,9 +145,7 @@ impl Transport for Http {
                     .patch(&url)
                     .header("content-type", "application/json")
                     .header("spjall-client", &client);
-                if let Some(auth) = &auth {
-                    call = call.header("authorization", auth);
-                }
+                call = self.credential(call, request.bearer.as_deref());
                 call.send(request.body.unwrap_or_default())
             }
         };
@@ -143,9 +164,7 @@ impl Transport for Http {
             .put(&url)
             .header("content-type", "application/octet-stream")
             .header("spjall-client", request.client.unwrap_or_default());
-        if let Some(token) = request.bearer {
-            call = call.header("authorization", format!("Bearer {token}"));
-        }
+        call = self.credential(call, request.bearer.as_deref());
         answered(
             call.send(&blob[..])
                 .map_err(|e| Unreachable(e.to_string()))?,
@@ -158,12 +177,13 @@ impl Transport for Http {
             .agent
             .get(&url)
             .header("spjall-client", request.client.unwrap_or_default());
-        if let Some(token) = request.bearer {
-            call = call.header("authorization", format!("Bearer {token}"));
+        call = self.credential(call, request.bearer.as_deref());
+        if let Some((first, last)) = request.range {
+            call = call.header("range", format!("bytes={first}-{last}"));
         }
         let mut answer = call.call().map_err(|e| Unreachable(e.to_string()))?;
         let status = answer.status().as_u16();
-        if status != 200 {
+        if status != 200 && status != 206 {
             return answered(answer);
         }
         let mut file = std::fs::File::create(to).map_err(|e| Unreachable(e.to_string()))?;
@@ -174,6 +194,45 @@ impl Transport for Http {
             body: String::new(),
         })
     }
+}
+
+/// What a browser does to get a session: the web sign-in with Google's fake
+/// issuer, by hand, since a native agent has no cookie jar for `__Host-`
+/// cookies. Returns the `Cookie` header the session needs.
+fn browser_session(subject: &str) -> String {
+    // Each Set-Cookie's name=value.
+    fn pairs(answer: &ureq::http::Response<ureq::Body>) -> Vec<String> {
+        answer
+            .headers()
+            .get_all("set-cookie")
+            .iter()
+            .filter_map(|v| v.to_str().ok()?.split(';').next().map(str::to_owned))
+            .collect()
+    }
+    let started = agent()
+        .get(format!("{}/auth/google/start?next=/", base()))
+        .call()
+        .expect("is `cf dev --mode interop` running?");
+    assert_eq!(started.status(), 302);
+    let flow = pairs(&started).join("; ");
+    let issuer = started.headers()["location"].to_str().unwrap().to_owned();
+    let back = agent()
+        .get(format!("{issuer}&login_hint={subject}"))
+        .call()
+        .unwrap();
+    assert_eq!(back.status(), 302);
+    // The callback is on the web host in production; here, the same Worker.
+    let callback = back.headers()["location"].to_str().unwrap();
+    let path = callback
+        .find("/auth/")
+        .map_or(callback, |at| &callback[at..]);
+    let signed = agent()
+        .get(format!("{}{path}", base()))
+        .header("cookie", &flow)
+        .call()
+        .unwrap();
+    assert_eq!(signed.status(), 303);
+    pairs(&signed).join("; ")
 }
 
 /// The kennitala of test person `n` of this run, born on a day in 2099:
@@ -247,6 +306,7 @@ impl Phone {
         let transport = Http {
             agent: agent(),
             base: base(),
+            cookie: None,
             pushes: pushes.clone(),
         };
         let mut client = Client::open(dir.path(), &KEY, transport).unwrap();
@@ -759,4 +819,51 @@ fn devices_talk_through_the_worker() {
     assert!(m1.client.me().unwrap().verified);
     // It stocks KeyPackages for k on its next sync.
     m1.client.sync().unwrap();
+}
+
+#[test]
+#[ignore = "needs `cf dev --mode interop`; run by interop.yml"]
+fn a_browser_session_links_to_a_phone_through_the_worker() {
+    let run = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    // One Google subject: the phone signs in with it, and so does the browser.
+    let subject = format!("interop-{run}-link");
+    let mut phone = Phone::signed_in(Person::Google(&subject), None);
+
+    let dir = tempfile::tempdir().unwrap();
+    let transport = Http {
+        agent: agent(),
+        base: base(),
+        cookie: Some(browser_session(&subject)),
+        pushes: Arc::new(Mutex::new(Vec::new())),
+    };
+    let mut web = Client::open(dir.path(), &KEY, transport).unwrap();
+    web.set_client_version(Platform::Android, env!("CARGO_PKG_VERSION"))
+        .unwrap();
+
+    // The browser asks for a link; the phone approves it, sending its history.
+    let link = web.begin_device_link().unwrap();
+    assert_eq!(web.device_link_state().unwrap(), LinkState::Pending);
+    phone.client.approve_link(&link.code, None, true).unwrap();
+    assert_eq!(web.device_link_state().unwrap(), LinkState::Approved);
+
+    // Completing makes the browser a device of the phone's account.
+    let enrolled = web.complete_device_link().unwrap();
+    assert_eq!(enrolled.signed_in.account, phone.account);
+    web.receive_linked_history().unwrap();
+    assert!(matches!(
+        web.complete_device_link(),
+        Err(ClientError::Link(LinkError::Gone))
+    ));
+    assert!(
+        phone
+            .client
+            .me()
+            .unwrap()
+            .devices
+            .iter()
+            .any(|d| d.kind == DeviceKind::Web)
+    );
 }
