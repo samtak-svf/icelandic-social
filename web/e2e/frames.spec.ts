@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
+import { layoutOf } from "../src/ui/layout.ts";
 import { png } from "./images.ts";
 import { expect, test } from "./origin.ts";
 import { found, openMenu, person } from "./social-helpers.ts";
@@ -11,7 +12,10 @@ import { found, openMenu, person } from "./social-helpers.ts";
 async function manage(page: Page) {
   await openMenu(page);
   await page.getByRole("menuitem", { name: new RegExp(`^${strings.community_manage}`) }).click();
-  await page.locator("summary", { hasText: strings.community_edit }).click();
+  // Beside the side navigation of an expanded window the details start open (decision 0087).
+  if (layoutOf(page.viewportSize()!.width).manage === "one-screen") {
+    await page.locator("summary", { hasText: strings.community_edit }).click();
+  }
 }
 
 async function choose(page: Page, label: string) {

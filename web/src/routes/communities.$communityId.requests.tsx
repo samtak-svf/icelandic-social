@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import {
   approveJoinRequest,
@@ -8,6 +8,7 @@ import {
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import type { Problem } from "../problem.ts";
+import { ManageFrame } from "../social/manage-frame.tsx";
 import { outcome, useLoad, when, type Outcome } from "../social/outcome.ts";
 import { AuthorName } from "../social/post.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
@@ -16,23 +17,32 @@ import { Button, ProblemText, Status } from "../ui/kit.tsx";
 // moderator approves one, and the account becomes a member, or declines it,
 // and the account may ask again after 30 days (decision 0070).
 export const Route = createFileRoute("/communities/$communityId/requests")({
-  component: Requests,
+  component: RequestsPage,
+  staticData: { width: "wide" },
 });
 
-function Requests() {
+function RequestsPage() {
   const { communityId } = Route.useParams();
+  return (
+    <ManageFrame communityId={communityId}>
+      {(_, changed) => <Requests communityId={communityId} changed={changed} />}
+    </ManageFrame>
+  );
+}
+
+function Requests({
+  communityId,
+  changed,
+}: Readonly<{ communityId: string; changed: () => void }>) {
   const [requests, reload] = useLoad(
     useCallback(() => outcome(listJoinRequests({ path: { communityId } }), 200), [communityId]),
   );
+  const answered = useCallback(() => {
+    reload();
+    changed();
+  }, [reload, changed]);
   return (
     <>
-      <Link
-        to="/communities/$communityId"
-        params={{ communityId }}
-        className="inline-flex min-h-11 items-center underline"
-      >
-        {strings.post_back}
-      </Link>
       <h1 className="font-headline text-3xl">{strings.join_requests_title}</h1>
       {requests === null && <Status>{strings.loading}</Status>}
       {requests?.ok === false && (
@@ -47,7 +57,7 @@ function Requests() {
         <ul className="mt-4 flex flex-col gap-4">
           {requests.data.requests.map((r) => (
             <li key={r.accountId}>
-              <RequestItem request={r} communityId={communityId} answered={reload} />
+              <RequestItem request={r} communityId={communityId} answered={answered} />
             </li>
           ))}
         </ul>

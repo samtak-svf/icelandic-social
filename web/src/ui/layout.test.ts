@@ -8,6 +8,7 @@ describe("layout", () => {
       navigation: "bar",
       community: "column",
       memberPictures: 5,
+      manage: "one-screen",
     });
   });
 
@@ -21,6 +22,11 @@ describe("layout", () => {
       navigation: "rail",
       community: "feed-and-aside",
     });
+  });
+
+  it("splits Stjórna into pages only beside a side navigation, on expanded", () => {
+    expect(layoutOf(SIZE_CLASSES.expanded - 1).manage).toBe("one-screen");
+    expect(layoutOf(SIZE_CLASSES.expanded).manage).toBe("side-nav");
   });
 
   it("never shows fewer members' pictures on a wider window", () => {

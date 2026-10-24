@@ -12,12 +12,19 @@ export type Layout = {
   community: "column" | "feed-and-aside";
   /** How many members' pictures the community header or aside shows at most. */
   memberPictures: number;
+  /** Stjórna: one screen, or a side navigation with a page for each part. */
+  manage: "one-screen" | "side-nav";
 };
 
 export const LAYOUTS: Readonly<Record<SizeClass, Layout>> = {
-  compact: { navigation: "bar", community: "column", memberPictures: 5 },
-  medium: { navigation: "rail", community: "column", memberPictures: 12 },
-  expanded: { navigation: "rail", community: "feed-and-aside", memberPictures: 12 },
+  compact: { navigation: "bar", community: "column", memberPictures: 5, manage: "one-screen" },
+  medium: { navigation: "rail", community: "column", memberPictures: 12, manage: "one-screen" },
+  expanded: {
+    navigation: "rail",
+    community: "feed-and-aside",
+    memberPictures: 12,
+    manage: "side-nav",
+  },
 };
 
 /** The layout of a window `width` CSS px wide. */
