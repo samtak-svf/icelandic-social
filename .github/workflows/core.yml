@@ -224,7 +224,11 @@ jobs:
 
       # The committed declarations are what the web client is typed against.
       - name: The committed declarations are the built ones
-        run: CORE_WEB_BUILT=1 node tooling/core-guard.mjs
+        run: |
+          CORE_WEB_BUILT=1 node tooling/core-guard.mjs || {
+            diff -u web/src/generated/core.d.ts web/core/spjall_wasm.d.ts
+            exit 1
+          }
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
