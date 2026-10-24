@@ -77,28 +77,49 @@ struct Http {
     pushes: Arc<Mutex<Vec<u16>>>,
 }
 
+impl Http {
+    /// The request's credential: the core's token, or else what a browser
+    /// sends with its session cookie, the web host's Origin included, which
+    /// the Worker requires of a cookie on any request that changes state.
+    fn credential<B>(
+        &self,
+        call: ureq::RequestBuilder<B>,
+        bearer: Option<&str>,
+    ) -> ureq::RequestBuilder<B> {
+        if let Some(token) = bearer {
+            call.header("authorization", format!("Bearer {token}"))
+        } else if let Some(cookie) = &self.cookie {
+            call.header("cookie", cookie).header("origin", web_origin())
+        } else {
+            call
+        }
+    }
+}
+
+/// The origin the Worker takes a session cookie from, read from the frozen
+/// ids the way the Worker reads it.
+fn web_origin() -> String {
+    let ids: serde_json::Value = serde_json::from_str(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../identifiers/ids.json"
+    )))
+    .unwrap();
+    format!("https://{}", ids["hosts"]["web"].as_str().unwrap())
+}
+
 impl Transport for Http {
     fn request(&self, request: Request) -> Result<Response, Unreachable> {
         let url = format!("{}{}", self.base, request.path);
-        let auth = request.bearer.map(|token| format!("Bearer {token}"));
         let client = request.client.unwrap_or_default();
         let answer = match request.method {
             Method::Get => {
                 let mut call = self.agent.get(&url).header("spjall-client", &client);
-                if let Some(auth) = &auth {
-                    call = call.header("authorization", auth);
-                } else if let Some(cookie) = &self.cookie {
-                    call = call.header("cookie", cookie);
-                }
+                call = self.credential(call, request.bearer.as_deref());
                 call.call()
             }
             Method::Delete => {
                 let mut call = self.agent.delete(&url).header("spjall-client", &client);
-                if let Some(auth) = &auth {
-                    call = call.header("authorization", auth);
-                } else if let Some(cookie) = &self.cookie {
-                    call = call.header("cookie", cookie);
-                }
+                call = self.credential(call, request.bearer.as_deref());
                 call.call()
             }
             Method::Post => {
@@ -107,20 +128,12 @@ impl Transport for Http {
                     .post(&url)
                     .header("content-type", "application/json")
                     .header("spjall-client", &client);
-                if let Some(auth) = &auth {
-                    call = call.header("authorization", auth);
-                } else if let Some(cookie) = &self.cookie {
-                    call = call.header("cookie", cookie);
-                }
+                call = self.credential(call, request.bearer.as_deref());
                 call.send(request.body.unwrap_or_default())
             }
             Method::Put => {
                 let mut call = self.agent.put(&url).header("spjall-client", &client);
-                if let Some(auth) = &auth {
-                    call = call.header("authorization", auth);
-                } else if let Some(cookie) = &self.cookie {
-                    call = call.header("cookie", cookie);
-                }
+                call = self.credential(call, request.bearer.as_deref());
                 match request.body {
                     Some(body) => call.header("content-type", "application/json").send(body),
                     None => call.send_empty(),
@@ -132,11 +145,7 @@ impl Transport for Http {
                     .patch(&url)
                     .header("content-type", "application/json")
                     .header("spjall-client", &client);
-                if let Some(auth) = &auth {
-                    call = call.header("authorization", auth);
-                } else if let Some(cookie) = &self.cookie {
-                    call = call.header("cookie", cookie);
-                }
+                call = self.credential(call, request.bearer.as_deref());
                 call.send(request.body.unwrap_or_default())
             }
         };
@@ -155,9 +164,7 @@ impl Transport for Http {
             .put(&url)
             .header("content-type", "application/octet-stream")
             .header("spjall-client", request.client.unwrap_or_default());
-        if let Some(token) = request.bearer {
-            call = call.header("authorization", format!("Bearer {token}"));
-        }
+        call = self.credential(call, request.bearer.as_deref());
         answered(
             call.send(&blob[..])
                 .map_err(|e| Unreachable(e.to_string()))?,
@@ -170,11 +177,7 @@ impl Transport for Http {
             .agent
             .get(&url)
             .header("spjall-client", request.client.unwrap_or_default());
-        if let Some(token) = request.bearer {
-            call = call.header("authorization", format!("Bearer {token}"));
-        } else if let Some(cookie) = &self.cookie {
-            call = call.header("cookie", cookie);
-        }
+        call = self.credential(call, request.bearer.as_deref());
         if let Some((first, last)) = request.range {
             call = call.header("range", format!("bytes={first}-{last}"));
         }
