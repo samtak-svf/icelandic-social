@@ -17,7 +17,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.io.File
 import samtak.spjall.account.Problem
 import samtak.spjall.account.unreachable
 import samtak.spjall.conversation.Picked
@@ -26,6 +25,7 @@ import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
+import java.io.File
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PostViewModelTest {
@@ -159,7 +159,9 @@ class PostViewModelTest {
             val media = "m-${file.name}"
             assertTrue("uploadPostImage k1 ${file.path}" in social.calls)
             assertTrue("createComment p1 Mynd media=$media" in social.calls)
-            val sent = model.state.value.comments.last()
+            val sent =
+                model.state.value.comments
+                    .last()
             assertEquals(listOf(media), sent.images.map { it.mediaId })
             assertEquals(null, model.state.value.image)
             assertEquals("", model.state.value.draft)
