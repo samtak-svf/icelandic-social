@@ -313,6 +313,42 @@ impl From<api::SocialMedia> for PostImage {
     }
 }
 
+/// An image in a community's posts or comments (0089); fetch it with the
+/// post's media under `post_id`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct CommunityImage {
+    pub media_id: String,
+    pub post_id: String,
+    /// The comment that carries it; none for a post's own image.
+    pub comment_id: Option<String>,
+    pub width: u32,
+    pub height: u32,
+    /// Unix milliseconds.
+    pub created_at: u64,
+}
+
+impl From<api::CommunityImage> for CommunityImage {
+    fn from(image: api::CommunityImage) -> Self {
+        Self {
+            media_id: image.media_id,
+            post_id: image.post_id,
+            comment_id: image.comment_id,
+            width: image.width,
+            height: image.height,
+            created_at: image.created_at,
+        }
+    }
+}
+
+/// A page of a community's images, newest first. A page may be short, or
+/// empty, with more after it.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct CommunityImagePage {
+    pub images: Vec<CommunityImage>,
+    /// The `cursor` of the next, older page; none on the last.
+    pub next: Option<String>,
+}
+
 /// The reactions a post takes; an account has at most one on each.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum ReactionKind {
@@ -1532,6 +1568,23 @@ impl CoreClient {
         )?;
         Ok(PostPage {
             posts: page.posts.into_iter().map(Into::into).collect(),
+            next: page.next,
+        })
+    }
+
+    /// A page of a community's images (0089), newest first; `cursor` is the
+    /// `next` of the page before. At most 50 a page.
+    pub fn community_images(
+        &self,
+        community_id: String,
+        cursor: Option<String>,
+        limit: u32,
+    ) -> Result<CommunityImagePage, CoreError> {
+        let page = self
+            .client()?
+            .community_images(&community_id, cursor.as_deref(), limit)?;
+        Ok(CommunityImagePage {
+            images: page.images.into_iter().map(Into::into).collect(),
             next: page.next,
         })
     }

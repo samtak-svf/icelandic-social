@@ -1865,3 +1865,46 @@ fn a_report_of_an_anonymous_post_names_no_account() {
     assert!(report.target_anonymous);
     assert_eq!(report.target_account, None);
 }
+
+#[test]
+fn a_communitys_images_come_a_page_at_a_time() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+    phone.answer(
+        200,
+        json!({
+            "images": [
+                { "mediaId": "sm_2", "postId": "p_1", "commentId": "p_1-c1",
+                  "width": 800, "height": 600, "createdAt": 1760000200000u64 },
+                { "mediaId": "sm_1", "postId": "p_1", "commentId": null,
+                  "width": 1200, "height": 1600, "createdAt": 1760000100000u64 },
+            ],
+            "next": "1760000100000-sm_1",
+        }),
+    );
+    let page = c.community_images("cm_1", None, 0).unwrap();
+    assert_eq!(page.images.len(), 2);
+    assert_eq!(page.images[0].comment_id.as_deref(), Some("p_1-c1"));
+    assert_eq!(page.images[1].comment_id, None);
+    assert_eq!(page.next.as_deref(), Some("1760000100000-sm_1"));
+    phone.answer(200, json!({ "images": [], "next": null }));
+    let last = c
+        .community_images("cm_1", Some("1760000100000-sm_1"), 99)
+        .unwrap();
+    assert!(last.images.is_empty() && last.next.is_none());
+    let sent = phone.sent();
+    assert_eq!(
+        sent.iter()
+            .map(|(m, p, _)| (*m, p.as_str()))
+            .collect::<Vec<_>>(),
+        [
+            (Method::Get, "/v1/communities/cm_1/images?limit=1"),
+            (
+                Method::Get,
+                "/v1/communities/cm_1/images?cursor=1760000100000-sm_1&limit=50"
+            ),
+        ]
+    );
+    assert!(c.community_images("no spaces", None, 10).is_err());
+    assert!(phone.sent().is_empty());
+}

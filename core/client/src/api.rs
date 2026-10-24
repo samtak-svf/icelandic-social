@@ -887,6 +887,29 @@ pub struct PostPage {
     pub next: Option<String>,
 }
 
+/// An image in a community's posts or comments (0089), fetched with
+/// `getPostMedia` under its `post_id`.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommunityImage {
+    pub media_id: String,
+    pub post_id: String,
+    /// The comment that carries it; none for a post's own image.
+    #[serde(default)]
+    pub comment_id: Option<String>,
+    pub width: u32,
+    pub height: u32,
+    pub created_at: u64,
+}
+
+/// A page of a community's images, newest first, and the cursor of the
+/// next, older page. A page may be short, or empty, with more after it.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct CommunityImagePage {
+    pub images: Vec<CommunityImage>,
+    pub next: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Comment {
@@ -2304,6 +2327,20 @@ impl<T: Transport + ?Sized> Api<'_, T> {
         self.call(Method::Get, path, None, "listCommunityPosts")
     }
 
+    /// `listCommunityImages` (0089): the images of the posts and comments
+    /// the caller may see, newest first, older than `cursor`.
+    pub fn community_images(
+        &self,
+        community: &str,
+        cursor: Option<&str>,
+        limit: u32,
+    ) -> Result<CommunityImagePage, ApiError> {
+        let limit = limit.to_string();
+        let params = [("cursor", cursor), ("limit", Some(limit.as_str()))];
+        let path = with_query(&format!("/v1/communities/{community}/images"), &params);
+        self.call(Method::Get, path, None, "listCommunityImages")
+    }
+
     /// `getFeed`: the posts of every community this account is a member of,
     /// newest first, older than `before`.
     pub fn feed(&self, before: Option<&str>, limit: u32) -> Result<PostPage, ApiError> {
@@ -2844,7 +2881,7 @@ mod tests {
         }));
     }
 
-    /// Every route and field of 0088, 0090 and 0091 the core uses exists in
+    /// Every route and field of 0088 to 0091 the core uses exists in
     /// the contract under the method and path the core sends, so a rename
     /// there stops this test rather than a screen.
     #[test]
@@ -2865,6 +2902,11 @@ mod tests {
             ("approveAnonymousPost", "post", "/v1/posts/{postId}/approve"),
             ("declineAnonymousPost", "post", "/v1/posts/{postId}/decline"),
             ("revealAuthor", "post", "/v1/posts/{postId}/reveal"),
+            (
+                "listCommunityImages",
+                "get",
+                "/v1/communities/{communityId}/images",
+            ),
             (
                 "pinPost",
                 "put",
@@ -2892,6 +2934,18 @@ mod tests {
                 &["featured", "anonymousPosts", "pendingAnonymous"],
             ),
             ("Report", &["targetAnonymous"]),
+            (
+                "CommunityImage",
+                &[
+                    "mediaId",
+                    "postId",
+                    "commentId",
+                    "width",
+                    "height",
+                    "createdAt",
+                ],
+            ),
+            ("CommunityImagePage", &["images", "next"]),
         ] {
             let found = properties(schema);
             for field in fields {

@@ -7,9 +7,9 @@
 use std::path::{Path, PathBuf};
 
 use crate::api::{
-    Audience, Author, Card, Comment, CommentPage, Community, CommunityMember, CommunityPage,
-    JoinRequest, JoinState, Moderation, ModerationAction, ModerationLogPage, NewReport,
-    NotificationPage, Post, PostPage, ReactionKind, Ref, ReportPage, ReportState, Role,
+    Audience, Author, Card, Comment, CommentPage, Community, CommunityImagePage, CommunityMember,
+    CommunityPage, JoinRequest, JoinState, Moderation, ModerationAction, ModerationLogPage,
+    NewReport, NotificationPage, Post, PostPage, ReactionKind, Ref, ReportPage, ReportState, Role,
     SocialMedia, Transport,
 };
 use crate::{Client, ClientError, MediaError, authed, is_id};
@@ -235,6 +235,19 @@ impl<T: Transport> Client<T> {
         id(community, "community id")?;
         let api = authed(&self.transport, &self.token, &self.client)?;
         Ok(api.community_posts(community, search(query), before, size.clamp(1, 50))?)
+    }
+
+    /// A page of a community's images (0089), newest first; `cursor` is the
+    /// `next` of the page before. At most 50 a page.
+    pub fn community_images(
+        &self,
+        community: &str,
+        cursor: Option<&str>,
+        size: u32,
+    ) -> Result<CommunityImagePage, ClientError> {
+        id(community, "community id")?;
+        let api = authed(&self.transport, &self.token, &self.client)?;
+        Ok(api.community_images(community, cursor, size.clamp(1, 50))?)
     }
 
     /// Posts a text, images `upload_social_media` returned, or both.
