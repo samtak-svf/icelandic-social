@@ -5,7 +5,9 @@ import { communityLifecycle } from "../src/community-lifecycle.ts";
 import { expireCommunities } from "../src/modules/communities/index.ts";
 import { deleteUnattached } from "../src/modules/social/index.ts";
 import { feed } from "../src/modules/social/posts.ts";
+import { purgeRemoved } from "../src/modules/social/moderation.ts";
 import { ascii, png } from "./images.ts";
+import { REMOVED_KEPT_MS } from "../src/modules/social/do/space-schema.ts";
 import { community, errorOf, ok, person, type Person } from "./people.ts";
 import { euEnv } from "./support.ts";
 
@@ -32,6 +34,7 @@ type Comment = {
   author: { accountId: string; name: string | null };
   createdAt: number;
   state: string;
+  media: { mediaId: string; width: number; height: number }[];
 };
 
 const post = (by: Person, communityId: string, body: string, media: string[] = []) =>
@@ -567,5 +570,186 @@ describe("the feed (#275)", () => {
     }
     expect(seen.size).toBe(1500);
     expect(most).toBeLessThan(400);
+  });
+});
+
+describe("the image of a comment (decision 0082)", () => {
+  const upload = async (by: Person, communityId: string) =>
+    (
+      await ok<{ mediaId: string }>(
+        await by.send(`/v1/communities/${communityId}/media`, await png(30, 20)),
+      )
+    ).mediaId;
+  const withImage = (by: Person, postId: string, body: string, media: string[]) =>
+    by.call("POST", `/v1/posts/${postId}/comments`, { body, media });
+  const imageOf = (by: Person, postId: string, mediaId: string) =>
+    by.call("GET", `/v1/posts/${postId}/media/${mediaId}`);
+  const stored = async (communityId: string, mediaId: string) =>
+    (await env.PROFILES.head(`social/${communityId}/${mediaId}`)) !== null;
+  const rowOf = (mediaId: string) =>
+    env.DB.prepare("SELECT post_id, comment_id FROM social_media WHERE media_id = ?")
+      .bind(mediaId)
+      .first<{ post_id: string | null; comment_id: string | null }>();
+  const act = (by: Person, communityId: string, action: string, targetId: string) =>
+    by.call("POST", `/v1/communities/${communityId}/actions`, {
+      action,
+      targetId,
+      reason: "Prófun",
+    });
+
+  /** An owner, a member who comments with an image, and a reader, in one open community. */
+  async function scene() {
+    const [owner, member, reader] = [
+      await person("Eigandi"),
+      await person("Meðlimur"),
+      await person("Lesandi"),
+    ];
+    const id = await community(owner, "open", member, reader);
+    const { postId } = await posted(owner, id, "Færsla");
+    const mediaId = await upload(member, id);
+    const written = await ok<Comment>(await withImage(member, postId, "Mynd", [mediaId]));
+    return { owner, member, reader, id, postId, mediaId, written };
+  }
+
+  it("is attached to the comment, listed with it and served to those who see the post", async () => {
+    const { member, reader, id, postId, mediaId, written } = await scene();
+    expect(written.media).toEqual([{ mediaId, width: 30, height: 20 }]);
+    expect(await rowOf(mediaId)).toEqual({ post_id: postId, comment_id: written.commentId });
+    for (const by of [member, reader]) {
+      const [listed] = (await commentsOf(by, postId)).comments;
+      expect(listed?.media).toEqual(written.media);
+    }
+    const image = await imageOf(reader, postId, mediaId);
+    expect(image.status).toBe(200);
+    expect(image.headers.get("content-type")).toBe("image/webp");
+    expect(await stored(id, mediaId)).toBe(true);
+    const plain = await commented(member, postId, "Án myndar");
+    expect(plain.media).toEqual([]);
+  });
+
+  it("makes an image-only comment, and still refuses one with neither text nor image", async () => {
+    const { member, id, postId } = await scene();
+    const mediaId = await upload(member, id);
+    const only = await ok<Comment>(await withImage(member, postId, "", [mediaId]));
+    expect(only).toMatchObject({ body: "", media: [{ mediaId }] });
+    const empty = await withImage(member, postId, "", []);
+    expect(empty.status).toBe(400);
+    expect(await errorOf(empty)).toBe("invalid_request");
+    expect((await member.call("POST", `/v1/posts/${postId}/comments`, { media: [] })).status).toBe(
+      400,
+    );
+  });
+
+  it("refuses more than one image, and one that is not the commenter's own, unattached and from the community", async () => {
+    const { owner, member, id, postId } = await scene();
+    const [a, b] = [await upload(member, id), await upload(member, id)];
+    expect((await withImage(member, postId, "Tvær", [a, b])).status).toBe(400);
+    const other = await community(owner, "open", member);
+    const elsewhere = await upload(member, other);
+    const theirs = await upload(owner, id);
+    for (const media of [elsewhere, theirs, "sm_00000000000000000000000000000000"]) {
+      const refused = await withImage(member, postId, "Stolið", [media]);
+      expect(refused.status).toBe(400);
+      expect(await errorOf(refused)).toBe("invalid_media");
+    }
+    await ok<Comment>(await withImage(member, postId, "Mín", [a]));
+    expect(await errorOf(await withImage(member, postId, "Aftur", [a]))).toBe("invalid_media");
+    // The same id twice is the post's rule too: one image, named twice, is refused.
+    expect((await withImage(member, postId, "Tvisvar", [b, b])).status).toBe(400);
+  });
+
+  it("is not served to someone who cannot see the post", async () => {
+    const owner = await person("Eigandi");
+    const outsider = await person("Utangarðs");
+    const id = await community(owner, "private");
+    const { postId } = await posted(owner, id, "Lokað");
+    const mediaId = await upload(owner, id);
+    await ok<Comment>(await withImage(owner, postId, "Mynd", [mediaId]));
+    expect((await imageOf(outsider, postId, mediaId)).status).toBe(404);
+  });
+
+  it("goes, row and object, when its author deletes the comment", async () => {
+    const { member, reader, id, postId, mediaId, written } = await scene();
+    expect((await member.call("DELETE", `/v1/comments/${written.commentId}`)).status).toBe(204);
+    expect(await rowOf(mediaId)).toBeNull();
+    expect(await stored(id, mediaId)).toBe(false);
+    expect((await imageOf(reader, postId, mediaId)).status).toBe(404);
+  });
+
+  it("goes with the post when its author deletes it", async () => {
+    const { owner, id, postId, mediaId } = await scene();
+    expect((await owner.call("DELETE", `/v1/posts/${postId}`)).status).toBe(204);
+    expect(await rowOf(mediaId)).toBeNull();
+    expect(await stored(id, mediaId)).toBe(false);
+  });
+
+  it("is not served while a moderator has the comment hidden, and is again when it is shown", async () => {
+    const { owner, reader, id, postId, mediaId, written } = await scene();
+    expect((await act(owner, id, "hide_comment", written.commentId)).status).toBe(204);
+    expect((await imageOf(reader, postId, mediaId)).status).toBe(404);
+    expect((await imageOf(owner, postId, mediaId)).status).toBe(200);
+    expect(await stored(id, mediaId)).toBe(true);
+    expect((await act(owner, id, "restore_comment", written.commentId)).status).toBe(204);
+    expect((await imageOf(reader, postId, mediaId)).status).toBe(200);
+  });
+
+  it("is not served once a moderator removes the comment, and is deleted by the purge REMOVED_KEPT_MS later", async () => {
+    const { owner, reader, id, postId, mediaId, written } = await scene();
+    expect((await act(owner, id, "remove_comment", written.commentId)).status).toBe(204);
+    expect((await imageOf(reader, postId, mediaId)).status).toBe(404);
+    expect((await imageOf(owner, postId, mediaId)).status).toBe(404);
+    expect(await stored(id, mediaId)).toBe(true);
+    await purgeRemoved(env, Date.now() + REMOVED_KEPT_MS - DAY_MS);
+    expect(await stored(id, mediaId)).toBe(true);
+    await purgeRemoved(env, Date.now() + REMOVED_KEPT_MS + DAY_MS);
+    expect(await rowOf(mediaId)).toBeNull();
+    expect(await stored(id, mediaId)).toBe(false);
+  });
+
+  it("a removed comment that is restored keeps its image out of the purge", async () => {
+    const { owner, id, mediaId, written } = await scene();
+    await act(owner, id, "remove_comment", written.commentId);
+    await act(owner, id, "restore_comment", written.commentId);
+    await purgeRemoved(env, Date.now() + REMOVED_KEPT_MS + DAY_MS);
+    expect(await stored(id, mediaId)).toBe(true);
+  });
+
+  it("goes with the post when the post is removed and purged", async () => {
+    const { owner, member, id, mediaId } = await scene();
+    const { postId } = await posted(member, id, "Brottleg");
+    const own = await upload(member, id);
+    const written = await ok<Comment>(await withImage(member, postId, "Mynd", [own]));
+    expect(written.media).toHaveLength(1);
+    expect((await act(owner, id, "remove_post", postId)).status).toBe(204);
+    await purgeRemoved(env, Date.now() + REMOVED_KEPT_MS + DAY_MS);
+    expect(await rowOf(own)).toBeNull();
+    expect(await stored(id, own)).toBe(false);
+    expect(await stored(id, mediaId)).toBe(true);
+  });
+
+  it("goes when the community is purged", async () => {
+    const { owner, id, mediaId } = await scene();
+    expect((await owner.call("DELETE", `/v1/communities/${id}`)).status).toBeLessThan(300);
+    await expireCommunities(euEnv(env), communityLifecycle, Date.now() + 400 * DAY_MS);
+    expect(await rowOf(mediaId)).toBeNull();
+    expect(await stored(id, mediaId)).toBe(false);
+  });
+
+  it("goes when its author's account is forgotten, in other people's posts too", async () => {
+    const { owner, member, id, postId, mediaId } = await scene();
+    await deleteAccount(euEnv(env), member.accountId);
+    expect(await rowOf(mediaId)).toBeNull();
+    expect(await stored(id, mediaId)).toBe(false);
+    expect((await getPost(owner, postId)).status).toBe(200);
+  });
+
+  it("is shown to the moderator with a report on its comment", async () => {
+    const { owner, reader, id, mediaId, written } = await scene();
+    const target = { kind: "comment", id: written.commentId };
+    expect((await reader.call("POST", "/v1/reports", { reason: "spam", target })).status).toBe(204);
+    const { reports } = await ok<{ reports: { target: { id: string }; targetMedia: string[] }[] }>(
+      await owner.call("GET", `/v1/communities/${id}/reports`),
+    );
+    expect(reports.find((r) => r.target.id === written.commentId)?.targetMedia).toEqual([mediaId]);
   });
 });
