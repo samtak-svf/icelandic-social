@@ -6,6 +6,8 @@ import samtak.spjall.core.Content
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.ConversationState
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.Frame
+import samtak.spjall.core.Framing
 import samtak.spjall.core.Inviter
 import samtak.spjall.core.Item
 import samtak.spjall.core.ItemStatus
@@ -515,6 +517,37 @@ class FakeAccount(
         version: String,
     ): String? {
         call("photo $account $version")
+        return photoFiles["$account/$version"]
+    }
+
+    /** How the photo is framed, as [photoFraming] gives it; [setPhotoFraming] changes it. */
+    var myFraming: Framing? = null
+
+    /** The master [photoSource] writes, or null for a photo set before masters were kept. */
+    var photoMaster: ByteArray? = null
+
+    override fun setPhotoFraming(framing: Framing): String {
+        call("setPhotoFraming ${framing.focus.x},${framing.focus.y} ${framing.overrides.size}")
+        myFraming = framing
+        photoVersions += 1
+        return "v$photoVersions".also { myPhoto = it }
+    }
+
+    override fun photoFraming() = myFraming
+
+    override fun photoSource(path: String): Boolean {
+        call("photoSource")
+        val master = photoMaster ?: return false
+        java.io.File(path).writeBytes(master)
+        return true
+    }
+
+    override fun photoFramed(
+        account: String,
+        version: String,
+        frame: Frame,
+    ): String? {
+        call("photoFramed $account $version $frame")
         return photoFiles["$account/$version"]
     }
 
