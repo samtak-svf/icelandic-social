@@ -3,6 +3,7 @@
 - Status: accepted
 - Date: 2026-10-23
 - Decided by: Guðröður Atli Jónsson
+- Amended by: [0085](0085-the-stores-offer-the-app-in-iceland-only.md) (Iceland only, so no French declaration)
 - Amends: [0002](0002-mls-end-to-end-encryption.md) (§ Export compliance, the year-end report)
 
 ## Decision
@@ -23,7 +24,8 @@
   The record lists the product, the ECCN, the algorithms with the code that uses them, and the
   public source.
 - **Nothing else in 0002 changes.** `ITSAppUsesNonExemptEncryption` stays `NO`, and offering
-  the app in France still needs the declaration and its code in the bundle.
+  the app in France still needs the declaration and its code in the bundle. As of 2026-10-24 the app is not
+  offered in France ([0085](0085-the-stores-offer-the-app-in-iceland-only.md)).
 
 ## Why
 
