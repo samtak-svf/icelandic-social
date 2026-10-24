@@ -9,7 +9,8 @@
     "./server": {
       "types": "./src/server-api.d.ts",
       "default": "./src/server.ts"
-    }
+    },
+    "./integrity": "./src/integrity.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit && tsc --noEmit -p e2e",

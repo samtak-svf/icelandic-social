@@ -48,6 +48,9 @@ jobs:
       - name: Every page preloads the modules it loads
         run: node tooling/preload-check.mjs
 
+      - name: Every script, style and wasm file is served with its integrity
+        run: node tooling/sri-check.mjs
+
       - name: Unit tests
         run: pnpm --filter spjall-web test
 
