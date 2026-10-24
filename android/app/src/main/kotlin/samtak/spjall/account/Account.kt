@@ -3,6 +3,8 @@ package samtak.spjall.account
 import samtak.spjall.core.Body
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.CoreClient
+import samtak.spjall.core.Frame
+import samtak.spjall.core.Framing
 import samtak.spjall.core.Inviter
 import samtak.spjall.core.Item
 import samtak.spjall.core.LinkRequest
@@ -276,6 +278,22 @@ interface Account {
         account: String,
         version: String,
     ): String?
+
+    /** Frames this account's photo again from the master the server kept (0086); returns the new version. */
+    fun setPhotoFraming(framing: Framing): String
+
+    /** How this account's photo is framed now; null without a photo or for one set before frames. */
+    fun photoFraming(): Framing?
+
+    /** Writes the master of this account's photo to [path] for the editor; false when there is none. */
+    fun photoSource(path: String): Boolean
+
+    /** The file of [account]'s photo at [version] in [frame] (`SQUARE` for a photo), as [photo] (0086). */
+    fun photoFramed(
+        account: String,
+        version: String,
+        frame: Frame,
+    ): String?
 }
 
 /** [Account] over the core's client, opened on the first call. */
@@ -452,6 +470,18 @@ class CoreAccount(
         account: String,
         version: String,
     ) = client.photo(account, version)
+
+    override fun setPhotoFraming(framing: Framing) = client.setPhotoFraming(framing)
+
+    override fun photoFraming() = client.photoFraming()
+
+    override fun photoSource(path: String) = client.photoSource(path)
+
+    override fun photoFramed(
+        account: String,
+        version: String,
+        frame: Frame,
+    ) = client.photoFramed(account, version, frame)
 
     private companion object {
         // Each account that starts a conversation with this one claims one.

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,6 +41,9 @@ import samtak.spjall.brand.R
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityMember
+import samtak.spjall.core.FrameKind
+import samtak.spjall.frames.LocalFrameRules
+import samtak.spjall.frames.windowWidthDp
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
@@ -109,12 +113,15 @@ internal fun CommunityHeader(
 /** The cover across the top: a plain band when the community has none. */
 @Composable
 private fun CoverBand(community: Community) {
+    val rules = LocalFrameRules.current
     val band = RoundedCornerShape(COVER_RADIUS.dp)
+    val frame = rules.frameForWidth(FrameKind.COVER, windowWidthDp())
+    val aspect = rules.aspect(FrameKind.COVER, frame)
     Box(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(COVER_HEIGHT.dp)
+                .aspectRatio(aspect.w.toFloat() / aspect.h)
                 .clip(band)
                 .background(Palette.secondarySubtle, band),
     ) {
@@ -153,7 +160,6 @@ private fun AudienceLine(
     }
 }
 
-private const val COVER_HEIGHT = 110
 private const val COVER_RADIUS = 14
 private const val PICTURE = 72
 private const val PICTURE_OVERLAP = 36

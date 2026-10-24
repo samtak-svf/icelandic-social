@@ -76,37 +76,16 @@ class Files(
     }
 
     /**
-     * The picked photo at [uri] as a small square JPEG for a profile photo (decision 0039), in a file the caller
-     * deletes once it is sent. The copy read from the picker goes at once.
+     * The picked photo at [uri] as a master for a profile photo, a community picture or a cover (decisions 0039,
+     * 0080 and 0086): upright, no more than 2400 pixels on its long side, in a file the caller deletes once it is
+     * sent. The person's crop is a framing set after it, never a cut of it. The copy read from the picker goes at once.
      */
-    fun profilePhoto(uri: Uri): File {
+    fun master(uri: Uri): File {
         val copy = picked(uri).read()
         try {
-            val square = File.createTempFile("photo", ".jpg", outgoing)
-            if (!squarePhoto(copy.path, square, PROFILE_SIDE)) {
-                square.delete()
-                throw IOException("the picked file is not an image")
-            }
-            return square
-        } finally {
-            copy.delete()
-        }
-    }
-
-    /** The picked photo at [uri] as a square JPEG for a community picture (0080), as [profilePhoto]. */
-    fun communityPicture(uri: Uri): File = cropped(uri) { from, to -> squarePhoto(from, to, PROFILE_SIDE) }
-
-    /** The picked photo at [uri] as a 1600 by 600 JPEG for a community cover (0080). */
-    fun communityCover(uri: Uri): File = cropped(uri) { from, to -> coverPhoto(from, to, COVER_WIDTH, COVER_HEIGHT) }
-
-    private fun cropped(
-        uri: Uri,
-        crop: (String, File) -> Boolean,
-    ): File {
-        val copy = picked(uri).read()
-        try {
+            outgoing.mkdirs()
             val out = File.createTempFile("photo", ".jpg", outgoing)
-            if (!crop(copy.path, out)) {
+            if (!masterPhoto(copy.path, out)) {
                 out.delete()
                 throw IOException("the picked file is not an image")
             }
@@ -114,6 +93,12 @@ class Files(
         } finally {
             copy.delete()
         }
+    }
+
+    /** An empty file in the outgoing folder, for the core to write a stored master to (0086); the caller deletes it. */
+    fun temp(): File {
+        outgoing.mkdirs()
+        return File.createTempFile("master", ".jpg", outgoing)
     }
 
     /**
@@ -154,8 +139,5 @@ class Files(
         const val OCTET_STREAM = "application/octet-stream"
 
         // Twice the server's 512 px, so its re-encode still has detail to scale down from.
-        const val PROFILE_SIDE = 1024
-        const val COVER_WIDTH = 1600
-        const val COVER_HEIGHT = 600
     }
 }

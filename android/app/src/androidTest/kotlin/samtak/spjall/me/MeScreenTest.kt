@@ -64,6 +64,10 @@ class MeScreenTest {
                 calls += "choosePhoto"
             }
 
+            override fun reframePhoto() {
+                calls += "reframePhoto"
+            }
+
             override fun removePhoto() {
                 calls += "removePhoto"
             }
@@ -138,6 +142,19 @@ class MeScreenTest {
         show(photo = "v1")
         compose.onNodeWithContentDescription(text(R.string.photo_change)).performClick()
         assertEquals(listOf("choosePhoto"), calls)
+    }
+
+    @Test
+    fun anEmptyCircleOffersNoFraming() {
+        show()
+        compose.onNodeWithText(text(R.string.image_frames_title)).assertDoesNotExist()
+    }
+
+    @Test
+    fun aPhotoCanBeFramedAgainFromItsMaster() {
+        show(photo = "v1")
+        compose.onNodeWithText(text(R.string.image_frames_title)).performClick()
+        assertEquals(listOf("reframePhoto"), calls)
     }
 
     @Test

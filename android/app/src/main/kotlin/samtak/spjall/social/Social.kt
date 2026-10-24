@@ -9,6 +9,8 @@ import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.CommunityPage
 import samtak.spjall.core.CoreClient
+import samtak.spjall.core.Frame
+import samtak.spjall.core.Framing
 import samtak.spjall.core.JoinRequest
 import samtak.spjall.core.JoinState
 import samtak.spjall.core.ModerationAction
@@ -174,6 +176,44 @@ interface Social {
     fun communityCover(
         communityId: String,
         version: String,
+    ): String?
+
+    /** Frames the community picture again from the master the server kept (0086); returns the new version. */
+    fun setCommunityPictureFraming(
+        communityId: String,
+        framing: Framing,
+    ): String
+
+    /** Frames the community cover again; a rectangle in the framing's overrides sets one size class (0086). */
+    fun setCommunityCoverFraming(
+        communityId: String,
+        framing: Framing,
+    ): String
+
+    /** Writes the master of the community picture to [path] for the editor; false when there is none. */
+    fun communityPictureSource(
+        communityId: String,
+        path: String,
+    ): Boolean
+
+    /** Writes the master of the community cover to [path] for the editor; false when there is none. */
+    fun communityCoverSource(
+        communityId: String,
+        path: String,
+    ): Boolean
+
+    /** The file of a community's picture at [version] in [frame] (`SQUARE`), as [communityPicture] (0086). */
+    fun communityPictureFramed(
+        communityId: String,
+        version: String,
+        frame: Frame,
+    ): String?
+
+    /** The file of a community's cover at [version] in [frame], chosen by the window's width (0086). */
+    fun communityCoverFramed(
+        communityId: String,
+        version: String,
+        frame: Frame,
     ): String?
 
     /** Likes a comment as this account. */
@@ -394,6 +434,38 @@ class CoreSocial(
         communityId: String,
         version: String,
     ) = client.communityCover(communityId, version)
+
+    override fun setCommunityPictureFraming(
+        communityId: String,
+        framing: Framing,
+    ) = client.setCommunityPictureFraming(communityId, framing)
+
+    override fun setCommunityCoverFraming(
+        communityId: String,
+        framing: Framing,
+    ) = client.setCommunityCoverFraming(communityId, framing)
+
+    override fun communityPictureSource(
+        communityId: String,
+        path: String,
+    ) = client.communityPictureSource(communityId, path)
+
+    override fun communityCoverSource(
+        communityId: String,
+        path: String,
+    ) = client.communityCoverSource(communityId, path)
+
+    override fun communityPictureFramed(
+        communityId: String,
+        version: String,
+        frame: Frame,
+    ) = client.communityPictureFramed(communityId, version, frame)
+
+    override fun communityCoverFramed(
+        communityId: String,
+        version: String,
+        frame: Frame,
+    ) = client.communityCoverFramed(communityId, version, frame)
 
     override fun likeComment(commentId: String) = client.likeComment(commentId)
 

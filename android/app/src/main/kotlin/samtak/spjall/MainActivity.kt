@@ -76,6 +76,9 @@ import samtak.spjall.core.Item
 import samtak.spjall.core.MuteFor
 import samtak.spjall.core.coreVersion
 import samtak.spjall.core.inviteToken
+import samtak.spjall.frames.FrameSession
+import samtak.spjall.frames.FrameSheet
+import samtak.spjall.frames.LocalFrameSession
 import samtak.spjall.me.MeActions
 import samtak.spjall.me.MeScreen
 import samtak.spjall.me.MeViewModel
@@ -184,7 +187,12 @@ class MainActivity : ComponentActivity() {
             // Each sign-in starts over: new view models, and the list as the first screen.
             Session.SignedIn ->
                 key(state.signIns) {
-                    CompositionLocalProvider(LocalPhotos provides graph.photos) { Home(state.signIns) }
+                    val frames: FrameSession =
+                        viewModel(viewModelStoreOwner = this@MainActivity, key = "frames") { FrameSession() }
+                    CompositionLocalProvider(LocalPhotos provides graph.photos, LocalFrameSession provides frames) {
+                        Home(state.signIns)
+                        FrameSheet()
+                    }
                 }
         }
     }
@@ -222,9 +230,10 @@ class MainActivity : ComponentActivity() {
         val me: MeViewModel =
             viewModel(viewModelStoreOwner = this, key = "me-$signIns") { MeViewModel(graph.account) }
         val state by me.state.collectAsStateWithLifecycle()
+        val frames = LocalFrameSession.current
         val photo =
             rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-                uri?.let { me.setPhoto { graph.files.profilePhoto(it) } }
+                uri?.let { frames.open(me.photoRequest { graph.files.master(it) }) }
             }
         // Refused, the notice on the list and on Ég points at the system's settings (decision 0025).
         val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { onboarding.asked() }
@@ -722,9 +731,10 @@ class MainActivity : ComponentActivity() {
         val state by me.state.collectAsStateWithLifecycle()
         val notificationsOff = notificationsOff()
         // Made small and square off the main thread, in the view model (decision 0039).
+        val frames = LocalFrameSession.current
         val photo =
             rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-                uri?.let { me.setPhoto { graph.files.profilePhoto(it) } }
+                uri?.let { frames.open(me.photoRequest { graph.files.master(it) }) }
             }
         // A block from a conversation menu changes the list here, and the settings the row opens may change.
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { me.load() }
@@ -752,6 +762,8 @@ class MainActivity : ComponentActivity() {
 
                 override fun choosePhoto() =
                     photo.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+
+                override fun reframePhoto() = frames.open(me.reframePhotoRequest(graph.files::temp))
 
                 override fun removePhoto() = me.removePhoto()
 

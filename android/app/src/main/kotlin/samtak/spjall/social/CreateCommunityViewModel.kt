@@ -17,6 +17,10 @@ import samtak.spjall.account.Problem
 import samtak.spjall.account.problem
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.FrameKind
+import samtak.spjall.core.Framing
+import samtak.spjall.frames.FrameRequest
+import samtak.spjall.frames.newImageRequest
 import java.io.File
 
 /** Creating a community (decision 0063): its name, description and audience, then into it. */
@@ -36,9 +40,14 @@ class CreateCommunityViewModel(
         val ready: Boolean get() = name.isNotBlank() && !busy
     }
 
-    // What cuts the picked picture and cover to size; run once the community exists, on the IO dispatcher.
-    private var picture: (() -> File)? = null
-    private var cover: (() -> File)? = null
+    /** A master the person framed, kept until the community exists to send it to (0086). */
+    private class Pending(
+        val file: File,
+        val framing: Framing,
+    )
+
+    private var picture: Pending? = null
+    private var cover: Pending? = null
 
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
@@ -60,22 +69,37 @@ class CreateCommunityViewModel(
         _state.update { it.copy(audience = audience) }
     }
 
-    fun pickPicture(read: () -> File) {
-        picture = read
-        _state.update { it.copy(hasPicture = true) }
-    }
+    /** The crop sheet's request for the picture picked; Save keeps master and framing for [create] (0086). */
+    fun pictureRequest(read: () -> File): FrameRequest =
+        newImageRequest(FrameKind.PHOTO, read, ::keepIfSaved) { file, framing ->
+            picture?.file?.delete()
+            picture = Pending(file, framing)
+            _state.update { it.copy(hasPicture = true) }
+        }
 
-    fun pickCover(read: () -> File) {
-        cover = read
-        _state.update { it.copy(hasCover = true) }
+    /** The crop sheet's request for the cover picked. */
+    fun coverRequest(read: () -> File): FrameRequest =
+        newImageRequest(FrameKind.COVER, read, ::keepIfSaved) { file, framing ->
+            cover?.file?.delete()
+            cover = Pending(file, framing)
+            _state.update { it.copy(hasCover = true) }
+        }
+
+    private fun keepIfSaved(
+        file: File,
+        saved: Boolean,
+    ) {
+        if (!saved) file.delete()
     }
 
     fun removePicture() {
+        picture?.file?.delete()
         picture = null
         _state.update { it.copy(hasPicture = false) }
     }
 
     fun removeCover() {
+        cover?.file?.delete()
         cover = null
         _state.update { it.copy(hasCover = false) }
     }
@@ -92,8 +116,8 @@ class CreateCommunityViewModel(
                     }
                 // The community stands even when a picture is refused; it can be set again from Breyta.
                 withContext(io) {
-                    attach(made.communityId, picture, Social::setCommunityAvatar)
-                    attach(made.communityId, cover, Social::setCommunityCover)
+                    attach(made.communityId, picture, Social::setCommunityAvatar, Social::setCommunityPictureFraming)
+                    attach(made.communityId, cover, Social::setCommunityCover, Social::setCommunityCoverFraming)
                 }
                 _state.update { it.copy(busy = false) }
                 _created.send(made.communityId)
@@ -105,16 +129,18 @@ class CreateCommunityViewModel(
 
     private fun attach(
         communityId: String,
-        read: (() -> File)?,
+        pending: Pending?,
         send: Social.(String, String) -> String,
+        frame: Social.(String, Framing) -> String,
     ) {
-        val file = read?.invoke() ?: return
+        val kept = pending ?: return
         try {
-            social.send(communityId, file.path)
+            social.send(communityId, kept.file.path)
+            social.frame(communityId, kept.framing)
         } catch (_: CoreException) {
             // Left unset.
         } finally {
-            file.delete()
+            kept.file.delete()
         }
     }
 }

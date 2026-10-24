@@ -65,6 +65,10 @@ class SettingsTest {
                 calls += "choosePhoto"
             }
 
+            override fun reframePhoto() {
+                calls += "reframePhoto"
+            }
+
             override fun removePhoto() {
                 calls += "removePhoto"
             }

@@ -26,7 +26,7 @@ class CommunityPicturesTest {
 
     @Composable
     private fun Row() {
-        ImageRow(R.string.community_picture_choose, R.string.community_picture_remove, true, false, {}, {})
+        ImageRow(R.string.community_picture_choose, R.string.community_picture_remove, true, false, {}, {}, {})
     }
 
     /** One line of text is about one line tall: a button squeezed to a letter per line is many times that. */

@@ -2061,39 +2061,39 @@
       "description": "The store is gone or the device was removed: link again (0064)."
     },
     "image_frames_title": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "The crop sheet's title, and the button that opens it on an image already set (docs/decisions/0086)."
     },
     "image_frames_hint": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Line under the crop sheet's picture, and its accessible name (docs/decisions/0086)."
     },
     "image_frames_zoom": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Label of the crop sheet's zoom slider (docs/decisions/0086)."
     },
     "image_frames_advanced": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Quiet text link in a cover's crop sheet that opens the frame for each screen size; never shown for a picture (docs/decisions/0086)."
     },
     "image_frames_compact": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Name of the compact-width cover frame in the advanced panel (docs/decisions/0086)."
     },
     "image_frames_medium": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Name of the medium-width cover frame in the advanced panel (docs/decisions/0086)."
     },
     "image_frames_expanded": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Name of the expanded-width cover frame in the advanced panel (docs/decisions/0086)."
     },
     "image_frames_reset": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "Advanced panel button that drops every hand-set frame and places them from the focus again (docs/decisions/0086)."
     },
     "image_frames_no_master": {
-      "surfaces": ["web"],
+      "surfaces": ["web", "android", "ios"],
       "description": "The image has no stored master to frame again, so it must be uploaded again (docs/decisions/0086)."
     }
   }

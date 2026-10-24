@@ -14,6 +14,8 @@ import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.CommunityPage
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.Frame
+import samtak.spjall.core.Framing
 import samtak.spjall.core.JoinRequest
 import samtak.spjall.core.JoinState
 import samtak.spjall.core.ModerationAction
@@ -352,6 +354,64 @@ class FakeSocial : Social {
         version: String,
     ): String? {
         call("communityCover $communityId $version")
+        return coverFiles["$communityId/$version"]
+    }
+
+    /** The masters [communityPictureSource] and [communityCoverSource] write, by community; one not here has none. */
+    var pictureMasters = mapOf<String, ByteArray>()
+    var coverMasters = mapOf<String, ByteArray>()
+
+    override fun setCommunityPictureFraming(
+        communityId: String,
+        framing: Framing,
+    ): String {
+        call("setCommunityPictureFraming $communityId ${framing.focus.x},${framing.focus.y} ${framing.overrides.size}")
+        return "2"
+    }
+
+    override fun setCommunityCoverFraming(
+        communityId: String,
+        framing: Framing,
+    ): String {
+        call("setCommunityCoverFraming $communityId ${framing.focus.x},${framing.focus.y} ${framing.overrides.size}")
+        return "2"
+    }
+
+    override fun communityPictureSource(
+        communityId: String,
+        path: String,
+    ): Boolean {
+        call("communityPictureSource $communityId")
+        val master = pictureMasters[communityId] ?: return false
+        java.io.File(path).writeBytes(master)
+        return true
+    }
+
+    override fun communityCoverSource(
+        communityId: String,
+        path: String,
+    ): Boolean {
+        call("communityCoverSource $communityId")
+        val master = coverMasters[communityId] ?: return false
+        java.io.File(path).writeBytes(master)
+        return true
+    }
+
+    override fun communityPictureFramed(
+        communityId: String,
+        version: String,
+        frame: Frame,
+    ): String? {
+        call("communityPictureFramed $communityId $version $frame")
+        return pictureFiles["$communityId/$version"]
+    }
+
+    override fun communityCoverFramed(
+        communityId: String,
+        version: String,
+        frame: Frame,
+    ): String? {
+        call("communityCoverFramed $communityId $version $frame")
         return coverFiles["$communityId/$version"]
     }
 

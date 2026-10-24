@@ -51,6 +51,11 @@ interface CommunityActions {
 
     fun pickCover()
 
+    /** Opens the crop sheet on the picture, or the cover, already set (decision 0086). */
+    fun reframePicture()
+
+    fun reframeCover()
+
     fun removePicture()
 
     fun removeCover()

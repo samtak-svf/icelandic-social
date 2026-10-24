@@ -13,11 +13,16 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import samtak.spjall.account.FakeAccount
 import samtak.spjall.account.Problem
 import samtak.spjall.account.unreachable
+import samtak.spjall.core.CoreException
+import samtak.spjall.core.Focus
+import samtak.spjall.core.FrameKind
+import samtak.spjall.core.Framing
 import samtak.spjall.core.Person
 import samtak.spjall.core.Settings
 import java.io.File
@@ -164,8 +169,10 @@ class MeViewModelTest {
 
     private fun picked(bytes: ByteArray): File = File.createTempFile("photo", ".jpg").apply { writeBytes(bytes) }
 
+    private val framing = Framing(Focus(0.25, 0.75), emptyList())
+
     @Test
-    fun aChosenPhotoIsUploadedShownAndItsFileDeleted() =
+    fun aChosenPhotoIsUploadedThenFramedShownAndItsFileDeleted() =
         runTest(dispatcher) {
             val model = model()
             assertNull(
@@ -173,57 +180,86 @@ class MeViewModelTest {
                     ?.photo,
             )
             val file = picked(byteArrayOf(1, 2, 3))
-            model.setPhoto { file }
-            advanceUntilIdle()
+            val request = model.photoRequest { file }
+            assertEquals(FrameKind.PHOTO, request.kind)
+            assertEquals(file, request.master())
+            request.save(framing)
             assertEquals(listOf(listOf<Byte>(1, 2, 3)), account.uploaded.map { it.toList() })
+            val sent = account.calls.filter { it.startsWith("setPhoto") }
+            assertEquals(listOf("setPhoto", "setPhotoFraming 0.25,0.75 0"), sent)
             assertEquals(
-                "v1",
+                "v2",
                 model.state.value.me
                     ?.photo,
             )
-            assertFalse("the small copy is not kept (decision 0039)", file.exists())
+            request.release(file, true)
+            assertFalse("the master is not kept (decision 0086)", file.exists())
         }
 
     @Test
-    fun aFailedUploadDeletesTheFileAndCanBeTriedAgain() =
+    fun aFailedUploadLeavesNothingSetAndTheSheetKeepsTheFile() =
         runTest(dispatcher) {
             val model = model()
             account.failOn = "setPhoto"
-            val first = picked(byteArrayOf(1))
-            var made = 0
-            model.setPhoto {
-                made += 1
-                if (made == 1) first else picked(byteArrayOf(2))
+            val file = picked(byteArrayOf(1))
+            val request = model.photoRequest { file }
+            request.master()
+            try {
+                request.save(framing)
+                fail("the upload should have failed")
+            } catch (_: CoreException) {
+                // The sheet shows the problem and Save tries again.
             }
-            advanceUntilIdle()
-            assertEquals(Problem.Unreachable, model.state.value.problem)
-            assertFalse(first.exists())
             assertNull(
                 model.state.value.me
                     ?.photo,
             )
-
             account.failOn = null
-            model.retry()
-            advanceUntilIdle()
-            assertNull(model.state.value.problem)
-            assertEquals("the photo is made again from the pick", 2, made)
+            request.save(framing)
             assertEquals(
-                "v1",
+                "v2",
                 model.state.value.me
                     ?.photo,
             )
         }
 
     @Test
-    fun aPickThatIsNotAPhotoIsAProblemNotACrash() =
+    fun aPickThatIsNotAPhotoFailsWhenTheSheetLoadsIt() =
         runTest(dispatcher) {
             val model = model()
-            model.setPhoto { throw IOException("not an image") }
-            advanceUntilIdle()
-            assertTrue(model.state.value.problem is Problem.Generic)
-            assertFalse(model.state.value.busy)
+            val request = model.photoRequest { throw IOException("not an image") }
+            try {
+                request.master()
+                fail("reading should have failed")
+            } catch (_: IOException) {
+                // FrameSession turns this into the sheet's problem.
+            }
             assertFalse("setPhoto" in account.calls)
+        }
+
+    @Test
+    fun framingAgainFetchesTheMasterAndSendsOnlyTheFraming() =
+        runTest(dispatcher) {
+            account.myFraming = framing
+            account.photoMaster = byteArrayOf(9)
+            val model = model()
+            val file = File.createTempFile("master", ".jpg")
+            val request = model.reframePhotoRequest { file }
+            assertEquals(framing, request.base())
+            assertEquals(file, request.master())
+            request.save(Framing(Focus(0.5, 0.5), emptyList()))
+            assertFalse("setPhoto" in account.calls)
+            assertTrue("setPhotoFraming 0.5,0.5 0" in account.calls)
+            file.delete()
+        }
+
+    @Test
+    fun aPhotoWithoutAMasterHasNothingToFrame() =
+        runTest(dispatcher) {
+            val model = model()
+            val file = File.createTempFile("master", ".jpg")
+            assertNull(model.reframePhotoRequest { file }.master())
+            assertFalse("the empty file is removed", file.exists())
         }
 
     @Test

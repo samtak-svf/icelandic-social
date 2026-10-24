@@ -26,6 +26,7 @@ import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportState
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.SocialNotification
+import samtak.spjall.frames.LocalFrameSession
 import samtak.spjall.media.Files
 import samtak.spjall.ui.rememberBack
 
@@ -128,13 +129,14 @@ private fun NewCommunity(
     val model: CreateCommunityViewModel = viewModel { CreateCommunityViewModel(social) }
     val state by model.state.collectAsStateWithLifecycle()
     val back = rememberBack(nav)
+    val frames = LocalFrameSession.current
     val picture =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            uri?.let { model.pickPicture { files.communityPicture(it) } }
+            uri?.let { frames.open(model.pictureRequest { files.master(it) }) }
         }
     val cover =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            uri?.let { model.pickCover { files.communityCover(it) } }
+            uri?.let { frames.open(model.coverRequest { files.master(it) }) }
         }
     LaunchedEffect(model) {
         model.created.collect { id ->
@@ -191,13 +193,14 @@ private fun CommunityEntry(
             model.pick(uris.map(files::pickedPhoto))
         }
     // The community's picture and cover (0080): picked, then cut to size off the main thread by the view model.
+    val frames = LocalFrameSession.current
     val picture =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            uri?.let { model.setPicture { files.communityPicture(it) } }
+            uri?.let { frames.open(model.pictureRequest { files.master(it) }) }
         }
     val cover =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            uri?.let { model.setCover { files.communityCover(it) } }
+            uri?.let { frames.open(model.coverRequest { files.master(it) }) }
         }
     // The community is gone: back to the list, where it no longer is.
     LaunchedEffect(model) { model.deleted.collect { nav.popBackStack(SocialRoutes.COMMUNITIES, inclusive = false) } }
@@ -251,6 +254,10 @@ private fun CommunityEntry(
 
             override fun pickCover() =
                 cover.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+
+            override fun reframePicture() = frames.open(model.reframePictureRequest(files::temp))
+
+            override fun reframeCover() = frames.open(model.reframeCoverRequest(files::temp))
 
             override fun removePicture() = model.removePicture()
 
