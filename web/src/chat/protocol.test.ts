@@ -34,7 +34,7 @@ function handlers(over: Partial<Handlers>): Handlers {
     sync: unused,
     frame: unused,
     conversations: unused,
-    history: unused,
+    timeline: unused,
     send: unused,
     me: unused,
     wipe: unused,

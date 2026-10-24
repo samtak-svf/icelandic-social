@@ -11,7 +11,7 @@ import type {
   LinkQr,
   LinkState,
   Me,
-  Message,
+  Item,
   Outcome,
 } from "../generated/core.d.ts";
 import { type Handlers, isFailure, type Start } from "./protocol.ts";
@@ -26,7 +26,7 @@ export interface CoreLike {
   sync(): Outcome;
   onFrame(text: string): Outcome;
   conversations(): Conversation[];
-  history(conversation: string, before: number | null | undefined, limit: number): Message[];
+  timeline(conversation: string, before: number | null | undefined, limit: number): Item[];
   send(conversation: string, text: string): string;
   me(): Me;
   wipe(): Promise<void>;
@@ -183,7 +183,8 @@ export function chatHost(deps: HostDeps): Handlers {
     sync: () => onCore((c) => c.sync()),
     frame: (text) => onCore((c) => c.onFrame(text)),
     conversations: () => onCore((c) => c.conversations()),
-    history: (conversation, before, limit) => onCore((c) => c.history(conversation, before, limit)),
+    timeline: (conversation, before, limit) =>
+      onCore((c) => c.timeline(conversation, before, limit)),
     send: (conversation, text) => onCore((c) => c.send(conversation, text)),
     me: () => onCore((c) => c.me()),
 

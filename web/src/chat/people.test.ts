@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { strings } from "../generated/brand/strings.ts";
-import type { Conversation, Message } from "../generated/core.d.ts";
-import { conversationTitle, messageText } from "./people.ts";
+import type { Content, Conversation, Item } from "../generated/core.d.ts";
+import { conversationTitle, itemText, lastLine } from "./people.ts";
 
 const person = (name: string | null) => ({ account: "a", name, verified: false, photo: null });
 const conversation = (over: Partial<Conversation>): Conversation => ({
@@ -15,13 +15,20 @@ const conversation = (over: Partial<Conversation>): Conversation => ({
   mute: { kind: "off" },
   ...over,
 });
-const message = (body: Message["envelope"]["body"]): Message => ({
-  conversation: "c",
+const item = (content: Content): Item => ({
   seq: 1,
-  senderAccount: "a",
-  senderDevice: "d",
-  envelope: { id: "e", ts: 0, body },
+  envelopeId: "e",
+  sender: person("Ása"),
   own: false,
+  ts: 0,
+  receivedAt: 0,
+  status: "sent",
+  content,
+  edited: false,
+  reactions: [],
+  readBy: 0,
+  expiresAt: null,
+  forwarded: false,
 });
 
 test("a conversation is titled by its name, else its members, else only you", () => {
@@ -32,10 +39,19 @@ test("a conversation is titled by its name, else its members, else only you", ()
   expect(conversationTitle(conversation({}))).toBe(strings.conversation_alone_title);
 });
 
-test("text and reply bodies show their text, edits and reactions show nothing", () => {
-  expect(messageText(message({ kind: "text", text: "hæ" }))).toBe("hæ");
-  expect(messageText(message({ kind: "reply", to: "x", text: "já" }))).toBe("já");
-  expect(
-    messageText(message({ kind: "reaction", target: "x", emoji: "+", remove: false })),
-  ).toBeNull();
+test("text, media and deleted items show a line, cards show none", () => {
+  expect(itemText(item({ kind: "text", text: "hæ", replyTo: null }))).toBe("hæ");
+  const photo = { kind: "media", mime: "image/jpeg", size: 1, name: "a.jpg" } as const;
+  expect(itemText(item({ ...photo, caption: "mynd" }))).toBe("mynd");
+  expect(itemText(item({ ...photo, caption: null }))).toBe("a.jpg");
+  expect(itemText(item({ kind: "deleted" }))).toBe(strings.message_deleted);
+  expect(itemText(item({ kind: "timer", seconds: 60 }))).toBeNull();
+});
+
+test("a conversation's last line is its last item's text, else empty", () => {
+  expect(lastLine(conversation({ last: item({ kind: "text", text: "hæ", replyTo: null }) }))).toBe(
+    "hæ",
+  );
+  expect(lastLine(conversation({ last: item({ kind: "name", name: "Hópur" }) }))).toBe("");
+  expect(lastLine(conversation({}))).toBe("");
 });

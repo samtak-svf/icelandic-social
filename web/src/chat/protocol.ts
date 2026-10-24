@@ -6,10 +6,10 @@ import type {
   Conversation,
   DeviceLink,
   Failure,
+  Item,
   LinkQr,
   LinkState,
   Me,
-  Message,
   Outcome,
 } from "../generated/core.d.ts";
 
@@ -39,9 +39,9 @@ export interface Ops {
   sync: { args: []; result: Outcome };
   frame: { args: [text: string]; result: Outcome };
   conversations: { args: []; result: Conversation[] };
-  history: {
+  timeline: {
     args: [conversation: string, before: number | null, limit: number];
-    result: Message[];
+    result: Item[];
   };
   send: { args: [conversation: string, text: string]; result: string };
   me: { args: []; result: Me };

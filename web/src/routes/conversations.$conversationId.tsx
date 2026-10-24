@@ -1,22 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type SubmitEvent } from "react";
 import { useChat } from "../chat/chat.tsx";
-import { messageText } from "../chat/people.ts";
+import { itemText } from "../chat/people.ts";
 import { strings } from "../generated/brand/strings.ts";
-import type { Message } from "../generated/core.d.ts";
+import type { Item } from "../generated/core.d.ts";
 import { Button, Status } from "../ui/kit.tsx";
 
 const PAGE = 50;
 
-// One conversation: the newest messages, older ones on request, and a
-// composer. The thread reloads its newest page when the core reports a change
-// in this conversation.
+// One conversation: the newest items of its timeline, older ones on request,
+// and a composer. The thread reloads its newest page when the core reports a
+// change in this conversation. An item still being sent has no seq yet; the
+// newest page ends with those.
 export const Route = createFileRoute("/conversations/$conversationId")({ component: Thread });
 
 function Thread() {
   const { conversationId } = Route.useParams();
   const { call, subscribe } = useChat();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [more, setMore] = useState(false);
   const [failed, setFailed] = useState(false);
   const [text, setText] = useState("");
@@ -26,12 +27,12 @@ function Thread() {
   // Replaces the newest page and keeps any older ones already loaded.
   const reload = useCallback(() => {
     if (call === undefined) return;
-    call("history", conversationId, null, PAGE).then(
+    call("timeline", conversationId, null, PAGE).then(
       (page) => {
         setFailed(false);
-        setMessages((have) => {
-          const oldest = page[0]?.seq ?? Infinity;
-          return [...have.filter((m) => m.seq < oldest), ...page];
+        setItems((have) => {
+          const oldest = firstSeq(page) ?? Infinity;
+          return [...have.filter((m) => m.seq !== null && m.seq < oldest), ...page];
         });
         setMore((was) => was || page.length === PAGE);
       },
@@ -39,7 +40,7 @@ function Thread() {
     );
   }, [call, conversationId]);
   useEffect(() => {
-    setMessages([]);
+    setItems([]);
     setMore(false);
     reload();
   }, [reload]);
@@ -51,7 +52,8 @@ function Thread() {
       }),
     [subscribe, reload, conversationId],
   );
-  const newest = messages.at(-1)?.seq;
+  const last = items.at(-1);
+  const newest = last === undefined ? undefined : itemKey(last, items.length - 1);
   // A block body: Chromium's scroll methods now return a promise, which React
   // would take for the effect's cleanup.
   useEffect(() => {
@@ -59,11 +61,11 @@ function Thread() {
   }, [newest]);
 
   async function older() {
-    const before = messages[0]?.seq;
+    const before = firstSeq(items);
     if (call === undefined || before === undefined) return;
     try {
-      const page = await call("history", conversationId, before, PAGE);
-      setMessages((have) => [...page, ...have]);
+      const page = await call("timeline", conversationId, before, PAGE);
+      setItems((have) => [...page, ...have]);
       setMore(page.length === PAGE);
     } catch {
       setFailed(true);
@@ -97,12 +99,12 @@ function Thread() {
         </Button>
       )}
       <ol className="mt-4 flex flex-col gap-2">
-        {messages.map((m) => {
-          const shown = messageText(m);
+        {items.map((m, i) => {
+          const shown = itemText(m);
           if (shown === null) return null;
           return (
             <li
-              key={m.seq}
+              key={itemKey(m, i)}
               className={`max-w-[85%] whitespace-pre-wrap break-words rounded-md px-3 py-2 ${
                 m.own ? "self-end bg-primary text-primary-fg" : "self-start bg-muted"
               }`}
@@ -128,4 +130,14 @@ function Thread() {
       </form>
     </>
   );
+}
+
+/** The seq of the oldest item that has one: where the next older page ends. */
+function firstSeq(items: Item[]): number | undefined {
+  return items.find((m) => m.seq !== null)?.seq ?? undefined;
+}
+
+/** A stable key: the seq once stored, else the envelope id, else the place. */
+function itemKey(item: Item, index: number): string {
+  return item.seq !== null ? `s${item.seq}` : (item.envelopeId ?? `i${index}`);
 }
