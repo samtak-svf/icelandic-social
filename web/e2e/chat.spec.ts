@@ -81,6 +81,18 @@ async function serveSocket(page: Page) {
   });
 }
 
+/** The id of the linked browser among the devices `/v1/me` lists. */
+function browserDevice(me: unknown): string | undefined {
+  if (typeof me !== "object" || me === null || !("devices" in me) || !Array.isArray(me.devices))
+    return undefined;
+  for (const d of me.devices as unknown[]) {
+    if (typeof d === "object" && d !== null && "kind" in d && d.kind === "web") {
+      if ("deviceId" in d && typeof d.deviceId === "string") return d.deviceId;
+    }
+  }
+  return undefined;
+}
+
 test("a phone links this browser, which shows the phone's message and replies", async ({
   page,
 }) => {
@@ -120,4 +132,31 @@ test("a phone links this browser, which shows the phone's message and replies", 
   await expect(
     second.getByRole("status").filter({ hasText: strings.chat_other_tab }),
   ).toBeVisible();
+
+  // Another session of the same account revokes this browser's device (#156).
+  // The server closes the socket with 4401, and the page, without a reload,
+  // ends the session at once rather than reconnecting with backoff.
+  await second.close();
+  await page.goBack();
+  await expect(conversation).toHaveCount(1);
+  const other = await page.context().browser()!.newContext();
+  const elsewhere = await other.newPage();
+  await serveOrigin(elsewhere);
+  await signIn(elsewhere, "Vafri Prófsson", subject);
+  const headers = { "spjall-client": "web/0.1.0" };
+  const mine: unknown = await elsewhere.evaluate(async (h) => {
+    const body: unknown = await (await fetch("/v1/me", { headers: h })).json();
+    return body;
+  }, headers);
+  const deviceId = browserDevice(mine);
+  expect(deviceId).toBeDefined();
+  const revoked = await elsewhere.evaluate(
+    async ([id, h]) => (await fetch(`/v1/devices/${id}`, { method: "DELETE", headers: h })).status,
+    [encodeURIComponent(deviceId!), headers] as const,
+  );
+  expect(revoked).toBe(204);
+  await expect(page.getByRole("alert").filter({ hasText: strings.chat_device_lost })).toBeVisible({
+    timeout: 5_000,
+  });
+  await other.close();
 });

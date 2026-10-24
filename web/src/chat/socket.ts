@@ -13,7 +13,8 @@ import { type ChatCall, ChatFailure } from "./protocol.ts";
 export interface SocketLike {
   send(data: string): void;
   close(): void;
-  addEventListener(type: "open" | "close", listener: () => void): void;
+  addEventListener(type: "open", listener: () => void): void;
+  addEventListener(type: "close", listener: (event: { code: number }) => void): void;
   addEventListener(type: "message", listener: (event: MessageEvent) => void): void;
 }
 
@@ -32,6 +33,13 @@ export function socketUrl(location: Pick<Location, "protocol" | "host">): string
   const scheme = location.protocol === "https:" ? "wss:" : "ws:";
   return `${scheme}//${location.host}/v1/ws?client=${encodeURIComponent(CLIENT)}`;
 }
+
+/**
+ * The close code the server ends a revoked device's socket with (backend
+ * `REVOKED` in `modules/messaging/do/inbox.ts`; decision 0019). The token is
+ * dead, so the session is over without waiting for a later call to fail.
+ */
+const REVOKED = 4401;
 
 /** Waits before opening again, doubling up to half a minute. */
 const BACKOFF = [1_000, 2_000, 4_000, 8_000, 16_000, 30_000];
@@ -78,9 +86,14 @@ export function chatSocket(url: string, deps: SocketDeps): ChatSocket {
     current.addEventListener("message", (event) => {
       if (typeof event.data === "string") run(deps.call("frame", event.data));
     });
-    current.addEventListener("close", () => {
+    current.addEventListener("close", (event) => {
       if (live === current) live = undefined;
       if (stopped || socket !== current) return;
+      if (event.code === REVOKED) {
+        stop();
+        deps.onFailure(new ChatFailure({ code: "device-lost", message: "the device was revoked" }));
+        return;
+      }
       const delay = BACKOFF[Math.min(attempt++, BACKOFF.length - 1)]!;
       void wait(delay).then(open);
     });
