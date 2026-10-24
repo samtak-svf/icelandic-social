@@ -14,16 +14,27 @@ export const strings = {
   conversations_empty: "Engin samtöl enn. Deildu hlekknum þínum til að hefja samtal.",
   /** Placeholder of the name search at the top of the new-conversation picker (docs/decisions/0036). */
   people_search: "Leita að nafni",
+  /** Title of a conversation no other account is in any more; a conversation is otherwise titled by its members (docs/decisions/0022). */
+  conversation_alone_title: "Aðeins þú",
   /** Share your own invite link or QR code (docs/decisions/0009). */
   invite: "Bjóða",
   /** Empty message composer. */
   composer_placeholder: "Skrifaðu skilaboð…",
+  /** Send button. */
+  send: "Senda",
+  /** Button above a conversation's messages: load the older ones. */
+  history_load_older: "Sækja eldri skilaboð",
   /** Status of an own message that is still being sent. */
   message_sending: "Í sendingu",
   /** Status of an own message that could not be sent; the bubble offers try_again. */
   message_failed: "Ekki send.",
   /** Short form of verified_with_kennitala, under the other person's name at the top of a conversation. */
   verified_short: "Vottað",
+  /** Unread messages in a conversation. */
+  unread_count: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " ólesin"
+      : String(args.count) + " ólesin",
   /** Stands in for an account whose name the server has not given, in titles and rows (docs/decisions/0022). */
   person_unnamed: "Nafnlaus",
   /** Message menu entry that copies a text message to the clipboard (docs/decisions/0046). */
