@@ -101,6 +101,18 @@ function pinProblems(platform, entry) {
 }
 
 /**
+ * wasm-bindgen numbers its internal exports (`__wasm_bindgen_func_elem_6079`)
+ * by the order the linker left them in, which differs between two builds of
+ * the same source. The page never names them, so only the number is ignored:
+ * an export added, removed or changed in shape still counts.
+ *
+ * @param {string} text
+ */
+function comparable(text) {
+  return text.replaceAll(/__wasm_bindgen_func_elem_\d+/g, "__wasm_bindgen_func_elem_N");
+}
+
+/**
  * The committed declarations of the browser module must be what the build
  * emits, so the web client is typed against the module it will load. The
  * built file is gitignored: without it the comparison is skipped, except in
@@ -119,7 +131,7 @@ export function webTypesProblems(root = ROOT, { requireBuilt = false } = {}) {
   if (!existsSync(built)) {
     return requireBuilt ? [`${WEB_TYPES_BUILT} is not built; run cargo xtask core web first`] : [];
   }
-  if (readFileSync(committed, "utf8") !== readFileSync(built, "utf8")) {
+  if (comparable(readFileSync(committed, "utf8")) !== comparable(readFileSync(built, "utf8"))) {
     return [`${WEB_TYPES} is stale; run cargo xtask core web and copy ${WEB_TYPES_BUILT} over it`];
   }
   return [];

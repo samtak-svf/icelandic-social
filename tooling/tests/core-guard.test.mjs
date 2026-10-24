@@ -147,6 +147,19 @@ describe("web types", () => {
     expect(problems[0]).toMatch(/cargo xtask core web/);
   });
 
+  it("ignores the numbers wasm-bindgen gives its internal exports, which differ between builds", () => {
+    const glue = (/** @type {number} */ n) =>
+      `export interface InitOutput {\n    readonly __wasm_bindgen_func_elem_${n}: (a: number) => void;\n}\n`;
+    expect(webTypesProblems(tree(glue(6079), glue(6087)))).toEqual([]);
+  });
+
+  it("still fails when an internal export is added or changes shape", () => {
+    const one = "    readonly __wasm_bindgen_func_elem_1: (a: number) => void;\n";
+    const two = "    readonly __wasm_bindgen_func_elem_2: (a: number, b: number) => void;\n";
+    expect(webTypesProblems(tree(one, one + one))).toHaveLength(1);
+    expect(webTypesProblems(tree(one, two))).toHaveLength(1);
+  });
+
   it("fails when they are missing", () => {
     expect(webTypesProblems(tree(null, null))).toEqual([
       expect.stringMatching(/web\/src\/generated\/core\.d\.ts is missing/),
