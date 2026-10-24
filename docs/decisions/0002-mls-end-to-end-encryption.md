@@ -9,7 +9,8 @@
 - Decided by: Guðröður
 - Amended by: [0025](0025-push-without-ids.md) (a push carries no ids),
   [0029](0029-key-package-lifetime.md) (the replenish threshold), [0030](0030-client-version-floor.md) (how the version floor is enforced),
-  [0083](0083-no-bis-self-classification-report.md) (no year-end report to BIS)
+  [0083](0083-no-bis-self-classification-report.md) (no year-end report to BIS),
+  [0085](0085-the-stores-offer-the-app-in-iceland-only.md) (Iceland only, so no French declaration)
 
 ## Decision
 
@@ -65,7 +66,8 @@ so it is `NO` on iOS. It was `YES` until 2026-10-08, and App Store Connect refus
 upload with error 90592 for the missing code.
 
 - Offering the app in France turns it `YES`: the declaration is filed and its code goes in
-  `ITSEncryptionExportComplianceCode`.
+  `ITSEncryptionExportComplianceCode`. As of 2026-10-24 the stores offer the app in Iceland only
+  ([0085](0085-the-stores-offer-the-app-in-iceland-only.md)), so this does not arise.
 - The US mass-market rule (EAR 740.17(b)(1)) still asks for a year-end self-classification
   report to BIS, part of the encryption export gate in [0009](0009-v1-scope.md). As of 2026-10-23
   this no longer holds: [0083](0083-no-bis-self-classification-report.md) records that the 2021
