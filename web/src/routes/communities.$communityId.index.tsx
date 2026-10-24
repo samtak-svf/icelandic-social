@@ -11,7 +11,9 @@ import {
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { formatIsDate } from "../lib/is-format.ts";
+import { CommunityAside } from "../social/community-aside.tsx";
 import { CommunityBar, CommunityHeader } from "../social/community-header.tsx";
+import { useMembers, type Members } from "../social/members.ts";
 import { moderatesAs } from "../social/roles.tsx";
 import { PostComposer } from "../social/composer.tsx";
 import { outcome, useLoad, type Outcome } from "../social/outcome.ts";
@@ -23,8 +25,12 @@ import { Button, ProblemText, Status } from "../ui/kit.tsx";
 // and Stjórna are screens of their own, reached from the audience line and
 // the `⋯` menu (decision 0080), and leaving is in that menu. A platform moderator
 // alone sees a deleted one, and restores it within its 30 days (decision
-// 0070).
-export const Route = createFileRoute("/communities/$communityId/")({ component: CommunityPage });
+// 0070). On an expanded window the facts and the members sit in an aside
+// beside the feed (decision 0087).
+export const Route = createFileRoute("/communities/$communityId/")({
+  component: CommunityPage,
+  staticData: { width: "wide" },
+});
 
 function CommunityPage() {
   const { communityId } = Route.useParams();
@@ -42,13 +48,35 @@ function CommunityPage() {
   const c = community.data;
   if (c.deletedAt !== null) return <Deleted community={c} restored={reload} />;
   const reads = c.role !== null || c.audience === "open";
+  return reads ? (
+    <Readable community={c} changed={reload} />
+  ) : (
+    <Columns community={c} changed={reload} />
+  );
+}
+
+/** A community the reader may read: its members are loaded once, for the header and the aside. */
+function Readable({ community, changed }: Readonly<{ community: Community; changed: () => void }>) {
+  const [members] = useMembers(community.communityId);
+  return <Columns community={community} changed={changed} members={members} />;
+}
+
+/** The feed, and beside it on an expanded window the aside. */
+function Columns({
+  community,
+  changed,
+  members,
+}: Readonly<{ community: Community; changed: () => void; members?: Members }>) {
   return (
-    <>
-      <CommunityBar community={c} changed={reload} />
-      <CommunityHeader community={c} readable={reads} />
-      <Membership community={c} changed={reload} />
-      {reads && <Posts community={c} />}
-    </>
+    <div className="expanded:grid expanded:grid-cols-[minmax(0,1fr)_18rem] expanded:items-start expanded:gap-8">
+      <div className="min-w-0">
+        <CommunityBar community={community} changed={changed} />
+        <CommunityHeader community={community} members={members} />
+        <Membership community={community} changed={changed} />
+        {members !== undefined && <Posts community={community} />}
+      </div>
+      <CommunityAside community={community} members={members} />
+    </div>
   );
 }
 

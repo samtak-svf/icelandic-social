@@ -1,30 +1,42 @@
-import { useCallback } from "react";
-import { listCommunityMembers, type Community } from "../generated/api.ts";
+import type { Community } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { Avatar } from "./avatar.tsx";
-import { outcome, useLoad } from "./outcome.ts";
+import { useMembers } from "./members.ts";
 import { ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
 
-// Um samfélagið (decision 0079): the whole description, where it is hosted,
-// and the members with their roles.
+// Um samfélagið (decisions 0079, 0087): the whole description, who may read
+// and join, where it is hosted, and the members with their roles. The facts
+// are also the community page's aside on an expanded window.
+
+/** The description, the audience explained, and where the content is kept. */
+export function AboutFacts({ community }: Readonly<{ community: Community }>) {
+  const closed = community.audience === "private";
+  return (
+    <>
+      {community.description !== "" && (
+        <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{community.description}</p>
+      )}
+      <p className="text-sm">
+        <span className="block font-semibold">
+          {closed ? strings.community_private_full : strings.community_open_full}
+        </span>
+        {closed ? strings.community_private_hint : strings.community_open_hint}
+      </p>
+      <p className="text-sm text-muted-fg">{strings.community_not_encrypted_notice}</p>
+      <p className="text-sm text-muted-fg">{strings.residency_claim}</p>
+    </>
+  );
+}
 
 /** The panel the meta row of a community opens. */
 export function About({ community }: Readonly<{ community: Community }>) {
-  const [members] = useLoad(
-    useCallback(
-      () => outcome(listCommunityMembers({ path: { communityId: community.communityId } }), 200),
-      [community.communityId],
-    ),
-  );
+  const [members] = useMembers(community.communityId);
   return (
     <section
       aria-label={strings.community_info}
       className="mt-4 flex flex-col gap-3 rounded-md border border-border p-3"
     >
-      {community.description !== "" && (
-        <p className="whitespace-pre-wrap">{community.description}</p>
-      )}
-      <p className="text-sm text-muted-fg">{strings.community_not_encrypted_notice}</p>
+      <AboutFacts community={community} />
       <h2 className="text-lg font-semibold">{strings.community_members_title}</h2>
       {members === null && <Status>{strings.loading}</Status>}
       {members?.ok === false && (

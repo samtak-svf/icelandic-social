@@ -51,11 +51,16 @@ export const post = (page: Page, text: string) =>
   page.getByRole("article").filter({ hasText: text });
 
 /** Creates a community as `owner`, who is left on its page; its address. */
-export async function found(owner: Page, audience: "open" | "private"): Promise<string> {
+export async function found(
+  owner: Page,
+  audience: "open" | "private",
+  description = "",
+): Promise<string> {
   const name = `Garðyrkjufélagið ${crypto.randomUUID().slice(0, 8)}`;
   await owner.getByRole("link", { name: strings.tab_communities }).click();
   await owner.getByRole("link", { name: new RegExp(`^${strings.community_create}`) }).click();
   await owner.getByLabel(strings.community_name).fill(name);
+  await owner.getByLabel(strings.community_description).fill(description);
   if (audience === "private") {
     await owner.getByRole("radio", { name: new RegExp(strings.community_private_hint) }).check();
   }

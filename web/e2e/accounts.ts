@@ -32,11 +32,21 @@ export async function addMark(page: Page, name: string, kennitala = newKennitala
   await page.waitForURL(/\/verify\?verify=/);
 }
 
-/** A verified person: signed in with Google, marked by Kenni, on Ég. */
+/**
+ * A verified person: signed in with Google, marked by Kenni, on Ég. A
+ * kennitala an earlier run against the same `cf dev` state already linked
+ * is refused as taken; that person exists, so another one is drawn.
+ */
 export async function signInVerified(page: Page, name: string) {
   await signIn(page, name);
-  await addMark(page, name);
-  await expect(page.getByRole("status").filter({ hasText: strings.verify_linked })).toBeVisible();
+  const linked = page.getByRole("status").filter({ hasText: strings.verify_linked });
+  const taken = page.getByText(strings.identity_taken);
+  for (let attempt = 0; ; attempt++) {
+    await addMark(page, name);
+    await expect(linked.or(taken)).toBeVisible();
+    if (await linked.isVisible()) break;
+    expect(attempt, "every kennitala drawn was taken").toBeLessThan(4);
+  }
   await page.getByRole("link", { name: strings.tab_me }).first().click();
   await expect(page.getByText(strings.verified_short)).toBeVisible();
 }
