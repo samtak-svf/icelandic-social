@@ -201,6 +201,8 @@ export const strings = {
   communities_feed_empty: "Engir póstar úr samfélögunum þínum enn.",
   /** Heading and button: create a new community. */
   community_create: "Stofna samfélag",
+  /** Label of the live preview of the community header beside the create form on an expanded window (decision 0087). */
+  community_preview: "Forskoðun á samfélaginu",
   /** Label of a community's name field. */
   community_name: "Heiti",
   /** Label of a community's description field. */

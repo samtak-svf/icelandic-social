@@ -78,6 +78,7 @@ export function Avatar({
   name,
   photo,
   className,
+  local,
 }: Readonly<{
   kind: PictureKind;
   id: string;
@@ -85,8 +86,11 @@ export function Avatar({
   /** The picture's version, as the API gave it; null when there is none to show. */
   photo: string | null;
   className: string;
+  /** A picture held in the browser and not yet sent (the create preview, decision 0087); shown in place of any fetched one. */
+  local?: string | null;
 }>) {
-  const [src, setSrc] = useState<string | null>(null);
+  const [fetchedSrc, setSrc] = useState<string | null>(null);
+  const src = local ?? fetchedSrc;
   useEffect(() => {
     let live = true;
     setSrc(null);
@@ -123,10 +127,18 @@ export function Cover({
   communityId,
   version,
   className = "",
-}: Readonly<{ communityId: string; version: string | null; className?: string }>) {
+  local,
+}: Readonly<{
+  communityId: string;
+  version: string | null;
+  className?: string;
+  /** A cover held in the browser and not yet sent (the create preview, decision 0087). */
+  local?: string | null;
+}>) {
   // A cover has one frame per size class (decision 0086), named as the class.
   const frame = useSizeClass();
-  const [src, setSrc] = useState<string | null>(null);
+  const [fetchedSrc, setSrc] = useState<string | null>(null);
+  const src = local ?? fetchedSrc;
   useEffect(() => {
     let live = true;
     if (version === null) setSrc(null);
