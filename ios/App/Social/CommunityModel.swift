@@ -60,7 +60,7 @@ final class CommunityModel {
     private var loadingMembers = false
 
     /// Why an image did not go with the post.
-    enum ImageNotice: Equatable, Sendable {
+    enum ImageNotice: Error, Equatable, Sendable {
         /// A fifth one was picked.
         case tooMany
         /// Over the server's 10 MB.
