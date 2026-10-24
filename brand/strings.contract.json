@@ -2186,6 +2186,93 @@
     "image_frames_no_master": {
       "surfaces": ["web", "android", "ios"],
       "description": "The image has no stored master to frame again, so it must be uploaded again (docs/decisions/0086)."
+    },
+    "composer_anonymous": {
+      "surfaces": ["web"],
+      "description": "The composer's switch to post without the author's name; shown only in a community that allows it (decision 0091)."
+    },
+    "composer_anonymous_hint": {
+      "surfaces": ["web"],
+      "description": "Explains the anonymous switch in the composer (decision 0091)."
+    },
+    "community_anonymous_posts": {
+      "surfaces": ["web"],
+      "description": "The owner's switch in Breyta samfélagi that lets members post without their name (decision 0091)."
+    },
+    "community_anonymous_posts_hint": {
+      "surfaces": ["web"],
+      "description": "Explains the community switch for anonymous posts (decision 0091)."
+    },
+    "post_anonymous_author": {
+      "surfaces": ["web"],
+      "description": "The byline of an anonymous post, for everyone but its author (decision 0091)."
+    },
+    "post_anonymous_mine": {
+      "surfaces": ["web"],
+      "description": "The author's own byline on their anonymous post (decision 0091)."
+    },
+    "post_pending": {
+      "surfaces": ["web"],
+      "description": "Marks the author's own anonymous post while it waits for a moderator (decision 0091)."
+    },
+    "anonymous_queue_title": {
+      "surfaces": ["web"],
+      "description": "Title of the page and link where moderators review anonymous posts (decision 0091)."
+    },
+    "anonymous_queue_waiting": {
+      "surfaces": ["web"],
+      "description": "How many anonymous posts wait, as the link to the list (decision 0091).",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "anonymous_queue_empty": {
+      "surfaces": ["web"],
+      "description": "The anonymous queue when it is empty (decision 0091)."
+    },
+    "anonymous_approve": {
+      "surfaces": ["web"],
+      "description": "Approves a waiting anonymous post (decision 0091)."
+    },
+    "anonymous_decline": {
+      "surfaces": ["web"],
+      "description": "Declines a waiting anonymous post; the author is told (decision 0091)."
+    },
+    "anonymous_reveal": {
+      "surfaces": ["web"],
+      "description": "A moderator asks for the author of an anonymous post; the community's log records it (decision 0091)."
+    },
+    "anonymous_reveal_confirm": {
+      "surfaces": ["web"],
+      "description": "Confirmation before revealing the author of an anonymous post (decision 0091)."
+    },
+    "anonymous_revealed": {
+      "surfaces": ["web"],
+      "description": "The author of an anonymous post, shown to the moderator who revealed it (decision 0091).",
+      "placeholders": {
+        "name": "string"
+      }
+    },
+    "problem_anonymous_off": {
+      "surfaces": ["web"],
+      "description": "Posting anonymously in a community whose switch is off (decision 0091)."
+    },
+    "moderation_log_anonymous_on": {
+      "surfaces": ["web"],
+      "description": "Entry in the moderation log: the owner turned anonymous posts on (decision 0091)."
+    },
+    "moderation_log_anonymous_off": {
+      "surfaces": ["web"],
+      "description": "Entry in the moderation log: the owner turned anonymous posts off (decision 0091)."
+    },
+    "moderation_log_author_revealed": {
+      "surfaces": ["web"],
+      "description": "Entry in the moderation log: a moderator revealed an anonymous post's author (decision 0091)."
+    },
+    "notice_anonymous_declined": {
+      "surfaces": ["web"],
+      "description": "A notification: a moderator declined the reader's anonymous post (decision 0091)."
     }
   }
 }

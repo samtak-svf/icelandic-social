@@ -52,6 +52,9 @@ const LOGGED: Record<ModerationLogEntry["action"], string> = {
   pin_post: strings.moderation_log_post_pinned,
   unpin_post: strings.moderation_log_post_unpinned,
   close_poll: strings.moderation_log_poll_closed,
+  anonymous_posts_on: strings.moderation_log_anonymous_on,
+  anonymous_posts_off: strings.moderation_log_anonymous_off,
+  reveal_author: strings.moderation_log_author_revealed,
 };
 
 /** The moderator's and the owner's tools, with the number waiting for them. */
@@ -63,7 +66,10 @@ export function Manage({
   // The stylesheet leaves out what the side navigation reaches, so a server
   // render is right at every width; only the details' first state needs the size class.
   const sideNav = LAYOUTS[useSizeClass()].manage === "side-nav";
-  const waiting = (community.openReports ?? 0) + (community.pendingJoinRequests ?? 0);
+  const waiting =
+    (community.openReports ?? 0) +
+    (community.pendingJoinRequests ?? 0) +
+    community.pendingAnonymous;
   const owner = community.role === "owner";
   return (
     <section aria-labelledby="manage-title" className="mt-4">
@@ -91,6 +97,17 @@ export function Manage({
               ? strings.join_requests_waiting({ count: community.pendingJoinRequests })
               : strings.join_requests_title}
           </Link>
+          {(community.anonymousPosts || community.pendingAnonymous > 0) && (
+            <Link
+              to="/communities/$communityId/anonymous"
+              params={{ communityId }}
+              className="inline-flex min-h-11 items-center underline"
+            >
+              {community.pendingAnonymous > 0
+                ? strings.anonymous_queue_waiting({ count: community.pendingAnonymous })
+                : strings.anonymous_queue_title}
+            </Link>
+          )}
         </nav>
         <Edit community={community} changed={changed} owner={owner} open={sideNav} />
         {owner && (
@@ -118,6 +135,7 @@ function Edit({
   const [name, setName] = useState(community.name);
   const [description, setDescription] = useState(community.description);
   const [audience, setAudience] = useState<"open" | "private">(community.audience);
+  const [anonymous, setAnonymous] = useState(community.anonymousPosts);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
 
@@ -128,7 +146,12 @@ function Edit({
     const done = await outcome(
       updateCommunity({
         path: { communityId: community.communityId },
-        body: { name: name.trim(), description: description.trim(), audience },
+        body: {
+          name: name.trim(),
+          description: description.trim(),
+          audience,
+          anonymousPosts: anonymous,
+        },
       }),
       200,
     );
@@ -180,6 +203,20 @@ function Edit({
               </label>
             ))}
           </fieldset>
+          <label className="flex min-h-11 items-center gap-2">
+            <input
+              type="checkbox"
+              role="switch"
+              checked={anonymous}
+              onChange={(event) => setAnonymous(event.target.checked)}
+            />
+            <span className="flex flex-col">
+              <span className="font-semibold">{strings.community_anonymous_posts}</span>
+              <span className="text-sm text-muted-fg">
+                {strings.community_anonymous_posts_hint}
+              </span>
+            </span>
+          </label>
           <Button tone="primary" type="submit" disabled={busy || name.trim() === ""}>
             {strings.community_edit}
           </Button>

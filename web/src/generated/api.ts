@@ -84,7 +84,7 @@ export interface SignInConfig {
 }
 
 export interface ApiError {
-  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, pin_limit, poll_closed, invalid_media, muted, expired, incomplete, internal_error */
+  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, pin_limit, poll_closed, anonymous_off, invalid_media, muted, expired, incomplete, internal_error */
   error: string;
   /** The request's id, also in the x-request-id header: opaque, for support to find the request by (decision 0037) */
   requestId: string;
@@ -474,6 +474,10 @@ export interface Community {
   pendingJoinRequests: number | null;
   /** How many open reports wait; null unless the caller moderates the community */
   openReports: number | null;
+  /** Members may post without their name, for a moderator's approval (decision 0091) */
+  anonymousPosts: boolean;
+  /** How many anonymous posts wait for approval; 0 unless the caller moderates */
+  pendingAnonymous: number;
   /** The community's picture version, changed by each upload; null when it has none (decision 0080). The picture is GET /v1/communities/{communityId}/avatar */
   photo: string | null;
   /** The community's cover version, changed by each upload; null when it has none (decision 0080). The cover is GET /v1/communities/{communityId}/cover */
@@ -495,7 +499,12 @@ export interface Community {
 export interface Post {
   postId: string;
   communityId: string;
-  author: Author;
+  /** Null on an anonymous post to every reader but its author (decision 0091): no account id, name, picture, mark or role. The author sees their own byline, with `mine` */
+  author: Author | null;
+  /** Posted without the author's name (decision 0091) */
+  anonymous: boolean;
+  /** The caller wrote it */
+  mine: boolean;
   body: string;
   media: Array<SocialMedia>;
   /** Unix milliseconds */
@@ -508,8 +517,8 @@ export interface Post {
   myReaction: "like" | "love" | "laugh" | "wow" | "sad" | null;
   commentCount: number;
   latestComment: Comment | null;
-  /** Only a moderator sees what is not visible: hidden or removed by a moderator */
-  state: "visible" | "hidden" | "removed";
+  /** `pending`: an anonymous post waiting for a moderator's approval (decision 0091); only its author and the moderators see it. Otherwise only a moderator sees what is not visible: hidden or removed by a moderator */
+  state: "visible" | "pending" | "hidden" | "removed";
   poll?: Poll;
   /** A moderator features it (decision 0088); it stays in its place in the feed, marked, and is also in the community's `featured`. `getFeed` never marks it */
   pinned: boolean;
@@ -615,7 +624,8 @@ export type Card = {
     /** The community's picture version, as on Community; null when it has none (decision 0080) */
     photo: string | null;
   };
-  author: Author;
+  /** Null on an anonymous post (decision 0091) */
+  author: Author | null;
   /** The text's first 280 characters, an ellipsis ending one cut short */
   excerpt: string;
   image: SocialMedia | null;
@@ -715,10 +725,12 @@ export interface Report {
   resolution: string | null;
   /** Who closed it; null while open, when the community's deletion did, or once deleted */
   closedBy: Author | null;
+  /** The reported post is anonymous (decision 0091): `targetAccount` and `targetStanding` are null, and a moderator may reveal the author with POST /v1/posts/{postId}/reveal */
+  targetAnonymous: boolean;
   /** Where the account reported, or whose content was, stands in the community now: `gone` once the account is deleted; null for a community, or an account reported to Samtak */
   targetStanding: "owner" | "moderator" | "member" | "muted" | "banned" | "not_member" | "gone" | null;
   /** What the reported post or comment is now; null for a community or an account */
-  targetState: "visible" | "hidden" | "removed" | "gone" | null;
+  targetState: "visible" | "pending" | "hidden" | "removed" | "gone" | null;
   /** The media id of the reported comment's image, to read through `GET /v1/posts/{postId}/media/{mediaId}`; empty for anything else (decision 0082) */
   targetMedia: Array<string>;
 }
@@ -735,7 +747,7 @@ export interface ModerationLogEntry {
   actor: Author | null;
   /** Done as one of Samtak's platform moderators */
   asPlatform: boolean;
-  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "close_report" | "delete_community" | "restore_community" | "set_community_picture" | "remove_community_picture" | "set_community_cover" | "remove_community_cover" | "pin_post" | "unpin_post" | "close_poll";
+  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "close_report" | "delete_community" | "restore_community" | "set_community_picture" | "remove_community_picture" | "set_community_cover" | "remove_community_cover" | "pin_post" | "unpin_post" | "close_poll" | "anonymous_posts_on" | "anonymous_posts_off" | "reveal_author";
   target: {
     kind: "post" | "comment" | "community" | "account" | "report";
     id: string;
@@ -1259,6 +1271,8 @@ export function updateCommunity(args: {
     description?: string;
     /** open: every signed-in account reads it and joins at once; private: only members read it, and joining takes a moderator's approval or an invitation */
     audience?: "open" | "private";
+    /** Let members post without their name (decision 0091); every such post waits for a moderator's approval. A change is logged */
+    anonymousPosts?: boolean;
   };
 }, init?: CallInit): Promise<
   | { status: 200; data: Community }
@@ -1764,6 +1778,8 @@ export function createPost(args: {
   body: {
     body?: string;
     media?: Array<string>;
+    /** Without the author's name (decision 0091): only where the community allows it, and it waits for a moderator's approval before anyone else sees it */
+    anonymous?: boolean;
     /** Makes the post a poll (decision 0090): the body is the question and is required, there are two to six distinct options, and no image */
     poll?: {
       options: Array<string>;
@@ -1775,6 +1791,7 @@ export function createPost(args: {
   | { status: 401; data: ApiError }
   | { status: 403; data: ApiError }
   | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
   | { status: 426; data: ApiError }
 > {
   return call("POST", "/v1/communities/{communityId}/posts", args, init);
@@ -2069,6 +2086,87 @@ export function unlikeComment(args: {
   | { status: 426; data: ApiError }
 > {
   return call("DELETE", "/v1/comments/{commentId}/like", args, init);
+}
+
+/**
+ * The anonymous posts waiting for approval, newest first
+ *
+ * Each post has a null author, as every reader but its author sees it: approving does not reveal (decision 0091).
+ */
+export function listPendingAnonymousPosts(args: {
+  path: {
+    communityId: string;
+  };
+  query?: {
+    /** The `next` of the page before */
+    before?: string;
+    limit?: number;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: PostPage }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/communities/{communityId}/anonymous", args, init);
+}
+
+/**
+ * Publish an anonymous post
+ *
+ * The post appears in the community's feed as of now, still without its author. Nobody is told, and the author is not revealed.
+ */
+export function approveAnonymousPost(args: {
+  path: {
+    postId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/posts/{postId}/approve", args, init);
+}
+
+/**
+ * Decline an anonymous post
+ *
+ * Deletes the post and tells its author, and nobody else, that it was not published.
+ */
+export function declineAnonymousPost(args: {
+  path: {
+    postId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/posts/{postId}/decline", args, init);
+}
+
+/**
+ * Reveal the author of an anonymous post
+ *
+ * For the community's owner and moderators, and Samtak's. The moderation log gets an entry naming who revealed, never whom (decision 0091).
+ */
+export function revealAuthor(args: {
+  path: {
+    postId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Author }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/posts/{postId}/reveal", args, init);
 }
 
 /**

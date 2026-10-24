@@ -56,7 +56,11 @@ function Posts({ community, refresh }: Readonly<{ community: Community; refresh:
   return (
     <section className="mt-6 flex flex-col gap-4">
       {community.role !== null && !muted && (
-        <PostComposer communityId={communityId} posted={reload} />
+        <PostComposer
+          communityId={communityId}
+          posted={reload}
+          anonymousAllowed={community.anonymousPosts}
+        />
       )}
       {muted && <p>{strings.community_muted}</p>}
       {searched === "" && <FeaturedStrip featured={community.featured} />}

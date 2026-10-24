@@ -535,5 +535,28 @@
   "image_frames_medium": "Spjaldtölva",
   "image_frames_expanded": "Tölva",
   "image_frames_reset": "Nota sjálfvirka afmörkun",
-  "image_frames_no_master": "Settu myndina inn aftur til að breyta afmörkun"
+  "image_frames_no_master": "Settu myndina inn aftur til að breyta afmörkun",
+  "composer_anonymous": "Birta nafnlaust",
+  "composer_anonymous_hint": "Stjórnandi fer yfir færsluna áður en hún birtist. Stjórnandi getur afhjúpað höfundinn.",
+  "community_anonymous_posts": "Nafnlausar færslur",
+  "community_anonymous_posts_hint": "Færslur eru yfirfarnar af stjórnanda áður en þær birtast. Stjórnandi getur afhjúpað höfundinn.",
+  "post_anonymous_author": "Nafnlaus meðlimur",
+  "post_anonymous_mine": "Þú · nafnlaust",
+  "post_pending": "Bíður samþykkis stjórnanda.",
+  "anonymous_queue_title": "Nafnlausar færslur",
+  "anonymous_queue_waiting": {
+    "one": "{count} nafnlaus færsla bíður",
+    "other": "{count} nafnlausar færslur bíða"
+  },
+  "anonymous_queue_empty": "Engin nafnlaus færsla bíður.",
+  "anonymous_approve": "Birta",
+  "anonymous_decline": "Hafna",
+  "anonymous_reveal": "Sýna höfund",
+  "anonymous_reveal_confirm": "Sýna höfund? Aðgerðin er skráð í aðgerðaskrá samfélagsins.",
+  "anonymous_revealed": "Höfundur: {name}",
+  "problem_anonymous_off": "Þetta samfélag leyfir ekki nafnlausar færslur.",
+  "moderation_log_anonymous_on": "Nafnlausar færslur voru leyfðar.",
+  "moderation_log_anonymous_off": "Nafnlausar færslur voru bannaðar.",
+  "moderation_log_author_revealed": "Höfundur nafnlausrar færslu var sýndur.",
+  "notice_anonymous_declined": "Stjórnandi hafnaði nafnlausri færslu frá þér."
 }

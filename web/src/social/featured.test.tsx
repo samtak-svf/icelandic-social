@@ -17,6 +17,8 @@ const post = (n: number): Post => ({
   postId: `p${n}`,
   communityId: "cm1",
   author: { accountId: `a${n}`, name: `Höfundur ${n}`, verified: false, photo: null, role: null },
+  anonymous: false,
+  mine: false,
   body: `Færsla númer ${n}`,
   media: [],
   createdAt: n,
@@ -41,6 +43,19 @@ describe("featured posts", () => {
     expect(html).toContain("expanded:hidden");
     expect(html).toContain("Færsla númer 1");
     expect(html).toContain("Höfundur 2");
+  });
+
+  it("names no author on an anonymous post", () => {
+    const anonymous: Post = { ...post(4), anonymous: true, author: null };
+    const html = renderToStaticMarkup(<FeaturedStrip featured={[anonymous]} />);
+    expect(html).toContain(strings.post_anonymous_author);
+    expect(html).not.toContain("Höfundur 4");
+    expect(html).not.toContain(strings.person_deleted);
+    const mine = renderToStaticMarkup(
+      <FeaturedStrip featured={[{ ...anonymous, mine: true, author: post(4).author }]} />,
+    );
+    expect(mine).toContain(strings.post_anonymous_mine);
+    expect(mine).not.toContain("Höfundur 4");
   });
 
   it("is a stacked list under the heading in the aside", () => {
