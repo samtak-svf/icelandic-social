@@ -76,6 +76,10 @@ timestamp comes from a past year so the row stamp never moves.
    environment. `connectedAndroidTest` uninstalls the app, so a manual sign-in on that
    emulator is lost; scope a run to one class with
    `-Pandroid.testInstrumentationRunnerArguments.class=…`.
+   The emulator never runs on the Linux workstation: `node tooling/mac-remote.mjs --
+   android/scripts/test.sh --connected` boots the headless `spjall-test` AVD (api 34, as
+   `android.yml` does) on Samtak's Mac, runs `connectedDebugAndroidTest`, stops only the
+   emulator it started, and fails if no test ran.
 5. **Style-only failures.** Format on commit (`pnpm format`, `ktlintFormat`), and bump a
    formatter in its own PR with the reformat.
 6. **Stale prose.** Keep a fact where a guard or a generator checks it, not only in prose.

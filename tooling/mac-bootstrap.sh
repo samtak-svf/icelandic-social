@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Set up a Mac of Samtak's own once, so tooling/mac-remote.mjs and ios.yml can
-# build on it. Run from Linux, over ssh, as the Mac's build user:
+# build on it, and android/scripts/test.sh can run the Android emulator on it.
+# Run from Linux, over ssh, as the Mac's build user:
 #
 #   ssh samtak-mac 'bash -s' < tooling/mac-bootstrap.sh
 #
@@ -45,6 +46,50 @@ if ! xcrun simctl list runtimes | grep -q '^iOS '; then
   xcodebuild -downloadPlatform iOS
 fi
 
+# Android: the JDK, the SDK and the emulator's AVD, for android/scripts/test.sh.
+# No LaunchAgent for the emulator: test.sh starts and stops its own, because a
+# resident one would hold RAM on a shared Mac that also runs iOS CI.
+ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
+for cask in temurin@21 android-commandlinetools; do
+  if ! brew list --cask "$cask" >/dev/null 2>&1; then
+    say "$cask"
+    brew install --quiet --cask "$cask"
+  fi
+done
+export ANDROID_HOME JAVA_HOME="$(/usr/libexec/java_home -v 21)"
+
+# Gradle fetches platforms and build tools only for licences already accepted,
+# and never the emulator or its system image.
+say "Android licences"
+yes | sdkmanager --licenses >/dev/null 2>&1 || true
+installed=$(sdkmanager --list_installed 2>/dev/null)
+packages=(
+  platform-tools
+  emulator
+  # COMPILE_SDK = 37 in android/build-logic/.../gradle/Android.kt. The SDK names
+  # its platforms by minor version, so android-37 does not exist (37.0 does).
+  "platforms;android-37.0"
+  "platforms;android-37.1"
+  # The build tools AGP asks for (the agp version in android/gradle/libs.versions.toml).
+  "build-tools;36.0.0"
+  "build-tools;37.0.0"
+  # api-level 34 and the default target, as .github/workflows/android.yml runs
+  # it; arm64-v8a because this Mac is Apple silicon.
+  "system-images;android-34;google_apis;arm64-v8a"
+)
+for pkg in "${packages[@]}"; do
+  if ! grep -q "^ *$pkg " <<<"$installed"; then
+    say "sdk: $pkg"
+    sdkmanager --install "$pkg" >/dev/null
+  fi
+done
+
+if ! avdmanager list avd -c 2>/dev/null | grep -qx spjall-test; then
+  say "AVD spjall-test"
+  echo no | avdmanager create avd --name spjall-test --device pixel_5 \
+    --package "system-images;android-34;google_apis;arm64-v8a"
+fi
+
 # ssh runs commands in a non-interactive zsh, which reads .zshenv and nothing
 # else: the tools above and the reused DerivedData have to be named there.
 marker="# spjall (tooling/mac-bootstrap.sh)"
@@ -56,6 +101,18 @@ $marker
 eval "\$(/opt/homebrew/bin/brew shellenv)"
 . "\$HOME/.cargo/env"
 export SPJALL_DERIVED_DATA="\$HOME/Library/Developer/spjall-derived-data"
+EOF
+fi
+
+# Its own marker: a Mac provisioned before the Android lane has the one above.
+marker="# spjall android (tooling/mac-bootstrap.sh)"
+if ! grep -qF "$marker" "$HOME/.zshenv" 2>/dev/null; then
+  say "~/.zshenv (Android)"
+  cat >>"$HOME/.zshenv" <<EOF
+
+$marker
+export ANDROID_HOME="$ANDROID_HOME"
+export JAVA_HOME="$JAVA_HOME"
 EOF
 fi
 
