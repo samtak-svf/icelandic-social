@@ -15,7 +15,7 @@ import type { Platform } from "../platforms.ts";
 import { type Device, randomToken, tokenHash } from "./accounts.ts";
 import { approvalMessage } from "./link-approval.ts";
 import { LINKED_IDLE_MS } from "./linked-device-lifecycle.ts";
-import type { Session } from "./sessions.ts";
+import { type Session, wipeBrowserStorage } from "./sessions.ts";
 
 // Enrolling a linked non-phone device from a browser session (decision 0064,
 // #299): the browser starts a link request with its Ed25519 device key and a
@@ -395,7 +395,7 @@ export function linkedDeviceRoutes(app: OpenAPIHono<AppEnv>): void {
     const { session } = c.var;
     const found = await storeKeyShareForSession(c.env, session);
     if (!found) {
-      c.header("clear-site-data", '"storage"');
+      wipeBrowserStorage(c);
       return fail(c, 404, "not_found");
     }
     return c.json(found, 200);

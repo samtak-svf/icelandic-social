@@ -59,6 +59,7 @@ import {
   unavailable,
   upload,
   webSignInRoutes,
+  wipeBrowserStorage,
 } from "./identity/index.ts";
 import { log } from "./log.ts";
 import {
@@ -199,7 +200,7 @@ export function createApp() {
       return fail(c, 404, "not_found");
     }
     await inbox(c.env, accountId).closeDevice(deviceId);
-    if (kind === "web") c.header("clear-site-data", '"storage"');
+    if (kind === "web") wipeBrowserStorage(c);
     log("device.revoked", { accountId, deviceId });
     return c.body(null, 204);
   });

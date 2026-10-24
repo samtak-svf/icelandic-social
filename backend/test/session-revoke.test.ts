@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { expireSessions } from "../src/identity/index.ts";
 import { connect } from "./socket.ts";
-import { device, webSession } from "./support.ts";
+import { device, linkedBrowser, webSession } from "./support.ts";
 import { worker } from "./main.ts";
 
 // Ending a session (decision 0061): the list a person signs clients out
@@ -171,5 +171,34 @@ describe("the sweep", () => {
     expect(left).toContain(live.sessionId);
     expect(left).toContain(mobile.sessionId);
     expect(left).not.toContain(stale.sessionId);
+  });
+});
+
+describe("Clear-Site-Data reaches only a browser's cookie request (0064)", () => {
+  const WIPE = "clear-site-data";
+
+  it("answers a device revoke from the browser's own session", async () => {
+    const { browser, enrolled } = await linkedBrowser();
+    const response = await remove(`/v1/devices/${enrolled!.deviceId}`, browser.web);
+    expect(response.status).toBe(204);
+    expect(response.headers.get(WIPE)).toBe('"storage"');
+  });
+
+  it("never answers a phone's bearer request", async () => {
+    const mobile = await phone();
+    const ended = await remove(`/v1/sessions/${mobile.sessionId}`, mobile.auth);
+    expect(ended.status).toBe(204);
+    expect(ended.headers.get(WIPE)).toBeNull();
+    const dead = await fetch("/v1/me", { headers: mobile.auth });
+    expect(dead.status).toBe(401);
+    expect(dead.headers.get(WIPE)).toBeNull();
+  });
+
+  it("never answers a linked device's own bearer request, though its session is a browser's", async () => {
+    const { enrolled } = await linkedBrowser();
+    const bearer = { authorization: `Bearer ${enrolled!.token}` };
+    const response = await remove(`/v1/devices/${enrolled!.deviceId}`, bearer);
+    expect(response.status).toBe(204);
+    expect(response.headers.get(WIPE)).toBeNull();
   });
 });

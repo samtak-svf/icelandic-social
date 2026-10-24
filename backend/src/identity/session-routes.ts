@@ -5,7 +5,13 @@ import { endOtherSessionsRoute, endSessionRoute, listSessionsRoute } from "../ap
 import { inbox } from "../env/index.ts";
 import { fail } from "../errors.ts";
 import { log } from "../log.ts";
-import { endSessions, SESSION_COOKIE, sessionCookie, sessionsOf } from "./sessions.ts";
+import {
+  endSessions,
+  SESSION_COOKIE,
+  sessionCookie,
+  sessionsOf,
+  wipeBrowserStorage,
+} from "./sessions.ts";
 
 // Where the account is signed in, and signing a client out (decision 0061).
 // Any session of the account may end any other, from a phone or a browser.
@@ -28,7 +34,7 @@ export function sessionRoutes(app: OpenAPIHono<AppEnv>): void {
     for (const deviceId of devices) await inbox(c.env, accountId).closeDevice(deviceId);
     if (sessionId === current) {
       deleteCookie(c, SESSION_COOKIE, sessionCookie(0));
-      c.header("clear-site-data", '"storage"');
+      wipeBrowserStorage(c);
     }
     log("session.ended", { accountId, sessionId, count: devices.length });
     return c.body(null, 204);
