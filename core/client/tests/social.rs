@@ -308,13 +308,13 @@ fn posts_comments_and_reactions_go_by_their_ids() {
     );
     assert_eq!(
         first.author,
-        Author {
+        Some(Author {
             account_id: "acc_b".into(),
             name: Some("Sigrún Jónsdóttir".into()),
             verified: true,
             photo: None,
             role: None,
-        }
+        })
     );
     assert_eq!(first.latest_comment, None);
 
@@ -680,8 +680,9 @@ fn a_byline_and_a_latest_comment_decode_with_or_without_the_new_fields() {
     };
     phone.answer(200, with);
     let found = c.post("p_1").unwrap();
-    assert_eq!(found.author.photo.as_deref(), Some("ph_0123"));
-    assert_eq!(found.author.role, Some(AuthorRole::Owner));
+    let found_author = found.author.as_ref().unwrap();
+    assert_eq!(found_author.photo.as_deref(), Some("ph_0123"));
+    assert_eq!(found_author.role, Some(AuthorRole::Owner));
     let latest = found.latest_comment.unwrap();
     assert_eq!(latest.comment_id, "p_1-0a");
     assert_eq!(latest.author.role, Some(AuthorRole::Unknown));
@@ -693,8 +694,9 @@ fn a_byline_and_a_latest_comment_decode_with_or_without_the_new_fields() {
     explicit_null["latestComment"] = Value::Null;
     phone.answer(200, explicit_null);
     let none = c.post("p_2").unwrap();
+    let none_author = none.author.unwrap();
     assert_eq!(
-        (none.author.photo, none.author.role, none.latest_comment),
+        (none_author.photo, none_author.role, none.latest_comment),
         (None, None, None)
     );
 
@@ -1636,4 +1638,230 @@ fn a_community_carries_the_framing_it_was_stored_with() {
     let cover = community.cover_frames.unwrap();
     assert_eq!(cover.focus, Focus { x: 0.1, y: 0.2 });
     assert_eq!(cover.overrides.len(), 1);
+}
+
+#[test]
+fn a_community_decodes_its_featured_posts_and_anonymous_counts() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+    // An older server names none of them.
+    phone.answer(200, community("cm_1", "open"));
+    let old = c.community("cm_1").unwrap();
+    assert_eq!(
+        (
+            old.featured.len(),
+            old.anonymous_posts,
+            old.pending_anonymous
+        ),
+        (0, false, 0)
+    );
+
+    let mut body = community("cm_1", "open");
+    body["featured"] = json!([post("p_1"), post("p_2")]);
+    body["anonymousPosts"] = json!(true);
+    body["pendingAnonymous"] = json!(2);
+    phone.answer(200, body);
+    let found = c.community("cm_1").unwrap();
+    let ids: Vec<_> = found.featured.iter().map(|p| p.post_id.as_str()).collect();
+    assert_eq!(ids, ["p_1", "p_2"]);
+    assert_eq!((found.anonymous_posts, found.pending_anonymous), (true, 2));
+    assert_eq!(phone.sent().len(), 2);
+}
+
+#[test]
+fn a_poll_post_decodes_and_is_voted_in_and_closed() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+    let mut poll_post = post("p_1");
+    poll_post["poll"] = json!({
+        "options": [
+            { "optionId": "o0", "text": "Þriðjudagar", "votes": null },
+            { "optionId": "o1", "text": "Fimmtudagar", "votes": null },
+        ],
+        "total": 5,
+        "mine": null,
+        "closed": false,
+    });
+    phone.answer(200, poll_post.clone());
+    let found = c.post("p_1").unwrap();
+    let poll = found.poll.unwrap();
+    assert_eq!((poll.total, poll.mine, poll.closed), (5, None, false));
+    assert_eq!(poll.options[1].option_id, "o1");
+    assert_eq!(poll.options[0].votes, None);
+    // A post that is not a poll has none.
+    phone.answer(200, post("p_2"));
+    assert_eq!(c.post("p_2").unwrap().poll, None);
+
+    poll_post["poll"]["mine"] = json!("o1");
+    poll_post["poll"]["total"] = json!(6);
+    poll_post["poll"]["options"][0]["votes"] = json!(2);
+    poll_post["poll"]["options"][1]["votes"] = json!(4);
+    for _ in 0..2 {
+        phone.answer(200, poll_post.clone());
+    }
+    let voted = c.vote_poll("p_1", "o1").unwrap().poll.unwrap();
+    assert_eq!(voted.mine.as_deref(), Some("o1"));
+    assert_eq!(voted.options[1].votes, Some(4));
+    c.withdraw_vote("p_1").unwrap();
+    poll_post["poll"]["closed"] = json!(true);
+    phone.answer(200, poll_post);
+    assert!(c.close_poll("p_1").unwrap().poll.unwrap().closed);
+    phone.answer(409, json!({ "error": "poll_closed" }));
+    let err = c.vote_poll("p_1", "o0").unwrap_err();
+    assert!(matches!(
+        err,
+        ClientError::Transport(ApiError::Refused { status: 409, ref code, .. }) if code == "poll_closed"
+    ));
+
+    let sent = phone.sent();
+    assert_eq!(
+        sent.iter()
+            .map(|(m, p, _)| (*m, p.as_str()))
+            .collect::<Vec<_>>(),
+        [
+            (Method::Get, "/v1/posts/p_1"),
+            (Method::Get, "/v1/posts/p_2"),
+            (Method::Put, "/v1/posts/p_1/vote"),
+            (Method::Delete, "/v1/posts/p_1/vote"),
+            (Method::Post, "/v1/posts/p_1/poll/close"),
+            (Method::Put, "/v1/posts/p_1/vote"),
+        ]
+    );
+    assert_eq!(sent[2].2, json!({ "optionId": "o1" }));
+    // A bad id never reaches the network.
+    assert!(c.vote_poll("p_1", "no spaces").is_err());
+    assert!(c.close_poll("no spaces").is_err());
+    assert!(phone.sent().is_empty());
+}
+
+#[test]
+fn a_poll_is_created_with_its_options_and_checked_first() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+    let two = ["Já".to_string(), " Nei ".to_string()];
+    phone.answer(200, post("p_1"));
+    c.create_post_with("cm_1", "Mætir þú?", &[], false, Some(&two))
+        .unwrap();
+    let sent = phone.sent();
+    assert_eq!(sent[0].1, "/v1/communities/cm_1/posts");
+    assert_eq!(
+        sent[0].2,
+        json!({
+            "body": "Mætir þú?",
+            "media": [],
+            "anonymous": false,
+            "poll": { "options": ["Já", "Nei"] }
+        })
+    );
+    let one = ["Já".to_string()];
+    let same = ["Já".to_string(), "Já".to_string()];
+    let seven: Vec<String> = (0..7).map(|n| n.to_string()).collect();
+    let long = ["a".repeat(81), "b".into()];
+    let media = ["sm_1".to_string()];
+    for (body, media, options) in [
+        ("", &[][..], &two[..]),
+        ("Q", &media[..], &two[..]),
+        ("Q", &[][..], &one[..]),
+        ("Q", &[][..], &same[..]),
+        ("Q", &[][..], &seven[..]),
+        ("Q", &[][..], &long[..]),
+    ] {
+        assert!(
+            c.create_post_with("cm_1", body, media, false, Some(options))
+                .is_err()
+        );
+    }
+    assert!(phone.sent().is_empty());
+}
+
+#[test]
+fn an_anonymous_post_has_no_author_and_goes_through_approval() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+    let mut anonymous = post("p_1");
+    anonymous["author"] = Value::Null;
+    anonymous["anonymous"] = json!(true);
+    anonymous["mine"] = json!(false);
+    anonymous["state"] = json!("pending");
+    phone.answer(200, anonymous.clone());
+    let found = c.post("p_1").unwrap();
+    assert_eq!(found.author, None);
+    assert!((found.anonymous, found.mine) == (true, false));
+    assert_eq!(found.state, ModerationState::Pending);
+    // An older server names neither flag, and a named author is read.
+    phone.answer(200, post("p_2"));
+    let named = c.post("p_2").unwrap();
+    assert!(named.author.is_some());
+    assert_eq!((named.anonymous, named.mine), (false, false));
+
+    phone.answer(200, anonymous);
+    c.create_post_with("cm_1", "Hæ", &[], true, None).unwrap();
+    phone.answer(200, json!({ "posts": [post("p_3")], "next": null }));
+    let queue = c.pending_anonymous_posts("cm_1", Some("9"), 99).unwrap();
+    assert_eq!(queue.posts.len(), 1);
+    phone.ok();
+    c.approve_anonymous_post("p_3").unwrap();
+    phone.ok();
+    c.decline_anonymous_post("p_3").unwrap();
+    phone.answer(200, author("acc_b"));
+    let revealed = c.reveal_author("p_3").unwrap();
+    assert_eq!(revealed.account_id, "acc_b");
+    let mut on = community("cm_1", "open");
+    on["anonymousPosts"] = json!(true);
+    phone.answer(200, on);
+    assert!(c.set_anonymous_posts("cm_1", true).unwrap().anonymous_posts);
+
+    let sent = phone.sent();
+    assert_eq!(
+        sent.iter()
+            .map(|(m, p, _)| (*m, p.as_str()))
+            .collect::<Vec<_>>(),
+        [
+            (Method::Get, "/v1/posts/p_1"),
+            (Method::Get, "/v1/posts/p_2"),
+            (Method::Post, "/v1/communities/cm_1/posts"),
+            (
+                Method::Get,
+                "/v1/communities/cm_1/anonymous?before=9&limit=50"
+            ),
+            (Method::Post, "/v1/posts/p_3/approve"),
+            (Method::Post, "/v1/posts/p_3/decline"),
+            (Method::Post, "/v1/posts/p_3/reveal"),
+            (Method::Patch, "/v1/communities/cm_1"),
+        ]
+    );
+    assert_eq!(sent[2].2["anonymous"], json!(true));
+    assert_eq!(sent[2].2.get("poll"), None);
+    assert_eq!(sent[7].2, json!({ "anonymousPosts": true }));
+    assert!(c.approve_anonymous_post("no spaces").is_err());
+    assert!(c.reveal_author("no spaces").is_err());
+    assert!(phone.sent().is_empty());
+}
+
+#[test]
+fn featuring_a_fourth_post_is_refused_with_pin_limit() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+    phone.answer(409, json!({ "error": "pin_limit" }));
+    let err = c.pin_post("cm_1", "p_4").unwrap_err();
+    assert!(matches!(
+        err,
+        ClientError::Transport(ApiError::Refused { status: 409, ref code, .. }) if code == "pin_limit"
+    ));
+    assert_eq!(phone.sent().len(), 1);
+}
+
+#[test]
+fn a_report_of_an_anonymous_post_names_no_account() {
+    let report: spjall_client::api::Report = serde_json::from_value(json!({
+        "reportId": "r_1", "communityId": "cm_1",
+        "target": { "kind": "post", "id": "p_1" },
+        "targetAccount": null, "reason": "spam", "note": "", "state": "open",
+        "createdAt": 1, "closedAt": null, "decision": null, "resolution": null,
+        "closedBy": null, "targetAnonymous": true, "targetStanding": null,
+        "targetState": "visible"
+    }))
+    .unwrap();
+    assert!(report.target_anonymous);
+    assert_eq!(report.target_account, None);
 }

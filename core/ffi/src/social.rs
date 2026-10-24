@@ -171,6 +171,18 @@ pub struct Community {
     /// This account pinned it to the top of its list (0080).
     #[uniffi(default = false)]
     pub pinned: bool,
+    /// Members may post without their name, for a moderator's approval
+    /// (0091).
+    #[uniffi(default = false)]
+    pub anonymous_posts: bool,
+    /// Anonymous posts that wait for approval; 0 unless this account
+    /// moderates (0091).
+    #[uniffi(default = 0)]
+    pub pending_anonymous: u64,
+    /// The posts its moderators feature, up to three, newest pin first
+    /// (0088); `community` fills it, the lists do not.
+    #[uniffi(default = [])]
+    pub featured: Vec<Post>,
 }
 
 /// An account asking to join a private community.
@@ -220,6 +232,9 @@ impl From<api::Community> for Community {
             unread: community.unread,
             last_post_at: community.last_post_at,
             pinned: community.pinned,
+            anonymous_posts: community.anonymous_posts,
+            pending_anonymous: community.pending_anonymous,
+            featured: community.featured.into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -344,6 +359,8 @@ pub struct ReactionCount {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum ModerationState {
     Visible,
+    /// An anonymous post waiting for a moderator's approval (0091).
+    Pending,
     Hidden,
     Removed,
 }
@@ -352,6 +369,7 @@ impl From<api::ModerationState> for ModerationState {
     fn from(state: api::ModerationState) -> Self {
         match state {
             api::ModerationState::Visible => Self::Visible,
+            api::ModerationState::Pending => Self::Pending,
             api::ModerationState::Hidden => Self::Hidden,
             api::ModerationState::Removed => Self::Removed,
         }
@@ -362,7 +380,14 @@ impl From<api::ModerationState> for ModerationState {
 pub struct Post {
     pub post_id: String,
     pub community_id: String,
-    pub author: Author,
+    /// None on an anonymous post to every reader but its author (0091).
+    pub author: Option<Author>,
+    /// Posted without the author's name (0091).
+    #[uniffi(default = false)]
+    pub anonymous: bool,
+    /// This account wrote it (0091).
+    #[uniffi(default = false)]
+    pub mine: bool,
     pub body: String,
     pub images: Vec<PostImage>,
     /// Unix milliseconds.
@@ -378,6 +403,48 @@ pub struct Post {
     /// A moderator pinned it to the top of the community (0080).
     #[uniffi(default = false)]
     pub pinned: bool,
+    /// Present when the post is a poll (0090).
+    #[uniffi(default = None)]
+    pub poll: Option<Poll>,
+}
+
+/// A poll's options and counts (0090). No field says who voted or how.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct Poll {
+    pub options: Vec<PollOption>,
+    /// How many votes the poll has, always shown.
+    pub total: u64,
+    /// The option this account voted for.
+    pub mine: Option<String>,
+    /// It takes no more votes and shows its results to every reader.
+    pub closed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PollOption {
+    pub option_id: String,
+    pub text: String,
+    /// None until this account has voted, unless it sees results at once.
+    pub votes: Option<u64>,
+}
+
+impl From<api::Poll> for Poll {
+    fn from(poll: api::Poll) -> Self {
+        Self {
+            options: poll
+                .options
+                .into_iter()
+                .map(|o| PollOption {
+                    option_id: o.option_id,
+                    text: o.text,
+                    votes: o.votes,
+                })
+                .collect(),
+            total: poll.total,
+            mine: poll.mine,
+            closed: poll.closed,
+        }
+    }
 }
 
 impl From<api::Post> for Post {
@@ -385,7 +452,9 @@ impl From<api::Post> for Post {
         Self {
             post_id: post.post_id,
             community_id: post.community_id,
-            author: post.author.into(),
+            author: post.author.map(Into::into),
+            anonymous: post.anonymous,
+            mine: post.mine,
             body: post.body,
             images: post.media.into_iter().map(Into::into).collect(),
             created_at: post.created_at,
@@ -402,6 +471,7 @@ impl From<api::Post> for Post {
             latest_comment: post.latest_comment.map(Into::into),
             state: post.state.into(),
             pinned: post.pinned,
+            poll: post.poll.map(Into::into),
         }
     }
 }
@@ -681,6 +751,10 @@ pub struct Report {
     /// Who closed it; none while open, when the community's deletion did,
     /// or once that account is deleted.
     pub closed_by: Option<Author>,
+    /// The reported post is anonymous (0091): `target_account` is none, and
+    /// a moderator may `reveal_author`.
+    #[uniffi(default = false)]
+    pub target_anonymous: bool,
     /// The reported account's standing in the community now.
     pub target_standing: Option<TargetStanding>,
     /// The reported content's state now.
@@ -702,6 +776,7 @@ impl From<api::Report> for Report {
             decision: report.decision.map(Into::into),
             resolution: report.resolution,
             closed_by: report.closed_by.map(Into::into),
+            target_anonymous: report.target_anonymous,
             target_standing: report.target_standing.map(Into::into),
             target_state: report.target_state.map(Into::into),
         }
@@ -796,6 +871,10 @@ pub enum ModerationLogAction {
     RemoveCommunityCover,
     PinPost,
     UnpinPost,
+    ClosePoll,
+    AnonymousPostsOn,
+    AnonymousPostsOff,
+    RevealAuthor,
     Unknown,
 }
 
@@ -823,6 +902,10 @@ impl From<api::ModerationLogAction> for ModerationLogAction {
             A::RemoveCommunityCover => Self::RemoveCommunityCover,
             A::PinPost => Self::PinPost,
             A::UnpinPost => Self::UnpinPost,
+            A::ClosePoll => Self::ClosePoll,
+            A::AnonymousPostsOn => Self::AnonymousPostsOn,
+            A::AnonymousPostsOff => Self::AnonymousPostsOff,
+            A::RevealAuthor => Self::RevealAuthor,
             A::Unknown => Self::Unknown,
         }
     }
@@ -1478,6 +1561,89 @@ impl CoreClient {
             .into())
     }
 
+    /// `create_post` with the options of 0090 and 0091. `anonymous` posts
+    /// without this account's name and waits for a moderator; `Refused`
+    /// with 409 `anonymous_off` where the community does not allow it.
+    /// `poll` makes it a poll: `body` is the question, with two to six
+    /// distinct options and no image, else `Invalid`.
+    #[uniffi::method(default(media = [], anonymous = false, poll = None))]
+    pub fn create_post_with(
+        &self,
+        community_id: String,
+        body: String,
+        media: Vec<String>,
+        anonymous: bool,
+        poll: Option<Vec<String>>,
+    ) -> Result<Post, CoreError> {
+        Ok(self
+            .client()?
+            .create_post_with(&community_id, &body, &media, anonymous, poll.as_deref())?
+            .into())
+    }
+
+    /// Votes in a poll, or changes the vote; `Refused` with 409
+    /// `poll_closed` once it is closed (0090). The post as it now reads.
+    pub fn vote_poll(&self, post_id: String, option_id: String) -> Result<Post, CoreError> {
+        Ok(self.client()?.vote_poll(&post_id, &option_id)?.into())
+    }
+
+    /// Takes this account's vote back; no error when it had none.
+    pub fn withdraw_vote(&self, post_id: String) -> Result<Post, CoreError> {
+        Ok(self.client()?.withdraw_vote(&post_id)?.into())
+    }
+
+    /// Closes a poll; its author, the community's owner or a moderator may.
+    pub fn close_poll(&self, post_id: String) -> Result<Post, CoreError> {
+        Ok(self.client()?.close_poll(&post_id)?.into())
+    }
+
+    /// Lets members of a community post without their name (0091), or
+    /// stops it; only its owner may.
+    pub fn set_anonymous_posts(
+        &self,
+        community_id: String,
+        on: bool,
+    ) -> Result<Community, CoreError> {
+        Ok(self
+            .client()?
+            .set_anonymous_posts(&community_id, on)?
+            .into())
+    }
+
+    /// The anonymous posts waiting for approval, newest first (0091); a
+    /// moderator's. `before` is the `next` of the page before. At most 50 a
+    /// page.
+    pub fn pending_anonymous_posts(
+        &self,
+        community_id: String,
+        before: Option<String>,
+        limit: u32,
+    ) -> Result<PostPage, CoreError> {
+        let page =
+            self.client()?
+                .pending_anonymous_posts(&community_id, before.as_deref(), limit)?;
+        Ok(PostPage {
+            posts: page.posts.into_iter().map(Into::into).collect(),
+            next: page.next,
+        })
+    }
+
+    /// Publishes an anonymous post, still without its author; a moderator's.
+    pub fn approve_anonymous_post(&self, post_id: String) -> Result<(), CoreError> {
+        Ok(self.client()?.approve_anonymous_post(&post_id)?)
+    }
+
+    /// Deletes an anonymous post and tells its author; a moderator's.
+    pub fn decline_anonymous_post(&self, post_id: String) -> Result<(), CoreError> {
+        Ok(self.client()?.decline_anonymous_post(&post_id)?)
+    }
+
+    /// Who wrote an anonymous post; a moderator's. The moderation log
+    /// records who asked, never whom (0091).
+    pub fn reveal_author(&self, post_id: String) -> Result<Author, CoreError> {
+        Ok(self.client()?.reveal_author(&post_id)?.into())
+    }
+
     /// Uploads the image at `path` for a post in the community (0065): a
     /// JPEG, PNG, WebP, GIF or AVIF of at most 10 MB, which the server
     /// re-encodes to WebP. Its `media_id` goes in `create_post` within a day.
@@ -1528,8 +1694,8 @@ impl CoreClient {
         Ok(self.client()?.unlike_comment(&comment_id)?)
     }
 
-    /// Pins a post to the top of its community, replacing the pinned one
-    /// (0080); a moderator's.
+    /// Features a post (0080, 0088); a moderator's. `Refused` with 409
+    /// `pin_limit` when three are featured already: release one first.
     pub fn pin_post(&self, community_id: String, post_id: String) -> Result<(), CoreError> {
         Ok(self.client()?.pin_post(&community_id, &post_id)?)
     }

@@ -690,6 +690,18 @@ pub struct Community {
     /// The caller pinned it to the top of its list (0080).
     #[serde(default)]
     pub pinned: bool,
+    /// Members may post without their name, for a moderator's approval
+    /// (0091); off from a server that does not know.
+    #[serde(default)]
+    pub anonymous_posts: bool,
+    /// Anonymous posts that wait for approval (0091); 0 unless the caller
+    /// moderates.
+    #[serde(default)]
+    pub pending_anonymous: u64,
+    /// The posts its moderators feature, up to three, newest pin first
+    /// (0088); filled by `getCommunity` only.
+    #[serde(default)]
+    pub featured: Vec<Post>,
 }
 
 /// A page of `listCommunities`, and the cursor of the next, none on the last.
@@ -766,6 +778,9 @@ pub struct CommunityUpdate<'a> {
     pub description: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub audience: Option<Audience>,
+    /// Lets members post without their name (0091).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub anonymous_posts: Option<bool>,
 }
 
 /// An image of a post, re-encoded by the server to WebP.
@@ -796,10 +811,13 @@ pub struct ReactionCount {
 
 /// Whether a moderator hid or removed a post or a comment; only a
 /// moderator is shown one that is not visible.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ModerationState {
     Visible,
+    /// An anonymous post waiting for a moderator's approval (0091); only
+    /// its author and the moderators see it.
+    Pending,
     Hidden,
     Removed,
 }
@@ -809,7 +827,14 @@ pub enum ModerationState {
 pub struct Post {
     pub post_id: String,
     pub community_id: String,
-    pub author: Author,
+    /// None on an anonymous post to every reader but its author (0091).
+    pub author: Option<Author>,
+    /// The post is anonymous (0091).
+    #[serde(default)]
+    pub anonymous: bool,
+    /// The caller wrote it (0091).
+    #[serde(default)]
+    pub mine: bool,
     pub body: String,
     pub media: Vec<SocialMedia>,
     /// Unix milliseconds.
@@ -826,6 +851,32 @@ pub struct Post {
     /// post of the community's first page.
     #[serde(default)]
     pub pinned: bool,
+    /// Present when the post is a poll (0090).
+    #[serde(default)]
+    pub poll: Option<Poll>,
+}
+
+/// A poll's options and counts (0090). No field says who voted or how.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Poll {
+    pub options: Vec<PollOption>,
+    /// How many votes the poll has, always shown.
+    pub total: u64,
+    /// The option the caller voted for.
+    pub mine: Option<String>,
+    /// It takes no more votes, and shows its results to every reader.
+    pub closed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PollOption {
+    pub option_id: String,
+    pub text: String,
+    /// None while the caller has not voted, unless they see results at once
+    /// (the author, the moderators, any reader of a closed poll).
+    pub votes: Option<u64>,
 }
 
 /// A page of a community's posts, newest first, and the cursor of the next,
@@ -1006,6 +1057,10 @@ pub struct Report {
     /// Who closed it; none while open, when the community's deletion did,
     /// or once that account is deleted.
     pub closed_by: Option<Author>,
+    /// The reported post is anonymous (0091): `target_account` and
+    /// `target_standing` are none, and a moderator may reveal the author.
+    #[serde(default)]
+    pub target_anonymous: bool,
     /// The reported account's standing in the community now.
     pub target_standing: Option<TargetStanding>,
     /// The reported content's state now.
@@ -1076,6 +1131,10 @@ pub enum ModerationLogAction {
     RemoveCommunityCover,
     PinPost,
     UnpinPost,
+    ClosePoll,
+    AnonymousPostsOn,
+    AnonymousPostsOff,
+    RevealAuthor,
     #[serde(other)]
     Unknown,
 }
@@ -2005,6 +2064,25 @@ impl<T: Transport + ?Sized> Api<'_, T> {
             name,
             description,
             audience,
+            anonymous_posts: None,
+        };
+        self.call(
+            Method::Patch,
+            format!("/v1/communities/{community}"),
+            Self::json(&body),
+            "updateCommunity",
+        )
+    }
+
+    /// `updateCommunity` with `anonymousPosts` (0091): lets members post
+    /// without their name, each post waiting for a moderator's approval;
+    /// only its owner may.
+    pub fn set_anonymous_posts(&self, community: &str, on: bool) -> Result<Community, ApiError> {
+        let body = CommunityUpdate {
+            name: None,
+            description: None,
+            audience: None,
+            anonymous_posts: Some(on),
         };
         self.call(
             Method::Patch,
@@ -2270,6 +2348,94 @@ impl<T: Transport + ?Sized> Api<'_, T> {
         )
     }
 
+    /// `createPost` with the options of 0090 and 0091: `anonymous` waits for a
+    /// moderator's approval, and `poll` (two to six options, `body` the
+    /// question) makes it a poll.
+    pub fn create_post_with(
+        &self,
+        community: &str,
+        body: &str,
+        media: &[String],
+        anonymous: bool,
+        poll: Option<&[String]>,
+    ) -> Result<Post, ApiError> {
+        let mut json = serde_json::json!({ "body": body, "media": media, "anonymous": anonymous });
+        if let Some(options) = poll {
+            json["poll"] = serde_json::json!({ "options": options });
+        }
+        self.call(
+            Method::Post,
+            format!("/v1/communities/{community}/posts"),
+            Self::json(&json),
+            "createPost",
+        )
+    }
+
+    /// `votePoll` (0090): the caller's vote, or a changed one. The post.
+    pub fn vote_poll(&self, post: &str, option: &str) -> Result<Post, ApiError> {
+        let body = serde_json::json!({ "optionId": option });
+        self.call(
+            Method::Put,
+            format!("/v1/posts/{post}/vote"),
+            Self::json(&body),
+            "votePoll",
+        )
+    }
+
+    /// `withdrawVote`: no change when there was no vote. The post.
+    pub fn withdraw_vote(&self, post: &str) -> Result<Post, ApiError> {
+        self.call(
+            Method::Delete,
+            format!("/v1/posts/{post}/vote"),
+            None,
+            "withdrawVote",
+        )
+    }
+
+    /// `closePoll`: its author's, or a moderator's. The post, closed.
+    pub fn close_poll(&self, post: &str) -> Result<Post, ApiError> {
+        self.call(
+            Method::Post,
+            format!("/v1/posts/{post}/poll/close"),
+            None,
+            "closePoll",
+        )
+    }
+
+    /// `listPendingAnonymousPosts` (0091): a moderator's queue, newest
+    /// first.
+    pub fn pending_anonymous_posts(
+        &self,
+        community: &str,
+        before: Option<&str>,
+        limit: u32,
+    ) -> Result<PostPage, ApiError> {
+        let limit = limit.to_string();
+        let params = [("before", before), ("limit", Some(limit.as_str()))];
+        let path = with_query(&format!("/v1/communities/{community}/anonymous"), &params);
+        self.call(Method::Get, path, None, "listPendingAnonymousPosts")
+    }
+
+    /// `approveAnonymousPost`: publishes it, still without its author.
+    pub fn approve_anonymous_post(&self, post: &str) -> Result<(), ApiError> {
+        self.done(Method::Post, format!("/v1/posts/{post}/approve"), None)
+    }
+
+    /// `declineAnonymousPost`: deletes it and tells its author.
+    pub fn decline_anonymous_post(&self, post: &str) -> Result<(), ApiError> {
+        self.done(Method::Post, format!("/v1/posts/{post}/decline"), None)
+    }
+
+    /// `revealAuthor`: a moderator's; the moderation log records who asked.
+    pub fn reveal_author(&self, post: &str) -> Result<Author, ApiError> {
+        self.call(
+            Method::Post,
+            format!("/v1/posts/{post}/reveal"),
+            None,
+            "revealAuthor",
+        )
+    }
+
     /// `getPost`.
     pub fn post(&self, post: &str) -> Result<Post, ApiError> {
         self.call(Method::Get, format!("/v1/posts/{post}"), None, "getPost")
@@ -2302,7 +2468,8 @@ impl<T: Transport + ?Sized> Api<'_, T> {
         self.done(Method::Delete, format!("/v1/comments/{comment}/like"), None)
     }
 
-    /// `pinPost` (0080): the community's one pinned post; a moderator's.
+    /// `pinPost` (0080, 0088): features a post, a moderator's; 409
+    /// `pin_limit` when three are featured already.
     pub fn pin_post(&self, community: &str, post: &str) -> Result<(), ApiError> {
         let path = format!("/v1/communities/{community}/posts/{post}/pin");
         self.done(Method::Put, path, None)
@@ -2624,6 +2791,15 @@ mod tests {
             names(&reactions)
         );
         assert_eq!(
+            listed("/Post/properties/state/enum"),
+            names(&[
+                ModerationState::Visible,
+                ModerationState::Pending,
+                ModerationState::Hidden,
+                ModerationState::Removed
+            ])
+        );
+        assert_eq!(
             listed("/ReportTarget/properties/kind/enum"),
             names(&[
                 TargetKind::Post,
@@ -2655,7 +2831,7 @@ mod tests {
         // a platform moderator's closing of a report; each contract value
         // reads as itself rather than as `Unknown`.
         let logged = listed("/ModerationLogEntry/properties/action/enum");
-        assert_eq!(logged.len(), 20);
+        assert_eq!(logged.len(), 24);
         assert!(logged.iter().all(|value| {
             serde_json::from_value::<ModerationLogAction>(value.clone())
                 .is_ok_and(|action| action != ModerationLogAction::Unknown)
@@ -2666,6 +2842,70 @@ mod tests {
             serde_json::from_value::<LogTargetKind>(value.clone())
                 .is_ok_and(|kind| kind != LogTargetKind::Unknown)
         }));
+    }
+
+    /// Every route and field of 0088, 0090 and 0091 the core uses exists in
+    /// the contract under the method and path the core sends, so a rename
+    /// there stops this test rather than a screen.
+    #[test]
+    fn the_polls_features_and_anonymous_posts_are_the_contracts() {
+        let contract: serde_json::Value =
+            serde_json::from_str(include_str!("../../../api/openapi.json")).unwrap();
+        for (operation, method, path) in [
+            ("votePoll", "put", "/v1/posts/{postId}/vote"),
+            ("withdrawVote", "delete", "/v1/posts/{postId}/vote"),
+            ("closePoll", "post", "/v1/posts/{postId}/poll/close"),
+            ("createPost", "post", "/v1/communities/{communityId}/posts"),
+            ("updateCommunity", "patch", "/v1/communities/{communityId}"),
+            (
+                "listPendingAnonymousPosts",
+                "get",
+                "/v1/communities/{communityId}/anonymous",
+            ),
+            ("approveAnonymousPost", "post", "/v1/posts/{postId}/approve"),
+            ("declineAnonymousPost", "post", "/v1/posts/{postId}/decline"),
+            ("revealAuthor", "post", "/v1/posts/{postId}/reveal"),
+            (
+                "pinPost",
+                "put",
+                "/v1/communities/{communityId}/posts/{postId}/pin",
+            ),
+        ] {
+            assert_eq!(
+                contract["paths"][path][method]["operationId"], operation,
+                "{method} {path}"
+            );
+        }
+        let properties = |schema: &str| -> Vec<String> {
+            contract["components"]["schemas"][schema]["properties"]
+                .as_object()
+                .unwrap_or_else(|| panic!("{schema}"))
+                .keys()
+                .cloned()
+                .collect()
+        };
+        for (schema, fields) in [
+            ("Post", &["anonymous", "mine", "poll", "author"][..]),
+            ("Poll", &["options", "total", "mine", "closed"]),
+            (
+                "Community",
+                &["featured", "anonymousPosts", "pendingAnonymous"],
+            ),
+            ("Report", &["targetAnonymous"]),
+        ] {
+            let found = properties(schema);
+            for field in fields {
+                assert!(found.iter().any(|f| f == field), "{schema}.{field}");
+            }
+        }
+        // A pin refused at three is the 409 the core documents.
+        let pin = &contract["paths"]["/v1/communities/{communityId}/posts/{postId}/pin"]["put"];
+        assert!(
+            pin["responses"]["409"]["description"]
+                .as_str()
+                .unwrap()
+                .starts_with("pin_limit")
+        );
     }
 
     /// Every platform the contract names, `api/openapi.json` being generated

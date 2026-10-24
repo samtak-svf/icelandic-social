@@ -847,13 +847,13 @@ fn the_social_calls_cross_the_exported_api() {
     assert_eq!(page.next.as_deref(), Some("2"));
     assert_eq!(
         post.author,
-        Author {
+        Some(Author {
             account_id: "a".into(),
             name: None,
             verified: false,
             photo: None,
             role: None,
-        }
+        })
     );
     assert_eq!(
         post.reactions,
