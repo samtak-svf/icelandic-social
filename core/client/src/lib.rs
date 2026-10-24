@@ -24,6 +24,7 @@ mod block;
 mod clock;
 mod directory;
 mod forward;
+pub mod frames;
 mod history;
 mod link;
 mod media;
@@ -111,6 +112,10 @@ pub enum ClientError {
     /// can be left (0078).
     #[error("not a group")]
     NotAGroup,
+    /// The image was stored before masters were kept (0086), so it cannot be
+    /// framed again; the person uploads it once more.
+    #[error("the image has no master to frame; upload it again")]
+    NoMaster,
 }
 
 /// Where a conversation stands for this device.
@@ -1392,6 +1397,7 @@ impl<T: Transport> Client<T> {
                     name: me.name,
                     verified: me.verified,
                     photo: me.photo,
+                    photo_frames: None,
                 })
             } else {
                 api.profile(&account)

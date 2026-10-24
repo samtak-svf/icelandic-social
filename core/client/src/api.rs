@@ -6,6 +6,8 @@ use base64::Engine as _;
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use std::path::Path;
 
+use crate::frames::{Frame, Framing};
+
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -437,6 +439,7 @@ pub struct Inviter {
 /// Another account's name, mark and photo version, as `getAccount` shows
 /// them (0034, 0039).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Profile {
     pub name: Option<String>,
     pub verified: bool,
@@ -444,6 +447,10 @@ pub struct Profile {
     /// a block stands between the two.
     #[serde(default)]
     pub photo: Option<String>,
+    /// How the photo is framed (0086); none without a photo, or for one
+    /// stored before frames. Not kept on this device: `photo_framing` asks.
+    #[serde(default)]
+    pub photo_frames: Option<Framing>,
 }
 
 /// An account this account blocked, as `listBlocks` shows it.
@@ -531,6 +538,12 @@ pub enum Piece {
     Whole,
     /// 416: the range starts at or past the end; nothing was written.
     Past,
+}
+
+/// The query that picks a frame (0086); empty for the one an app from before
+/// it knows.
+fn frame_query(frame: Option<Frame>) -> String {
+    frame.map_or_else(String::new, |f| format!("?frame={}", f.name()))
 }
 
 /// `setCommunityAvatar`'s and `setCommunityCover`'s answer: the new version (0080).
@@ -659,6 +672,14 @@ pub struct Community {
     /// The cover's version (0080); none when it has no cover.
     #[serde(default)]
     pub cover: Option<String>,
+    /// How the picture is framed (0086); none without a picture or for one
+    /// stored before frames.
+    #[serde(default)]
+    pub photo_frames: Option<Framing>,
+    /// How the cover is framed, with the rectangle of each size class set by
+    /// hand (0086); none without a cover or for one stored before frames.
+    #[serde(default)]
+    pub cover_frames: Option<Framing>,
     /// Posts made since the caller last opened the feed (0080); 0 from a
     /// server that does not count.
     #[serde(default)]
@@ -1784,31 +1805,63 @@ impl<T: Transport + ?Sized> Api<'_, T> {
             .map(drop)
     }
 
+    /// `setPhotoFrames` (0086): frames this account's photo again from its
+    /// master. The new version; 409 `no_master` for a photo stored before
+    /// masters were kept.
+    pub fn set_photo_frames(&self, framing: &Framing) -> Result<String, ApiError> {
+        let set: PhotoSet = self.call(
+            Method::Patch,
+            "/v1/me/photo/frames".into(),
+            Self::json(framing),
+            "setPhotoFrames",
+        )?;
+        Ok(set.photo)
+    }
+
+    /// `getPhotoSource` (0086): this account's photo master, a WebP, written
+    /// to `to`, for the editor. 404 when it has no photo; a photo stored before
+    /// masters were kept has none either.
+    pub fn get_photo_source(&self, to: &Path) -> Result<(), ApiError> {
+        let request = self.request(Method::Get, "/v1/me/photo/source".into(), None);
+        Self::checked(self.transport.download(request, to)?).map(drop)
+    }
+
     /// `getPhoto`: the account's photo, a WebP, written to `to`. 404 when it
     /// has none, or a block stands between the two.
-    pub fn get_photo(&self, account: &str, to: &Path) -> Result<(), ApiError> {
-        let request = self.request(Method::Get, format!("/v1/accounts/{account}/photo"), None);
+    pub fn get_photo(
+        &self,
+        account: &str,
+        frame: Option<Frame>,
+        to: &Path,
+    ) -> Result<(), ApiError> {
+        let path = format!("/v1/accounts/{account}/photo{}", frame_query(frame));
+        let request = self.request(Method::Get, path, None);
         Self::checked(self.transport.download(request, to)?).map(drop)
     }
 
     /// `getCommunityAvatar`: the community's picture, a WebP, written to
-    /// `to`. 404 when it has none, or the reader may not see it (0080).
-    pub fn get_community_avatar(&self, community: &str, to: &Path) -> Result<(), ApiError> {
-        let request = self.request(
-            Method::Get,
-            format!("/v1/communities/{community}/avatar"),
-            None,
-        );
+    /// `to`; `frame` is the one asked for (0086), none for the one an app
+    /// from before it knows. 404 when it has none, or the reader may not see it (0080).
+    pub fn get_community_avatar(
+        &self,
+        community: &str,
+        frame: Option<Frame>,
+        to: &Path,
+    ) -> Result<(), ApiError> {
+        let path = format!("/v1/communities/{community}/avatar{}", frame_query(frame));
+        let request = self.request(Method::Get, path, None);
         Self::checked(self.transport.download(request, to)?).map(drop)
     }
 
     /// `getCommunityCover`: the community's cover, as `get_community_avatar`.
-    pub fn get_community_cover(&self, community: &str, to: &Path) -> Result<(), ApiError> {
-        let request = self.request(
-            Method::Get,
-            format!("/v1/communities/{community}/cover"),
-            None,
-        );
+    pub fn get_community_cover(
+        &self,
+        community: &str,
+        frame: Option<Frame>,
+        to: &Path,
+    ) -> Result<(), ApiError> {
+        let path = format!("/v1/communities/{community}/cover{}", frame_query(frame));
+        let request = self.request(Method::Get, path, None);
         Self::checked(self.transport.download(request, to)?).map(drop)
     }
 
@@ -1985,6 +2038,61 @@ impl<T: Transport + ?Sized> Api<'_, T> {
     /// server to a 512 px square WebP. Its owner or a moderator (0080).
     pub fn set_community_avatar(&self, community: &str, file: &Path) -> Result<String, ApiError> {
         self.set_community_image(community, "avatar", file, "setCommunityAvatar")
+    }
+
+    /// `setCommunityAvatarFrames` and `setCommunityCoverFrames` (0086): frames
+    /// the image again from its master; `kind` is `avatar` or `cover`. The new
+    /// version; 409 `no_master` for an image stored before masters were kept.
+    fn set_community_frames(
+        &self,
+        community: &str,
+        kind: &str,
+        framing: &Framing,
+        what: &'static str,
+    ) -> Result<String, ApiError> {
+        let set: ImageSet = self.call(
+            Method::Patch,
+            format!("/v1/communities/{community}/{kind}/frames"),
+            Self::json(framing),
+            what,
+        )?;
+        Ok(set.version)
+    }
+
+    /// `setCommunityAvatarFrames`: see `set_community_frames`.
+    pub fn set_community_avatar_frames(
+        &self,
+        community: &str,
+        framing: &Framing,
+    ) -> Result<String, ApiError> {
+        self.set_community_frames(community, "avatar", framing, "setCommunityAvatarFrames")
+    }
+
+    /// `setCommunityCoverFrames`: see `set_community_frames`.
+    pub fn set_community_cover_frames(
+        &self,
+        community: &str,
+        framing: &Framing,
+    ) -> Result<String, ApiError> {
+        self.set_community_frames(community, "cover", framing, "setCommunityCoverFrames")
+    }
+
+    /// `getCommunityAvatarSource` and `getCommunityCoverSource` (0086): the
+    /// master of the picture (`cover` false) or the cover, a WebP, written to
+    /// `to`, for the editor. 404 when it has none or is older than masters.
+    pub fn get_community_source(
+        &self,
+        community: &str,
+        cover: bool,
+        to: &Path,
+    ) -> Result<(), ApiError> {
+        let kind = if cover { "cover" } else { "avatar" };
+        let request = self.request(
+            Method::Get,
+            format!("/v1/communities/{community}/{kind}/source"),
+            None,
+        );
+        Self::checked(self.transport.download(request, to)?).map(drop)
     }
 
     /// `removeCommunityAvatar`: no error when there was none.

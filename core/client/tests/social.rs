@@ -22,6 +22,7 @@ use spjall_client::api::{
     ReportDecision, ReportReason, ReportState, Request, Response, Role, SocialMedia, Target,
     TargetKind, TargetStanding, TargetState, Transport, Unreachable,
 };
+use spjall_client::frames::{Focus, Frame, FrameRect, Framing};
 use spjall_client::{Client, ClientError};
 use tempfile::TempDir;
 
@@ -1458,4 +1459,181 @@ fn a_comment_carries_one_image() {
             .media
             .is_empty()
     );
+}
+
+#[test]
+fn a_cover_is_framed_again_from_its_master_and_the_old_frames_go() {
+    let mut phone = Phone::signed_in();
+    // Each frame is fetched under its own name and kept in a folder of its own.
+    phone.answer(200, Value::Null);
+    let compact = phone
+        .client
+        .community_cover_framed("cm_1", "ph_one", Frame::Compact)
+        .unwrap()
+        .unwrap();
+    phone.answer(200, Value::Null);
+    let medium = phone
+        .client
+        .community_cover_framed("cm_1", "ph_one", Frame::Medium)
+        .unwrap()
+        .unwrap();
+    assert!(compact.ends_with("communities/cm_1/cover/compact/ph_one.webp"));
+    assert!(medium.ends_with("communities/cm_1/cover/medium/ph_one.webp"));
+    assert!(
+        compact.exists() && medium.exists(),
+        "frames do not overwrite each other"
+    );
+    // A kept frame asks nothing; a new version replaces only its own frame's file.
+    assert_eq!(
+        phone
+            .client
+            .community_cover_framed("cm_1", "ph_one", Frame::Compact)
+            .unwrap(),
+        Some(compact.clone())
+    );
+    phone.answer(200, Value::Null);
+    let newer = phone
+        .client
+        .community_cover_framed("cm_1", "ph_two", Frame::Compact)
+        .unwrap()
+        .unwrap();
+    assert!(!compact.exists() && newer.exists() && medium.exists());
+
+    // Re-framing returns the new version and forgets every frame kept.
+    let mut framing = Framing::centred();
+    framing.focus = Focus { x: 0.25, y: 0.75 };
+    framing.overrides.insert(
+        Frame::Compact,
+        FrameRect {
+            x: 0.0,
+            y: 0.5,
+            w: 0.5,
+            h: 0.25,
+        },
+    );
+    phone.answer(200, json!({ "version": "ph_three" }));
+    assert_eq!(
+        phone
+            .client
+            .set_community_cover_framing("cm_1", &framing)
+            .unwrap(),
+        "ph_three"
+    );
+    assert!(!newer.exists() && !medium.exists());
+
+    let sent = phone.sent();
+    assert_eq!(
+        sent.iter()
+            .map(|(m, p, _)| (*m, p.as_str()))
+            .collect::<Vec<_>>(),
+        [
+            (Method::Get, "/v1/communities/cm_1/cover?frame=compact"),
+            (Method::Get, "/v1/communities/cm_1/cover?frame=medium"),
+            (Method::Get, "/v1/communities/cm_1/cover?frame=compact"),
+            (Method::Patch, "/v1/communities/cm_1/cover/frames"),
+        ]
+    );
+    assert_eq!(
+        sent[3].2,
+        json!({
+            "focus": { "x": 0.25, "y": 0.75 },
+            "overrides": { "compact": { "x": 0.0, "y": 0.5, "w": 0.5, "h": 0.25 } }
+        })
+    );
+}
+
+#[test]
+fn a_picture_without_a_master_is_its_own_error() {
+    let mut phone = Phone::signed_in();
+    phone.answer(409, json!({ "error": "no_master", "requestId": "r" }));
+    assert!(matches!(
+        phone
+            .client
+            .set_community_picture_framing("cm_1", &Framing::centred()),
+        Err(ClientError::NoMaster)
+    ));
+    // Any other 409 stays a refusal, and a bad framing never leaves the device.
+    phone.answer(409, json!({ "error": "conflict" }));
+    assert!(matches!(
+        phone
+            .client
+            .set_community_picture_framing("cm_1", &Framing::centred()),
+        Err(ClientError::Transport(ApiError::Refused {
+            status: 409,
+            ..
+        }))
+    ));
+    let mut wrong = Framing::centred();
+    wrong.overrides.insert(
+        Frame::Compact,
+        FrameRect {
+            x: 0.0,
+            y: 0.0,
+            w: 1.0,
+            h: 1.0,
+        },
+    );
+    assert!(matches!(
+        phone.client.set_community_picture_framing("cm_1", &wrong),
+        Err(ClientError::Invalid(_))
+    ));
+    assert!(matches!(
+        phone
+            .client
+            .community_picture_framed("cm_1", "ph_one", Frame::Medium),
+        Err(ClientError::Invalid(_))
+    ));
+    assert_eq!(phone.sent().len(), 2);
+}
+
+#[test]
+fn the_master_is_written_where_the_app_says_and_a_404_is_false() {
+    let mut phone = Phone::signed_in();
+    let dir = tempfile::tempdir().unwrap();
+    let to = dir.path().join("source.webp");
+    phone.answer(200, Value::Null);
+    assert!(phone.client.community_cover_source("cm_1", &to).unwrap());
+    assert_eq!(std::fs::read(&to).unwrap(), IMAGE);
+    let missing = dir.path().join("missing.webp");
+    phone.answer(404, json!({ "error": "not_found" }));
+    assert!(
+        !phone
+            .client
+            .community_picture_source("cm_1", &missing)
+            .unwrap()
+    );
+    assert!(!missing.exists() && !missing.with_extension("part").exists());
+    assert_eq!(
+        phone
+            .sent()
+            .into_iter()
+            .map(|(m, p, _)| (m, p))
+            .collect::<Vec<_>>(),
+        [
+            (Method::Get, "/v1/communities/cm_1/cover/source".to_string()),
+            (
+                Method::Get,
+                "/v1/communities/cm_1/avatar/source".to_string()
+            ),
+        ]
+    );
+}
+
+#[test]
+fn a_community_carries_the_framing_it_was_stored_with() {
+    let community: spjall_client::api::Community = serde_json::from_value(json!({
+        "communityId": "cm_1", "name": "n", "description": "", "audience": "open",
+        "createdAt": 1, "memberCount": 1, "role": null, "joinRequested": false, "invited": false,
+        "mutedUntil": null, "readOnly": false, "deletedAt": null, "joinDeclinedUntil": null,
+        "pendingJoinRequests": null, "openReports": null, "photo": "ph", "cover": "cv",
+        "photoFrames": { "focus": { "x": 0.5, "y": 0.5 } },
+        "coverFrames": { "focus": { "x": 0.1, "y": 0.2 },
+            "overrides": { "medium": { "x": 0.0, "y": 0.0, "w": 1.0, "h": 0.25 } } },
+        "unread": 0, "lastPostAt": null, "pinned": false
+    }))
+    .unwrap();
+    assert_eq!(community.photo_frames, Some(Framing::centred()));
+    let cover = community.cover_frames.unwrap();
+    assert_eq!(cover.focus, Focus { x: 0.1, y: 0.2 });
+    assert_eq!(cover.overrides.len(), 1);
 }

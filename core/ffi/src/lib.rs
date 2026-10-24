@@ -12,6 +12,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use spjall_envelope as envelope;
 
 pub mod client;
+pub mod frames;
 pub mod social;
 
 uniffi::setup_scaffolding!();
@@ -97,6 +98,10 @@ pub enum CoreError {
     /// Only a group is named or left; a conversation of two is not (0078).
     #[error("not a group")]
     NotAGroup,
+    /// The image was stored before masters were kept (0086), so it cannot be
+    /// framed again; the app asks the person to upload it once more.
+    #[error("the image has no master to frame; upload it again")]
+    NoMaster,
 }
 
 /// Why a message cannot be forwarded (0041).
@@ -468,6 +473,7 @@ impl CoreError {
             Self::LinkAlreadyApproved => "link/already-approved".into(),
             Self::NameInvalid => "group/name-invalid".into(),
             Self::NotAGroup => "group/not-a-group".into(),
+            Self::NoMaster => "image/no-master".into(),
         })
     }
 }
