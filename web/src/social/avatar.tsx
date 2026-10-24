@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { call } from "../api/call.ts";
 import { strings } from "../generated/brand/strings.ts";
 
@@ -40,15 +40,20 @@ const TEMPLATE = {
 // shares one.
 const fetched = new Map<string, Promise<string | null>>();
 
-function pictureUrl(kind: PictureKind, id: string, version: string): Promise<string | null> {
-  const key = `${kind}:${id}:${version}`;
+function pictureUrl(
+  kind: PictureKind,
+  id: string,
+  version: string,
+  frame?: CoverFrame,
+): Promise<string | null> {
+  const key = `${kind}:${id}:${version}:${frame ?? ""}`;
   let pending = fetched.get(key);
   if (pending === undefined) {
     const path: Record<string, string> =
       kind === "person" ? { accountId: id } : { communityId: id };
     pending = call<{ status: number; data: unknown }>("GET", TEMPLATE[kind], {
       path,
-      query: { v: version },
+      query: { v: version, frame },
     })
       .then((answer) =>
         answer.status === 200 && answer.data instanceof Blob
@@ -104,32 +109,67 @@ export function Avatar({
   );
 }
 
-/** A community's wide cover, or nothing while it has none or has not come. */
+/** The cover's frames, one for each window size class (decision 0086). */
+type CoverFrame = "compact" | "medium" | "expanded";
+
+/** The frame for a window width: compact below 600, medium to below 840, expanded from 840. */
+const MEDIUM = "(min-width: 600px)";
+const EXPANDED = "(min-width: 840px)";
+
+function currentFrame(): CoverFrame {
+  if (typeof window === "undefined") return "expanded";
+  if (window.matchMedia(EXPANDED).matches) return "expanded";
+  return window.matchMedia(MEDIUM).matches ? "medium" : "compact";
+}
+
+function onSizeClass(changed: () => void): () => void {
+  const queries = [MEDIUM, EXPANDED].map((query) => window.matchMedia(query));
+  for (const query of queries) query.addEventListener("change", changed);
+  return () => {
+    for (const query of queries) query.removeEventListener("change", changed);
+  };
+}
+
+/** The cover frame of the window's current size class; it follows a resize or rotation. */
+function useCoverFrame(): CoverFrame {
+  return useSyncExternalStore(onSizeClass, currentFrame, () => "expanded");
+}
+
+/** The cover's box takes the shape of the frame shown, so no frame is cut again by a fixed height. */
+const COVER_BOX = "aspect-[3/1] min-[600px]:aspect-[4/1] min-[840px]:aspect-[8/3]";
+
+/**
+ * A community's cover, or nothing while it has none or has not come. Only
+ * the frame of the window's size class is fetched (the API needs the client
+ * header, so a <picture> of plain URLs cannot be used); an image with no
+ * master serves its one object for every frame, which the box then crops.
+ */
 export function Cover({
   communityId,
   version,
   className = "",
 }: Readonly<{ communityId: string; version: string | null; className?: string }>) {
+  const frame = useCoverFrame();
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
-    setSrc(null);
-    if (version !== null) {
-      void pictureUrl("cover", communityId, version).then((url) => {
+    if (version === null) setSrc(null);
+    else {
+      void pictureUrl("cover", communityId, version, frame).then((url) => {
         if (live) setSrc(url);
       });
     }
     return () => {
       live = false;
     };
-  }, [communityId, version]);
+  }, [communityId, version, frame]);
   if (src === null) return null;
   return (
     <img
       src={src}
       alt=""
       aria-hidden="true"
-      className={`aspect-[8/3] w-full bg-muted object-cover ${className}`}
+      className={`${COVER_BOX} w-full bg-muted object-cover ${className}`}
     />
   );
 }

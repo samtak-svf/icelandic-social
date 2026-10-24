@@ -65,11 +65,15 @@ test("sets, changes and removes the photo on Ég", async ({ page }) => {
   await expect(photo).toHaveCount(0);
 
   const file = { name: "mynd.png", mimeType: "image/png", buffer: await png(page) };
+  const sheet = page.getByRole("dialog", { name: strings.image_frames_title });
   await page.getByLabel(strings.photo_choose).setInputFiles(file);
+  await sheet.getByRole("button", { name: strings.save }).click();
   await expect(photo).toBeVisible();
   expect(await photo.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
 
   await page.getByLabel(strings.photo_change).setInputFiles(file);
+  await sheet.getByRole("button", { name: strings.save }).click();
+  await expect(sheet).toHaveCount(0);
   await expect(photo).toBeVisible();
 
   page.once("dialog", (dialog) => void dialog.accept());

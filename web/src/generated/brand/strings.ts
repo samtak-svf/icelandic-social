@@ -617,4 +617,22 @@ export const strings = {
   chat_use_here: "Nota hér",
   /** The store is gone or the device was removed: link again (0064). */
   chat_device_lost: "Vafrinn er ekki lengur tengdur. Tengdu hann aftur með símanum.",
+  /** The crop sheet's title, and the button that opens it on an image already set (docs/decisions/0086). */
+  image_frames_title: "Afmarka mynd",
+  /** Line under the crop sheet's picture, and its accessible name (docs/decisions/0086). */
+  image_frames_hint: "Dragðu til að velja hvað sést",
+  /** Label of the crop sheet's zoom slider (docs/decisions/0086). */
+  image_frames_zoom: "Stækkun",
+  /** Quiet text link in a cover's crop sheet that opens the frame for each screen size; never shown for a picture (docs/decisions/0086). */
+  image_frames_advanced: "Sérsníða fyrir hvern skjá",
+  /** Name of the compact-width cover frame in the advanced panel (docs/decisions/0086). */
+  image_frames_compact: "Sími",
+  /** Name of the medium-width cover frame in the advanced panel (docs/decisions/0086). */
+  image_frames_medium: "Spjaldtölva",
+  /** Name of the expanded-width cover frame in the advanced panel (docs/decisions/0086). */
+  image_frames_expanded: "Tölva",
+  /** Advanced panel button that drops every hand-set frame and places them from the focus again (docs/decisions/0086). */
+  image_frames_reset: "Nota sjálfvirka afmörkun",
+  /** The image has no stored master to frame again, so it must be uploaded again (docs/decisions/0086). */
+  image_frames_no_master: "Settu myndina inn aftur til að breyta afmörkun",
 } as const;

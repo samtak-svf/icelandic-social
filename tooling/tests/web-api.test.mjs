@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readJson, ROOT } from "../lib/repo.mjs";
-import { emit, forWeb, OUTPUT, tsType } from "../web-api.mjs";
+import { emit, emitFrames, forWeb, FRAMES_OUTPUT, OUTPUT, tsType } from "../web-api.mjs";
 
 /**
  * A spec of one operation and the given schemas.
@@ -19,6 +19,16 @@ describe("web-api", () => {
   it("the committed client matches api/openapi.json", () => {
     const committed = readFileSync(join(ROOT, OUTPUT), "utf8");
     expect(emit(readJson("api/openapi.json"))).toBe(committed);
+  });
+
+  it("the web's frame module is the backend's, minus its zod schemas", () => {
+    const source = readFileSync(join(ROOT, "backend/src/api/image-frames.ts"), "utf8");
+    const generated = emitFrames(source);
+    expect(generated).toBe(readFileSync(join(ROOT, FRAMES_OUTPUT), "utf8"));
+    expect(generated).toContain("export function placeFrame(");
+    expect(generated).not.toContain("zod");
+    expect(() => emitFrames("// @web-omit-start\nx")).toThrow(/without an end/);
+    expect(() => emitFrames("// @web-omit-end")).toThrow(/without a start/);
   });
 
   it("goes stale when a schema changes", () => {

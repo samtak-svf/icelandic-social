@@ -1,16 +1,22 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useId, useState, type FormEvent } from "react";
-import type { Problem } from "../problem.ts";
 import { createCommunity } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
+import type { Framing } from "../generated/frames.ts";
+import { useFrameSession } from "./frame-session.tsx";
+import type { SendProblem } from "./frame-send.ts";
+import { ImageProblem } from "./image-problem.tsx";
 import { outcome } from "./outcome.ts";
-import { ImageProblem, PicturePick, sendImage, tooLarge } from "./picture-pick.tsx";
-import { Button, ProblemText, Status } from "../ui/kit.tsx";
+import { PicturePick, sendImage } from "./picture-pick.tsx";
+import { Button } from "../ui/kit.tsx";
 
 // Stofna samfélag (decisions 0063, 0080): the name, the description, the
 // audience and, if wanted, a picture and a cover. The community is made
 // first and the chosen images are sent to it after; one that fails leaves the
 // community made and says so, and Breyta samfélagi is where to try again.
+
+/** An image chosen and framed, held until the community exists to receive it. */
+type Chosen = { name: string; master: Blob; framing: Framing | null };
 
 export function CreateCommunity() {
   const id = useId();
@@ -18,17 +24,20 @@ export function CreateCommunity() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [audience, setAudience] = useState<"open" | "private">("open");
-  const [picture, setPicture] = useState<File | null>(null);
-  const [cover, setCover] = useState<File | null>(null);
+  const [picture, setPicture] = useState<Chosen | null>(null);
+  const [cover, setCover] = useState<Chosen | null>(null);
+  const { sheet, choose } = useFrameSession();
   const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<Problem | "too_large" | "invalid_image" | null>(null);
+  const [problem, setProblem] = useState<SendProblem | null>(null);
 
-  function choose(file: File, set: (file: File) => void) {
-    if (tooLarge(file)) setProblem("too_large");
-    else {
-      setProblem(null);
-      set(file);
-    }
+  async function frame(kind: "photo" | "cover", file: File, set: (chosen: Chosen | null) => void) {
+    setProblem(null);
+    setProblem(
+      await choose(kind, file, (master, framing) => {
+        set({ name: file.name, master, framing });
+        return Promise.resolve(null);
+      }),
+    );
   }
 
   async function create(event: FormEvent) {
@@ -61,7 +70,7 @@ export function CreateCommunity() {
         removeLabel={strings.community_picture_remove}
         chosen={picture?.name ?? null}
         disabled={busy}
-        pick={(file) => choose(file, setPicture)}
+        pick={(file) => void frame("photo", file, setPicture)}
         remove={picture === null ? null : () => setPicture(null)}
       />
       <PicturePick
@@ -69,7 +78,7 @@ export function CreateCommunity() {
         removeLabel={strings.community_cover_remove}
         chosen={cover?.name ?? null}
         disabled={busy}
-        pick={(file) => choose(file, setCover)}
+        pick={(file) => void frame("cover", file, setCover)}
         remove={cover === null ? null : () => setCover(null)}
       />
       <label htmlFor={`${id}-name`}>{strings.community_name}</label>
@@ -111,11 +120,8 @@ export function CreateCommunity() {
       <Button tone="primary" type="submit" disabled={busy || name.trim() === ""}>
         {strings.community_create}
       </Button>
-      {typeof problem === "string" ? (
-        <ImageProblem problem={problem} />
-      ) : (
-        <Status>{problem && <ProblemText problem={problem} />}</Status>
-      )}
+      <ImageProblem problem={problem} />
+      {sheet}
     </form>
   );
 }

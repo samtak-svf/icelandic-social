@@ -1,17 +1,13 @@
 import { useId, useState, type ChangeEvent, type ReactNode } from "react";
-import type { Problem } from "../problem.ts";
-import {
-  removeCommunityAvatar,
-  removeCommunityCover,
-  setCommunityAvatar,
-  setCommunityCover,
-  type Community,
-} from "../generated/api.ts";
+import { removeCommunityAvatar, removeCommunityCover, type Community } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { squarePhoto } from "../photo.ts";
-import { Button, ProblemText, Status } from "../ui/kit.tsx";
+import { Button } from "../ui/kit.tsx";
+import type { Framing } from "../generated/frames.ts";
 import { Avatar, Cover } from "./avatar.tsx";
-import { IMAGE_TYPES, MAX_IMAGE_BYTES } from "./images.ts";
+import { useFrameSession } from "./frame-session.tsx";
+import { putFramed, type SendProblem, type Target } from "./frame-send.ts";
+import { ImageProblem } from "./image-problem.tsx";
+import { IMAGE_TYPES } from "./images.ts";
 import { outcome } from "./outcome.ts";
 
 // The picture and the cover of a community (decision 0080), chosen on the
@@ -71,71 +67,37 @@ export function PicturePick({
   );
 }
 
-/** Why `file` may not be sent as a picture, or null. */
-export function tooLarge(file: { size: number }): boolean {
-  return file.size > MAX_IMAGE_BYTES;
-}
-
-/** Sends a community's picture or cover; the problem, or null when it went. */
-export async function sendImage(
+/** Sends a community's picture or cover, framed; the problem, or null when it went. */
+export function sendImage(
   communityId: string,
   which: "picture" | "cover",
-  file: File,
-): Promise<Problem | "too_large" | "invalid_image" | null> {
-  if (tooLarge(file)) return "too_large";
-  const path = { communityId };
-  let sent;
-  if (which === "picture") {
-    let body: Blob;
-    try {
-      body = await squarePhoto(file);
-    } catch {
-      return "invalid_image";
-    }
-    sent = await outcome(setCommunityAvatar({ path, body }), 200);
-  } else {
-    sent = await outcome(setCommunityCover({ path, body: file }), 200);
-  }
-  if (sent.ok) return null;
-  if (sent.status === 400) return "invalid_image";
-  if (sent.status === 413) return "too_large";
-  return sent.problem;
+  chosen: Readonly<{ master: Blob; framing: Framing | null }>,
+): Promise<SendProblem | null> {
+  return putFramed({ kind: which, communityId }, chosen.master, chosen.framing);
 }
 
-const REFUSED = {
-  too_large: strings.post_image_too_large,
-  invalid_image: strings.post_image_failed,
-} as const;
-
-/** What went wrong with an image, as a sentence. */
-export function ImageProblem({
-  problem,
-}: Readonly<{ problem: Problem | keyof typeof REFUSED | null }>) {
-  return (
-    <Status>
-      {typeof problem === "string"
-        ? REFUSED[problem]
-        : problem !== null && <ProblemText problem={problem} />}
-    </Status>
-  );
-}
-
-/** Breyta samfélagi's pictures: each is sent when chosen and removed on request. */
+/** Breyta samfélagi's pictures: each is framed and sent when chosen, framed again on request, and removed on request. */
 export function CommunityPictures({
   community,
   changed,
 }: Readonly<{ community: Community; changed: () => void }>) {
   const { communityId } = community;
   const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<Problem | keyof typeof REFUSED | null>(null);
+  const [problem, setProblem] = useState<SendProblem | null>(null);
+  const { sheet, choose, reframe } = useFrameSession();
 
-  async function run(work: () => Promise<Problem | keyof typeof REFUSED | null>) {
+  async function run(work: () => Promise<SendProblem | null>) {
     setBusy(true);
     setProblem(null);
     const failed = await work();
     setBusy(false);
     setProblem(failed);
     if (failed === null) changed();
+  }
+  /** Opens the sheet; saving there is what sends, so nothing is busy here. */
+  async function open(work: () => Promise<SendProblem | null>) {
+    setProblem(null);
+    setProblem(await work());
   }
   const removal =
     (
@@ -147,6 +109,19 @@ export function CommunityPictures({
       const done = await outcome(pending(), 204);
       return done.ok ? null : done.problem;
     };
+  const upload = (which: "picture" | "cover") => (file: File) =>
+    void open(() =>
+      choose(which === "picture" ? "photo" : "cover", file, async (master, framing) => {
+        const failed = await sendImage(communityId, which, { master, framing });
+        if (failed === null) changed();
+        return failed;
+      }),
+    );
+  const frameAgain = (which: "picture" | "cover") => () => {
+    const target: Target = { kind: which, communityId };
+    const stored = which === "picture" ? community.photoFrames : community.coverFrames;
+    void open(() => reframe(which === "picture" ? "photo" : "cover", target, stored, changed));
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -155,7 +130,7 @@ export function CommunityPictures({
         removeLabel={strings.community_picture_remove}
         chosen={null}
         disabled={busy}
-        pick={(file) => void run(() => sendImage(communityId, "picture", file))}
+        pick={upload("picture")}
         remove={
           community.photo === null
             ? null
@@ -171,20 +146,31 @@ export function CommunityPictures({
           />
         }
       />
+      {community.photo !== null && (
+        <Button disabled={busy} onClick={frameAgain("picture")} className="self-start">
+          {strings.image_frames_title}
+        </Button>
+      )}
       <Cover communityId={communityId} version={community.cover} className="rounded-md" />
       <PicturePick
         label={strings.community_cover_choose}
         removeLabel={strings.community_cover_remove}
         chosen={null}
         disabled={busy}
-        pick={(file) => void run(() => sendImage(communityId, "cover", file))}
+        pick={upload("cover")}
         remove={
           community.cover === null
             ? null
             : () => void run(removal(() => removeCommunityCover({ path: { communityId } })))
         }
       />
+      {community.cover !== null && (
+        <Button disabled={busy} onClick={frameAgain("cover")} className="self-start">
+          {strings.image_frames_title}
+        </Button>
+      )}
       <ImageProblem problem={problem} />
+      {sheet}
     </div>
   );
 }
