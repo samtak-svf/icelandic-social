@@ -6,6 +6,7 @@
 //! |----------|--------------------------------|----------------------------|
 //! | Android  | `android/core/crypto/libs/`    | `spjall-core-android.zip`  |
 //! | iOS      | `ios/Packages/SpjallCore/`     | `spjall-core-ios.zip`      |
+//! | Web      | `web/core/`                    | `spjall-core-web.zip`      |
 //!
 //! A build also writes the published file and its SHA-256 to
 //! `core/target/artifacts/`; core.yml uploads exactly those on a `core-v*`
@@ -24,13 +25,15 @@ const USAGE: &str = "\
 usage:
   cargo xtask core android     build the AAR and Kotlin bindings (needs the NDK in core/artifact.lock.json)
   cargo xtask core ios         build the XCFramework and Swift package (macOS only)
-  cargo xtask fetch <android|ios> [--from <dir|https-url>]
+  cargo xtask core web         build the wasm module and its JS glue (needs wasm-bindgen-cli and the wasm32 target)
+  cargo xtask fetch <android|ios|web> [--from <dir|https-url>]
                                download the version pinned in core/artifact.lock.json and verify it";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Platform {
     Android,
     Ios,
+    Web,
 }
 
 impl Platform {
@@ -38,6 +41,7 @@ impl Platform {
         match name {
             Some("android") => Ok(Self::Android),
             Some("ios") => Ok(Self::Ios),
+            Some("web") => Ok(Self::Web),
             _ => bail!("{USAGE}"),
         }
     }
@@ -46,6 +50,7 @@ impl Platform {
         match self {
             Self::Android => "android",
             Self::Ios => "ios",
+            Self::Web => "web",
         }
     }
 
@@ -59,6 +64,7 @@ impl Platform {
         match self {
             Self::Android => "android/core/crypto/libs",
             Self::Ios => "ios/Packages/SpjallCore",
+            Self::Web => "web/core",
         }
     }
 }
@@ -109,6 +115,21 @@ fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_platform_has_a_name_a_file_and_a_directory() {
+        for (name, platform, dir) in [
+            ("android", Platform::Android, "android/core/crypto/libs"),
+            ("ios", Platform::Ios, "ios/Packages/SpjallCore"),
+            ("web", Platform::Web, "web/core"),
+        ] {
+            assert_eq!(Platform::parse(Some(name)).unwrap(), platform);
+            assert_eq!(platform.key(), name);
+            assert_eq!(platform.file(), format!("spjall-core-{name}.zip"));
+            assert_eq!(platform.local_dir(), dir);
+        }
+        assert!(Platform::parse(Some("desktop")).is_err());
+    }
 
     #[test]
     fn repo_root_follows_runtime_cargo_manifest_dir() {

@@ -11,12 +11,17 @@
 //    a build that shells out to cargo would need a Rust toolchain on every
 //    machine that builds an app.
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT, readJson, visibleFiles } from "./lib/repo.mjs";
 
 const LOCK = "core/artifact.lock.json";
+// The apps pin android and ios; the web module is pinned too once published,
+// but a lock that predates it stays valid.
 const PLATFORMS = ["android", "ios"];
+const OPTIONAL_PLATFORMS = ["web"];
+const WEB_TYPES = "web/src/generated/core.d.ts";
+const WEB_TYPES_BUILT = "web/core/spjall_wasm.d.ts";
 const SEMVER = /^\d+\.\d+\.\d+$/;
 const SHA256 = /^[0-9a-f]{64}$/;
 
@@ -68,10 +73,11 @@ function published(lock, artifacts) {
     );
   }
   const pinned = Object.keys(artifacts).sort().join(",");
-  if (pinned !== PLATFORMS.join(",")) {
+  const accepted = [PLATFORMS, [...PLATFORMS, ...OPTIONAL_PLATFORMS]].map((list) => list.join(","));
+  if (!accepted.includes(pinned)) {
     problems.push(`a published version pins both android and ios; found ${pinned || "none"}`);
   }
-  for (const platform of PLATFORMS) {
+  for (const platform of [...PLATFORMS, ...OPTIONAL_PLATFORMS]) {
     if (artifacts[platform]) problems.push(...pinProblems(platform, artifacts[platform]));
   }
   return problems;
@@ -92,6 +98,31 @@ function pinProblems(platform, entry) {
   const extra = Object.keys(entry).filter((key) => key !== "file" && key !== "sha256");
   if (extra.length > 0) problems.push(`artifacts.${platform} has unknown keys: ${extra}`);
   return problems;
+}
+
+/**
+ * The committed declarations of the browser module must be what the build
+ * emits, so the web client is typed against the module it will load. The
+ * built file is gitignored: without it the comparison is skipped, except in
+ * the CI web job (`requireBuilt`), which always builds it first.
+ *
+ * @param {string} [root]
+ * @param {{ requireBuilt?: boolean }} [options]
+ * @returns {string[]} problems
+ */
+export function webTypesProblems(root = ROOT, { requireBuilt = false } = {}) {
+  const committed = join(root, WEB_TYPES);
+  const built = join(root, WEB_TYPES_BUILT);
+  if (!existsSync(committed)) {
+    return [`${WEB_TYPES} is missing; run cargo xtask core web and copy ${WEB_TYPES_BUILT} there`];
+  }
+  if (!existsSync(built)) {
+    return requireBuilt ? [`${WEB_TYPES_BUILT} is not built; run cargo xtask core web first`] : [];
+  }
+  if (readFileSync(committed, "utf8") !== readFileSync(built, "utf8")) {
+    return [`${WEB_TYPES} is stale; run cargo xtask core web and copy ${WEB_TYPES_BUILT} over it`];
+  }
+  return [];
 }
 
 /** @param {unknown} url */
@@ -119,7 +150,10 @@ export function cargoCalls(file, source) {
  * @returns {{ lock: string[], calls: { file: string, line: number }[] }}
  */
 export function findProblems(root = ROOT) {
-  const lock = lockProblems(readJson(LOCK, root));
+  const lock = [
+    ...lockProblems(readJson(LOCK, root)),
+    ...webTypesProblems(root, { requireBuilt: process.env.CORE_WEB_BUILT === "1" }),
+  ];
   const calls = visibleFiles(root)
     .filter((file) => GRADLE.test(file) || XCODE.test(file))
     .flatMap((file) => cargoCalls(file, readFileSync(join(root, file), "utf8")));
@@ -128,7 +162,7 @@ export function findProblems(root = ROOT) {
 
 function main() {
   const { lock, calls } = findProblems();
-  for (const problem of lock) console.error(`::error file=${LOCK}::${problem}`);
+  for (const problem of lock) console.error(`::error::${problem}`);
   for (const call of calls) {
     console.error(
       `::error file=${call.file},line=${call.line}::build files never call cargo; ` +

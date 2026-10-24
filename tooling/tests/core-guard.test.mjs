@@ -1,6 +1,9 @@
 // @ts-check
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { cargoCalls, findProblems, lockProblems } from "../core-guard.mjs";
+import { cargoCalls, findProblems, lockProblems, webTypesProblems } from "../core-guard.mjs";
 
 const SUM = "a".repeat(64);
 const unpublished = () => ({
@@ -68,6 +71,24 @@ describe("core-guard", () => {
     ]);
   });
 
+  it("accepts a web artifact beside the two app ones, and checks its pin", () => {
+    const lock = /** @type {any} */ (published());
+    lock.artifacts.web = { file: "spjall-core-web.zip", sha256: SUM };
+    expect(lockProblems(lock)).toEqual([]);
+    lock.artifacts.web = { file: "spjall-core-web.zip", sha256: "xyz" };
+    expect(lockProblems(lock)).toEqual([
+      "artifacts.web.sha256 must be 64 lowercase hex characters",
+    ]);
+  });
+
+  it("rejects an artifact for a platform that does not exist", () => {
+    const lock = /** @type {any} */ (published());
+    lock.artifacts.desktop = { file: "spjall-core-desktop.zip", sha256: SUM };
+    expect(lockProblems(lock)).toEqual([
+      "a published version pins both android and ios; found android,desktop,ios",
+    ]);
+  });
+
   it("rejects unknown keys", () => {
     expect(lockProblems({ ...published(), latest: true })).toEqual([
       "keys must be androidNdk, artifacts, baseUrl, version; found androidNdk,artifacts,baseUrl,latest,version",
@@ -101,5 +122,42 @@ describe("core-guard", () => {
 
   it("ignores files that are not build files", () => {
     expect(cargoCalls("core/README.md", "cargo xtask core android")).toEqual([]);
+  });
+});
+
+describe("web types", () => {
+  /** @param {string | null} committed @param {string | null} built */
+  const tree = (committed, built) => {
+    const root = mkdtempSync(join(tmpdir(), "core-guard-"));
+    mkdirSync(join(root, "web/src/generated"), { recursive: true });
+    mkdirSync(join(root, "web/core"), { recursive: true });
+    if (committed !== null) writeFileSync(join(root, "web/src/generated/core.d.ts"), committed);
+    if (built !== null) writeFileSync(join(root, "web/core/spjall_wasm.d.ts"), built);
+    return root;
+  };
+
+  it("passes when the committed declarations equal the built ones", () => {
+    expect(webTypesProblems(tree("export {};\n", "export {};\n"))).toEqual([]);
+  });
+
+  it("fails when the committed declarations are stale", () => {
+    const problems = webTypesProblems(tree("old\n", "new\n"));
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/stale/);
+    expect(problems[0]).toMatch(/cargo xtask core web/);
+  });
+
+  it("fails when they are missing", () => {
+    expect(webTypesProblems(tree(null, null))).toEqual([
+      expect.stringMatching(/web\/src\/generated\/core\.d\.ts is missing/),
+    ]);
+  });
+
+  it("skips the comparison when nothing is built, unless the build is required", () => {
+    const root = tree("export {};\n", null);
+    expect(webTypesProblems(root)).toEqual([]);
+    expect(webTypesProblems(root, { requireBuilt: true })).toEqual([
+      expect.stringMatching(/web\/core\/spjall_wasm\.d\.ts is not built/),
+    ]);
   });
 });

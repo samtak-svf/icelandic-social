@@ -161,6 +161,53 @@ mod tests {
         assert_eq!(fs::read(aar).unwrap(), b"aar");
     }
 
+    /// The web artifact takes the same path as the others, into `web/core`.
+    #[test]
+    fn a_matching_web_checksum_unpacks_into_the_web_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        let zip = zip_entries(&[("spjall_wasm_bg.wasm".into(), b"wasm".to_vec())]).unwrap();
+        fs::write(dir.path().join("spjall-core-web.zip"), &zip).unwrap();
+        let lock = Lock {
+            version: Some("0.1.0".into()),
+            android_ndk: "30.0.16248370".into(),
+            base_url: None,
+            artifacts: BTreeMap::from([(
+                "web".into(),
+                Artifact {
+                    file: "spjall-core-web.zip".into(),
+                    sha256: sha256_hex(&zip),
+                },
+            )]),
+        };
+        let root = tempfile::tempdir().unwrap();
+        fetch(
+            root.path(),
+            &lock,
+            Platform::Web,
+            Some(dir.path().to_str().unwrap()),
+        )
+        .unwrap();
+        assert_eq!(
+            fs::read(root.path().join("web/core/spjall_wasm_bg.wasm")).unwrap(),
+            b"wasm"
+        );
+    }
+
+    #[test]
+    fn a_lock_without_a_web_artifact_says_so() {
+        let error = fetch(
+            Path::new("/nowhere"),
+            &lock(&"0".repeat(64)),
+            Platform::Web,
+            Some("/nowhere"),
+        )
+        .unwrap_err();
+        assert!(
+            error.to_string().contains("pins no web artifact"),
+            "{error}"
+        );
+    }
+
     #[test]
     fn a_wrong_checksum_fails_and_writes_nothing() {
         let (source, _) = published();

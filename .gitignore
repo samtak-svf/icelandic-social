@@ -37,3 +37,6 @@ private/
 # Playwright
 test-results/
 playwright-report/
+
+# The browser core, from `cargo xtask core web` or `cargo xtask fetch web`
+web/core/
