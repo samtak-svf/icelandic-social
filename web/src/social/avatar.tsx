@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { call } from "../api/call.ts";
 import { strings } from "../generated/brand/strings.ts";
 
@@ -112,53 +112,64 @@ export function Avatar({
 /** The cover's frames, one for each window size class (decision 0086). */
 type CoverFrame = "compact" | "medium" | "expanded";
 
-/** The media query that picks each frame: compact below 600, medium to below 840, expanded from 840. */
-const COVER_MEDIA = {
-  compact: "(max-width: 599px)",
-  medium: "(min-width: 600px) and (max-width: 839px)",
-} as const;
+/** The frame for a window width: compact below 600, medium to below 840, expanded from 840. */
+const MEDIUM = "(min-width: 600px)";
+const EXPANDED = "(min-width: 840px)";
+
+function currentFrame(): CoverFrame {
+  if (typeof window === "undefined") return "expanded";
+  if (window.matchMedia(EXPANDED).matches) return "expanded";
+  return window.matchMedia(MEDIUM).matches ? "medium" : "compact";
+}
+
+function onSizeClass(changed: () => void): () => void {
+  const queries = [MEDIUM, EXPANDED].map((query) => window.matchMedia(query));
+  for (const query of queries) query.addEventListener("change", changed);
+  return () => {
+    for (const query of queries) query.removeEventListener("change", changed);
+  };
+}
+
+/** The cover frame of the window's current size class; it follows a resize or rotation. */
+function useCoverFrame(): CoverFrame {
+  return useSyncExternalStore(onSizeClass, currentFrame, () => "expanded");
+}
 
 /** The cover's box takes the shape of the frame shown, so no frame is cut again by a fixed height. */
 const COVER_BOX = "aspect-[3/1] min-[600px]:aspect-[4/1] min-[840px]:aspect-[8/3]";
 
 /**
- * A community's cover, or nothing while it has none or has not come. One
- * source for each size class; an image with no master serves its one object
- * for every frame, which the box then crops as it always did.
+ * A community's cover, or nothing while it has none or has not come. Only
+ * the frame of the window's size class is fetched (the API needs the client
+ * header, so a <picture> of plain URLs cannot be used); an image with no
+ * master serves its one object for every frame, which the box then crops.
  */
 export function Cover({
   communityId,
   version,
   className = "",
 }: Readonly<{ communityId: string; version: string | null; className?: string }>) {
-  const [srcs, setSrcs] = useState<Record<CoverFrame, string | null> | null>(null);
+  const frame = useCoverFrame();
+  const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
-    setSrcs(null);
-    if (version !== null) {
-      void Promise.all(
-        (["compact", "medium", "expanded"] as const).map((frame) =>
-          pictureUrl("cover", communityId, version, frame),
-        ),
-      ).then(([compact = null, medium = null, expanded = null]) => {
-        if (live) setSrcs({ compact, medium, expanded });
+    if (version === null) setSrc(null);
+    else {
+      void pictureUrl("cover", communityId, version, frame).then((url) => {
+        if (live) setSrc(url);
       });
     }
     return () => {
       live = false;
     };
-  }, [communityId, version]);
-  if (srcs?.expanded == null) return null;
+  }, [communityId, version, frame]);
+  if (src === null) return null;
   return (
-    <picture>
-      <source media={COVER_MEDIA.compact} srcSet={srcs.compact ?? srcs.expanded} />
-      <source media={COVER_MEDIA.medium} srcSet={srcs.medium ?? srcs.expanded} />
-      <img
-        src={srcs.expanded}
-        alt=""
-        aria-hidden="true"
-        className={`${COVER_BOX} w-full bg-muted object-cover ${className}`}
-      />
-    </picture>
+    <img
+      src={src}
+      alt=""
+      aria-hidden="true"
+      className={`${COVER_BOX} w-full bg-muted object-cover ${className}`}
+    />
   );
 }

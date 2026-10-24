@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useId, useState, type ChangeEvent } from "react";
 import { useAccount } from "../account.tsx";
 import { refused } from "../problem.ts";
-import { getPhoto, removePhoto, type Me } from "../generated/api.ts";
+import { getAccount, getPhoto, removePhoto, type Me } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { useFrameSession } from "../social/frame-session.tsx";
 import { putFramed, type SendProblem } from "../social/frame-send.ts";
@@ -107,7 +107,10 @@ function PhotoControls({ me }: Readonly<{ me: Me }>) {
 
   async function frameAgain() {
     setProblem(null);
-    setProblem(await reframe("photo", { kind: "account" }, null, () => void refresh()));
+    // Me carries no framing; the own profile does, so the sheet reopens where it was left.
+    const profile = await getAccount({ path: { accountId: me.accountId } }).catch(() => null);
+    const stored = profile?.status === 200 ? profile.data.photoFrames : null;
+    setProblem(await reframe("photo", { kind: "account" }, stored, () => void refresh()));
   }
 
   async function remove() {
