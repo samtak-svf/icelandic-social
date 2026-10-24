@@ -121,7 +121,8 @@ class FrameMathTest {
 
     @Test
     fun theFocusIsTheCentreOfTheRectangle() {
-        assertEquals(Focus(0.4, 0.2), FrameMath.focusOf(FrameRect(0.2, 0.1, 0.4, 0.2)).let { Focus(it.x.round(), it.y.round()) })
+        val focus = FrameMath.focusOf(FrameRect(0.2, 0.1, 0.4, 0.2))
+        assertEquals(Focus(0.4, 0.2), Focus(focus.x.round(), focus.y.round()))
     }
 
     @Test

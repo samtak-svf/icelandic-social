@@ -25,7 +25,7 @@ data class Anchor(
     val v: Double,
 )
 
-/** The core's placing rule (`place_frame`), passed in so the maths never reimplements it and a JVM test can stand in. */
+/** The core's placing rule (`place_frame`), passed in so the maths never reimplements it; a JVM test stands in. */
 typealias Placer = (imageW: UInt, imageH: UInt, aspectW: UInt, aspectH: UInt, focus: Focus) -> PixelRect
 
 /**
@@ -36,6 +36,8 @@ typealias Placer = (imageW: UInt, imageH: UInt, aspectW: UInt, aspectH: UInt, fo
 object FrameMath {
     /** How far past the whole frame a person may zoom in. */
     const val MAX_ZOOM = 8.0
+
+    private val CENTRE = Focus(0.5, 0.5)
 
     private fun fractions(
         px: PixelRect,
@@ -59,7 +61,7 @@ object FrameMath {
         image: ImageSize,
         aspect: Aspect,
         place: Placer,
-    ): FrameRect = place(place, image, aspect, Focus(0.5, 0.5))
+    ): FrameRect = place(place, image, aspect, CENTRE)
 
     /** The rectangle to start from: the one stored for this frame, else the one the focus places. */
     fun start(
@@ -132,7 +134,7 @@ object FrameMath {
         reset: Boolean = false,
     ): Framing {
         val lastRect = last?.let(edits::get)
-        val focus = lastRect?.let(::focusOf) ?: base?.focus ?: Focus(0.5, 0.5)
+        val focus = lastRect?.let(::focusOf) ?: base?.focus ?: CENTRE
         if (reset) return Framing(focus, emptyList())
         val merged = LinkedHashMap<Frame, FrameRect>()
         base?.overrides?.forEach { merged[it.frame] = it.rect }

@@ -130,11 +130,11 @@ private fun NewCommunity(
     val back = rememberBack(nav)
     val picture =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            uri?.let { model.pickPicture { files.communityPicture(it) } }
+            uri?.let { model.pickPicture { files.master(it) } }
         }
     val cover =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            uri?.let { model.pickCover { files.communityCover(it) } }
+            uri?.let { model.pickCover { files.master(it) } }
         }
     LaunchedEffect(model) {
         model.created.collect { id ->
@@ -193,11 +193,11 @@ private fun CommunityEntry(
     // The community's picture and cover (0080): picked, then cut to size off the main thread by the view model.
     val picture =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            uri?.let { model.setPicture { files.communityPicture(it) } }
+            uri?.let { model.setPicture { files.master(it) } }
         }
     val cover =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            uri?.let { model.setCover { files.communityCover(it) } }
+            uri?.let { model.setCover { files.master(it) } }
         }
     // The community is gone: back to the list, where it no longer is.
     LaunchedEffect(model) { model.deleted.collect { nav.popBackStack(SocialRoutes.COMMUNITIES, inclusive = false) } }

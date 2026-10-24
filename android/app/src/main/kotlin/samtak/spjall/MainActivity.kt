@@ -224,7 +224,7 @@ class MainActivity : ComponentActivity() {
         val state by me.state.collectAsStateWithLifecycle()
         val photo =
             rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-                uri?.let { me.setPhoto { graph.files.profilePhoto(it) } }
+                uri?.let { me.setPhoto { graph.files.master(it) } }
             }
         // Refused, the notice on the list and on Ég points at the system's settings (decision 0025).
         val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { onboarding.asked() }
@@ -724,7 +724,7 @@ class MainActivity : ComponentActivity() {
         // Made small and square off the main thread, in the view model (decision 0039).
         val photo =
             rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-                uri?.let { me.setPhoto { graph.files.profilePhoto(it) } }
+                uri?.let { me.setPhoto { graph.files.master(it) } }
             }
         // A block from a conversation menu changes the list here, and the settings the row opens may change.
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { me.load() }

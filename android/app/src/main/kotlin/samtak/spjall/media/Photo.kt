@@ -3,9 +3,7 @@ package samtak.spjall.media
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
-import androidx.core.graphics.scale
 import androidx.exifinterface.media.ExifInterface
-import java.io.File
 import java.io.IOException
 
 /**
@@ -31,57 +29,6 @@ fun decodePhoto(
     }
 }
 
-/**
- * The photo at [path] as an upright square from its middle, no larger than [side] pixels, written to [out] as a
- * JPEG (decision 0039). Only the pixels are written, so none of the original's metadata goes with it; the server
- * re-encodes it anyway, and that is the guarantee. False when [path] is not an image this device can read.
- */
-fun squarePhoto(
-    path: String,
-    out: File,
-    side: Int,
-): Boolean {
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeFile(path, bounds)
-    val short = minOf(bounds.outWidth, bounds.outHeight)
-    // Sampled only as far as keeps the short side, the square's edge, at [side] or more.
-    val photo = if (short > 0) decodePhoto(path, side * maxOf(bounds.outWidth, bounds.outHeight) / short) else null
-    if (photo == null) return false
-    val edge = minOf(photo.width, photo.height)
-    val square = Bitmap.createBitmap(photo, (photo.width - edge) / 2, (photo.height - edge) / 2, edge, edge)
-    val small = if (edge > side) square.scale(side, side) else square
-    out.outputStream().use { small.compress(Bitmap.CompressFormat.JPEG, QUALITY, it) }
-    return true
-}
-
-/**
- * The photo at [path] cropped from its middle to the [width] by [height] proportion, no wider than [width] pixels,
- * written to [out] as a JPEG (0080 covers). As [squarePhoto], only the pixels are written. False when [path] is not
- * an image this device can read.
- */
-fun coverPhoto(
-    path: String,
-    out: File,
-    width: Int,
-    height: Int,
-): Boolean {
-    val photo = decodePhoto(path, width) ?: return false
-    // The largest centred rectangle of the cover's proportion that fits the photo.
-    val cropWidth = minOf(photo.width, photo.height * width / height)
-    val cropHeight = cropWidth * height / width
-    val crop =
-        Bitmap.createBitmap(
-            photo,
-            (photo.width - cropWidth) / 2,
-            (photo.height - cropHeight) / 2,
-            cropWidth,
-            cropHeight,
-        )
-    val small = if (cropWidth > width) crop.scale(width, height) else crop
-    out.outputStream().use { small.compress(Bitmap.CompressFormat.JPEG, QUALITY, it) }
-    return true
-}
-
 private fun rotation(path: String): Float =
     try {
         when (ExifInterface(path).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
@@ -95,7 +42,6 @@ private fun rotation(path: String): Float =
         0f
     }
 
-private const val QUALITY = 90
 private const val RIGHT = 90f
 private const val HALF = 180f
 private const val LEFT = 270f
