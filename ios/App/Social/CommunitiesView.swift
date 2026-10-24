@@ -335,8 +335,12 @@ private struct CreateCommunitySheet: View {
                     CommunityPictureFields(
                         hasPicture: picture != nil, hasCover: cover != nil,
                         onPicture: { frame($0, cover: false) }, onCover: { frame($0, cover: true) },
-                        onRemovePicture: { picture = nil; pictureFraming = nil },
-                        onRemoveCover: { cover = nil; coverFraming = nil })
+                        onRemovePicture: {
+                            picture = nil; pictureFraming = nil
+                        },
+                        onRemoveCover: {
+                            cover = nil; coverFraming = nil
+                        })
                 }
                 Section {
                     CommunityAudiencePicker(audience: $audience)

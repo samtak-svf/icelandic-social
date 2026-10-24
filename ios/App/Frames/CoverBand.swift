@@ -35,6 +35,10 @@ struct CoverBand: View {
                     shape.fill(BrandTokens.Colors.secondarySubtle).accessibilityHidden(true)
                 }
             }
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+            .onGeometryChange(for: CGFloat.self) {
+                $0.size.width
+            } action: {
+                width = $0
+            }
     }
 }

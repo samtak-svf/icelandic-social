@@ -396,16 +396,22 @@ private struct EditCommunityView: View {
         let kind: FrameKind = cover ? .cover : .photo
         guard let master = try? await masterFile(pick) else {
             // Not an image the sheet can open: the upload reports it as it always did.
-            if cover { await model.setCover { try await masterFile(pick) } }
-            else { await model.setPicture { try await masterFile(pick) } }
+            if cover {
+                await model.setCover { try await masterFile(pick) }
+            } else {
+                await model.setPicture { try await masterFile(pick) }
+            }
             return
         }
         framing = FrameRequest(kind: kind, master: master, start: nil) { framed in
             try? FileManager.default.removeItem(at: master)
             guard let framed else { return }
             Task {
-                if cover { await model.setCover({ try await masterFile(pick) }, framing: framed) }
-                else { await model.setPicture({ try await masterFile(pick) }, framing: framed) }
+                if cover {
+                    await model.setCover({ try await masterFile(pick) }, framing: framed)
+                } else {
+                    await model.setPicture({ try await masterFile(pick) }, framing: framed)
+                }
             }
         }
     }

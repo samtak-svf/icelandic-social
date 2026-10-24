@@ -24,21 +24,24 @@ enum FrameMath {
 
     /// The largest rectangle of `aspect` the image holds, centred, as fractions.
     static func whole(_ image: ImageSize, _ aspect: Aspect) -> FrameRect {
-        fractions(placeFrame(
-            imageW: UInt32(image.w), imageH: UInt32(image.h), aspectW: UInt32(aspect.w), aspectH: UInt32(aspect.h),
-            focus: Focus(x: 0.5, y: 0.5)), image)
+        fractions(
+            placeFrame(
+                imageW: UInt32(image.w), imageH: UInt32(image.h), aspectW: UInt32(aspect.w), aspectH: UInt32(aspect.h),
+                focus: Focus(x: 0.5, y: 0.5)), image)
     }
 
     /// The rectangle to start from: the one stored for this frame, else the one the focus places.
     static func start(_ image: ImageSize, _ aspect: Aspect, focus: Focus, stored: FrameRect?) -> FrameRect {
         if let stored { return stored }
-        return fractions(placeFrame(
-            imageW: UInt32(image.w), imageH: UInt32(image.h), aspectW: UInt32(aspect.w), aspectH: UInt32(aspect.h),
-            focus: focus), image)
+        return fractions(
+            placeFrame(
+                imageW: UInt32(image.w), imageH: UInt32(image.h), aspectW: UInt32(aspect.w), aspectH: UInt32(aspect.h),
+                focus: focus), image)
     }
 
     private static func fractions(_ px: PixelRect, _ image: ImageSize) -> FrameRect {
-        FrameRect(x: Double(px.x) / image.w, y: Double(px.y) / image.h, w: Double(px.w) / image.w, h: Double(px.h) / image.h)
+        FrameRect(
+            x: Double(px.x) / image.w, y: Double(px.y) / image.h, w: Double(px.w) / image.w, h: Double(px.h) / image.h)
     }
 
     /// A rectangle moved inside the image; the sum of an edge never passes 1, which the contract refuses.

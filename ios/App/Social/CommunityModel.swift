@@ -310,8 +310,7 @@ final class CommunityModel {
         await setImage(cover: true, make, framing)
     }
 
-    private func setImage(cover: Bool, _ make: @escaping @Sendable () async throws -> URL, _ framing: Framing?) async
-    {
+    private func setImage(cover: Bool, _ make: @escaping @Sendable () async throws -> URL, _ framing: Framing?) async {
         guard owns else { return }
         let social = social
         let id = communityId

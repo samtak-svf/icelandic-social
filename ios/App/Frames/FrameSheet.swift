@@ -63,7 +63,11 @@ struct FrameSheet: View {
                     ProgressView().padding(40)
                 }
             }
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+            .onGeometryChange(for: CGFloat.self) {
+                $0.size.width
+            } action: {
+                width = $0
+            }
             .navigationTitle(Text("image_frames_title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -96,7 +100,9 @@ struct FrameSheet: View {
     @ViewBuilder private func croppers(_ editor: FrameEditor, _ image: UIImage) -> some View {
         if editor.advancedOpen {
             let all = editor.shown
-            let layout = width >= 600 ? AnyLayout(HStackLayout(alignment: .top, spacing: 12)) : AnyLayout(VStackLayout(spacing: 20))
+            let layout =
+                width >= 600
+                ? AnyLayout(HStackLayout(alignment: .top, spacing: 12)) : AnyLayout(VStackLayout(spacing: 20))
             layout {
                 ForEach(all, id: \.self) { frame in
                     VStack(alignment: .leading, spacing: 8) {

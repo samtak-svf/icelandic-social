@@ -451,7 +451,11 @@ final class FakeSocial: Social, @unchecked Sendable {
             guard _hasMaster else { throw CoreError.NoMaster }
             _framings.append((image, framing))
             let version = "f\(_framings.count)"
-            if image == "cover" { _communities[community]?.cover = version } else { _communities[community]?.photo = version }
+            if image == "cover" {
+                _communities[community]?.cover = version
+            } else {
+                _communities[community]?.photo = version
+            }
             return version
         }
     }
