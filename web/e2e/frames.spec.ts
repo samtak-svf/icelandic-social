@@ -11,7 +11,7 @@ import { found, openMenu, person } from "./social-helpers.ts";
 async function manage(page: Page) {
   await openMenu(page);
   await page.getByRole("menuitem", { name: new RegExp(`^${strings.community_manage}`) }).click();
-  await page.getByText(strings.community_edit).click();
+  await page.locator("summary", { hasText: strings.community_edit }).click();
 }
 
 async function choose(page: Page, label: string) {
