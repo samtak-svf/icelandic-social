@@ -22,7 +22,7 @@ interface CallArgs {
 }
 
 /** `web/<version>`, the build this client names to the API. */
-const CLIENT = `web/${pkg.version}`;
+export const CLIENT = `web/${pkg.version}`;
 
 function url(template: string, args: CallArgs | undefined, baseUrl: string): string {
   const path = template.replaceAll(/\{(\w+)\}/g, (_, name: string) => {
