@@ -14,6 +14,7 @@ import {
   unreactRoute,
   uploadSocialMediaRoute,
 } from "../../api/social.ts";
+import { communityImagesRoute } from "../../api/community-gallery.ts";
 import { likeCommentRoute, unlikeCommentRoute } from "../../api/social-hub.ts";
 import type { AppEnv } from "../../app.ts";
 import { space, withinLimit } from "../../env/index.ts";
@@ -25,7 +26,14 @@ import { notice } from "../jobs/index.ts";
 import { cardRoutes } from "./cards.ts";
 import { commentAccess, postAccess, refusal, replyRefusal, spaceAccess } from "./access.ts";
 import { authors, named } from "./bylines.ts";
-import { deleteCommentMedia, deleteKeys, postImageOwner, readImage, upload } from "./media.ts";
+import {
+  communityImages,
+  deleteCommentMedia,
+  deleteKeys,
+  postImageOwner,
+  readImage,
+  upload,
+} from "./media.ts";
 import {
   communityPosts,
   createPost,
@@ -112,6 +120,15 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
       { posts: await render(c.env, page.rows, access.viewer, featured), next: page.next },
       200,
     );
+  });
+
+  app.openapi(communityImagesRoute, async (c) => {
+    const { communityId } = c.req.valid("param");
+    const { cursor, limit } = c.req.valid("query");
+    const access = await spaceAccess(c.env, c.var.session.accountId, communityId);
+    if (!access) return fail(c, 404, "not_found");
+    const page = await communityImages(c.env, communityId, access.viewer.hidden, cursor, limit);
+    return c.json({ images: page.rows, next: page.next }, 200);
   });
 
   app.openapi(feedRoute, async (c) => {

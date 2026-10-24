@@ -646,6 +646,24 @@ export interface PostPage {
   next: string | null;
 }
 
+export interface CommunityImagePage {
+  images: Array<CommunityImage>;
+  /** The cursor of the next, older page, or null when there is none */
+  next: string | null;
+}
+
+/** An image to fetch with `getPostMedia` under its `postId` (decision 0089) */
+export interface CommunityImage {
+  mediaId: string;
+  postId: string;
+  /** The comment that carries the image; null for a post's own image */
+  commentId: string | null;
+  width: number;
+  height: number;
+  /** Unix milliseconds */
+  createdAt: number;
+}
+
 export interface CommentPage {
   comments: Array<Comment>;
   next: string | null;
@@ -1763,6 +1781,30 @@ export function uploadSocialMedia(args: {
   | { status: 429; data: ApiError }
 > {
   return call("POST", "/v1/communities/{communityId}/media", args, init, "application/octet-stream");
+}
+
+/**
+ * The images in a community's posts and comments, newest first (decision 0089)
+ *
+ * Only images of posts and comments the caller may see: a hidden or removed post's or comment's images, and a blocked account's, are left out. Follow `next` until it is null.
+ */
+export function listCommunityImages(args: {
+  path: {
+    communityId: string;
+  };
+  query?: {
+    /** The `next` of the page before */
+    cursor?: string;
+    limit?: number;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: CommunityImagePage }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/communities/{communityId}/images", args, init);
 }
 
 /**

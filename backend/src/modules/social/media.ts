@@ -3,7 +3,7 @@ import { communityCoverKey, communityPictureKey, deleteImage } from "../../image
 import { log } from "../../log.ts";
 import type { MediaRef } from "./do/space.ts";
 import { REMOVED_KEPT_MS } from "./do/space-schema.ts";
-import { mediaKey } from "./posts.ts";
+import { mediaKey, parseCursor } from "./posts.ts";
 
 // The images of posts (decision 0065): validated and re-encoded by the
 // server to a WebP no larger than 2048 pixels a side, without metadata, kept
@@ -116,6 +116,52 @@ export async function postImageOwner(
 /** The stored image `mediaId` of `communityId`, once the caller has checked who may read it. */
 export const readImage = (env: Env, communityId: string, mediaId: string) =>
   socialBucket(env).get(mediaKey(communityId, mediaId));
+
+/** One image of the community's images tab (decision 0089). */
+export type CommunityImage = {
+  mediaId: string;
+  postId: string;
+  commentId: string | null;
+  width: number;
+  height: number;
+  createdAt: number;
+};
+
+/**
+ * The images of a community's visible posts and of their comments that stand,
+ * newest first, but those of an account `hidden` names (a block, decision
+ * 0063). Keyset pagination on (created_at, media_id), like the feed's.
+ */
+export async function communityImages(
+  env: Env,
+  communityId: string,
+  hidden: string[],
+  cursor: string | undefined,
+  limit: number,
+): Promise<{ rows: CommunityImage[]; next: string | null }> {
+  const at = parseCursor(cursor);
+  const { results } = await db(env)
+    .prepare(
+      `SELECT m.media_id AS mediaId, m.post_id AS postId, m.comment_id AS commentId,
+              m.width, m.height, m.created_at AS createdAt
+         FROM social_media m JOIN post_index p ON p.post_id = m.post_id
+        WHERE m.community_id = ?1 AND m.post_id IS NOT NULL AND p.state = 'visible'
+          AND m.removed_at IS NULL AND m.hidden_at IS NULL
+          AND m.uploader_id NOT IN (SELECT value FROM json_each(?2))
+          AND p.author_id NOT IN (SELECT value FROM json_each(?2))
+          AND (?3 IS NULL OR m.created_at < ?3
+               OR (m.created_at = ?3 AND (?4 IS NULL OR m.media_id < ?4)))
+        ORDER BY m.created_at DESC, m.media_id DESC LIMIT ?5`,
+    )
+    .bind(communityId, JSON.stringify(hidden), at?.t ?? null, at?.id ?? null, limit + 1)
+    .all<CommunityImage>();
+  const rows = results.slice(0, limit);
+  const last = rows.at(-1);
+  return {
+    rows,
+    next: results.length > limit && last ? `${last.createdAt}-${last.mediaId}` : null,
+  };
+}
 
 /**
  * The images comments carry (decision 0082), by comment id, one query for any

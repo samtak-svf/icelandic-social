@@ -71,8 +71,12 @@ export async function moderateComment(
     ...entries,
     // The image of a removed comment is purged when the comment's text is (0082).
     db(env)
-      .prepare("UPDATE social_media SET removed_at = ? WHERE comment_id = ?")
-      .bind(state === "removed" ? Date.now() : null, commentId),
+      .prepare("UPDATE social_media SET removed_at = ?, hidden_at = ? WHERE comment_id = ?")
+      .bind(
+        state === "removed" ? Date.now() : null,
+        state === "hidden" ? Date.now() : null,
+        commentId,
+      ),
   ]);
   await space(env, communityId).moderateComment(commentId, state, Date.now());
 }
