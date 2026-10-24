@@ -23,6 +23,7 @@ import { Route as ConversationsConversationIdRouteImport } from './routes/conver
 import { Route as ConversationsLinkRouteImport } from './routes/conversations.link'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as CommunitiesCommunityIdTabsRouteImport } from './routes/communities.$communityId._tabs'
+import { Route as CommunitiesCommunityIdAnonymousRouteImport } from './routes/communities.$communityId.anonymous'
 import { Route as CommunitiesCommunityIdLogRouteImport } from './routes/communities.$communityId.log'
 import { Route as CommunitiesCommunityIdManageRouteImport } from './routes/communities.$communityId.manage'
 import { Route as CommunitiesCommunityIdMembersRouteImport } from './routes/communities.$communityId.members'
@@ -106,6 +107,12 @@ const CommunitiesCommunityIdTabsRoute =
     path: '/communities/$communityId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const CommunitiesCommunityIdAnonymousRoute =
+  CommunitiesCommunityIdAnonymousRouteImport.update({
+    id: '/communities/$communityId/anonymous',
+    path: '/communities/$communityId/anonymous',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const CommunitiesCommunityIdLogRoute =
   CommunitiesCommunityIdLogRouteImport.update({
     id: '/communities/$communityId/log',
@@ -182,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/communities/': typeof CommunitiesIndexRoute
   '/conversations/': typeof ConversationsIndexRoute
   '/communities/$communityId': typeof CommunitiesCommunityIdTabsRouteWithChildren
+  '/communities/$communityId/anonymous': typeof CommunitiesCommunityIdAnonymousRoute
   '/communities/$communityId/log': typeof CommunitiesCommunityIdLogRoute
   '/communities/$communityId/manage': typeof CommunitiesCommunityIdManageRoute
   '/communities/$communityId/members': typeof CommunitiesCommunityIdMembersRoute
@@ -206,6 +214,7 @@ export interface FileRoutesByTo {
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities': typeof CommunitiesIndexRoute
   '/conversations': typeof ConversationsIndexRoute
+  '/communities/$communityId/anonymous': typeof CommunitiesCommunityIdAnonymousRoute
   '/communities/$communityId/log': typeof CommunitiesCommunityIdLogRoute
   '/communities/$communityId/manage': typeof CommunitiesCommunityIdManageRoute
   '/communities/$communityId/members': typeof CommunitiesCommunityIdMembersRoute
@@ -233,6 +242,7 @@ export interface FileRoutesById {
   '/communities/': typeof CommunitiesIndexRoute
   '/conversations/': typeof ConversationsIndexRoute
   '/communities/$communityId/_tabs': typeof CommunitiesCommunityIdTabsRouteWithChildren
+  '/communities/$communityId/anonymous': typeof CommunitiesCommunityIdAnonymousRoute
   '/communities/$communityId/log': typeof CommunitiesCommunityIdLogRoute
   '/communities/$communityId/manage': typeof CommunitiesCommunityIdManageRoute
   '/communities/$communityId/members': typeof CommunitiesCommunityIdMembersRoute
@@ -261,6 +271,7 @@ export interface FileRouteTypes {
     | '/communities/'
     | '/conversations/'
     | '/communities/$communityId'
+    | '/communities/$communityId/anonymous'
     | '/communities/$communityId/log'
     | '/communities/$communityId/manage'
     | '/communities/$communityId/members'
@@ -285,6 +296,7 @@ export interface FileRouteTypes {
     | '/posts/$postId'
     | '/communities'
     | '/conversations'
+    | '/communities/$communityId/anonymous'
     | '/communities/$communityId/log'
     | '/communities/$communityId/manage'
     | '/communities/$communityId/members'
@@ -311,6 +323,7 @@ export interface FileRouteTypes {
     | '/communities/'
     | '/conversations/'
     | '/communities/$communityId/_tabs'
+    | '/communities/$communityId/anonymous'
     | '/communities/$communityId/log'
     | '/communities/$communityId/manage'
     | '/communities/$communityId/members'
@@ -335,6 +348,7 @@ export interface RootRouteChildren {
   PostsPostIdRoute: typeof PostsPostIdRoute
   CommunitiesIndexRoute: typeof CommunitiesIndexRoute
   CommunitiesCommunityIdTabsRoute: typeof CommunitiesCommunityIdTabsRouteWithChildren
+  CommunitiesCommunityIdAnonymousRoute: typeof CommunitiesCommunityIdAnonymousRoute
   CommunitiesCommunityIdLogRoute: typeof CommunitiesCommunityIdLogRoute
   CommunitiesCommunityIdManageRoute: typeof CommunitiesCommunityIdManageRoute
   CommunitiesCommunityIdMembersRoute: typeof CommunitiesCommunityIdMembersRoute
@@ -440,6 +454,13 @@ declare module '@tanstack/react-router' {
       path: '/communities/$communityId'
       fullPath: '/communities/$communityId'
       preLoaderRoute: typeof CommunitiesCommunityIdTabsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/communities/$communityId/anonymous': {
+      id: '/communities/$communityId/anonymous'
+      path: '/communities/$communityId/anonymous'
+      fullPath: '/communities/$communityId/anonymous'
+      preLoaderRoute: typeof CommunitiesCommunityIdAnonymousRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/communities/$communityId/log': {
@@ -568,6 +589,7 @@ const rootRouteChildren: RootRouteChildren = {
   PostsPostIdRoute: PostsPostIdRoute,
   CommunitiesIndexRoute: CommunitiesIndexRoute,
   CommunitiesCommunityIdTabsRoute: CommunitiesCommunityIdTabsRouteWithChildren,
+  CommunitiesCommunityIdAnonymousRoute: CommunitiesCommunityIdAnonymousRoute,
   CommunitiesCommunityIdLogRoute: CommunitiesCommunityIdLogRoute,
   CommunitiesCommunityIdManageRoute: CommunitiesCommunityIdManageRoute,
   CommunitiesCommunityIdMembersRoute: CommunitiesCommunityIdMembersRoute,
