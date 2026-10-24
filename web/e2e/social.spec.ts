@@ -6,8 +6,9 @@ import {
   expectMember,
   found,
   join,
+  manage,
   openComposer,
-  openMenu,
+  openHubFeed,
   person,
   post,
   write,
@@ -42,11 +43,6 @@ async function platformModerator(page: Page) {
 }
 
 /** Goes to Stjórna through the `⋯` menu. */
-async function manage(page: Page) {
-  await openMenu(page);
-  await page.getByRole("menuitem", { name: new RegExp(`^${strings.community_manage}`) }).click();
-}
-
 test("a member joins, posts, comments, reacts, is told and reports; a moderator acts", async ({
   browser,
 }) => {
@@ -64,7 +60,7 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
   await owner.getByLabel(strings.community_name).fill(name);
   await owner.getByLabel(strings.community_description).fill("Allt um garða.");
   await owner.getByRole("button", { name: strings.community_create }).click();
-  await expect(owner.getByRole("heading", { name })).toBeVisible();
+  await expect(owner.getByRole("heading", { level: 1, name })).toBeVisible();
   const community = owner.url();
 
   // The member finds it by name and joins.
@@ -217,8 +213,7 @@ test("a member posts images, deletes a comment and the post, and withdraws a joi
 test("a moderator hides, then restores and mutes and unmutes from the closed reports", async ({
   browser,
 }) => {
-  // Three browsers sign in before the story starts (about 7 s each on a busy
-  // runner), which leaves the default 30 s too little for the moderation itself.
+  // Three sign-ins take most of the default 30 s on a busy runner.
   test.slow();
   const owner = await person(browser, "Eigandi Stjórnadóttir");
   const writer = await person(browser, "Höfundur Stjórnason");
@@ -470,7 +465,7 @@ test("the feed shows more than one page of posts after scrolling", async ({ brow
   expect(made).toBe(COUNT);
 
   await owner.getByRole("link", { name: strings.tab_communities }).click();
-  await owner.getByRole("button", { name: strings.communities_tab_feed }).click();
+  await openHubFeed(owner);
   const cards = owner
     .getByRole("region", { name: strings.communities_tab_feed })
     .getByRole("article");

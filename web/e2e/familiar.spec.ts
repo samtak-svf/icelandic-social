@@ -1,6 +1,15 @@
 import { strings } from "../src/generated/brand/strings.ts";
 import { expect, test } from "./origin.ts";
-import { cardMenu, found, join, person, post, titleOf, write } from "./social-helpers.ts";
+import {
+  cardMenu,
+  found,
+  join,
+  myCommunities,
+  person,
+  post,
+  titleOf,
+  write,
+} from "./social-helpers.ts";
 
 // Communities as readers know them (decision 0080), through what a person
 // sees: what is new on the hub, pinned communities and posts, a like on a
@@ -18,7 +27,7 @@ test("a hub row counts what is new, and opening the community clears it", async 
   await expect(post(owner, "Annar nýi")).toBeVisible();
 
   // The feed under the list names the community too, so look in the list alone.
-  const mine = member.locator('section[aria-labelledby="mine"]');
+  const mine = myCommunities(member);
   await member.getByRole("link", { name: strings.tab_communities }).click();
   const row = mine.getByRole("link", { name: new RegExp(name) });
   await expect(row).toContainText(strings.community_new_posts({ count: 2 }));
@@ -40,7 +49,7 @@ test("a pinned community leads the list, and unpinning gives the place back", as
   const second = await found(owner, "open");
   const secondName = await titleOf(owner);
   await owner.getByRole("link", { name: strings.tab_communities }).click();
-  const rows = owner.locator('section[aria-labelledby="mine"] li');
+  const rows = myCommunities(owner).locator("li");
   await expect(rows).toHaveCount(2);
 
   // Pin the one that is not first now, so the pin is what moves it.

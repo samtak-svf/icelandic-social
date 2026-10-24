@@ -1,5 +1,6 @@
 import type { Browser, Locator, Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
+import { layoutOf } from "../src/ui/layout.ts";
 import { expect, serveOrigin } from "./origin.ts";
 import { signInVerified } from "./accounts.ts";
 
@@ -65,14 +66,39 @@ export async function found(
     await owner.getByRole("radio", { name: new RegExp(strings.community_private_hint) }).check();
   }
   await owner.getByRole("button", { name: strings.community_create }).click();
-  await expect(owner.getByRole("heading", { name })).toBeVisible();
+  // The page's own title is the h1: on an expanded window the create page's
+  // preview already shows the name, as an h2.
+  await expect(owner.getByRole("heading", { level: 1, name })).toBeVisible();
   return owner.url();
+}
+
+/** Whether the hub shows the reader's communities in a column beside the feed (0087). */
+const hubColumn = (page: Page) => layoutOf(page.viewportSize()!.width).hub === "column";
+
+/** The hub's list of the reader's communities: a tab, or the column beside the feed (0087). */
+export function myCommunities(page: Page): Locator {
+  return hubColumn(page)
+    ? page.getByRole("complementary", { name: strings.communities_mine })
+    : page.locator('section[aria-labelledby="mine"]');
+}
+
+/** Shows the hub's feed of what is new: a tab, or what the hub shows first beside the column. */
+export async function openHubFeed(page: Page) {
+  if (!hubColumn(page)) {
+    await page.getByRole("button", { name: strings.communities_tab_feed }).click();
+  }
 }
 
 /** Opens the community's `⋯` menu (decision 0080) and leaves it open. */
 export async function openMenu(page: Page) {
   // The bar comes first in the page, before any card.
   await page.getByRole("button", { name: strings.more_options }).first().click();
+}
+
+/** Opens Stjórna from the community's `⋯` menu. */
+export async function manage(page: Page) {
+  await openMenu(page);
+  await page.getByRole("menuitem", { name: new RegExp(`^${strings.community_manage}`) }).click();
 }
 
 /** Expects the person in `page` to be a member who may leave, which the menu offers. */

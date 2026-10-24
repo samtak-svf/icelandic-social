@@ -1070,6 +1070,10 @@
       "surfaces": ["android", "ios", "web"],
       "description": "Heading and button: create a new community."
     },
+    "community_preview": {
+      "surfaces": ["web"],
+      "description": "Label of the live preview of the community header beside the create form on an expanded window (decision 0087)."
+    },
     "community_name": {
       "surfaces": ["android", "ios", "web"],
       "description": "Label of a community's name field."

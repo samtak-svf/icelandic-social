@@ -123,16 +123,39 @@ function Lock() {
   );
 }
 
-/** The header; `members` is left out when the reader may not see them. */
+/** Pictures held in the browser that the create preview shows in place of fetched ones. */
+export type PreviewImages = { photo: string | null; cover: string | null };
+
+/**
+ * The header; `members` is left out when the reader may not see them. With
+ * `preview` (decision 0087) it is a picture of a community not yet made: the
+ * given pictures, the description in place, and no links, since there is no
+ * page for them to open.
+ */
 export function CommunityHeader({
   community,
   members,
-}: Readonly<{ community: Community; members?: Members }>) {
+  preview,
+}: Readonly<{ community: Community; members?: Members; preview?: PreviewImages }>) {
   const { communityId } = community;
   const closed = community.audience === "private";
+  const Title = preview === undefined ? "h1" : "h2";
+  const audience = (
+    <>
+      {closed && <Lock />}
+      {closed ? strings.community_private_full : strings.community_open_full}
+      {community.memberCount !== null &&
+        ` · ${strings.community_members({ count: community.memberCount })}`}
+    </>
+  );
   return (
     <header className="flex flex-col gap-3">
-      <Cover communityId={communityId} version={community.cover} className="rounded-lg" />
+      <Cover
+        communityId={communityId}
+        version={community.cover}
+        className="rounded-lg"
+        local={preview?.cover}
+      />
       <div className="flex items-end gap-3">
         <Avatar
           kind="community"
@@ -140,28 +163,40 @@ export function CommunityHeader({
           name={community.name}
           photo={community.photo}
           className="size-20 rounded-xl text-2xl"
+          local={preview?.photo}
         />
         <div className="flex min-w-0 flex-col">
-          <h1 className="font-headline text-3xl [overflow-wrap:anywhere]">{community.name}</h1>
-          <Link
-            to="/communities/$communityId/about"
-            params={{ communityId }}
-            className="inline-flex min-h-11 items-center gap-1 self-start text-sm text-muted-fg"
-          >
-            {closed && <Lock />}
-            {closed ? strings.community_private_full : strings.community_open_full}
-            {community.memberCount !== null &&
-              ` · ${strings.community_members({ count: community.memberCount })}`}
-          </Link>
+          <Title className="font-headline text-3xl [overflow-wrap:anywhere]">
+            {community.name}
+          </Title>
+          {preview === undefined ? (
+            <Link
+              to="/communities/$communityId/about"
+              params={{ communityId }}
+              className="inline-flex min-h-11 items-center gap-1 self-start text-sm text-muted-fg"
+            >
+              {audience}
+            </Link>
+          ) : (
+            <p className="inline-flex min-h-11 items-center gap-1 text-sm text-muted-fg">
+              {audience}
+            </p>
+          )}
         </div>
       </div>
       {community.description !== "" && (
-        <p className="line-clamp-3 whitespace-pre-wrap expanded:hidden">{community.description}</p>
+        <p
+          className={`line-clamp-3 whitespace-pre-wrap ${preview === undefined ? "expanded:hidden" : ""}`}
+        >
+          {community.description}
+        </p>
       )}
-      <div className="flex items-center justify-between gap-3">
-        {members === undefined ? <span /> : <MemberStack members={members} />}
-        {(community.role !== null || !closed) && <Invite community={community} />}
-      </div>
+      {preview === undefined && (
+        <div className="flex items-center justify-between gap-3">
+          {members === undefined ? <span /> : <MemberStack members={members} />}
+          {(community.role !== null || !closed) && <Invite community={community} />}
+        </div>
+      )}
     </header>
   );
 }

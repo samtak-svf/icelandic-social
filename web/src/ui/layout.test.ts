@@ -10,6 +10,8 @@ describe("layout", () => {
       memberPictures: 5,
       manage: "one-screen",
       featured: "strip",
+      hub: "tabs",
+      create: "form",
     });
   });
 
@@ -34,6 +36,16 @@ describe("layout", () => {
     expect(layoutOf(SIZE_CLASSES.medium).featured).toBe("strip");
     expect(layoutOf(SIZE_CLASSES.expanded - 1).featured).toBe("strip");
     expect(layoutOf(SIZE_CLASSES.expanded).featured).toBe("aside");
+  });
+
+  it("lists the communities in a column beside the feed, and previews a new one, only on expanded", () => {
+    for (const width of [412, SIZE_CLASSES.medium, SIZE_CLASSES.expanded - 1]) {
+      expect(layoutOf(width)).toMatchObject({ hub: "tabs", create: "form" });
+    }
+    expect(layoutOf(SIZE_CLASSES.expanded)).toMatchObject({
+      hub: "column",
+      create: "form-and-preview",
+    });
   });
 
   it("never shows fewer members' pictures on a wider window", () => {

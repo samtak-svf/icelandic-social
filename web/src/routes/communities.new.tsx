@@ -7,7 +7,10 @@ import { VerifyCta } from "../ui/verify.tsx";
 
 // Stofna samfélag (decisions 0063, 0080): its own screen, opened from the
 // first row of the hub, so the hub itself holds only the list and the feed.
-export const Route = createFileRoute("/communities/new")({ component: NewCommunity });
+export const Route = createFileRoute("/communities/new")({
+  component: NewCommunity,
+  staticData: { width: "wide" },
+});
 
 function NewCommunity() {
   const { state } = useAccount();

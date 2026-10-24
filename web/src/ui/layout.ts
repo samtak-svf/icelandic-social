@@ -16,6 +16,10 @@ export type Layout = {
   manage: "one-screen" | "side-nav";
   /** The featured posts: a row between the composer and the feed, or in the aside (0088). */
   featured: "strip" | "aside";
+  /** The hub: Nýjast, Mín samfélög and Finna as tabs, or the reader's communities in a column beside the feed. */
+  hub: "tabs" | "column";
+  /** Stofna samfélag: the form alone, or the form beside a live preview of the community's header. */
+  create: "form" | "form-and-preview";
 };
 
 export const LAYOUTS: Readonly<Record<SizeClass, Layout>> = {
@@ -25,6 +29,8 @@ export const LAYOUTS: Readonly<Record<SizeClass, Layout>> = {
     memberPictures: 5,
     manage: "one-screen",
     featured: "strip",
+    hub: "tabs",
+    create: "form",
   },
   medium: {
     navigation: "rail",
@@ -32,6 +38,8 @@ export const LAYOUTS: Readonly<Record<SizeClass, Layout>> = {
     memberPictures: 12,
     manage: "one-screen",
     featured: "strip",
+    hub: "tabs",
+    create: "form",
   },
   expanded: {
     navigation: "rail",
@@ -39,6 +47,8 @@ export const LAYOUTS: Readonly<Record<SizeClass, Layout>> = {
     memberPictures: 12,
     manage: "side-nav",
     featured: "aside",
+    hub: "column",
+    create: "form-and-preview",
   },
 };
 
