@@ -143,7 +143,7 @@ final class PostModelTests: XCTestCase {
         await model.publish()
         XCTAssertTrue(social.calls.contains { $0.hasPrefix("uploadPostImage ") && $0.hasSuffix("ein.jpg") })
         XCTAssertTrue(social.calls.contains("createComment p1  media m-\(URL(filePath: path).lastPathComponent)"))
-        XCTAssertEqual(model.comments.last?.images.count, 1)
+        XCTAssertEqual(social.comments["p1"]?.last?.images.count, 1)
         XCTAssertNil(model.image)
         XCTAssertFalse(FileManager.default.fileExists(atPath: path))
     }
