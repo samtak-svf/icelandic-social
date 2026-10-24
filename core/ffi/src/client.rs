@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use spjall_client::{self as core, ClientError, HistoryError, LinkError, MediaError, api};
 
+use crate::frames::{Frame, Framing};
 use crate::{Body, CoreError, Envelope, store_code};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -213,6 +214,7 @@ impl From<ClientError> for CoreError {
             }
             ClientError::NameInvalid => Self::NameInvalid,
             ClientError::NotAGroup => Self::NotAGroup,
+            ClientError::NoMaster => Self::NoMaster,
             ClientError::Link(LinkError::KeyMismatch) => Self::LinkKeyMismatch,
             ClientError::Link(LinkError::Gone) => Self::LinkExpired,
             ClientError::Link(LinkError::AlreadyApproved) => Self::LinkAlreadyApproved,
@@ -1399,6 +1401,44 @@ impl CoreClient {
     /// new version, which `photo` fetches like anyone else's.
     pub fn set_photo(&self, path: String) -> Result<String, CoreError> {
         Ok(self.client()?.set_photo(Path::new(&path))?)
+    }
+
+    /// Frames this account's photo again (0086): the server cuts it from the
+    /// master it kept, so there is no new upload. Returns the new version,
+    /// which `photo_framed` fetches. `NoMaster` for a photo set before
+    /// masters were kept, which the person uploads once more; `Invalid` for
+    /// a framing the server would refuse (a fraction outside 0 to 1).
+    pub fn set_photo_framing(&self, framing: Framing) -> Result<String, CoreError> {
+        Ok(self.client()?.set_photo_framing(&framing.into())?)
+    }
+
+    /// How this account's photo is framed, asked of the server now; none
+    /// without a photo or for one set before frames. The editor opens there.
+    pub fn photo_framing(&self) -> Result<Option<Framing>, CoreError> {
+        Ok(self.client()?.photo_framing()?.map(Into::into))
+    }
+
+    /// Writes the master of this account's photo (a WebP, at most 2400 px
+    /// on its long edge) to `path`, for the editor to frame again. False
+    /// when there is none: no photo, or one set before masters were kept.
+    pub fn photo_source(&self, path: String) -> Result<bool, CoreError> {
+        Ok(self.client()?.photo_source(Path::new(&path))?)
+    }
+
+    /// `photo` for one frame (0086): the path of `account`'s photo at
+    /// `version` in `frame`, `Square` for a photo. Kept per frame, each with
+    /// only its latest version. None as for `photo`.
+    pub fn photo_framed(
+        &self,
+        account: String,
+        version: String,
+        frame: Frame,
+    ) -> Result<Option<String>, CoreError> {
+        Ok(self
+            .client()?
+            .photo_framed(&account, &version, frame.into())?
+            .as_deref()
+            .map(path_string))
     }
 
     /// Removes this account's photo.

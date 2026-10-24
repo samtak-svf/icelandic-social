@@ -83,6 +83,7 @@ impl From<&ClientError> for Failure {
             }
             ClientError::NameInvalid => Self::new("name-invalid", error.to_string()),
             ClientError::NotAGroup => Self::new("not-a-group", error.to_string()),
+            ClientError::NoMaster => Self::new("no-master", error.to_string()),
         }
     }
 }

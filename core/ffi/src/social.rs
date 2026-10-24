@@ -10,6 +10,7 @@ use spjall_client::api;
 
 use crate::CoreError;
 use crate::client::{CoreClient, path_string};
+use crate::frames::{Frame, Framing};
 
 /// Who wrote a post or a comment, did what a notification tells, or is
 /// reported. Its photo is not named here; `profile` gives it.
@@ -152,6 +153,15 @@ pub struct Community {
     /// The cover's version (0080); none when it has no cover.
     #[uniffi(default = None)]
     pub cover: Option<String>,
+    /// How the picture is framed (0086); none without a picture or for one
+    /// set before frames.
+    #[uniffi(default = None)]
+    pub photo_frames: Option<Framing>,
+    /// How the cover is framed, with a rectangle for each size class the
+    /// person adjusted (0086); none without a cover or for one set before
+    /// frames.
+    #[uniffi(default = None)]
+    pub cover_frames: Option<Framing>,
     /// Posts made since this account last opened the feed (0080).
     #[uniffi(default = 0)]
     pub unread: u64,
@@ -205,6 +215,8 @@ impl From<api::Community> for Community {
             open_reports: community.open_reports,
             photo: community.photo,
             cover: community.cover,
+            photo_frames: community.photo_frames.map(Into::into),
+            cover_frames: community.cover_frames.map(Into::into),
             unread: community.unread,
             last_post_at: community.last_post_at,
             pinned: community.pinned,
@@ -1248,6 +1260,92 @@ impl CoreClient {
             .community_cover(&community_id, &version)?
             .as_deref()
             .map(path_string))
+    }
+
+    /// Frames a community's picture again (0086) from the master the server
+    /// kept: its owner or a moderator, with no new upload. Returns the new
+    /// version, which `community_picture_framed` fetches. `NoMaster` for a
+    /// picture set before masters were kept, which is uploaded once more;
+    /// `Invalid` for a framing the server would refuse; 403 for anyone else.
+    pub fn set_community_picture_framing(
+        &self,
+        community_id: String,
+        framing: Framing,
+    ) -> Result<String, CoreError> {
+        Ok(self
+            .client()?
+            .set_community_picture_framing(&community_id, &framing.into())?)
+    }
+
+    /// Frames a community's cover again, as `set_community_picture_framing`
+    /// does the picture. A rectangle in `overrides` sets one size class on
+    /// its own; the others follow the focus. Returns the new version.
+    pub fn set_community_cover_framing(
+        &self,
+        community_id: String,
+        framing: Framing,
+    ) -> Result<String, CoreError> {
+        Ok(self
+            .client()?
+            .set_community_cover_framing(&community_id, &framing.into())?)
+    }
+
+    /// The path of a community's picture at `version` in `frame` (`Square`),
+    /// as `community_picture` does without one: fetched once per version
+    /// and kept per frame (0086).
+    pub fn community_picture_framed(
+        &self,
+        community_id: String,
+        version: String,
+        frame: Frame,
+    ) -> Result<Option<String>, CoreError> {
+        Ok(self
+            .client()?
+            .community_picture_framed(&community_id, &version, frame.into())?
+            .as_deref()
+            .map(path_string))
+    }
+
+    /// The path of a community's cover at `version` in `frame` (`Compact`,
+    /// `Medium` or `Expanded`, chosen by the window's width with
+    /// `frame_for_width`): fetched once per version and kept per frame,
+    /// each frame with only its latest version (0086).
+    pub fn community_cover_framed(
+        &self,
+        community_id: String,
+        version: String,
+        frame: Frame,
+    ) -> Result<Option<String>, CoreError> {
+        Ok(self
+            .client()?
+            .community_cover_framed(&community_id, &version, frame.into())?
+            .as_deref()
+            .map(path_string))
+    }
+
+    /// Writes the master of a community's picture to `path`, for the editor
+    /// to frame again; its owner or a moderator. False when there is none:
+    /// no picture, or one set before masters were kept (0086).
+    pub fn community_picture_source(
+        &self,
+        community_id: String,
+        path: String,
+    ) -> Result<bool, CoreError> {
+        Ok(self
+            .client()?
+            .community_picture_source(&community_id, Path::new(&path))?)
+    }
+
+    /// Writes the master of a community's cover to `path`, as
+    /// `community_picture_source` does the picture (0086).
+    pub fn community_cover_source(
+        &self,
+        community_id: String,
+        path: String,
+    ) -> Result<bool, CoreError> {
+        Ok(self
+            .client()?
+            .community_cover_source(&community_id, Path::new(&path))?)
     }
 
     /// The community's members, its owner and moderators first.

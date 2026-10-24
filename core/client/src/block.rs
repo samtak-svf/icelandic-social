@@ -119,6 +119,7 @@ impl<T: Transport> Client<T> {
                     name: b.name.clone(),
                     verified: b.verified,
                     photo: None,
+                    photo_frames: None,
                 };
                 store_profile(tx, &b.account_id, Some(&profile))?;
             }

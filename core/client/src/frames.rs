@@ -86,7 +86,10 @@ impl FrameKind {
 
     /// The stored size of `frame`, none when this kind has no such frame.
     pub fn size(self, frame: Frame) -> Option<FrameSize> {
-        self.specs().iter().find(|(f, _)| *f == frame).map(|(_, s)| *s)
+        self.specs()
+            .iter()
+            .find(|(f, _)| *f == frame)
+            .map(|(_, s)| *s)
     }
 }
 
@@ -144,7 +147,10 @@ pub struct Framing {
 impl Framing {
     /// The centred framing an upload starts with.
     pub fn centred() -> Self {
-        Self { focus: Focus { x: 0.5, y: 0.5 }, overrides: BTreeMap::new() }
+        Self {
+            focus: Focus { x: 0.5, y: 0.5 },
+            overrides: BTreeMap::new(),
+        }
     }
 
     /// Whether the server would take it for `kind`: every fraction in range,
@@ -164,6 +170,12 @@ impl Framing {
             })
     }
 }
+
+// The fractions come from JSON, which cannot carry NaN, so equality is
+// reflexive and the DTOs that hold a framing keep their `Eq`.
+impl Eq for Focus {}
+impl Eq for FrameRect {}
+impl Eq for Framing {}
 
 /// Round half up, which for the non-negative values here is `f64::round`.
 fn round(value: f64) -> f64 {
@@ -262,7 +274,10 @@ mod tests {
         assert_eq!(framing.overrides[&Frame::Compact].w, 0.5);
         assert_eq!(serde_json::to_string(&framing).unwrap(), json);
         let bare: Framing = serde_json::from_str(r#"{"focus":{"x":0,"y":1}}"#).unwrap();
-        assert_eq!(serde_json::to_string(&bare).unwrap(), r#"{"focus":{"x":0.0,"y":1.0}}"#);
+        assert_eq!(
+            serde_json::to_string(&bare).unwrap(),
+            r#"{"focus":{"x":0.0,"y":1.0}}"#
+        );
     }
 
     #[test]
@@ -272,20 +287,69 @@ mod tests {
         framing.focus.x = 1.5;
         assert!(!framing.fits(FrameKind::Cover));
         let mut framing = Framing::centred();
-        framing.overrides.insert(Frame::Compact, FrameRect { x: 0.0, y: 0.0, w: 1.0, h: 1.0 });
+        framing.overrides.insert(
+            Frame::Compact,
+            FrameRect {
+                x: 0.0,
+                y: 0.0,
+                w: 1.0,
+                h: 1.0,
+            },
+        );
         assert!(framing.fits(FrameKind::Cover));
-        assert!(!framing.fits(FrameKind::Photo), "a picture has no compact frame");
-        framing.overrides.insert(Frame::Medium, FrameRect { x: 0.6, y: 0.0, w: 0.5, h: 0.5 });
+        assert!(
+            !framing.fits(FrameKind::Photo),
+            "a picture has no compact frame"
+        );
+        framing.overrides.insert(
+            Frame::Medium,
+            FrameRect {
+                x: 0.6,
+                y: 0.0,
+                w: 0.5,
+                h: 0.5,
+            },
+        );
         assert!(!framing.fits(FrameKind::Cover), "leaves the image");
     }
 
     #[test]
     fn frames_for_uses_overrides_and_the_focus() {
         let mut framing = Framing::centred();
-        framing.overrides.insert(Frame::Compact, FrameRect { x: 0.0, y: 0.0, w: 0.5, h: 0.5 });
+        framing.overrides.insert(
+            Frame::Compact,
+            FrameRect {
+                x: 0.0,
+                y: 0.0,
+                w: 0.5,
+                h: 0.5,
+            },
+        );
         let frames = frames_for(FrameKind::Cover, 4000, 3000, &framing);
         assert_eq!(frames.len(), 3);
-        assert_eq!(frames[0], (Frame::Compact, PixelRect { x: 0, y: 0, w: 2000, h: 1500 }));
-        assert_eq!(frames[2], (Frame::Expanded, PixelRect { x: 0, y: 750, w: 4000, h: 1500 }));
+        assert_eq!(
+            frames[0],
+            (
+                Frame::Compact,
+                PixelRect {
+                    x: 0,
+                    y: 0,
+                    w: 2000,
+                    h: 1500
+                }
+            )
+        );
+        assert_eq!(
+            frames[2],
+            (
+                Frame::Expanded,
+                PixelRect {
+                    x: 0,
+                    y: 750,
+                    w: 4000,
+                    h: 1500
+                }
+            )
+        );
     }
 }
