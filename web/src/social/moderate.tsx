@@ -4,7 +4,6 @@ import type { Problem } from "../problem.ts";
 import {
   communityModerationLog,
   deleteCommunity,
-  listCommunityMembers,
   setCommunityRole,
   updateCommunity,
   type Community,
@@ -13,6 +12,7 @@ import {
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { Avatar } from "./avatar.tsx";
+import { useMembers } from "./members.ts";
 import { CommunityPictures } from "./picture-pick.tsx";
 import { outcome, useLoad, when } from "./outcome.ts";
 import { Button, ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
@@ -179,12 +179,7 @@ function Edit({
 
 /** The members whose role the owner names (decision 0063), and each one as it is. */
 function Roles({ community, changed }: Readonly<{ community: Community; changed: () => void }>) {
-  const [members, reload] = useLoad(
-    useCallback(
-      () => outcome(listCommunityMembers({ path: { communityId: community.communityId } }), 200),
-      [community.communityId],
-    ),
-  );
+  const [members, reload] = useMembers(community.communityId);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
 

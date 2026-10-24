@@ -1,19 +1,21 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import type { Problem } from "../problem.ts";
-import { leaveCommunity, listCommunityMembers, type Community } from "../generated/api.ts";
+import { leaveCommunity, type Community } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { Avatar, Cover } from "./avatar.tsx";
 import { Invite } from "./invite.tsx";
-import { outcome, useLoad } from "./outcome.ts";
+import type { Members } from "./members.ts";
+import { outcome } from "./outcome.ts";
+import { LAYOUTS } from "../ui/layout.ts";
 import { DotsIcon, Menu, MenuItem } from "../ui/menu.tsx";
 import { ProblemText, Status } from "../ui/kit.tsx";
 
 // The community's top bar and header (decision 0080): back and the `⋯` menu
 // in the bar; under it the cover, the picture, the large name, the audience
-// line that opens Um, and the members' pictures with Bjóða.
-
-const STACK = 5;
+// line that opens Um, and the members' pictures with Bjóða. On an expanded
+// window the description and the pictures move to the aside beside the feed
+// (decision 0087), so the header leaves them out there.
 
 /** Back to the hub, and the menu: Stjórna for moderators, Um, and leaving. */
 export function CommunityBar({
@@ -121,10 +123,11 @@ function Lock() {
   );
 }
 
+/** The header; `members` is left out when the reader may not see them. */
 export function CommunityHeader({
   community,
-  readable,
-}: Readonly<{ community: Community; readable: boolean }>) {
+  members,
+}: Readonly<{ community: Community; members?: Members }>) {
   const { communityId } = community;
   const closed = community.audience === "private";
   return (
@@ -153,26 +156,30 @@ export function CommunityHeader({
         </div>
       </div>
       {community.description !== "" && (
-        <p className="line-clamp-3 whitespace-pre-wrap">{community.description}</p>
+        <p className="line-clamp-3 whitespace-pre-wrap expanded:hidden">{community.description}</p>
       )}
       <div className="flex items-center justify-between gap-3">
-        {readable ? <MemberStack communityId={communityId} /> : <span />}
+        {members === undefined ? <span /> : <MemberStack members={members} />}
         {(community.role !== null || !closed) && <Invite community={community} />}
       </div>
     </header>
   );
 }
 
-/** The first members' pictures, overlapped; decorative, the count is in the audience line. */
-function MemberStack({ communityId }: Readonly<{ communityId: string }>) {
-  const [members] = useLoad(
-    useCallback(() => outcome(listCommunityMembers({ path: { communityId } }), 200), [communityId]),
-  );
+/**
+ * The first members' pictures, overlapped: five on a compact window, up to
+ * twelve on a medium one, none on an expanded one, where the aside has them.
+ * Decorative; the count is in the audience line.
+ */
+function MemberStack({ members }: Readonly<{ members: Members }>) {
   if (!members?.ok) return <span />;
   return (
-    <ul aria-label={strings.community_members_stack} className="flex -space-x-2">
-      {members.data.members.slice(0, STACK).map((member) => (
-        <li key={member.accountId}>
+    <ul aria-label={strings.community_members_stack} className="flex -space-x-2 expanded:hidden">
+      {members.data.members.slice(0, LAYOUTS.medium.memberPictures).map((member, i) => (
+        <li
+          key={member.accountId}
+          className={i < LAYOUTS.compact.memberPictures ? undefined : "hidden medium:block"}
+        >
           <Avatar
             kind="person"
             id={member.accountId}

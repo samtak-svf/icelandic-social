@@ -45,4 +45,11 @@ declare module "@tanstack/react-router" {
   interface Register {
     router: ReturnType<typeof getRouter>;
   }
+  interface StaticDataRouteOption {
+    /**
+     * "wide": the page lays out more than one column on an expanded window, so
+     * the shell lets it use the width (decision 0087).
+     */
+    width?: "wide";
+  }
 }

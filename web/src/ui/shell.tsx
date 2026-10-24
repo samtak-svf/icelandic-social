@@ -1,4 +1,4 @@
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, useLocation, useMatches } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useAccount } from "../account.tsx";
 import { strings } from "../generated/brand/strings.ts";
@@ -16,6 +16,7 @@ const PUBLIC_PATHS = new Set(["/privacy", "/support"]);
 export function Shell({ children }: Readonly<{ children: ReactNode }>) {
   const { state, refresh } = useAccount();
   const pathname = useLocation({ select: (l) => l.pathname });
+  const wide = useMatches({ select: (ms) => ms.some((m) => m.staticData.width === "wide") });
   switch (state.status) {
     case "signed-out":
       if (PUBLIC_PATHS.has(pathname)) {
@@ -64,7 +65,8 @@ export function Shell({ children }: Readonly<{ children: ReactNode }>) {
   // screen and the name above the page; from medium up both give way to a
   // rail down the left edge (decisions 0080, 0087). The size classes are the
   // contract's (`medium:`, generated). `--tabbar-height` is what a
-  // bottom-pinned box (the comment box) keeps clear of.
+  // bottom-pinned box (the comment box) keeps clear of. A route that lays out
+  // more than one column on an expanded window says so (`staticData.width`).
   return (
     <div className="[--tabbar-height:3.5rem] medium:pl-24 medium:[--tabbar-height:0px]">
       <header className="medium:hidden">
@@ -110,7 +112,9 @@ export function Shell({ children }: Readonly<{ children: ReactNode }>) {
           </NavLink>
         </ul>
       </nav>
-      <main className="mx-auto max-w-2xl px-4 py-6 pb-[calc(var(--tabbar-height)+1.5rem)] medium:pb-6">
+      <main
+        className={`mx-auto max-w-2xl px-4 py-6 pb-[calc(var(--tabbar-height)+1.5rem)] medium:pb-6 ${wide ? "expanded:max-w-6xl" : ""}`}
+      >
         {children}
       </main>
     </div>

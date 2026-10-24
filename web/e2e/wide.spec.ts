@@ -1,6 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
 import { SIZE_CLASSES, sizeClassOf } from "../src/generated/frames.ts";
+import { layoutOf } from "../src/ui/layout.ts";
 import { expect, test } from "./origin.ts";
 import { found, person, post, write } from "./social-helpers.ts";
 
@@ -63,8 +64,11 @@ for (const width of WIDTHS) {
     const invite = await box(header.getByRole("button", { name: strings.invite, exact: true }));
     const row = await box(header);
     expect(invite.x + invite.width).toBeCloseTo(row.x + row.width, 0);
-    const stack = await box(header.getByRole("list", { name: strings.community_members_stack }));
-    expect(Math.abs(invite.y + invite.height / 2 - (stack.y + stack.height / 2))).toBeLessThan(2);
+    // Beside a feed the pictures are in the aside (wide-community.spec.ts).
+    if (layoutOf(width).community === "column") {
+      const stack = await box(header.getByRole("list", { name: strings.community_members_stack }));
+      expect(Math.abs(invite.y + invite.height / 2 - (stack.y + stack.height / 2))).toBeLessThan(2);
+    }
 
     // The post screen: the back bar and the comment box span the post, no wider.
     await member.goto(community);
