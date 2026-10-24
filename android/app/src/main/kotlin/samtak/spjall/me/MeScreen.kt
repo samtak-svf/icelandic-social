@@ -188,6 +188,12 @@ private fun PhotoControls(
             )
             if (hasPhoto) {
                 Pill(
+                    text = stringResource(R.string.image_frames_title),
+                    filled = false,
+                    onClick = actions::reframePhoto,
+                    enabled = !busy,
+                )
+                Pill(
                     text = stringResource(R.string.photo_remove),
                     filled = false,
                     onClick = { removing = true },

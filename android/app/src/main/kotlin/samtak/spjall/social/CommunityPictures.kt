@@ -27,6 +27,7 @@ internal fun PictureRows(
         busy,
         actions::pickPicture,
         actions::removePicture,
+        actions::reframePicture,
     )
     ImageRow(
         R.string.community_cover_choose,
@@ -35,6 +36,7 @@ internal fun PictureRows(
         busy,
         actions::pickCover,
         actions::removeCover,
+        actions::reframeCover,
     )
 }
 
@@ -51,9 +53,13 @@ internal fun ImageRow(
     busy: Boolean,
     onChoose: () -> Unit,
     onRemove: () -> Unit,
+    onReframe: () -> Unit,
 ) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         TextButton(onClick = onChoose, enabled = !busy) { Text(stringResource(choose)) }
-        if (present) TextButton(onClick = onRemove, enabled = !busy) { Text(stringResource(remove)) }
+        if (present) {
+            TextButton(onClick = onReframe, enabled = !busy) { Text(stringResource(R.string.image_frames_title)) }
+            TextButton(onClick = onRemove, enabled = !busy) { Text(stringResource(remove)) }
+        }
     }
 }
