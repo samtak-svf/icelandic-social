@@ -70,10 +70,6 @@ export class Core {
     completeLink(): Enrolled;
     conversations(): Conversation[];
     /**
-     * Up to `limit` messages older than `before` (a seq), newest last.
-     */
-    history(conversation_id: string, before: number | null | undefined, limit: number): Message[];
-    /**
      * `{ size, modules: Uint8Array }` for the page to draw.
      */
     static linkQr(code: string): LinkQr;
@@ -98,6 +94,12 @@ export class Core {
     send(conversation_id: string, text: string): string;
     sync(): Outcome;
     /**
+     * Up to `limit` items before the item `before` (a seq), oldest first:
+     * what a thread shows, the history a linked phone sent included. The
+     * newest page ends with what is still being sent.
+     */
+    timeline(conversation_id: string, before: number | null | undefined, limit: number): Item[];
+    /**
      * Deletes the pool's files without opening a store: what is left when
      * no key opens it, after a link that never completed or a key that is
      * gone (0064). Nothing may hold the pool open.
@@ -118,7 +120,6 @@ export interface InitOutput {
     readonly core_beginLink: (a: number, b: number) => void;
     readonly core_completeLink: (a: number, b: number) => void;
     readonly core_conversations: (a: number, b: number) => void;
-    readonly core_history: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly core_linkQr: (a: number, b: number, c: number) => void;
     readonly core_linkState: (a: number, b: number) => void;
     readonly core_me: (a: number, b: number) => void;
@@ -127,6 +128,7 @@ export interface InitOutput {
     readonly core_receiveHistory: (a: number, b: number) => void;
     readonly core_send: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly core_sync: (a: number, b: number) => void;
+    readonly core_timeline: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly core_wipe: (a: number) => number;
     readonly core_wipeStore: () => number;
     readonly rust_sqlite_wasm_abort: () => void;
@@ -139,8 +141,8 @@ export interface InitOutput {
     readonly rust_sqlite_wasm_realloc: (a: number, b: number) => number;
     readonly sqlite3_os_end: () => number;
     readonly sqlite3_os_init: () => number;
-    readonly __wasm_bindgen_func_elem_6086: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_6101: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6090: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6105: (a: number, b: number, c: number, d: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

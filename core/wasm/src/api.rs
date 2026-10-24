@@ -220,9 +220,11 @@ impl Core {
         }))
     }
 
-    /// Up to `limit` messages older than `before` (a seq), newest last.
-    #[wasm_bindgen(unchecked_return_type = "Message[]")]
-    pub fn history(
+    /// Up to `limit` items before the item `before` (a seq), oldest first:
+    /// what a thread shows, the history a linked phone sent included. The
+    /// newest page ends with what is still being sent.
+    #[wasm_bindgen(unchecked_return_type = "Item[]")]
+    pub fn timeline(
         &mut self,
         conversation_id: &str,
         before: Option<f64>,
@@ -232,8 +234,8 @@ impl Core {
         let before = before.map(|seq| seq as u64);
         answer(
             self.client
-                .history(conversation_id, before, limit)
-                .map(|list| list.into_iter().map(dto::Message::from).collect::<Vec<_>>()),
+                .timeline(conversation_id, before, limit)
+                .map(|list| list.into_iter().map(dto::Item::from).collect::<Vec<_>>()),
         )
     }
 
