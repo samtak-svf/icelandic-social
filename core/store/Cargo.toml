@@ -11,16 +11,30 @@ publish.workspace = true
 # rusqlite's SQLite on wasm32 with SQLite3 Multiple Ciphers compiled in, so
 # the store's `PRAGMA key` encrypts the file as SQLCipher does natively (0064).
 sqlite3mc = ["dep:sqlite-wasm-rs", "sqlite-wasm-rs?/sqlite3mc"]
+# The store in the browser's Origin Private File System, through the
+# `opfs-sahpool` VFS under sqlite3mc's cipher, in a dedicated Worker only
+# (decision 0081). It is the default VFS once `install_opfs` has run.
+opfs = ["sqlite3mc", "dep:sqlite-wasm-vfs"]
 
 [dependencies]
 rusqlite.workspace = true
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
 sqlite-wasm-rs = { version = "0.5", default-features = false, optional = true }
+sqlite-wasm-vfs = { version = "0.2", optional = true }
 
 [dev-dependencies]
 serde_json.workspace = true
 tempfile.workspace = true
 
-[lints]
-workspace = true
+# tests/opfs.rs, in a dedicated Worker under headless Chrome.
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+# The workspace's lints, with `unsafe_code` at `deny` rather than `forbid`
+# so that src/opfs.rs can allow it for its two calls into sqlite3mc's C API.
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }

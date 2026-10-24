@@ -122,6 +122,57 @@ jobs:
           cargo clippy --locked -p spjall-client --target wasm32-unknown-unknown -- -D warnings
           cargo clippy --locked -p spjall-web-spike --features sqlite3mc --target wasm32-unknown-unknown -- -D warnings
 
+  store-opfs:
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    # The browser's store (0081): the core's store on `opfs-sahpool` under
+    # headless Chrome, in a dedicated Worker, through sqlite3mc's cipher. The
+    # one suite that runs the real VFS, so it is where a cipher or journal
+    # regression shows. Release on purpose: `sqlite-wasm-vfs` 0.2.0 asserts in
+    # `xClose` on sqlite3mc's second open of the same file, and release is what
+    # the browser runs (core/store/tests/opfs.rs says the same).
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: core
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Toolchain
+        run: |
+          rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: core
+          key: wasm32-opfs
+
+      # The version here follows the wasm-bindgen crate in core/Cargo.lock; the
+      # runner refuses a mismatch, so a bump of one is a bump of both.
+      - name: wasm-bindgen-test-runner
+        run: cargo install wasm-bindgen-cli --version 0.2.129 --locked
+
+      # Chrome for Testing and its own driver, so the browser the tests drive is
+      # the one whose driver ships beside it. No third-party action to pin.
+      - name: Chrome and chromedriver
+        working-directory: .
+        run: |
+          set -euo pipefail
+          V=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json \
+            | jq -r '.channels.Stable.version')
+          B=https://storage.googleapis.com/chrome-for-testing-public/$V/linux64
+          curl -sO $B/chrome-linux64.zip
+          curl -sO $B/chromedriver-linux64.zip
+          unzip -q chrome-linux64.zip
+          unzip -q chromedriver-linux64.zip
+          echo "CHROME=$PWD/chrome-linux64/chrome" >> "$GITHUB_ENV"
+          echo "CHROMEDRIVER=$PWD/chromedriver-linux64/chromedriver" >> "$GITHUB_ENV"
+
+      - name: The store on the browser's VFS
+        env:
+          CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
+        run: cargo test --release --locked -p spjall-store --features opfs --target wasm32-unknown-unknown --test opfs
+
   android:
     if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/core-v')
     runs-on: ubuntu-latest

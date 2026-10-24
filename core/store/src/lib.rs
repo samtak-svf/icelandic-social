@@ -13,6 +13,11 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 pub use rusqlite;
+
+#[cfg(all(target_arch = "wasm32", target_os = "unknown", feature = "opfs"))]
+mod opfs;
+#[cfg(all(target_arch = "wasm32", target_os = "unknown", feature = "opfs"))]
+pub use opfs::{OpfsError, OpfsPool, install_opfs, wipe_opfs};
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior};
 
 /// `store.databaseFile` in `identifiers/ids.json`; a test holds them equal.
@@ -693,10 +698,34 @@ fn connect(path: &Path, key: &Key) -> rusqlite::Result<Connection> {
     cipher(&connection, CIPHER_PROBES)?;
     connection.query_row("SELECT COUNT(*) FROM sqlite_master", [], |_| Ok(()))?;
     connection.busy_timeout(BUSY_TIMEOUT)?;
-    connection.pragma_update(None, "journal_mode", "WAL")?;
+    // Asked, then read back: SQLite answers with the journal it keeps, and a VFS
+    // that cannot open the one asked for leaves the previous mode in place
+    // without an error, which would take the reader's promise (0056) with it.
+    let mode: String = connection.query_row(
+        &format!("PRAGMA journal_mode = {JOURNAL_MODE}"),
+        [],
+        |row| row.get(0),
+    )?;
+    if !mode.eq_ignore_ascii_case(JOURNAL_MODE) {
+        return Err(rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_ERROR),
+            Some(format!(
+                "this VFS keeps the journal in {mode}, not {JOURNAL_MODE}"
+            )),
+        ));
+    }
     connection.pragma_update(None, "foreign_keys", true)?;
     Ok(connection)
 }
+
+/// The journal this build keeps. A phone's store runs in WAL, where a reader
+/// neither waits for the writer nor holds it up (0056). The browser's
+/// `opfs-sahpool` VFS has no shared memory, which WAL opens its index on, so
+/// there the journal is TRUNCATE (0081).
+#[cfg(feature = "opfs")]
+const JOURNAL_MODE: &str = "truncate";
+#[cfg(not(feature = "opfs"))]
+const JOURNAL_MODE: &str = "wal";
 
 /// SQLCipher answers `cipher_version` and SQLite3 Multiple Ciphers (the
 /// wasm32 build) answers `cipher`. Plain SQLite answers neither.
