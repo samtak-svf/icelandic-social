@@ -66,19 +66,26 @@ test("each tab is a route with its own content, the row sticks and back returns 
     await expect(grid).toHaveCount(1);
     await expect
       .poll(() =>
-        grid.getByRole("img").evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth),
+        grid.locator("img").evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth),
       )
       .toBeGreaterThan(0);
 
     // Meðlimir: the owner first, then the member.
     await openTab(owner, strings.community_tab_members, "/people", root);
-    const names = owner.getByRole("main").getByText(/Flipa(dóttir|son)/);
+    const names = owner
+      .getByRole("region", { name: strings.community_members_title })
+      .getByRole("listitem");
+    await expect(names).toHaveCount(2);
     await expect(names.first()).toContainText("Eigandi Flipadóttir");
     await expect(names.last()).toContainText("Meðlimur Flipason");
 
     // Um: the community's description.
     await openTab(owner, strings.community_tab_about, "/about", root);
-    await expect(owner.getByText("Við ræktum grænmeti saman.").last()).toBeVisible();
+    await expect(
+      owner
+        .getByRole("region", { name: strings.community_info })
+        .getByText("Við ræktum grænmeti saman."),
+    ).toBeVisible();
 
     // Back returns to the tab before, one at a time.
     for (const [name, suffix] of [
@@ -128,7 +135,7 @@ test("the search is an icon at the end of the row, and opens the field on Umræ�
   await write(owner, strings.post_compose, strings.post_publish, "Rófur í september.");
 
   // No full-width field above the feed until the icon is pressed.
-  const field = owner.getByLabel(strings.community_search_posts, { exact: true });
+  const field = owner.getByRole("searchbox", { name: strings.community_search_posts });
   await expect(field).toHaveCount(0);
   const icon = tabs(owner).getByRole("button", { name: strings.community_search_posts });
   await icon.click();
@@ -160,7 +167,7 @@ test("a non-member of a private community sees only the header and Um", async ({
   for (const suffix of ["/images", "/people", "/featured"]) {
     await stranger.goto(`${root}${suffix}`);
     await expect(post(stranger, "Aðeins fyrir félaga")).toHaveCount(0);
-    await expect(stranger.getByRole("main").getByRole("img")).toHaveCount(0);
+    await expect(stranger.getByRole("main").locator("img")).toHaveCount(0);
     await expect(stranger.getByRole("main").getByText(/Lokadóttir/)).toHaveCount(0);
   }
 });
