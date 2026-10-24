@@ -2,6 +2,7 @@ package samtak.spjall.social
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +18,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,7 +36,9 @@ import samtak.spjall.core.Post
 import samtak.spjall.core.PostImage
 import samtak.spjall.media.LocalPhotoDecoding
 import samtak.spjall.media.rememberPhoto
+import samtak.spjall.ui.ImageViewer
 import samtak.spjall.ui.Palette
+import samtak.spjall.ui.ViewerImage
 
 /**
  * Where a post's images come from (decision 0065): the path of the WebP the core keeps, null when it cannot be
@@ -54,25 +60,44 @@ val LocalPostImages = staticCompositionLocalOf<PostImages?> { null }
 fun PostImageGrid(post: Post) {
     val images = post.images
     if (images.isEmpty()) return
+    // Several images are told apart for TalkBack (#355): "Mynd 2 af 3".
+    val descriptions =
+        images.indices.map { index ->
+            if (images.size == 1) {
+                stringResource(R.string.post_image_alt)
+            } else {
+                stringResource(R.string.post_image_alt_numbered, index + 1, images.size)
+            }
+        }
+    // The viewer opens on the image that was tapped (#119), with all of the post's.
+    var viewing by rememberSaveable(post.postId) { mutableStateOf<Int?>(null) }
+    val source = LocalPostImages.current
+    viewing?.let { start ->
+        val viewable =
+            images.mapIndexed { index, image ->
+                ViewerImage(image.mediaId, descriptions[index]) { source?.path(post.postId, image.mediaId) }
+            }
+        ImageViewer(viewable, start) { viewing = null }
+    }
     val single = images.singleOrNull()
     if (single != null) {
         val ratio = if (single.height > 0u) single.width.toFloat() / single.height.toFloat() else 1f
         PostImageView(
             post.postId,
             single,
-            stringResource(R.string.post_image_alt),
+            descriptions[0],
             Modifier.fillMaxWidth().aspectRatio(ratio.coerceIn(MIN_RATIO, MAX_RATIO)),
-        )
+        ) { viewing = 0 }
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(GAP.dp)) {
         images.chunked(2).forEachIndexed { rowIndex, row ->
             Row(horizontalArrangement = Arrangement.spacedBy(GAP.dp)) {
                 row.forEachIndexed { column, image ->
-                    // Several images are told apart for TalkBack (#355): "Mynd 2 af 3".
-                    val description =
-                        stringResource(R.string.post_image_alt_numbered, rowIndex * 2 + column + 1, images.size)
-                    PostImageView(post.postId, image, description, Modifier.weight(1f).aspectRatio(1f))
+                    val index = rowIndex * 2 + column
+                    PostImageView(post.postId, image, descriptions[index], Modifier.weight(1f).aspectRatio(1f)) {
+                        viewing = index
+                    }
                 }
                 if (row.size == 1) Box(modifier = Modifier.weight(1f))
             }
@@ -86,6 +111,7 @@ internal fun PostImageView(
     image: PostImage,
     description: String,
     modifier: Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
     val images = LocalPostImages.current
     val decoding = LocalPhotoDecoding.current
@@ -100,7 +126,12 @@ internal fun PostImageView(
             bitmap = it,
             contentDescription = description,
             contentScale = ContentScale.Crop,
-            modifier = shaped,
+            modifier =
+                if (onClick == null) {
+                    shaped
+                } else {
+                    shaped.clickable(onClickLabel = stringResource(R.string.image_viewer), onClick = onClick)
+                },
         )
     } ?: Box(modifier = shaped.background(Palette.muted))
 }

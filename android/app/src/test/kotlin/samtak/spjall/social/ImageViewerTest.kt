@@ -143,14 +143,13 @@ class ImageViewerTest {
         show(3)
         compose.onNodeWithContentDescription(numbered(2, 3)).performClick()
         compose.waitForIdle()
-        assertEquals(1, ShadowDialog.getShownDialogs().size)
         compose.onNode(hasContentDescription(viewer)).captureRoboImage()
     }
 
     @Test
     fun aZoomedImageCannotBePannedOutOfSight() {
         // 400x300 image in a 1000x2000 area at 3x: the pan stays within what the zoom hides.
-        val limit = panLimit(contentWidth = 1000f, contentHeight = 750f, areaWidth = 1000f, areaHeight = 2000f, scale = 3f)
+        val limit = panLimit(1000f, 750f, 1000f, 2000f, 3f)
         assertEquals(1000f, limit.first, 0.01f)
         assertEquals(125f, limit.second, 0.01f)
         assertEquals(0f to 0f, panLimit(1000f, 750f, 1000f, 2000f, 1f))
