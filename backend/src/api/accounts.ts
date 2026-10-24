@@ -8,6 +8,7 @@ import {
   PhotoVersion,
   RATE_LIMITED,
 } from "./common.ts";
+import { Framing, FRAME_NAMES } from "./image-frames.ts";
 
 // Other accounts' names (decisions 0022, 0034), the directory of people
 // (decision 0036), block (decision 0024) and the profile photo (decision 0039).
@@ -21,6 +22,10 @@ const Profile = z
     }),
     verified: z.boolean(),
     photo: PhotoVersion,
+    photoFrames: Framing.nullable().openapi({
+      description:
+        "How the photo is framed (decision 0086); null without a photo or for one stored before frames",
+    }),
   })
   .openapi("Profile");
 
@@ -177,6 +182,49 @@ export const putPhotoRoute = createRoute({
   },
 });
 
+export const patchPhotoFramesRoute = createRoute({
+  method: "patch",
+  path: "/v1/me/photo/frames",
+  operationId: "setPhotoFrames",
+  tags: ["accounts"],
+  summary: "Frame this account's profile photo again, from its stored master (decision 0086)",
+  description:
+    "The body is the focus and any rectangle set by hand. The server cuts the frames again " +
+    "from the master it kept and gives the photo a new version; nothing is uploaded.",
+  security: ACCOUNT,
+  request: {
+    body: { required: true, content: { "application/json": { schema: Framing } } },
+  },
+  responses: {
+    200: { description: "Framed", content: { "application/json": { schema: PhotoSet } } },
+    400: errorResponse(
+      "invalid_request: the body is not a framing, or names a frame a photo does not have",
+    ),
+    404: errorResponse("not_found: the account has no photo"),
+    409: errorResponse(
+      "no_master: the photo was uploaded before masters were kept; upload it again to frame it",
+    ),
+    ...RATE_LIMITED,
+    ...AUTHED,
+  },
+});
+
+export const getPhotoSourceRoute = createRoute({
+  method: "get",
+  path: "/v1/me/photo/source",
+  operationId: "getPhotoSource",
+  tags: ["accounts"],
+  summary: "This account's photo master, to frame it again (decision 0086)",
+  description:
+    "A WebP without metadata, at most 2400 px on its long edge. Only the account itself reads it.",
+  security: ACCOUNT,
+  responses: {
+    200: { description: "The master", content: { "image/webp": { schema: Binary } } },
+    404: errorResponse("not_found: no photo, or one stored before masters were kept"),
+    ...AUTHED,
+  },
+});
+
 export const deletePhotoRoute = createRoute({
   method: "delete",
   path: "/v1/me/photo",
@@ -197,7 +245,14 @@ export const getPhotoRoute = createRoute({
   tags: ["accounts"],
   summary: "An account's profile photo, a 512 by 512 WebP (decision 0039)",
   security: ACCOUNT,
-  request: { params: account },
+  request: {
+    params: account,
+    query: z.object({
+      frame: z.enum(FRAME_NAMES.photo).optional().openapi({
+        description: "The frame to serve; the only one is the default",
+      }),
+    }),
+  },
   responses: {
     200: { description: "The photo", content: { "image/webp": { schema: Binary } } },
     ...INVALID,

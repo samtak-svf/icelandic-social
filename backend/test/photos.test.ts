@@ -147,6 +147,23 @@ describe("the profile photo (decision 0039)", () => {
     expect(me.photo).toBe(photo);
   });
 
+  it("keeps a master without the GPS tag either (decision 0086)", async () => {
+    const owner = await named("Frumrit Eigandi");
+    await json<{ photo: string }>(await setPhoto(owner, await jpegWithGps(900, 600)));
+    const master = new Uint8Array(
+      await (await env.PROFILES.get(`${owner.accountId}/master`))!.arrayBuffer(),
+    );
+    expect(await env.IMAGES.info(new Blob([master]).stream())).toMatchObject({
+      format: "image/webp",
+      width: 900,
+      height: 600,
+    });
+    expect(indexOf(master, ascii("EXIF"))).toBe(-1);
+    expect(indexOf(master, ascii("Exif"))).toBe(-1);
+    expect(indexOf(master, ascii("II*\0"))).toBe(-1);
+    expect(indexOf(master, Uint8Array.of(5055 & 0xff, 5055 >> 8, 0, 0, 100, 0, 0, 0))).toBe(-1);
+  });
+
   it("replaces the photo with a new version, and removes it", async () => {
     const { owner, version } = await withPhoto("Skipti Mynd");
     const replaced = await json<{ photo: string }>(await setPhoto(owner, await png(10, 20)));

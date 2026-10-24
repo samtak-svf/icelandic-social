@@ -84,7 +84,7 @@ export interface SignInConfig {
 }
 
 export interface ApiError {
-  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, invalid_media, muted, expired, incomplete, internal_error */
+  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, invalid_media, muted, expired, incomplete, internal_error */
   error: string;
   /** The request's id, also in the x-request-id header: opaque, for support to find the request by (decision 0037) */
   requestId: string;
@@ -394,6 +394,31 @@ export interface Profile {
   verified: boolean;
   /** The profile photo's version, changed by each upload; null when there is none to show (decision 0039) */
   photo: string | null;
+  photoFrames: Framing;
+}
+
+/** How the photo is framed (decision 0086); null without a photo or for one stored before frames */
+export type Framing = {
+  focus: Focus;
+  /** A rectangle for each frame set by hand; it wins over the focus */
+  overrides?: {
+    compact?: FrameRect;
+    medium?: FrameRect;
+    expanded?: FrameRect;
+    square?: FrameRect;
+  };
+} | null;
+
+export interface Focus {
+  x: number;
+  y: number;
+}
+
+export interface FrameRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 export interface PeoplePage {
@@ -453,6 +478,10 @@ export interface Community {
   photo: string | null;
   /** The community's cover version, changed by each upload; null when it has none (decision 0080). The cover is GET /v1/communities/{communityId}/cover */
   cover: string | null;
+  /** How the picture is framed (decision 0086); null without a picture or for one stored before frames */
+  photoFrames: Framing;
+  /** How the cover is framed, with the rectangle of each size class set by hand (decision 0086); null without a cover or for one stored before frames */
+  coverFrames: Framing;
   /** Posts made since the caller last opened the community's feed, counted from a sequence the server keeps: a post later deleted or removed still counts. 0 for a caller who is not a member (decision 0080) */
   unread: number;
   /** When the latest post was made (Unix milliseconds); null when there is none, or for a private community the caller is not a member of (decision 0080) */
@@ -1005,10 +1034,47 @@ export function removePhoto(init?: CallInit): Promise<
   return call("DELETE", "/v1/me/photo", undefined, init);
 }
 
+/**
+ * Frame this account's profile photo again, from its stored master (decision 0086)
+ *
+ * The body is the focus and any rectangle set by hand. The server cuts the frames again from the master it kept and gives the photo a new version; nothing is uploaded.
+ */
+export function setPhotoFrames(args: {
+  body: Framing;
+}, init?: CallInit): Promise<
+  | { status: 200; data: PhotoSet }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+  | { status: 429; data: ApiError }
+> {
+  return call("PATCH", "/v1/me/photo/frames", args, init);
+}
+
+/**
+ * This account's photo master, to frame it again (decision 0086)
+ *
+ * A WebP without metadata, at most 2400 px on its long edge. Only the account itself reads it.
+ */
+export function getPhotoSource(init?: CallInit): Promise<
+  | { status: 200; data: Blob }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/me/photo/source", undefined, init);
+}
+
 /** An account's profile photo, a 512 by 512 WebP (decision 0039) */
 export function getPhoto(args: {
   path: {
     accountId: string;
+  };
+  query?: {
+    /** The frame to serve; the only one is the default */
+    frame?: "square";
   };
 }, init?: CallInit): Promise<
   | { status: 200; data: Blob }
@@ -1398,6 +1464,10 @@ export function getCommunityAvatar(args: {
   path: {
     communityId: string;
   };
+  query?: {
+    /** The frame to serve, one of square; without it the one an app from before decision 0086 knows */
+    frame?: "square";
+  };
 }, init?: CallInit): Promise<
   | { status: 200; data: Blob }
   | { status: 400; data: ApiError }
@@ -1460,6 +1530,10 @@ export function getCommunityCover(args: {
   path: {
     communityId: string;
   };
+  query?: {
+    /** The frame to serve, one of compact, medium, expanded; without it the one an app from before decision 0086 knows */
+    frame?: "compact" | "medium" | "expanded";
+  };
 }, init?: CallInit): Promise<
   | { status: 200; data: Blob }
   | { status: 400; data: ApiError }
@@ -1511,6 +1585,90 @@ export function removeCommunityCover(args: {
   | { status: 426; data: ApiError }
 > {
   return call("DELETE", "/v1/communities/{communityId}/cover", args, init);
+}
+
+/**
+ * Frame a community's picture again, from its stored master (decision 0086)
+ *
+ * The body is the focus and any rectangle set by hand. The server cuts the frames again from the master it kept and gives the image a new version. Only the community's owner and its moderators may; the change is a moderation log entry, as for an upload.
+ */
+export function setCommunityAvatarFrames(args: {
+  path: {
+    communityId: string;
+  };
+  body: Framing;
+}, init?: CallInit): Promise<
+  | { status: 200; data: CommunityAvatarSet }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+  | { status: 429; data: ApiError }
+> {
+  return call("PATCH", "/v1/communities/{communityId}/avatar/frames", args, init);
+}
+
+/**
+ * Frame a community's cover again, from its stored master (decision 0086)
+ *
+ * The body is the focus and any rectangle set by hand. The server cuts the frames again from the master it kept and gives the image a new version. Only the community's owner and its moderators may; the change is a moderation log entry, as for an upload.
+ */
+export function setCommunityCoverFrames(args: {
+  path: {
+    communityId: string;
+  };
+  body: Framing;
+}, init?: CallInit): Promise<
+  | { status: 200; data: CommunityCoverSet }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+  | { status: 429; data: ApiError }
+> {
+  return call("PATCH", "/v1/communities/{communityId}/cover/frames", args, init);
+}
+
+/**
+ * A community's picture master, to frame it again (decision 0086)
+ *
+ * A WebP without metadata, at most 2400 px on its long edge. Only the community's owner and its moderators read it.
+ */
+export function getCommunityAvatarSource(args: {
+  path: {
+    communityId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Blob }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/communities/{communityId}/avatar/source", args, init);
+}
+
+/**
+ * A community's cover master, to frame it again (decision 0086)
+ *
+ * A WebP without metadata, at most 2400 px on its long edge. Only the community's owner and its moderators read it.
+ */
+export function getCommunityCoverSource(args: {
+  path: {
+    communityId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Blob }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/communities/{communityId}/cover/source", args, init);
 }
 
 /**
