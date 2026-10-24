@@ -14,6 +14,7 @@ import {
   SESSION_SECRET,
   sessionCookie,
   sessionForSecret,
+  wipeBrowserStorage,
 } from "./identity/index.ts";
 import { log, timed } from "./log.ts";
 
@@ -129,7 +130,7 @@ export function guards(app: OpenAPIHono<AppEnv>) {
     if (secret && SESSION_SECRET.test(secret) && takes("session")) {
       if (await bySession(c, secret)) return next();
       deleteCookie(c, SESSION_COOKIE, sessionCookie(0));
-      c.header("clear-site-data", '"storage"');
+      wipeBrowserStorage(c);
       return fail(c, 401, "unauthorized");
     }
     return fail(c, 401, "unauthorized");

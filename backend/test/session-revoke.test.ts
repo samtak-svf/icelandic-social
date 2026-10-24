@@ -179,7 +179,7 @@ describe("Clear-Site-Data reaches only a browser's cookie request (0064)", () =>
 
   it("answers a device revoke from the browser's own session", async () => {
     const { browser, enrolled } = await linkedBrowser();
-    const response = await remove(`/v1/devices/${enrolled.deviceId}`, browser.web);
+    const response = await remove(`/v1/devices/${enrolled!.deviceId}`, browser.web);
     expect(response.status).toBe(204);
     expect(response.headers.get(WIPE)).toBe('"storage"');
   });
@@ -196,8 +196,8 @@ describe("Clear-Site-Data reaches only a browser's cookie request (0064)", () =>
 
   it("never answers a linked device's own bearer request, though its session is a browser's", async () => {
     const { enrolled } = await linkedBrowser();
-    const bearer = { authorization: `Bearer ${enrolled.token}` };
-    const response = await remove(`/v1/devices/${enrolled.deviceId}`, bearer);
+    const bearer = { authorization: `Bearer ${enrolled!.token}` };
+    const response = await remove(`/v1/devices/${enrolled!.deviceId}`, bearer);
     expect(response.status).toBe(204);
     expect(response.headers.get(WIPE)).toBeNull();
   });

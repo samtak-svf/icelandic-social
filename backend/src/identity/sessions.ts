@@ -1,3 +1,5 @@
+import type { Context } from "hono";
+import { getCookie } from "hono/cookie";
 import { db } from "../env/index.ts";
 import type { Platform } from "../platforms.ts";
 import { type Device, randomToken, tokenHash } from "./accounts.ts";
@@ -19,6 +21,19 @@ export type Session = { accountId: string; sessionId: string; kind: SessionKind 
  * this host, Secure, with Path=/ and no Domain.
  */
 export const SESSION_COOKIE = "session";
+
+/**
+ * Ends what a browser keeps for this site (decision 0064): answers with
+ * `Clear-Site-Data: "storage"`, the one wipe found complete in every engine.
+ * Only a request that carried the session cookie gets it. A phone's bearer
+ * request never does, and nor does a linked device's own, whose session is
+ * a browser's but which is not the browser asking.
+ */
+export function wipeBrowserStorage(c: Context): void {
+  if (getCookie(c, SESSION_COOKIE, "host") !== undefined) {
+    c.header("clear-site-data", '"storage"');
+  }
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** A browser session lasts this long from its last use... */

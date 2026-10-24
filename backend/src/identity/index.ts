@@ -49,6 +49,7 @@ export {
   SESSION_SECRET,
   sessionCookie,
   sessionForSecret,
+  wipeBrowserStorage,
 } from "./sessions.ts";
 export { authorized, type Person, signInConfig, unavailable } from "./providers.ts";
 export { webSignInRoutes } from "./web-sign-in.ts";
