@@ -52,7 +52,11 @@ function Thread() {
     [subscribe, reload, conversationId],
   );
   const newest = messages.at(-1)?.seq;
-  useEffect(() => bottom.current?.scrollIntoView({ block: "end" }), [newest]);
+  // A block body: Chromium's scroll methods now return a promise, which React
+  // would take for the effect's cleanup.
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ block: "end" });
+  }, [newest]);
 
   async function older() {
     const before = messages[0]?.seq;
