@@ -522,6 +522,10 @@
     <string name="comment_image_alt">Mynd í athugasemdinni</string>
     <!-- Accessible name of the full-screen view of a post or comment image (decision 0082). -->
     <string name="image_viewer">Mynd á öllum skjánum</string>
+    <!-- Accessible name of the full-screen viewer's button that shows the previous image (decision 0082). -->
+    <string name="image_viewer_previous">Fyrri mynd</string>
+    <!-- Accessible name of the full-screen viewer's button that shows the next image (decision 0082). -->
+    <string name="image_viewer_next">Næsta mynd</string>
     <!-- Button: send the comment being written. -->
     <string name="comment_publish">Senda</string>
     <!-- A post with no comments yet. -->

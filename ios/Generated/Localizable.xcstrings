@@ -3013,6 +3013,30 @@
         }
       }
     },
+    "image_viewer_previous": {
+      "comment": "Accessible name of the full-screen viewer's button that shows the previous image (decision 0082).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fyrri mynd"
+          }
+        }
+      }
+    },
+    "image_viewer_next": {
+      "comment": "Accessible name of the full-screen viewer's button that shows the next image (decision 0082).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Næsta mynd"
+          }
+        }
+      }
+    },
     "comment_publish": {
       "comment": "Button: send the comment being written.",
       "extractionState": "manual",

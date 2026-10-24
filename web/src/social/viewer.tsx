@@ -124,12 +124,20 @@ function ImageViewer({
           </svg>
         </button>
         {index > 0 && (
-          <Arrow label="‹" side="left-2" onClick={() => setIndex(index - 1)}>
+          <Arrow
+            label={strings.image_viewer_previous}
+            side="left-2"
+            onClick={() => setIndex(index - 1)}
+          >
             <path d="m15 18-6-6 6-6" />
           </Arrow>
         )}
         {index < items.length - 1 && (
-          <Arrow label="›" side="right-2" onClick={() => setIndex(index + 1)}>
+          <Arrow
+            label={strings.image_viewer_next}
+            side="right-2"
+            onClick={() => setIndex(index + 1)}
+          >
             <path d="m9 18 6-6-6-6" />
           </Arrow>
         )}
