@@ -139,6 +139,16 @@ impl Core {
             .map_err(|_| fail(Failure::storage("the browser's file store did not wipe")))
     }
 
+    /// Deletes the pool's files without opening a store: what is left when
+    /// no key opens it, after a link that never completed or a key that is
+    /// gone (0064). Nothing may hold the pool open.
+    #[wasm_bindgen(js_name = wipeStore)]
+    pub async fn wipe_store() -> Result<(), JsValue> {
+        wipe_opfs(POOL)
+            .await
+            .map_err(|_| fail(Failure::storage("the browser's file store did not wipe")))
+    }
+
     #[wasm_bindgen(js_name = beginLink, unchecked_return_type = "DeviceLink")]
     pub fn begin_link(&mut self) -> Result<JsValue, JsValue> {
         answer(self.client.begin_device_link().map(dto::DeviceLink::from))
@@ -242,5 +252,33 @@ impl Core {
     #[wasm_bindgen(unchecked_return_type = "Me")]
     pub fn me(&mut self) -> Result<JsValue, JsValue> {
         answer(self.client.me().map(dto::Me::from))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
+
+    wasm_bindgen_test_configure!(run_in_dedicated_worker);
+
+    #[wasm_bindgen_test]
+    async fn a_store_no_key_opens_is_wiped_without_opening_it() {
+        Core::wipe_store().await.expect("a clean pool");
+        let first = Core::open(vec![1; 32])
+            .await
+            .expect("a store under the first key");
+        drop(first);
+        assert!(
+            Core::open(vec![2; 32]).await.is_err(),
+            "another key does not open it"
+        );
+        Core::wipe_store()
+            .await
+            .expect("wiped while nothing holds it");
+        let fresh = Core::open(vec![2; 32])
+            .await
+            .expect("a new store under the second key");
+        fresh.wipe().await.expect("wiped");
     }
 }

@@ -98,6 +98,12 @@ export class Core {
     send(conversation_id: string, text: string): string;
     sync(): Outcome;
     /**
+     * Deletes the pool's files without opening a store: what is left when
+     * no key opens it, after a link that never completed or a key that is
+     * gone (0064). Nothing may hold the pool open.
+     */
+    static wipeStore(): Promise<void>;
+    /**
      * Deletes everything: the store, the blobs and the pool. Consumes the
      * object, since the pool refuses while a connection is open.
      */
@@ -122,6 +128,7 @@ export interface InitOutput {
     readonly core_send: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly core_sync: (a: number, b: number) => void;
     readonly core_wipe: (a: number) => number;
+    readonly core_wipeStore: () => number;
     readonly rust_sqlite_wasm_abort: () => void;
     readonly rust_sqlite_wasm_assert_fail: (a: number, b: number, c: number, d: number) => void;
     readonly rust_sqlite_wasm_calloc: (a: number, b: number) => number;
@@ -132,8 +139,8 @@ export interface InitOutput {
     readonly rust_sqlite_wasm_realloc: (a: number, b: number) => number;
     readonly sqlite3_os_end: () => number;
     readonly sqlite3_os_init: () => number;
-    readonly __wasm_bindgen_func_elem_6079: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_6094: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6086: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6101: (a: number, b: number, c: number, d: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;
