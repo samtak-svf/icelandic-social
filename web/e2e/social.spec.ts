@@ -6,9 +6,9 @@ import {
   expectMember,
   found,
   join,
+  manage,
   openComposer,
   openHubFeed,
-  openMenu,
   person,
   post,
   write,
@@ -43,11 +43,6 @@ async function platformModerator(page: Page) {
 }
 
 /** Goes to Stjórna through the `⋯` menu. */
-async function manage(page: Page) {
-  await openMenu(page);
-  await page.getByRole("menuitem", { name: new RegExp(`^${strings.community_manage}`) }).click();
-}
-
 test("a member joins, posts, comments, reacts, is told and reports; a moderator acts", async ({
   browser,
 }) => {
@@ -218,8 +213,7 @@ test("a member posts images, deletes a comment and the post, and withdraws a joi
 test("a moderator hides, then restores and mutes and unmutes from the closed reports", async ({
   browser,
 }) => {
-  // Three browsers sign in before the story starts (about 7 s each on a busy
-  // runner), which leaves the default 30 s too little for the moderation itself.
+  // Three sign-ins take most of the default 30 s on a busy runner.
   test.slow();
   const owner = await person(browser, "Eigandi Stjórnadóttir");
   const writer = await person(browser, "Höfundur Stjórnason");

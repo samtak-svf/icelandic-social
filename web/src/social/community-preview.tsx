@@ -35,6 +35,7 @@ export function draftCommunity(draft: Draft): Community {
     unread: 0,
     lastPostAt: null,
     pinned: false,
+    featured: [],
   };
 }
 

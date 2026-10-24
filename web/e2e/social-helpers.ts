@@ -95,6 +95,12 @@ export async function openMenu(page: Page) {
   await page.getByRole("button", { name: strings.more_options }).first().click();
 }
 
+/** Opens Stjórna from the community's `⋯` menu. */
+export async function manage(page: Page) {
+  await openMenu(page);
+  await page.getByRole("menuitem", { name: new RegExp(`^${strings.community_manage}`) }).click();
+}
+
 /** Expects the person in `page` to be a member who may leave, which the menu offers. */
 export async function expectMember(page: Page) {
   await openMenu(page);

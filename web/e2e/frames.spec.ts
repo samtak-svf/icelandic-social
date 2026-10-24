@@ -3,15 +3,14 @@ import { strings } from "../src/generated/brand/strings.ts";
 import { layoutOf } from "../src/ui/layout.ts";
 import { png } from "./images.ts";
 import { expect, test } from "./origin.ts";
-import { found, openMenu, person } from "./social-helpers.ts";
+import { found, manage, person } from "./social-helpers.ts";
 
 // The crop sheet (decision 0086) at the three window size classes: a cover
 // offers the quiet link to the advanced panel and never opens it by itself, a
 // picture does not offer it at all.
 
-async function manage(page: Page) {
-  await openMenu(page);
-  await page.getByRole("menuitem", { name: new RegExp(`^${strings.community_manage}`) }).click();
+async function manageDetails(page: Page) {
+  await manage(page);
   // Beside the side navigation of an expanded window the details start open (decision 0087).
   if (layoutOf(page.viewportSize()!.width).manage === "one-screen") {
     await page.locator("summary", { hasText: strings.community_edit }).click();
@@ -33,7 +32,7 @@ for (const width of [390, 700, 1280]) {
     const owner = await person(browser, "Afmörkunar Prófsdóttir");
     await owner.setViewportSize({ width, height: 900 });
     await found(owner, "open");
-    await manage(owner);
+    await manageDetails(owner);
 
     // A picture: one window, no advanced link.
     const picture = await choose(owner, strings.community_picture_choose);
@@ -69,7 +68,7 @@ test("an advanced drag moves only its own frame, and the saved focus stays (#171
   const owner = await person(browser, "Ítarramma Prófsdóttir");
   await owner.setViewportSize({ width: 1280, height: 900 });
   await found(owner, "open");
-  await manage(owner);
+  await manageDetails(owner);
 
   const cover = await choose(owner, strings.community_cover_choose);
   await cover.getByRole("button", { name: strings.image_frames_advanced }).click();
