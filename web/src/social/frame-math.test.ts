@@ -110,9 +110,9 @@ describe("focus and framing", () => {
     expect(focusOf({ x: 0.2, y: 0.1, w: 0.4, h: 0.2 })).toEqual({ x: 0.4, y: 0.2 });
   });
 
-  it("the chosen rectangle becomes its frame's override and its centre the focus", () => {
+  it("the chosen rectangle becomes its frame's override and the sheet's focus the focus", () => {
     const rect = { x: 0.2, y: 0.1, w: 0.4, h: 0.2 };
-    expect(framingOf(null, { compact: rect }, "compact")).toEqual({
+    expect(framingOf(null, { compact: rect }, focusOf(rect))).toEqual({
       focus: { x: 0.4, y: 0.2 },
       overrides: { compact: rect },
     });
@@ -124,11 +124,20 @@ describe("focus and framing", () => {
       overrides: { medium: { x: 0, y: 0, w: 1, h: 0.25 } },
     };
     const rect = { x: 0.2, y: 0.1, w: 0.4, h: 0.2 };
-    expect(framingOf(stored, { expanded: rect }, "expanded").overrides).toEqual({
+    expect(framingOf(stored, { expanded: rect }, null).overrides).toEqual({
       medium: stored.overrides.medium,
       expanded: rect,
     });
     expect(framingOf(stored, {}, null, true)).toEqual({ focus: stored.focus, overrides: {} });
+  });
+
+  it("an advanced drag keeps the stored focus (#171)", () => {
+    const stored = { focus: { x: 0.3, y: 0.6 } };
+    const rect = { x: 0.2, y: 0.1, w: 0.4, h: 0.2 };
+    expect(framingOf(stored, { compact: rect }, null)).toEqual({
+      focus: stored.focus,
+      overrides: { compact: rect },
+    });
   });
 
   it("keeps the focus when nothing was touched", () => {

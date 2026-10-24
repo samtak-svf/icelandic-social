@@ -62,3 +62,33 @@ for (const width of [390, 700, 1280]) {
     await expect(cover.getByRole("button", { name: strings.image_frames_reset })).toBeVisible();
   });
 }
+
+test("an advanced drag moves only its own frame, and the saved focus stays (#171)", async ({
+  browser,
+}) => {
+  const owner = await person(browser, "Ítarramma Prófsdóttir");
+  await owner.setViewportSize({ width: 1280, height: 900 });
+  await found(owner, "open");
+  await manage(owner);
+
+  const cover = await choose(owner, strings.community_cover_choose);
+  await cover.getByRole("button", { name: strings.image_frames_advanced }).click();
+  const frames = cover.getByRole("group");
+  await expect(frames).toHaveCount(3);
+  const placed = (n: number) => frames.nth(n).locator("img").getAttribute("style");
+  const [first, second, third] = await Promise.all([placed(0), placed(1), placed(2)]);
+
+  await frames.nth(0).focus();
+  for (let i = 0; i < 3; i++) await owner.keyboard.press("ArrowUp");
+  await expect.poll(() => placed(0)).not.toBe(first);
+  // The panes not dragged show what will be saved for them: unmoved.
+  expect(await placed(1)).toBe(second);
+  expect(await placed(2)).toBe(third);
+
+  const sent = owner.waitForRequest(
+    (r) => r.method() === "PATCH" && /\/cover\/frames$/.test(r.url()),
+  );
+  await cover.getByRole("button", { name: strings.save }).click();
+  const body: unknown = (await sent).postDataJSON();
+  expect(body).toEqual({ focus: { x: 0.5, y: 0.5 }, overrides: { compact: expect.any(Object) } });
+});

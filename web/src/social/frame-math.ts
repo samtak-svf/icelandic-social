@@ -123,18 +123,19 @@ export function focusOf(rect: FrameRect): { x: number; y: number } {
 
 /**
  * The framing to send: the stored one with the rectangles the person adjusted
- * as overrides, and the centre of the one adjusted last as the focus. `reset`
+ * as overrides. `focus` is the one the single-frame sheet chose, or null to
+ * keep the stored one: the advanced sheet changes only the frames dragged, so
+ * every frame it did not touch stays where its pane showed it (#171). `reset`
  * drops every override and keeps the focus.
  */
 export function framingOf(
   base: Framing | null,
   edits: Partial<Record<AnyFrame, FrameRect>>,
-  last: AnyFrame | null,
+  focus: { x: number; y: number } | null,
   reset = false,
 ): Framing {
-  const lastRect = last === null ? undefined : edits[last];
   return {
-    focus: lastRect === undefined ? (base?.focus ?? { x: 0.5, y: 0.5 }) : focusOf(lastRect),
+    focus: focus ?? base?.focus ?? { x: 0.5, y: 0.5 },
     overrides: reset ? {} : { ...base?.overrides, ...edits },
   };
 }
