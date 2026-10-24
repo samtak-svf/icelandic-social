@@ -6,9 +6,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -39,7 +39,11 @@ class ComposerFieldImeTest {
     }
 
     private fun isFocused(): Boolean =
-        compose.onNodeWithTag("field").fetchSemanticsNode().config.getOrElse(SemanticsProperties.Focused) { false }
+        compose
+            .onNodeWithTag("field")
+            .fetchSemanticsNode()
+            .config
+            .getOrElse(SemanticsProperties.Focused) { false }
 
     private fun waitForIme(visible: Boolean) {
         compose.waitUntil(IME_TIMEOUT_MS) { imeVisible() == visible }
