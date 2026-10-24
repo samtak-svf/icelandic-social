@@ -46,7 +46,7 @@ use api::{Api, ApiError, Outgoing, Platform, Profile, Transport, conversation_id
 pub use blobs::{BlobStore, BlobWrite, FsBlobs, MemBlobs};
 pub use directory::{Directory, ListSearch, MAX_QUERY, blank, fold_name};
 pub use history::{HistoryError, HistoryKey, Imported, MAX_HISTORY, history_key};
-pub use link::{LinkCode, LinkError, LinkRequest};
+pub use link::{DeviceLink, Enrolled, LinkCode, LinkError, LinkRequest, LinkState};
 pub use media::{MAX_SIZE, MediaError};
 pub use members::Person;
 pub use mute::{Mute, MuteFor};

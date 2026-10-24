@@ -206,7 +206,11 @@ impl From<ClientError> for CoreError {
             ClientError::CannotForward(reason) => Self::CannotForward {
                 reason: reason.into(),
             },
-            ClientError::Link(LinkError::InvalidCode) => Self::LinkCodeInvalid,
+            // NotApproved is only raised by a browser completing its own link;
+            // the apps never call that, so it shares the code's error.
+            ClientError::Link(LinkError::InvalidCode | LinkError::NotApproved) => {
+                Self::LinkCodeInvalid
+            }
             ClientError::NameInvalid => Self::NameInvalid,
             ClientError::NotAGroup => Self::NotAGroup,
             ClientError::Link(LinkError::KeyMismatch) => Self::LinkKeyMismatch,

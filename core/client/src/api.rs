@@ -33,6 +33,11 @@ pub struct Request {
     pub body: Option<String>,
     pub bearer: Option<String>,
     pub client: Option<String>,
+    /// A `GET`'s byte range, first and last byte both included. The
+    /// transport sends `Range: bytes=first-last` and a server that honours
+    /// it answers 206 with that slice; one that does not answers 200 with the
+    /// whole body, which the caller must also take (0081).
+    pub range: Option<(u64, u64)>,
 }
 
 /// Never prints the token or the body, which can hold a PKCE verifier.
@@ -67,9 +72,11 @@ pub trait Transport {
     /// its `Content-Length`, streamed from disk. `request.body` is none.
     fn upload(&self, request: Request, file: &Path) -> Result<Response, Unreachable>;
 
-    /// A `GET` whose body, on 200, is streamed into a new file at `to` and
-    /// left out of the response; any other answer's body is returned as
-    /// text, as `request` returns it.
+    /// A `GET` whose body, on 200 or 206, is streamed into a new file at
+    /// `to` and left out of the response; any other answer's body is returned
+    /// as text, as `request` returns it. A transport that cannot send a
+    /// `Range` may ignore `request.range`: the whole file then arrives as a
+    /// 200, which the client takes as the last piece.
     fn download(&self, request: Request, to: &Path) -> Result<Response, Unreachable>;
 }
 
@@ -392,10 +399,24 @@ pub struct Me {
 pub struct AccountDevice {
     pub device_id: String,
     pub platform: Platform,
+    /// A server older than 0064 names none: a phone.
+    #[serde(default)]
+    pub kind: DeviceKind,
     /// Milliseconds since the epoch.
     pub created_at: u64,
     /// The device that asked.
     pub current: bool,
+}
+
+/// What kind of device an account holds (0064): a phone, or a browser
+/// linked from its session.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DeviceKind {
+    /// What every device was before browsers were linked.
+    #[default]
+    Phone,
+    Web,
 }
 
 #[derive(Deserialize)]
@@ -479,6 +500,37 @@ pub struct DeviceLinkRequestInfo {
     pub history_key: String,
     pub expires_at: i64,
     pub approved: bool,
+}
+
+/// `createDeviceLinkRequest`'s answer (0064).
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreatedDeviceLink {
+    pub link_id: String,
+    pub expires_at: i64,
+}
+
+/// `completeDeviceLinkRequest`'s answer (0064, 0081): the device the
+/// session became.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LinkedDevice {
+    pub account_id: String,
+    pub device_id: String,
+    pub token: String,
+    pub store_key_share: String,
+    pub history_expected: bool,
+}
+
+/// What a ranged `getHistory` answered (0081).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Piece {
+    /// 206: the slice asked for, which may be shorter at the end.
+    Slice,
+    /// 200: the whole file, from a server or transport that ignores ranges.
+    Whole,
+    /// 416: the range starts at or past the end; nothing was written.
+    Past,
 }
 
 /// `setCommunityAvatar`'s and `setCommunityCover`'s answer: the new version (0080).
@@ -1260,6 +1312,7 @@ impl<'a, T: Transport + ?Sized> Api<'a, T> {
             body,
             bearer: self.bearer.map(str::to_owned),
             client: self.client.map(str::to_owned),
+            range: None,
         }
     }
 
@@ -1589,14 +1642,49 @@ impl<T: Transport + ?Sized> Api<'_, T> {
         )
     }
 
-    /// `approveDeviceLinkRequest` (0077): this phone's `signature` over
-    /// the approval message of `link`.
+    /// `createDeviceLinkRequest` (0064): this browser session asks to become
+    /// a device with `device_key`, and to be sent a history sealed to
+    /// `history_key`.
+    pub fn create_device_link_request(
+        &self,
+        device_key: &[u8],
+        history_key: &[u8],
+    ) -> Result<CreatedDeviceLink, ApiError> {
+        let body = serde_json::json!({
+            "deviceKey": base64(device_key),
+            "historyKey": base64(history_key),
+        });
+        self.call(
+            Method::Post,
+            "/v1/devices/link-requests".into(),
+            Self::json(&body),
+            "createDeviceLinkRequest",
+        )
+    }
+
+    /// `completeDeviceLinkRequest` (0064): the session becomes the device
+    /// the approved request `link` makes.
+    pub fn complete_device_link_request(&self, link: &str) -> Result<LinkedDevice, ApiError> {
+        self.call(
+            Method::Post,
+            format!("/v1/devices/link-requests/{link}/complete"),
+            None,
+            "completeDeviceLinkRequest",
+        )
+    }
+
+    /// `approveDeviceLinkRequest` (0077, 0081): this phone's `signature`
+    /// over the approval message of `link`, and whether a history follows.
     pub fn approve_device_link_request(
         &self,
         link: &str,
         signature: &[u8],
+        history: bool,
     ) -> Result<(), ApiError> {
-        let body = serde_json::json!({ "signature": base64(signature) });
+        let body = serde_json::json!({
+            "signature": base64(signature),
+            "history": if history { "sent" } else { "none" },
+        });
         self.send(
             Method::Post,
             format!("/v1/devices/link-requests/{link}/approve"),
@@ -1641,14 +1729,27 @@ impl<T: Transport + ?Sized> Api<'_, T> {
         .map(drop)
     }
 
-    /// `getHistory`: the sealed history, written to `to`.
-    pub fn get_history(&self, link: &str, to: &Path) -> Result<(), ApiError> {
-        let request = self.request(
+    /// `getHistory` for the bytes `first..=last` (0081): the slice, written
+    /// to `to`.
+    pub fn get_history_range(
+        &self,
+        link: &str,
+        first: u64,
+        last: u64,
+        to: &Path,
+    ) -> Result<Piece, ApiError> {
+        let mut request = self.request(
             Method::Get,
             format!("/v1/devices/link-requests/{link}/history"),
             None,
         );
-        Self::checked(self.transport.download(request, to)?).map(drop)
+        request.range = Some((first, last));
+        let response = self.transport.download(request, to)?;
+        match response.status {
+            206 => Ok(Piece::Slice),
+            416 => Ok(Piece::Past),
+            _ => Self::checked(response).map(|_| Piece::Whole),
+        }
     }
 
     /// `deleteHistory`: the linked device has it, or the phone cancels.
