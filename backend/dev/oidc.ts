@@ -43,7 +43,8 @@ const GOOGLE: FakeProvider = {
   // The client id cloudflare.config.ts and vitest.config.ts give the Worker.
   clientIds: ["fake-google-client"],
   scopes: ["openid", "email", "profile"],
-  hint: { pattern: "[A-Za-z0-9_-]{1,64}", label: "Sub" },
+  // The hyphen escaped: a browser compiles `pattern` with the v flag.
+  hint: { pattern: "[A-Za-z0-9_\\-]{1,64}", label: "Sub" },
   claims: (person, name) => ({
     sub: person,
     email: `${person}@example.com`,
@@ -271,6 +272,9 @@ function fakeOidcFetcher(issuer: string, provider: FakeProvider): Fetcher {
     },
   } as unknown as Fetcher;
 }
+
+/** Both fakes, for tests of what they serve. */
+export const FAKE_PROVIDERS: readonly FakeProvider[] = [KENNI, GOOGLE];
 
 /**
  * Serves either fake when the request is for one, else null; and the env the
