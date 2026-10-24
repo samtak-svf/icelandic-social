@@ -18,9 +18,7 @@
     "deploy": "node ../tooling/jurisdiction-check.mjs --deploy && cf build && cf deploy --prebuilt --no-provision"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.137.0",
     "@hono/zod-openapi": "^1.6.3",
-    "@modelcontextprotocol/sdk": "1.32.1",
     "@tanstack/react-router": "1.170.42",
     "hono": "^4.13.13",
     "react": "19.3.0",

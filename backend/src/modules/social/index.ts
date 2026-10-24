@@ -14,6 +14,5 @@ export {
   type Content,
 } from "./moderation.ts";
 export { authors } from "./bylines.ts";
-export { postOf, type Said, thread, writeComment } from "./posts.ts";
 export { reconcileSpace, restoreSpace, type Moderated } from "./restore.ts";
 export { socialRoutes } from "./routes.ts";
