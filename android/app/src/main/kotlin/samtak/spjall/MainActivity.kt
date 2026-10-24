@@ -79,6 +79,10 @@ import samtak.spjall.core.inviteToken
 import samtak.spjall.me.MeActions
 import samtak.spjall.me.MeScreen
 import samtak.spjall.me.MeViewModel
+import samtak.spjall.me.link.LinkActions
+import samtak.spjall.me.link.LinkApproveScreen
+import samtak.spjall.me.link.LinkScanScreen
+import samtak.spjall.me.link.LinkViewModel
 import samtak.spjall.onboarding.OnboardingActions
 import samtak.spjall.onboarding.OnboardingScreen
 import samtak.spjall.onboarding.OnboardingViewModel
@@ -303,6 +307,7 @@ class MainActivity : ComponentActivity() {
                     unread::refresh,
                 ) { post -> nav.navigate("$SHARE/$post") }
                 composable(VERIFY) { Verify(nav) }
+                composable(LINK) { LinkBrowser(nav) }
                 composable(PEOPLE) { People(nav) }
                 // Adding to a group that exists (0078): the picker, for that conversation's members.
                 composable("$PEOPLE/{id}") { entry ->
@@ -755,6 +760,8 @@ class MainActivity : ComponentActivity() {
                 override fun notificationSettings() = this@MainActivity.notificationSettings()
 
                 override fun verify() = nav.navigate(VERIFY)
+
+                override fun linkBrowser() = nav.navigate(LINK)
             }
         // Read here, not in the screen: the core's version needs the native library, which screenshot tests lack.
         val version =
@@ -765,6 +772,35 @@ class MainActivity : ComponentActivity() {
                 coreVersion(),
             )
         MeScreen(state, actions, notificationsOff = notificationsOff, version = version)
+    }
+
+    /** A browser's link code, scanned or pasted, then approved with a choice of history (decisions 0064, 0077). */
+    @Composable
+    private fun LinkBrowser(nav: NavController) {
+        val link: LinkViewModel = viewModel(key = "link") { LinkViewModel(graph.account) }
+        val state by link.state.collectAsStateWithLifecycle()
+        val pop = rememberBack(nav)
+        val actions =
+            object : LinkActions {
+                override fun back() = if (state == LinkViewModel.State.Pasting) link.scan() else pop()
+
+                override fun paste() = link.paste()
+
+                override fun submit(text: String) = link.submit(text)
+
+                override fun again() = link.again()
+
+                override fun retry() = link.retry()
+
+                override fun choose(history: LinkViewModel.History) = link.choose(history)
+
+                override fun approve() = link.approve()
+            }
+        when (state) {
+            is LinkViewModel.State.Approve, is LinkViewModel.State.Sending, LinkViewModel.State.Done ->
+                LinkApproveScreen(state, actions)
+            else -> LinkScanScreen(state, actions)
+        }
     }
 
     /** Kenni's link (decision 0033); once linked, back to where it was opened, which reloads `me`. */
@@ -799,6 +835,7 @@ class MainActivity : ComponentActivity() {
         private const val LIST = "conversations"
         private const val ME = "me"
         private const val VERIFY = "verify"
+        private const val LINK = "link"
         private const val PEOPLE = "people"
         private const val CONVERSATION = "conversation"
         private const val FORWARD = "forward"

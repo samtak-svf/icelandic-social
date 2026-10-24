@@ -59,6 +59,13 @@ internal fun ColumnScope.Settings(
     var deleting by rememberSaveable { mutableStateOf(false) }
     Label(R.string.devices_title)
     Devices(me.devices, enabled = !state.busy) { revoking = it }
+    Pill(
+        text = stringResource(R.string.device_link_action),
+        filled = false,
+        onClick = actions::linkBrowser,
+        enabled = !state.busy,
+        modifier = Modifier.align(Alignment.CenterHorizontally),
+    )
     if (notificationsOff) NotificationsOff(actions::notificationSettings)
     // The design leaves these out; decision 0009 keeps them, in the same cards.
     state.settings?.let { Panel { PrivacySection(it, !state.busy, actions) } }

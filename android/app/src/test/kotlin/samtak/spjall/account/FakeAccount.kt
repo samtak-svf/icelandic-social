@@ -9,6 +9,7 @@ import samtak.spjall.core.CoreException
 import samtak.spjall.core.Inviter
 import samtak.spjall.core.Item
 import samtak.spjall.core.ItemStatus
+import samtak.spjall.core.LinkRequest
 import samtak.spjall.core.ListSearch
 import samtak.spjall.core.Me
 import samtak.spjall.core.Mute
@@ -142,6 +143,27 @@ class FakeAccount(
     override fun deleteAccount() {
         call("deleteAccount")
         signedIn = false
+    }
+
+    /** What [inspectLink] answers. */
+    var linkRequest = LinkRequest("Firefox", "Linux", 1_700_000_900_000L, false)
+
+    /** The `since` and `send` of each [approveLink], in order. */
+    val approvals = mutableListOf<Pair<ULong?, Boolean>>()
+
+    override fun inspectLink(code: String): LinkRequest {
+        call("inspectLink $code")
+        return linkRequest
+    }
+
+    override fun approveLink(
+        code: String,
+        since: ULong?,
+        send: Boolean,
+    ): ULong {
+        call("approveLink $code")
+        approvals += since to send
+        return if (send) 3u else 0u
     }
 
     override fun deviceToken(): String? {
