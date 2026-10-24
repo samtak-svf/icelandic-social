@@ -26,6 +26,9 @@
 //!
 //! A phone inspects and approves a pending link request (0064) with its
 //! device key's signature over the 0077 message, once; a browser cannot.
+//! A browser's session (no bearer, the cookie the transport carries) asks
+//! for a link, reads it back, and completes it into a `web` device whose
+//! `historyExpected` is what the approval said (0081).
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::Path;
@@ -134,6 +137,11 @@ struct State {
     histories: BTreeMap<String, History>,
     /// The part size the server names; 64 MiB unless a test sets it.
     history_part: Option<u64>,
+    /// Transports that speak as a signed-in browser session when they send
+    /// no bearer, as the session cookie does (0061).
+    sessions: BTreeSet<String>,
+    /// Link ids handed out to sessions.
+    minted_links: usize,
     /// The history part whose upload never reaches the server.
     lost_history_part: Option<u64>,
 }
@@ -144,6 +152,10 @@ struct LinkRequest {
     device_key: Vec<u8>,
     history_key: Vec<u8>,
     expires_at: u64,
+    /// The session that asked, none for one a test planted.
+    session: Option<String>,
+    /// What the approval said of a history (0081): absent means sent.
+    history: Option<bool>,
 }
 
 /// A history transfer as the server keeps it (0074).
@@ -257,8 +269,21 @@ impl Relay {
                 device_key: device_key.to_vec(),
                 history_key: history_key.to_vec(),
                 expires_at,
+                session: None,
+                history: None,
             },
         );
+    }
+
+    /// `device`'s transport is a browser session of its account until
+    /// that session completes a link (0061).
+    pub fn open_session(&self, device: &str) {
+        self.state().sessions.insert(device.into());
+    }
+
+    /// Whether `link` is still a pending request.
+    pub fn link_pending(&self, link: &str) -> bool {
+        self.state().link_requests.contains_key(link)
     }
 
     /// `device` is a browser from now on.
@@ -589,7 +614,16 @@ impl State {
                 | (Method::Post, ["devices"])
                 | (Method::Get, ["invites", _])
         );
+        let as_session = request.bearer.is_none()
+            && self.sessions.contains(device)
+            && matches!(
+                (request.method, parts.as_slice()),
+                (Method::Post, ["devices", "link-requests"])
+                    | (Method::Get, ["devices", "link-requests", _])
+                    | (Method::Post, ["devices", "link-requests", _, "complete"])
+            );
         if !before_sign_in
+            && !as_session
             && (request.bearer.is_none() || self.tokens.get(device) != request.bearer.as_ref())
         {
             return refuse(401, "unauthorized");
@@ -604,6 +638,12 @@ impl State {
             );
         }
         match (request.method, parts.as_slice()) {
+            (Method::Post, ["devices", "link-requests"]) => {
+                self.create_link_request(account, device, &body)
+            }
+            (Method::Post, ["devices", "link-requests", link, "complete"]) => {
+                self.complete_link_request(account, device, link)
+            }
             (Method::Get, ["devices", "link-requests", link]) => {
                 self.get_link_request(account, link)
             }
@@ -718,7 +758,8 @@ impl State {
                     .iter()
                     .filter(|(_, a)| *a == account)
                     .map(|(d, _)| {
-                        json!({ "deviceId": d, "platform": "android", "createdAt": 0, "current": d == device })
+                        let kind = if self.browsers.contains(d) { "web" } else { "phone" };
+                        json!({ "deviceId": d, "platform": "android", "kind": kind, "createdAt": 0, "current": d == device })
                     })
                     .collect();
                 let verified = self
@@ -1220,9 +1261,78 @@ impl State {
             .iter()
             .find(|(_, k)| **k == request.device_key)
             .map_or_else(|| format!("dev_{link}"), |(d, _)| d.clone());
+        let history = match body["history"].as_str() {
+            None => true,
+            Some("sent") => true,
+            Some("none") => false,
+            Some(_) => return refuse(400, "invalid_request"),
+        };
+        self.link_requests.get_mut(link).unwrap().history = Some(history);
         self.approved_links
             .insert(link.into(), (device.into(), made));
         answer(204, Value::Null)
+    }
+
+    /// `createDeviceLinkRequest` (0064): a session asks with its keys.
+    fn create_link_request(&mut self, account: &str, session: &str, body: &Value) -> Response {
+        let key = |name: &str| {
+            body[name]
+                .as_str()
+                .and_then(|k| STANDARD.decode(k).ok())
+                .filter(|k| k.len() == 32)
+        };
+        let (Some(device_key), Some(history_key)) = (key("deviceKey"), key("historyKey")) else {
+            return refuse(400, "invalid_request");
+        };
+        self.minted_links += 1;
+        let link = format!("lnk_{session}_{}", self.minted_links);
+        let expires_at = self.clock.unwrap_or_else(now) + 600_000;
+        self.link_requests.insert(
+            link.clone(),
+            LinkRequest {
+                account: account.into(),
+                device_key,
+                history_key,
+                expires_at,
+                session: Some(session.into()),
+                history: None,
+            },
+        );
+        answer(200, json!({ "linkId": link, "expiresAt": expires_at }))
+    }
+
+    /// `completeDeviceLinkRequest` (0064, 0081): the session that asked,
+    /// once a phone approved, becomes a `web` device under its own name.
+    fn complete_link_request(&mut self, account: &str, session: &str, link: &str) -> Response {
+        let request = match self.pending_link(account, link) {
+            Ok(request) if request.session.as_deref() == Some(session) => request,
+            Ok(_) => return refuse(404, "not_found"),
+            Err(refused) => return refused,
+        };
+        let Some(history) = request.history else {
+            return refuse(409, "not_approved");
+        };
+        let device_key = request.device_key.clone();
+        self.link_requests.remove(link);
+        let approver = self.approved_links[link].0.clone();
+        self.approved_links
+            .insert(link.into(), (approver, session.into()));
+        let token = format!("token-{session}");
+        self.devices.insert(session.into(), account.into());
+        self.device_keys.insert(session.into(), device_key);
+        self.tokens.insert(session.into(), token.clone());
+        self.browsers.insert(session.into());
+        answer(
+            200,
+            json!({
+                "accountId": account,
+                "deviceId": session,
+                "sessionId": format!("ses_{session}"),
+                "token": token,
+                "storeKeyShare": STANDARD.encode([0x5a; 32]),
+                "historyExpected": history,
+            }),
+        )
     }
 
     /// The link's approver and the device it made, or 404.
@@ -1582,9 +1692,24 @@ impl Transport for Link {
                 (None, None) => state.get_media(account, device, &request),
             };
             if let Some(blob) = blob {
-                std::fs::write(to, blob).unwrap();
+                // A single range, as the Worker answers it (0081): 206 with
+                // the slice, 416 from a start past the end.
+                let (status, bytes) = match request.range {
+                    None => (200, blob),
+                    Some((first, _)) if first >= blob.len() as u64 => {
+                        return Response {
+                            status: 416,
+                            body: String::new(),
+                        };
+                    }
+                    Some((first, last)) => {
+                        let end = (last as usize).min(blob.len() - 1);
+                        (206, blob[first as usize..=end].to_vec())
+                    }
+                };
+                std::fs::write(to, bytes).unwrap();
                 return Response {
-                    status: 200,
+                    status,
                     body: String::new(),
                 };
             }
