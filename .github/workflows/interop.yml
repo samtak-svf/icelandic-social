@@ -115,7 +115,7 @@ jobs:
         env:
           SPJALL_DEV_URL: http://127.0.0.1:8787
           SPJALL_BROWSER_PHONE: "1"
-        run: pnpm --filter spjall-web exec playwright test e2e/chat-link.spec.ts
+        run: pnpm --filter spjall-web exec playwright test e2e/chat.spec.ts
 
       - name: Worker log
         if: failure() || cancelled()
