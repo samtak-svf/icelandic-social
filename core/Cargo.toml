@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["envelope", "mls", "store", "client", "ffi", "uniffi-bindgen", "web-spike", "xtask"]
+members = ["envelope", "mls", "store", "client", "ffi", "uniffi-bindgen", "wasm", "xtask"]
 
 [workspace.package]
 version = "0.37.0"
