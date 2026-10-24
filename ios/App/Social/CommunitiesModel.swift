@@ -197,7 +197,8 @@ final class CommunitiesModel {
     @discardableResult
     func create(
         name: String, description: String, audience: CommunityAudience,
-        picture: (@Sendable () async throws -> URL)? = nil, cover: (@Sendable () async throws -> URL)? = nil
+        picture: (@Sendable () async throws -> URL)? = nil, cover: (@Sendable () async throws -> URL)? = nil,
+        pictureFraming: Framing? = nil, coverFraming: Framing? = nil
     ) async -> Bool {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let description = description.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -209,7 +210,8 @@ final class CommunitiesModel {
         await perform(
             again: {
                 await self.create(
-                    name: name, description: description, audience: audience, picture: picture, cover: cover)
+                    name: name, description: description, audience: audience, picture: picture, cover: cover,
+                    pictureFraming: pictureFraming, coverFraming: coverFraming)
             }
         ) {
             var community = try await offMain {
@@ -220,13 +222,25 @@ final class CommunitiesModel {
             let id = community.communityId
             if let picture, let file = try? await picture() {
                 defer { try? FileManager.default.removeItem(at: file) }
-                if let version = try? await offMain({ try social.setCommunityAvatar(id, path: file.path) }) {
+                if var version = try? await offMain({ try social.setCommunityAvatar(id, path: file.path) }) {
+                    // The framing is the person's wish on top of a picture that is there already: if it fails,
+                    // the picture stays as the centre placed it.
+                    if let pictureFraming,
+                        let framed = try? await offMain({ try social.setCommunityPictureFraming(id, pictureFraming) })
+                    {
+                        version = framed
+                    }
                     community.photo = version
                 }
             }
             if let cover, let file = try? await cover() {
                 defer { try? FileManager.default.removeItem(at: file) }
-                if let version = try? await offMain({ try social.setCommunityCover(id, path: file.path) }) {
+                if var version = try? await offMain({ try social.setCommunityCover(id, path: file.path) }) {
+                    if let coverFraming,
+                        let framed = try? await offMain({ try social.setCommunityCoverFraming(id, coverFraming) })
+                    {
+                        version = framed
+                    }
                     community.cover = version
                 }
             }

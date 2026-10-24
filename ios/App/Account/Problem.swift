@@ -16,12 +16,16 @@ enum Problem: Equatable, Sendable {
     case notFound
     /// The server refused a join request because a moderator declined it (decision 0070).
     case joinDeclined
+    /// The image was stored before masters were kept (decision 0086), so it cannot be framed again: the person
+    /// sets it once more.
+    case noMaster
     /// Anything else.
     case generic(requestId: String? = nil, code: String? = nil)
 
     init(_ error: Error) {
         switch error {
         case CoreError.Unreachable: self = .unreachable
+        case CoreError.NoMaster: self = .noMaster
         case CoreError.Refused(_, "identity_taken", let requestId): self = .identityTaken(requestId: requestId)
         case CoreError.Refused(_, "not_permitted", _): self = .notPermitted
         case CoreError.Refused(_, "not_found", _): self = .notFound
@@ -36,7 +40,7 @@ enum Problem: Equatable, Sendable {
     var requestId: String? {
         switch self {
         case let .identityTaken(requestId), let .generic(requestId, _): requestId
-        case .unreachable, .tooLarge, .notPermitted, .notFound, .joinDeclined: nil
+        case .unreachable, .tooLarge, .notPermitted, .notFound, .joinDeclined, .noMaster: nil
         }
     }
 
@@ -49,7 +53,7 @@ enum Problem: Equatable, Sendable {
     /// Trying again cannot free a kennitala another account holds, nor shrink a file.
     var canRetry: Bool {
         switch self {
-        case .identityTaken, .tooLarge, .notPermitted, .notFound, .joinDeclined: false
+        case .identityTaken, .tooLarge, .notPermitted, .notFound, .joinDeclined, .noMaster: false
         case .unreachable, .generic: true
         }
     }

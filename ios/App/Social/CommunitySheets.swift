@@ -331,6 +331,7 @@ private struct EditCommunityView: View {
     @State private var name: String
     @State private var description: String
     @State private var audience: CommunityAudience
+    @State private var framing: FrameRequest?
     @Environment(\.dismiss) private var dismiss
 
     init(model: CommunityModel) {
@@ -355,10 +356,12 @@ private struct EditCommunityView: View {
             Section {
                 CommunityPictureFields(
                     hasPicture: model.community?.photo != nil, hasCover: model.community?.cover != nil,
-                    onPicture: { pick in Task { await model.setPicture { try await profilePhoto(pick) } } },
-                    onCover: { pick in Task { await model.setCover { try await communityCover(pick) } } },
+                    onPicture: { pick in Task { await frame(pick, cover: false) } },
+                    onCover: { pick in Task { await frame(pick, cover: true) } },
                     onRemovePicture: { Task { await model.removePicture() } },
                     onRemoveCover: { Task { await model.removeCover() } },
+                    onFramePicture: { Task { await reframe(cover: false) } },
+                    onFrameCover: { Task { await reframe(cover: true) } },
                     disabled: model.busy)
             }
             Section {
@@ -384,5 +387,43 @@ private struct EditCommunityView: View {
         }
         .navigationTitle(Text("community_edit"))
         .navigationBarTitleDisplayMode(.inline)
+        .frameSheet($framing)
+    }
+
+    /// A new pick goes to the crop sheet first; Save uploads the master, then the framing (decision 0086). The
+    /// upload makes its own master from the pick, so trying again after a failure still has one.
+    private func frame(_ pick: Picked, cover: Bool) async {
+        let kind: FrameKind = cover ? .cover : .photo
+        guard let master = try? await masterFile(pick) else {
+            // Not an image the sheet can open: the upload reports it as it always did.
+            if cover {
+                await model.setCover { try await masterFile(pick) }
+            } else {
+                await model.setPicture { try await masterFile(pick) }
+            }
+            return
+        }
+        framing = FrameRequest(kind: kind, master: master, start: nil) { framed in
+            try? FileManager.default.removeItem(at: master)
+            guard let framed else { return }
+            Task {
+                if cover {
+                    await model.setCover({ try await masterFile(pick) }, framing: framed)
+                } else {
+                    await model.setPicture({ try await masterFile(pick) }, framing: framed)
+                }
+            }
+        }
+    }
+
+    /// The image already set, framed again from the master the server kept.
+    private func reframe(cover: Bool) async {
+        guard let master = await model.master(cover: cover) else { return }
+        framing = FrameRequest(kind: cover ? .cover : .photo, master: master, start: model.framing(cover: cover)) {
+            framed in
+            try? FileManager.default.removeItem(at: master)
+            guard let framed else { return }
+            Task { await model.reframe(cover: cover, framed) }
+        }
     }
 }

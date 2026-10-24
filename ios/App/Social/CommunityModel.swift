@@ -298,29 +298,72 @@ final class CommunityModel {
         return saved
     }
 
-    /// Sets the community's picture from the file `make` gives, already small and square, or its cover from one
-    /// already cut into a band (decision 0080); the file is deleted once the core has sent it, or failed to.
-    /// Only the owner does either. Trying again makes the file again from the pick.
-    func setPicture(_ make: @escaping @Sendable () async throws -> URL) async {
-        await setImage(cover: false, make)
+    /// Sets the community's picture from the file `make` gives, or its cover (decisions 0080, 0086): a master, the
+    /// pick as it was chosen, at most 2400 pixels; then `framing`, which the person made in the crop sheet. The
+    /// file is deleted once the core has sent it, or failed to. Only the owner does either. Trying again makes the
+    /// file again from the pick.
+    func setPicture(_ make: @escaping @Sendable () async throws -> URL, framing: Framing? = nil) async {
+        await setImage(cover: false, make, framing)
     }
 
-    func setCover(_ make: @escaping @Sendable () async throws -> URL) async {
-        await setImage(cover: true, make)
+    func setCover(_ make: @escaping @Sendable () async throws -> URL, framing: Framing? = nil) async {
+        await setImage(cover: true, make, framing)
     }
 
-    private func setImage(cover: Bool, _ make: @escaping @Sendable () async throws -> URL) async {
+    private func setImage(cover: Bool, _ make: @escaping @Sendable () async throws -> URL, _ framing: Framing?) async {
         guard owns else { return }
         let social = social
         let id = communityId
-        await perform(again: { await self.setImage(cover: cover, make) }) {
+        await perform(again: { await self.setImage(cover: cover, make, framing) }) {
             let file = try await make()
             defer { try? FileManager.default.removeItem(at: file) }
             self.community = try await offMain {
                 if cover {
                     _ = try social.setCommunityCover(id, path: file.path)
+                    if let framing { _ = try social.setCommunityCoverFraming(id, framing) }
                 } else {
                     _ = try social.setCommunityAvatar(id, path: file.path)
+                    if let framing { _ = try social.setCommunityPictureFraming(id, framing) }
+                }
+                return try social.community(id)
+            }
+        }
+    }
+
+    /// How the picture or the cover is framed now, for the crop sheet to open at.
+    func framing(cover: Bool) -> Framing? { cover ? community?.coverFrames : community?.photoFrames }
+
+    /// The master of the picture or cover, in a new temporary file, for the crop sheet to frame again (decision
+    /// 0086); nil, with the problem `.noMaster`, for one set before masters were kept. The caller deletes it.
+    func master(cover: Bool) async -> URL? {
+        guard owns, !busy else { return nil }
+        let social = social
+        let id = communityId
+        var file: URL?
+        await perform(again: { _ = await self.master(cover: cover) }) {
+            let path = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".webp")
+            let found = try await offMain {
+                cover
+                    ? try social.communityCoverSource(id, path: path.path)
+                    : try social.communityPictureSource(id, path: path.path)
+            }
+            guard found else { throw CoreError.NoMaster }
+            file = path
+        }
+        return file
+    }
+
+    /// Frames the picture or the cover again from its master, with no new upload (decision 0086).
+    func reframe(cover: Bool, _ framing: Framing) async {
+        guard owns else { return }
+        let social = social
+        let id = communityId
+        await perform(again: { await self.reframe(cover: cover, framing) }) {
+            self.community = try await offMain {
+                if cover {
+                    _ = try social.setCommunityCoverFraming(id, framing)
+                } else {
+                    _ = try social.setCommunityPictureFraming(id, framing)
                 }
                 return try social.community(id)
             }

@@ -18,7 +18,7 @@ final class PhotoCacheTests: XCTestCase {
     }
 
     private func fetches(_ account: String, _ version: String) -> Int {
-        self.account.calls.filter { $0 == "photo \(account) \(version)" }.count
+        self.account.calls.filter { $0 == "photoFramed \(account) \(version) square" }.count
     }
 
     func testAPhotoIsDecodedOnceAndThenKept() async {
@@ -44,8 +44,8 @@ final class PhotoCacheTests: XCTestCase {
         let loadedCover = await photos.load(cover)
         XCTAssertEqual(loadedPicture, "image of picture.webp")
         XCTAssertEqual(loadedCover, "image of cover.webp")
-        XCTAssertEqual(social.calls, ["communityPicture k1 v1", "communityCover k1 v1"])
-        XCTAssertEqual(account.calls.filter { $0.hasPrefix("photo") }, [], "a community is not an account")
+        XCTAssertEqual(social.calls, ["communityPictureFramed k1 v1 square", "communityCoverFramed k1 v1 square"])
+        XCTAssertEqual(account.calls.filter { $0.hasPrefix("photoFramed") }, [], "a community is not an account")
         _ = await photos.load(picture)
         _ = await photos.load(cover)
         XCTAssertEqual(social.calls.count, 2, "each kind is kept under its own key")
@@ -67,11 +67,14 @@ final class PhotoCacheTests: XCTestCase {
         XCTAssertNil(makeMember("a3", "Bjarni").photoOf)
         var community = makeCommunity("k1", "Gróa")
         XCTAssertNil(community.pictureOf)
-        XCTAssertNil(community.coverOf)
+        XCTAssertNil(community.coverOf(.compact))
         community.photo = "p1"
         community.cover = "c1"
         XCTAssertEqual(community.pictureOf, PhotoOf(owner: "k1", version: "p1", kind: .communityPicture))
-        XCTAssertEqual(community.coverOf, PhotoOf(owner: "k1", version: "c1", kind: .communityCover))
+        XCTAssertEqual(
+            community.coverOf(.expanded),
+            PhotoOf(owner: "k1", version: "c1", kind: .communityCover, frame: .expanded))
+        XCTAssertEqual(community.pictureOf?.frame, .square, "a picture is always the square frame")
     }
 
     func testANewVersionIsFetchedAgain() async {
@@ -89,7 +92,7 @@ final class PhotoCacheTests: XCTestCase {
         let bad = PhotoOf(owner: "a3", version: "v1")
         account.photoFiles = ["a3/v1": "bad"]
         let failing = PhotoOf(owner: "a4", version: "v1")
-        account.failOn = "photo a4 v1"
+        account.failOn = "photoFramed a4 v1 square"
 
         for _ in 0..<2 {
             let results = [await photos.load(none), await photos.load(bad), await photos.load(failing)]
@@ -124,7 +127,7 @@ final class PhotoCacheTests: XCTestCase {
     }
 }
 
-final class SquarePhotoTests: XCTestCase {
+final class MasterPhotoTests: XCTestCase {
     private var made: [URL] = []
 
     override func tearDown() {
@@ -132,50 +135,83 @@ final class SquarePhotoTests: XCTestCase {
         super.tearDown()
     }
 
-    func testALargePhotoBecomesASquareFromItsMiddleWithoutItsLocation() throws {
-        // Wide, with only the middle third green, and a location in its metadata.
-        let original = try write(width: 3000, height: 1000, orientation: 1, gps: true) { context in
+    func testALargePhotoBecomesAMasterWithItsShapeAndWithoutItsLocation() throws {
+        // Wide, left third red, with a location in its metadata: nothing is cropped, only scaled.
+        let original = try write(width: 4800, height: 1200, orientation: 1, gps: true) { context in
             context.setFillColor(red: 0, green: 0, blue: 1, alpha: 1)
-            context.fill(CGRect(x: 0, y: 0, width: 3000, height: 1000))
-            context.setFillColor(red: 0, green: 1, blue: 0, alpha: 1)
-            context.fill(CGRect(x: 1000, y: 0, width: 1000, height: 1000))
+            context.fill(CGRect(x: 0, y: 0, width: 4800, height: 1200))
+            context.setFillColor(red: 1, green: 0, blue: 0, alpha: 1)
+            context.fill(CGRect(x: 0, y: 0, width: 1600, height: 1200))
         }
-        let square = try squarePhoto(original, side: 512)
-        made.append(square)
-        let image = try XCTUnwrap(read(square))
-        XCTAssertEqual([image.width, image.height], [512, 512])
-        for (x, y) in [(10, 10), (256, 256), (500, 500)] {
-            XCTAssertEqual(color(image, x: x, y: y), .green, "(\(x), \(y)) is from the middle")
-        }
-        let source = try XCTUnwrap(CGImageSourceCreateWithURL(square as CFURL, nil))
+        let master = try masterPhoto(original)
+        made.append(master)
+        let image = try XCTUnwrap(read(master))
+        XCTAssertEqual([image.width, image.height], [2400, 600], "the long edge is 2400 and the shape is kept")
+        XCTAssertEqual(color(image, x: 100, y: 300), .red)
+        XCTAssertEqual(color(image, x: 2300, y: 300), .blue)
+        let source = try XCTUnwrap(CGImageSourceCreateWithURL(master as CFURL, nil))
+        XCTAssertEqual(CGImageSourceGetType(source) as String?, UTType.jpeg.identifier)
         let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
         XCTAssertNil(properties?[kCGImagePropertyGPSDictionary], "the location must not go with it")
     }
 
-    func testASmallPhotoIsNotMadeLarger() throws {
-        let original = try write(width: 200, height: 200, orientation: 1, gps: false) { context in
+    func testASmallPhotoIsNeverScaledUp() throws {
+        let original = try write(width: 200, height: 100, orientation: 1, gps: false) { context in
             context.setFillColor(red: 0, green: 1, blue: 0, alpha: 1)
-            context.fill(CGRect(x: 0, y: 0, width: 200, height: 200))
+            context.fill(CGRect(x: 0, y: 0, width: 200, height: 100))
         }
-        let square = try squarePhoto(original, side: 512)
-        made.append(square)
-        let image = try XCTUnwrap(read(square))
-        XCTAssertEqual([image.width, image.height], [200, 200])
+        let master = try masterPhoto(original)
+        made.append(master)
+        let image = try XCTUnwrap(read(master))
+        XCTAssertEqual([image.width, image.height], [200, 100])
     }
 
-    func testASidewaysPhotoIsTurnedUpright() throws {
-        // Stored with its left half red; orientation 6 shows it turned a quarter clockwise, red on top.
-        let original = try write(width: 200, height: 200, orientation: 6, gps: false) { context in
+    func testASidewaysPhotoBecomesAnUprightMaster() throws {
+        // Stored 200 x 100 with its left half red; orientation 6 shows it turned a quarter clockwise, red on top.
+        let original = try write(width: 200, height: 100, orientation: 6, gps: false) { context in
             context.setFillColor(red: 0, green: 0, blue: 1, alpha: 1)
-            context.fill(CGRect(x: 0, y: 0, width: 200, height: 200))
+            context.fill(CGRect(x: 0, y: 0, width: 200, height: 100))
             context.setFillColor(red: 1, green: 0, blue: 0, alpha: 1)
-            context.fill(CGRect(x: 0, y: 0, width: 100, height: 200))
+            context.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
         }
-        let square = try squarePhoto(original, side: 512)
-        made.append(square)
-        let image = try XCTUnwrap(read(square))
-        XCTAssertEqual(color(image, x: 100, y: 20), .red)
-        XCTAssertEqual(color(image, x: 100, y: 180), .blue)
+        let master = try masterPhoto(original)
+        made.append(master)
+        let image = try XCTUnwrap(read(master))
+        XCTAssertEqual([image.width, image.height], [100, 200])
+        XCTAssertEqual(color(image, x: 50, y: 20), .red)
+        XCTAssertEqual(color(image, x: 50, y: 180), .blue)
+        let source = try XCTUnwrap(CGImageSourceCreateWithURL(master as CFURL, nil))
+        let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+        XCTAssertEqual(properties?[kCGImagePropertyOrientation] as? Int ?? 1, 1, "upright in its pixels")
+    }
+
+    func testAMasterStepsItsQualityDownToStayUnderTheLimit() throws {
+        // Noise does not compress, so a tight limit forces the lowest quality; an absurd one is refused.
+        let original = try write(width: 600, height: 600, orientation: 1, gps: false) { context in
+            for y in stride(from: 0, to: 600, by: 3) {
+                for x in stride(from: 0, to: 600, by: 3) {
+                    context.setFillColor(
+                        red: .random(in: 0...1), green: .random(in: 0...1), blue: .random(in: 0...1), alpha: 1)
+                    context.fill(CGRect(x: x, y: y, width: 3, height: 3))
+                }
+            }
+        }
+        let roomy = try masterPhoto(original)
+        made.append(roomy)
+        let roomySize = try XCTUnwrap(try roomy.resourceValues(forKeys: [.fileSizeKey]).fileSize)
+        let tight = try masterPhoto(original, limit: roomySize - 1)
+        made.append(tight)
+        let tightSize = try XCTUnwrap(try tight.resourceValues(forKeys: [.fileSizeKey]).fileSize)
+        XCTAssertLessThan(tightSize, roomySize)
+        XCTAssertLessThanOrEqual(tightSize, roomySize - 1)
+        XCTAssertThrowsError(try masterPhoto(original, limit: 10))
+    }
+
+    func testAFileThatIsNotAPhotoIsRefused() throws {
+        let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+        made.append(file)
+        try Data("not a photo".utf8).write(to: file)
+        XCTAssertThrowsError(try masterPhoto(file))
     }
 
     func testACameraPhotoIsWrittenUprightWithItsPixelsOnly() throws {
@@ -230,51 +266,6 @@ final class SquarePhotoTests: XCTestCase {
         try Data("not a photo".utf8).write(to: file)
         XCTAssertEqual(withoutLocation(file), file)
         XCTAssertEqual(try Data(contentsOf: file), Data("not a photo".utf8))
-    }
-
-    func testACoverIsABandFromTheMiddleNoWiderThan1600() throws {
-        // 3200 × 3200 with only the middle third (by height) green: the 8:3 band is cut from the middle.
-        let original = try write(width: 3200, height: 3200, orientation: 1, gps: true) { context in
-            context.setFillColor(red: 0, green: 0, blue: 1, alpha: 1)
-            context.fill(CGRect(x: 0, y: 0, width: 3200, height: 3200))
-            context.setFillColor(red: 0, green: 1, blue: 0, alpha: 1)
-            context.fill(CGRect(x: 0, y: 1000, width: 3200, height: 1200))
-        }
-        let cover = try coverPhoto(original)
-        made.append(cover)
-        let image = try XCTUnwrap(read(cover))
-        XCTAssertEqual([image.width, image.height], [1600, 600])
-        for (x, y) in [(10, 10), (800, 300), (1590, 590)] {
-            XCTAssertEqual(color(image, x: x, y: y), .green, "(\(x), \(y)) is from the middle")
-        }
-        let source = try XCTUnwrap(CGImageSourceCreateWithURL(cover as CFURL, nil))
-        let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
-        XCTAssertNil(properties?[kCGImagePropertyGPSDictionary], "the location must not go with it")
-    }
-
-    func testASmallCoverIsNotMadeLargerAndKeepsItsShape() throws {
-        let original = try write(width: 800, height: 600, orientation: 1, gps: false) { context in
-            context.setFillColor(red: 0, green: 1, blue: 0, alpha: 1)
-            context.fill(CGRect(x: 0, y: 0, width: 800, height: 600))
-        }
-        let cover = try coverPhoto(original)
-        made.append(cover)
-        let image = try XCTUnwrap(read(cover))
-        XCTAssertEqual([image.width, image.height], [800, 300])
-    }
-
-    func testAFileThatIsNotACoverPhotoIsRefused() throws {
-        let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
-        made.append(file)
-        try Data("not a photo".utf8).write(to: file)
-        XCTAssertThrowsError(try coverPhoto(file))
-    }
-
-    func testAFileThatIsNotAPhotoIsRefused() throws {
-        let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
-        made.append(file)
-        try Data("not a photo".utf8).write(to: file)
-        XCTAssertThrowsError(try squarePhoto(file, side: 512))
     }
 
     private enum Color { case red, green, blue, other }

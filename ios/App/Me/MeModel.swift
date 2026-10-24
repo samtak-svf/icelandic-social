@@ -94,15 +94,46 @@ final class MeModel {
         !device.current
     }
 
-    /// Sets the photo `make` gives, already small and square (decision 0039); its file is deleted once the
-    /// core has sent it, or failed to. Trying again makes it again from the pick.
-    func setPhoto(_ make: @escaping @Sendable () async throws -> URL) async {
+    /// Sets the photo `make` gives, a master as chosen, at most 2400 pixels long (decisions 0039, 0086), then
+    /// `framing`, which the person made in the crop sheet; its file is deleted once the core has sent it, or failed
+    /// to. Trying again makes it again from the pick.
+    func setPhoto(_ make: @escaping @Sendable () async throws -> URL, framing: Framing? = nil) async {
         let account = account
-        await perform(again: { await self.setPhoto(make) }) {
+        await perform(again: { await self.setPhoto(make, framing: framing) }) {
             let file = try await make()
             defer { try? FileManager.default.removeItem(at: file) }
             self.me = try await offMain {
                 _ = try account.setPhoto(path: file.path)
+                if let framing { _ = try account.setPhotoFraming(framing) }
+                return try account.me()
+            }
+        }
+    }
+
+    /// The master of the photo in a new temporary file with its framing, for the crop sheet to frame again
+    /// (decision 0086); nil, with the problem `.noMaster`, for a photo set before masters were kept. The caller
+    /// deletes the file.
+    func photoMaster() async -> (file: URL, framing: Framing?)? {
+        guard !busy else { return nil }
+        let account = account
+        var found: (URL, Framing?)?
+        await perform(again: { _ = await self.photoMaster() }) {
+            let path = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".webp")
+            let framing = try await offMain { () throws -> Framing? in
+                guard try account.photoSource(path: path.path) else { throw CoreError.NoMaster }
+                return try account.photoFraming()
+            }
+            found = (path, framing)
+        }
+        return found.map { (file: $0.0, framing: $0.1) }
+    }
+
+    /// Frames the photo again from its master, with no new upload (decision 0086).
+    func reframePhoto(_ framing: Framing) async {
+        let account = account
+        await perform(again: { await self.reframePhoto(framing) }) {
+            self.me = try await offMain {
+                _ = try account.setPhotoFraming(framing)
                 return try account.me()
             }
         }

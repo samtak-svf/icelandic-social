@@ -435,6 +435,63 @@ final class FakeSocial: Social, @unchecked Sendable {
         return lock.withLock { _coverFiles["\(community)/\(version)"] }
     }
 
+    /// The framings the picture and cover calls were given, as "picture" or "cover" with the framing.
+    var framings: [(image: String, framing: Framing)] { lock.withLock { _framings } }
+    private var _framings: [(image: String, framing: Framing)] = []
+    /// Whether the picture and the cover have a master to frame again.
+    var hasMaster: Bool {
+        get { lock.withLock { _hasMaster } }
+        set { lock.withLock { _hasMaster = newValue } }
+    }
+    private var _hasMaster = true
+
+    private func frame(_ image: String, _ community: String, _ framing: Framing) throws -> String {
+        try call("setCommunity\(image.capitalized)Framing \(community)")
+        return try lock.withLock {
+            guard _hasMaster else { throw CoreError.NoMaster }
+            _framings.append((image, framing))
+            let version = "f\(_framings.count)"
+            if image == "cover" {
+                _communities[community]?.cover = version
+            } else {
+                _communities[community]?.photo = version
+            }
+            return version
+        }
+    }
+
+    func setCommunityPictureFraming(_ community: String, _ framing: Framing) throws -> String {
+        try frame("picture", community, framing)
+    }
+
+    func setCommunityCoverFraming(_ community: String, _ framing: Framing) throws -> String {
+        try frame("cover", community, framing)
+    }
+
+    func communityPictureFramed(_ community: String, version: String, frame: Frame) throws -> String? {
+        try call("communityPictureFramed \(community) \(version) \(frame)")
+        return lock.withLock { _pictureFiles["\(community)/\(version)"] }
+    }
+
+    func communityCoverFramed(_ community: String, version: String, frame: Frame) throws -> String? {
+        try call("communityCoverFramed \(community) \(version) \(frame)")
+        return lock.withLock { _coverFiles["\(community)/\(version)"] }
+    }
+
+    func communityPictureSource(_ community: String, path: String) throws -> Bool {
+        try call("communityPictureSource \(community)")
+        guard lock.withLock({ _hasMaster }) else { return false }
+        try Data("master".utf8).write(to: URL(filePath: path))
+        return true
+    }
+
+    func communityCoverSource(_ community: String, path: String) throws -> Bool {
+        try call("communityCoverSource \(community)")
+        guard lock.withLock({ _hasMaster }) else { return false }
+        try Data("master".utf8).write(to: URL(filePath: path))
+        return true
+    }
+
     func likeComment(_ comment: String) throws { try call("likeComment \(comment)") }
 
     func unlikeComment(_ comment: String) throws { try call("unlikeComment \(comment)") }

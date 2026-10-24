@@ -74,10 +74,10 @@ protocol Social: Sendable {
     func closeReport(_ report: String, resolution: String) throws
     /// What each reference shows, one card each in their order.
     func cards(_ refs: [CardRef]) throws -> [Card]
-    /// Sets the community's picture from the image file at `path` (already cropped square); its new version.
+    /// Sets the community's picture from the image file at `path` (the master; the framing follows); its new version.
     func setCommunityAvatar(_ community: String, path: String) throws -> String
     func removeCommunityAvatar(_ community: String) throws
-    /// Sets the community's cover from the image file at `path` (already cropped wide); its new version.
+    /// Sets the community's cover from the image file at `path` (the master; the framing follows); its new version.
     func setCommunityCover(_ community: String, path: String) throws -> String
     func removeCommunityCover(_ community: String) throws
     /// The core's file for a community's picture at `version`, its `photo`; nil when it has none or the reader may
@@ -85,6 +85,16 @@ protocol Social: Sendable {
     func communityPicture(_ community: String, version: String) throws -> String?
     /// The core's file for a community's cover at `version`, its `cover` (decision 0080).
     func communityCover(_ community: String, version: String) throws -> String?
+    /// Frames the community's picture or cover again from the master the server kept (decision 0086); the new
+    /// version. Throws `CoreError.NoMaster` for an image set before masters were kept.
+    func setCommunityPictureFraming(_ community: String, _ framing: Framing) throws -> String
+    func setCommunityCoverFraming(_ community: String, _ framing: Framing) throws -> String
+    /// The core's file for the picture or cover at `version` in `frame`.
+    func communityPictureFramed(_ community: String, version: String, frame: Frame) throws -> String?
+    func communityCoverFramed(_ community: String, version: String, frame: Frame) throws -> String?
+    /// Writes the master of the picture or cover to `path`; false when there is none.
+    func communityPictureSource(_ community: String, path: String) throws -> Bool
+    func communityCoverSource(_ community: String, path: String) throws -> Bool
     /// Likes a comment, or takes the like back (decision 0080).
     func likeComment(_ comment: String) throws
     func unlikeComment(_ comment: String) throws
@@ -241,6 +251,30 @@ extension CoreAccount: Social {
 
     func communityCover(_ community: String, version: String) throws -> String? {
         try core().communityCover(communityId: community, version: version)
+    }
+
+    func setCommunityPictureFraming(_ community: String, _ framing: Framing) throws -> String {
+        try core().setCommunityPictureFraming(communityId: community, framing: framing)
+    }
+
+    func setCommunityCoverFraming(_ community: String, _ framing: Framing) throws -> String {
+        try core().setCommunityCoverFraming(communityId: community, framing: framing)
+    }
+
+    func communityPictureFramed(_ community: String, version: String, frame: Frame) throws -> String? {
+        try core().communityPictureFramed(communityId: community, version: version, frame: frame)
+    }
+
+    func communityCoverFramed(_ community: String, version: String, frame: Frame) throws -> String? {
+        try core().communityCoverFramed(communityId: community, version: version, frame: frame)
+    }
+
+    func communityPictureSource(_ community: String, path: String) throws -> Bool {
+        try core().communityPictureSource(communityId: community, path: path)
+    }
+
+    func communityCoverSource(_ community: String, path: String) throws -> Bool {
+        try core().communityCoverSource(communityId: community, path: path)
     }
 
     func likeComment(_ comment: String) throws { try core().likeComment(commentId: comment) }

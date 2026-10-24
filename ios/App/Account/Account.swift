@@ -102,6 +102,15 @@ protocol Account: Sendable {
     func removePhoto() throws
     /// The core's file for `account`'s photo at `version`; nil when it has none or a block stands between.
     func photo(account: String, version: String) throws -> String?
+    /// Frames this account's photo again from the master the server kept (decision 0086); its new version.
+    /// Throws `CoreError.NoMaster` for a photo set before masters were kept.
+    func setPhotoFraming(_ framing: Framing) throws -> String
+    /// How this account's photo is framed; nil without a photo or for one set before frames.
+    func photoFraming() throws -> Framing?
+    /// Writes the master of this account's photo to `path`; false when there is none.
+    func photoSource(path: String) throws -> Bool
+    /// `photo` for one frame (decision 0086).
+    func photoFramed(account: String, version: String, frame: Frame) throws -> String?
 }
 
 /// The core's client, opened on first use so a launch never waits for the
@@ -305,6 +314,16 @@ final class CoreAccount: Account, @unchecked Sendable {
     func setPhoto(path: String) throws -> String { try core().setPhoto(path: path) }
 
     func removePhoto() throws { try core().removePhoto() }
+
+    func setPhotoFraming(_ framing: Framing) throws -> String { try core().setPhotoFraming(framing: framing) }
+
+    func photoFraming() throws -> Framing? { try core().photoFraming() }
+
+    func photoSource(path: String) throws -> Bool { try core().photoSource(path: path) }
+
+    func photoFramed(account: String, version: String, frame: Frame) throws -> String? {
+        try core().photoFramed(account: account, version: version, frame: frame)
+    }
 
     func photo(account: String, version: String) throws -> String? {
         try core().photo(account: account, version: version)

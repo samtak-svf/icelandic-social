@@ -50,6 +50,7 @@ struct ProblemCard: View {
         case .notPermitted: "problem_not_permitted"
         case .notFound: "problem_not_found"
         case .joinDeclined: "problem_join_declined"
+        case .noMaster: "image_frames_no_master"
         case .generic: "error_generic"
         }
     }

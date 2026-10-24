@@ -123,6 +123,23 @@ final class CommunitiesModelTests: XCTestCase {
         XCTAssertNil(model.created)
     }
 
+    func testTheFramingOfANewPictureAndCoverIsSentOnceTheCommunityExists() async throws {
+        let model = await model()
+        let picture = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+        let cover = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+        try Data("x".utf8).write(to: picture)
+        try Data("y".utf8).write(to: cover)
+        let wish = Framing(focus: Focus(x: 0.1, y: 0.2), overrides: [])
+        let made = await model.create(
+            name: "Bækur", description: "", audience: .open, picture: { picture }, cover: { cover },
+            pictureFraming: wish, coverFraming: wish)
+        XCTAssertTrue(made)
+        XCTAssertEqual(social.framings.map(\.image), ["picture", "cover"])
+        let order = social.calls.filter { $0.hasPrefix("createCommunity") || $0.contains("Framing") }
+        XCTAssertEqual(
+            order, ["createCommunity Bækur", "setCommunityPictureFraming made1", "setCommunityCoverFraming made1"])
+    }
+
     func testAPictureAndACoverGoWithTheNewCommunityAndAFailedOneDoesNotMakeItAgain() async throws {
         let model = await model()
         let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
