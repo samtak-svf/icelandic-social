@@ -44,7 +44,8 @@ pre-commit:
 
     format:
       glob: "*.{js,mjs,ts,json,jsonc,toml,yml,yaml,md}"
-      run: pnpm exec oxfmt --write {staged_files}
+      # A staged set made only of ignored files (generated declarations) is not an error.
+      run: pnpm exec oxfmt --write --no-error-on-unmatched-pattern {staged_files}
       stage_fixed: true
 
     lint:

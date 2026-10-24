@@ -707,7 +707,10 @@ fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
-fn connect(path: &Path, key: &Key) -> rusqlite::Result<Connection> {
+/// Opens `path` as an encrypted database under `key`, with the journal and
+/// settings the store keeps. `Store::open` uses it, and so does a second
+/// database that shares the store's key and VFS (the browser's blobs, 0081).
+pub fn connect(path: &Path, key: &Key) -> rusqlite::Result<Connection> {
     let connection = Connection::open(path)?;
     // The key must be the first statement on the connection. Hex digits
     // only, so formatting it into the pragma cannot inject anything.

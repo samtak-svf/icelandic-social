@@ -46,6 +46,7 @@ pub fn run(root: &Path, platform: Platform) -> Result<()> {
     match platform {
         Platform::Android => android(root, &core, &staging, &out)?,
         Platform::Ios => ios(&core, &staging, &out)?,
+        Platform::Web => web(&core, &out)?,
     }
 
     let zip = zip_dir(&out)?;
@@ -195,6 +196,35 @@ fn android(root: &Path, core: &Path, staging: &Path, out: &Path) -> Result<()> {
     fs::write(out.join("spjall-core.aar"), zip_entries(&aar)?)?;
 
     bindgen(core, "kotlin", &out.join("kotlin"))
+}
+
+/// The Rust target of the browser module.
+const WASM_TARGET: &str = "wasm32-unknown-unknown";
+
+/// The module and its JS glue, for a page that loads them in a Worker.
+/// `wasm-bindgen-cli` must be the version in `core/Cargo.lock`; core.yml
+/// installs exactly that one.
+fn web(core: &Path, out: &Path) -> Result<()> {
+    add_targets(core, &[WASM_TARGET])?;
+    exec(command("cargo", core).args([
+        "build",
+        "--release",
+        "--locked",
+        "--package",
+        "spjall-wasm",
+        "--target",
+        WASM_TARGET,
+    ]))?;
+    let module = cargo_target(core)
+        .join(WASM_TARGET)
+        .join("release/spjall_wasm.wasm");
+    exec(
+        command("wasm-bindgen", core)
+            .args(["--target", "web", "--out-dir"])
+            .arg(out)
+            .arg(&module),
+    )
+    .context("wasm-bindgen failed; is it installed? cargo install wasm-bindgen-cli --version <the one in core/Cargo.lock> --locked")
 }
 
 /// The AAR carries only the native libraries; the Kotlin bindings are

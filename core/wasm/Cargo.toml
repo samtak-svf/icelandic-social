@@ -1,0 +1,47 @@
+[package]
+name = "spjall-wasm"
+description = "The core in a browser Web Worker: the blocking client over synchronous XHR and an OPFS store (decision 0081)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+qrcode = { version = "0.14", default-features = false }
+serde.workspace = true
+serde_json.workspace = true
+spjall-client = { path = "../client", default-features = false }
+spjall-envelope = { path = "../envelope" }
+spjall-mls = { path = "../mls" }
+spjall-store = { path = "../store" }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+js-sys = "0.3"
+serde-wasm-bindgen = "0.6"
+spjall-store = { path = "../store", features = ["opfs"] }
+wasm-bindgen = "=0.2.129"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = [
+  "WorkerGlobalScope",
+  "WorkerLocation",
+  "XmlHttpRequest",
+  "XmlHttpRequestResponseType",
+] }
+
+[dev-dependencies]
+tempfile.workspace = true
+
+# tests/pool_blobs.rs and tests/qr.rs, in a dedicated Worker under headless Chrome.
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[lints.rust]
+# wasm-bindgen's generated glue is unsafe by nature; our own code is not.
+unsafe_code = "allow"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }

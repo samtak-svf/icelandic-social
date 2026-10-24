@@ -12,7 +12,11 @@ name: core
 #   not after a tag that can never be published again. The PR's zips are
 #   kept under a name derived from the tree (tooling/core-reuse.mjs), and
 #   the tag reuses them rather than building the same tree twice.
-# - publish: on the tag only, attaches both zips with their SHA-256 files to
+# - web: builds the browser module (core/wasm, decision 0081) with
+#   wasm-bindgen into a zip beside the app ones, and fails when the committed
+#   web/src/generated/core.d.ts is not what the build emits. Its tests (the
+#   real OPFS pool) run in store-opfs.
+# - publish: on the tag only, attaches the three zips with their SHA-256 files to
 #   a GitHub release of that tag (decision 0013). A released version is never overwritten. Nothing here edits the
 #   lock: apps move to a new core through a PR that pins the printed checksums
 #   in core/artifact.lock.json.
@@ -120,7 +124,7 @@ jobs:
       - name: Clippy for wasm32
         run: |
           cargo clippy --locked -p spjall-client --target wasm32-unknown-unknown -- -D warnings
-          cargo clippy --locked -p spjall-web-spike --features sqlite3mc --target wasm32-unknown-unknown -- -D warnings
+          cargo clippy --locked -p spjall-wasm --all-targets --target wasm32-unknown-unknown -- -D warnings
 
   store-opfs:
     if: ${{ !startsWith(github.ref, 'refs/tags/') }}
@@ -178,6 +182,60 @@ jobs:
         env:
           CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
         run: cargo test --release --locked -p spjall-store --features opfs --target wasm32-unknown-unknown --test opfs
+
+      # The browser core's own suite (0081): PoolBlobs on the real pool beside
+      # the store. The transport's headers and ranges, the QR and the error
+      # codes are pure functions and run in the `test` job natively.
+      - name: The browser core on the browser's VFS
+        env:
+          CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
+        run: cargo test --release --locked -p spjall-wasm --target wasm32-unknown-unknown
+
+  web:
+    # The browser's core (0081): spjall-wasm and its JS glue, zipped like the
+    # app ones. Built on a core PR so a break shows there, and on the tag.
+    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/core-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Tag matches the workspace version
+        if: startsWith(github.ref, 'refs/tags/core-v')
+        run: |
+          VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' core/Cargo.toml | head -1)
+          if [ "core-v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match core/Cargo.toml version $VERSION"
+            exit 1
+          fi
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: core
+          key: wasm32-web
+
+      # Same version as the store-opfs job and the wasm-bindgen crate in
+      # core/Cargo.lock: the glue and the module must come from one version.
+      - name: wasm-bindgen-cli
+        run: cargo install wasm-bindgen-cli --version 0.2.129 --locked
+
+      - name: Build
+        working-directory: core
+        run: cargo xtask core web
+
+      # The committed declarations are what the web client is typed against.
+      - name: The committed declarations are the built ones
+        run: |
+          CORE_WEB_BUILT=1 node tooling/core-guard.mjs || {
+            diff -u web/src/generated/core.d.ts web/core/spjall_wasm.d.ts
+            exit 1
+          }
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ startsWith(github.ref, 'refs/tags/') && 'core-web' || 'web-core-pr' }}
+          path: core/target/artifacts/
+          if-no-files-found: error
+          retention-days: 90
 
   android:
     if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/core-v')
@@ -317,7 +375,7 @@ jobs:
           retention-days: 90
 
   publish:
-    needs: [android, ios]
+    needs: [android, ios, web]
     if: startsWith(github.ref, 'refs/tags/core-v')
     runs-on: ubuntu-latest
     timeout-minutes: 10
