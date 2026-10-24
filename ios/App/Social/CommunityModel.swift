@@ -432,28 +432,35 @@ final class CommunityModel {
     /// the fourth, is refused with a sentence and its copy deleted.
     func pick(_ picked: Picked) async {
         guard roomForImage() else { return }
-        if (picked.size ?? 0) > Self.imageLimit {
-            imageNotice = .tooLarge
-            return
-        }
         imageNotice = nil
-        do {
-            let file = try await picked.read()
-            let size = (try? FileManager.default.attributesOfItem(atPath: file.path)[.size] as? NSNumber)?
-                .int64Value
-            if (size ?? 0) > Self.imageLimit {
-                try? FileManager.default.removeItem(at: file)
-                imageNotice = .tooLarge
-                return
-            }
+        switch await Self.readImage(picked) {
+        case .failure(let notice):
+            imageNotice = notice
+        case .success(let file):
             guard images.count < Self.imageCount else {
                 try? FileManager.default.removeItem(at: file)
                 imageNotice = .tooMany
                 return
             }
             images.append(file.path)
+        }
+    }
+
+    /// Reads a picked image into a local copy, or says why it is not taken: over 10 MB (by what the picker says
+    /// first, then by the copy's size) or unreadable. Posts and comments take their images through this one door.
+    nonisolated static func readImage(_ picked: Picked) async -> Result<URL, ImageNotice> {
+        if (picked.size ?? 0) > imageLimit { return .failure(.tooLarge) }
+        do {
+            let file = try await picked.read()
+            let size = (try? FileManager.default.attributesOfItem(atPath: file.path)[.size] as? NSNumber)?
+                .int64Value
+            if (size ?? 0) > imageLimit {
+                try? FileManager.default.removeItem(at: file)
+                return .failure(.tooLarge)
+            }
+            return .success(file)
         } catch {
-            imageNotice = .invalid
+            return .failure(.invalid)
         }
     }
 
@@ -508,7 +515,7 @@ final class CommunityModel {
     }
 
     /// What the server's refusal of an image says, or nil when it is not about an image.
-    private nonisolated static func notice(for error: Error) -> ImageNotice? {
+    nonisolated static func notice(for error: Error) -> ImageNotice? {
         switch error {
         case CoreError.Refused(_, "too_large", _): .tooLarge
         case CoreError.Refused(_, "invalid_image", _): .invalid
