@@ -75,7 +75,7 @@ function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () 
   return (
     <>
       <h1 className="sr-only">{strings.post_title}</h1>
-      <div className="sticky top-0 z-10 -mx-4 flex items-center gap-2 bg-bg px-4">
+      <div className="sticky top-0 z-10 flex items-center gap-2 bg-bg">
         <Link
           to="/communities/$communityId"
           params={{ communityId }}
@@ -156,7 +156,7 @@ function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () 
         )}
         <div
           data-comment-composer
-          className="sticky bottom-[var(--tabbar-height,0px)] -mx-4 border-t border-border bg-bg px-4 py-2"
+          className="sticky bottom-[var(--tabbar-height,0px)] border-t border-border bg-bg py-2"
         >
           <CommentComposer
             communityId={communityId}

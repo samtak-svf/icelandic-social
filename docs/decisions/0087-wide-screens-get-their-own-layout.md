@@ -35,7 +35,7 @@ column.
 
 ### Medium: a rail and one column
 
-- **Navigation moves to a left rail**, the same four places with the same badges. The bottom
+- **Navigation moves to a left rail**, the same five places with the same badges. The bottom
   tabs and the web's top bar go.
 - The content stays one column, centred, no wider than it is today, so text keeps a readable
   line length.
