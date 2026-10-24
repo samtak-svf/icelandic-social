@@ -7,10 +7,28 @@ import {
   LEGACY_FRAME,
   overrideRect,
   placeFrame,
+  SIZE_CLASSES,
+  type SizeClass,
+  sizeClassOf,
 } from "../src/api/image-frames.ts";
 
 // The vectors are shared with the Rust core (decision 0086): the clients and
 // the server place a frame by one rule, and this file is that rule's proof.
+
+describe("size classes", () => {
+  it("begin medium and expanded at the contract's widths, and the cover frames follow them", () => {
+    const at: [number, SizeClass][] = [
+      [0, "compact"],
+      [SIZE_CLASSES.medium - 1, "compact"],
+      [SIZE_CLASSES.medium, "medium"],
+      [SIZE_CLASSES.expanded - 1, "medium"],
+      [SIZE_CLASSES.expanded, "expanded"],
+      [2560, "expanded"],
+    ];
+    for (const [width, sizeClass] of at) expect(sizeClassOf(width), `${width}`).toBe(sizeClass);
+    expect(Object.keys(FRAME_SPECS.cover).sort()).toEqual(["compact", "expanded", "medium"]);
+  });
+});
 
 describe("frame specifications", () => {
   it("are the sizes of decision 0086", () => {

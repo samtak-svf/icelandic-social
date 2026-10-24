@@ -1,6 +1,7 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { call } from "../api/call.ts";
 import { strings } from "../generated/brand/strings.ts";
+import { useSizeClass, type SizeClass } from "../ui/size-class.ts";
 
 // The one avatar for people and for communities (decision 0080): the photo
 // when the API gave a version, otherwise the initials tile of decision 0079.
@@ -44,7 +45,7 @@ function pictureUrl(
   kind: PictureKind,
   id: string,
   version: string,
-  frame?: CoverFrame,
+  frame?: SizeClass,
 ): Promise<string | null> {
   const key = `${kind}:${id}:${version}:${frame ?? ""}`;
   let pending = fetched.get(key);
@@ -109,34 +110,8 @@ export function Avatar({
   );
 }
 
-/** The cover's frames, one for each window size class (decision 0086). */
-type CoverFrame = "compact" | "medium" | "expanded";
-
-/** The frame for a window width: compact below 600, medium to below 840, expanded from 840. */
-const MEDIUM = "(min-width: 600px)";
-const EXPANDED = "(min-width: 840px)";
-
-function currentFrame(): CoverFrame {
-  if (typeof window === "undefined") return "expanded";
-  if (window.matchMedia(EXPANDED).matches) return "expanded";
-  return window.matchMedia(MEDIUM).matches ? "medium" : "compact";
-}
-
-function onSizeClass(changed: () => void): () => void {
-  const queries = [MEDIUM, EXPANDED].map((query) => window.matchMedia(query));
-  for (const query of queries) query.addEventListener("change", changed);
-  return () => {
-    for (const query of queries) query.removeEventListener("change", changed);
-  };
-}
-
-/** The cover frame of the window's current size class; it follows a resize or rotation. */
-function useCoverFrame(): CoverFrame {
-  return useSyncExternalStore(onSizeClass, currentFrame, () => "expanded");
-}
-
 /** The cover's box takes the shape of the frame shown, so no frame is cut again by a fixed height. */
-const COVER_BOX = "aspect-[3/1] min-[600px]:aspect-[4/1] min-[840px]:aspect-[8/3]";
+const COVER_BOX = "aspect-[3/1] medium:aspect-[4/1] expanded:aspect-[8/3]";
 
 /**
  * A community's cover, or nothing while it has none or has not come. Only
@@ -149,7 +124,8 @@ export function Cover({
   version,
   className = "",
 }: Readonly<{ communityId: string; version: string | null; className?: string }>) {
-  const frame = useCoverFrame();
+  // A cover has one frame per size class (decision 0086), named as the class.
+  const frame = useSizeClass();
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
     let live = true;

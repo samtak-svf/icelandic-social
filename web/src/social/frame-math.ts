@@ -24,13 +24,6 @@ export const MAX_ZOOM = 8;
 const KEY_ZOOM = 1.25;
 const KEY_STEP = 0.05;
 
-/** The window size class a width in CSS pixels falls in: below 600, 600 to below 840, from 840. */
-export function currentFrame(width: number): "compact" | "medium" | "expanded" {
-  if (width < 600) return "compact";
-  if (width < 840) return "medium";
-  return "expanded";
-}
-
 /** The largest rectangle of `aspect` the image holds, as fractions. */
 function largest(image: ImageSize, aspect: Aspect): FrameRect {
   const px = placeFrame(image.w, image.h, aspect.aspectW, aspect.aspectH, { x: 0.5, y: 0.5 });

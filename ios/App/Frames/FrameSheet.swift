@@ -101,7 +101,7 @@ struct FrameSheet: View {
         if editor.advancedOpen {
             let all = editor.shown
             let layout =
-                width >= 600
+                frameForWidth(kind: .cover, widthDp: UInt32(max(width, 0))) != .compact
                 ? AnyLayout(HStackLayout(alignment: .top, spacing: 12)) : AnyLayout(VStackLayout(spacing: 20))
             layout {
                 ForEach(all, id: \.self) { frame in
