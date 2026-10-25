@@ -29,6 +29,13 @@
   real account; account deletion deletes the post; and a block hides the post from the
   blocker, as it hides every post of a blocked account. The last means a blocker can infer
   that a hidden post came from someone they blocked; safety outranks that leak.
+- **No answer turns on who the author is** (Guðröður, 2026-10-25). A moderator, who reads
+  across blocks, may reply to and react to an anonymous post even when a block stands between
+  them and its author; the block still holds for the author, who sees neither the reply nor a
+  notice of it. A moderator may hide, remove or restore an anonymous post whatever the author's
+  role, and also after the author has left, because a refusal by rank would tell them the
+  author is the owner or a fellow moderator without a logged reveal. A mute or a ban names an
+  account, which a moderator has only after a reveal, so those keep the rank rule of 0063.
 - **The account behind it is verified as before.** Anonymity is only toward the readers; the
   server keeps the author on the post like any other.
 

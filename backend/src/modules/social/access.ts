@@ -64,6 +64,10 @@ export function refusal(access: SpaceAccess, now = Date.now()): Refusal | null {
 /**
  * Why `access` may not reply to `post` (comment, react), or null when it may:
  * only a visible post takes replies, and nobody replies across a block (0063).
+ * An anonymous post is the exception: a refusal would tell a moderator, who
+ * reads across blocks, that a block stands between them and its author. The
+ * block still holds, because the author sees neither the reply nor a notice of
+ * it (0091).
  */
 export function replyRefusal(
   access: SpaceAccess,
@@ -72,6 +76,7 @@ export function replyRefusal(
   const refused = refusal(access);
   if (refused) return refused;
   if (post.state !== "visible") return "not_permitted";
+  if (post.anonymous === 1) return null;
   return access.between.includes(post.authorId) ? "blocked" : null;
 }
 

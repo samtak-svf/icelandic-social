@@ -236,3 +236,69 @@ describe("everything else still applies", () => {
     expect((await owner.call("GET", `/v1/posts/${other.postId}`)).status).toBe(404);
   });
 });
+
+describe("nothing answers by who the author is", () => {
+  const act = (by: Person, id: string, action: string, targetId: string, until?: number) =>
+    by.call("POST", `/v1/communities/${id}/actions`, {
+      action,
+      targetId,
+      reason: "Prófun",
+      ...(until === undefined ? {} : { until }),
+    });
+  const published = async (by: Person, approver: Person, id: string, body: string) => {
+    const made = await ok<Seen>(await create(by, id, body));
+    expect((await approver.call("POST", `/v1/posts/${made.postId}/approve`)).status).toBe(204);
+    return made.postId;
+  };
+
+  it("takes a reply across a block, which the author never sees", async () => {
+    const { moderator, author, id } = await scene();
+    const postId = await published(author, moderator, id, "Nafnlaus");
+    expect((await author.call("PUT", `/v1/blocks/${moderator.accountId}`)).status).toBeLessThan(
+      300,
+    );
+
+    // The moderator reads across the block, and is answered as for any post.
+    const reply = await moderator.call("POST", `/v1/posts/${postId}/comments`, {
+      body: "Svar",
+      media: [],
+    });
+    expect(reply.status).toBe(200);
+    expect(
+      (await moderator.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" })).status,
+    ).toBe(204);
+
+    // The block still holds for the author: no reply, no notice.
+    const comments = await ok<{ comments: unknown[] }>(
+      await author.call("GET", `/v1/posts/${postId}/comments`),
+    );
+    expect(comments.comments).toEqual([]);
+    await runJobs(euEnv(env), jobHandlers({ send: async () => {} }), Date.now() + 1);
+    const told = await ok<{ notifications: { kind: string }[] }>(
+      await author.call("GET", "/v1/notifications"),
+    );
+    expect(told.notifications.filter((n) => n.kind !== "moderated")).toEqual([]);
+  });
+
+  it("moderates an anonymous post the same whether its author outranks, equals or has left", async () => {
+    const { owner, moderator, author, third, id } = await scene();
+    await owner.call("PUT", `/v1/communities/${id}/members/${third.accountId}/role`, {
+      role: "moderator",
+    });
+    const byOwner = await published(owner, moderator, id, "Frá eiganda");
+    const byPeer = await published(third, moderator, id, "Frá jafningja");
+    const byLeaver = await published(author, moderator, id, "Frá þeim sem fór");
+    expect((await author.call("POST", `/v1/communities/${id}/leave`)).status).toBe(204);
+
+    for (const postId of [byOwner, byPeer, byLeaver]) {
+      expect((await act(moderator, id, "hide_post", postId)).status).toBe(204);
+      expect((await act(moderator, id, "restore_post", postId)).status).toBe(204);
+    }
+
+    // An account action names the account, so rank still decides it.
+    const DAY = 24 * 60 * 60 * 1000;
+    expect(
+      (await act(moderator, id, "mute_member", owner.accountId, Date.now() + DAY)).status,
+    ).toBe(403);
+  });
+});

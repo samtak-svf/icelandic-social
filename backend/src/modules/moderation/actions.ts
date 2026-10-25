@@ -137,6 +137,25 @@ function told(
   ];
 }
 
+/** Why `me` may not act on the account `target` reaches, or null when it may. */
+async function reaches(
+  env: Env,
+  me: Standing,
+  communityId: string,
+  input: Input,
+  target: { content: Content | null; targetAccount: string },
+): Promise<Refusal | null> {
+  // An anonymous post is moderated as a post, whoever wrote it: an answer that
+  // turned on the author's standing or rank would name them without a logged
+  // reveal (0091).
+  if (target.content?.anonymous === 1) return null;
+  const standingThere = await standing(env, target.targetAccount, communityId);
+  if (!standingThere) return "not_found";
+  if (rank(standingThere) >= rank(me)) return "not_permitted";
+  const verb = input.action.split("_")[0] as Sanction["action"];
+  return !target.content && !applies(verb, standingThere) ? "not_found" : null;
+}
+
 /** Does `input` as `accountId` in `communityId`; what refused it, or null when done. */
 export async function act(
   env: Env,
@@ -150,13 +169,11 @@ export async function act(
   if (typeof me === "string") return me;
 
   const target = await targetOf(env, communityId, input);
-  const standingThere = target && (await standing(env, target.targetAccount, communityId));
-  if (!target || !standingThere) return "not_found";
+  if (!target) return "not_found";
   // A post waiting for approval is published or declined, not hidden or removed (0091).
   if ((target.content?.state as string | undefined) === "pending") return "invalid_request";
-  if (rank(standingThere) >= rank(me)) return "not_permitted";
-  const verb = input.action.split("_")[0] as Sanction["action"];
-  if (!target.content && !applies(verb, standingThere)) return "not_found";
+  const reached = await reaches(env, me, communityId, input, target);
+  if (reached) return reached;
   const report = await reportOf(env, me, communityId, input);
   if (typeof report === "string") return report;
 
