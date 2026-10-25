@@ -25,6 +25,9 @@ final class FakeSocial: Social, @unchecked Sendable {
     private var _joins: [String: JoinState] = [:]
     private var _requests: [String: [JoinRequest]] = [:]
     private var _refuseImage: Error?
+    private var _images: [String: [CommunityImage]] = [:]
+    private var _pending: [String: [Post]] = [:]
+    private var _authors: [String: Author] = [:]
     private var made = 0
 
     var calls: [String] { lock.withLock { _calls } }
@@ -126,6 +129,24 @@ final class FakeSocial: Social, @unchecked Sendable {
     var refuseImage: Error? {
         get { lock.withLock { _refuseImage } }
         set { lock.withLock { _refuseImage = newValue } }
+    }
+
+    /// Each community's images, newest first.
+    var images: [String: [CommunityImage]] {
+        get { lock.withLock { _images } }
+        set { lock.withLock { _images = newValue } }
+    }
+
+    /// Each community's anonymous posts that wait for approval, newest first.
+    var pending: [String: [Post]] {
+        get { lock.withLock { _pending } }
+        set { lock.withLock { _pending = newValue } }
+    }
+
+    /// Who wrote each anonymous post, by post id, as `revealAuthor` gives it.
+    var authors: [String: Author] {
+        get { lock.withLock { _authors } }
+        set { lock.withLock { _authors = newValue } }
     }
 
     /// How long one page is here, so the tests see more than one without making dozens.
@@ -301,6 +322,149 @@ final class FakeSocial: Social, @unchecked Sendable {
         created.images = media.map { PostImage(mediaId: $0, width: 640, height: 480) }
         posts[community, default: []].insert(created, at: 0)
         return created
+    }
+
+    func createPost(_ community: String, body: String, media: [String], anonymous: Bool, poll: [String]?) throws
+        -> Post
+    {
+        try call(
+            "createPostWith \(community) \(body)" + (anonymous ? " anonymous" : "")
+                + (poll.map { " poll \($0.joined(separator: ","))" } ?? ""))
+        guard !anonymous || communities[community]?.anonymousPosts == true else {
+            throw CoreError.Refused(status: 409, code: "anonymous_off", requestId: nil)
+        }
+        let id = lock.withLock {
+            made += 1
+            return "p-made\(made)"
+        }
+        var created = makePost(
+            id, community, body: body, author: anonymous ? nil : jon, anonymous: anonymous, own: true,
+            state: anonymous ? .pending : .visible)
+        created.images = media.map { PostImage(mediaId: $0, width: 640, height: 480) }
+        created.poll = poll.map { options in
+            Poll(
+                options: options.enumerated().map {
+                    PollOption(optionId: "o\($0.offset)", text: $0.element, votes: nil)
+                },
+                total: 0, mine: nil, closed: false)
+        }
+        if anonymous {
+            pending[community, default: []].insert(created, at: 0)
+        } else {
+            posts[community, default: []].insert(created, at: 0)
+        }
+        return created
+    }
+
+    func communityImages(_ community: String, cursor: String?, limit: UInt32) throws -> CommunityImagePage {
+        try call("communityImages \(community) \(cursor ?? "-")")
+        let (found, next) = page(images[community] ?? [], after: cursor)
+        return CommunityImagePage(images: found, next: next)
+    }
+
+    /// Changes the poll of the post wherever the fake keeps it, and answers the post as it now reads.
+    private func edit(_ id: String, _ change: (inout Post) throws -> Void) throws -> Post {
+        for community in posts.keys {
+            guard let index = posts[community]?.firstIndex(where: { $0.postId == id }) else { continue }
+            var found = posts[community]![index]
+            try change(&found)
+            posts[community]![index] = found
+            return found
+        }
+        throw notFound
+    }
+
+    func votePoll(_ post: String, option: String) throws -> Post {
+        try call("votePoll \(post) \(option)")
+        return try edit(post) { found in
+            guard var poll = found.poll else { throw notFound }
+            guard !poll.closed else { throw CoreError.Refused(status: 409, code: "poll_closed", requestId: nil) }
+            poll.options = poll.options.map { each in
+                var each = each
+                if each.optionId == poll.mine { each.votes = (each.votes ?? 1) - 1 }
+                if each.optionId == option { each.votes = (each.votes ?? 0) + 1 }
+                return each
+            }
+            if poll.mine == nil { poll.total += 1 }
+            poll.mine = option
+            poll.options = poll.options.map { each in
+                var each = each
+                each.votes = each.votes ?? 0
+                return each
+            }
+            found.poll = poll
+        }
+    }
+
+    func withdrawVote(_ post: String) throws -> Post {
+        try call("withdrawVote \(post)")
+        return try edit(post) { found in
+            guard var poll = found.poll else { throw notFound }
+            guard poll.mine != nil else { return }
+            poll.options = poll.options.map { each in
+                var each = each
+                if each.optionId == poll.mine { each.votes = (each.votes ?? 1) - 1 }
+                return each
+            }
+            poll.total -= 1
+            poll.mine = nil
+            found.poll = poll
+        }
+    }
+
+    func closePoll(_ post: String) throws -> Post {
+        try call("closePoll \(post)")
+        return try edit(post) { found in
+            guard var poll = found.poll else { throw notFound }
+            poll.closed = true
+            poll.options = poll.options.map { each in
+                var each = each
+                each.votes = each.votes ?? 0
+                return each
+            }
+            found.poll = poll
+        }
+    }
+
+    func setAnonymousPosts(_ community: String, on: Bool) throws -> Community {
+        try call("setAnonymousPosts \(community) \(on)")
+        guard var found = communities[community] else { throw notFound }
+        found.anonymousPosts = on
+        communities[community] = found
+        return found
+    }
+
+    func pendingAnonymousPosts(_ community: String, before: String?, limit: UInt32) throws -> PostPage {
+        try call("pendingAnonymousPosts \(community) \(before ?? "-")")
+        let (found, next) = page(pending[community] ?? [], after: before)
+        return PostPage(posts: found, next: next)
+    }
+
+    func approveAnonymousPost(_ post: String) throws {
+        try call("approveAnonymousPost \(post)")
+        try publishPending(post)
+    }
+
+    func declineAnonymousPost(_ post: String) throws {
+        try call("declineAnonymousPost \(post)")
+        for community in pending.keys { pending[community]?.removeAll { $0.postId == post } }
+    }
+
+    private func publishPending(_ post: String) throws {
+        for community in pending.keys {
+            guard var found = pending[community]?.first(where: { $0.postId == post }) else { continue }
+            pending[community]?.removeAll { $0.postId == post }
+            found.state = .visible
+            posts[community, default: []].insert(found, at: 0)
+            return
+        }
+        throw notFound
+    }
+
+    func revealAuthor(_ post: String) throws -> Author {
+        try call("revealAuthor \(post)")
+        guard let found = authors[post] else { throw notFound }
+        return found
     }
 
     func uploadPostImage(_ community: String, path: String) throws -> PostImage {
@@ -498,11 +662,18 @@ final class FakeSocial: Social, @unchecked Sendable {
 
     func pinPost(_ community: String, post: String) throws {
         try call("pinPost \(community) \(post)")
-        posts[community] = (posts[community] ?? []).map { found in
-            var found = found
-            found.pinned = found.postId == post
-            return found
-        }.sorted { $0.pinned && !$1.pinned }
+        guard var found = communities[community] else { throw notFound }
+        if found.featured.contains(where: { $0.postId == post }) { return }
+        guard found.featured.count < 3 else {
+            throw CoreError.Refused(status: 409, code: "pin_limit", requestId: nil)
+        }
+        posts[community] = (posts[community] ?? []).map { each in
+            var each = each
+            if each.postId == post { each.pinned = true }
+            return each
+        }
+        if let pinned = posts[community]?.first(where: { $0.postId == post }) { found.featured.insert(pinned, at: 0) }
+        communities[community] = found
     }
 
     func unpinPost(_ community: String, post: String) throws {
@@ -512,6 +683,7 @@ final class FakeSocial: Social, @unchecked Sendable {
             if found.postId == post { found.pinned = false }
             return found
         }
+        communities[community]?.featured.removeAll { $0.postId == post }
     }
 
     func pinCommunity(_ community: String) throws {
@@ -546,13 +718,15 @@ func makeCommunity(
     _ id: String, _ name: String, audience: CommunityAudience = .open, role: CommunityRole? = nil,
     description: String = "", memberCount: UInt64? = 3, mutedUntil: UInt64? = nil, readOnly: Bool = false,
     pendingJoinRequests: UInt64? = nil, openReports: UInt64? = nil, unread: UInt64 = 0,
-    lastPostAt: UInt64? = nil, pinned: Bool = false
+    lastPostAt: UInt64? = nil, pinned: Bool = false, anonymousPosts: Bool = false, pendingAnonymous: UInt64 = 0,
+    featured: [Post] = []
 ) -> Community {
     Community(
         communityId: id, name: name, description: description, audience: audience, createdAt: FakeAccount.now,
         memberCount: memberCount, role: role, joinRequested: false, invited: false, mutedUntil: mutedUntil,
         readOnly: readOnly, deletedAt: nil, joinDeclinedUntil: nil, pendingJoinRequests: pendingJoinRequests,
-        openReports: openReports, unread: unread, lastPostAt: lastPostAt, pinned: pinned)
+        openReports: openReports, unread: unread, lastPostAt: lastPostAt, pinned: pinned,
+        anonymousPosts: anonymousPosts, pendingAnonymous: pendingAnonymous, featured: featured)
 }
 
 func makePost(
@@ -560,13 +734,13 @@ func makePost(
     anonymous: Bool = false, own: Bool? = nil, reactions: [ReactionCount] = [], mine: ReactionKind? = nil,
     comments: UInt64 = 0,
     state: ModerationState = .visible, createdAt: UInt64 = FakeAccount.now, pinned: Bool = false,
-    latestComment: Comment? = nil
+    latestComment: Comment? = nil, poll: Poll? = nil
 ) -> Post {
     Post(
         postId: id, communityId: community, author: author, anonymous: anonymous,
         mine: own ?? (author?.accountId == jon.accountId), body: body, images: [], createdAt: createdAt,
         reactions: reactions, myReaction: mine, commentCount: comments, latestComment: latestComment, state: state,
-        pinned: pinned)
+        pinned: pinned, poll: poll)
 }
 
 /// Somebody in a community's member list.

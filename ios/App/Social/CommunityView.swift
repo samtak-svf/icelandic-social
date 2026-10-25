@@ -39,6 +39,7 @@ struct CommunityView: View {
                             systemImage: "magnifyingglass", label: "community_search_posts",
                             fill: BrandTokens.Colors.muted, tint: BrandTokens.Colors.fg, size: 34
                         ) {
+                            model.select(.discussion)
                             searchOpen.toggle()
                         }
                     }
@@ -116,9 +117,12 @@ struct CommunityView: View {
                 feed.frame(maxWidth: contentWidth)
                 if let community = model.community {
                     ScrollView {
-                        CommunityAside(community: community, members: model.members, limit: layout.memberPictures)
-                            .padding(.vertical, 16)
-                            .padding(.trailing, 16)
+                        VStack(alignment: .leading, spacing: 16) {
+                            FeaturedList(posts: model.featured)
+                            CommunityAside(community: community, members: model.members, limit: layout.memberPictures)
+                        }
+                        .padding(.vertical, 16)
+                        .padding(.trailing, 16)
                     }
                     .frame(width: Self.asideWidth)
                 }
@@ -137,19 +141,39 @@ struct CommunityView: View {
             LazyVStack(alignment: .leading, spacing: 12) {
                 if let community = model.community {
                     header(community)
-                    if model.reads {
-                        if searchOpen || model.searched {
-                            SocialSearchField(
-                                prompt: "community_search_posts",
-                                text: Binding(get: { model.query }, set: { model.query = $0 }))
-                        }
-                        posts
+                    if model.loaded {
+                        CommunityTabRow(
+                            tabs: model.tabs, selected: model.shownTab, tabsLayout: layout.tabs,
+                            onSelect: { model.select($0) })
+                        tabContent(community)
                     }
                 } else if !model.loaded {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 40)
                 }
             }
             .padding(16)
+        }
+    }
+
+    /// What the chosen tab shows (decision 0089). The featured strip leads the discussion on a window without an aside.
+    @ViewBuilder private func tabContent(_ community: Community) -> some View {
+        switch model.shownTab {
+        case .discussion:
+            if layout.featured == .strip { FeaturedStrip(posts: model.featured) }
+            if searchOpen || model.searched {
+                SocialSearchField(
+                    prompt: "community_search_posts",
+                    text: Binding(get: { model.query }, set: { model.query = $0 }))
+            }
+            posts
+        case .featured:
+            FeaturedList(posts: model.featured)
+        case .images:
+            CommunityGallery(model: model)
+        case .members:
+            CommunityMembersTab(model: model)
+        case .about:
+            Panel { AboutFacts(community: community).padding(14) }
         }
     }
 

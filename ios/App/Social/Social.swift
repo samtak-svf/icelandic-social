@@ -43,6 +43,25 @@ protocol Social: Sendable {
     func feed(before: String?, limit: UInt32) throws -> PostPage
     /// A post of text, up to four images from `uploadPostImage` by their media ids (decision 0065), or both.
     func createPost(_ community: String, body: String, media: [String]) throws -> Post
+    /// `createPost` with a poll's options (two to six, decision 0090) and/or posted without the author's name, which
+    /// waits for a moderator (decision 0091).
+    func createPost(_ community: String, body: String, media: [String], anonymous: Bool, poll: [String]?) throws
+        -> Post
+    /// A page of the images in a community's posts and comments, newest first (decision 0089).
+    func communityImages(_ community: String, cursor: String?, limit: UInt32) throws -> CommunityImagePage
+    /// Votes in a poll, or changes the vote; the post as it now reads (decision 0090).
+    func votePoll(_ post: String, option: String) throws -> Post
+    func withdrawVote(_ post: String) throws -> Post
+    /// Closes a poll; its author, the owner or a moderator may.
+    func closePoll(_ post: String) throws -> Post
+    /// Lets members post without their name, or stops it; only the owner may (decision 0091).
+    func setAnonymousPosts(_ community: String, on: Bool) throws -> Community
+    /// The anonymous posts that wait for approval, newest first, for the moderators.
+    func pendingAnonymousPosts(_ community: String, before: String?, limit: UInt32) throws -> PostPage
+    func approveAnonymousPost(_ post: String) throws
+    func declineAnonymousPost(_ post: String) throws
+    /// Who wrote an anonymous post; the moderation log records who asked.
+    func revealAuthor(_ post: String) throws -> Author
     /// Uploads the image file at `path` for a post in the community; its media id goes in `createPost`.
     func uploadPostImage(_ community: String, path: String) throws -> PostImage
     /// The path of a post's image, a WebP the core fetched once and keeps.
@@ -184,6 +203,38 @@ extension CoreAccount: Social {
     func createPost(_ community: String, body: String, media: [String]) throws -> Post {
         try core().createPost(communityId: community, body: body, media: media)
     }
+
+    func createPost(_ community: String, body: String, media: [String], anonymous: Bool, poll: [String]?) throws
+        -> Post
+    {
+        try core().createPostWith(communityId: community, body: body, media: media, anonymous: anonymous, poll: poll)
+    }
+
+    func communityImages(_ community: String, cursor: String?, limit: UInt32) throws -> CommunityImagePage {
+        try core().communityImages(communityId: community, cursor: cursor, limit: limit)
+    }
+
+    func votePoll(_ post: String, option: String) throws -> Post {
+        try core().votePoll(postId: post, optionId: option)
+    }
+
+    func withdrawVote(_ post: String) throws -> Post { try core().withdrawVote(postId: post) }
+
+    func closePoll(_ post: String) throws -> Post { try core().closePoll(postId: post) }
+
+    func setAnonymousPosts(_ community: String, on: Bool) throws -> Community {
+        try core().setAnonymousPosts(communityId: community, on: on)
+    }
+
+    func pendingAnonymousPosts(_ community: String, before: String?, limit: UInt32) throws -> PostPage {
+        try core().pendingAnonymousPosts(communityId: community, before: before, limit: limit)
+    }
+
+    func approveAnonymousPost(_ post: String) throws { try core().approveAnonymousPost(postId: post) }
+
+    func declineAnonymousPost(_ post: String) throws { try core().declineAnonymousPost(postId: post) }
+
+    func revealAuthor(_ post: String) throws -> Author { try core().revealAuthor(postId: post) }
 
     func uploadPostImage(_ community: String, path: String) throws -> PostImage {
         try core().uploadPostImage(communityId: community, path: path)

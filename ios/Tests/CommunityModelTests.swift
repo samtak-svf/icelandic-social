@@ -437,16 +437,29 @@ final class CommunityModelTests: XCTestCase {
         XCTAssertFalse(social.calls.contains { $0.hasPrefix("createPost") })
     }
 
-    func testFestaPinsThePostAndTheFeedLeadsWithIt() async {
+    func testFestaFeaturesThePostAndTheFeedStaysChronological() async {
         let model = await model(makeCommunity("k1", "Fuglar", role: .moderator))
         XCTAssertEqual(model.posts.map(\.postId), ["p3", "p2"])
+        XCTAssertTrue(model.featured.isEmpty)
         await model.pin("p1", true)
         XCTAssertTrue(social.calls.contains("pinPost k1 p1"))
-        XCTAssertEqual(model.posts.first?.postId, "p1")
-        XCTAssertEqual(model.posts.first?.pinned, true)
+        XCTAssertEqual(model.featured.map(\.postId), ["p1"])
+        XCTAssertEqual(model.posts.map(\.postId), ["p3", "p2"])
+        await model.pin("p2", true)
+        XCTAssertEqual(model.featured.map(\.postId), ["p2", "p1"])
+        XCTAssertEqual(model.posts.first(where: { $0.postId == "p2" })?.pinned, true)
         await model.pin("p1", false)
         XCTAssertTrue(social.calls.contains("unpinPost k1 p1"))
-        XCTAssertEqual(model.posts.contains { $0.pinned }, false)
+        XCTAssertEqual(model.featured.map(\.postId), ["p2"])
+    }
+
+    func testAFourthFeaturedPostIsRefusedWithTheFullProblem() async {
+        let held = (7...9).map { makePost("p\($0)", "k1", pinned: true) }
+        let model = await model(makeCommunity("k1", "Fuglar", role: .owner, featured: held))
+        XCTAssertEqual(model.featured.count, 3)
+        await model.pin("p1", true)
+        XCTAssertEqual(model.problem, .pinFull)
+        XCTAssertEqual(model.featured.count, 3)
     }
 
     func testAMemberCannotPinAPost() async {
@@ -459,5 +472,43 @@ final class CommunityModelTests: XCTestCase {
         let model = await model(makeCommunity("k1", "Fuglar", role: .member))
         XCTAssertEqual(model.myName, "Jón Jónsson")
         XCTAssertNil(model.myPhoto)
+    }
+
+    // MARK: Tabs (decision 0089)
+
+    func testAReaderSeesAllTabsAndFestOnlyWhileAPostIsFeatured() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .moderator))
+        XCTAssertEqual(model.tabs, [.discussion, .images, .members, .about])
+        XCTAssertEqual(model.shownTab, .discussion)
+        await model.pin("p1", true)
+        XCTAssertEqual(model.tabs, [.discussion, .featured, .images, .members, .about])
+        model.select(.featured)
+        XCTAssertEqual(model.shownTab, .featured)
+        await model.pin("p1", false)
+        XCTAssertEqual(model.shownTab, .discussion)
+    }
+
+    func testWhoMayNotReadSeesOnlyAbout() async {
+        let model = await model(makeCommunity("k1", "Fiskar", audience: .private))
+        XCTAssertEqual(model.tabs, [.about])
+        model.select(.images)
+        XCTAssertEqual(model.shownTab, .about)
+    }
+
+    func testTheGalleryPagesThroughTheCommunitiesImages() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        social.images["k1"] = (1...3).map {
+            CommunityImage(
+                mediaId: "m\($0)", postId: "p\($0)", commentId: nil, width: 4, height: 3, createdAt: UInt64($0))
+        }
+        await model.loadGallery()
+        XCTAssertEqual(model.gallery.map(\.mediaId), ["m1", "m2"])
+        XCTAssertNotNil(model.galleryNext)
+        await model.moreGallery()
+        XCTAssertEqual(model.gallery.map(\.mediaId), ["m1", "m2", "m3"])
+        XCTAssertNil(model.galleryNext)
+        XCTAssertTrue(model.galleryLoaded)
+        await model.loadGallery()
+        XCTAssertEqual(social.calls.filter { $0.hasPrefix("communityImages") }.count, 2)
     }
 }

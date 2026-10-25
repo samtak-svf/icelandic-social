@@ -33,6 +33,15 @@ final class CommunityModel {
     private(set) var logLoaded = false
     private(set) var loadingLog = false
     private(set) var loaded = false
+    /// The tab chosen on the community's tab row (decision 0089); `shownTab` is the one actually on screen.
+    private(set) var tab: Tab = .discussion
+    /// The community's images, newest first, for `Myndir` (decision 0089).
+    private(set) var gallery: [CommunityImage] = []
+    /// The cursor of the gallery's next, older page, nil on the last.
+    private(set) var galleryNext: String?
+    /// The gallery has been asked for, so an empty one says so rather than waiting.
+    private(set) var galleryLoaded = false
+    private(set) var loadingGallery = false
     /// The post being written.
     var draft = ""
     /// The images picked for it, as local copies, in their order.
@@ -58,6 +67,11 @@ final class CommunityModel {
     /// The media id of each picked image already uploaded, by its local copy, so a retry does not send it again.
     private var uploaded: [String: String] = [:]
     private var loadingMembers = false
+
+    /// The community page's tabs (decision 0089), in the order the row shows them.
+    enum Tab: String, CaseIterable, Sendable {
+        case discussion, featured, images, members, about
+    }
 
     /// Why an image did not go with the post.
     enum ImageNotice: Error, Equatable, Sendable {
@@ -115,6 +129,21 @@ final class CommunityModel {
     var openReports: Int {
         guard moderates else { return 0 }
         return Int(community?.openReports ?? 0)
+    }
+
+    /// The tabs this account sees: all of them for a reader of the community, with `Fest` only while a post is
+    /// featured; `Um` alone for one who may not read it (decision 0089).
+    var tabs: [Tab] {
+        guard reads else { return [.about] }
+        return Tab.allCases.filter { $0 != .featured || !featured.isEmpty }
+    }
+
+    /// The tab on screen: the chosen one while it is offered, else the first (`Fest` goes when its last post lets go).
+    var shownTab: Tab { tabs.contains(tab) ? tab : (tabs.first ?? .about) }
+
+    func select(_ tab: Tab) {
+        guard tabs.contains(tab) else { return }
+        self.tab = tab
     }
 
     /// The work waiting for this account here, which `Stjórna` counts in its label (decision 0079).
@@ -458,6 +487,43 @@ final class CommunityModel {
         loadingLog = false
     }
 
+    /// The gallery's newest page, for `Myndir`; asked for once.
+    func loadGallery() async {
+        guard !galleryLoaded, !loadingGallery, reads else { return }
+        await galleryPage(cursor: nil)
+    }
+
+    /// The gallery's next, older page, if there is one and none is on its way.
+    func moreGallery() async {
+        guard let cursor = galleryNext, !loadingGallery else { return }
+        await galleryPage(cursor: cursor)
+    }
+
+    private func galleryPage(cursor: String?) async {
+        let social = social
+        let id = communityId
+        loadingGallery = true
+        problem = nil
+        do {
+            let page = try await offMain {
+                try social.communityImages(id, cursor: cursor, limit: Self.galleryPage)
+            }
+            if cursor == nil {
+                gallery = page.images
+            } else {
+                let shown = Set(gallery.map(\.mediaId))
+                gallery += page.images.filter { !shown.contains($0.mediaId) }
+            }
+            galleryNext = page.next
+            failed = nil
+            galleryLoaded = true
+        } catch {
+            failed = { await self.galleryPage(cursor: cursor) }
+            problem = Problem(error)
+        }
+        loadingGallery = false
+    }
+
     /// Whether another image fits in the post; when none does, says so instead of opening the picker.
     func roomForImage() -> Bool {
         let room = images.count < Self.imageCount
@@ -563,15 +629,20 @@ final class CommunityModel {
         }
     }
 
-    /// Pins a post to the top of the feed, or takes the pin off, for a moderator or the owner, and reads the first
-    /// page again so the pinned post leads (decision 0080).
+    /// The posts a moderator featured, at most three, newest pin first (decision 0088). The feed stays
+    /// chronological; these are shown beside it.
+    var featured: [Post] { community?.featured ?? [] }
+
+    /// Features a post or lets it go, for a moderator or the owner (decision 0088): the community is read
+    /// again for its featured list, and the posts for the marks. A fourth is refused with `.pinFull`.
     func pin(_ postId: String, _ pinned: Bool) async {
         guard moderates else { return }
         let social = social
         let id = communityId
         await perform(again: { await self.pin(postId, pinned) }) {
-            try await offMain {
+            self.community = try await offMain { () -> Community in
                 if pinned { try social.pinPost(id, post: postId) } else { try social.unpinPost(id, post: postId) }
+                return try social.community(id)
             }
             try await self.page(before: nil, self.sent)
         }
@@ -655,6 +726,9 @@ final class CommunityModel {
 
     /// A page of posts: a screenful and some.
     private nonisolated static let page: UInt32 = 20
+
+    /// A page of the gallery: a screenful of thumbnails and some (decision 0089).
+    private nonisolated static let galleryPage: UInt32 = 30
 
     /// A page of the moderation log: a screenful and some (decision 0079).
     private nonisolated static let logSize: UInt32 = 30

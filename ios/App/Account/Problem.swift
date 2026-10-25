@@ -19,6 +19,12 @@ enum Problem: Equatable, Sendable {
     /// The image was stored before masters were kept (decision 0086), so it cannot be framed again: the person
     /// sets it once more.
     case noMaster
+    /// Three posts are featured already: one must be released first (decision 0088).
+    case pinFull
+    /// The community does not allow anonymous posts (decision 0091).
+    case anonymousOff
+    /// The poll was closed before the vote arrived (decision 0090).
+    case pollClosed
     /// Anything else.
     case generic(requestId: String? = nil, code: String? = nil)
 
@@ -30,6 +36,9 @@ enum Problem: Equatable, Sendable {
         case CoreError.Refused(_, "not_permitted", _): self = .notPermitted
         case CoreError.Refused(_, "not_found", _): self = .notFound
         case CoreError.Refused(_, "join_declined", _): self = .joinDeclined
+        case CoreError.Refused(_, "pin_limit", _): self = .pinFull
+        case CoreError.Refused(_, "anonymous_off", _): self = .anonymousOff
+        case CoreError.Refused(_, "poll_closed", _): self = .pollClosed
         case CoreError.Refused(_, _, let requestId): self = .generic(requestId: requestId)
         case let error as CoreError: self = .generic(code: error.code())
         default: self = .generic()
@@ -40,7 +49,9 @@ enum Problem: Equatable, Sendable {
     var requestId: String? {
         switch self {
         case let .identityTaken(requestId), let .generic(requestId, _): requestId
-        case .unreachable, .tooLarge, .notPermitted, .notFound, .joinDeclined, .noMaster: nil
+        case .unreachable, .tooLarge, .notPermitted, .notFound, .joinDeclined, .noMaster, .pinFull, .anonymousOff,
+            .pollClosed:
+            nil
         }
     }
 
@@ -53,7 +64,9 @@ enum Problem: Equatable, Sendable {
     /// Trying again cannot free a kennitala another account holds, nor shrink a file.
     var canRetry: Bool {
         switch self {
-        case .identityTaken, .tooLarge, .notPermitted, .notFound, .joinDeclined, .noMaster: false
+        case .identityTaken, .tooLarge, .notPermitted, .notFound, .joinDeclined, .noMaster, .pinFull, .anonymousOff,
+            .pollClosed:
+            false
         case .unreachable, .generic: true
         }
     }
