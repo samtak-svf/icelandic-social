@@ -24,6 +24,8 @@
   never copied, and a core test holds that a photo with a GPS tag comes out without one.
   The server cannot re-encode it the way it does a profile photo (0039), because it never
   sees the picture.
+  The core reads JPEG, PNG and WebP; an app hands it any other format (HEIC from a phone's
+  camera) converted to one of those first, and the core's re-encode is still what is sealed.
 - **The picture travels as an encrypted blob, and its key only inside MLS.** It is sealed
   as in 0023, under a fresh AES-256-GCM key. A new envelope body,
   `Photo { photo: Option<{ id, mime, size, key, sha256 }> }`, sits beside `Name`; `None`
