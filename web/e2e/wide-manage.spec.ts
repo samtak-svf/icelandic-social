@@ -65,6 +65,8 @@ test("Stjórna is a side navigation on an expanded window and one screen below i
     await expect(main.getByRole("heading", { name: strings.community_members_title })).toBeHidden();
     await expect(main.getByRole("heading", { name: strings.moderation_log_title })).toBeHidden();
     await expect(main.getByLabel(strings.community_name)).toBeVisible();
+    // Open for good beside the navigation, so not a disclosure.
+    await expect(main.locator("summary")).toBeHidden();
     await expect(main.getByRole("button", { name: strings.community_delete })).toBeVisible();
     const content = (await main.getByLabel(strings.community_name).boundingBox())!;
     const at = (await nav.boundingBox())!;
@@ -75,9 +77,7 @@ test("Stjórna is a side navigation on an expanded window and one screen below i
     for (const [name, url] of PARTS) {
       await nav.getByRole("link", { name }).click();
       await owner.waitForURL(url);
-      if (name !== strings.community_edit) {
-        await expect(main.getByRole("heading", { level: 1, name })).toBeVisible();
-      }
+      await expect(main.getByRole("heading", { level: 1, name })).toBeVisible();
       const now = (await nav.boundingBox())!;
       expect([now.x, now.y, now.width]).toEqual([at.x, at.y, at.width]);
     }
