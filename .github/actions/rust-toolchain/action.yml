@@ -4,8 +4,11 @@ description: >
   runner whose rustup has no default toolchain (samtak-mac, installed with
   --default-toolchain none) cannot run `rustc` outside core/, which is where
   Swatinem/rust-cache runs `rustc -vV`; RUSTUP_TOOLCHAIN fixes that. A runner
-  with no rustup at all (a slim image) gets it bootstrapped.
-  Run it after checkout and before Swatinem/rust-cache.
+  with no rustup at all (a slim image) gets it bootstrapped. A self-hosted
+  runner gets a CARGO_HOME of its own, because the samtak-mac runners share one
+  $HOME and rust-cache's post step cleans the registry and cargo/bin.
+  Run it after checkout and before Swatinem/rust-cache, taiki-e/install-action
+  or `cargo install` (tooling/workflow-guard.mjs, rule 8).
 
 inputs:
   targets:
@@ -23,6 +26,20 @@ runs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
         fi
+
+    # Two jobs on one Mac shared ~/.cargo, and the post step of one job's
+    # rust-cache deleted registry sources and installed tools (cargo-llvm-cov)
+    # while the other was building. The rustup proxies stay in ~/.cargo/bin
+    # and the toolchains in the shared RUSTUP_HOME; only what cargo writes
+    # moves.
+    - name: A CARGO_HOME for this runner alone
+      if: runner.environment == 'self-hosted'
+      shell: bash
+      run: |
+        home="$HOME/.cargo-runners/$RUNNER_NAME"
+        mkdir -p "$home/bin"
+        echo "CARGO_HOME=$home" >> "$GITHUB_ENV"
+        echo "$home/bin" >> "$GITHUB_PATH"
 
     - name: Install the pinned toolchain
       shell: bash

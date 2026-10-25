@@ -196,6 +196,10 @@ jobs:
             exit 1
           fi
 
+      - uses: ./.github/actions/rust-toolchain
+        with:
+          targets: wasm32-unknown-unknown
+
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: core
@@ -277,6 +281,9 @@ jobs:
         working-directory: core/target/artifacts
         run: sha256sum -c spjall-core-android.zip.sha256
 
+      - uses: ./.github/actions/rust-toolchain
+        if: steps.reuse.outputs.run == ''
+
       - name: NDK from the lock, and cargo-ndk
         if: steps.reuse.outputs.run == ''
         run: |
@@ -342,6 +349,9 @@ jobs:
         if: steps.reuse.outputs.run != ''
         working-directory: core/target/artifacts
         run: shasum -a 256 -c spjall-core-ios.zip.sha256
+
+      - uses: ./.github/actions/rust-toolchain
+        if: steps.reuse.outputs.run == ''
 
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         if: steps.reuse.outputs.run == ''

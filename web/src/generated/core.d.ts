@@ -14,6 +14,7 @@ export type Content =
 | { kind: "members"; added: Person[]; removed: Person[]; devices: Person[] }
 | { kind: "timer"; seconds: number | null }
 | { kind: "name"; name: string | null }
+| { kind: "photo"; set: boolean }
 | { kind: "post"; postId: string }
 | { kind: "location"; latE6: number; lonE6: number; accuracy: number | null }
 | { kind: "unreadable"; code: string };
@@ -24,7 +25,7 @@ export interface Item {
     reactions: Reaction[]; readBy: number; expiresAt: number | null; forwarded: boolean;
 }
 export interface Conversation {
-    id: string; state: ConversationState; name: string | null; members: Person[];
+    id: string; state: ConversationState; name: string | null; photo: string | null; members: Person[];
     last: Item | null; unread: number; timer: number | null; mute: Mute;
 }
 /** The envelope body as the envelope crate writes it, tagged by `kind`. */
@@ -141,8 +142,8 @@ export interface InitOutput {
     readonly rust_sqlite_wasm_realloc: (a: number, b: number) => number;
     readonly sqlite3_os_end: () => number;
     readonly sqlite3_os_init: () => number;
-    readonly __wasm_bindgen_func_elem_6090: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_6105: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6169: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6184: (a: number, b: number, c: number, d: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

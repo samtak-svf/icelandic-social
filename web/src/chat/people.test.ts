@@ -17,6 +17,7 @@ const conversation = (over: Partial<Conversation>): Conversation => ({
   id: "c",
   state: "active",
   name: null,
+  photo: null,
   members: [],
   last: null,
   unread: 0,

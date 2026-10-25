@@ -104,7 +104,8 @@ function cardLine(content: CardContent, sender: Person, group: boolean): string 
       return content.name === null
         ? strings.name_cleared_card({ who })
         : strings.name_set_card({ who, name: content.name });
-    case "photo":
+    default:
+      // photo, the last card kind left
       return content.set ? strings.photo_set_card({ who }) : strings.photo_cleared_card({ who });
   }
 }

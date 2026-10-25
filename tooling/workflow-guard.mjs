@@ -25,6 +25,12 @@
 //    takes a free port per job (backend/scripts/dev-worker.sh), so web and
 //    interop share the build lane; only the one-AVD Android device job still
 //    queues on the exclusive runner (docs/testing.md).
+// 8. Swatinem/rust-cache, taiki-e/install-action and `cargo install` come after
+//    .github/actions/rust-toolchain in their job. The action gives each
+//    self-hosted runner its own CARGO_HOME: the two samtak-mac runners share
+//    one $HOME, and rust-cache's post step cleans the registry and cargo/bin,
+//    so with one ~/.cargo it deleted the sources and tools of the job running
+//    beside it.
 //
 // Line-based on purpose: the rules are about single lines, and the guard stays
 // dependency-free like the others (tooling/lib/repo.mjs).
@@ -43,10 +49,13 @@ const TARGET = /^\s*pull_request_target\s*:|\bpull_request_target\b\s*[\],]/;
 const JOB = /^ {2}[\w-]+:\s*$/;
 const NOHUP = /(?:^|[\s;&|(])nohup\s/;
 const TOOLCHAIN_INSTALL = /\brustup\s+toolchain\s+install\b/;
+const TOOLCHAIN_ACTION = /^\s*(?:-\s+)?uses:\s*\.\/\.github\/actions\/rust-toolchain\s*$/;
+const CARGO_HOME_WRITER =
+  /^\s*(?:-\s+)?uses:\s*(?:Swatinem\/rust-cache|taiki-e\/install-action)@|\bcargo\s+install\b/;
 const SECRET = /\bsecrets\.(?!GITHUB_TOKEN\b)\w+/;
 
 /**
- * @typedef {{ file: string, line: number, rule: "pin" | "fork-runner" | "trigger" | "secret-runner" | "nohup" | "rust-toolchain" | "fixed-port" | "exclusive-lane", message: string }} Problem
+ * @typedef {{ file: string, line: number, rule: "pin" | "fork-runner" | "trigger" | "secret-runner" | "nohup" | "rust-toolchain" | "fixed-port" | "exclusive-lane" | "cargo-home", message: string }} Problem
  */
 
 /**
@@ -117,6 +126,29 @@ function lineProblems(code) {
   return found;
 }
 
+/** @typedef {{ runsOn: number, secret: boolean, toolchain: boolean }} Job */
+
+/**
+ * Records what a job line tells about its job, and answers rule 8.
+ * @param {Job} job
+ * @param {string} code a line with its comment removed
+ * @param {number} line
+ * @returns {{ rule: Problem["rule"], message: string }[]}
+ */
+function jobLine(job, code, line) {
+  if (SECRET.test(code)) job.secret = true;
+  if (RUNS_ON.exec(code)?.[1]?.includes("vars.")) job.runsOn = line;
+  if (TOOLCHAIN_ACTION.test(code)) job.toolchain = true;
+  if (job.toolchain || !CARGO_HOME_WRITER.test(code)) return [];
+  return [
+    {
+      rule: "cargo-home",
+      message:
+        "run ./.github/actions/rust-toolchain first: it gives a self-hosted runner its own CARGO_HOME",
+    },
+  ];
+}
+
 /**
  * @param {string} file repo-relative path
  * @param {string} text
@@ -126,7 +158,7 @@ export function findInWorkflow(file, text) {
   /** @type {Problem[]} */
   const found = [];
   let inJobs = false;
-  /** @type {{ runsOn: number, secret: boolean } | null} */
+  /** @type {Job | null} */
   let job = null;
   const endJob = () => {
     if (job?.secret && job.runsOn > 0) {
@@ -148,10 +180,9 @@ export function findInWorkflow(file, text) {
       inJobs = /^jobs:\s*$/.test(code);
     } else if (inJobs && JOB.test(code)) {
       endJob();
-      job = { runsOn: 0, secret: false };
+      job = { runsOn: 0, secret: false, toolchain: false };
     }
-    if (job && SECRET.test(code)) job.secret = true;
-    if (job && RUNS_ON.exec(code)?.[1]?.includes("vars.")) job.runsOn = line;
+    if (job) for (const p of jobLine(job, code, line)) found.push({ file, line, ...p });
 
     for (const p of lineProblems(code)) found.push({ file, line, ...p });
     if (file !== EXCLUSIVE_FILE && EXCLUSIVE_LANE.test(code)) {
@@ -182,7 +213,7 @@ function main() {
   for (const p of problems) console.error(`::error file=${p.file},line=${p.line}::${p.message}`);
   if (problems.length > 0) process.exit(1);
   console.log(
-    "✓ workflows pin every action by SHA, keep fork PRs and secrets off the org runners, use no nohup, install Rust only through the action, no fixed dev port and the exclusive lane only for Android",
+    "✓ workflows pin every action by SHA, keep fork PRs and secrets off the org runners, use no nohup, install Rust only through the action, no fixed dev port, the exclusive lane only for Android and the toolchain action before CARGO_HOME is written",
   );
 }
 

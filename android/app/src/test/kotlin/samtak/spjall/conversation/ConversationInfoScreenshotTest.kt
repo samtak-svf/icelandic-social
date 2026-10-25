@@ -127,7 +127,7 @@ class ConversationInfoScreenshotTest {
         name: String? = null,
     ) {
         val path = landscape()
-        val conversation = Conversation("c1", state, name, members, null, 0u, timer, mute)
+        val conversation = Conversation("c1", state, name, null, members, null, 0u, timer, mute)
         val ready = shared.filter { it.isPhoto() }.associate { it.seq!! to ConversationViewModel.Media.Ready(path) }
         compose.setContent {
             DecodingTheme {

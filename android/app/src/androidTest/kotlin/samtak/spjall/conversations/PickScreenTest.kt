@@ -63,6 +63,7 @@ class PickScreenTest {
                 "c2",
                 ConversationState.ACTIVE,
                 null,
+                null,
                 listOf(Person("a2", "Anna", true)),
                 null,
                 0u,
@@ -72,6 +73,7 @@ class PickScreenTest {
             Conversation(
                 "c3",
                 ConversationState.ACTIVE,
+                null,
                 null,
                 listOf(Person("a3", "Björn", false), Person("a4", "Dóra", false)),
                 null,
