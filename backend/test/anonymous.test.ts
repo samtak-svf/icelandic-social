@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { deleteAccount } from "../src/account-deletion.ts";
 import { runJobs } from "../src/modules/jobs/index.ts";
 import { jobHandlers } from "../src/modules/notifications/index.ts";
+import { png } from "./images.ts";
 import { community, errorOf, ok, person, type Person } from "./people.ts";
 import { euEnv } from "./support.ts";
 
@@ -180,6 +181,157 @@ describe("the leak test", () => {
     const mine = await ok<Seen>(await author.call("GET", `/v1/posts/${made.postId}`));
     expect(mine).toMatchObject({ anonymous: true, mine: true, state: "visible" });
     expect(mine.author?.accountId).toBe(author.accountId);
+  });
+});
+
+// Every route that can return an anonymous post, or data derived from one, is
+// named here and walked by a plain member and by a moderator who has not
+// revealed. A route added to the API that returns posts belongs in this table:
+// its absence is the gap this test exists to make visible (#208). `shows` is a
+// positive control, a string the answer must carry, so a walk that saw nothing
+// cannot pass for a clean one.
+type Walked = {
+  name: string;
+  call: (by: Person, w: { id: string; postId: string }) => Promise<Response>;
+  /** What the answer carries when the caller may read the route (the control). */
+  shows?: (w: { postId: string }) => string;
+  /** The status a plain member gets, where it is not 200. */
+  memberStatus?: number;
+};
+const WALKED: Walked[] = [
+  {
+    name: "community posts",
+    call: (by, w) => by.call("GET", `/v1/communities/${w.id}/posts`),
+    shows: (w) => w.postId,
+  },
+  {
+    name: "community posts, search",
+    call: (by, w) => by.call("GET", `/v1/communities/${w.id}/posts?q=Nafnlaus`),
+    shows: (w) => w.postId,
+  },
+  { name: "feed", call: (by) => by.call("GET", "/v1/feed"), shows: (w) => w.postId },
+  {
+    name: "post",
+    call: (by, w) => by.call("GET", `/v1/posts/${w.postId}`),
+    shows: (w) => w.postId,
+  },
+  {
+    name: "comments",
+    call: (by, w) => by.call("GET", `/v1/posts/${w.postId}/comments`),
+  },
+  {
+    name: "images tab",
+    call: (by, w) => by.call("GET", `/v1/communities/${w.id}/images`),
+    shows: (w) => w.postId,
+  },
+  {
+    name: "cards",
+    call: (by, w) => by.call("POST", "/v1/cards", { refs: [{ kind: "post", id: w.postId }] }),
+  },
+  { name: "community", call: (by, w) => by.call("GET", `/v1/communities/${w.id}`) },
+  { name: "communities", call: (by) => by.call("GET", "/v1/communities") },
+  { name: "my communities", call: (by) => by.call("GET", "/v1/me/communities") },
+  { name: "notifications", call: (by) => by.call("GET", "/v1/notifications") },
+  {
+    name: "community reports",
+    call: (by, w) => by.call("GET", `/v1/communities/${w.id}/reports`),
+    memberStatus: 403,
+  },
+  {
+    name: "moderation log",
+    call: (by, w) => by.call("GET", `/v1/communities/${w.id}/moderation-log`),
+    memberStatus: 403,
+  },
+  {
+    name: "anonymous queue",
+    call: (by, w) => by.call("GET", `/v1/communities/${w.id}/anonymous`),
+    memberStatus: 403,
+  },
+];
+
+// The community's members (Fólk) list is exempt: it names every member, the
+// author among them, and says nothing of what they posted, so the author's id
+// is there by design and not by a post.
+
+describe("the leak test, route by route", () => {
+  it("serves the author's id, name and photo to no member and no moderator on any walked route", async () => {
+    const { owner, moderator, author, reader, third, id } = await scene();
+    const photo = "ljosmynd-hofundar-v7";
+    await env.DB.prepare("UPDATE accounts SET photo_version = ? WHERE account_id = ?")
+      .bind(photo, author.accountId)
+      .run();
+
+    const mediaId = (
+      await ok<{ mediaId: string }>(
+        await author.send(`/v1/communities/${id}/media`, await png(24, 16)),
+      )
+    ).mediaId;
+    const made = await ok<Seen>(
+      await author.call("POST", `/v1/communities/${id}/posts`, {
+        body: "Nafnlaus mynd",
+        media: [mediaId],
+        anonymous: true,
+      }),
+    );
+    const postId = made.postId;
+    expect((await moderator.call("POST", `/v1/posts/${postId}/approve`)).status).toBe(204);
+    // A pinned post is featured, and a poll is a post with a kind of its own.
+    expect((await owner.call("PUT", `/v1/communities/${id}/posts/${postId}/pin`)).status).toBe(204);
+    const polled = await ok<Seen>(
+      await author.call("POST", `/v1/communities/${id}/posts`, {
+        body: "Nafnlaus könnun",
+        media: [],
+        anonymous: true,
+        poll: { options: ["Já", "Nei"] },
+      }),
+    );
+    expect((await moderator.call("POST", `/v1/posts/${polled.postId}/approve`)).status).toBe(204);
+    await reader.call("POST", `/v1/posts/${postId}/comments`, { body: "Svar", media: [] });
+    await third.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
+    expect(
+      (
+        await third.call("POST", "/v1/reports", {
+          reason: "spam",
+          target: { kind: "post", id: postId },
+        })
+      ).status,
+    ).toBe(204);
+    expect(
+      (
+        await moderator.call("POST", `/v1/communities/${id}/actions`, {
+          action: "hide_post",
+          targetId: postId,
+          reason: "Prófun",
+        })
+      ).status,
+    ).toBe(204);
+    expect(
+      (
+        await moderator.call("POST", `/v1/communities/${id}/actions`, {
+          action: "restore_post",
+          targetId: postId,
+          reason: "Prófun",
+        })
+      ).status,
+    ).toBe(204);
+    await runJobs(euEnv(env), jobHandlers({ send: async () => {} }), Date.now() + 1);
+
+    const hidden = [author.accountId, "Höfundur", photo];
+    for (const [who, by] of [
+      ["a plain member", third],
+      ["a moderator who has not revealed", moderator],
+    ] as const) {
+      for (const route of WALKED) {
+        const response = await route.call(by, { id, postId });
+        const text = await response.text();
+        const label = `${route.name} as ${who}`;
+        const expected = by === moderator ? 200 : (route.memberStatus ?? 200);
+        expect(response.status, label).toBe(expected);
+        if (expected === 200 && route.shows)
+          expect(text, `${label} shows the post`).toContain(route.shows({ postId }));
+        for (const secret of hidden) expect(text, label).not.toContain(secret);
+      }
+    }
   });
 });
 
