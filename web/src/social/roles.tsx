@@ -13,7 +13,7 @@ export function moderatesAs(role: "owner" | "moderator" | "member" | null): bool
 export function RoleBadge({ role }: Readonly<{ role: Author["role"] }>) {
   if (role === null) return null;
   return (
-    <span className="rounded-full bg-muted px-2 text-xs font-medium text-fg">
+    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium leading-none text-fg">
       {role === "owner" ? strings.community_role_owner : strings.community_role_moderator}
     </span>
   );

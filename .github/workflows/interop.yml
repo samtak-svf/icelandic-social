@@ -101,11 +101,18 @@ jobs:
           # Worker itself (scripts/invite-operator.ts --local).
           node scripts/d1.ts migrate --local --persist-to .cloudflare/state
           printf 'KENNITALA_HMAC_KEY=%s\n' "$(openssl rand -hex 32)" > .dev.vars
-          nohup pnpm exec cf dev --mode interop > "$RUNNER_TEMP/worker.log" 2>&1 &
+          # nohup exits under the launchd runner on samtak-mac without starting
+          # cf dev; ignoring SIGHUP in a subshell works on every runner.
+          (trap '' HUP; exec pnpm exec cf dev --mode interop) > "$RUNNER_TEMP/worker.log" 2>&1 &
           for _ in $(seq 60); do
             curl -sf -m 5 http://127.0.0.1:8787/health >/dev/null && break
             sleep 1
           done
+          if ! curl -sf -m 5 http://127.0.0.1:8787/health >/dev/null; then
+            echo "::error::the Worker did not answer /health"
+            cat "$RUNNER_TEMP/worker.log"
+            exit 1
+          fi
           if ! link=$(node scripts/invite-operator.ts --local); then
             cat "$RUNNER_TEMP/worker.log"
             exit 1

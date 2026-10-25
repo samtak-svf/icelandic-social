@@ -9,20 +9,23 @@ const BUTTON = {
   primary: "bg-primary text-primary-fg",
   quiet: "border border-border-strong bg-surface text-fg",
   danger: "border border-danger bg-surface text-danger",
+  link: "px-2 text-muted-fg hover:text-fg hover:underline focus-visible:underline",
 } as const;
+
+export type ButtonTone = keyof typeof BUTTON;
+
+/** The classes a Button of `tone` wears; only `link` leaves out the roomy `px-4`. */
+function buttonClass(tone: ButtonTone, className = ""): string {
+  const pad = tone === "link" ? "" : "px-4 ";
+  return `min-h-11 rounded-md ${pad}font-medium disabled:opacity-60 ${BUTTON[tone]} ${className}`;
+}
 
 export function Button({
   tone = "quiet",
   className = "",
   ...rest
-}: Readonly<ButtonHTMLAttributes<HTMLButtonElement> & { tone?: keyof typeof BUTTON }>) {
-  return (
-    <button
-      type="button"
-      className={`min-h-11 rounded-md px-4 font-medium disabled:opacity-60 ${BUTTON[tone]} ${className}`}
-      {...rest}
-    />
-  );
+}: Readonly<ButtonHTMLAttributes<HTMLButtonElement> & { tone?: ButtonTone }>) {
+  return <button type="button" className={buttonClass(tone, className)} {...rest} />;
 }
 
 /** What went wrong, read out as it appears; with the request id when it helps (#362). */
@@ -53,9 +56,13 @@ export function VerifiedMark({ className = "" }: Readonly<{ className?: string }
 }
 
 /** A polite live region: what it holds is announced when it changes. */
-export function Status({ children }: Readonly<{ children?: ReactNode }>) {
+export function Status({
+  children,
+  inline = false,
+}: Readonly<{ children?: ReactNode; inline?: boolean }>) {
+  // `inline` keeps the live region but takes no height while it is empty.
   return (
-    <p role="status" className="min-h-6 text-sm">
+    <p role="status" className={inline ? "text-sm" : "min-h-6 text-sm"}>
       {children}
     </p>
   );
