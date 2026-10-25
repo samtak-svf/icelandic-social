@@ -3,8 +3,8 @@ description: >
   The toolchain core/rust-toolchain.toml pins, usable from any directory. A
   runner whose rustup has no default toolchain (samtak-mac, installed with
   --default-toolchain none) cannot run `rustc` outside core/, which is where
-  Swatinem/rust-cache runs `rustc -vV`; RUSTUP_TOOLCHAIN fixes that. The GCP
-  fallback runners have no rustup at all, so it is bootstrapped there.
+  Swatinem/rust-cache runs `rustc -vV`; RUSTUP_TOOLCHAIN fixes that. A runner
+  with no rustup at all (a slim image) gets it bootstrapped.
   Run it after checkout and before Swatinem/rust-cache.
 
 inputs:
