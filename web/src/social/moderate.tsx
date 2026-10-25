@@ -73,7 +73,8 @@ export function Manage({
   const owner = community.role === "owner";
   return (
     <section aria-labelledby="manage-title" className="mt-4">
-      <h1 id="manage-title" className="font-headline text-3xl">
+      {/* Beside the side navigation this page is Breyta samfélagi, titled as each other part is. */}
+      <h1 id="manage-title" className="font-headline text-3xl expanded:hidden">
         {waiting > 0
           ? strings.community_manage_count({ count: waiting })
           : strings.community_manage}
@@ -163,7 +164,10 @@ function Edit({
   const field = "min-h-11 rounded-md border border-border-strong bg-surface px-3";
   return (
     <details open={open}>
-      <summary className="cursor-pointer text-base font-semibold">{strings.community_edit}</summary>
+      <summary className="cursor-pointer text-base font-semibold expanded:hidden">
+        {strings.community_edit}
+      </summary>
+      <h1 className="hidden font-headline text-3xl expanded:block">{strings.community_edit}</h1>
       <div className="mt-2">
         <CommunityPictures community={community} changed={changed} />
       </div>
