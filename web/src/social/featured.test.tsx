@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { strings } from "../generated/brand/strings.ts";
 import type { Post } from "../generated/api.ts";
-import { FeaturedList, FeaturedStrip } from "./featured.tsx";
+import { FeaturedList, FeaturedStrip, feedItemClass } from "./featured.tsx";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, className }: { children: ReactNode; className?: string }) => (
@@ -63,5 +63,13 @@ describe("featured posts", () => {
     expect(html).toContain(`<h3 class="font-semibold">${strings.community_featured}</h3>`);
     expect(html.match(/<li/g)).toHaveLength(3);
     expect(html).not.toContain("overflow-x-auto");
+  });
+
+  it("leave the feed on an expanded window only, by the featured list", () => {
+    const featured = [post(2)];
+    expect(feedItemClass("p2", featured)).toBe("expanded:hidden");
+    expect(feedItemClass("p1", featured)).toBeUndefined();
+    // Released: the list no longer has it, so the post is back in its place.
+    expect(feedItemClass("p2", [])).toBeUndefined();
   });
 });
