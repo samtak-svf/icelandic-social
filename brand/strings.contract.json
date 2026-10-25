@@ -67,11 +67,11 @@
       "description": "Line on the conversation list while the app reconnects."
     },
     "conversation_removed_banner": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Banner in a conversation this account was removed from; the conversation is read-only (docs/decisions/0022)."
     },
     "conversation_alone_banner": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Banner in a conversation no other account is in any more, as a 1:1 after a block; nothing can be sent there (docs/decisions/0024)."
     },
     "conversation_alone_title": {
@@ -79,11 +79,11 @@
       "description": "Title of a conversation no other account is in any more; a conversation is otherwise titled by its members (docs/decisions/0022)."
     },
     "conversation_excluded_banner": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Banner in a conversation the server refuses this device for; read-only until the next try (docs/decisions/0020, 0022)."
     },
     "conversation_stale_banner": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Banner while this device rejoins a conversation it fell behind in (docs/decisions/0021, 0022)."
     },
     "contact_action": {
@@ -206,7 +206,7 @@
       }
     },
     "history_device_local_notice": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Explains that a new device sees only messages sent after it joined (docs/decisions/0006)."
     },
     "invite_link_title": {
@@ -1767,7 +1767,7 @@
       "description": "Confirmation prompt before leaving the group (docs/decisions/0078)."
     },
     "left_banner": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Banner shown in a conversation the user has left (docs/decisions/0078)."
     },
     "community_picture_choose": {
