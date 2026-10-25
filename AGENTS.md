@@ -79,6 +79,7 @@ cd backend && node scripts/ops.ts jobs   # way back, rollback, restores and jobs
 # The web (web/ is a package of the root workspace; the Worker builds and serves it)
 pnpm --filter spjall-web test   # unit tests (vitest)
 pnpm --filter spjall-web e2e    # Playwright in Chromium against `cf dev --mode interop` (web.yml)
+node tooling/mac-remote.mjs web   # the same on samtak-mac: fresh state, cf dev, Playwright (web/scripts/e2e.sh)
 
 # The Rust core (core/ is a Cargo workspace; the toolchain is pinned in rust-toolchain.toml)
 cd core && cargo fmt --all && cargo clippy --workspace --all-targets -- -D warnings && cargo test

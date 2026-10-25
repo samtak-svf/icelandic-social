@@ -12,6 +12,10 @@ describe("parseArgs", () => {
     expect(parseArgs(["android"]).command).toBe("android/scripts/test.sh --connected");
   });
 
+  it("names the web e2e as a task", () => {
+    expect(parseArgs(["web"]).command).toBe("web/scripts/e2e.sh --prepare");
+  });
+
   it("takes a host, a directory and a command after --", () => {
     expect(parseArgs(["--host", "mac2", "--dir", "w", "--", "swift", "--version"])).toEqual({
       host: "mac2",
