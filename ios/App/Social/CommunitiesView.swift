@@ -523,7 +523,7 @@ private struct CommunityPreview: View {
                 }
             }
             .padding(24)
-            .frame(maxWidth: 640)
+            .frame(maxWidth: contentWidth)
         }
         .background(BrandTokens.Colors.bg)
         .accessibilityElement(children: .combine)

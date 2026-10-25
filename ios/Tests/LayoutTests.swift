@@ -78,4 +78,12 @@ final class LayoutTests: XCTestCase {
         }
         XCTAssertEqual(layoutOf(nil, horizontalSizeClass: .regular), .compact, "until the width is known")
     }
+
+    func testACommunityAndItsQueuesAreWideAndAPostIsOneColumn() {
+        // The web's wide pages (`staticData: { width: "wide" }`) among the routes the app opens.
+        XCTAssertTrue(SocialRoute.community("c").wide)
+        XCTAssertTrue(SocialRoute.reports("c").wide)
+        XCTAssertTrue(SocialRoute.requests("c").wide)
+        XCTAssertFalse(SocialRoute.post("p").wide)
+    }
 }

@@ -64,6 +64,17 @@ func layoutOf(_ windowClass: Frame?, horizontalSizeClass: UserInterfaceSizeClass
     }
 }
 
+/// The widest a column of content is drawn, so a line of text stays readable: the web's `max-w-2xl` less its padding.
+let contentWidth: CGFloat = 640
+
+extension SocialRoute {
+    /// Whether the screen lays out its own columns on an expanded window (decision 0087), as the web's wide pages
+    /// do: a community and its queues. A post is one column.
+    var wide: Bool {
+        if case .post = self { false } else { true }
+    }
+}
+
 extension EnvironmentValues {
     /// The window's layout, set once at the root so a screen in a narrow pane still follows the window.
     @Entry var layout = WindowLayout.compact

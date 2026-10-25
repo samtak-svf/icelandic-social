@@ -5,9 +5,8 @@ import SwiftUI
 // `Stjórna`, which its moderators and its owner have. A member's tools are nowhere else: not above the composer,
 // not on a post card, not behind a long press.
 
-/// `Um samfélagið` (decision 0079): the whole description, the notice that a community's content is hosted and not
-/// end-to-end encrypted (decisions 0060, 0063), and the member list with each member's role. It is what a plain
-/// member has instead of `Stjórna`.
+/// `Um samfélagið` (decision 0079): the facts about the community (`AboutFacts`) and the member list with each
+/// member's role. It is what a plain member has instead of `Stjórna`.
 struct CommunityInfoSheet: View {
     let model: CommunityModel
 
@@ -16,19 +15,10 @@ struct CommunityInfoSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                if let community = model.community, !community.description.isEmpty {
+                if let community = model.community {
                     Section {
-                        Text(verbatim: community.description)
-                            .font(.sans(14))
-                            .foregroundStyle(BrandTokens.Colors.proseBody)
-                            .fixedSize(horizontal: false, vertical: true)
+                        AboutFacts(community: community)
                     }
-                }
-                Section {
-                    Text("community_not_encrypted_notice")
-                        .font(.sans(13.5))
-                        .foregroundStyle(BrandTokens.Colors.mutedFg)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Section("community_members_title") {
                     if !model.membersLoaded {
@@ -61,9 +51,9 @@ struct CommunityInfoSheet: View {
     }
 }
 
-/// `Um samfélagið` beside the feed on an expanded window (decision 0087): the audience and member count, the
-/// description, the notice that the content is hosted and not end-to-end encrypted, and the first members' faces.
-/// A narrower window shows none of it; the header and `Um samfélagið` carry the same there.
+/// `Um samfélagið` beside the feed on an expanded window (decision 0087): the facts about the community
+/// (`AboutFacts`) and the first members' faces. A narrower window shows none of it; the header and `Um samfélagið`
+/// carry the same there.
 struct CommunityAside: View {
     let community: Community
     let members: [CommunityMember]
@@ -75,19 +65,7 @@ struct CommunityAside: View {
                 .font(.sans(17, black: true))
                 .foregroundStyle(BrandTokens.Colors.fg)
                 .accessibilityAddTraits(.isHeader)
-            Text(verbatim: audienceLineFull(community))
-                .font(TypeStyle.meta)
-                .foregroundStyle(BrandTokens.Colors.mutedFg)
-            if !community.description.isEmpty {
-                Text(verbatim: community.description)
-                    .font(.sans(14))
-                    .foregroundStyle(BrandTokens.Colors.proseBody)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Text("community_not_encrypted_notice")
-                .font(.sans(13.5))
-                .foregroundStyle(BrandTokens.Colors.mutedFg)
-                .fixedSize(horizontal: false, vertical: true)
+            AboutFacts(community: community)
             if !members.isEmpty {
                 Text("community_members_title")
                     .font(.sans(14.5, black: true))
@@ -99,6 +77,46 @@ struct CommunityAside: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(BrandTokens.Colors.border) }
+    }
+}
+
+/// What `Um samfélagið` says about a community, in the sheet and in the aside alike, as the web's `AboutFacts`
+/// (`web/src/social/about.tsx`): the description, who may read and join, how many members it has when this account
+/// may know, that the content is not end-to-end encrypted (decisions 0060, 0063), and where it is kept (0001).
+struct AboutFacts: View {
+    let community: Community
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if !community.description.isEmpty {
+                Text(verbatim: community.description)
+                    .font(.sans(14))
+                    .foregroundStyle(BrandTokens.Colors.proseBody)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(community.audience == .open ? "community_open_full" : "community_private_full")
+                    .font(.sans(13.5, black: true))
+                    .foregroundStyle(BrandTokens.Colors.fg)
+                Text(community.audience == .open ? "community_open_hint" : "community_private_hint")
+                    .font(.sans(13.5))
+                    .foregroundStyle(BrandTokens.Colors.proseBody)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let count = community.memberCount {
+                Text(verbatim: plural("community_members", Int(count)))
+                    .font(TypeStyle.meta)
+                    .foregroundStyle(BrandTokens.Colors.mutedFg)
+            }
+            Text("community_not_encrypted_notice")
+                .font(.sans(13.5))
+                .foregroundStyle(BrandTokens.Colors.mutedFg)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("residency_claim")
+                .font(.sans(13.5))
+                .foregroundStyle(BrandTokens.Colors.mutedFg)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 

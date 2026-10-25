@@ -113,7 +113,7 @@ struct CommunityView: View {
     @ViewBuilder private var screen: some View {
         if layout.community == .feedAndAside {
             HStack(alignment: .top, spacing: 0) {
-                feed.frame(maxWidth: Self.feedWidth)
+                feed.frame(maxWidth: contentWidth)
                 if let community = model.community {
                     ScrollView {
                         CommunityAside(community: community, members: model.members, limit: layout.memberPictures)
@@ -129,8 +129,7 @@ struct CommunityView: View {
         }
     }
 
-    /// The widths of the feed column and of the aside on an expanded window.
-    private static let feedWidth: CGFloat = 640
+    /// The width of the aside on an expanded window.
     private static let asideWidth: CGFloat = 340
 
     private var feed: some View {

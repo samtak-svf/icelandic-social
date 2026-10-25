@@ -52,9 +52,6 @@ struct HomeView: View {
     /// The models of the screens the stacks hold open, kept here so they outlive a change of container.
     @State private var routeModels = RouteModels()
 
-    /// The widest the one-column layouts draw, as the web's column.
-    private static let columnWidth: CGFloat = 640
-
     init(
         signIn: SignInModel,
         push: PushModel,
@@ -92,7 +89,7 @@ struct HomeView: View {
                     }
                     VStack(spacing: 0) {
                         tabContent
-                            .frame(maxWidth: layout.community == .column ? Self.columnWidth : .infinity)
+                            .frame(maxWidth: layout.community == .feedAndAside && wide ? .infinity : contentWidth)
                             .frame(maxWidth: .infinity)
                         // Only on the roots: what they lead to has the screen to itself.
                         if layout.navigation == .bar && atRoot {
@@ -295,6 +292,16 @@ struct HomeView: View {
         // Any screen in the stack can draw a post card, the hub's feed included.
         .environment(\.postImages, PostImages(social: social))
         .environment(\.postSharing, postSharing)
+    }
+
+    /// Whether the screen on top takes the whole width on an expanded window (decision 0087): the hub, a community
+    /// and its queues, as the web's wide pages. Every other screen is one column.
+    private var wide: Bool {
+        switch tab {
+        case .communities: communitiesPath.last?.wide ?? true
+        case .notifications: noticesPath.last?.wide ?? false
+        case .conversations, .me: false
+        }
     }
 
     private var atRoot: Bool {
