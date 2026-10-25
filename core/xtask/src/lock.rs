@@ -55,12 +55,85 @@ fn artifact_url(base: &str, version: &str, file: &str) -> Result<String> {
     Ok(format!("{}/{file}", dir.trim_end_matches('/')))
 }
 
+/// A file of a GitHub release: `https://github.com/<owner>/<repo>/releases/download/<tag>/<file>`.
+#[derive(Debug, PartialEq)]
+struct ReleaseFile<'a> {
+    repo: &'a str,
+    tag: &'a str,
+    file: &'a str,
+}
+
+fn release_file(url: &str) -> Option<ReleaseFile<'_>> {
+    let path = url.strip_prefix("https://github.com/")?;
+    let (owner_repo, rest) = path.split_once("/releases/download/")?;
+    let (tag, file) = rest.split_once('/')?;
+    let parts = owner_repo.split('/').count() == 2 && !tag.is_empty() && !file.contains('/');
+    parts.then_some(ReleaseFile {
+        repo: owner_repo,
+        tag,
+        file,
+    })
+}
+
+/// The token a private repository's release needs: `GITHUB_TOKEN` (CI passes
+/// `github.token`), else `GH_TOKEN` (`GH_TOKEN=$(gh auth token)` locally).
+fn github_token() -> Option<String> {
+    ["GITHUB_TOKEN", "GH_TOKEN"]
+        .iter()
+        .find_map(|name| std::env::var(name).ok().filter(|v| !v.is_empty()))
+}
+
+#[derive(Deserialize)]
+struct Release {
+    assets: Vec<Asset>,
+}
+
+#[derive(Deserialize)]
+struct Asset {
+    name: String,
+    url: String,
+}
+
+/// A release file through the API, which serves a private repository's
+/// files to a token; the plain download URL answers 404 to one without.
+fn download_release(release: &ReleaseFile, token: &str) -> Result<Vec<u8>> {
+    let auth = format!("Bearer {token}");
+    let api = format!(
+        "https://api.github.com/repos/{}/releases/tags/{}",
+        release.repo, release.tag
+    );
+    let text = ureq::get(&api)
+        .header("Authorization", &auth)
+        .header("Accept", "application/vnd.github+json")
+        .call()
+        .with_context(|| format!("GET {api}"))?
+        .body_mut()
+        .read_to_string()?;
+    let found: Release = serde_json::from_str(&text).with_context(|| format!("parsing {api}"))?;
+    let Some(asset) = found.assets.iter().find(|a| a.name == release.file) else {
+        bail!("release {} has no file {}", release.tag, release.file);
+    };
+    let mut response = ureq::get(&asset.url)
+        .header("Authorization", &auth)
+        .header("Accept", "application/octet-stream")
+        .call()
+        .with_context(|| format!("GET {}", asset.url))?;
+    Ok(response
+        .body_mut()
+        .with_config()
+        .limit(MAX_DOWNLOAD)
+        .read_to_vec()?)
+}
+
 fn download(source: &str, version: &str, file: &str) -> Result<Vec<u8>> {
     if source.starts_with("https://") {
         let url = artifact_url(source, version, file)?;
-        let mut response = ureq::get(&url)
-            .call()
-            .with_context(|| format!("GET {url}"))?;
+        if let (Some(release), Some(token)) = (release_file(&url), github_token()) {
+            return download_release(&release, &token);
+        }
+        let mut response = ureq::get(&url).call().with_context(|| {
+            format!("GET {url} (a private repository needs GITHUB_TOKEN or GH_TOKEN)")
+        })?;
         return Ok(response
             .body_mut()
             .with_config()
@@ -252,6 +325,31 @@ mod tests {
         assert_eq!(
             url,
             "https://github.com/o/r/releases/download/core-v0.1.0/spjall-core-android.zip"
+        );
+    }
+
+    #[test]
+    fn a_github_release_url_names_its_repo_tag_and_file() {
+        let url = "https://github.com/o/r/releases/download/core-v0.1.0/spjall-core-web.zip";
+        assert_eq!(
+            release_file(url),
+            Some(ReleaseFile {
+                repo: "o/r",
+                tag: "core-v0.1.0",
+                file: "spjall-core-web.zip",
+            })
+        );
+        assert_eq!(
+            release_file("https://artifacts.example.org/0.1.0/f.zip"),
+            None
+        );
+        assert_eq!(
+            release_file("https://github.com/o/r/s/releases/download/t/f"),
+            None
+        );
+        assert_eq!(
+            release_file("https://github.com/o/r/releases/download/t/d/f"),
+            None
         );
     }
 

@@ -76,6 +76,8 @@ jobs:
       - name: Core (pinned ${{ steps.lock.outputs.version }})
         working-directory: core
         run: cargo xtask fetch android
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # the repo is private: its releases need a token
 
       # Push needs the Firebase client values (decision 0025); the build checks
       # the file's project against identifiers/ids.json.

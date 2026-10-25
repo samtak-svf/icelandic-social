@@ -85,7 +85,8 @@ node tooling/mac-remote.mjs web   # the same on samtak-mac: fresh state, cf dev,
 cd core && cargo fmt --all && cargo clippy --workspace --all-targets -- -D warnings && cargo test
 cargo xtask core android     # needs the NDK named in core/artifact.lock.json and cargo-ndk
 cargo xtask core ios         # macOS only
-cargo xtask fetch android    # the pinned published artifact, checksum-verified
+GH_TOKEN=$(gh auth token) cargo xtask fetch android   # the pinned published artifact, checksum-verified;
+                             # the repo is private, so its releases need a token (CI passes github.token)
 
 # The apps (they read the core from the paths xtask fills, never build it)
 cd android && ./gradlew check assembleDebug   # ktlint, detekt, lint (warnings are errors), unit tests
