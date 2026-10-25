@@ -16,6 +16,10 @@
 //    detach from, so it exits ("can't detach from console") without starting
 //    the command. `(trap '' HUP; exec …) &` ignores SIGHUP the same way and
 //    works on every runner (web/scripts/e2e.sh).
+// 6. `rustup toolchain install` lives only in .github/actions/rust-toolchain: a
+//    copy in a workflow leaves RUSTUP_TOOLCHAIN unset, and on a runner whose
+//    rustup has no default toolchain (samtak-mac) Swatinem/rust-cache fails
+//    running `rustc -vV` outside core/.
 //
 // Line-based on purpose: the rules are about single lines, and the guard stays
 // dependency-free like the others (tooling/lib/repo.mjs).
@@ -33,10 +37,11 @@ const FORK_FALLBACK = /github\.event\.pull_request\.head\.repo\.fork\s*&&/;
 const TARGET = /^\s*pull_request_target\s*:|\bpull_request_target\b\s*[\],]/;
 const JOB = /^ {2}[\w-]+:\s*$/;
 const NOHUP = /(?:^|[\s;&|(])nohup\s/;
+const TOOLCHAIN_INSTALL = /\brustup\s+toolchain\s+install\b/;
 const SECRET = /\bsecrets\.(?!GITHUB_TOKEN\b)\w+/;
 
 /**
- * @typedef {{ file: string, line: number, rule: "pin" | "fork-runner" | "trigger" | "secret-runner" | "nohup", message: string }} Problem
+ * @typedef {{ file: string, line: number, rule: "pin" | "fork-runner" | "trigger" | "secret-runner" | "nohup" | "rust-toolchain", message: string }} Problem
  */
 
 /**
@@ -64,10 +69,15 @@ const BANNED = [
     pattern: NOHUP,
     message: "nohup exits on the launchd runner; use (trap '' HUP; exec …) &",
   },
+  {
+    rule: /** @type {const} */ ("rust-toolchain"),
+    pattern: TOOLCHAIN_INSTALL,
+    message: "install the toolchain with ./.github/actions/rust-toolchain, not rustup directly",
+  },
 ];
 
 /**
- * The rules that each line answers on its own: pin, fork-runner, trigger, nohup.
+ * The rules that each line answers on its own: pin, fork-runner, trigger, nohup, rust-toolchain.
  * @param {string} code a line with its comment removed
  * @returns {{ rule: Problem["rule"], message: string }[]}
  */
@@ -150,7 +160,7 @@ function main() {
   for (const p of problems) console.error(`::error file=${p.file},line=${p.line}::${p.message}`);
   if (problems.length > 0) process.exit(1);
   console.log(
-    "✓ workflows pin every action by SHA, keep fork PRs and secrets off the org runners, and use no nohup",
+    "✓ workflows pin every action by SHA, keep fork PRs and secrets off the org runners, use no nohup, and install Rust only through the action",
   );
 }
 

@@ -78,4 +78,16 @@ describe("workflow-guard", () => {
     const text = "on:\n  pull_request_target:\njobs: {}\n";
     expect(findInWorkflow("w.yml", text).map((p) => p.rule)).toEqual(["trigger"]);
   });
+
+  it("keeps the toolchain install in the composite action, out of the workflows", () => {
+    const text = job("    steps:\n      - run: |\n          rustup toolchain install\n");
+    expect(findInWorkflow("w.yml", text).map((p) => [p.line, p.rule])).toEqual([
+      [6, "rust-toolchain"],
+    ]);
+    const action = job("    steps:\n      - uses: ./.github/actions/rust-toolchain\n");
+    expect(findInWorkflow("w.yml", action)).toEqual([]);
+    // Other rustup commands are not the install.
+    const component = job("    steps:\n      - run: rustup component add llvm-tools-preview\n");
+    expect(findInWorkflow("w.yml", component)).toEqual([]);
+  });
 });

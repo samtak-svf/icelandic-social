@@ -57,9 +57,7 @@ jobs:
       - name: Format
         run: ios/scripts/lint.sh
 
-      - name: Toolchain
-        working-directory: core
-        run: rustup toolchain install
+      - uses: ./.github/actions/rust-toolchain
 
       - name: Core (pinned, checksum-verified)
         working-directory: core

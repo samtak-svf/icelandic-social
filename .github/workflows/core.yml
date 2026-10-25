@@ -59,17 +59,7 @@ jobs:
         working-directory: core
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # rustup reads core/rust-toolchain.toml and installs the pinned toolchain.
-      # The GCP fallback runners (vars.RUNNER_LABELS) have no rustup, so it is
-      # bootstrapped there without a default toolchain.
-      - name: Toolchain
-        run: |
-          if ! command -v rustup >/dev/null; then
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
-            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-            export PATH="$HOME/.cargo/bin:$PATH"
-          fi
-          rustup toolchain install
+      - uses: ./.github/actions/rust-toolchain
 
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
@@ -111,10 +101,9 @@ jobs:
         working-directory: core
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Toolchain
-        run: |
-          rustup toolchain install
-          rustup target add wasm32-unknown-unknown
+      - uses: ./.github/actions/rust-toolchain
+        with:
+          targets: wasm32-unknown-unknown
 
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
@@ -141,10 +130,9 @@ jobs:
         working-directory: core
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Toolchain
-        run: |
-          rustup toolchain install
-          rustup target add wasm32-unknown-unknown
+      - uses: ./.github/actions/rust-toolchain
+        with:
+          targets: wasm32-unknown-unknown
 
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:

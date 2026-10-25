@@ -59,16 +59,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
-      # As in core.yml: the GCP fallback runners have no rustup.
-      - name: Toolchain
-        working-directory: core
-        run: |
-          if ! command -v rustup >/dev/null; then
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
-            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-            export PATH="$HOME/.cargo/bin:$PATH"
-          fi
-          rustup toolchain install
+      - uses: ./.github/actions/rust-toolchain
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: core
