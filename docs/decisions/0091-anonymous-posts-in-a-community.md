@@ -1,6 +1,6 @@
 # 0091. A community may allow posts without the author's name, and every reveal is logged
 
-- Status: accepted; implemented in the Worker and the web; the apps follow
+- Status: accepted; implemented (Worker and web #189; core #190 and #194; Android #199; iOS #198)
 - Date: 2026-10-24
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0063](0063-communities-audiences-and-moderation.md) (a post may hide its byline
