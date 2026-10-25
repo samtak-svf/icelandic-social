@@ -55,3 +55,64 @@ export const getMediaRoute = createRoute({
     ...AUTHED,
   },
 });
+
+// A group's photo (decision 0094): the core's ciphertext in the profiles
+// bucket, one per conversation, kept for as long as the group has it.
+
+const photoParams = z.object({ conversationId: ConversationId, mediaId: MediaId });
+
+export const putGroupPhotoRoute = createRoute({
+  method: "put",
+  path: "/v1/conversations/{conversationId}/photo/{mediaId}",
+  operationId: "putGroupPhoto",
+  tags: ["media"],
+  summary: "Store the ciphertext of the group's photo, replacing the one it had",
+  description:
+    "The body is the core's ciphertext, with a Content-Length of at most 1 MB. The previous photo's object is deleted.",
+  security: DEVICE_TOKEN,
+  request: {
+    params: photoParams,
+    body: { required: true, content: { "application/octet-stream": { schema: Binary } } },
+  },
+  responses: {
+    204: { description: "Stored" },
+    400: errorResponse("invalid_request: no Content-Length, or a body of another length"),
+    ...MEMBER,
+    413: errorResponse("too_large: more than 1 MB"),
+    ...AUTHED,
+  },
+});
+
+export const getGroupPhotoRoute = createRoute({
+  method: "get",
+  path: "/v1/conversations/{conversationId}/photo/{mediaId}",
+  operationId: "getGroupPhoto",
+  tags: ["media"],
+  summary: "Fetch the ciphertext of the group's photo, as a member of the conversation",
+  security: DEVICE_TOKEN,
+  request: { params: photoParams },
+  responses: {
+    200: {
+      description: "The ciphertext",
+      content: { "application/octet-stream": { schema: Binary } },
+    },
+    403: MEMBER[403],
+    404: errorResponse("not_found: no such conversation, or it has no such photo"),
+    ...AUTHED,
+  },
+});
+
+export const deleteGroupPhotoRoute = createRoute({
+  method: "delete",
+  path: "/v1/conversations/{conversationId}/photo",
+  operationId: "deleteGroupPhoto",
+  tags: ["media"],
+  summary: "Delete the group's photo, as a member of the conversation",
+  security: DEVICE_TOKEN,
+  request: { params: z.object({ conversationId: ConversationId }) },
+  responses: {
+    204: { description: "Deleted, or there was none" },
+    ...MEMBER,
+    ...AUTHED,
+  },
+});
