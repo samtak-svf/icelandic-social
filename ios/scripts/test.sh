@@ -66,7 +66,13 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
-SIM_UDID=$(xcrun simctl clone "$TEMPLATE_UDID" "spjall-test-${GITHUB_RUN_ID:-local}-$$")
+# Only a shut-down device can be cloned; a run from before this script may
+# have left the template booted.
+clone_name="spjall-test-${GITHUB_RUN_ID:-local}-$$"
+SIM_UDID=$(xcrun simctl clone "$TEMPLATE_UDID" "$clone_name" 2>/dev/null) || {
+  xcrun simctl shutdown "$TEMPLATE_UDID" 2>/dev/null || true
+  SIM_UDID=$(xcrun simctl clone "$TEMPLATE_UDID" "$clone_name")
+}
 xcrun simctl boot "$SIM_UDID"
 xcrun simctl bootstatus "$SIM_UDID" -b >/dev/null
 
