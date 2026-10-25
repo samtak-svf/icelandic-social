@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { WebSocket } from "ws";
 import { strings } from "../src/generated/brand/strings.ts";
+import { layoutOf } from "../src/ui/layout.ts";
 import { signIn } from "./accounts.ts";
 import { DEV, expect, serveOrigin, test, WEB } from "./origin.ts";
 import { newGoogleSubject } from "./people.ts";
@@ -118,6 +119,10 @@ test("a phone links this browser, which shows the phone's message and replies", 
   await expect(conversation).toHaveCount(1, { timeout: 120_000 });
   await conversation.click();
   await expect(page.getByText("halló vafri")).toBeVisible();
+  // An expanded window keeps the list beside the open conversation (0093).
+  const beside = layoutOf(page.viewportSize()!.width).conversations === "list-and-thread";
+  await expect(conversation).toHaveCount(beside ? 1 : 0);
+  await expect(page.getByRole("link", { name: strings.back })).toHaveCount(beside ? 0 : 1);
 
   await page.getByRole("textbox", { name: strings.composer_placeholder }).fill("svar úr vafra");
   await page.getByRole("button", { name: strings.send }).click();

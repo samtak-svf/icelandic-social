@@ -20,6 +20,8 @@ export type Layout = {
   hub: "tabs" | "column";
   /** Stofna samfélag: the form alone, or the form beside a live preview of the community's header. */
   create: "form" | "form-and-preview";
+  /** Samtöl: the list or the open conversation, or the list beside the open one (0093). */
+  conversations: "list" | "list-and-thread";
 };
 
 export const LAYOUTS: Readonly<Record<SizeClass, Layout>> = {
@@ -31,6 +33,7 @@ export const LAYOUTS: Readonly<Record<SizeClass, Layout>> = {
     featured: "strip",
     hub: "tabs",
     create: "form",
+    conversations: "list",
   },
   medium: {
     navigation: "rail",
@@ -40,6 +43,7 @@ export const LAYOUTS: Readonly<Record<SizeClass, Layout>> = {
     featured: "strip",
     hub: "tabs",
     create: "form",
+    conversations: "list",
   },
   expanded: {
     navigation: "rail",
@@ -49,6 +53,7 @@ export const LAYOUTS: Readonly<Record<SizeClass, Layout>> = {
     featured: "aside",
     hub: "column",
     create: "form-and-preview",
+    conversations: "list-and-thread",
   },
 };
 

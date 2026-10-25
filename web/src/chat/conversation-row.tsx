@@ -29,6 +29,8 @@ export function ConversationRow({
       className={`flex min-h-11 items-center gap-3 px-4 py-3 hover:bg-muted ${
         unread > 0 && !muted ? "bg-primary-subtle" : ""
       }`}
+      // The open one, beside its thread on an expanded window (0093).
+      activeProps={{ className: "bg-muted" }}
     >
       <Avatar
         kind="person"

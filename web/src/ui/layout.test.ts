@@ -12,6 +12,7 @@ describe("layout", () => {
       featured: "strip",
       hub: "tabs",
       create: "form",
+      conversations: "list",
     });
   });
 
@@ -46,6 +47,13 @@ describe("layout", () => {
       hub: "column",
       create: "form-and-preview",
     });
+  });
+
+  it("keeps the conversation list beside the open conversation only on expanded", () => {
+    for (const width of [412, SIZE_CLASSES.medium, SIZE_CLASSES.expanded - 1]) {
+      expect(layoutOf(width).conversations).toBe("list");
+    }
+    expect(layoutOf(SIZE_CLASSES.expanded).conversations).toBe("list-and-thread");
   });
 
   it("never shows fewer members' pictures on a wider window", () => {
