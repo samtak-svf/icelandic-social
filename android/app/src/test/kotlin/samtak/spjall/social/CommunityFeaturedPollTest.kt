@@ -73,12 +73,11 @@ class CommunityFeaturedPollTest {
             assertEquals(listOf("p3", "p2", "p1"), model.snap.featured.map { it.postId })
             model.pin("p4", true)
             advanceUntilIdle()
-            assertTrue(model.snap.pinFull)
-            assertNull(model.snap.problem)
+            assertEquals(Problem.PinFull, model.snap.problem)
             assertEquals(3, model.snap.featured.size)
             model.pin("p1", false)
             advanceUntilIdle()
-            assertFalse(model.snap.pinFull)
+            assertNull(model.snap.problem)
         }
 
     @Test

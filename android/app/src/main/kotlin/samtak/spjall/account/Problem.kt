@@ -43,6 +43,9 @@ sealed interface Problem {
     /** The poll was closed while this account voted (`poll_closed`, 0090): trying again cannot help. */
     data object PollClosed : Problem
 
+    /** Three posts are already featured (`pin_limit`, 0088): unpin one first, trying again cannot help. */
+    data object PinFull : Problem
+
     /** The community stopped allowing anonymous posts meanwhile (`anonymous_off`, 0091). */
     data object AnonymousOff : Problem
 
@@ -70,6 +73,7 @@ private val REFUSALS: Map<String?, Problem> =
         "join_declined" to Problem.JoinDeclined,
         "poll_closed" to Problem.PollClosed,
         "anonymous_off" to Problem.AnonymousOff,
+        "pin_limit" to Problem.PinFull,
     )
 
 /**

@@ -8,7 +8,7 @@ import samtak.spjall.core.ReportTarget
 
 /** What [CommunityScreen] can ask for. */
 @Suppress("TooManyFunctions")
-interface CommunityActions {
+interface CommunityActions : PollActions {
     fun back()
 
     fun join()
@@ -53,15 +53,6 @@ interface CommunityActions {
 
     /** The owner allows or stops anonymous posts in the community (0091). */
     fun setAnonymousPosts(on: Boolean)
-
-    fun vote(
-        postId: String,
-        optionId: String,
-    )
-
-    fun withdrawVote(postId: String)
-
-    fun closePoll(postId: String)
 
     /** Asks for the author of an anonymous post; the community's log records who asked. */
     fun revealAuthor(postId: String)

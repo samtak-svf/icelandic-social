@@ -90,6 +90,8 @@ private fun reportsActions(
         period: ReportsViewModel.MutePeriod,
     ) = model.act(report, ReportsViewModel.Verb.Mute, period)
 
+    override fun revealAuthor(postId: String) = model.revealAuthor(postId)
+
     override fun retry() = model.retry()
 }
 

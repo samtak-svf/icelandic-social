@@ -95,6 +95,15 @@ private fun Communities(
                 kind: ReactionKind,
             ) = model.react(postId, kind)
 
+            override fun vote(
+                postId: String,
+                optionId: String,
+            ) = model.vote(postId, optionId)
+
+            override fun withdrawVote(postId: String) = model.withdrawVote(postId)
+
+            override fun closePoll(postId: String) = model.closePoll(postId)
+
             override fun report(
                 postId: String,
                 reason: ReportReason,
@@ -401,6 +410,12 @@ private fun PostEntry(
         actions =
             object : PostActions {
                 override fun community(communityId: String) = nav.leavePostForCommunity(communityId)
+
+                override fun vote(optionId: String) = model.vote(optionId)
+
+                override fun withdrawVote() = model.withdrawVote()
+
+                override fun closePoll() = model.closePoll()
 
                 override fun deletePost() = model.deletePost()
 

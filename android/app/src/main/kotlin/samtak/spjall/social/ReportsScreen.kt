@@ -41,6 +41,7 @@ import samtak.spjall.core.Card
 import samtak.spjall.core.Report
 import samtak.spjall.core.ReportDecision
 import samtak.spjall.core.ReportState
+import samtak.spjall.core.ReportTargetKind
 import samtak.spjall.me.Confirm
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
@@ -91,6 +92,7 @@ internal fun ReportsBody(
                     report = report,
                     card = state.cards[report.target.id],
                     reason = state.reasons[report.reportId].orEmpty(),
+                    revealed = state.revealed[report.target.id],
                     busy = state.busy,
                     actions = actions,
                     onBan = { banning = report },
@@ -116,6 +118,7 @@ private fun ReportCard(
     report: Report,
     card: Card?,
     reason: String,
+    revealed: String?,
     busy: Boolean,
     actions: ReportsActions,
     onBan: () -> Unit,
@@ -136,6 +139,9 @@ private fun ReportCard(
         }
         if (report.note.isNotBlank()) Text(text = report.note, style = MaterialTheme.typography.bodyMedium)
         Excerpt(card)
+        if (report.targetAnonymous && report.target.kind == ReportTargetKind.POST) {
+            RevealAuthor(revealed, enabled = !busy) { actions.revealAuthor(report.target.id) }
+        }
         OutlinedTextField(
             value = reason,
             onValueChange = { actions.reason(report.reportId, it) },

@@ -54,6 +54,8 @@ class PostViewModel(
         val sending: Boolean = false,
         val writes: Boolean = false,
         val reacting: Boolean = false,
+        /** The poll's vote, withdraw or close is on its way. */
+        val answering: Boolean = false,
         /** Whether this account moderates the community: it may pin the post. */
         val moderates: Boolean = false,
         /** The post and comments this account reported from here. */
@@ -257,6 +259,28 @@ class PostViewModel(
                         }
                     },
             )
+        }
+    }
+
+    /** Votes for an option of the post's poll, or changes the vote to it. */
+    fun vote(optionId: String) = answer { social.votePoll(it, optionId) }
+
+    fun withdrawVote() = answer { social.withdrawVote(it) }
+
+    fun closePoll() = answer { social.closePoll(it) }
+
+    private fun answer(call: (String) -> Post) {
+        val postId = _state.value.post?.postId ?: return
+        viewModelScope.answerPoll(
+            io,
+            busy = _state.value.answering,
+            begin = { _state.update { it.copy(answering = true, problem = null) } },
+            call = { call(postId) },
+        ) { changed, problem ->
+            _state.update { s ->
+                val done = s.copy(answering = false)
+                if (changed != null) done.copy(post = changed) else done.copy(problem = problem)
+            }
         }
     }
 

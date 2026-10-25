@@ -28,6 +28,13 @@ interface PostActions {
     /** Likes the comment, or takes the like back. */
     fun likeComment(commentId: String)
 
+    /** Votes for an option of the post's poll, or changes the vote to it. */
+    fun vote(optionId: String)
+
+    fun withdrawVote()
+
+    fun closePoll()
+
     /** Pins the post to the top of its community, or loosens it. */
     fun pin(pinned: Boolean)
 

@@ -68,6 +68,7 @@ private val FINAL =
         Problem.JoinDeclined,
         Problem.PollClosed,
         Problem.AnonymousOff,
+        Problem.PinFull,
     )
 
 /** Whether the same call may work if asked again: not a refusal the server will repeat. */
@@ -85,5 +86,6 @@ private fun Problem.message(): Int =
         Problem.JoinDeclined -> R.string.problem_join_declined
         Problem.PollClosed -> R.string.poll_closed_problem
         Problem.AnonymousOff -> R.string.problem_anonymous_off
+        Problem.PinFull -> R.string.post_pin_full
         is Problem.Generic -> R.string.error_generic
     }

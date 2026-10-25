@@ -176,6 +176,8 @@ private fun androidx.compose.foundation.lazy.LazyListScope.feedPosts(
                     onOpen = { actions.openPost(post.postId) },
                     onComment = { actions.comment(post.postId) },
                     onSendToConversation = { actions.sendToConversation(post.postId) },
+                    poll = actions.callbacksFor(post.postId, mayClose = post.mine),
+                    answering = post.postId in state.answering,
                 ),
         )
         if (index == state.feed.lastIndex && state.feedNext != null) {

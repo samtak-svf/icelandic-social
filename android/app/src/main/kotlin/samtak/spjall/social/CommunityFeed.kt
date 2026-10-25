@@ -67,15 +67,6 @@ internal fun Feed(
                 }
             }
         }
-        if (state.pinFull) {
-            item(key = "pin-full") {
-                Text(
-                    stringResource(R.string.post_pin_full),
-                    color = Palette.danger,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-        }
         when (shown) {
             CommunityTab.DISCUSSION -> discussionTab(state, actions, composing, strip, callbacks)
             CommunityTab.FEATURED -> postItems(state, state.featured, actions, callbacks, "featured")
@@ -140,12 +131,7 @@ private fun LazyListScope.postItems(
                     onDelete = { callbacks.onDelete(post.postId) }.takeIf { post.mine },
                     onPin = { pinned: Boolean -> actions.pin(post.postId, pinned) }.takeIf { moderates },
                     onSendToConversation = { actions.sendToConversation(post.postId) },
-                    poll =
-                        PollCallbacks(
-                            onVote = { actions.vote(post.postId, it) },
-                            onWithdraw = { actions.withdrawVote(post.postId) },
-                            onClose = { actions.closePoll(post.postId) }.takeIf { post.mine || moderates },
-                        ),
+                    poll = actions.callbacksFor(post.postId, mayClose = post.mine || moderates),
                     answering = post.postId in state.answering,
                     onReveal = { actions.revealAuthor(post.postId) }.takeIf { moderates },
                     revealed = state.revealed[post.postId],

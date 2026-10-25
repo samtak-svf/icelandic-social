@@ -33,6 +33,7 @@ enum class CommunitiesTab {
  * The communities tab (decision 0063): the ones this account is in, then finding one by name, every community
  * it may see while the search is empty. Only a verified account is offered creating one, as on the web.
  */
+@Suppress("TooManyFunctions")
 class CommunitiesViewModel(
     private val social: Social,
     private val account: Account,
@@ -44,6 +45,8 @@ class CommunitiesViewModel(
         val feed: List<Post> = emptyList(),
         val feedNext: String? = null,
         val reacting: Set<String> = emptySet(),
+        /** The posts whose poll call (vote, withdraw, close) is on its way. */
+        val answering: Set<String> = emptySet(),
         val reported: Set<String> = emptySet(),
         /** The search as typed. */
         val query: String = "",
@@ -161,6 +164,34 @@ class CommunitiesViewModel(
                 }
             } catch (e: CoreException) {
                 _state.update { it.copy(reacting = it.reacting - postId, problem = e.problem()) }
+            }
+        }
+    }
+
+    fun vote(
+        postId: String,
+        optionId: String,
+    ) = answer(postId) { social.votePoll(postId, optionId) }
+
+    fun withdrawVote(postId: String) = answer(postId) { social.withdrawVote(postId) }
+
+    fun closePoll(postId: String) = answer(postId) { social.closePoll(postId) }
+
+    private fun answer(
+        postId: String,
+        call: () -> Post,
+    ) = viewModelScope.answerPoll(
+        io,
+        busy = postId in _state.value.answering,
+        begin = { _state.update { it.copy(answering = it.answering + postId, problem = null) } },
+        call = call,
+    ) { changed, problem ->
+        _state.update { s ->
+            val done = s.copy(answering = s.answering - postId)
+            if (changed != null) {
+                done.copy(feed = done.feed.map { if (it.postId == changed.postId) changed else it })
+            } else {
+                done.copy(problem = problem)
             }
         }
     }

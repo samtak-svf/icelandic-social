@@ -82,8 +82,6 @@ class CommunityViewModel(
         val problem: Problem? = null,
         /** The tab shown (0089). */
         val tab: CommunityTab = CommunityTab.DISCUSSION,
-        /** Pinning was refused because three posts are featured already (0088). */
-        val pinFull: Boolean = false,
         /** The community's pictures, newest first, for Myndir; [galleryNext] is the cursor of the next page. */
         val gallery: List<CommunityImage> = emptyList(),
         val galleryNext: String? = null,
@@ -454,15 +452,8 @@ class CommunityViewModel(
         postId: String,
         pinned: Boolean,
     ) {
-        _state.update { it.copy(pinFull = false) }
         perform(again = { pin(postId, pinned) }) {
-            try {
-                if (pinned) social.pinPost(id, postId) else social.unpinPost(id, postId)
-            } catch (e: CoreException.Refused) {
-                if (e.code != "pin_limit") throw e
-                _state.update { it.copy(pinFull = true) }
-                return@perform
-            }
+            if (pinned) social.pinPost(id, postId) else social.unpinPost(id, postId)
             reload()
         }
     }
@@ -572,16 +563,15 @@ class CommunityViewModel(
     private fun answer(
         postId: String,
         call: () -> Post,
-    ) {
-        if (postId in _state.value.answering) return
-        _state.update { it.copy(answering = it.answering + postId, problem = null) }
-        viewModelScope.launch {
-            try {
-                val changed = withContext(io) { call() }
-                _state.update { it.replacing(changed).copy(answering = it.answering - postId) }
-            } catch (e: CoreException) {
-                _state.update { it.copy(answering = it.answering - postId, problem = e.problem()) }
-            }
+    ) = viewModelScope.answerPoll(
+        io,
+        busy = postId in _state.value.answering,
+        begin = { _state.update { it.copy(answering = it.answering + postId, problem = null) } },
+        call = call,
+    ) { changed, problem ->
+        _state.update { s ->
+            val done = s.copy(answering = s.answering - postId)
+            if (changed != null) done.replacing(changed) else done.copy(problem = problem)
         }
     }
 

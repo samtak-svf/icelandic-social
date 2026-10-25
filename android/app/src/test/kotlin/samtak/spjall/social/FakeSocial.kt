@@ -829,6 +829,7 @@ fun report(
     resolution: String? = null,
     closedBy: Author? = null,
     closedAt: ULong? = null,
+    anonymous: Boolean = false,
 ) = Report(
     reportId = id,
     communityId = "k1",
@@ -844,6 +845,7 @@ fun report(
     closedBy = closedBy,
     targetStanding = targetStanding,
     targetState = targetState,
+    targetAnonymous = anonymous,
 )
 
 fun notFound() = CoreException.Refused(404u, "not_found", null)

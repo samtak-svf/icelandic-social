@@ -45,6 +45,7 @@ import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 
 /** One post, its comments oldest first, and the box to add one. */
+@Suppress("LongMethod")
 @Composable
 fun PostScreen(
     state: PostViewModel.State,
@@ -93,6 +94,13 @@ fun PostScreen(
                                     onDelete = { deleting = "$POST:${post.postId}" }.takeIf { post.mine },
                                     onPin = actions::pin.takeIf { state.moderates },
                                     onSendToConversation = { actions.sendToConversation(post.postId) },
+                                    poll =
+                                        PollCallbacks(
+                                            onVote = actions::vote,
+                                            onWithdraw = actions::withdrawVote,
+                                            onClose = actions::closePoll.takeIf { post.mine || state.moderates },
+                                        ),
+                                    answering = state.answering,
                                 ),
                         )
                     }
