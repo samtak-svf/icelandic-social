@@ -15,6 +15,8 @@ final class ReportsModel {
     private(set) var reports: [Report] = []
     /// What each reported post or comment shows, by its id.
     private(set) var cards: [String: Card] = [:]
+    /// Who wrote each reported anonymous post a moderator asked about, by report id (decision 0091).
+    private(set) var revealed: [String: Author] = [:]
     /// The cursor of the next page, nil on the last.
     private(set) var next: String?
     private(set) var loaded = false
@@ -43,6 +45,7 @@ final class ReportsModel {
         showing = state
         reports = []
         cards = [:]
+        revealed = [:]
         next = nil
         loaded = false
         done = false
@@ -62,6 +65,21 @@ final class ReportsModel {
             self.reports += added
             self.next = page.next
             await self.resolve(added)
+        }
+    }
+
+    /// Whether a moderator may ask who wrote what `report` names: an anonymous post, not yet asked about.
+    func canReveal(_ report: Report) -> Bool {
+        report.targetAnonymous && report.target.kind == .post && revealed[report.reportId] == nil
+    }
+
+    /// Asks who wrote the reported anonymous post; the community's moderation log records the asking.
+    func reveal(_ report: Report) async {
+        guard canReveal(report) else { return }
+        let social = social
+        let post = report.target.id
+        await perform(again: { await self.reveal(report) }) {
+            self.revealed[report.reportId] = try await offMain { try social.revealAuthor(post) }
         }
     }
 

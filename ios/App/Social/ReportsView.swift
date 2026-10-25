@@ -112,6 +112,11 @@ private struct ReportCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 excerpt
+                if let author = model.revealed[report.reportId] {
+                    RevealedAuthorLine(author: author)
+                } else if model.canReveal(report) {
+                    RevealAuthorButton { Task { await model.reveal(report) } }.disabled(model.busy)
+                }
                 decision
                 TextField("report_reason", text: $reason, axis: .vertical)
                     .font(.sans(14))

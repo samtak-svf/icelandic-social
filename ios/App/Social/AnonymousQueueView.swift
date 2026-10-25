@@ -46,7 +46,6 @@ struct AnonymousQueueView: View {
 private struct QueuedPostCard: View {
     let post: Post
     let model: AnonymousQueueModel
-    @State private var revealing = false
 
     var body: some View {
         Panel {
@@ -56,10 +55,7 @@ private struct QueuedPostCard: View {
                     .foregroundStyle(BrandTokens.Colors.fg)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if let author = model.revealed[post.postId] {
-                    Text(verbatim: localized("anonymous_revealed", author.name ?? ""))
-                        .font(.sans(13))
-                        .fontWeight(.semibold)
-                        .foregroundStyle(BrandTokens.Colors.fg)
+                    RevealedAuthorLine(author: author)
                 }
                 HStack(spacing: 8) {
                     Button {
@@ -75,21 +71,12 @@ private struct QueuedPostCard: View {
                     }
                     .buttonStyle(.plain)
                     if model.revealed[post.postId] == nil {
-                        Button {
-                            revealing = true
-                        } label: {
-                            PillLabel(text: "anonymous_reveal", filled: false, wide: false)
-                        }
-                        .buttonStyle(.plain)
+                        RevealAuthorButton { Task { await model.reveal(post) } }
                     }
                 }
                 .disabled(model.answering != nil)
             }
             .padding(14)
-        }
-        .alert(Text("anonymous_reveal_confirm"), isPresented: $revealing) {
-            Button("anonymous_reveal") { Task { await model.reveal(post) } }
-            Button("cancel", role: .cancel) {}
         }
     }
 }

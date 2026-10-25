@@ -779,13 +779,13 @@ func makeComment(
 /// A report on `target`; `author` is who wrote it, or the account itself, nil when that account is gone.
 func makeReport(
     _ id: String, in community: String, _ kind: ReportTargetKind, _ target: String, author: Author? = anna,
-    state: ReportState = .open
+    state: ReportState = .open, anonymous: Bool = false
 ) -> Report {
     Report(
         reportId: id, communityId: community, target: ReportTarget(kind: kind, id: target), targetAccount: author,
         reason: .spam, note: "", state: state, createdAt: FakeAccount.now,
         closedAt: state == .closed ? FakeAccount.now : nil, decision: nil, resolution: nil, closedBy: nil,
-        targetStanding: nil, targetState: nil)
+        targetAnonymous: anonymous, targetStanding: nil, targetState: nil)
 }
 
 func makeNotice(
