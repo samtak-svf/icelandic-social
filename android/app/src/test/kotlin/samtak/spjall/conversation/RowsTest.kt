@@ -81,6 +81,25 @@ class RowsTest {
         )
     }
 
+    /** A group photo set or removed is a card too (0094). */
+    @Test
+    fun aPhotoChangeIsACard() {
+        val rows =
+            rows(
+                listOf(
+                    item(1u, ts = day),
+                    item(2u, ts = day + 1uL * minute, content = Content.Photo(true)),
+                    item(3u, ts = day + 2uL * minute, content = Content.Photo(false)),
+                    item(4u, ts = day + 3uL * minute),
+                ),
+                ZoneOffset.UTC,
+            )
+        assertEquals(
+            listOf("time 0", "1 first last", "card 2", "card 3", "4 first last"),
+            shape(rows),
+        )
+    }
+
     @Test
     fun theReadLineSitsUnderTheNewestOwnMessageSomeoneRead() {
         val rows =

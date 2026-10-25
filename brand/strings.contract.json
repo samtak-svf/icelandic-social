@@ -1748,14 +1748,14 @@
       }
     },
     "photo_set_card": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "System card when a member sets or changes the group's photo (docs/decisions/0094).",
       "placeholders": {
         "who": "string"
       }
     },
     "photo_cleared_card": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "System card when a member removes the group's photo (docs/decisions/0094).",
       "placeholders": {
         "who": "string"

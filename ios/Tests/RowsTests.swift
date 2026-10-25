@@ -56,6 +56,18 @@ final class RowsTests: XCTestCase {
         XCTAssertEqual(shape(rows), ["time 1", "1 first last", "card 2", "3 first last", "time 4", "4 first last"])
     }
 
+    func testAPhotoChangeIsACard() {
+        // 0094: a group photo set or removed is a card, like a name change.
+        let rows = rows(
+            [
+                item(1, ts: day),
+                item(2, ts: day + minute, content: .photo(set: true)),
+                item(3, ts: day + 2 * minute, content: .photo(set: false)),
+                item(4, ts: day + 3 * minute),
+            ], calendar: utc)
+        XCTAssertEqual(shape(rows), ["time 1", "1 first last", "card 2", "card 3", "4 first last"])
+    }
+
     func testAnHourOrMoreAfterThePreviousItemGetsALine() {
         let rows = rows(
             [item(1, ts: morning), item(2, ts: morning + 59 * minute), item(3, ts: morning + 119 * minute)],

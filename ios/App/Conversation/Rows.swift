@@ -97,7 +97,7 @@ func meta(_ item: Item, readBy: UInt32?) -> [MetaPart] {
 
 func isCard(_ item: Item) -> Bool {
     switch item.content {
-    case .members, .timer, .name: true
+    case .members, .timer, .name, .photo: true
     case .text, .media, .deleted, .post, .location, .unreadable: false
     }
 }

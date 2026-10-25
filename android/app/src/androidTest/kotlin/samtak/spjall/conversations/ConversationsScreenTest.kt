@@ -110,7 +110,17 @@ class ConversationsScreenTest {
             ConversationsViewModel.State(
                 conversations =
                     listOf(
-                        Conversation("c1", ConversationState.ACTIVE, null, listOf(anna), last, 3u, null, Mute.Off),
+                        Conversation(
+                            "c1",
+                            ConversationState.ACTIVE,
+                            null,
+                            null,
+                            listOf(anna),
+                            last,
+                            3u,
+                            null,
+                            Mute.Off,
+                        ),
                     ),
                 loaded = true,
                 connection = Connection.Online,
@@ -133,7 +143,7 @@ class ConversationsScreenTest {
             id: String,
             mute: Mute,
             ->
-            Conversation(id, ConversationState.ACTIVE, null, listOf(anna), null, 2u, null, mute)
+            Conversation(id, ConversationState.ACTIVE, null, null, listOf(anna), null, 2u, null, mute)
         }
         show(
             ConversationsViewModel.State(
@@ -188,7 +198,17 @@ class ConversationsScreenTest {
             ConversationsViewModel.State(
                 conversations =
                     listOf(
-                        Conversation("c1", ConversationState.ACTIVE, null, listOf(anna), last, 0u, null, Mute.Off),
+                        Conversation(
+                            "c1",
+                            ConversationState.ACTIVE,
+                            null,
+                            null,
+                            listOf(anna),
+                            last,
+                            0u,
+                            null,
+                            Mute.Off,
+                        ),
                     ),
                 loaded = true,
             ),
@@ -204,7 +224,17 @@ class ConversationsScreenTest {
             ConversationsViewModel.State(
                 conversations =
                     listOf(
-                        Conversation("c1", ConversationState.ACTIVE, null, listOf(anna), last, 0u, null, Mute.Off),
+                        Conversation(
+                            "c1",
+                            ConversationState.ACTIVE,
+                            null,
+                            null,
+                            listOf(anna),
+                            last,
+                            0u,
+                            null,
+                            Mute.Off,
+                        ),
                     ),
                 loaded = true,
             ),
@@ -236,7 +266,17 @@ class ConversationsScreenTest {
             ConversationsViewModel.State(
                 conversations =
                     listOf(
-                        Conversation("c1", ConversationState.ACTIVE, null, listOf(anna), last, 0u, null, Mute.Off),
+                        Conversation(
+                            "c1",
+                            ConversationState.ACTIVE,
+                            null,
+                            null,
+                            listOf(anna),
+                            last,
+                            0u,
+                            null,
+                            Mute.Off,
+                        ),
                     ),
                 loaded = true,
             ),
@@ -271,6 +311,7 @@ class ConversationsScreenTest {
                         Conversation(
                             "c1",
                             ConversationState.ACTIVE,
+                            null,
                             null,
                             listOf(anna, bjarni),
                             last,
@@ -333,7 +374,17 @@ class ConversationsScreenTest {
             ConversationsViewModel.State(
                 conversations =
                     listOf(
-                        Conversation("c9", ConversationState.ACTIVE, null, listOf(anna), null, 0u, null, Mute.Off),
+                        Conversation(
+                            "c9",
+                            ConversationState.ACTIVE,
+                            null,
+                            null,
+                            listOf(anna),
+                            null,
+                            0u,
+                            null,
+                            Mute.Off,
+                        ),
                     ),
                 loaded = true,
                 query = "Þór",
@@ -344,6 +395,7 @@ class ConversationsScreenTest {
                             Conversation(
                                 "c1",
                                 ConversationState.ACTIVE,
+                                null,
                                 null,
                                 listOf(thordis),
                                 null,
@@ -389,7 +441,7 @@ class ConversationsScreenTest {
         last: Item?,
         members: List<Person> = listOf(anna),
         mute: Mute = Mute.Off,
-    ) = Conversation("c1", ConversationState.ACTIVE, null, members, last, 0u, null, mute)
+    ) = Conversation("c1", ConversationState.ACTIVE, null, null, members, last, 0u, null, mute)
 
     @Test
     fun aLongPressOffersTheMuteAndItsDurations() {

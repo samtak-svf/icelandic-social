@@ -67,6 +67,8 @@ func lastLine(_ item: Item, group: Bool = true) -> String {
         } else {
             localized("name_cleared_card", shownName(item.sender))
         }
+    case .photo(let set):
+        localized(set ? "photo_set_card" : "photo_cleared_card", shownName(item.sender))
     }
 }
 
@@ -86,6 +88,6 @@ func previewLine(_ item: Item, group: Bool) -> String {
     case .text, .media, .post, .location:
         if item.own { return localized("last_line_own", line) }
         return group ? localized("last_line_sender", firstName(item.sender), line) : line
-    case .deleted, .members, .timer, .name, .unreadable: return line
+    case .deleted, .members, .timer, .name, .photo, .unreadable: return line
     }
 }

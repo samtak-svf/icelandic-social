@@ -239,6 +239,12 @@ fun lastLine(
                 stringResource(R.string.name_cleared_card, item.sender.shownName())
             }
         }
+        // Who changed the group's photo, or took it away (0094).
+        is Content.Photo ->
+            stringResource(
+                if (content.set) R.string.photo_set_card else R.string.photo_cleared_card,
+                item.sender.shownName(),
+            )
     }
 
 /** A disappearing timer: whole days when it is, else hours (decision 0022). */
