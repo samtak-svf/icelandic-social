@@ -43,6 +43,11 @@ final class SocialTests: XCTestCase {
             localized("post_anonymous_mine"))
     }
 
+    func testACardWithNoAuthorIsBylinedAnonymous() {
+        XCTAssertEqual(cardByline(anna), "Anna")
+        XCTAssertEqual(cardByline(nil), localized("post_anonymous_author"))
+    }
+
     func testANotificationOpensItsPostUnlessAModeratorActedOnIt() {
         XCTAssertEqual(noticeRoute(makeNotice("n1", .comment, post: "p1")), .post("p1"))
         XCTAssertEqual(noticeRoute(makeNotice("n2", .reaction, post: "p1")), .post("p1"))

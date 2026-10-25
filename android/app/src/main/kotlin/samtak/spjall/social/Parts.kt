@@ -39,6 +39,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Author
+import samtak.spjall.core.Card
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.ModerationState
@@ -62,6 +63,10 @@ fun Author?.shownName(): String =
         this == null -> stringResource(R.string.person_deleted)
         else -> name ?: stringResource(R.string.person_unnamed)
     }
+
+/** Who a shared or reported post's card names: its author, or the anonymous byline when it has none (0091). */
+@Composable
+fun Card.Post.bylineName(): String = anonymousBylineRes()?.let { stringResource(it) } ?: author.shownName()
 
 /** The header of a screen opened from a tab: back, then the title. */
 @Composable

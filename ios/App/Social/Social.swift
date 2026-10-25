@@ -336,6 +336,13 @@ func anonymousByline(_ post: Post) -> String? {
     return localized(post.mine ? "post_anonymous_mine" : "post_anonymous_author")
 }
 
+/// Who a shared or reported post's card names. A card for an anonymous post has no author and carries no `mine`,
+/// so it always reads as anonymous (decision 0091).
+func cardByline(_ author: Author?) -> String {
+    guard let author else { return localized("post_anonymous_author") }
+    return authorName(author)
+}
+
 /// A community's audience, and how many members it has when this account may know.
 func audienceLine(_ community: Community) -> String {
     let audience = localized(community.audience == .open ? "community_open" : "community_private")

@@ -321,8 +321,8 @@ private fun Verb(
 private fun Excerpt(card: Card?) {
     val (author, excerpt) =
         when (card) {
-            is Card.Post -> card.author to card.excerpt
-            is Card.Comment -> card.author to card.excerpt
+            is Card.Post -> card.bylineName() to card.excerpt
+            is Card.Comment -> card.author.shownName() to card.excerpt
             else -> return
         }
     Column(
@@ -333,7 +333,7 @@ private fun Excerpt(card: Card?) {
                 .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(text = author.shownName(), style = MaterialTheme.typography.titleSmall)
+        Text(text = author, style = MaterialTheme.typography.titleSmall)
         Text(text = excerpt, style = MaterialTheme.typography.bodyMedium)
     }
 }

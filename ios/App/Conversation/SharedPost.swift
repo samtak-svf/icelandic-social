@@ -108,7 +108,7 @@ struct SharedCard: View {
         }
     }
 
-    private func card(community: CardCommunity, author: Author, excerpt: String, image: PostImage?) -> some View {
+    private func card(community: CardCommunity, author: Author?, excerpt: String, image: PostImage?) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 4) {
                 LoadedPhoto(community.pictureOf) { image in
@@ -126,7 +126,7 @@ struct SharedCard: View {
                 Text(verbatim: community.name).lineLimit(1)
             }
             .font(TypeStyle.meta)
-            Text(verbatim: authorName(author)).font(.sans(13, black: true)).lineLimit(1)
+            Text(verbatim: cardByline(author)).font(.sans(13, black: true)).lineLimit(1)
             if !excerpt.isEmpty {
                 Text(verbatim: excerpt).font(TypeStyle.bubble).lineLimit(4).multilineTextAlignment(.leading)
             }
