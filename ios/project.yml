@@ -70,9 +70,10 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(SPJALL_BUNDLE_ID)
-        # iPhone only. XcodeGen's iOS preset sets "1,2" on each target, which
-        # hides a project-level value.
-        TARGETED_DEVICE_FAMILY: "1"
+        # iPhone and iPad: an iPad gets the layouts of its size class (decision
+        # 0087). Set on each target, since XcodeGen's iOS preset sets it there and
+        # hides a project-level value; DeviceTests holds it.
+        TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: "YES"
         INFOPLIST_FILE: App/Info.plist
         # The brand's primary (Generated/Assets.xcassets), so alerts, dialogs
@@ -83,7 +84,12 @@ targets:
         SPJALL_APS_ENVIRONMENT: production
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        # The phone stays upright; an iPad turns every way, which split view and
+        # Slide Over require of an app that is not full screen only.
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: >-
+          UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown
+          UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         # No generated Swift symbols for the catalog: BrandTokens is the one way
         # to a colour, and token names such as "primary" would meet SwiftUI's.
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: "NO"
@@ -119,7 +125,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(SPJALL_NSE_BUNDLE_ID)
-        TARGETED_DEVICE_FAMILY: "1"
+        # The app's own families, so notifications are handled on every device
+        # the app runs on.
+        TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: "YES"
         INFOPLIST_FILE: NotificationService/Info.plist
         CODE_SIGN_ENTITLEMENTS: NotificationService/NotificationService.entitlements
