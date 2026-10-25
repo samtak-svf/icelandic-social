@@ -12,6 +12,10 @@
 // 4. A job that reads a secret runs on a hosted runner, never on a runner a
 //    variable names: those are our own machines (samtak-mac), and no secret
 //    reaches them (docs/testing.md, "Where CI runs").
+// 5. No `nohup`: under the launchd runner on samtak-mac it has no terminal to
+//    detach from, so it exits ("can't detach from console") without starting
+//    the command. `(trap '' HUP; exec …) &` ignores SIGHUP the same way and
+//    works on every runner (web/scripts/e2e.sh).
 //
 // Line-based on purpose: the rules are about single lines, and the guard stays
 // dependency-free like the others (tooling/lib/repo.mjs).
@@ -28,26 +32,53 @@ const RUNS_ON = /^\s*runs-on:\s*(.+)$/;
 const FORK_FALLBACK = /github\.event\.pull_request\.head\.repo\.fork\s*&&/;
 const TARGET = /^\s*pull_request_target\s*:|\bpull_request_target\b\s*[\],]/;
 const JOB = /^ {2}[\w-]+:\s*$/;
+const NOHUP = /(?:^|[\s;&|(])nohup\s/;
 const SECRET = /\bsecrets\.(?!GITHUB_TOKEN\b)\w+/;
 
 /**
- * @typedef {{ file: string, line: number, rule: "pin" | "fork-runner" | "trigger" | "secret-runner", message: string }} Problem
+ * @typedef {{ file: string, line: number, rule: "pin" | "fork-runner" | "trigger" | "secret-runner" | "nohup", message: string }} Problem
  */
 
 /**
- * The rules that each line answers on its own: pin, fork-runner, trigger.
+ * The remote action a `uses:` line names without a SHA pin and its tag.
+ * @param {string} code
+ * @returns {string | undefined}
+ */
+function unpinnedAction(code) {
+  const uses = USES.exec(code);
+  const ref = uses?.[1];
+  if (!ref || ref.startsWith("./") || ref.startsWith("docker://")) return undefined;
+  if (PINNED.test(ref) && TAG_COMMENT.test(uses[2] ?? "")) return undefined;
+  return ref.split("@")[0];
+}
+
+/** Lines refused by their text alone. */
+const BANNED = [
+  {
+    rule: /** @type {const} */ ("trigger"),
+    pattern: TARGET,
+    message: "pull_request_target is not allowed",
+  },
+  {
+    rule: /** @type {const} */ ("nohup"),
+    pattern: NOHUP,
+    message: "nohup exits on the launchd runner; use (trap '' HUP; exec …) &",
+  },
+];
+
+/**
+ * The rules that each line answers on its own: pin, fork-runner, trigger, nohup.
  * @param {string} code a line with its comment removed
  * @returns {{ rule: Problem["rule"], message: string }[]}
  */
 function lineProblems(code) {
   /** @type {{ rule: Problem["rule"], message: string }[]} */
   const found = [];
-  const uses = USES.exec(code);
-  const remote = uses?.[1] && !uses[1].startsWith("./") && !uses[1].startsWith("docker://");
-  if (uses?.[1] && remote && (!PINNED.test(uses[1]) || !TAG_COMMENT.test(uses[2] ?? ""))) {
+  const unpinned = unpinnedAction(code);
+  if (unpinned) {
     found.push({
       rule: "pin",
-      message: `pin ${uses[1].split("@")[0]} to a commit SHA with its tag in a comment`,
+      message: `pin ${unpinned} to a commit SHA with its tag in a comment`,
     });
   }
   const runsOn = RUNS_ON.exec(code)?.[1];
@@ -57,9 +88,8 @@ function lineProblems(code) {
       message: "a runner variable needs the hosted fallback for fork PRs",
     });
   }
-  if (TARGET.test(code)) {
-    found.push({ rule: "trigger", message: "pull_request_target is not allowed" });
-  }
+  for (const { rule, pattern, message } of BANNED)
+    if (pattern.test(code)) found.push({ rule, message });
   return found;
 }
 
@@ -120,7 +150,7 @@ function main() {
   for (const p of problems) console.error(`::error file=${p.file},line=${p.line}::${p.message}`);
   if (problems.length > 0) process.exit(1);
   console.log(
-    "✓ workflows pin every action by SHA and keep fork PRs and secrets off the org runners",
+    "✓ workflows pin every action by SHA, keep fork PRs and secrets off the org runners, and use no nohup",
   );
 }
 
