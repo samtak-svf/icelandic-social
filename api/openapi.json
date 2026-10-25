@@ -347,7 +347,7 @@
         "properties": {
           "error": {
             "type": "string",
-            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, pin_limit, poll_closed, invalid_media, muted, expired, incomplete, internal_error",
+            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, pin_limit, poll_closed, anonymous_off, invalid_media, muted, expired, incomplete, internal_error",
             "example": "unauthorized"
           },
           "requestId": {
@@ -1631,6 +1631,14 @@
             ],
             "description": "How many open reports wait; null unless the caller moderates the community"
           },
+          "anonymousPosts": {
+            "type": "boolean",
+            "description": "Members may post without their name, for a moderator's approval (decision 0091)"
+          },
+          "pendingAnonymous": {
+            "type": "integer",
+            "description": "How many anonymous posts wait for approval; 0 unless the caller moderates"
+          },
           "photo": {
             "type": [
               "string",
@@ -1708,6 +1716,8 @@
           "joinDeclinedUntil",
           "pendingJoinRequests",
           "openReports",
+          "anonymousPosts",
+          "pendingAnonymous",
           "photo",
           "cover",
           "photoFrames",
@@ -1732,7 +1742,23 @@
             "example": "c_9f3a1b"
           },
           "author": {
-            "$ref": "#/components/schemas/Author"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Author"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null on an anonymous post to every reader but its author (decision 0091): no account id, name, picture, mark or role. The author sees their own byline, with `mine`"
+          },
+          "anonymous": {
+            "type": "boolean",
+            "description": "Posted without the author's name (decision 0091)"
+          },
+          "mine": {
+            "type": "boolean",
+            "description": "The caller wrote it"
           },
           "body": {
             "type": "string"
@@ -1804,10 +1830,11 @@
             "type": "string",
             "enum": [
               "visible",
+              "pending",
               "hidden",
               "removed"
             ],
-            "description": "Only a moderator sees what is not visible: hidden or removed by a moderator"
+            "description": "`pending`: an anonymous post waiting for a moderator's approval (decision 0091); only its author and the moderators see it. Otherwise only a moderator sees what is not visible: hidden or removed by a moderator"
           },
           "poll": {
             "$ref": "#/components/schemas/Poll"
@@ -1821,6 +1848,8 @@
           "postId",
           "communityId",
           "author",
+          "anonymous",
+          "mine",
           "body",
           "media",
           "createdAt",
@@ -2215,7 +2244,15 @@
                 ]
               },
               "author": {
-                "$ref": "#/components/schemas/Author"
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Author"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Null on an anonymous post (decision 0091)"
               },
               "excerpt": {
                 "type": "string",
@@ -2656,6 +2693,10 @@
             ],
             "description": "Who closed it; null while open, when the community's deletion did, or once deleted"
           },
+          "targetAnonymous": {
+            "type": "boolean",
+            "description": "The reported post is anonymous (decision 0091): `targetAccount` and `targetStanding` are null, and a moderator may reveal the author with POST /v1/posts/{postId}/reveal"
+          },
           "targetStanding": {
             "type": [
               "string",
@@ -2680,6 +2721,7 @@
             ],
             "enum": [
               "visible",
+              "pending",
               "hidden",
               "removed",
               "gone",
@@ -2710,6 +2752,7 @@
           "decision",
           "resolution",
           "closedBy",
+          "targetAnonymous",
           "targetStanding",
           "targetState",
           "targetMedia"
@@ -2789,7 +2832,10 @@
               "remove_community_cover",
               "pin_post",
               "unpin_post",
-              "close_poll"
+              "close_poll",
+              "anonymous_posts_on",
+              "anonymous_posts_off",
+              "reveal_author"
             ]
           },
           "target": {
@@ -7400,6 +7446,10 @@
                       "private"
                     ],
                     "description": "open: every signed-in account reads it and joins at once; private: only members read it, and joining takes a moderator's approval or an invitation"
+                  },
+                  "anonymousPosts": {
+                    "type": "boolean",
+                    "description": "Let members post without their name (decision 0091); every such post waits for a moderator's approval. A change is logged"
                   }
                 }
               }
@@ -9778,6 +9828,11 @@
                     "maxItems": 4,
                     "default": []
                   },
+                  "anonymous": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Without the author's name (decision 0091): only where the community allows it, and it waits for a moderator's approval before anyone else sees it"
+                  },
                   "poll": {
                     "type": "object",
                     "properties": {
@@ -9845,6 +9900,16 @@
           },
           "404": {
             "description": "not_found: no such community the caller can see",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "anonymous_off: the community does not allow anonymous posts",
             "content": {
               "application/json": {
                 "schema": {
@@ -11382,6 +11447,342 @@
           },
           "404": {
             "description": "not_found: no such comment the caller can see",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/communities/{communityId}/anonymous": {
+      "get": {
+        "operationId": "listPendingAnonymousPosts",
+        "tags": [
+          "moderation"
+        ],
+        "summary": "The anonymous posts waiting for approval, newest first",
+        "description": "Each post has a null author, as every reader but its author sees it: approving does not reveal (decision 0091).",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "communityId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,16}(-[A-Za-z0-9_-]{1,160})?$",
+              "description": "The `next` of the page before"
+            },
+            "required": false,
+            "description": "The `next` of the page before",
+            "name": "before",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: only the community's owner and moderators, and Samtak's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such community the caller can see",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/posts/{postId}/approve": {
+      "post": {
+        "operationId": "approveAnonymousPost",
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Publish an anonymous post",
+        "description": "The post appears in the community's feed as of now, still without its author. Nobody is told, and the author is not revealed.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "p_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+            },
+            "required": true,
+            "name": "postId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Published"
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: only the community's owner and moderators, and Samtak's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such post the caller can see",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/posts/{postId}/decline": {
+      "post": {
+        "operationId": "declineAnonymousPost",
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Decline an anonymous post",
+        "description": "Deletes the post and tells its author, and nobody else, that it was not published.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "p_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+            },
+            "required": true,
+            "name": "postId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Declined and deleted"
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: only the community's owner and moderators, and Samtak's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such post the caller can see",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/posts/{postId}/reveal": {
+      "post": {
+        "operationId": "revealAuthor",
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Reveal the author of an anonymous post",
+        "description": "For the community's owner and moderators, and Samtak's. The moderation log gets an entry naming who revealed, never whom (decision 0091).",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "p_3f9a1b2c3d4e5f60718293a4b5c6d7e8"
+            },
+            "required": true,
+            "name": "postId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The author",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Author"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: only the community's owner and moderators, and Samtak's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such post the caller can see",
             "content": {
               "application/json": {
                 "schema": {

@@ -16,6 +16,7 @@ import { fail } from "../../errors.ts";
 import { log } from "../../log.ts";
 import { moderates, standing } from "../communities/index.ts";
 import { act, actor } from "./actions.ts";
+import { anonymousRoutes } from "./anonymous.ts";
 import { entry, logPage } from "./log.ts";
 import { closePoll } from "./polls.ts";
 import { setPostPin } from "./pins.ts";
@@ -25,6 +26,8 @@ import { closing, fileReport, isPlatformModerator, openReport, reportPage } from
 // counts, never a report's note or a reason (0008).
 
 export function moderationRoutes(app: OpenAPIHono<AppEnv>): void {
+  anonymousRoutes(app);
+
   for (const [route, on] of [
     [pinPostRoute, true],
     [unpinPostRoute, false],

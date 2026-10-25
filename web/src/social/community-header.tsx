@@ -25,7 +25,10 @@ export function CommunityBar({
   const { communityId } = community;
   const navigate = useNavigate();
   const moderates = community.role === "owner" || community.role === "moderator";
-  const waiting = (community.openReports ?? 0) + (community.pendingJoinRequests ?? 0);
+  const waiting =
+    (community.openReports ?? 0) +
+    (community.pendingJoinRequests ?? 0) +
+    community.pendingAnonymous;
   const [problem, setProblem] = useState<Problem | null>(null);
 
   async function leave() {

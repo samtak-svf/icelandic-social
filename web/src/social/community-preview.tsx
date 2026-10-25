@@ -36,6 +36,8 @@ export function draftCommunity(draft: Draft): Community {
     lastPostAt: null,
     pinned: false,
     featured: [],
+    anonymousPosts: false,
+    pendingAnonymous: 0,
   };
 }
 

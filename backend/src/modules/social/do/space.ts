@@ -10,9 +10,11 @@ import {
   latestComments,
   listComments,
 } from "./comment-reads.ts";
+import { ensureAnonymousColumn, publish } from "./anonymous.ts";
 import * as polls from "./polls.ts";
 import { featured, pinPost } from "./pins.ts";
-import { REMOVED_KEPT_MS, SCHEMA } from "./space-schema.ts";
+import { type PostRow, REMOVED_KEPT_MS, SCHEMA } from "./space-schema.ts";
+import { sweepRemoved } from "./removed.ts";
 
 export type { CommentContent, CommentRecord, ContentState, Viewer } from "./comment-reads.ts";
 
@@ -35,9 +37,10 @@ export type PostContent = {
   latestComment: CommentContent | null;
   /** Present on a poll (decision 0090). */
   poll?: polls.PollView;
+  /** Posted without the author's name (decision 0091); the author stays here for the Worker. */
+  anonymous: boolean;
 };
 
-type PostRow = { post_id: string; author: string; body: string; media: string; created_at: number };
 /**
  * One space's content (decisions 0060, 0063): its posts, the comments on
  * them and one reaction per account on each. It is hosted, not encrypted:
@@ -51,6 +54,7 @@ export class Space extends DurableObject<Env> {
     super(ctx, env);
     this.sql = ctx.storage.sql;
     this.sql.exec(SCHEMA);
+    ensureAnonymousColumn(this.sql);
     // The space made before decision 0071 lacks the replay column: it is
     // added in place, as a repair on open, whatever its history (0050).
     const columns = this.sql.exec<{ name: string }>("PRAGMA table_info(comments)").toArray();
@@ -81,15 +85,18 @@ export class Space extends DurableObject<Env> {
     createdAt: number;
     /** The texts of a poll's options, in order (decision 0090). */
     poll?: string[];
+    /** Without the author's name for readers (decision 0091). */
+    anonymous?: boolean;
   }): void {
     this.ctx.storage.transactionSync(() => {
       this.sql.exec(
-        "INSERT OR IGNORE INTO posts (post_id, author, body, media, created_at) VALUES (?, ?, ?, ?, ?)",
+        "INSERT OR IGNORE INTO posts (post_id, author, body, media, created_at, anonymous) VALUES (?, ?, ?, ?, ?, ?)",
         input.postId,
         input.author,
         input.body,
         JSON.stringify(input.media),
         input.createdAt,
+        input.anonymous ? 1 : 0,
       );
       polls.addOptions(this.sql, input.postId, input.poll ?? []);
     });
@@ -166,6 +173,7 @@ export class Space extends DurableObject<Env> {
           myReaction: mine.get(id) ?? null,
           commentCount: comments.get(id) ?? 0,
           latestComment: latest.get(id) ?? null,
+          anonymous: row.anonymous === 1,
           ...(pollOf.has(id) ? { poll: pollOf.get(id) } : {}),
         },
       ];
@@ -202,6 +210,11 @@ export class Space extends DurableObject<Env> {
       .toArray()
       .filter((p) => p.body.toLowerCase().includes(wanted))
       .map((p) => p.post_id);
+  }
+
+  /** Dates an approved anonymous post at the approval (decision 0091). */
+  publishPost(postId: string, at: number): void {
+    publish(this.sql, postId, at);
   }
 
   /** Deletes a post with its comments and reactions. */
@@ -371,19 +384,8 @@ export class Space extends DurableObject<Env> {
    * visible reply goes with it, and the alarm never waits on it.
    */
   async alarm(): Promise<void> {
-    const now = Date.now();
-    const kept = "state = 'removed' AND moderated_at <= ? AND author != ''";
-    this.sql.exec(`DELETE FROM comments WHERE ${kept}`, now - REMOVED_KEPT_MS);
-    this.sql.exec(
-      "DELETE FROM comment_reactions WHERE comment_id NOT IN (SELECT comment_id FROM comments)",
-    );
-    const next = this.sql
-      .exec<{ at: number | null }>(
-        `SELECT MIN(moderated_at) AS at FROM comments WHERE ${kept}`,
-        now - REMOVED_KEPT_MS,
-      )
-      .one().at;
-    if (next !== null) await this.ctx.storage.setAlarm(next + REMOVED_KEPT_MS);
+    const next = sweepRemoved(this.sql, Date.now());
+    if (next !== null) await this.ctx.storage.setAlarm(next);
   }
 
   /** Sets, replaces or (with null) removes `account`'s reaction; false when the post is not here. */

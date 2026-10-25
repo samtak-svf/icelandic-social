@@ -81,6 +81,18 @@ function ManageNav({ community }: Readonly<{ community: Community }>) {
         {strings.join_requests_title}
         <Waiting count={community.pendingJoinRequests} />
       </Link>
+      {/* Shown while the community takes anonymous posts, or while any still waits (0091). */}
+      {(community.anonymousPosts || community.pendingAnonymous > 0) && (
+        <Link
+          to="/communities/$communityId/anonymous"
+          params={{ communityId }}
+          className={item}
+          activeProps={active}
+        >
+          {strings.anonymous_queue_title}
+          <Waiting count={community.pendingAnonymous} />
+        </Link>
+      )}
       <Link
         to="/communities/$communityId/reports"
         params={{ communityId }}

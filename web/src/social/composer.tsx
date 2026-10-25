@@ -191,11 +191,16 @@ export function CommentComposer({
  * A new post: its text, its images, or both. The images are checked when
  * chosen and uploaded when the post is published, then named in it.
  */
-function PostForm({ communityId, posted }: Readonly<{ communityId: string; posted: () => void }>) {
+function PostForm({
+  communityId,
+  posted,
+  anonymousAllowed,
+}: Readonly<{ communityId: string; posted: () => void; anonymousAllowed: boolean }>) {
   const id = useId();
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [poll, setPoll] = useState<string[] | null>(null);
+  const [anonymous, setAnonymous] = useState(false);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | keyof typeof REFUSED | null>(null);
   const path = { communityId };
@@ -225,6 +230,7 @@ function PostForm({ communityId, posted }: Readonly<{ communityId: string; poste
           body: text.trim(),
           media,
           ...(poll === null ? {} : { poll: { options: pollOptions(poll) } }),
+          ...(anonymousAllowed && anonymous ? { anonymous: true } : {}),
         },
       }),
       200,
@@ -243,6 +249,7 @@ function PostForm({ communityId, posted }: Readonly<{ communityId: string; poste
       setText("");
       setFiles([]);
       setPoll(null);
+      setAnonymous(false);
       posted();
     }
   }
@@ -282,6 +289,21 @@ function PostForm({ communityId, posted }: Readonly<{ communityId: string; poste
             </li>
           ))}
         </ul>
+      )}
+      {anonymousAllowed && (
+        <label className="flex min-h-11 items-center gap-2">
+          <input
+            type="checkbox"
+            role="switch"
+            checked={anonymous}
+            disabled={busy}
+            onChange={(event) => setAnonymous(event.target.checked)}
+          />
+          <span className="flex flex-col">
+            <span className="font-semibold">{strings.composer_anonymous}</span>
+            <span className="text-sm text-muted-fg">{strings.composer_anonymous_hint}</span>
+          </span>
+        </label>
       )}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <label
@@ -336,7 +358,8 @@ function PostForm({ communityId, posted }: Readonly<{ communityId: string; poste
 export function PostComposer({
   communityId,
   posted,
-}: Readonly<{ communityId: string; posted: () => void }>) {
+  anonymousAllowed = false,
+}: Readonly<{ communityId: string; posted: () => void; anonymousAllowed?: boolean }>) {
   const { state } = useAccount();
   const [open, setOpen] = useState(false);
   return (
@@ -384,6 +407,7 @@ export function PostComposer({
         <Dialog title={strings.post_compose} onClose={() => setOpen(false)}>
           <PostForm
             communityId={communityId}
+            anonymousAllowed={anonymousAllowed}
             posted={() => {
               setOpen(false);
               posted();

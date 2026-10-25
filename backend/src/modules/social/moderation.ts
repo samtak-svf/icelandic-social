@@ -16,13 +16,16 @@ export type Content = {
   postId: string;
   authorId: string;
   state: ContentState;
+  /** 1 for an anonymous post (decision 0091); a comment is never anonymous. */
+  anonymous: number;
 };
 
 /** A post's place and author, whatever its state; null when there is none. */
 export async function postContent(env: Env, postId: string): Promise<Content | null> {
   return db(env)
     .prepare(
-      `SELECT community_id AS communityId, post_id AS postId, author_id AS authorId, state
+      `SELECT community_id AS communityId, post_id AS postId, author_id AS authorId, state,
+              anonymous
          FROM post_index WHERE post_id = ?`,
     )
     .bind(postId)
@@ -36,7 +39,13 @@ export async function commentContent(env: Env, commentId: string): Promise<Conte
   const post = postId ? await postContent(env, postId) : null;
   const comment = post && (await space(env, post.communityId).comment(commentId));
   return comment && post
-    ? { communityId: post.communityId, postId, authorId: comment.author, state: comment.state }
+    ? {
+        communityId: post.communityId,
+        postId,
+        authorId: comment.author,
+        state: comment.state,
+        anonymous: 0,
+      }
     : null;
 }
 

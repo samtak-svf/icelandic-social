@@ -16,7 +16,9 @@ export type IndexedPost = {
   communityId: string;
   authorId: string;
   createdAt: number;
-  state: "visible" | "hidden" | "removed";
+  state: "visible" | "pending" | "hidden" | "removed";
+  /** 1 for an anonymous post (decision 0091): its author is named to no reader but the author. */
+  anonymous: number;
 };
 
 /**
@@ -62,6 +64,10 @@ export function refusal(access: SpaceAccess, now = Date.now()): Refusal | null {
 /**
  * Why `access` may not reply to `post` (comment, react), or null when it may:
  * only a visible post takes replies, and nobody replies across a block (0063).
+ * An anonymous post is the exception: a refusal would tell a moderator, who
+ * reads across blocks, that a block stands between them and its author. The
+ * block still holds, because the author sees neither the reply nor a notice of
+ * it (0091).
  */
 export function replyRefusal(
   access: SpaceAccess,
@@ -70,12 +76,17 @@ export function replyRefusal(
   const refused = refusal(access);
   if (refused) return refused;
   if (post.state !== "visible") return "not_permitted";
+  if (post.anonymous === 1) return null;
   return access.between.includes(post.authorId) ? "blocked" : null;
 }
 
-/** Whether the post is one this access sees: visible, or any to a moderator, and no block. */
+/**
+ * Whether the post is one this access sees: visible, or any to a moderator,
+ * and no block. Its author also sees their own post waiting for approval (0091).
+ */
 function sees(access: SpaceAccess, post: IndexedPost): boolean {
-  if (post.state !== "visible" && !access.moderator) return false;
+  const own = post.state === "pending" && post.authorId === access.viewer.account;
+  if (post.state !== "visible" && !access.moderator && !own) return false;
   return !access.viewer.hidden.includes(post.authorId);
 }
 
@@ -88,7 +99,7 @@ export async function postAccess(
   const post = await db(env)
     .prepare(
       `SELECT post_id AS postId, community_id AS communityId, author_id AS authorId,
-              created_at AS createdAt, state
+              created_at AS createdAt, state, anonymous
          FROM post_index WHERE post_id = ?`,
     )
     .bind(postId)

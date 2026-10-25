@@ -38,7 +38,13 @@ async function placeOf(
   switch (kind) {
     case "post": {
       const found = await postAccess(env, reporter, id);
-      return found && { communityId: found.post.communityId, targetAccount: found.post.authorId };
+      // An anonymous post's report keeps no author: a moderator reveals it, logged (0091).
+      return (
+        found && {
+          communityId: found.post.communityId,
+          targetAccount: found.post.anonymous === 1 ? null : found.post.authorId,
+        }
+      );
     }
     case "comment": {
       const found = await commentAccess(env, reporter, id);
@@ -132,6 +138,19 @@ async function stateOf(env: Env, r: Row): Promise<(typeof TARGET_STATES)[number]
   return content?.state ?? "gone";
 }
 
+/** Which of the posts `ids` are anonymous. */
+async function anonymousPosts(env: Env, ids: string[]): Promise<Set<string>> {
+  if (ids.length === 0) return new Set();
+  const { results } = await db(env)
+    .prepare(
+      `SELECT post_id FROM post_index
+        WHERE anonymous = 1 AND post_id IN (SELECT value FROM json_each(?))`,
+    )
+    .bind(JSON.stringify(ids))
+    .all<{ post_id: string }>();
+  return new Set(results.map((r) => r.post_id));
+}
+
 /** A page of a queue, oldest first: a community's, or with null Samtak's. */
 export async function reportPage(
   env: Env,
@@ -174,6 +193,10 @@ export async function reportPage(
     env,
     page.filter((r) => r.target_kind === "comment").map((r) => r.target_id),
   );
+  const anonymous = await anonymousPosts(
+    env,
+    page.filter((r) => r.target_kind === "post").map((r) => r.target_id),
+  );
   const last = page.at(-1);
   return {
     reports: await Promise.all(
@@ -182,6 +205,7 @@ export async function reportPage(
         communityId: r.community_id,
         target: { kind: r.target_kind, id: r.target_id },
         targetAccount: named(r.target_account),
+        targetAnonymous: anonymous.has(r.target_id),
         reason: r.reason,
         note: r.note,
         state: r.state,
@@ -190,7 +214,10 @@ export async function reportPage(
         decision: r.decision,
         resolution: r.resolution,
         closedBy: named(r.closed_by),
-        targetStanding: await standingOf(env, r, known(r.target_account)),
+        // An anonymous post's author stands nowhere a report shows (decision 0091).
+        targetStanding: anonymous.has(r.target_id)
+          ? null
+          : await standingOf(env, r, known(r.target_account)),
         targetState: await stateOf(env, r),
         // A comment's report carries its image, so the moderator sees it (decision 0082).
         targetMedia: (media.get(r.target_id) ?? []).map((m) => m.mediaId),

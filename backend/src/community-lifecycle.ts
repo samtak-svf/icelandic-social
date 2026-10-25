@@ -1,5 +1,5 @@
 import type { LifecycleHooks } from "./modules/communities/index.ts";
-import { imageRecord, lifecycleRecord } from "./modules/moderation/index.ts";
+import { anonymousRecord, imageRecord, lifecycleRecord } from "./modules/moderation/index.ts";
 import { forgetCommunity } from "./modules/notifications/index.ts";
 import { dropSpace, featuredFor } from "./modules/social/index.ts";
 
@@ -16,5 +16,6 @@ export const communityLifecycle: LifecycleHooks = {
   },
   record: lifecycleRecord,
   recordImage: imageRecord,
+  recordAnonymous: anonymousRecord,
   featured: featuredFor,
 };

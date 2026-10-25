@@ -20,6 +20,8 @@ const post = (p: Poll): Post => ({
   postId: "p1",
   communityId: "cm1",
   author: { accountId: "a1", name: "Höfundur", verified: false, photo: null, role: null },
+  anonymous: false,
+  mine: false,
   body: "Á að funda?",
   media: [],
   createdAt: 1,

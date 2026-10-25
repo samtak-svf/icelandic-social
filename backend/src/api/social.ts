@@ -39,6 +39,11 @@ const State = z.enum(["visible", "hidden", "removed"]).openapi({
   description: "Only a moderator sees what is not visible: hidden or removed by a moderator",
 });
 
+const PostState = z.enum(["visible", "pending", "hidden", "removed"]).openapi({
+  description:
+    "`pending`: an anonymous post waiting for a moderator's approval (decision 0091); only its author and the moderators see it. Otherwise only a moderator sees what is not visible: hidden or removed by a moderator",
+});
+
 export const Author = z
   .object({
     accountId: OpaqueId,
@@ -83,7 +88,15 @@ export const Post = z
   .object({
     postId: PostId,
     communityId: CommunityId,
-    author: Author,
+    // A union, not `.nullable()` plus `.openapi()`, as `latestComment` below.
+    author: z.union([Author, z.null()]).openapi({
+      description:
+        "Null on an anonymous post to every reader but its author (decision 0091): no account id, name, picture, mark or role. The author sees their own byline, with `mine`",
+    }),
+    anonymous: z.boolean().openapi({
+      description: "Posted without the author's name (decision 0091)",
+    }),
+    mine: z.boolean().openapi({ description: "The caller wrote it" }),
     body: z.string(),
     media: z.array(Media),
     createdAt: z.int().openapi({ description: "Unix milliseconds" }),
@@ -96,7 +109,7 @@ export const Post = z
     // null when there is none (decision 0080). A union, not `.nullable()`
     // plus `.openapi()`: those rewrite the shared Comment schema as nullable everywhere.
     latestComment: z.union([Comment, z.null()]),
-    state: State,
+    state: PostState,
     poll: Poll.optional().openapi({
       description: "Present when the post is a poll (decision 0090)",
     }),
@@ -114,12 +127,12 @@ export const Cursor = z
   .regex(/^\d{1,16}(-[A-Za-z0-9_-]{1,160})?$/)
   .openapi({ description: "The `next` of the page before" });
 
-const page = {
+export const page = {
   before: Cursor.optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 };
 
-const PostPage = z
+export const PostPage = z
   .object({
     posts: z.array(Post),
     next: z.string().nullable().openapi({
@@ -138,7 +151,7 @@ export const json = <T extends z.ZodType>(description: string, schema: T) => ({
   content: { "application/json": { schema } },
 });
 
-const NO_POST = { 404: errorResponse("not_found: no such post the caller can see") };
+export const NO_POST = { 404: errorResponse("not_found: no such post the caller can see") };
 export const NO_COMMUNITY = {
   404: errorResponse("not_found: no such community the caller can see"),
 };
@@ -174,6 +187,10 @@ export const createPostRoute = createRoute({
           schema: z.object({
             body: z.string().trim().max(5000).default(""),
             media: z.array(MediaId).max(MAX_POST_MEDIA).default([]),
+            anonymous: z.boolean().default(false).openapi({
+              description:
+                "Without the author's name (decision 0091): only where the community allows it, and it waits for a moderator's approval before anyone else sees it",
+            }),
             poll: z
               .object({
                 options: z
@@ -196,6 +213,7 @@ export const createPostRoute = createRoute({
     400: errorResponse(
       "invalid_request: neither a text nor an image, or a poll with no question, repeated options or an image; invalid_media: an image that is not the caller's upload to this community, or is already in a post",
     ),
+    409: errorResponse("anonymous_off: the community does not allow anonymous posts"),
     ...AUTHED,
     ...MEMBERS_POST,
     ...NO_COMMUNITY,

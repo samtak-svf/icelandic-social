@@ -77,3 +77,13 @@ export const SCHEMA = `
     closed_at INTEGER NOT NULL
   );
 `;
+
+/** A post as stored in the space. */
+export type PostRow = {
+  post_id: string;
+  author: string;
+  body: string;
+  media: string;
+  created_at: number;
+  anonymous: number;
+};

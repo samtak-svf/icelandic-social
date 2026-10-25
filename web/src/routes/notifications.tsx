@@ -60,7 +60,10 @@ function text(n: Notification): string {
     comment: () => strings.notice_comment({ name }),
     reaction: () => strings.notice_reaction({ name }),
     join_approved: () => strings.notice_join_approved,
-    moderated: () => strings.notice_moderated,
+    moderated: () =>
+      n.action === "decline_anonymous_post"
+        ? strings.notice_anonymous_declined
+        : strings.notice_moderated,
   }[n.kind]();
 }
 

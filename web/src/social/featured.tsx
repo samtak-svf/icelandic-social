@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { Post } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { Avatar } from "./avatar.tsx";
-import { authorName } from "./post.tsx";
+import { postByline } from "./post.tsx";
 import { useMediaSrc } from "./viewer.tsx";
 
 // A community's featured posts (decision 0088): up to three cards, newest pin
@@ -20,9 +20,9 @@ function Thumb({ post }: Readonly<{ post: Post }>) {
   return (
     <Avatar
       kind="person"
-      id={post.author.accountId}
-      name={post.author.name}
-      photo={first === undefined ? post.author.photo : null}
+      id={post.anonymous ? "anonymous" : (post.author?.accountId ?? "")}
+      name={post.anonymous ? null : (post.author?.name ?? null)}
+      photo={first === undefined && !post.anonymous ? (post.author?.photo ?? null) : null}
       className="size-16 shrink-0 rounded-md text-xl"
     />
   );
@@ -39,7 +39,7 @@ function FeaturedCard({ post }: Readonly<{ post: Post }>) {
       <Thumb post={post} />
       <span className="flex min-w-0 flex-col gap-1">
         <span className="line-clamp-3 break-words">{post.body}</span>
-        <span className="truncate text-sm text-muted-fg">{authorName(post.author)}</span>
+        <span className="truncate text-sm text-muted-fg">{postByline(post)}</span>
       </span>
     </Link>
   );

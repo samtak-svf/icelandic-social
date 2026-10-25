@@ -681,4 +681,48 @@ export const strings = {
   image_frames_reset: "Nota sjálfvirka afmörkun",
   /** The image has no stored master to frame again, so it must be uploaded again (docs/decisions/0086). */
   image_frames_no_master: "Settu myndina inn aftur til að breyta afmörkun",
+  /** The composer's switch to post without the author's name; shown only in a community that allows it (decision 0091). */
+  composer_anonymous: "Birta nafnlaust",
+  /** Explains the anonymous switch in the composer (decision 0091). */
+  composer_anonymous_hint: "Stjórnandi fer yfir færsluna áður en hún birtist. Stjórnandi getur afhjúpað höfundinn.",
+  /** The owner's switch in Breyta samfélagi that lets members post without their name (decision 0091). */
+  community_anonymous_posts: "Nafnlausar færslur",
+  /** Explains the community switch for anonymous posts (decision 0091). */
+  community_anonymous_posts_hint: "Færslur eru yfirfarnar af stjórnanda áður en þær birtast. Stjórnandi getur afhjúpað höfundinn.",
+  /** The byline of an anonymous post, for everyone but its author (decision 0091). */
+  post_anonymous_author: "Nafnlaus meðlimur",
+  /** The author's own byline on their anonymous post (decision 0091). */
+  post_anonymous_mine: "Þú · nafnlaust",
+  /** Marks the author's own anonymous post while it waits for a moderator (decision 0091). */
+  post_pending: "Bíður samþykkis stjórnanda.",
+  /** Title of the page and link where moderators review anonymous posts (decision 0091). */
+  anonymous_queue_title: "Nafnlausar færslur",
+  /** How many anonymous posts wait, as the link to the list (decision 0091). */
+  anonymous_queue_waiting: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " nafnlaus færsla bíður"
+      : String(args.count) + " nafnlausar færslur bíða",
+  /** The anonymous queue when it is empty (decision 0091). */
+  anonymous_queue_empty: "Engin nafnlaus færsla bíður.",
+  /** Approves a waiting anonymous post (decision 0091). */
+  anonymous_approve: "Birta",
+  /** Declines a waiting anonymous post; the author is told (decision 0091). */
+  anonymous_decline: "Hafna",
+  /** A moderator asks for the author of an anonymous post; the community's log records it (decision 0091). */
+  anonymous_reveal: "Sýna höfund",
+  /** Confirmation before revealing the author of an anonymous post (decision 0091). */
+  anonymous_reveal_confirm: "Sýna höfund? Aðgerðin er skráð í aðgerðaskrá samfélagsins.",
+  /** The author of an anonymous post, shown to the moderator who revealed it (decision 0091). */
+  anonymous_revealed: (args: { name: string }): string =>
+    "Höfundur: " + args.name,
+  /** Posting anonymously in a community whose switch is off (decision 0091). */
+  problem_anonymous_off: "Þetta samfélag leyfir ekki nafnlausar færslur.",
+  /** Entry in the moderation log: the owner turned anonymous posts on (decision 0091). */
+  moderation_log_anonymous_on: "Nafnlausar færslur voru leyfðar.",
+  /** Entry in the moderation log: the owner turned anonymous posts off (decision 0091). */
+  moderation_log_anonymous_off: "Nafnlausar færslur voru bannaðar.",
+  /** Entry in the moderation log: a moderator revealed an anonymous post's author (decision 0091). */
+  moderation_log_author_revealed: "Höfundur nafnlausrar færslu var sýndur.",
+  /** A notification: a moderator declined the reader's anonymous post (decision 0091). */
+  notice_anonymous_declined: "Stjórnandi hafnaði nafnlausri færslu frá þér.",
 } as const;

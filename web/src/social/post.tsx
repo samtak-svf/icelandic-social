@@ -80,12 +80,45 @@ export function DeleteButton({
 }
 
 /** The mark on content only a moderator sees, or nothing. */
-export function StateMark({ state }: Readonly<{ state: "visible" | "hidden" | "removed" }>) {
+export function StateMark({ state }: Readonly<{ state: Post["state"] }>) {
   if (state === "visible") return null;
+  if (state === "pending") return <p className="text-sm font-semibold">{strings.post_pending}</p>;
   return (
     <p className="text-sm font-semibold text-danger">
       {state === "hidden" ? strings.content_hidden : strings.content_removed}
     </p>
+  );
+}
+
+/** The name a post shows: an anonymous one never carries the author's (decision 0091). */
+export function postByline(post: Post): string {
+  if (post.anonymous)
+    return post.mine ? strings.post_anonymous_mine : strings.post_anonymous_author;
+  return authorName(post.author);
+}
+
+/** The author's picture, or the neutral one of an anonymous post. */
+function PostPicture({ post }: Readonly<{ post: Post }>) {
+  const shown = post.anonymous ? null : post.author;
+  return (
+    <Avatar
+      kind="person"
+      id={post.anonymous ? "anonymous" : (shown?.accountId ?? "")}
+      name={shown?.name ?? null}
+      photo={shown?.photo ?? null}
+      className="size-10 rounded-full"
+    />
+  );
+}
+
+/** The byline: name, mark and role, or the anonymous wording. */
+function PostName({ post }: Readonly<{ post: Post }>) {
+  if (post.anonymous) return <span className="font-semibold">{postByline(post)}</span>;
+  return (
+    <>
+      <AuthorName author={post.author} />
+      <RoleBadge role={post.author?.role ?? null} />
+    </>
   );
 }
 
@@ -109,23 +142,16 @@ export function PostView({
   const reactions = useReactions(post);
   return (
     <article
-      aria-label={authorName(post.author)}
+      aria-label={postByline(post)}
       className="flex flex-col gap-2 rounded-md border border-border p-4"
     >
       <StateMark state={post.state} />
       {post.pinned && <PinnedMark />}
       <header className="flex items-start gap-3">
-        <Avatar
-          kind="person"
-          id={post.author.accountId}
-          name={post.author.name}
-          photo={post.author.photo}
-          className="size-10 rounded-full"
-        />
+        <PostPicture post={post} />
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <AuthorName author={post.author} />
-            <RoleBadge role={post.author.role} />
+            <PostName post={post} />
           </span>
           <span className="flex flex-wrap items-center gap-x-2 text-sm text-muted-fg">
             <time dateTime={new Date(post.createdAt).toISOString()} title={when(post.createdAt)}>
@@ -373,7 +399,7 @@ function PostMenu({
 }
 
 /** A post's images, up to four, two to a row when there are several; pressing one opens the viewer. */
-function Images({ postId, media }: Readonly<{ postId: string; media: SocialMedia[] }>) {
+export function Images({ postId, media }: Readonly<{ postId: string; media: SocialMedia[] }>) {
   const { open, viewer } = useViewer();
   const items: ViewerItem[] = media.map((m, i) => ({
     postId,

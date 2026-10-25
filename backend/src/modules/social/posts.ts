@@ -18,7 +18,11 @@ const FEED_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type Post = Omit<PostContent, "author" | "latestComment"> & {
   communityId: string;
-  author: Author;
+  /** Null on an anonymous post to every reader but its author (decision 0091). */
+  author: Author | null;
+  anonymous: boolean;
+  /** The viewer wrote it. */
+  mine: boolean;
   latestComment: (Omit<CommentContent, "author"> & { author: Author; media: MediaRef[] }) | null;
   state: IndexedPost["state"];
   /** The community's moderators pinned it to the top of its feed (decision 0080). */
@@ -73,14 +77,24 @@ export async function render(
   ]);
   return rows.flatMap((row) => {
     const content = contents.get(row.postId);
-    const author = content && names.get(bylineKey(content.author, content.communityId));
-    if (!content || !author) return [];
+    if (!content) return [];
+    const mine = row.authorId === viewer.account;
+    // The one place an anonymous post loses its byline (decision 0091): to
+    // every reader but its author, whoever else asks, a moderator included.
+    const anonymous = row.anonymous === 1;
+    const author =
+      anonymous && !mine
+        ? null
+        : (names.get(bylineKey(content.author, content.communityId)) ?? null);
+    if (!author && !(anonymous && !mine)) return [];
     const latest = content.latestComment;
     const latestAuthor = latest && names.get(bylineKey(latest.author, content.communityId));
     return [
       {
         ...content,
         author,
+        anonymous,
+        mine,
         // A comment whose author is gone is left out, as the comment list leaves it.
         latestComment:
           latest && latestAuthor
@@ -94,7 +108,7 @@ export async function render(
 }
 
 const INDEXED = `p.post_id AS postId, p.community_id AS communityId, p.author_id AS authorId,
-       p.created_at AS createdAt, p.state`;
+       p.created_at AS createdAt, p.state, p.anonymous`;
 
 /** A cursor: the last post's time and id, or only a time to read before. */
 export function parseCursor(cursor: string | undefined): { t: number; id: string | null } | null {
@@ -261,19 +275,30 @@ export async function createPost(
   env: Env,
   communityId: string,
   author: string,
-  input: { body: string; media: string[]; poll?: string[] },
+  input: { body: string; media: string[]; poll?: string[]; anonymous?: boolean },
 ): Promise<(Omit<PostContent, "latestComment"> & { latestComment: null }) | "invalid_media"> {
   const media = await unattached(env, communityId, author, input.media);
   if (!media) return "invalid_media";
   const postId = newPostId();
   const createdAt = Date.now();
+  // An anonymous post waits for a moderator's approval (decision 0091) and
+  // moves the community's unread count then, so a reader cannot tell it was written.
+  const anonymous = input.anonymous === true;
   await db(env).batch([
-    ...notePost(env, communityId, author, createdAt),
+    ...(anonymous ? [] : notePost(env, communityId, author, createdAt)),
     db(env)
       .prepare(
-        "INSERT INTO post_index (post_id, community_id, author_id, created_at) VALUES (?, ?, ?, ?)",
+        `INSERT INTO post_index (post_id, community_id, author_id, created_at, state, anonymous)
+         VALUES (?, ?, ?, ?, ?, ?)`,
       )
-      .bind(postId, communityId, author, createdAt),
+      .bind(
+        postId,
+        communityId,
+        author,
+        createdAt,
+        anonymous ? "pending" : "visible",
+        anonymous ? 1 : 0,
+      ),
     db(env)
       .prepare(
         `UPDATE social_media SET post_id = ?1
@@ -285,7 +310,7 @@ export async function createPost(
       .bind(communityId, author),
   ]);
   const content = { postId, author, body: input.body, media, createdAt };
-  await space(env, communityId).createPost({ ...content, poll: input.poll });
+  await space(env, communityId).createPost({ ...content, poll: input.poll, anonymous });
   // Its author sees a new poll's counts at once, all of them none (decision 0090).
   const poll = input.poll && {
     options: input.poll.map((text, i) => ({ optionId: optionId(i), text, votes: 0 })),
@@ -295,6 +320,7 @@ export async function createPost(
   };
   return {
     ...content,
+    anonymous,
     reactions: [],
     myReaction: null,
     commentCount: 0,

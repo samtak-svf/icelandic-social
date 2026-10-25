@@ -15,6 +15,7 @@ import { strings } from "../generated/brand/strings.ts";
 import { ManageFrame } from "../social/manage-frame.tsx";
 import { outcome, useLoad, when } from "../social/outcome.ts";
 import { AuthorName, authorName } from "../social/post.tsx";
+import { RevealAuthor } from "../social/reveal-author.tsx";
 import { verbs } from "../social/verbs.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 
@@ -183,6 +184,23 @@ function useCards(reports: Report[]): Map<string, Card> {
 
 type Action = Parameters<typeof moderate>[0]["body"]["action"];
 
+/** The reported content, with its author unless the post is anonymous (decision 0091). */
+function Quoted({ report, card }: Readonly<{ report: Report; card: Card | undefined }>) {
+  if (!card || card.kind === "unavailable" || card.kind === "community") return null;
+  return (
+    <blockquote className="rounded-md bg-muted p-3">
+      <p>
+        {report.targetAnonymous ? (
+          <span className="font-semibold">{strings.post_anonymous_author}</span>
+        ) : (
+          <AuthorName author={card.author} />
+        )}
+      </p>
+      <p className="whitespace-pre-wrap">{card.excerpt}</p>
+    </blockquote>
+  );
+}
+
 function ReportItem({
   report,
   card,
@@ -249,13 +267,9 @@ function ReportItem({
       </header>
       {report.note !== "" && <p className="whitespace-pre-wrap">{report.note}</p>}
       {!open && <Decision report={report} />}
-      {card && card.kind !== "unavailable" && card.kind !== "community" && (
-        <blockquote className="rounded-md bg-muted p-3">
-          <p>
-            <AuthorName author={card.author} />
-          </p>
-          <p className="whitespace-pre-wrap">{card.excerpt}</p>
-        </blockquote>
+      <Quoted report={report} card={card} />
+      {report.targetAnonymous && isContent(target) && target.kind === "post" && (
+        <RevealAuthor postId={target.id} />
       )}
       <label htmlFor={`${id}-reason`}>{strings.report_reason}</label>
       <input

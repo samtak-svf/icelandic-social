@@ -44,6 +44,17 @@ export const COMMUNITY_PIN_ACTIONS = ["pin_post", "unpin_post"] as const;
 /** What the log records of a poll a moderator closed (decision 0090). */
 export const COMMUNITY_POLL_ACTIONS = ["close_poll"] as const;
 
+/**
+ * What the log records of anonymous posts (decision 0091): the owner's
+ * switch and a moderator's reveal of an author. Neither names the author;
+ * the reveal names who revealed.
+ */
+export const COMMUNITY_ANONYMOUS_ACTIONS = [
+  "anonymous_posts_on",
+  "anonymous_posts_off",
+  "reveal_author",
+] as const;
+
 /** How a report was closed: the action taken on its target, none, or its community deleted. */
 const DECISIONS = [
   ...(Object.keys(ACTIONS) as [Action, ...Action[]]),
@@ -63,7 +74,7 @@ export const TARGET_STANDINGS = [
 ] as const;
 
 /** What has become of the post or comment a report is about. */
-export const TARGET_STATES = ["visible", "hidden", "removed", "gone"] as const;
+export const TARGET_STATES = ["visible", "pending", "hidden", "removed", "gone"] as const;
 
 const CreatedAt = z.int().openapi({ description: "Unix milliseconds" });
 const Target = z
@@ -93,6 +104,10 @@ const Report = z
     closedBy: z.union([Author, z.null()]).openapi({
       description:
         "Who closed it; null while open, when the community's deletion did, or once deleted",
+    }),
+    targetAnonymous: z.boolean().openapi({
+      description:
+        "The reported post is anonymous (decision 0091): `targetAccount` and `targetStanding` are null, and a moderator may reveal the author with POST /v1/posts/{postId}/reveal",
     }),
     targetStanding: z.enum(TARGET_STANDINGS).nullable().openapi({
       description:
@@ -130,6 +145,7 @@ const LogEntry = z
       ...COMMUNITY_IMAGE_ACTIONS,
       ...COMMUNITY_PIN_ACTIONS,
       ...COMMUNITY_POLL_ACTIONS,
+      ...COMMUNITY_ANONYMOUS_ACTIONS,
     ]),
     target: z.object({ kind: z.enum([...REPORT_KINDS, "report"]), id: OpaqueId }),
     targetAccount: z.union([Author, z.null()]),

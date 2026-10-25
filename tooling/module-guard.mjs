@@ -90,6 +90,16 @@ export const READS = [
   },
   {
     module: "communities",
+    table: "post_index",
+    why: "a moderator's count of the anonymous posts that wait for approval (decision 0091)",
+  },
+  {
+    module: "moderation",
+    table: "post_index",
+    why: "the log and a report never name the author of an anonymous post (decision 0091)",
+  },
+  {
+    module: "communities",
     table: "accounts",
     why: "only a verified account creates a community, and members are listed by name (decision 0063)",
   },

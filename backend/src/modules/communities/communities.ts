@@ -38,6 +38,10 @@ export type Standing = {
   pendingJoinRequests: number | null;
   /** How many open reports wait; null unless the viewer moderates. */
   openReports: number | null;
+  /** Members may post without their name, for a moderator's approval (decision 0091). */
+  anonymousPosts: boolean;
+  /** How many anonymous posts wait for approval; 0 unless the viewer moderates. */
+  pendingAnonymous: number;
   /** The picture's version (decision 0080), or null when it has none. */
   photo: string | null;
   /** The cover's version (decision 0080), or null when it has none. */
@@ -70,7 +74,7 @@ export const DECLINED_MS = 30 * DAY_MS;
 // ?1 is the viewer in every query that uses these.
 const COLUMNS = `c.community_id, c.name, c.description, c.audience, c.created_at,
        c.read_only_since, c.deleted_at, c.purged_at, c.photo_version, c.cover_version,
-       c.photo_frames, c.cover_frames,
+       c.photo_frames, c.cover_frames, c.anonymous_posts,
        m.role, m.muted_until,
        CASE WHEN m.role IS NOT NULL
             THEN MAX(0, c.post_seq - COALESCE((SELECT x.read_seq FROM community_reads x
@@ -96,6 +100,11 @@ const COLUMNS = `c.community_id, c.name, c.description, c.audience, c.created_at
                    WHERE r.community_id = c.community_id AND r.state = 'open'
                      AND r.to_platform = 0)
        END AS open_reports,
+       CASE WHEN m.role IN ('owner', 'moderator')
+            THEN (SELECT COUNT(*) FROM post_index q
+                   WHERE q.community_id = c.community_id AND q.state = 'pending'
+                     AND q.anonymous = 1)
+            ELSE 0 END AS pending_anonymous,
        EXISTS (SELECT 1 FROM community_invitations i
                 WHERE i.community_id = c.community_id AND i.account_id = ?1) AS invited,
        CASE WHEN c.audience = 'open' OR m.role IS NOT NULL
@@ -119,6 +128,8 @@ type Row = {
   cover_version: string | null;
   photo_frames: string | null;
   cover_frames: string | null;
+  anonymous_posts: number;
+  pending_anonymous: number;
   unread: number;
   last_post_at: number | null;
   pinned_at: number | null;
@@ -157,6 +168,8 @@ function standingOf(row: Row): Standing {
         : null,
     pendingJoinRequests: row.pending,
     openReports: row.open_reports,
+    anonymousPosts: row.anonymous_posts === 1,
+    pendingAnonymous: row.pending_anonymous,
     photo: row.photo_version,
     cover: row.cover_version,
     photoFrames: parseFraming(row.photo_frames),
@@ -271,6 +284,8 @@ export async function createCommunity(
     joinDeclinedUntil: null,
     pendingJoinRequests: 0,
     openReports: 0,
+    anonymousPosts: false,
+    pendingAnonymous: 0,
     photo: null,
     cover: null,
     photoFrames: null,
@@ -333,23 +348,29 @@ export async function communitiesOf(env: Env, viewer: string): Promise<Standing[
 export async function updateCommunity(
   env: Env,
   communityId: string,
-  change: { name?: string; description?: string; audience?: Audience },
+  change: { name?: string; description?: string; audience?: Audience; anonymousPosts?: boolean },
+  /** Statements written in the same batch, such as the log's entry for the switch. */
+  also: D1PreparedStatement[] = [],
 ): Promise<void> {
-  await db(env)
-    .prepare(
-      `UPDATE communities
+  await db(env).batch([
+    db(env)
+      .prepare(
+        `UPDATE communities
           SET name = COALESCE(?2, name), name_key = COALESCE(?3, name_key),
-              description = COALESCE(?4, description), audience = COALESCE(?5, audience)
+              description = COALESCE(?4, description), audience = COALESCE(?5, audience),
+              anonymous_posts = COALESCE(?6, anonymous_posts)
         WHERE community_id = ?1`,
-    )
-    .bind(
-      communityId,
-      change.name ?? null,
-      change.name === undefined ? null : nameKey(change.name),
-      change.description ?? null,
-      change.audience ?? null,
-    )
-    .run();
+      )
+      .bind(
+        communityId,
+        change.name ?? null,
+        change.name === undefined ? null : nameKey(change.name),
+        change.description ?? null,
+        change.audience ?? null,
+        change.anonymousPosts === undefined ? null : change.anonymousPosts ? 1 : 0,
+      ),
+    ...also,
+  ]);
 }
 
 /**

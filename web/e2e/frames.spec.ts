@@ -1,21 +1,12 @@
 import type { Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
-import { layoutOf } from "../src/ui/layout.ts";
 import { png } from "./images.ts";
 import { expect, test } from "./origin.ts";
-import { found, manage, person } from "./social-helpers.ts";
+import { found, manageDetails, person } from "./social-helpers.ts";
 
 // The crop sheet (decision 0086) at the three window size classes: a cover
 // offers the quiet link to the advanced panel and never opens it by itself, a
 // picture does not offer it at all.
-
-async function manageDetails(page: Page) {
-  await manage(page);
-  // Beside the side navigation of an expanded window the details start open (decision 0087).
-  if (layoutOf(page.viewportSize()!.width).manage === "one-screen") {
-    await page.locator("summary", { hasText: strings.community_edit }).click();
-  }
-}
 
 async function choose(page: Page, label: string) {
   const image = { name: "mynd.png", mimeType: "image/png", buffer: await png(page) };
