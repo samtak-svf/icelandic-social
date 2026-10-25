@@ -70,6 +70,14 @@ else
   done
 fi
 
+# The AVD keeps its data between boots, so an app left installed by a run that
+# was killed keeps its store too, and a half-written one fails every later run.
+# Each run starts from no app at all.
+app=$(node -p "require('$ROOT/identifiers/ids.json').store.androidApplicationId")
+for package in "$app" "$app.test"; do
+  adb uninstall "$package" >/dev/null 2>&1 || true
+done
+
 # Results of an earlier run on this Mac would otherwise count toward this one.
 results="$ANDROID/app/build/outputs/androidTest-results/connected"
 rm -rf "$results"

@@ -3,6 +3,9 @@ package samtak.spjall.crypto
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import java.io.File
+import java.io.FileOutputStream
+import java.nio.channels.FileChannel
+import java.nio.file.StandardOpenOption
 import java.security.KeyStore
 import java.security.SecureRandom
 import javax.crypto.Cipher
@@ -28,10 +31,16 @@ class StoreKey(
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, wrappingKey())
         val wrapped = cipher.iv + cipher.doFinal(key)
-        // Write then rename, so a crash never leaves half a key behind.
+        // Write, sync, then rename, so a crash never leaves half a key behind.
+        // Without the sync the rename can reach the disk before the bytes do,
+        // and a power cut leaves an empty store.key that nothing can unwrap.
         val partial = File(file.parentFile, "${file.name}.partial")
-        partial.writeBytes(wrapped)
+        FileOutputStream(partial).use { out ->
+            out.write(wrapped)
+            out.fd.sync()
+        }
         check(partial.renameTo(file)) { "could not store the wrapped key" }
+        FileChannel.open(file.parentFile.toPath(), StandardOpenOption.READ).use { it.force(true) }
         return key
     }
 
