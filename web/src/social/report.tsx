@@ -2,7 +2,7 @@ import { useId, useState, type FormEvent } from "react";
 import type { Problem } from "../problem.ts";
 import { report, type ReportTarget } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { Button, ProblemText, Status } from "../ui/kit.tsx";
+import { Button, type ButtonTone, ProblemText, Status } from "../ui/kit.tsx";
 import { outcome } from "./outcome.ts";
 
 // Reporting a post or comment to the moderators (decision 0066). Unlawful
@@ -17,13 +17,16 @@ const REASONS = [
 ] as const;
 type Reason = (typeof REASONS)[number][0];
 
-export function ReportButton({ target }: Readonly<{ target: ReportTarget }>) {
+export function ReportButton({
+  target,
+  tone = "quiet",
+}: Readonly<{ target: ReportTarget; tone?: ButtonTone }>) {
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
   if (sent) return <Status>{strings.report_sent}</Status>;
   if (!open) {
     return (
-      <Button className="text-sm" onClick={() => setOpen(true)}>
+      <Button tone={tone} className="text-sm" onClick={() => setOpen(true)}>
         {strings.report}
       </Button>
     );
