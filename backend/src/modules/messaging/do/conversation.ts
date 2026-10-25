@@ -2,6 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 import { inbox } from "../../../env/index.ts";
 import { log } from "../../../log.ts";
 import { within } from "../../../within.ts";
+import { deleteGroupPhoto } from "../group-photos.ts";
 import { copyRoster, dropRoster } from "../rosters.ts";
 import { SCHEMA } from "./conversation-schema.ts";
 
@@ -427,6 +428,8 @@ export class Conversation extends DurableObject<Env> {
     });
     if (this.members().length) return;
     await dropRoster(this.env, meta.conversationId);
+    // The conversation ended: its photo goes with it (decision 0094).
+    await deleteGroupPhoto(this.env, meta.conversationId);
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
     this.schema();

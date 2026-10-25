@@ -12,7 +12,7 @@ test("a comment carries one image, alone or with text, opened in the viewer", as
   await found(owner, "open");
   await write(owner, strings.post_compose, strings.post_publish, "Mynd í athugasemd.");
   await post(owner, "Mynd í athugasemd.")
-    .getByRole("link", { name: strings.post_comments({ count: 0 }) })
+    .getByRole("link", { name: strings.post_comment_action, exact: true })
     .click();
 
   // An image alone enables send; a second is not offered; remove takes it back.

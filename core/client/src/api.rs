@@ -1742,6 +1742,42 @@ impl<T: Transport + ?Sized> Api<'_, T> {
         Self::checked(self.transport.download(request, to)?).map(drop)
     }
 
+    /// `putGroupPhoto` (0094): the sealed picture at `file`, under a new id;
+    /// the server keeps this one for the conversation and drops the last.
+    pub fn put_group_photo(
+        &self,
+        conversation: &str,
+        id: &str,
+        file: &Path,
+    ) -> Result<(), ApiError> {
+        let request = self.request(
+            Method::Put,
+            format!("/v1/conversations/{conversation}/photo/{id}"),
+            None,
+        );
+        Self::checked(self.transport.upload(request, file)?).map(drop)
+    }
+
+    /// `getGroupPhoto` (0094): the sealed picture, written to `to`.
+    pub fn get_group_photo(&self, conversation: &str, id: &str, to: &Path) -> Result<(), ApiError> {
+        let request = self.request(
+            Method::Get,
+            format!("/v1/conversations/{conversation}/photo/{id}"),
+            None,
+        );
+        Self::checked(self.transport.download(request, to)?).map(drop)
+    }
+
+    /// `deleteGroupPhoto` (0094): the conversation has no photo.
+    pub fn delete_group_photo(&self, conversation: &str) -> Result<(), ApiError> {
+        self.send(
+            Method::Delete,
+            format!("/v1/conversations/{conversation}/photo"),
+            None,
+        )
+        .map(drop)
+    }
+
     /// `getDeviceLinkRequest` (0064): the pending link request `link`.
     pub fn get_device_link_request(&self, link: &str) -> Result<DeviceLinkRequestInfo, ApiError> {
         self.call(

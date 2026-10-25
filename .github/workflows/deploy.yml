@@ -49,9 +49,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # The chat worker's core (decision 0081): the pinned build, checksum-verified.
-      - name: Toolchain
-        working-directory: core
-        run: rustup toolchain install
+      - uses: ./.github/actions/rust-toolchain
       - name: Core for the web (pinned, checksum-verified)
         working-directory: core
         run: cargo xtask fetch web

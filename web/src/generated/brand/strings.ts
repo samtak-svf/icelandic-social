@@ -16,8 +16,16 @@ export const strings = {
   conversations_pick: "Veldu samtal úr listanum.",
   /** Placeholder of the name search at the top of the new-conversation picker (docs/decisions/0036). */
   people_search: "Leita að nafni",
+  /** Banner in a conversation this account was removed from; the conversation is read-only (docs/decisions/0022). */
+  conversation_removed_banner: "Þú ert ekki lengur í þessu samtali.",
+  /** Banner in a conversation no other account is in any more, as a 1:1 after a block; nothing can be sent there (docs/decisions/0024). */
+  conversation_alone_banner: "Aðeins þú ert eftir í þessu samtali.",
   /** Title of a conversation no other account is in any more; a conversation is otherwise titled by its members (docs/decisions/0022). */
   conversation_alone_title: "Aðeins þú",
+  /** Banner in a conversation the server refuses this device for; read-only until the next try (docs/decisions/0020, 0022). */
+  conversation_excluded_banner: "Þetta tæki fær ekki aðgang að samtalinu eins og er. Reynt verður aftur.",
+  /** Banner while this device rejoins a conversation it fell behind in (docs/decisions/0021, 0022). */
+  conversation_stale_banner: "Samtalið er að tengjast aftur. Það gæti vantað skilaboð sem bárust á meðan.",
   /** Share your own invite link or QR code (docs/decisions/0009). */
   invite: "Bjóða",
   /** Empty message composer. */
@@ -57,6 +65,8 @@ export const strings = {
   /** System card in a 1:1 when the other account leaves it, as on a block; member_removed_card says the same of a group (docs/decisions/0022). */
   member_removed_card_direct: (args: { name: string }): string =>
     args.name + " er ekki lengur í samtalinu.",
+  /** Explains that a new device sees only messages sent after it joined (docs/decisions/0006). */
+  history_device_local_notice: "Ný tæki sjá aðeins skilaboð sem berast eftir að þau tengjast. Eldri skilaboð eru áfram á tækjunum sem tóku við þeim.",
   /** A location message (docs/decisions/0059): the attach menu's choice, the card's heading, the conversation list's last line, a quote of one and a notification. Never the place itself. */
   location: "Staðsetning",
   /** Stands in for an account whose name the server has not given, in titles and rows (docs/decisions/0022). */
@@ -578,6 +588,8 @@ export const strings = {
   /** System card when a member clears the group's name (docs/decisions/0078). */
   name_cleared_card: (args: { who: string }): string =>
     args.who + " fjarlægði nafn hópsins.",
+  /** Banner shown in a conversation the user has left (docs/decisions/0078). */
+  left_banner: "Þú hefur yfirgefið þennan hóp.",
   /** Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080). */
   community_picture_choose: "Velja mynd samfélagsins",
   /** Button that removes a community's picture (decision 0080). */

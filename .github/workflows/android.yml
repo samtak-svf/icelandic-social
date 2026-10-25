@@ -54,9 +54,7 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Toolchain
-        working-directory: core
-        run: rustup toolchain install
+      - uses: ./.github/actions/rust-toolchain
 
       - name: Core (pinned, checksum-verified)
         working-directory: core
@@ -100,9 +98,7 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Toolchain
-        working-directory: core
-        run: rustup toolchain install
+      - uses: ./.github/actions/rust-toolchain
 
       - name: Core (pinned, checksum-verified)
         working-directory: core

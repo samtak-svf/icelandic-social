@@ -69,9 +69,7 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Toolchain
-        working-directory: core
-        run: rustup toolchain install
+      - uses: ./.github/actions/rust-toolchain
 
       - name: Core (pinned ${{ steps.lock.outputs.version }})
         working-directory: core

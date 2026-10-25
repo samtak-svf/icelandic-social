@@ -93,7 +93,7 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
   // The owner comments on it.
   await owner.goto(community);
   await post(owner, "Tómatarnir")
-    .getByRole("link", { name: strings.post_comments({ count: 0 }) })
+    .getByRole("link", { name: strings.post_comment_action, exact: true })
     .click();
   await write(owner, strings.comment_compose, strings.comment_publish, "Glæsilegt!");
   await expect(owner.getByText("Glæsilegt!")).toBeVisible();
@@ -188,7 +188,7 @@ test("a member posts images, deletes a comment and the post, and withdraws a joi
   await owner.keyboard.press("Escape");
 
   // The member comments, then deletes the comment and the post, after confirming.
-  await mine.getByRole("link", { name: strings.post_comments({ count: 0 }) }).click();
+  await mine.getByRole("link", { name: strings.post_comment_action, exact: true }).click();
   await write(member, strings.comment_compose, strings.comment_publish, "Gleymdi einu.");
   const comment = post(member, "Gleymdi einu.");
   member.once("dialog", (dialog) => void dialog.accept());
@@ -390,7 +390,7 @@ test("renders the shell while /v1/me waits, fits a 390px screen on /communities,
 
   await member.goto(community);
   await post(member, "Póstur á litlum skjá.")
-    .getByRole("link", { name: strings.post_comments({ count: 0 }) })
+    .getByRole("link", { name: strings.post_comment_action, exact: true })
     .click();
   await expect(member.getByRole("heading", { level: 1, name: strings.post_title })).toBeAttached();
 });
@@ -412,7 +412,7 @@ test("a comment is liked and replied to through the one-row composer", async ({ 
   const community = await found(owner, "open");
   await write(owner, strings.post_compose, strings.post_publish, "Umræðuefni dagsins.");
   await post(owner, "Umræðuefni dagsins.")
-    .getByRole("link", { name: strings.post_comments({ count: 0 }) })
+    .getByRole("link", { name: strings.post_comment_action, exact: true })
     .click();
 
   // The box is one row: the send button waits for text.

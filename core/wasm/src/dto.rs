@@ -133,6 +133,9 @@ pub enum Content {
     Name {
         name: Option<String>,
     },
+    Photo {
+        set: bool,
+    },
     Post {
         post_id: String,
     },
@@ -183,6 +186,7 @@ impl From<core::Content> for Content {
             },
             C::Timer { seconds } => Self::Timer { seconds },
             C::Name { name } => Self::Name { name },
+            C::Photo { set } => Self::Photo { set },
             C::Post { post_id } => Self::Post { post_id },
             C::Location {
                 lat_e6,
@@ -258,6 +262,7 @@ pub struct Conversation {
     pub id: String,
     pub state: State,
     pub name: Option<String>,
+    pub photo: Option<String>,
     pub members: Vec<Person>,
     pub last: Option<Item>,
     pub unread: u32,
@@ -271,6 +276,9 @@ impl From<core::Conversation> for Conversation {
             id: conversation.id,
             state: conversation.state.into(),
             name: conversation.name,
+            photo: conversation
+                .photo
+                .map(|path| path.to_string_lossy().into_owned()),
             members: people(conversation.members),
             last: conversation.last.map(Into::into),
             unread: conversation.unread,
