@@ -31,6 +31,13 @@ export default defineConfig({
   test: {
     include: ["test/**/*.test.ts"],
     setupFiles: ["./test/setup.ts"],
+    // Every expect.poll here waits for a Durable Object alarm that fires on
+    // its own, so the default 1 s is a guess that istanbul instrumentation on
+    // a loaded runner can miss. A poll that passes returns on its first
+    // success, so the budget costs nothing when the state arrives. The test
+    // timeout must exceed it, or it is the 5 s default that cuts a poll short.
+    expect: { poll: { timeout: 10_000, interval: 50 } },
+    testTimeout: 15_000,
     // `pnpm coverage` turns this on; the workers pool supports istanbul, not v8.
     // tooling/coverage-floor.mjs reads the summary (docs/testing.md).
     coverage: {
