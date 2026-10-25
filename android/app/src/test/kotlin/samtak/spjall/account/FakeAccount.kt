@@ -1,12 +1,12 @@
 package samtak.spjall.account
 
 import samtak.spjall.core.AccountDevice
-import samtak.spjall.core.DeviceKind
 import samtak.spjall.core.Body
 import samtak.spjall.core.Content
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.ConversationState
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.DeviceKind
 import samtak.spjall.core.Frame
 import samtak.spjall.core.Framing
 import samtak.spjall.core.Inviter

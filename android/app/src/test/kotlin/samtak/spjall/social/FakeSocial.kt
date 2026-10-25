@@ -546,8 +546,11 @@ class FakeSocial : Social {
         return refs.map { ref ->
             when (ref.kind) {
                 CardKind.POST ->
-                    posts.values.flatten().firstOrNull { it.postId == ref.id }?.let {
-                        Card.Post(ref, CardCommunity(it.communityId, "K"), it.author, it.body, null, it.createdAt)
+                    posts.values.flatten().firstOrNull { it.postId == ref.id }?.let { post ->
+                        post.author?.let { author ->
+                            val community = CardCommunity(post.communityId, "K")
+                            Card.Post(ref, community, author, post.body, null, post.createdAt)
+                        }
                     }
                 CardKind.COMMENT ->
                     comments.values.flatten().firstOrNull { it.commentId == ref.id }?.let {
