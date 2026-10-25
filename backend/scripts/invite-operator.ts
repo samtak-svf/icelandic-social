@@ -10,12 +10,13 @@
 //
 // Runs under plain `node`, like scripts/openapi.ts.
 
+import { devOrigin } from "../dev-origin.ts";
 import { OPERATOR_INVITE_PATH, operatorInvite } from "./operator-invite.ts";
 
 export { operatorInvite };
 
 /** The origin `cf dev` serves on. */
-const DEV_ORIGIN = "http://127.0.0.1:8787";
+const DEV_ORIGIN = devOrigin();
 
 if (import.meta.main) {
   const where = process.argv.find((a) => a === "--local" || a === "--remote");

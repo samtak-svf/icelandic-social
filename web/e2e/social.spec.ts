@@ -13,15 +13,12 @@ import {
   post,
   write,
 } from "./social-helpers.ts";
-import { expect, test, WEB } from "./origin.ts";
+import { DEV, expect, test, WEB } from "./origin.ts";
 
 // The first social slice on the web (#291), through what a person sees: a
 // member finds and joins a community, posts, comments, reacts, is told of a
 // comment and reports a post; the owner, the community's moderator, reviews
 // the report and hides the post, and its author is told.
-
-/** Where `cf dev` listens, for its dev-only paths. */
-const DEV = process.env.SPJALL_DEV_URL ?? "http://127.0.0.1:8787";
 
 /** Runs the jobs that are due, as the minute cron would (backend/dev/worker.ts). */
 async function runJobs() {

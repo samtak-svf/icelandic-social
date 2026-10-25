@@ -85,8 +85,9 @@ jobs:
           retention-days: 7
 
   device:
-    # Port 8787 and the AVD are one per machine, so this job takes the lane of
-    # the single runner that holds them (EXCLUSIVE_RUNNER_LABELS, docs/testing.md).
+    # The AVD is one per machine (and the emulator reaches the dev Worker at
+    # 10.0.2.2:8787), so this job takes the lane of the single runner that
+    # holds them (EXCLUSIVE_RUNNER_LABELS, docs/testing.md).
     # On a hosted Linux runner the emulator needs KVM; on the Mac it is the
     # arm64 AVD android/scripts/test.sh boots, the script mac-remote.mjs runs.
     runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.EXCLUSIVE_RUNNER_LABELS || '["ubuntu-latest"]') }}

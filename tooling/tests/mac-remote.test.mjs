@@ -13,7 +13,7 @@ describe("parseArgs", () => {
   });
 
   it("names the web e2e as a task", () => {
-    expect(parseArgs(["web"]).command).toBe("web/scripts/e2e.sh --prepare");
+    expect(parseArgs(["web"]).command).toBe("CI=1 web/scripts/e2e.sh --prepare");
   });
 
   it("takes a host, a directory and a command after --", () => {

@@ -90,4 +90,27 @@ describe("workflow-guard", () => {
     const component = job("    steps:\n      - run: rustup component add llvm-tools-preview\n");
     expect(findInWorkflow("w.yml", component)).toEqual([]);
   });
+
+  it("rejects a fixed dev Worker port, which two jobs on one machine would fight over", () => {
+    for (const host of ["127.0.0.1", "localhost"]) {
+      const text = job(`    steps:\n      - run: curl -sf http://${host}:8787/health\n`);
+      expect(findInWorkflow("w.yml", text).map((p) => [p.line, p.rule])).toEqual([
+        [5, "fixed-port"],
+      ]);
+    }
+    const free = job('    steps:\n      - run: curl -sf "$SPJALL_DEV_URL/health"\n');
+    expect(findInWorkflow("w.yml", free)).toEqual([]);
+    // The emulator's fixed address is not the host's port.
+    const emulator = job("    steps:\n      - run: echo http://10.0.2.2:8787\n");
+    expect(findInWorkflow("w.yml", emulator)).toEqual([]);
+  });
+
+  it("keeps the exclusive runner lane to android.yml", () => {
+    const fork = "github.event.pull_request.head.repo.fork && '[\"ubuntu-latest\"]' || ";
+    const runsOn = `    runs-on: \${{ fromJSON(${fork}vars.EXCLUSIVE_RUNNER_LABELS || '["ubuntu-latest"]') }}\n`;
+    expect(findInWorkflow("w.yml", job(runsOn)).map((p) => [p.line, p.rule])).toEqual([
+      [4, "exclusive-lane"],
+    ]);
+    expect(findInWorkflow(".github/workflows/android.yml", job(runsOn))).toEqual([]);
+  });
 });

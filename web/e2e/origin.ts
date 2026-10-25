@@ -1,7 +1,7 @@
 import { test as base, type Page } from "@playwright/test";
 import ids from "../../identifiers/ids.json" with { type: "json" };
 
-/** Where `cf dev` listens. */
+/** Where `cf dev` listens: backend/scripts/dev-worker.sh exports its URL; 8787 when run by hand. */
 export const DEV = process.env.SPJALL_DEV_URL ?? "http://127.0.0.1:8787";
 
 /** The web's real origin, which the session cookie and its Origin check name. */
