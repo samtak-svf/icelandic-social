@@ -4,7 +4,7 @@
 
 export { checkSend } from "./conversations.ts";
 export { expireMedia, getMedia, MAX_CIPHERTEXT, putMedia } from "./media.ts";
-export { muteRoutes } from "./mutes.ts";
+export { mediaRoutes } from "./routes.ts";
 export type { ApnsKey } from "./push/apns.ts";
 export type { FcmAccount } from "./push/fcm.ts";
 export { type PushSender, pushSender } from "./push/index.ts";
