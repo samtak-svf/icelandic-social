@@ -208,7 +208,12 @@ private fun CommunityEntry(
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { model.load() }
     CommunityScreen(
         state,
-        object : CommunityActions {
+        slots =
+            ManageSlots(
+                requests = { JoinRequestsPane(id, social) },
+                reports = { ReportsPane(id, social) },
+            ),
+        actions = object : CommunityActions {
             override fun back() = back()
 
             override fun join() = model.join()
@@ -398,6 +403,31 @@ private fun PostEntry(
     )
 }
 
+/** Stjórna's join requests inside the community (an expanded window): the same view model as the screen's. */
+@Composable
+private fun JoinRequestsPane(
+    communityId: String,
+    social: Social,
+) {
+    val model: JoinRequestsViewModel =
+        viewModel(key = "requests-$communityId") { JoinRequestsViewModel(communityId, social) }
+    val state by model.state.collectAsStateWithLifecycle()
+    JoinRequestsBody(state, joinRequestsActions(model) { })
+}
+
+private fun joinRequestsActions(
+    model: JoinRequestsViewModel,
+    back: () -> Unit,
+) = object : JoinRequestsActions {
+    override fun back() = back()
+
+    override fun approve(accountId: String) = model.approve(accountId)
+
+    override fun decline(accountId: String) = model.decline(accountId)
+
+    override fun retry() = model.retry()
+}
+
 @Composable
 private fun JoinRequests(
     communityId: String,
@@ -408,18 +438,44 @@ private fun JoinRequests(
         viewModel(key = "requests-$communityId") { JoinRequestsViewModel(communityId, social) }
     val state by model.state.collectAsStateWithLifecycle()
     val back = rememberBack(nav)
-    JoinRequestsScreen(
-        state,
-        object : JoinRequestsActions {
-            override fun back() = back()
+    JoinRequestsScreen(state, joinRequestsActions(model, back))
+}
 
-            override fun approve(accountId: String) = model.approve(accountId)
+/** Stjórna's report queue inside the community (an expanded window): the same view model as the screen's. */
+@Composable
+private fun ReportsPane(
+    communityId: String,
+    social: Social,
+) {
+    val model: ReportsViewModel = viewModel(key = "reports-$communityId") { ReportsViewModel(communityId, social) }
+    val state by model.state.collectAsStateWithLifecycle()
+    ReportsBody(state, reportsActions(model) { })
+}
 
-            override fun decline(accountId: String) = model.decline(accountId)
+private fun reportsActions(
+    model: ReportsViewModel,
+    back: () -> Unit,
+) = object : ReportsActions {
+    override fun back() = back()
 
-            override fun retry() = model.retry()
-        },
-    )
+    override fun show(state: ReportState) = model.show(state)
+
+    override fun reason(
+        reportId: String,
+        text: String,
+    ) = model.reason(reportId, text)
+
+    override fun act(
+        report: Report,
+        verb: ReportsViewModel.Verb,
+    ) = model.act(report, verb)
+
+    override fun mute(
+        report: Report,
+        period: ReportsViewModel.MutePeriod,
+    ) = model.act(report, ReportsViewModel.Verb.Mute, period)
+
+    override fun retry() = model.retry()
 }
 
 @Composable
@@ -431,31 +487,7 @@ private fun Reports(
     val model: ReportsViewModel = viewModel(key = "reports-$communityId") { ReportsViewModel(communityId, social) }
     val state by model.state.collectAsStateWithLifecycle()
     val back = rememberBack(nav)
-    ReportsScreen(
-        state,
-        object : ReportsActions {
-            override fun back() = back()
-
-            override fun show(state: ReportState) = model.show(state)
-
-            override fun reason(
-                reportId: String,
-                text: String,
-            ) = model.reason(reportId, text)
-
-            override fun act(
-                report: Report,
-                verb: ReportsViewModel.Verb,
-            ) = model.act(report, verb)
-
-            override fun mute(
-                report: Report,
-                period: ReportsViewModel.MutePeriod,
-            ) = model.act(report, ReportsViewModel.Verb.Mute, period)
-
-            override fun retry() = model.retry()
-        },
-    )
+    ReportsScreen(state, reportsActions(model, back))
 }
 
 @Composable

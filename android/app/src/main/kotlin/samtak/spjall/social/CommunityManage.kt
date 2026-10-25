@@ -2,17 +2,24 @@ package samtak.spjall.social
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.layout.AnimatedPane
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
+import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldDestinationItem
+import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
+import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -20,7 +27,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,7 +42,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import samtak.spjall.brand.R
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
@@ -45,68 +50,90 @@ import samtak.spjall.core.CommunityRole
 import samtak.spjall.ui.CancelButton
 import samtak.spjall.ui.Palette
 
-/** The parts of Stjórna a wide window shows beside each other. */
-private enum class Section { EDIT, MEMBERS, LOG }
+/** The five parts of Stjórna, in the order of decision 0087. */
+internal enum class ManagePart { EDIT, REQUESTS, REPORTS, MEMBERS, LOG }
 
 /** The test tags of the two panes. */
 internal const val MANAGE_SECTIONS = "manage-sections"
 internal const val MANAGE_DETAIL = "manage-detail"
 
 /**
- * Stjórna on a wide window (decision 0087): the sections in a list on the left, the chosen one beside it. The
- * report queue and the join requests are screens of their own, so choosing one leaves for it as it does on a
- * narrow window; the edit form, the members and the log open here, in place.
+ * The two parts that have a screen and a view model of their own, drawn in the detail pane. The navigation graph
+ * supplies them (their view models are keyed to the community, so the pane and the screen share one).
  */
+internal class ManageSlots(
+    val requests: @Composable () -> Unit = {},
+    val reports: @Composable () -> Unit = {},
+)
+
+/**
+ * Stjórna on an expanded window (decision 0087): a list-detail layout whose list keeps its place with the counts
+ * on its items, and whose detail pane draws the part chosen. [onDelete] asks to delete the community, [onBack]
+ * leaves Stjórna for the community.
+ */
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-internal fun ManagePanes(
+internal fun ManagePage(
     community: Community,
     state: CommunityViewModel.State,
     actions: CommunityActions,
+    slots: ManageSlots,
     onDelete: () -> Unit,
-    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val owner = community.role == CommunityRole.OWNER
-    val first =
-        when {
-            owner -> Section.EDIT
-            community.moderates -> Section.LOG
-            else -> null
+    val parts =
+        buildList {
+            if (owner) add(ManagePart.EDIT)
+            if (community.moderates) {
+                add(ManagePart.REQUESTS)
+                add(ManagePart.REPORTS)
+            }
+            if (owner) add(ManagePart.MEMBERS)
+            if (community.moderates) add(ManagePart.LOG)
         }
-    var chosen by rememberSaveable { mutableStateOf(first) }
+    val navigator =
+        rememberListDetailPaneScaffoldNavigator<ManagePart>(
+            initialDestinationHistory =
+                listOfNotNull(parts.firstOrNull()).map {
+                    ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.Detail, it)
+                },
+        )
+    val scope = rememberCoroutineScope()
+    val chosen = navigator.currentDestination?.contentKey
     LaunchedEffect(chosen) {
         when (chosen) {
-            Section.MEMBERS -> actions.loadMembers()
-            Section.LOG -> actions.loadModerationLog()
+            ManagePart.MEMBERS -> actions.loadMembers()
+            ManagePart.LOG -> actions.loadModerationLog()
             else -> Unit
         }
     }
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = Palette.surface,
-            contentColor = Palette.fg,
-            modifier = Modifier.fillMaxWidth(WIDTH_FRACTION).widthIn(max = MAX_WIDTH.dp).heightIn(max = MAX_HEIGHT.dp),
-        ) {
-            Row {
-                SectionList(community, state.busy, chosen, onChoose = { chosen = it }, actions, onDelete, onDismiss)
-                SectionDetail(chosen, community, state, actions, Modifier.weight(1f))
+    NavigableListDetailPaneScaffold(
+        navigator = navigator,
+        modifier = modifier,
+        listPane = {
+            AnimatedPane {
+                SectionList(community, parts, state.busy, chosen, onDelete) { part ->
+                    scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, part) }
+                }
             }
-        }
-    }
+        },
+        detailPane = {
+            AnimatedPane { SectionDetail(chosen, community, state, actions, slots) }
+        },
+    )
 }
 
-/** The left pane: the report queue and the join requests, which leave for their own screens, then the sections. */
+/** The list pane: the parts with their counts, the one chosen marked, and deleting the community at the foot. */
 @Composable
 private fun SectionList(
     community: Community,
+    parts: List<ManagePart>,
     busy: Boolean,
-    chosen: Section?,
-    onChoose: (Section) -> Unit,
-    actions: CommunityActions,
+    chosen: ManagePart?,
     onDelete: () -> Unit,
-    onDismiss: () -> Unit,
+    onChoose: (ManagePart) -> Unit,
 ) {
-    val owner = community.role == CommunityRole.OWNER
     val waiting = community.pendingJoinRequests?.toInt() ?: 0
     val reports = community.openReports?.toInt() ?: 0
     Column(
@@ -121,38 +148,28 @@ private fun SectionList(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(stringResource(R.string.community_manage), style = MaterialTheme.typography.headlineSmall)
-        SectionItem(
-            if (reports > 0) {
-                "${stringResource(R.string.moderation_queue)} ($reports)"
-            } else {
-                stringResource(R.string.moderation_queue)
-            },
-            selected = false,
-        ) {
-            onDismiss()
-            actions.reports()
+        parts.forEach { part ->
+            val label =
+                when (part) {
+                    ManagePart.EDIT -> stringResource(R.string.community_edit)
+                    ManagePart.REQUESTS ->
+                        if (waiting > 0) {
+                            pluralStringResource(R.plurals.join_requests_waiting, waiting, waiting)
+                        } else {
+                            stringResource(R.string.join_requests_title)
+                        }
+                    ManagePart.REPORTS ->
+                        if (reports > 0) {
+                            "${stringResource(R.string.moderation_queue)} ($reports)"
+                        } else {
+                            stringResource(R.string.moderation_queue)
+                        }
+                    ManagePart.MEMBERS -> stringResource(R.string.community_members_title)
+                    ManagePart.LOG -> stringResource(R.string.moderation_log_title)
+                }
+            SectionItem(label, part == chosen) { onChoose(part) }
         }
-        SectionItem(
-            if (waiting > 0) {
-                pluralStringResource(R.plurals.join_requests_waiting, waiting, waiting)
-            } else {
-                stringResource(R.string.join_requests_title)
-            },
-            selected = false,
-        ) {
-            onDismiss()
-            actions.requests()
-        }
-        if (owner) {
-            SectionItem(stringResource(R.string.community_edit), chosen == Section.EDIT) { onChoose(Section.EDIT) }
-            SectionItem(stringResource(R.string.community_members_title), chosen == Section.MEMBERS) {
-                onChoose(Section.MEMBERS)
-            }
-        }
-        if (community.moderates) {
-            SectionItem(stringResource(R.string.moderation_log_title), chosen == Section.LOG) { onChoose(Section.LOG) }
-        }
-        if (owner) {
+        if (community.role == CommunityRole.OWNER) {
             OutlinedButton(
                 onClick = onDelete,
                 enabled = !busy,
@@ -160,46 +177,51 @@ private fun SectionList(
                 modifier = Modifier.padding(top = 12.dp).heightIn(min = 44.dp),
             ) { Text(stringResource(R.string.community_delete)) }
         }
-        CancelButton(onDismiss)
     }
 }
 
-/** The right pane: the section chosen. */
+/** The detail pane: the part chosen, the list beside it kept in place. */
 @Composable
 private fun SectionDetail(
-    chosen: Section?,
+    chosen: ManagePart?,
     community: Community,
     state: CommunityViewModel.State,
     actions: CommunityActions,
-    modifier: Modifier,
+    slots: ManageSlots,
 ) {
-    Column(
-        modifier =
-            modifier
-                .fillMaxHeight()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
-                .testTag(MANAGE_DETAIL),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        when (chosen) {
-            Section.EDIT -> {
-                val draft = rememberEditDraft(community)
-                EditFields(community, state.busy, actions, draft)
-                Button(
-                    onClick = { draft.save(community, actions) },
-                    enabled = !state.busy && draft.name.isNotBlank(),
-                ) { Text(stringResource(R.string.save)) }
-            }
-            Section.MEMBERS -> MembersList(community, state.members, state.busy, actions)
-            Section.LOG ->
-                if (state.moderationLog.isEmpty()) {
-                    Muted(stringResource(R.string.moderation_log_empty))
-                } else {
-                    LogEntries(state.moderationLog)
+    // The two parts with a view model of their own bring their own scrolling list.
+    when (chosen) {
+        ManagePart.REQUESTS -> Box(Modifier.fillMaxSize().testTag(MANAGE_DETAIL)) { slots.requests() }
+        ManagePart.REPORTS -> Box(Modifier.fillMaxSize().testTag(MANAGE_DETAIL)) { slots.reports() }
+        else ->
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp)
+                        .testTag(MANAGE_DETAIL),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                when (chosen) {
+                    ManagePart.EDIT -> {
+                        val draft = rememberEditDraft(community)
+                        EditFields(community, state.busy, actions, draft)
+                        Button(
+                            onClick = { draft.save(community, actions) },
+                            enabled = !state.busy && draft.name.isNotBlank(),
+                        ) { Text(stringResource(R.string.save)) }
+                    }
+                    ManagePart.MEMBERS -> MembersList(community, state.members, state.busy, actions)
+                    ManagePart.LOG ->
+                        if (state.moderationLog.isEmpty()) {
+                            Muted(stringResource(R.string.moderation_log_empty))
+                        } else {
+                            LogEntries(state.moderationLog)
+                        }
+                    else -> Unit
                 }
-            null -> Unit
-        }
+            }
     }
 }
 
@@ -222,9 +244,6 @@ private fun SectionItem(
     )
 }
 
-private const val WIDTH_FRACTION = 0.9f
-private const val MAX_WIDTH = 880
-private const val MAX_HEIGHT = 640
 private const val LIST_WIDTH = 260
 
 /** What the edit form holds before it is saved; it survives a rotation. */

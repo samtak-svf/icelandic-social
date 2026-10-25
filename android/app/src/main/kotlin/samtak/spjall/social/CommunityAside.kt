@@ -1,7 +1,16 @@
 package samtak.spjall.social
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.layout.AnimatedPane
+import androidx.compose.material3.adaptive.navigation.NavigableSupportingPaneScaffold
+import androidx.compose.material3.adaptive.navigation.rememberSupportingPaneScaffoldNavigator
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.padding
@@ -23,6 +32,7 @@ import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityMember
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.Palette
+import samtak.spjall.ui.currentLayout
 
 /** The test tag of the aside. */
 internal const val COMMUNITY_ASIDE = "community-aside"
@@ -48,6 +58,38 @@ internal fun AboutFacts(
     )
     Muted(stringResource(R.string.community_not_encrypted_notice))
 }
+
+/**
+ * The community page on an expanded window (decision 0087): a supporting-pane layout with the feed as the main pane
+ * and Um samfélagið as the supporting one, so a foldable that unfolds changes layout without a restart. [feed]
+ * draws the feed into the modifier it is given.
+ */
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+@Composable
+internal fun CommunityPanes(
+    community: Community,
+    members: List<CommunityMember>,
+    modifier: Modifier = Modifier,
+    feed: @Composable (Modifier) -> Unit,
+) {
+    val navigator = rememberSupportingPaneScaffoldNavigator<Nothing>()
+    NavigableSupportingPaneScaffold(
+        navigator = navigator,
+        modifier = modifier,
+        mainPane = {
+            AnimatedPane {
+                // The feed keeps a readable line length, centred in the pane.
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                    feed(Modifier.widthIn(max = FEED_WIDTH.dp).fillMaxHeight())
+                }
+            }
+        },
+        supportingPane = { AnimatedPane { CommunityAside(community, members, Modifier.fillMaxHeight()) } },
+    )
+}
+
+/** The widest the feed is drawn, so a line of text stays readable. */
+private const val FEED_WIDTH = 640
 
 /**
  * Um samfélagið beside the feed on an expanded window (decision 0087): the facts and the first members' pictures.
@@ -81,11 +123,8 @@ internal fun CommunityAside(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                members.take(PICTURES).forEach { Avatar(it, size = 40.dp) }
+                members.take(currentLayout().memberPictures).forEach { Avatar(it, size = 40.dp) }
             }
         }
     }
 }
-
-/** How many members' pictures the aside shows at most. */
-private const val PICTURES = 12

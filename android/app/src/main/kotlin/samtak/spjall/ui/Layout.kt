@@ -11,17 +11,64 @@ import samtak.spjall.frames.windowWidthDp
 /** How the five places are reached: a bar along the bottom, or a rail down the left. */
 enum class Navigation { BAR, RAIL }
 
+/** The community page: one column, or the feed with Um samfélagið beside it. */
+enum class CommunityLayout { COLUMN, FEED_AND_ASIDE }
+
+/** Stjórna: one screen of buttons, or a side navigation with a page for each part. */
+enum class ManageLayout { ONE_SCREEN, SIDE_NAV }
+
+/** The featured posts: a row between the composer and the feed, or in the aside (0088). */
+enum class FeaturedLayout { STRIP, ASIDE }
+
+/** The hub: Nýjast, Mín samfélög and Finna as tabs, or the reader's communities in a column beside the feed. */
+enum class HubLayout { TABS, COLUMN }
+
+/** Stofna samfélag: the form alone, or the form beside a live preview of the community's header. */
+enum class CreateLayout { FORM, FORM_AND_PREVIEW }
+
+/** The community's tab row: it scrolls sideways when it does not fit, or lies in one row (0089). */
+enum class TabsLayout { SCROLL, ROW }
+
 /**
- * What each size class lays out (decision 0087), the one map from a window to a layout; the screens read this and
- * never a width, and the tests read it to know what to expect.
+ * What each size class lays out (decision 0087), the one map from a window to a layout; the same eight fields, with
+ * the same values, as the web's `LAYOUTS` (`web/src/ui/layout.ts`). The screens read this and never a width, and the
+ * tests read it to know what to expect.
  */
 data class Layout(
     val navigation: Navigation,
-    /** The community page: the feed alone, or the feed with Um samfélagið beside it. */
-    val aside: Boolean,
-    /** Stjórna: one dialog of buttons, or a section list beside the section chosen. */
-    val manageSideNav: Boolean,
+    val community: CommunityLayout,
+    /** How many members' pictures the community header or aside shows at most. */
+    val memberPictures: Int,
+    val manage: ManageLayout,
+    val featured: FeaturedLayout,
+    val hub: HubLayout,
+    val create: CreateLayout,
+    val tabs: TabsLayout,
 )
+
+private val COMPACT_LAYOUT =
+    Layout(
+        navigation = Navigation.BAR,
+        community = CommunityLayout.COLUMN,
+        memberPictures = 5,
+        manage = ManageLayout.ONE_SCREEN,
+        featured = FeaturedLayout.STRIP,
+        hub = HubLayout.TABS,
+        create = CreateLayout.FORM,
+        tabs = TabsLayout.SCROLL,
+    )
+
+private val MEDIUM_LAYOUT =
+    COMPACT_LAYOUT.copy(navigation = Navigation.RAIL, memberPictures = 12, tabs = TabsLayout.ROW)
+
+private val EXPANDED_LAYOUT =
+    MEDIUM_LAYOUT.copy(
+        community = CommunityLayout.FEED_AND_ASIDE,
+        manage = ManageLayout.SIDE_NAV,
+        featured = FeaturedLayout.ASIDE,
+        hub = HubLayout.COLUMN,
+        create = CreateLayout.FORM_AND_PREVIEW,
+    )
 
 /**
  * The size class of a window [widthDp] dp wide. It is the core's answer for a cover (the breakpoints of 0086 are
@@ -35,9 +82,9 @@ fun windowClassOf(
 /** The layout of a window of size class [window]. */
 fun layoutOf(window: Frame): Layout =
     when (window) {
-        Frame.COMPACT, Frame.SQUARE -> Layout(Navigation.BAR, aside = false, manageSideNav = false)
-        Frame.MEDIUM -> Layout(Navigation.RAIL, aside = false, manageSideNav = false)
-        Frame.EXPANDED -> Layout(Navigation.RAIL, aside = true, manageSideNav = true)
+        Frame.COMPACT, Frame.SQUARE -> COMPACT_LAYOUT
+        Frame.MEDIUM -> MEDIUM_LAYOUT
+        Frame.EXPANDED -> EXPANDED_LAYOUT
     }
 
 /** The layout of the window being drawn in; it follows a rotation, a resize and an unfolding. */

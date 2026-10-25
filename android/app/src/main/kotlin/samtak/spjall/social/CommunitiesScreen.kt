@@ -9,12 +9,15 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -36,6 +39,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
@@ -43,11 +47,13 @@ import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.EmptyState
+import samtak.spjall.ui.HubLayout
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.RoundButton
 import samtak.spjall.ui.ScreenHeader
 import samtak.spjall.ui.SectionLabel
+import samtak.spjall.ui.currentLayout
 
 /** The combined feed, communities this account belongs to, and communities it may discover. */
 @Composable
@@ -70,7 +76,19 @@ fun CommunitiesScreen(
                 )
             }
             if (state.busy || state.searching) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            Box(modifier = Modifier.weight(1f)) { Content(state, actions) { reporting = it } }
+            if (currentLayout().hub == HubLayout.COLUMN) {
+                // The feed in the middle, the reader's communities in a column beside it (decision 0087).
+                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
+                        Box(modifier = Modifier.widthIn(max = FEED_WIDTH.dp)) {
+                            Content(state, actions, hubColumn = true) { reporting = it }
+                        }
+                    }
+                    HubColumn(state, actions, Modifier.width(HUB_WIDTH.dp).fillMaxHeight())
+                }
+            } else {
+                Box(modifier = Modifier.weight(1f)) { Content(state, actions, hubColumn = false) { reporting = it } }
+            }
         }
     }
     reporting?.let { postId ->
@@ -88,8 +106,11 @@ fun CommunitiesScreen(
 private fun Content(
     state: CommunitiesViewModel.State,
     actions: CommunitiesActions,
+    hubColumn: Boolean,
     onReport: (String) -> Unit,
 ) {
+    // With the communities in their own column there is no tab for them: Mín samfélög is what the column shows.
+    val tab = if (hubColumn && state.tab == CommunitiesTab.MINE) CommunitiesTab.FEED else state.tab
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -98,17 +119,17 @@ private fun Content(
         item(key = "tabs") {
             Choices(
                 options =
-                    listOf(
+                    listOfNotNull(
                         CommunitiesTab.FEED to stringResource(R.string.communities_tab_feed),
-                        CommunitiesTab.MINE to stringResource(R.string.communities_tab_mine),
+                        (CommunitiesTab.MINE to stringResource(R.string.communities_tab_mine)).takeUnless { hubColumn },
                         CommunitiesTab.DISCOVER to stringResource(R.string.communities_tab_discover),
                     ),
-                selected = state.tab,
+                selected = tab,
                 onSelect = actions::selectTab,
             )
         }
         state.problem?.let { problem -> item(key = "problem") { ProblemCard(problem) { actions.retry() } } }
-        when (state.tab) {
+        when (tab) {
             CommunitiesTab.FEED -> feed(state, actions, onReport)
             CommunitiesTab.MINE -> mine(state, actions, onReport)
             CommunitiesTab.DISCOVER -> discover(state, actions)
@@ -186,6 +207,39 @@ private fun androidx.compose.foundation.lazy.LazyListScope.mine(
     }
 }
 
+/** The test tag of the column of the reader's communities. */
+internal const val HUB_COLUMN = "hub-column"
+
+/**
+ * The reader's communities in a column beside the feed (decision 0087): pinned first, then in the order the core
+ * gives (latest activity first), each with its unread count; "Stofna samfélag" on top for a verified account.
+ */
+@Composable
+private fun HubColumn(
+    state: CommunitiesViewModel.State,
+    actions: CommunitiesActions,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        modifier = modifier.testTag(HUB_COLUMN),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item(key = "hub-title") { SectionLabel(stringResource(R.string.communities_mine)) }
+        if (state.verified) item(key = "hub-create") { CreateRow(actions::create) }
+        if (state.loaded && state.mine.isEmpty()) {
+            item(key = "hub-empty") { EmptyState(AppIcons.Communities, stringResource(R.string.communities_empty)) }
+        }
+        itemsIndexed(state.mine, key = { _, community -> "hub-${community.communityId}" }) { _, community ->
+            CommunityRow(
+                community,
+                onOpen = { actions.open(community.communityId) },
+                onPin = { actions.pin(community.communityId, it) },
+            )
+        }
+    }
+}
+
 /** "Stofna samfélag" at the top of the list (0080): only a verified account is offered it. */
 @Composable
 private fun CreateRow(onCreate: () -> Unit) {
@@ -246,3 +300,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.discover(
 }
 
 private const val NEW_BUTTON = 34
+
+/** The widest the feed is drawn, so a line of text stays readable, and the width of the column beside it. */
+private const val FEED_WIDTH = 640
+private const val HUB_WIDTH = 340

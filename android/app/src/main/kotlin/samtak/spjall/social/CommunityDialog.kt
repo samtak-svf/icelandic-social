@@ -33,7 +33,6 @@ import samtak.spjall.ui.Palette
 import samtak.spjall.ui.SectionLabel
 import samtak.spjall.ui.VerifiedMark
 import samtak.spjall.ui.calendarDate
-import samtak.spjall.ui.currentLayout
 
 /** The dialog open over the community screen: one at a time, each opened from the one before or from the header. */
 internal enum class CommunityDialog { MANAGE, INFO, EDIT, MEMBERS, LOG, DELETE }
@@ -47,35 +46,24 @@ internal fun CommunityDialogs(
     onDialog: (CommunityDialog?) -> Unit,
 ) {
     val community = state.community ?: return
-    val sideNav = currentLayout().manageSideNav
     when (dialog) {
         CommunityDialog.MANAGE ->
-            if (sideNav) {
-                ManagePanes(
-                    community = community,
-                    state = state,
-                    actions = actions,
-                    onDelete = { onDialog(CommunityDialog.DELETE) },
-                    onDismiss = { onDialog(null) },
-                )
-            } else {
-                ManageDialog(
-                    community = community,
-                    busy = state.busy,
-                    actions = actions,
-                    onEdit = { onDialog(CommunityDialog.EDIT) },
-                    onMembers = {
-                        onDialog(CommunityDialog.MEMBERS)
-                        actions.loadMembers()
-                    },
-                    onLog = {
-                        onDialog(CommunityDialog.LOG)
-                        actions.loadModerationLog()
-                    },
-                    onDelete = { onDialog(CommunityDialog.DELETE) },
-                    onDismiss = { onDialog(null) },
-                )
-            }
+            ManageDialog(
+                community = community,
+                busy = state.busy,
+                actions = actions,
+                onEdit = { onDialog(CommunityDialog.EDIT) },
+                onMembers = {
+                    onDialog(CommunityDialog.MEMBERS)
+                    actions.loadMembers()
+                },
+                onLog = {
+                    onDialog(CommunityDialog.LOG)
+                    actions.loadModerationLog()
+                },
+                onDelete = { onDialog(CommunityDialog.DELETE) },
+                onDismiss = { onDialog(null) },
+            )
         CommunityDialog.INFO -> AboutCommunityDialog(community, state.members) { onDialog(null) }
         CommunityDialog.EDIT -> EditCommunityDialog(community, state.busy, actions) { onDialog(null) }
         CommunityDialog.MEMBERS ->

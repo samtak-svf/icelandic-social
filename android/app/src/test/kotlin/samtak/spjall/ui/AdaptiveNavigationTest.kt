@@ -86,16 +86,51 @@ class AdaptiveNavigationTest {
         compose.onNodeWithText("content").assertIsDisplayed()
     }
 
+    // The table of web/src/ui/layout.ts, field by field, class by class.
+    private fun layout(
+        window: Frame,
+        expected: Layout,
+    ) = assertEquals(expected, layoutOf(window))
+
     @Test
-    fun theLayoutOfEachSizeClass() {
-        assertEquals(Navigation.BAR, layoutOf(Frame.COMPACT).navigation)
-        assertEquals(Navigation.RAIL, layoutOf(Frame.MEDIUM).navigation)
-        assertEquals(Navigation.RAIL, layoutOf(Frame.EXPANDED).navigation)
-        val classes = listOf(Frame.COMPACT, Frame.MEDIUM, Frame.EXPANDED)
-        assertEquals(listOf(false, false, true), classes.map { layoutOf(it).aside })
-        assertEquals(
-            listOf(false, false, true),
-            classes.map { layoutOf(it).manageSideNav },
-        )
+    fun compactLayoutEqualsTheWebsCompactRow() {
+        val compact = layoutOf(Frame.COMPACT)
+        assertEquals(Navigation.BAR, compact.navigation)
+        assertEquals(CommunityLayout.COLUMN, compact.community)
+        assertEquals(5, compact.memberPictures)
+        assertEquals(ManageLayout.ONE_SCREEN, compact.manage)
+        assertEquals(FeaturedLayout.STRIP, compact.featured)
+        assertEquals(HubLayout.TABS, compact.hub)
+        assertEquals(CreateLayout.FORM, compact.create)
+        assertEquals(TabsLayout.SCROLL, compact.tabs)
     }
+
+    @Test
+    fun mediumLayoutEqualsTheWebsMediumRow() {
+        val medium = layoutOf(Frame.MEDIUM)
+        assertEquals(Navigation.RAIL, medium.navigation)
+        assertEquals(CommunityLayout.COLUMN, medium.community)
+        assertEquals(12, medium.memberPictures)
+        assertEquals(ManageLayout.ONE_SCREEN, medium.manage)
+        assertEquals(FeaturedLayout.STRIP, medium.featured)
+        assertEquals(HubLayout.TABS, medium.hub)
+        assertEquals(CreateLayout.FORM, medium.create)
+        assertEquals(TabsLayout.ROW, medium.tabs)
+    }
+
+    @Test
+    fun expandedLayoutEqualsTheWebsExpandedRow() {
+        val expanded = layoutOf(Frame.EXPANDED)
+        assertEquals(Navigation.RAIL, expanded.navigation)
+        assertEquals(CommunityLayout.FEED_AND_ASIDE, expanded.community)
+        assertEquals(12, expanded.memberPictures)
+        assertEquals(ManageLayout.SIDE_NAV, expanded.manage)
+        assertEquals(FeaturedLayout.ASIDE, expanded.featured)
+        assertEquals(HubLayout.COLUMN, expanded.hub)
+        assertEquals(CreateLayout.FORM_AND_PREVIEW, expanded.create)
+        assertEquals(TabsLayout.ROW, expanded.tabs)
+    }
+
+    @Test
+    fun aSquareWindowIsLaidOutAsCompact() = layout(Frame.SQUARE, layoutOf(Frame.COMPACT))
 }

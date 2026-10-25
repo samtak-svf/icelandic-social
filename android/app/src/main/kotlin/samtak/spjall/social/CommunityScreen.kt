@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -14,10 +13,10 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -56,6 +55,8 @@ import samtak.spjall.core.ReportTargetKind
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
+import samtak.spjall.ui.CommunityLayout
+import samtak.spjall.ui.ManageLayout
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.calendarDate
@@ -69,6 +70,14 @@ import samtak.spjall.ui.currentLayout
 fun CommunityScreen(
     state: CommunityViewModel.State,
     actions: CommunityActions,
+) = CommunityScreen(state, actions, ManageSlots())
+
+/** [CommunityScreen] with the views of the two parts of Stjórna that have a view model of their own. */
+@Composable
+internal fun CommunityScreen(
+    state: CommunityViewModel.State,
+    actions: CommunityActions,
+    slots: ManageSlots,
 ) {
     // The post being reported; the dialog closes once the report is sent.
     var reporting by rememberSaveable { mutableStateOf<String?>(null) }
@@ -78,13 +87,19 @@ fun CommunityScreen(
     // The community dialog open, if any.
     var dialog by rememberSaveable { mutableStateOf<CommunityDialog?>(null) }
     var searchVisible by rememberSaveable { mutableStateOf(false) }
+    // Stjórna as a page of its own (an expanded window); a narrower one opens it as a dialog.
+    var managePage by rememberSaveable { mutableStateOf(false) }
+    val layout = currentLayout()
+    val managing = managePage && layout.manage == ManageLayout.SIDE_NAV && state.community != null
+    // The scroll position is held here, above the layouts, so a change of size class keeps the reader's place.
+    val listState = rememberLazyListState()
     val openInfo = {
         dialog = CommunityDialog.INFO
         if (state.members.isEmpty()) actions.loadMembers()
     }
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(SUB_SCREEN_SIDES))) {
-            SubHeader(state.community?.name.orEmpty(), actions::back) {
+            SubHeader(state.community?.name.orEmpty(), if (managing) ({ managePage = false }) else actions::back) {
                 IconButton(onClick = { searchVisible = !searchVisible }) {
                     Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.community_search_posts))
                 }
@@ -100,19 +115,28 @@ fun CommunityScreen(
                         modifier = modifier,
                         state = state,
                         actions = actions,
-                        onManage = { dialog = CommunityDialog.MANAGE },
+                        listState = listState,
+                        onManage = {
+                            if (layout.manage == ManageLayout.SIDE_NAV) managePage = true else dialog = CommunityDialog.MANAGE
+                        },
                         onReport = { reporting = it },
                         onDelete = { deleting = it },
                         onInfo = openInfo,
                     )
                 }
             val community = state.community
-            if (currentLayout().aside && community != null) {
-                // The feed in a column of its own, Um samfélagið beside it (decision 0087).
-                Row(modifier = Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                    feed(Modifier.widthIn(max = FEED_WIDTH.dp).fillMaxHeight().weight(1f, fill = false))
-                    CommunityAside(community, state.members, Modifier.width(ASIDE_WIDTH.dp).fillMaxHeight())
-                }
+            if (managing && community != null) {
+                ManagePage(
+                    community = community,
+                    state = state,
+                    actions = actions,
+                    slots = slots,
+                    onDelete = { dialog = CommunityDialog.DELETE },
+                    modifier = Modifier.weight(1f),
+                )
+            } else if (layout.community == CommunityLayout.FEED_AND_ASIDE && community != null) {
+                // The feed in the main pane, Um samfélagið in the supporting pane (decision 0087).
+                CommunityPanes(community, state.members, Modifier.weight(1f).fillMaxWidth(), feed)
             } else {
                 feed(Modifier.weight(1f))
             }
@@ -160,6 +184,7 @@ private fun Feed(
     modifier: Modifier,
     state: CommunityViewModel.State,
     actions: CommunityActions,
+    listState: LazyListState,
     onManage: () -> Unit,
     onReport: (String) -> Unit,
     onDelete: (String) -> Unit,
@@ -167,6 +192,7 @@ private fun Feed(
 ) {
     LazyColumn(
         modifier = modifier,
+        state = listState,
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -416,10 +442,6 @@ private fun ReportPostDialog(
         onDismiss = onDismiss,
     )
 }
-
-/** The widest the feed is drawn, so a line of text stays readable, and the width of the aside beside it. */
-private const val FEED_WIDTH = 640
-private const val ASIDE_WIDTH = 320
 
 /** A description longer than this many characters, or in several lines, is clamped until it is read in full. */
 private const val DESCRIPTION_CHARS = 140
