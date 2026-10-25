@@ -103,3 +103,16 @@ interface CommunityActions {
 
     fun retry()
 }
+
+/**
+ * What the feed asks of the screen around it: open Stjórna, report or delete a post, open Um samfélagið, and open
+ * the composer. The screen holds what these change above its layouts, so a change of size class (which moves the
+ * feed into another pane) keeps it (decision 0087).
+ */
+internal class FeedCallbacks(
+    val onManage: () -> Unit,
+    val onReport: (String) -> Unit,
+    val onDelete: (String) -> Unit,
+    val onInfo: () -> Unit,
+    val onCompose: () -> Unit,
+)

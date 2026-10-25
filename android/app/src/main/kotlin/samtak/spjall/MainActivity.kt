@@ -17,10 +17,6 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.browser.customtabs.CustomTabsIntent
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -29,7 +25,6 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.core.app.NotificationManagerCompat
@@ -103,11 +98,11 @@ import samtak.spjall.social.SocialRoutes
 import samtak.spjall.social.UnreadViewModel
 import samtak.spjall.social.WithPostImages
 import samtak.spjall.social.socialScreens
+import samtak.spjall.ui.AdaptiveNavigation
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.LocalPhotos
 import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.Tab
-import samtak.spjall.ui.TabBar
 import samtak.spjall.ui.rememberBack
 
 /**
@@ -295,16 +290,14 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(route) { unread.refresh() }
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { unread.refresh() }
         // Each screen pads for the status bar itself, so its cream band can reach the top edge.
-        Scaffold(
-            contentWindowInsets = WindowInsets(0),
-            bottomBar = {
-                if (route in TABS) Tabs(route, count) { nav.navigate(it) { tab() } }
-            },
-        ) { padding ->
+        AdaptiveNavigation(
+            tabs = tabs(route, count) { nav.navigate(it) { tab() } },
+            shown = route in TABS,
+            wide = route in SocialRoutes.WIDE,
+        ) {
             NavHost(
                 navController = nav,
                 startDestination = LIST,
-                modifier = Modifier.padding(padding).consumeWindowInsets(padding),
             ) {
                 composable(LIST) { Conversations(list, nav) }
                 composable(ME) { Me(signIns, nav) }
@@ -351,37 +344,36 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    /** The four tabs, the notifications one with its unread count. */
     @Composable
-    private fun Tabs(
+    private fun tabs(
         route: String?,
         unread: Long,
         go: (String) -> Unit,
-    ) {
+    ): List<Tab> {
         val communities = SocialRoutes.COMMUNITIES
         val notifications = SocialRoutes.NOTIFICATIONS
-        TabBar(
-            listOf(
-                Tab(AppIcons.Chat, stringResource(R.string.tab_conversations), route == LIST) { go(LIST) },
-                Tab(AppIcons.Communities, stringResource(R.string.tab_communities), route == communities) {
-                    go(communities)
-                },
-                Tab(
-                    AppIcons.Bell,
-                    stringResource(R.string.tab_notifications),
-                    route == notifications,
-                    onClick = { go(notifications) },
-                    badge = unread,
-                    badgeDescription =
-                        if (unread >
-                            0
-                        ) {
-                            pluralStringResource(R.plurals.notifications_unread, unread.toInt(), unread)
-                        } else {
-                            null
-                        },
-                ),
-                Tab(AppIcons.Person, stringResource(R.string.tab_me), route == ME) { go(ME) },
+        return listOf(
+            Tab(AppIcons.Chat, stringResource(R.string.tab_conversations), route == LIST) { go(LIST) },
+            Tab(AppIcons.Communities, stringResource(R.string.tab_communities), route == communities) {
+                go(communities)
+            },
+            Tab(
+                AppIcons.Bell,
+                stringResource(R.string.tab_notifications),
+                route == notifications,
+                onClick = { go(notifications) },
+                badge = unread,
+                badgeDescription =
+                    if (unread >
+                        0
+                    ) {
+                        pluralStringResource(R.plurals.notifications_unread, unread.toInt(), unread)
+                    } else {
+                        null
+                    },
             ),
+            Tab(AppIcons.Person, stringResource(R.string.tab_me), route == ME) { go(ME) },
         )
     }
 

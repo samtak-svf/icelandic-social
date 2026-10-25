@@ -51,11 +51,12 @@ import samtak.spjall.ui.CoverImage
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.communityTile
 import samtak.spjall.ui.coverOf
+import samtak.spjall.ui.currentLayout
 import samtak.spjall.ui.pictureOf
 
 /**
  * The top of a community (0080): a cover band, the picture overlapping it, the name, the audience line, up to
- * [MEMBER_PICTURES] member pictures and "Bjóða", which shares the community's address from the system sheet.
+ * the layout's count of member pictures and "Bjóða", which shares the community's address from the system sheet.
  */
 @Composable
 internal fun CommunityHeader(
@@ -86,7 +87,7 @@ internal fun CommunityHeader(
             modifier = Modifier.semantics { contentDescription = "" },
             horizontalArrangement = Arrangement.spacedBy((-MEMBER_OVERLAP).dp),
         ) {
-            members.take(MEMBER_PICTURES).forEach {
+            members.take(currentLayout().memberPictures).forEach {
                 Avatar(
                     it,
                     size = MEMBER_PICTURE.dp,
@@ -164,6 +165,5 @@ private const val COVER_RADIUS = 14
 private const val PICTURE = 72
 private const val PICTURE_OVERLAP = 36
 private const val PICTURE_BORDER = 3
-private const val MEMBER_PICTURES = 5
 private const val MEMBER_PICTURE = 30
 private const val MEMBER_OVERLAP = 8

@@ -21,9 +21,7 @@ import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.ReactionKind
-import samtak.spjall.core.Report
 import samtak.spjall.core.ReportReason
-import samtak.spjall.core.ReportState
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.SocialNotification
 import samtak.spjall.frames.LocalFrameSession
@@ -208,94 +206,100 @@ private fun CommunityEntry(
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { model.load() }
     CommunityScreen(
         state,
-        object : CommunityActions {
-            override fun back() = back()
+        slots =
+            ManageSlots(
+                requests = { JoinRequestsPane(id, social) },
+                reports = { ReportsPane(id, social) },
+            ),
+        actions =
+            object : CommunityActions {
+                override fun back() = back()
 
-            override fun join() = model.join()
+                override fun join() = model.join()
 
-            override fun leave() = model.leave()
+                override fun leave() = model.leave()
 
-            override fun open(postId: String) = nav.navigate(SocialRoutes.post(postId))
+                override fun open(postId: String) = nav.navigate(SocialRoutes.post(postId))
 
-            override fun comment(postId: String) = nav.navigate(SocialRoutes.post(postId, focus = true))
+                override fun comment(postId: String) = nav.navigate(SocialRoutes.post(postId, focus = true))
 
-            override fun pin(
-                postId: String,
-                pinned: Boolean,
-            ) = model.pin(postId, pinned)
+                override fun pin(
+                    postId: String,
+                    pinned: Boolean,
+                ) = model.pin(postId, pinned)
 
-            override fun sendToConversation(postId: String) = sharePost(postId)
+                override fun sendToConversation(postId: String) = sharePost(postId)
 
-            override fun reports() = nav.navigate(SocialRoutes.reports(id))
+                override fun reports() = nav.navigate(SocialRoutes.reports(id))
 
-            override fun requests() = nav.navigate(SocialRoutes.requests(id))
+                override fun requests() = nav.navigate(SocialRoutes.requests(id))
 
-            override fun onSearchQuery(query: String) = model.onSearchQuery(query)
+                override fun onSearchQuery(query: String) = model.onSearchQuery(query)
 
-            override fun searchPosts() = model.searchPosts()
+                override fun searchPosts() = model.searchPosts()
 
-            override fun loadMembers() = model.loadMembers()
+                override fun loadMembers() = model.loadMembers()
 
-            override fun setCommunityRole(
-                accountId: String,
-                role: CommunityRole,
-            ) = model.setCommunityRole(accountId, role)
+                override fun setCommunityRole(
+                    accountId: String,
+                    role: CommunityRole,
+                ) = model.setCommunityRole(accountId, role)
 
-            override fun updateCommunity(
-                name: String,
-                description: String,
-                audience: CommunityAudience?,
-            ) = model.updateCommunity(name, description, audience)
+                override fun updateCommunity(
+                    name: String,
+                    description: String,
+                    audience: CommunityAudience?,
+                ) = model.updateCommunity(name, description, audience)
 
-            override fun loadModerationLog() = model.loadModerationLog()
+                override fun loadModerationLog() = model.loadModerationLog()
 
-            override fun pickPicture() =
-                picture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                override fun pickPicture() =
+                    picture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
 
-            override fun pickCover() =
-                cover.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                override fun pickCover() =
+                    cover.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
 
-            override fun reframePicture() = frames.open(model.reframePictureRequest(files::temp))
+                override fun reframePicture() = frames.open(model.reframePictureRequest(files::temp))
 
-            override fun reframeCover() = frames.open(model.reframeCoverRequest(files::temp))
+                override fun reframeCover() = frames.open(model.reframeCoverRequest(files::temp))
 
-            override fun removePicture() = model.removePicture()
+                override fun removePicture() = model.removePicture()
 
-            override fun removeCover() = model.removeCover()
+                override fun removeCover() = model.removeCover()
 
-            override fun deleteCommunity() = model.deleteCommunity()
+                override fun deleteCommunity() = model.deleteCommunity()
 
-            override fun draft(text: String) = model.draft(text)
+                override fun draft(text: String) = model.draft(text)
 
-            override fun publish() = model.publish()
+                override fun publish() = model.publish()
 
-            override fun withdraw() = model.withdraw()
+                override fun withdraw() = model.withdraw()
 
-            override fun addImage() {
-                if (!model.roomForImage()) return
-                val request = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                if (model.room() > 1) images.launch(request) else image.launch(request)
-            }
+                override fun addImage() {
+                    if (!model.roomForImage()) return
+                    val request = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    if (model.room() > 1) images.launch(request) else image.launch(request)
+                }
 
-            override fun removeImage(path: String) = model.unpick(path)
+                override fun removeImage(path: String) = model.unpick(path)
 
-            override fun delete(postId: String) = model.delete(postId)
+                override fun delete(postId: String) = model.delete(postId)
 
-            override fun react(
-                postId: String,
-                kind: ReactionKind,
-            ) = model.react(postId, kind)
+                override fun react(
+                    postId: String,
+                    kind: ReactionKind,
+                ) = model.react(postId, kind)
 
-            override fun report(
-                target: ReportTarget,
-                reason: ReportReason,
-                note: String,
-            ) = model.report(target, reason, note)
+                override fun report(
+                    target: ReportTarget,
+                    reason: ReportReason,
+                    note: String,
+                ) = model.report(target, reason, note)
 
-            override fun more() = model.more()
+                override fun more() = model.more()
 
-            override fun retry() = model.retry()
-        },
+                override fun retry() = model.retry()
+            },
     )
 }
 
@@ -395,66 +399,6 @@ private fun PostEntry(
 
                 override fun retry() = model.retry()
             },
-    )
-}
-
-@Composable
-private fun JoinRequests(
-    communityId: String,
-    social: Social,
-    nav: NavController,
-) {
-    val model: JoinRequestsViewModel =
-        viewModel(key = "requests-$communityId") { JoinRequestsViewModel(communityId, social) }
-    val state by model.state.collectAsStateWithLifecycle()
-    val back = rememberBack(nav)
-    JoinRequestsScreen(
-        state,
-        object : JoinRequestsActions {
-            override fun back() = back()
-
-            override fun approve(accountId: String) = model.approve(accountId)
-
-            override fun decline(accountId: String) = model.decline(accountId)
-
-            override fun retry() = model.retry()
-        },
-    )
-}
-
-@Composable
-private fun Reports(
-    communityId: String,
-    social: Social,
-    nav: NavController,
-) {
-    val model: ReportsViewModel = viewModel(key = "reports-$communityId") { ReportsViewModel(communityId, social) }
-    val state by model.state.collectAsStateWithLifecycle()
-    val back = rememberBack(nav)
-    ReportsScreen(
-        state,
-        object : ReportsActions {
-            override fun back() = back()
-
-            override fun show(state: ReportState) = model.show(state)
-
-            override fun reason(
-                reportId: String,
-                text: String,
-            ) = model.reason(reportId, text)
-
-            override fun act(
-                report: Report,
-                verb: ReportsViewModel.Verb,
-            ) = model.act(report, verb)
-
-            override fun mute(
-                report: Report,
-                period: ReportsViewModel.MutePeriod,
-            ) = model.act(report, ReportsViewModel.Verb.Mute, period)
-
-            override fun retry() = model.retry()
-        },
     )
 }
 

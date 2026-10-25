@@ -38,19 +38,31 @@ fun JoinRequestsScreen(
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(SUB_SCREEN_SIDES))) {
             SubHeader(stringResource(R.string.join_requests_title), actions::back)
-            if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                state.problem?.let { problem -> item(key = "problem") { ProblemCard(problem) { actions.retry() } } }
-                if (state.loaded && state.problem == null && state.requests.isEmpty()) {
-                    item(key = "empty") { Muted(stringResource(R.string.join_requests_empty)) }
-                }
-                items(state.requests, key = { it.accountId }) { request ->
-                    RequestCard(request, enabled = !state.busy, actions = actions)
-                }
+            JoinRequestsBody(state, actions, Modifier.weight(1f))
+        }
+    }
+}
+
+/** The waiting accounts with the two answers, without a screen around them: Stjórna's detail pane draws it too. */
+@Composable
+internal fun JoinRequestsBody(
+    state: JoinRequestsViewModel.State,
+    actions: JoinRequestsActions,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier) {
+        if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            state.problem?.let { problem -> item(key = "problem") { ProblemCard(problem) { actions.retry() } } }
+            if (state.loaded && state.problem == null && state.requests.isEmpty()) {
+                item(key = "empty") { Muted(stringResource(R.string.join_requests_empty)) }
+            }
+            items(state.requests, key = { it.accountId }) { request ->
+                RequestCard(request, enabled = !state.busy, actions = actions)
             }
         }
     }

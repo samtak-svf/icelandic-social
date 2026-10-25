@@ -56,33 +56,45 @@ fun ReportsScreen(
     state: ReportsViewModel.State,
     actions: ReportsActions,
 ) {
-    // The report whose author a ban is asked for, until it is confirmed or cancelled.
-    var banning by remember { mutableStateOf<Report?>(null) }
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(SUB_SCREEN_SIDES))) {
             SubHeader(stringResource(R.string.moderation_queue), actions::back)
-            if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                item(key = "showing") { Showing(state.showing, actions::show) }
-                state.problem?.let { problem -> item(key = "problem") { ProblemCard(problem) { actions.retry() } } }
-                if (state.done) item(key = "done") { Muted(stringResource(R.string.moderation_done)) }
-                if (state.loaded && state.problem == null && state.reports.isEmpty()) {
-                    item(key = "empty") { Muted(stringResource(EMPTY.getValue(state.showing))) }
-                }
-                items(state.reports, key = { it.reportId }) { report ->
-                    ReportCard(
-                        report = report,
-                        card = state.cards[report.target.id],
-                        reason = state.reasons[report.reportId].orEmpty(),
-                        busy = state.busy,
-                        actions = actions,
-                        onBan = { banning = report },
-                    )
-                }
+            ReportsBody(state, actions, Modifier.weight(1f))
+        }
+    }
+}
+
+/** The queue with its filter and the verbs, without a screen around it: Stjórna's detail pane draws it too. */
+@Composable
+internal fun ReportsBody(
+    state: ReportsViewModel.State,
+    actions: ReportsActions,
+    modifier: Modifier = Modifier,
+) {
+    // The report whose author a ban is asked for, until it is confirmed or cancelled.
+    var banning by remember { mutableStateOf<Report?>(null) }
+    Column(modifier) {
+        if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            item(key = "showing") { Showing(state.showing, actions::show) }
+            state.problem?.let { problem -> item(key = "problem") { ProblemCard(problem) { actions.retry() } } }
+            if (state.done) item(key = "done") { Muted(stringResource(R.string.moderation_done)) }
+            if (state.loaded && state.problem == null && state.reports.isEmpty()) {
+                item(key = "empty") { Muted(stringResource(EMPTY.getValue(state.showing))) }
+            }
+            items(state.reports, key = { it.reportId }) { report ->
+                ReportCard(
+                    report = report,
+                    card = state.cards[report.target.id],
+                    reason = state.reasons[report.reportId].orEmpty(),
+                    busy = state.busy,
+                    actions = actions,
+                    onBan = { banning = report },
+                )
             }
         }
     }

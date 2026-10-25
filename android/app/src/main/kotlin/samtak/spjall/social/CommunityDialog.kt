@@ -7,17 +7,13 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,7 +22,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Community
-import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.ModerationLogAction
@@ -183,11 +178,6 @@ private fun AboutCommunityDialog(
     members: List<CommunityMember>,
     onDismiss: () -> Unit,
 ) {
-    val audience =
-        stringResource(
-            if (community.audience == CommunityAudience.OPEN) R.string.community_open else R.string.community_private,
-        )
-    val memberCount = community.memberCount?.toInt() ?: members.size
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Palette.surface,
@@ -198,74 +188,12 @@ private fun AboutCommunityDialog(
                 modifier = Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(community.description, style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    "$audience · ${pluralStringResource(R.plurals.community_members, memberCount, memberCount)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Muted(stringResource(R.string.community_not_encrypted_notice))
+                AboutFacts(community, members)
                 SectionLabel(stringResource(R.string.community_members_title))
                 members.forEach { CommunityMemberRow(it) }
             }
         },
         confirmButton = {},
-        dismissButton = { CancelButton(onDismiss) },
-    )
-}
-
-@Composable
-private fun EditCommunityDialog(
-    community: Community,
-    busy: Boolean,
-    actions: CommunityActions,
-    onDismiss: () -> Unit,
-) {
-    var name by rememberSaveable(community.communityId) { mutableStateOf(community.name) }
-    var description by rememberSaveable(community.communityId) { mutableStateOf(community.description) }
-    var audience by rememberSaveable(community.communityId) { mutableStateOf(community.audience) }
-    val options =
-        if (community.audience == CommunityAudience.OPEN) {
-            listOf(
-                CommunityAudience.OPEN to stringResource(R.string.community_open),
-                CommunityAudience.PRIVATE to stringResource(R.string.community_private),
-            )
-        } else {
-            listOf(CommunityAudience.PRIVATE to stringResource(R.string.community_private))
-        }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = Palette.surface,
-        textContentColor = Palette.fg,
-        title = { Text(stringResource(R.string.community_edit)) },
-        text = {
-            Column(
-                modifier = Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.community_name)) })
-                OutlinedTextField(
-                    description,
-                    { description = it },
-                    label = { Text(stringResource(R.string.community_description)) },
-                    minLines = 3,
-                )
-                Choices(options, audience) { audience = it }
-                PictureRows(community, busy, actions)
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    actions.updateCommunity(
-                        name.trim(),
-                        description.trim(),
-                        audience.takeIf { it != community.audience },
-                    )
-                    onDismiss()
-                },
-                enabled = !busy && name.isNotBlank(),
-            ) { Text(stringResource(R.string.save)) }
-        },
         dismissButton = { CancelButton(onDismiss) },
     )
 }
@@ -287,36 +215,7 @@ private fun CommunityMembersDialog(
             Column(
                 modifier = Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                members.forEach { member ->
-                    CommunityMemberRow(member)
-                    if (member.role != CommunityRole.OWNER) {
-                        TextButton(
-                            onClick = {
-                                actions.setCommunityRole(
-                                    member.accountId,
-                                    if (member.role == CommunityRole.MODERATOR) {
-                                        CommunityRole.MEMBER
-                                    } else {
-                                        CommunityRole.MODERATOR
-                                    },
-                                )
-                            },
-                            enabled = !busy && community.role == CommunityRole.OWNER,
-                        ) {
-                            Text(
-                                stringResource(
-                                    if (member.role == CommunityRole.MODERATOR) {
-                                        R.string.community_remove_moderator
-                                    } else {
-                                        R.string.community_make_moderator
-                                    },
-                                ),
-                            )
-                        }
-                    }
-                }
-            }
+            ) { MembersList(community, members, busy, actions) }
         },
         confirmButton = {},
         dismissButton = { CancelButton(onDismiss) },
@@ -324,7 +223,7 @@ private fun CommunityMembersDialog(
 }
 
 @Composable
-private fun CommunityMemberRow(member: CommunityMember) {
+internal fun CommunityMemberRow(member: CommunityMember) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Avatar(member, size = 36.dp)
         Column(modifier = Modifier.weight(1f)) {
@@ -364,22 +263,25 @@ private fun ModerationLogDialog(
                 Column(
                     modifier = Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    entries.forEach { entry ->
-                        Text(
-                            "${entry.actor.shownName()} · ${stringResource(entry.action.label())} · " +
-                                calendarDate(entry.createdAt),
-                            style = MaterialTheme.typography.titleSmall,
-                        )
-                        entry.targetAccount?.let { Text(it.shownName(), style = MaterialTheme.typography.bodyMedium) }
-                        if (entry.reason.isNotBlank()) Text(entry.reason, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
+                ) { LogEntries(entries) }
             }
         },
         confirmButton = {},
         dismissButton = { CancelButton(onDismiss) },
     )
+}
+
+@Composable
+internal fun LogEntries(entries: List<ModerationLogEntry>) {
+    entries.forEach { entry ->
+        Text(
+            "${entry.actor.shownName()} · ${stringResource(entry.action.label())} · " +
+                calendarDate(entry.createdAt),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        entry.targetAccount?.let { Text(it.shownName(), style = MaterialTheme.typography.bodyMedium) }
+        if (entry.reason.isNotBlank()) Text(entry.reason, style = MaterialTheme.typography.bodyMedium)
+    }
 }
 
 /** What a log entry records; an action a later server adds reads as done. */
