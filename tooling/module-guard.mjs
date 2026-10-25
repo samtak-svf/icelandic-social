@@ -45,6 +45,7 @@ export const OWNERS = {
   sessions: "identity",
   conversation_members: "messaging",
   conversation_rosters: "messaging",
+  group_photos: "messaging",
   media: "messaging",
   communities: "communities",
   live_communities: "communities",
