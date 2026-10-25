@@ -96,6 +96,8 @@ jobs:
       - name: Core (pinned ${{ steps.lock.outputs.version }})
         working-directory: core
         run: cargo xtask fetch ios
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # the repo is private: its releases need a token
 
       - name: Generate the Xcode project
         working-directory: ios
