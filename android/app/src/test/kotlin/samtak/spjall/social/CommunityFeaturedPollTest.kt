@@ -21,6 +21,7 @@ import samtak.spjall.core.CommunityImage
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.Poll
 import samtak.spjall.core.PollOption
+import samtak.spjall.core.Post
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommunityFeaturedPollTest {
@@ -254,4 +255,31 @@ class CommunityFeaturedPollTest {
             advanceUntilIdle()
             assertEquals("Anna", model.snap.revealed["p1"])
         }
+
+    private val feed = listOf(post("p3"), post("p2"), post("p1"))
+    private val featured = listOf(post("p2", pinned = true))
+
+    /** The ids the Umræða feed draws for [held] in the aside layout. */
+    private fun asideFeed(held: List<Post>) = feedPosts(feed, held, strip = false, searching = false).map { it.postId }
+
+    @Test
+    fun theAsideTakesTheFeaturedPostsOutOfTheFeedAndKeepsTheOrder() {
+        assertEquals(listOf("p3", "p1"), asideFeed(featured))
+    }
+
+    @Test
+    fun theStripLayoutsKeepTheFeedComplete() {
+        assertEquals(feed, feedPosts(feed, featured, strip = true, searching = false))
+    }
+
+    @Test
+    fun aSearchKeepsEveryPostEvenInTheAsideLayout() {
+        assertEquals(feed, feedPosts(feed, featured, strip = false, searching = true))
+    }
+
+    @Test
+    fun aReleasedPostIsBackInTheFeedWhenTheFeaturedListChanges() {
+        assertEquals(listOf("p3", "p1"), asideFeed(featured))
+        assertEquals(listOf("p3", "p2", "p1"), asideFeed(emptyList()))
+    }
 }

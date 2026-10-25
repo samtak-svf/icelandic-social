@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { listCommunityPosts, type Community, type Post } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { useCommunityTab } from "../social/community-frame.tsx";
-import { FeaturedStrip } from "../social/featured.tsx";
+import { FeaturedStrip, feedItemClass } from "../social/featured.tsx";
 import { moderatesAs } from "../social/roles.tsx";
 import { PostComposer } from "../social/composer.tsx";
 import { outcome, useLoad, type Outcome } from "../social/outcome.ts";
@@ -112,6 +112,9 @@ function Results({
   reload: () => void;
   refresh: () => void;
 }>) {
+  // On an expanded window the featured posts are in the aside, so the feed
+  // leaves them out; a search shows every match (decision 0092).
+  const aside = searched === "" ? community.featured : [];
   return (
     <>
       {posts === null && <Status>{strings.loading}</Status>}
@@ -128,7 +131,7 @@ function Results({
       {posts?.ok && (
         <ul className="flex flex-col gap-4">
           {posts.data.posts.map((post) => (
-            <li key={post.postId}>
+            <li key={post.postId} className={feedItemClass(post.postId, aside)}>
               <PostView
                 post={post}
                 linked

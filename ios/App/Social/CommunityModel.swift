@@ -708,8 +708,17 @@ final class CommunityModel {
     }
 
     /// The posts a moderator featured, at most three, newest pin first (decision 0088). The feed stays
-    /// chronological; these are shown beside it.
+    /// chronological; these are shown beside it, and on an expanded window the feed leaves them out (decision 0092).
     var featured: [Post] { community?.featured ?? [] }
+
+    /// The posts the Umræða feed draws (decision 0092). With the featured posts in the aside they are left out by
+    /// the community's `featured` list, not by `Post.pinned`, so a released post is back as soon as the list
+    /// changes; the strip layouts and a typed search keep the feed complete.
+    func feedPosts(aside: Bool) -> [Post] {
+        guard aside, !searched else { return posts }
+        let held = Set(featured.map(\.postId))
+        return posts.filter { !held.contains($0.postId) }
+    }
 
     /// Features a post or lets it go, for a moderator or the owner (decision 0088): the community is read
     /// again for its featured list, and the posts for the marks. A fourth is refused with `.pinFull`.

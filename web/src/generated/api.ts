@@ -520,7 +520,7 @@ export interface Post {
   /** `pending`: an anonymous post waiting for a moderator's approval (decision 0091); only its author and the moderators see it. Otherwise only a moderator sees what is not visible: hidden or removed by a moderator */
   state: "visible" | "pending" | "hidden" | "removed";
   poll?: Poll;
-  /** A moderator features it (decision 0088); it stays in its place in the feed, marked, and is also in the community's `featured`. `getFeed` never marks it */
+  /** A moderator features it (decision 0088); it is also in the community's `featured`. The API keeps it in its place in the feed, marked; on an expanded screen a client leaves it out of the community feed because the aside shows it (decision 0092). `getFeed` never marks it */
   pinned: boolean;
 }
 

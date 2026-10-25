@@ -300,7 +300,7 @@ struct CommunityView: View {
                 EmptyState(systemImage: "text.bubble", text: "posts_empty")
             }
         }
-        ForEach(model.posts, id: \.postId) { post in
+        ForEach(model.feedPosts(aside: layout.featured == .aside), id: \.postId) { post in
             PostCard(
                 post: post, linked: true, writes: model.writes,
                 onReact: { kind in Task { await model.react(post.postId, kind) } },

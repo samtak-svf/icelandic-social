@@ -85,7 +85,11 @@ internal fun Feed(
     }
 }
 
-/** Umræða: the composer, the featured strip (compact and medium windows), then the posts newest first. */
+/**
+ * Umræða: the composer, the featured strip (compact and medium windows), then the posts newest first. On an
+ * expanded window the featured posts are in the aside, so the feed leaves them out unless a search is typed
+ * (decision 0092); on the others the feed is complete.
+ */
 private fun LazyListScope.discussionTab(
     state: CommunityViewModel.State,
     actions: CommunityActions,
@@ -104,7 +108,24 @@ private fun LazyListScope.discussionTab(
             if (state.searchQuery.isNotBlank()) R.string.community_search_empty else R.string.posts_empty
         item(key = "empty") { Muted(stringResource(emptyText)) }
     }
-    postItems(state, state.posts, actions, callbacks, "post", paged = true)
+    val feed = feedPosts(state.posts, state.featured, strip, state.searchQuery.isNotBlank())
+    postItems(state, feed, actions, callbacks, "post", paged = true)
+}
+
+/**
+ * The posts the Umræða feed draws (decision 0092). With the featured posts in the aside (`!strip`) they are
+ * left out by the community's `featured` list, not by `Post.pinned`, so a released post is back as soon as the
+ * list changes; the strip layouts and a search keep the feed complete.
+ */
+internal fun feedPosts(
+    posts: List<Post>,
+    featured: List<Post>,
+    strip: Boolean,
+    searching: Boolean,
+): List<Post> {
+    if (strip || searching || featured.isEmpty()) return posts
+    val aside = featured.mapTo(HashSet()) { it.postId }
+    return posts.filter { it.postId !in aside }
 }
 
 /** [posts] as cards; the feed asks for its next page when its last card is drawn. */

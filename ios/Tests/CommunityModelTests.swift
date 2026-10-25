@@ -453,6 +453,42 @@ final class CommunityModelTests: XCTestCase {
         XCTAssertEqual(model.featured.map(\.postId), ["p2"])
     }
 
+    func testTheAsideTakesTheFeaturedPostsOutOfTheFeedAndKeepsTheOrder() async {
+        let held = [makePost("p2", "k1", pinned: true)]
+        let model = await model(
+            makeCommunity("k1", "Fuglar", role: .member, featured: held),
+            posts: [makePost("p3", "k1"), makePost("p2", "k1", pinned: true), makePost("p1", "k1")])
+        XCTAssertEqual(model.feedPosts(aside: true).map(\.postId), ["p3"])
+        await model.more()
+        XCTAssertEqual(model.feedPosts(aside: true).map(\.postId), ["p3", "p1"])
+    }
+
+    func testTheStripLayoutsKeepTheFeedComplete() async {
+        let held = [makePost("p2", "k1", pinned: true)]
+        let model = await model(
+            makeCommunity("k1", "Fuglar", role: .member, featured: held),
+            posts: [makePost("p3", "k1"), makePost("p2", "k1", pinned: true), makePost("p1", "k1")])
+        XCTAssertEqual(model.feedPosts(aside: false).map(\.postId), ["p3", "p2"])
+    }
+
+    func testASearchKeepsEveryPostEvenInTheAsideLayout() async {
+        let held = [makePost("p2", "k1", body: "Lóa", pinned: true)]
+        let model = await model(
+            makeCommunity("k1", "Fuglar", role: .member, featured: held),
+            posts: [makePost("p2", "k1", body: "Lóa", pinned: true), makePost("p1", "k1", body: "Annað")])
+        model.query = "Lóa"
+        await model.search()
+        XCTAssertEqual(model.feedPosts(aside: true).map(\.postId), ["p2"])
+    }
+
+    func testAReleasedPostIsBackInTheFeedWhenTheFeaturedListChanges() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .moderator))
+        await model.pin("p2", true)
+        XCTAssertEqual(model.feedPosts(aside: true).map(\.postId), ["p3"])
+        await model.pin("p2", false)
+        XCTAssertEqual(model.feedPosts(aside: true).map(\.postId), ["p3", "p2"])
+    }
+
     func testAFourthFeaturedPostIsRefusedWithTheFullProblem() async {
         let held = (7...9).map { makePost("p\($0)", "k1", pinned: true) }
         let model = await model(makeCommunity("k1", "Fuglar", role: .owner, featured: held))

@@ -78,3 +78,13 @@ export function FeaturedList({ featured }: Readonly<{ featured: Post[] }>) {
     </section>
   );
 }
+
+/**
+ * The class of a feed item (decision 0092): a post the community features is
+ * hidden on an expanded window, where the aside shows it, and stays in its
+ * place below that. CSS, not a filter, so the server render needs no width.
+ * Pass no featured posts for search results, which are never thinned.
+ */
+export function feedItemClass(postId: string, featured: readonly Post[]): string | undefined {
+  return featured.some((post) => post.postId === postId) ? "expanded:hidden" : undefined;
+}

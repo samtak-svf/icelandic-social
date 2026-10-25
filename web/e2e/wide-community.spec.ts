@@ -2,11 +2,13 @@ import { strings } from "../src/generated/brand/strings.ts";
 import { SIZE_CLASSES } from "../src/generated/frames.ts";
 import { layoutOf } from "../src/ui/layout.ts";
 import { expect, test } from "./origin.ts";
-import { found, join, person, post, write } from "./social-helpers.ts";
+import { cardMenu, found, join, person, post, write } from "./social-helpers.ts";
 
 // The community page at the contract's size classes (decision 0087): the
 // header shows as many members' pictures as the layout allows, and on an
 // expanded window Um samfélagið sits beside the feed, in view while it scrolls.
+// A featured post is in the strip and its place in the feed below expanded, and
+// in the aside only on an expanded window (decision 0092).
 
 const WIDTHS = [
   412,
@@ -35,6 +37,8 @@ test("the header's pictures and the aside follow the layout at every width", asy
     await write(owner, strings.post_compose, strings.post_publish, `Færsla ${i + 1} í breiðu.`);
   }
   const everyone = JOINED.length + 1;
+  const FEATURED = "Færsla 2 í breiðu.";
+  await cardMenu(post(owner, FEATURED), strings.post_pin);
 
   for (const width of WIDTHS) {
     await owner.setViewportSize({ width, height: 600 });
@@ -52,6 +56,10 @@ test("the header's pictures and the aside follow the layout at every width", asy
       );
       await expect(header.getByText(DESCRIPTION)).toBeVisible();
       await expect(aside).toBeHidden();
+      await expect(post(owner, FEATURED)).toBeVisible();
+      await expect(
+        main.getByRole("region", { name: strings.community_featured }).getByText(FEATURED),
+      ).toBeVisible();
       continue;
     }
 
@@ -61,6 +69,10 @@ test("the header's pictures and the aside follow the layout at every width", asy
     await expect(aside).toBeVisible();
     await expect(aside.getByText(DESCRIPTION)).toBeVisible();
     await expect(aside.getByText(strings.residency_claim)).toBeVisible();
+    await expect(aside.getByText(FEATURED)).toBeVisible();
+    // The feed has loaded once another post shows; only then is its absence a finding.
+    await expect(post(owner, "Færsla 1 í breiðu.")).toBeVisible();
+    await expect(post(owner, FEATURED)).toHaveCount(0);
     await expect(
       aside.getByRole("list", { name: strings.community_members_stack }).getByRole("listitem"),
     ).toHaveCount(Math.min(everyone, layout.memberPictures));
