@@ -88,8 +88,12 @@ jobs:
         timeout-minutes: 5
         run: |
           # A free port per job (backend/scripts/dev-worker.sh), exported to the
-          # later steps as SPJALL_DEV_URL and SPJALL_DEV_PORT.
-          scripts/dev-worker.sh start > /dev/null
+          # later steps as SPJALL_DEV_URL and SPJALL_DEV_PORT, and to this one
+          # for the invite. The assignment comes first: eval of a substitution
+          # hides a failed start.
+          started=$(scripts/dev-worker.sh start)
+          eval "$started"
+          export SPJALL_DEV_URL SPJALL_DEV_PORT
           if ! link=$(node scripts/invite-operator.ts --local); then
             cat .cloudflare/worker.log
             exit 1
