@@ -46,6 +46,9 @@ struct HomeView: View {
     @State private var photos: PhotoCache<UIImage>
 
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    /// The window's width, which decides the layout (decision 0087); unknown until the first pass.
+    @State private var width: CGFloat?
 
     init(
         signIn: SignInModel,
@@ -75,31 +78,22 @@ struct HomeView: View {
             if onboarding.step != .done {
                 // The photo is set as on "Ég", by the same model.
                 OnboardingView(model: onboarding, me: me)
+            } else if layout.navigation == .sidebar {
+                splitView
             } else {
-                switch tab {
-                case .conversations: conversationsStack
-                case .communities:
-                    socialStack($communitiesPath) {
-                        CommunitiesView(model: communities) { communitiesPath.append(.community($0)) }
-                    }
-                case .notifications: socialStack($noticesPath) { NotificationsView(model: notices) }
-                case .me: meStack
+                tabContent
+                // Only on the roots: what they lead to has the screen to itself.
+                if atRoot {
+                    TabBar(selection: $tab, items: tabItems)
                 }
             }
-            // Only on the roots: what they lead to has the screen to itself.
-            if onboarding.step == .done && atRoot {
-                TabBar(
-                    selection: $tab,
-                    items: [
-                        .init(tab: .conversations, label: localized("tab_conversations"), systemImage: "bubble.left"),
-                        .init(tab: .communities, label: localized("tab_communities"), systemImage: "person.3"),
-                        .init(
-                            tab: .notifications, label: localized("tab_notifications"), systemImage: "bell",
-                            badge: notices.unread),
-                        .init(tab: .me, label: localized("tab_me"), systemImage: "person"),
-                    ])
-            }
         }
+        .onGeometryChange(for: CGFloat.self) {
+            $0.size.width
+        } action: {
+            width = $0
+        }
+        .environment(\.layout, layout)
         .tint(BrandTokens.Colors.primary)
         .environment(\.photos, photos)
         .task {
@@ -168,6 +162,50 @@ struct HomeView: View {
             socket.stop()
             push.live = nil
         }
+    }
+
+    private var layout: WindowLayout {
+        layoutOf(width.map(windowClass(width:)), horizontalSizeClass: horizontalSizeClass)
+    }
+
+    private var tabItems: [TabBar<Tab>.Item] {
+        [
+            .init(tab: .conversations, label: localized("tab_conversations"), systemImage: "bubble.left"),
+            .init(tab: .communities, label: localized("tab_communities"), systemImage: "person.3"),
+            .init(
+                tab: .notifications, label: localized("tab_notifications"), systemImage: "bell", badge: notices.unread),
+            .init(tab: .me, label: localized("tab_me"), systemImage: "person"),
+        ]
+    }
+
+    /// The selected tab's screen and the stack it leads into.
+    @ViewBuilder private var tabContent: some View {
+        switch tab {
+        case .conversations: conversationsStack
+        case .communities:
+            socialStack($communitiesPath) {
+                CommunitiesView(model: communities) { communitiesPath.append(.community($0)) }
+            }
+        case .notifications: socialStack($noticesPath) { NotificationsView(model: notices) }
+        case .me: meStack
+        }
+    }
+
+    /// An expanded window (decision 0087): the tabs as a sidebar, the selected tab's stack beside it.
+    private var splitView: some View {
+        NavigationSplitView {
+            List(selection: Binding<Tab?>(get: { tab }, set: { if let picked = $0 { tab = picked } })) {
+                ForEach(tabItems, id: \.tab) { item in
+                    Label(item.label, systemImage: item.systemImage)
+                        .tag(item.tab)
+                        .badge(item.badge)
+                }
+            }
+            .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 280)
+        } detail: {
+            tabContent
+        }
+        .navigationSplitViewStyle(.balanced)
     }
 
     /// `Deila` on a post: the forward picker, sending the post as a card into each conversation picked (decision 0080).
