@@ -67,7 +67,7 @@ import {
   checkSend,
   getMedia,
   MAX_CIPHERTEXT,
-  mediaRoutes,
+  messagingRoutes,
   putMedia,
 } from "./modules/messaging/index.ts";
 import { communityRoutes } from "./modules/communities/index.ts";
@@ -351,7 +351,7 @@ export function createApp() {
   });
 
   // Muting (decision 0042) and a group's photo (0094).
-  mediaRoutes(app);
+  messagingRoutes(app);
 
   // Media (decision 0023): the roster check is the Conversation DO's, as for messages.
   app.openapi(putMediaRoute, async (c) => {
