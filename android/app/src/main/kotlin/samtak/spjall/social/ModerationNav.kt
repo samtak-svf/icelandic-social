@@ -12,7 +12,10 @@ import samtak.spjall.ui.rememberBack
 // Stjórna's join requests and report queue, each as its own screen (a compact or medium window) and as a pane inside
 // the community (an expanded window, decision 0087), over one view model and one set of actions.
 
-/** Stjórna's join requests inside the community (an expanded window), over its own view model in the community's entry. */
+/**
+ * Stjórna's join requests inside the community (an expanded window), over its own view model in the community's
+ * entry.
+ */
 @Composable
 internal fun JoinRequestsPane(
     communityId: String,
@@ -50,7 +53,10 @@ internal fun JoinRequests(
     JoinRequestsScreen(state, joinRequestsActions(model, back))
 }
 
-/** Stjórna's report queue inside the community (an expanded window), over its own view model in the community's entry. */
+/**
+ * Stjórna's report queue inside the community (an expanded window), over its own view model in the community's
+ * entry.
+ */
 @Composable
 internal fun ReportsPane(
     communityId: String,

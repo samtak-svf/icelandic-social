@@ -24,7 +24,10 @@ object SocialRoutes {
 
     fun requests(id: String) = "$REQUESTS/$id"
 
-    /** The patterns of the screens that lay out their own columns on an expanded window (0087), as the web's wide pages. */
+    /**
+     * The patterns of the screens that lay out their own columns on an expanded window (0087), as the web's wide
+     * pages.
+     */
     val WIDE =
         setOf(COMMUNITIES, NEW_COMMUNITY, "$COMMUNITY/{id}", "$REPORTS/{id}", "$REQUESTS/{id}")
 }

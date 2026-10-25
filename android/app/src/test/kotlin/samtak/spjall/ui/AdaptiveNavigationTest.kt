@@ -101,7 +101,7 @@ class AdaptiveNavigationTest {
 
     // The content is one column no wider than the web's (0087), on a window wider than that beside the rail.
     @Test
-    @Config(qualifiers = "w700dp-h900dp")
+    @Config(qualifiers = "w800dp-h900dp")
     fun oneColumnAtMedium() {
         show(wide = true)
         compose.onNodeWithTag(CONTENT).assertWidthIsEqualTo(CONTENT_WIDTH.dp)
