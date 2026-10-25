@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import samtak.spjall.brand.R
 import samtak.spjall.core.AccountDevice
+import samtak.spjall.core.DeviceKind
 import samtak.spjall.core.Me
 import samtak.spjall.core.Platform
 import samtak.spjall.ui.AppIcons
@@ -179,9 +180,10 @@ private fun DeviceRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text =
-                    when (device.platform) {
-                        Platform.ANDROID -> "Android"
-                        Platform.IOS -> "iPhone"
+                    when {
+                        device.kind == DeviceKind.WEB -> stringResource(R.string.device_kind_web)
+                        device.platform == Platform.ANDROID -> "Android"
+                        else -> "iPhone"
                     },
                 style = NAME,
                 color = Palette.fg,

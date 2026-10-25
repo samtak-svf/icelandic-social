@@ -51,7 +51,7 @@ import samtak.spjall.ui.Palette
 import samtak.spjall.ui.sideBySide
 
 /** The five parts of Stjórna, in the order of decision 0087. */
-internal enum class ManagePart { EDIT, REQUESTS, REPORTS, MEMBERS, LOG }
+internal enum class ManagePart { EDIT, REQUESTS, ANONYMOUS, REPORTS, MEMBERS, LOG }
 
 /** The test tags of the two panes. */
 internal const val MANAGE_SECTIONS = "manage-sections"
@@ -64,6 +64,7 @@ internal const val MANAGE_DETAIL = "manage-detail"
 internal class ManageSlots(
     val requests: @Composable () -> Unit = {},
     val reports: @Composable () -> Unit = {},
+    val anonymous: @Composable () -> Unit = {},
 )
 
 /**
@@ -87,6 +88,7 @@ internal fun ManagePage(
             if (owner) add(ManagePart.EDIT)
             if (community.moderates) {
                 add(ManagePart.REQUESTS)
+                if (community.anonymousPosts) add(ManagePart.ANONYMOUS)
                 add(ManagePart.REPORTS)
             }
             if (owner) add(ManagePart.MEMBERS)
@@ -159,6 +161,16 @@ private fun SectionList(
                         } else {
                             stringResource(R.string.join_requests_title)
                         }
+                    ManagePart.ANONYMOUS ->
+                        if (community.pendingAnonymous > 0uL) {
+                            pluralStringResource(
+                                R.plurals.anonymous_queue_waiting,
+                                community.pendingAnonymous.toInt(),
+                                community.pendingAnonymous.toInt(),
+                            )
+                        } else {
+                            stringResource(R.string.anonymous_queue_title)
+                        }
                     ManagePart.REPORTS ->
                         if (reports > 0) {
                             "${stringResource(R.string.moderation_queue)} ($reports)"
@@ -194,6 +206,7 @@ private fun SectionDetail(
     when (chosen) {
         ManagePart.REQUESTS -> Box(Modifier.fillMaxSize().testTag(MANAGE_DETAIL)) { slots.requests() }
         ManagePart.REPORTS -> Box(Modifier.fillMaxSize().testTag(MANAGE_DETAIL)) { slots.reports() }
+        ManagePart.ANONYMOUS -> Box(Modifier.fillMaxSize().testTag(MANAGE_DETAIL)) { slots.anonymous() }
         else ->
             Column(
                 modifier =
@@ -299,6 +312,9 @@ internal fun EditFields(
         minLines = 3,
     )
     Choices(options, draft.audience, draft.onAudience)
+    if (community.role == CommunityRole.OWNER) {
+        AnonymousPostsSwitch(community.anonymousPosts, busy, actions::setAnonymousPosts)
+    }
     PictureRows(community, busy, actions)
 }
 

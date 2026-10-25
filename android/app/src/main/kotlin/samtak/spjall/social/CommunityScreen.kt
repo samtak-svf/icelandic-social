@@ -150,8 +150,10 @@ private fun ColumnScope.CommunityBody(
                 modifier = Modifier.weight(1f),
             )
         // The feed in the main pane, Um samfélagið in the supporting pane (decision 0087).
-        currentLayout().community == CommunityLayout.FEED_AND_ASIDE && community != null ->
-            CommunityPanes(community, state.members, Modifier.weight(1f).fillMaxWidth(), feed)
+        currentLayout().community == CommunityLayout.FEED_AND_ASIDE && community != null -> {
+            val modifier = Modifier.weight(1f).fillMaxWidth()
+            CommunityPanes(community, state.members, modifier, state.featured, actions::open, feed)
+        }
         else -> feed(Modifier.weight(1f))
     }
 }

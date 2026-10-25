@@ -804,6 +804,29 @@
     <string name="post_pinned">Fest</string>
     <!-- Told when a fourth post is featured: three are featured already and one must be released first (decision 0088) -->
     <string name="post_pin_full">Þrjár færslur eru festar. Losaðu eina fyrst.</string>
+    <!-- Button in the post form that turns the post into a poll (decision 0090). -->
+    <string name="composer_poll">Könnun</string>
+    <!-- Placeholder of the n-th option field of a poll being written (decision 0090). -->
+    <string name="composer_poll_option">Valkostur %1$d</string>
+    <!-- Button that adds an option field to a poll being written, up to six (decision 0090). -->
+    <string name="composer_poll_add_option">Bæta við valkosti</string>
+    <!-- Accessible name of the button that removes an option field, down to two (decision 0090). -->
+    <string name="composer_poll_remove_option">Fjarlægja valkost</string>
+    <!-- How many votes a poll has, always shown (decision 0090). -->
+    <plurals name="poll_votes">
+        <item quantity="one">%1$d atkvæði</item>
+        <item quantity="other">%1$d atkvæði</item>
+    </plurals>
+    <!-- Button that withdraws the reader's vote while a poll is open (decision 0090). -->
+    <string name="poll_withdraw">Draga atkvæði til baka</string>
+    <!-- Menu item that closes a poll, for its author and the moderators (decision 0090). -->
+    <string name="poll_close">Loka könnun</string>
+    <!-- Marker on a poll that takes no more votes and shows its final results (decision 0090). -->
+    <string name="poll_closed">Könnun lokið</string>
+    <!-- Told when a vote is sent to a poll that was closed meanwhile (decision 0090). -->
+    <string name="poll_closed_problem">Könnuninni er lokið.</string>
+    <!-- Accessible mark on the option the reader voted for (decision 0090). -->
+    <string name="poll_your_choice">Þitt val</string>
     <!-- Entry in the moderation log: a moderator closed a poll (decision 0090). -->
     <string name="moderation_log_poll_closed">Könnun var lokað.</string>
     <!-- Heading of the community's featured posts, in the aside on a wide screen (decision 0088) -->
@@ -897,12 +920,41 @@
     <string name="image_frames_reset">Nota sjálfvirka afmörkun</string>
     <!-- The image has no stored master to frame again, so it must be uploaded again (docs/decisions/0086). -->
     <string name="image_frames_no_master">Settu myndina inn aftur til að breyta afmörkun</string>
+    <!-- The composer's switch to post without the author's name; shown only in a community that allows it (decision 0091). -->
+    <string name="composer_anonymous">Birta nafnlaust</string>
+    <!-- Explains the anonymous switch in the composer (decision 0091). -->
+    <string name="composer_anonymous_hint">Stjórnandi fer yfir færsluna áður en hún birtist. Stjórnandi getur afhjúpað höfundinn.</string>
+    <!-- The owner's switch in Breyta samfélagi that lets members post without their name (decision 0091). -->
+    <string name="community_anonymous_posts">Nafnlausar færslur</string>
+    <!-- Explains the community switch for anonymous posts (decision 0091). -->
+    <string name="community_anonymous_posts_hint">Færslur eru yfirfarnar af stjórnanda áður en þær birtast. Stjórnandi getur afhjúpað höfundinn.</string>
     <!-- The byline of an anonymous post, for everyone but its author (decision 0091). -->
     <string name="post_anonymous_author">Nafnlaus meðlimur</string>
     <!-- The author's own byline on their anonymous post (decision 0091). -->
     <string name="post_anonymous_mine">Þú · nafnlaust</string>
     <!-- Marks the author's own anonymous post while it waits for a moderator (decision 0091). -->
     <string name="post_pending">Bíður samþykkis stjórnanda.</string>
+    <!-- Title of the page and link where moderators review anonymous posts (decision 0091). -->
+    <string name="anonymous_queue_title">Nafnlausar færslur</string>
+    <!-- How many anonymous posts wait, as the link to the list (decision 0091). -->
+    <plurals name="anonymous_queue_waiting">
+        <item quantity="one">%1$d nafnlaus færsla bíður</item>
+        <item quantity="other">%1$d nafnlausar færslur bíða</item>
+    </plurals>
+    <!-- The anonymous queue when it is empty (decision 0091). -->
+    <string name="anonymous_queue_empty">Engin nafnlaus færsla bíður.</string>
+    <!-- Approves a waiting anonymous post (decision 0091). -->
+    <string name="anonymous_approve">Birta</string>
+    <!-- Declines a waiting anonymous post; the author is told (decision 0091). -->
+    <string name="anonymous_decline">Hafna</string>
+    <!-- A moderator asks for the author of an anonymous post; the community's log records it (decision 0091). -->
+    <string name="anonymous_reveal">Sýna höfund</string>
+    <!-- Confirmation before revealing the author of an anonymous post (decision 0091). -->
+    <string name="anonymous_reveal_confirm">Sýna höfund? Aðgerðin er skráð í aðgerðaskrá samfélagsins.</string>
+    <!-- The author of an anonymous post, shown to the moderator who revealed it (decision 0091). -->
+    <string name="anonymous_revealed">Höfundur: %1$s</string>
+    <!-- Posting anonymously in a community whose switch is off (decision 0091). -->
+    <string name="problem_anonymous_off">Þetta samfélag leyfir ekki nafnlausar færslur.</string>
     <!-- Entry in the moderation log: the owner turned anonymous posts on (decision 0091). -->
     <string name="moderation_log_anonymous_on">Nafnlausar færslur voru leyfðar.</string>
     <!-- Entry in the moderation log: the owner turned anonymous posts off (decision 0091). -->

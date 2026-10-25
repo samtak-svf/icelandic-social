@@ -18,6 +18,7 @@ import samtak.spjall.account.problem
 import samtak.spjall.conversation.Picked
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
+import samtak.spjall.core.CommunityImage
 import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.CoreException
@@ -79,9 +80,35 @@ class CommunityViewModel(
         /** Until when (Unix ms) a moderator's decline keeps this account from asking again; null when it may ask. */
         val declinedUntil: ULong? = null,
         val problem: Problem? = null,
+        /** The tab shown (0089). */
+        val tab: CommunityTab = CommunityTab.DISCUSSION,
+        /** Pinning was refused because three posts are featured already (0088). */
+        val pinFull: Boolean = false,
+        /** The community's pictures, newest first, for Myndir; [galleryNext] is the cursor of the next page. */
+        val gallery: List<CommunityImage> = emptyList(),
+        val galleryNext: String? = null,
+        val galleryLoaded: Boolean = false,
+        val galleryLoading: Boolean = false,
+        /** The option fields of the poll being written (0090); null when the post is not a poll. */
+        val poll: List<String>? = null,
+        /** The post being written goes without the author's name (0091). */
+        val anonymous: Boolean = false,
+        /** The posts whose poll call (vote, withdraw, close) is on its way. */
+        val answering: Set<String> = emptySet(),
+        /** The authors a moderator asked to see, by post; an empty name is an account without one (0091). */
+        val revealed: Map<String, String> = emptyMap(),
     ) {
-        /** Whether there is something to post: text, images, or both. */
-        val postable: Boolean get() = draft.isNotBlank() || images.isNotEmpty()
+        /** The posts a moderator featured, newest pin first. */
+        val featured: List<Post> get() = community?.featured.orEmpty()
+
+        /** Whether there is something to post: text, images, or both; a poll needs its text and valid options. */
+        val postable: Boolean
+            get() =
+                if (poll != null) {
+                    draft.isNotBlank() && PollDraft.valid(poll)
+                } else {
+                    draft.isNotBlank() || images.isNotEmpty()
+                }
     }
 
     /** Why an image did not go with the post. */
@@ -290,7 +317,7 @@ class CommunityViewModel(
      * they can be shown and sent. Those past the fourth, or over the server's limit, are left out with a notice.
      */
     fun pick(picked: List<Picked>) {
-        if (picked.isEmpty() || !roomForImage()) return
+        if (picked.isEmpty() || _state.value.poll != null || !roomForImage()) return
         val fits = picked.take(room())
         val taken = fits.filter { (it.size ?: 0L) <= IMAGE_LIMIT }
         val notice =
@@ -341,13 +368,26 @@ class CommunityViewModel(
                             state.images.map { path ->
                                 uploaded.getOrPut(path) { social.uploadPostImage(id, path).mediaId }
                             }
-                        social.createPost(id, body, media)
+                        val poll = state.poll?.let(PollDraft::options)
+                        val anonymous = state.anonymous && state.community?.anonymousPosts == true
+                        if (poll == null && !anonymous) {
+                            social.createPost(id, body, media)
+                        } else {
+                            social.createPostWith(id, body, media, anonymous, poll)
+                        }
                     }
                 failed = null
                 withContext(io) { state.images.forEach { File(it).delete() } }
                 uploaded.clear()
                 _state.update {
-                    it.copy(posts = listOf(post) + it.posts, draft = "", images = emptyList(), publishing = false)
+                    it.copy(
+                        posts = listOf(post) + it.posts,
+                        draft = "",
+                        images = emptyList(),
+                        poll = null,
+                        anonymous = false,
+                        publishing = false,
+                    )
                 }
             } catch (e: CoreException) {
                 val notice = e.imageNotice()
@@ -414,9 +454,154 @@ class CommunityViewModel(
         postId: String,
         pinned: Boolean,
     ) {
+        _state.update { it.copy(pinFull = false) }
         perform(again = { pin(postId, pinned) }) {
-            if (pinned) social.pinPost(id, postId) else social.unpinPost(id, postId)
+            try {
+                if (pinned) social.pinPost(id, postId) else social.unpinPost(id, postId)
+            } catch (e: CoreException.Refused) {
+                if (e.code != "pin_limit") throw e
+                _state.update { it.copy(pinFull = true) }
+                return@perform
+            }
             reload()
+        }
+    }
+
+    /** Shows [tab]; Myndir reads its first page and Meðlimir the members when they are first opened. */
+    fun selectTab(tab: CommunityTab) {
+        _state.update { it.copy(tab = tab) }
+        when (tab) {
+            CommunityTab.IMAGES -> if (!_state.value.galleryLoaded) loadGallery()
+            CommunityTab.MEMBERS -> if (_state.value.members.isEmpty()) loadMembers()
+            else -> Unit
+        }
+    }
+
+    /** The first page of the community's pictures. */
+    fun loadGallery() {
+        if (_state.value.galleryLoading) return
+        _state.update { it.copy(galleryLoading = true, problem = null) }
+        viewModelScope.launch {
+            try {
+                val page = withContext(io) { social.communityImages(id, null, GALLERY_PAGE) }
+                failed = null
+                _state.update {
+                    it.copy(
+                        gallery = page.images,
+                        galleryNext = page.next,
+                        galleryLoaded = true,
+                        galleryLoading = false,
+                    )
+                }
+            } catch (e: CoreException) {
+                failed = ::loadGallery
+                _state.update { it.copy(galleryLoading = false, problem = e.problem()) }
+            }
+        }
+    }
+
+    /** The end of the grid came into view: the next, older page. */
+    fun moreGallery() {
+        val state = _state.value
+        val next = state.galleryNext ?: return
+        if (state.galleryLoading) return
+        _state.update { it.copy(galleryLoading = true) }
+        viewModelScope.launch {
+            try {
+                val page = withContext(io) { social.communityImages(id, next, GALLERY_PAGE) }
+                _state.update {
+                    it.copy(gallery = it.gallery + page.images, galleryNext = page.next, galleryLoading = false)
+                }
+            } catch (e: CoreException) {
+                failed = ::moreGallery
+                _state.update { it.copy(galleryLoading = false, problem = e.problem()) }
+            }
+        }
+    }
+
+    /** Turns the post being written into a poll with two empty options, or back into a plain post. */
+    fun togglePoll() {
+        _state.update {
+            when {
+                it.poll != null -> it.copy(poll = null)
+                it.images.isNotEmpty() -> it
+                else -> it.copy(poll = PollDraft.empty())
+            }
+        }
+    }
+
+    fun pollOption(
+        index: Int,
+        text: String,
+    ) {
+        if (text.length > PollDraft.OPTION_MAX) return
+        _state.update { s ->
+            s.poll?.let { p -> s.copy(poll = p.mapIndexed { i, old -> if (i == index) text else old }) } ?: s
+        }
+    }
+
+    fun addPollOption() {
+        _state.update { s ->
+            s.poll?.takeIf { it.size < PollDraft.MAX_OPTIONS }?.let { s.copy(poll = it + "") } ?: s
+        }
+    }
+
+    fun removePollOption(index: Int) {
+        _state.update { s ->
+            s.poll
+                ?.takeIf { it.size > PollDraft.MIN_OPTIONS }
+                ?.let { p -> s.copy(poll = p.filterIndexed { i, _ -> i != index }) }
+                ?: s
+        }
+    }
+
+    fun setAnonymous(on: Boolean) {
+        _state.update { it.copy(anonymous = on) }
+    }
+
+    /** Votes for an option of the poll on [postId], or changes the vote to it. */
+    fun vote(
+        postId: String,
+        optionId: String,
+    ) = answer(postId) { social.votePoll(postId, optionId) }
+
+    fun withdrawVote(postId: String) = answer(postId) { social.withdrawVote(postId) }
+
+    fun closePoll(postId: String) = answer(postId) { social.closePoll(postId) }
+
+    private fun answer(
+        postId: String,
+        call: () -> Post,
+    ) {
+        if (postId in _state.value.answering) return
+        _state.update { it.copy(answering = it.answering + postId, problem = null) }
+        viewModelScope.launch {
+            try {
+                val changed = withContext(io) { call() }
+                _state.update { it.replacing(changed).copy(answering = it.answering - postId) }
+            } catch (e: CoreException) {
+                _state.update { it.copy(answering = it.answering - postId, problem = e.problem()) }
+            }
+        }
+    }
+
+    /** Asks for the author of an anonymous post (the log records who asked, 0091). */
+    fun revealAuthor(postId: String) {
+        viewModelScope.launch {
+            try {
+                val author = withContext(io) { social.revealAuthor(postId) }
+                _state.update { it.copy(revealed = it.revealed + (postId to author.name.orEmpty())) }
+            } catch (e: CoreException) {
+                _state.update { it.copy(problem = e.problem()) }
+            }
+        }
+    }
+
+    /** The owner lets members post without their name, or stops it (0091). */
+    fun setAnonymousPosts(on: Boolean) {
+        perform({ setAnonymousPosts(on) }) {
+            val updated = social.setAnonymousPosts(id, on)
+            _state.update { it.copy(community = updated.copy(featured = it.featured)) }
         }
     }
 
@@ -478,6 +663,12 @@ class CommunityViewModel(
                 writes = community.writes(now()),
                 muted = community.muted(now()),
                 declinedUntil = community.joinDeclinedUntil?.takeIf { it.toLong() > now() },
+                tab =
+                    if (it.tab == CommunityTab.FEATURED && community.featured.isEmpty()) {
+                        CommunityTab.DISCUSSION
+                    } else {
+                        it.tab
+                    },
             )
         }
     }
@@ -508,6 +699,17 @@ internal fun CoreException.imageNotice(): CommunityViewModel.ImageNotice? =
         "invalid_image" -> CommunityViewModel.ImageNotice.Invalid
         else -> null
     }
+
+/** The post as the server now has it, in the feed and among the featured. */
+private fun CommunityViewModel.State.replacing(changed: Post): CommunityViewModel.State =
+    copy(
+        posts = posts.map { if (it.postId == changed.postId) changed else it },
+        community =
+            community?.copy(featured = community.featured.map { if (it.postId == changed.postId) changed else it }),
+    )
+
+/** A page of the community's pictures. */
+private const val GALLERY_PAGE = 30u
 
 /** A page of posts. */
 private const val PAGE = 20u

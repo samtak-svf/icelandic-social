@@ -53,6 +53,14 @@ class PostCardCallbacks(
     val onPin: ((Boolean) -> Unit)? = null,
     /** Sends the post into conversations; null where that is not on offer. */
     val onSendToConversation: (() -> Unit)? = null,
+    /** Votes in the post's poll; null where the poll is only shown. */
+    val poll: PollCallbacks? = null,
+    /** The poll's vote, withdraw or close is on its way. */
+    val answering: Boolean = false,
+    /** Asks for the author of an anonymous post; offered to a moderator. */
+    val onReveal: (() -> Unit)? = null,
+    /** The author a moderator asked for; an empty name is an account without one. */
+    val revealed: String? = null,
 )
 
 /**
@@ -89,7 +97,11 @@ fun PostCard(
         }
         if (post.pinned) PinnedMarker()
         if (post.body.isNotBlank()) PostBody(post.postId, post.body, clamp = inFeed)
+        post.poll?.let { PollCard(it, callbacks.answering, callbacks.poll) }
         PostImageGrid(post)
+        callbacks.onReveal?.takeIf { post.anonymous }?.let { reveal ->
+            RevealAuthor(callbacks.revealed, onReveal = reveal)
+        }
         ReactionSummary(post, callbacks.onOpen)
         HorizontalDivider(color = Palette.border)
         PostActions(post, reacting, callbacks.onReact, callbacks.onComment) { sharing = true }

@@ -10,6 +10,8 @@ import samtak.spjall.core.Comment
 import samtak.spjall.core.CommentPage
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
+import samtak.spjall.core.CommunityImage
+import samtak.spjall.core.CommunityImagePage
 import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.CommunityPage
 import samtak.spjall.core.CommunityRole
@@ -22,6 +24,8 @@ import samtak.spjall.core.ModerationAction
 import samtak.spjall.core.ModerationLogEntry
 import samtak.spjall.core.ModerationLogPage
 import samtak.spjall.core.ModerationState
+import samtak.spjall.core.Poll
+import samtak.spjall.core.PollOption
 import samtak.spjall.core.Post
 import samtak.spjall.core.PostImage
 import samtak.spjall.core.PostPage
@@ -87,6 +91,18 @@ class FakeSocial : Social {
     var pageSize = Int.MAX_VALUE
     private var made = 0
 
+    /** The featured posts of each community, newest pin first, at most three (0088). */
+    val featuredIds = mutableMapOf<String, List<String>>()
+
+    /** The pictures of each community, newest first, for Myndir. */
+    val images = mutableMapOf<String, List<CommunityImage>>()
+
+    /** The anonymous posts waiting for approval, by community. */
+    val pendingAnonymous = mutableMapOf<String, MutableList<Post>>()
+
+    /** The author [revealAuthor] gives. */
+    var revealedAuthor: Author = anna
+
     private fun call(name: String) {
         calls += name
         if (name == failOn) throw unreachable()
@@ -136,7 +152,10 @@ class FakeSocial : Social {
 
     override fun community(id: String): Community {
         call("community $id")
-        return communities[id] ?: throw notFound()
+        val community = communities[id] ?: throw notFound()
+        val all = posts[id].orEmpty()
+        val featured = featuredIds[id].orEmpty().mapNotNull { fid -> all.firstOrNull { it.postId == fid } }
+        return community.copy(featured = featured)
     }
 
     override fun joinCommunity(id: String): JoinState {
@@ -278,6 +297,117 @@ class FakeSocial : Social {
             post("p-new${made++}", communityId, body).copy(images = media.map { PostImage(it, 640u, 480u) })
         posts.getOrPut(communityId) { mutableListOf() }.add(0, post)
         return post
+    }
+
+    override fun createPostWith(
+        communityId: String,
+        body: String,
+        media: List<String>,
+        anonymous: Boolean,
+        poll: List<String>?,
+    ): Post {
+        call(
+            "createPostWith $communityId $body anonymous=$anonymous poll=${poll?.joinToString("|")} " +
+                media.joinToString(","),
+        )
+        val author = if (anonymous) null else self
+        val base = post("p-new${made++}", communityId, body, anonymous = anonymous, author = author)
+        val created =
+            base.copy(
+                images = media.map { PostImage(it, 640u, 480u) },
+                poll = poll?.let { options -> newPoll(options) },
+                state = if (anonymous) ModerationState.PENDING else ModerationState.VISIBLE,
+            )
+        posts.getOrPut(communityId) { mutableListOf() }.add(0, created)
+        return created
+    }
+
+    private fun newPoll(options: List<String>) =
+        Poll(options.mapIndexed { i, t -> PollOption("o$i", t, null) }, 0uL, null, false)
+
+    private fun change(
+        postId: String,
+        edit: (Post) -> Post,
+    ): Post {
+        for (list in posts.values) {
+            val i = list.indexOfFirst { it.postId == postId }
+            if (i >= 0) {
+                list[i] = edit(list[i])
+                return list[i]
+            }
+        }
+        throw notFound()
+    }
+
+    override fun votePoll(
+        postId: String,
+        optionId: String,
+    ): Post {
+        call("votePoll $postId $optionId")
+        return change(postId) { p ->
+            val poll = p.poll ?: throw notFound()
+            if (poll.closed) throw CoreException.Refused(409u, "poll_closed", null)
+            val total = if (poll.mine == null) poll.total + 1uL else poll.total
+            p.copy(poll = poll.copy(mine = optionId, total = total))
+        }
+    }
+
+    override fun withdrawVote(postId: String): Post {
+        call("withdrawVote $postId")
+        return change(postId) { p ->
+            val poll = p.poll ?: throw notFound()
+            p.copy(poll = poll.copy(mine = null, total = if (poll.mine != null) poll.total - 1uL else poll.total))
+        }
+    }
+
+    override fun closePoll(postId: String): Post {
+        call("closePoll $postId")
+        return change(postId) { p -> p.copy(poll = p.poll?.copy(closed = true)) }
+    }
+
+    override fun communityImages(
+        communityId: String,
+        cursor: String?,
+        limit: UInt,
+    ): CommunityImagePage {
+        call(listOfNotNull("communityImages", communityId, cursor).joinToString(" "))
+        val all = images[communityId].orEmpty()
+        val (items, next) = page(all, cursor, limit)
+        return CommunityImagePage(items, next)
+    }
+
+    override fun setAnonymousPosts(
+        communityId: String,
+        on: Boolean,
+    ): Community {
+        call("setAnonymousPosts $communityId $on")
+        val updated = (communities[communityId] ?: throw notFound()).copy(anonymousPosts = on)
+        communities[communityId] = updated
+        return updated
+    }
+
+    override fun pendingAnonymousPosts(
+        communityId: String,
+        before: String?,
+        limit: UInt,
+    ): PostPage {
+        call("pendingAnonymousPosts $communityId")
+        return PostPage(pendingAnonymous[communityId].orEmpty().toList(), null)
+    }
+
+    override fun approveAnonymousPost(postId: String) {
+        call("approveAnonymousPost $postId")
+        pendingAnonymous.values.forEach { l -> l.removeAll { it.postId == postId } }
+    }
+
+    override fun declineAnonymousPost(postId: String) {
+        call("declineAnonymousPost $postId")
+        pendingAnonymous.values.forEach { l -> l.removeAll { it.postId == postId } }
+    }
+
+    override fun revealAuthor(postId: String): Author {
+        call("revealAuthor $postId")
+        return revealedAuthor
     }
 
     override fun uploadPostImage(
@@ -435,15 +565,18 @@ class FakeSocial : Social {
         setPinned(communityId, postId, false)
     }
 
-    /** The pinned post leads the first page, as the server returns it. */
+    /** Up to three posts are featured, newest pin first; a fourth is refused. The feed stays chronological. */
     private fun setPinned(
         communityId: String,
         postId: String,
         pinned: Boolean,
     ) {
         val list = posts[communityId] ?: return
-        val moved = list.map { if (it.postId == postId) it.copy(pinned = pinned) else it.copy(pinned = false) }
-        posts[communityId] = moved.sortedByDescending { it.pinned }.toMutableList()
+        val current = featuredIds[communityId].orEmpty() - postId
+        if (pinned && current.size >= 3) throw CoreException.Refused(409u, "pin_limit", null)
+        val next = if (pinned) listOf(postId) + current else current
+        featuredIds[communityId] = next
+        posts[communityId] = list.map { it.copy(pinned = it.postId in next) }.toMutableList()
     }
 
     override fun pinCommunity(communityId: String) {
@@ -597,6 +730,8 @@ fun community(
     unread: ULong = 0uL,
     pinned: Boolean = false,
     lastPostAt: ULong? = null,
+    anonymousPosts: Boolean = false,
+    pendingAnonymous: ULong = 0uL,
 ) = Community(
     communityId = id,
     name = name,
@@ -615,6 +750,8 @@ fun community(
     unread = unread,
     pinned = pinned,
     lastPostAt = lastPostAt,
+    anonymousPosts = anonymousPosts,
+    pendingAnonymous = pendingAnonymous,
 )
 
 fun post(
@@ -627,6 +764,9 @@ fun post(
     author: Author? = anna,
     anonymous: Boolean = false,
     own: Boolean = author?.accountId == self.accountId,
+    poll: Poll? = null,
+    pinned: Boolean = false,
+    state: ModerationState = ModerationState.VISIBLE,
 ) = Post(
     postId = id,
     communityId = communityId,
@@ -639,7 +779,9 @@ fun post(
     reactions = reactions,
     myReaction = mine,
     commentCount = comments,
-    state = ModerationState.VISIBLE,
+    state = state,
+    poll = poll,
+    pinned = pinned,
 )
 
 fun comment(

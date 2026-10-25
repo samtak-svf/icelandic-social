@@ -29,22 +29,7 @@ fun ProblemCard(
         colors = CardDefaults.cardColors(containerColor = Palette.secondarySubtle, contentColor = Palette.fg),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text =
-                    stringResource(
-                        when (problem) {
-                            Problem.Unreachable -> R.string.error_unreachable
-                            is Problem.IdentityTaken -> R.string.identity_taken
-                            Problem.TooLarge -> R.string.media_too_large
-                            Problem.LocationNotFound -> R.string.location_not_found
-                            Problem.LocationDenied -> R.string.location_denied
-                            Problem.NotPermitted -> R.string.problem_not_permitted
-                            Problem.NotFound -> R.string.problem_not_found
-                            Problem.JoinDeclined -> R.string.problem_join_declined
-                            is Problem.Generic -> R.string.error_generic
-                        },
-                    ),
-            )
+            Text(text = stringResource(problem.message()))
             // A refusal names the server's request id (decision 0037), selectable so a tester can quote it.
             problem.requestId?.let { id ->
                 SelectionContainer(modifier = Modifier.padding(top = 4.dp)) {
@@ -73,12 +58,32 @@ fun ProblemCard(
 }
 
 /** Problems trying again cannot help with, or that have their own way back. */
-private val FINAL = setOf(Problem.TooLarge, Problem.LocationNotFound, Problem.LocationDenied)
+private val FINAL =
+    setOf(
+        Problem.TooLarge,
+        Problem.LocationNotFound,
+        Problem.LocationDenied,
+        Problem.NotPermitted,
+        Problem.NotFound,
+        Problem.JoinDeclined,
+        Problem.PollClosed,
+        Problem.AnonymousOff,
+    )
 
 /** Whether the same call may work if asked again: not a refusal the server will repeat. */
-private fun Problem.canRetry() =
-    this !is Problem.IdentityTaken &&
-        this != Problem.NotPermitted &&
-        this != Problem.NotFound &&
-        this != Problem.JoinDeclined &&
-        this !in FINAL
+private fun Problem.canRetry() = this !is Problem.IdentityTaken && this !in FINAL
+
+private fun Problem.message(): Int =
+    when (this) {
+        Problem.Unreachable -> R.string.error_unreachable
+        is Problem.IdentityTaken -> R.string.identity_taken
+        Problem.TooLarge -> R.string.media_too_large
+        Problem.LocationNotFound -> R.string.location_not_found
+        Problem.LocationDenied -> R.string.location_denied
+        Problem.NotPermitted -> R.string.problem_not_permitted
+        Problem.NotFound -> R.string.problem_not_found
+        Problem.JoinDeclined -> R.string.problem_join_declined
+        Problem.PollClosed -> R.string.poll_closed_problem
+        Problem.AnonymousOff -> R.string.problem_anonymous_off
+        is Problem.Generic -> R.string.error_generic
+    }

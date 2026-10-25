@@ -9,6 +9,7 @@ object SocialRoutes {
     const val POST = "post"
     const val REPORTS = "reports"
     const val REQUESTS = "requests"
+    const val ANONYMOUS = "anonymous"
 
     fun community(id: String) = "$COMMUNITY/$id"
 
@@ -24,10 +25,12 @@ object SocialRoutes {
 
     fun requests(id: String) = "$REQUESTS/$id"
 
+    fun anonymous(id: String) = "$ANONYMOUS/$id"
+
     /**
      * The patterns of the screens that lay out their own columns on an expanded window (0087), as the web's wide
      * pages.
      */
     val WIDE =
-        setOf(COMMUNITIES, NEW_COMMUNITY, "$COMMUNITY/{id}", "$REPORTS/{id}", "$REQUESTS/{id}")
+        setOf(COMMUNITIES, NEW_COMMUNITY, "$COMMUNITY/{id}", "$REPORTS/{id}", "$REQUESTS/{id}", "$ANONYMOUS/{id}")
 }

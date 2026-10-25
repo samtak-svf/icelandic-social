@@ -96,6 +96,7 @@ class SettingsTest {
     private fun show(
         blocked: List<Person> = emptyList(),
         notificationsOff: Boolean = false,
+        web: Boolean = false,
     ) {
         val me =
             Me(
@@ -105,7 +106,11 @@ class SettingsTest {
                 listOf(
                     AccountDevice("d1", Platform.ANDROID, DeviceKind.PHONE, 1_700_000_000_000u, current = true),
                     AccountDevice("d2", Platform.IOS, DeviceKind.PHONE, 1_710_000_000_000u, current = false),
-                ),
+                ) +
+                    listOfNotNull(
+                        AccountDevice("d3", Platform.ANDROID, DeviceKind.WEB, 1_720_000_000_000u, current = false)
+                            .takeIf { web },
+                    ),
             )
         compose.setContent {
             SpjallTheme {
@@ -128,6 +133,12 @@ class SettingsTest {
         show()
         compose.onNodeWithText(text(R.string.devices_title).capitals()).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("1.2.3").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun aWebDeviceIsNamedByItsKindNotByAPhonePlatform() {
+        show(web = true)
+        compose.onNodeWithText(text(R.string.device_kind_web)).performScrollTo().assertIsDisplayed()
     }
 
     @Test

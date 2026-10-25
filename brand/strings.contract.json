@@ -1903,26 +1903,26 @@
       "description": "Told when a fourth post is featured: three are featured already and one must be released first (decision 0088)"
     },
     "composer_poll": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Button in the post form that turns the post into a poll (decision 0090)."
     },
     "composer_poll_option": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Placeholder of the n-th option field of a poll being written (decision 0090).",
       "placeholders": {
         "n": "int"
       }
     },
     "composer_poll_add_option": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Button that adds an option field to a poll being written, up to six (decision 0090)."
     },
     "composer_poll_remove_option": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Accessible name of the button that removes an option field, down to two (decision 0090)."
     },
     "poll_votes": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "How many votes a poll has, always shown (decision 0090).",
       "plural": true,
       "placeholders": {
@@ -1930,23 +1930,23 @@
       }
     },
     "poll_withdraw": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Button that withdraws the reader's vote while a poll is open (decision 0090)."
     },
     "poll_close": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Menu item that closes a poll, for its author and the moderators (decision 0090)."
     },
     "poll_closed": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Marker on a poll that takes no more votes and shows its final results (decision 0090)."
     },
     "poll_closed_problem": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Told when a vote is sent to a poll that was closed meanwhile (decision 0090)."
     },
     "poll_your_choice": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Accessible mark on the option the reader voted for (decision 0090)."
     },
     "moderation_log_poll_closed": {
@@ -2188,19 +2188,19 @@
       "description": "The image has no stored master to frame again, so it must be uploaded again (docs/decisions/0086)."
     },
     "composer_anonymous": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "The composer's switch to post without the author's name; shown only in a community that allows it (decision 0091)."
     },
     "composer_anonymous_hint": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Explains the anonymous switch in the composer (decision 0091)."
     },
     "community_anonymous_posts": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "The owner's switch in Breyta samfélagi that lets members post without their name (decision 0091)."
     },
     "community_anonymous_posts_hint": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Explains the community switch for anonymous posts (decision 0091)."
     },
     "post_anonymous_author": {
@@ -2216,11 +2216,11 @@
       "description": "Marks the author's own anonymous post while it waits for a moderator (decision 0091)."
     },
     "anonymous_queue_title": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Title of the page and link where moderators review anonymous posts (decision 0091)."
     },
     "anonymous_queue_waiting": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "How many anonymous posts wait, as the link to the list (decision 0091).",
       "plural": true,
       "placeholders": {
@@ -2228,34 +2228,34 @@
       }
     },
     "anonymous_queue_empty": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "The anonymous queue when it is empty (decision 0091)."
     },
     "anonymous_approve": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Approves a waiting anonymous post (decision 0091)."
     },
     "anonymous_decline": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Declines a waiting anonymous post; the author is told (decision 0091)."
     },
     "anonymous_reveal": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "A moderator asks for the author of an anonymous post; the community's log records it (decision 0091)."
     },
     "anonymous_reveal_confirm": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Confirmation before revealing the author of an anonymous post (decision 0091)."
     },
     "anonymous_revealed": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "The author of an anonymous post, shown to the moderator who revealed it (decision 0091).",
       "placeholders": {
         "name": "string"
       }
     },
     "problem_anonymous_off": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Posting anonymously in a community whose switch is off (decision 0091)."
     },
     "moderation_log_anonymous_on": {
