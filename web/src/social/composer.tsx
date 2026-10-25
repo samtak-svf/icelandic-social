@@ -9,6 +9,8 @@ import { Avatar } from "./avatar.tsx";
 import { canSendComment, commentMedia } from "./comment-draft.ts";
 import { IMAGE_TYPES, MAX_COMMENT_IMAGES, refusal } from "./images.ts";
 import { outcome, type Outcome } from "./outcome.ts";
+import { canPublishPoll, emptyPoll, pollOptions } from "./poll-draft.ts";
+import { PollFields } from "./poll-fields.tsx";
 
 // The one text box a post and a comment are both written in; a post also
 // takes up to four images (decision 0065).
@@ -193,6 +195,7 @@ function PostForm({ communityId, posted }: Readonly<{ communityId: string; poste
   const id = useId();
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [poll, setPoll] = useState<string[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | keyof typeof REFUSED | null>(null);
   const path = { communityId };
@@ -215,7 +218,17 @@ function PostForm({ communityId, posted }: Readonly<{ communityId: string; poste
       else if (stored.status === 413) return "too_large";
       else return stored.problem;
     }
-    const sent = await outcome(createPost({ path, body: { body: text.trim(), media } }), 200);
+    const sent = await outcome(
+      createPost({
+        path,
+        body: {
+          body: text.trim(),
+          media,
+          ...(poll === null ? {} : { poll: { options: pollOptions(poll) } }),
+        },
+      }),
+      200,
+    );
     return sent.ok ? null : sent.problem;
   }
 
@@ -229,6 +242,7 @@ function PostForm({ communityId, posted }: Readonly<{ communityId: string; poste
     if (failed === null) {
       setText("");
       setFiles([]);
+      setPoll(null);
       posted();
     }
   }
@@ -249,6 +263,7 @@ function PostForm({ communityId, posted }: Readonly<{ communityId: string; poste
         onChange={(event) => setText(event.target.value)}
         className="rounded-md border border-border-strong bg-surface p-2"
       />
+      {poll !== null && <PollFields options={poll} busy={busy} change={setPoll} />}
       {files.length > 0 && (
         <ul className="flex flex-col gap-1">
           {files.map((file, at) => (
@@ -280,14 +295,24 @@ function PostForm({ communityId, posted }: Readonly<{ communityId: string; poste
             accept={IMAGE_TYPES}
             multiple
             className="sr-only"
-            disabled={busy}
+            disabled={busy || poll !== null}
             onChange={choose}
           />
         </label>
         <Button
+          aria-pressed={poll !== null}
+          disabled={busy || files.length > 0}
+          onClick={() => setPoll(poll === null ? emptyPoll() : null)}
+        >
+          {strings.composer_poll}
+        </Button>
+        <Button
           tone="primary"
           type="submit"
-          disabled={busy || (text.trim() === "" && files.length === 0)}
+          disabled={
+            busy ||
+            (poll === null ? text.trim() === "" && files.length === 0 : !canPublishPoll(text, poll))
+          }
         >
           {strings.post_publish}
         </Button>

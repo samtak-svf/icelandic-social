@@ -84,7 +84,7 @@ export interface SignInConfig {
 }
 
 export interface ApiError {
-  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, pin_limit, invalid_media, muted, expired, incomplete, internal_error */
+  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, pin_limit, poll_closed, invalid_media, muted, expired, incomplete, internal_error */
   error: string;
   /** The request's id, also in the x-request-id header: opaque, for support to find the request by (decision 0037) */
   requestId: string;
@@ -510,6 +510,7 @@ export interface Post {
   latestComment: Comment | null;
   /** Only a moderator sees what is not visible: hidden or removed by a moderator */
   state: "visible" | "hidden" | "removed";
+  poll?: Poll;
   /** A moderator features it (decision 0088); it stays in its place in the feed, marked, and is also in the community's `featured`. `getFeed` never marks it */
   pinned: boolean;
 }
@@ -549,6 +550,21 @@ export interface Comment {
   liked: boolean;
   /** The comment's image, none or one (decision 0082) */
   media: Array<SocialMedia>;
+}
+
+/** Present when the post is a poll (decision 0090) */
+export interface Poll {
+  options: Array<{
+    optionId: string;
+    text: string;
+    /** How many votes the option has, or null while the caller has not voted: the author, the community's owner and moderators, and every reader of a closed poll see it at once (decision 0090) */
+    votes: number | null;
+  }>;
+  /** How many votes the poll has, always shown */
+  total: number;
+  /** The option the caller voted for */
+  mine: string | null;
+  closed: boolean;
 }
 
 export interface CommunityPage {
@@ -719,7 +735,7 @@ export interface ModerationLogEntry {
   actor: Author | null;
   /** Done as one of Samtak's platform moderators */
   asPlatform: boolean;
-  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "close_report" | "delete_community" | "restore_community" | "set_community_picture" | "remove_community_picture" | "set_community_cover" | "remove_community_cover" | "pin_post" | "unpin_post";
+  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "close_report" | "delete_community" | "restore_community" | "set_community_picture" | "remove_community_picture" | "set_community_cover" | "remove_community_cover" | "pin_post" | "unpin_post" | "close_poll";
   target: {
     kind: "post" | "comment" | "community" | "account" | "report";
     id: string;
@@ -1748,6 +1764,10 @@ export function createPost(args: {
   body: {
     body?: string;
     media?: Array<string>;
+    /** Makes the post a poll (decision 0090): the body is the question and is required, there are two to six distinct options, and no image */
+    poll?: {
+      options: Array<string>;
+    };
   };
 }, init?: CallInit): Promise<
   | { status: 200; data: Post }
@@ -1972,6 +1992,49 @@ export function unreact(args: {
 }
 
 /**
+ * Vote in a poll, or change the caller's vote
+ *
+ * Whoever may comment may vote, once; voting again changes the vote (decision 0090). Nobody is told, and no route says who voted or how.
+ */
+export function votePoll(args: {
+  path: {
+    postId: string;
+  };
+  body: {
+    optionId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Post }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("PUT", "/v1/posts/{postId}/vote", args, init);
+}
+
+/**
+ * Withdraw the caller's vote in a poll
+ *
+ * Withdrawing when there is no vote changes nothing (decision 0090).
+ */
+export function withdrawVote(args: {
+  path: {
+    postId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Post }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/posts/{postId}/vote", args, init);
+}
+
+/**
  * Like a comment
  *
  * One 👍 per account and comment; liking twice is one like, and nobody is notified (decision 0080). The same rule as commenting applies.
@@ -2045,6 +2108,25 @@ export function unpinPost(args: {
   | { status: 426; data: ApiError }
 > {
   return call("DELETE", "/v1/communities/{communityId}/posts/{postId}/pin", args, init);
+}
+
+/**
+ * Close a poll
+ *
+ * The post's author, or the community's owner or a moderator, closes it; a moderator's close is in the moderation log. Closing a closed poll changes and logs nothing. A closed poll shows its results to every reader (decision 0090).
+ */
+export function closePoll(args: {
+  path: {
+    postId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Post }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/posts/{postId}/poll/close", args, init);
 }
 
 /**

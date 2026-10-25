@@ -2,7 +2,7 @@
 // reactions in each community's Space object, the index the feed reads in D1,
 // and the images in R2. The tables it owns are written only here.
 
-export { featuredFor } from "./posts.ts";
+export { featuredFor, viewPost } from "./posts.ts";
 export { MAX_FEATURED } from "./do/space-schema.ts";
 export { dropSpace, forgetAccount } from "./lifecycle.ts";
 export { commentAccess, postAccess } from "./access.ts";

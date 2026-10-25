@@ -15,6 +15,7 @@ import {
   uploadSocialMediaRoute,
 } from "../../api/social.ts";
 import { communityImagesRoute } from "../../api/community-gallery.ts";
+import { voteRoute, withdrawVoteRoute } from "../../api/polls.ts";
 import { likeCommentRoute, unlikeCommentRoute } from "../../api/social-hub.ts";
 import type { AppEnv } from "../../app.ts";
 import { space, withinLimit } from "../../env/index.ts";
@@ -41,6 +42,7 @@ import {
   noteAuthor,
   parseCursor,
   render,
+  viewPost,
   unindex,
   writeComment,
 } from "./posts.ts";
@@ -61,7 +63,19 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     if (refused) return fail(c, 403, refused);
     const input = c.req.valid("json");
     if (input.body === "" && input.media.length === 0) return fail(c, 400, "invalid_request");
-    const created = await createPost(c.env, communityId, accountId, input);
+    // A poll's body is its question, and it takes no image; its options differ (decision 0090).
+    if (input.poll) {
+      const texts = input.poll.options;
+      const distinct = new Set(texts.map((t) => t.toLowerCase())).size === texts.length;
+      if (input.body === "" || input.media.length > 0 || !distinct) {
+        return fail(c, 400, "invalid_request");
+      }
+    }
+    const created = await createPost(c.env, communityId, accountId, {
+      body: input.body,
+      media: input.media,
+      poll: input.poll?.options,
+    });
     if (created === "invalid_media") return fail(c, 400, "invalid_media");
     const author = (await authors(c.env, [accountId], communityId)).get(accountId);
     if (!author) return fail(c, 404, "not_found");
@@ -273,6 +287,38 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     if (!found) return fail(c, 404, "not_found");
     await space(c.env, found.post.communityId).react(postId, accountId, null);
     return c.body(null, 204);
+  });
+
+  // A vote (decision 0090) follows the rule of commenting and tells nobody, so
+  // no notice is written, and the log line carries ids, never the option.
+  // noteAuthor records that the account wrote in the space, so deleting the
+  // account reaches its votes. A post that is no poll answers 404.
+  app.openapi(voteRoute, async (c) => {
+    const { accountId } = c.var.session;
+    const { postId } = c.req.valid("param");
+    const found = await postAccess(c.env, accountId, postId);
+    if (!found) return fail(c, 404, "not_found");
+    const refused = replyRefusal(found.access, found.post);
+    if (refused) return fail(c, 403, refused);
+    const there = space(c.env, found.post.communityId);
+    if ((await there.pollStatus(postId)) === "none") return fail(c, 404, "not_found");
+    await noteAuthor(c.env, found.post.communityId, accountId);
+    const voted = await there.vote(postId, accountId, c.req.valid("json").optionId);
+    if (voted === "closed") return fail(c, 409, "poll_closed");
+    if (voted === "unknown_option") return fail(c, 400, "invalid_request");
+    const post = voted === "ok" ? await viewPost(c.env, accountId, postId) : null;
+    return post ? c.json(post, 200) : fail(c, 404, "not_found");
+  });
+
+  app.openapi(withdrawVoteRoute, async (c) => {
+    const { accountId } = c.var.session;
+    const { postId } = c.req.valid("param");
+    const found = await postAccess(c.env, accountId, postId);
+    if (!found) return fail(c, 404, "not_found");
+    const voted = await space(c.env, found.post.communityId).vote(postId, accountId, null);
+    if (voted === "closed") return fail(c, 409, "poll_closed");
+    const post = voted === "ok" ? await viewPost(c.env, accountId, postId) : null;
+    return post ? c.json(post, 200) : fail(c, 404, "not_found");
   });
 
   // A comment's 👍 (decision 0080) follows the rule of commenting and tells

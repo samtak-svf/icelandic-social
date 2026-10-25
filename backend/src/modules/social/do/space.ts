@@ -10,7 +10,9 @@ import {
   latestComments,
   listComments,
 } from "./comment-reads.ts";
-import { MAX_FEATURED, REMOVED_KEPT_MS, SCHEMA } from "./space-schema.ts";
+import * as polls from "./polls.ts";
+import { featured, pinPost } from "./pins.ts";
+import { REMOVED_KEPT_MS, SCHEMA } from "./space-schema.ts";
 
 export type { CommentContent, CommentRecord, ContentState, Viewer } from "./comment-reads.ts";
 
@@ -31,6 +33,8 @@ export type PostContent = {
   commentCount: number;
   /** The newest comment the viewer may read, or null (decision 0080). */
   latestComment: CommentContent | null;
+  /** Present on a poll (decision 0090). */
+  poll?: polls.PollView;
 };
 
 type PostRow = { post_id: string; author: string; body: string; media: string; created_at: number };
@@ -75,15 +79,20 @@ export class Space extends DurableObject<Env> {
     body: string;
     media: MediaRef[];
     createdAt: number;
+    /** The texts of a poll's options, in order (decision 0090). */
+    poll?: string[];
   }): void {
-    this.sql.exec(
-      "INSERT OR IGNORE INTO posts (post_id, author, body, media, created_at) VALUES (?, ?, ?, ?, ?)",
-      input.postId,
-      input.author,
-      input.body,
-      JSON.stringify(input.media),
-      input.createdAt,
-    );
+    this.ctx.storage.transactionSync(() => {
+      this.sql.exec(
+        "INSERT OR IGNORE INTO posts (post_id, author, body, media, created_at) VALUES (?, ?, ?, ?, ?)",
+        input.postId,
+        input.author,
+        input.body,
+        JSON.stringify(input.media),
+        input.createdAt,
+      );
+      polls.addOptions(this.sql, input.postId, input.poll ?? []);
+    });
   }
 
   /** The posts of `ids` there are, as `viewer` sees them, in the order asked. */
@@ -134,6 +143,12 @@ export class Space extends DurableObject<Env> {
         .map((r) => [r.post_id, r.count]),
     );
     const latest = latestComments(this.sql, ids, viewer);
+    const pollOf = polls.readPolls(
+      this.sql,
+      ids,
+      viewer,
+      new Map(rows.map((r) => [r.post_id, r.author])),
+    );
     const byId = new Map(rows.map((r) => [r.post_id, r]));
     return ids.flatMap((id) => {
       const row = byId.get(id);
@@ -151,9 +166,25 @@ export class Space extends DurableObject<Env> {
           myReaction: mine.get(id) ?? null,
           commentCount: comments.get(id) ?? 0,
           latestComment: latest.get(id) ?? null,
+          ...(pollOf.has(id) ? { poll: pollOf.get(id) } : {}),
         },
       ];
     });
+  }
+
+  /** Sets, changes or (with null) withdraws `account`'s vote (decision 0090). */
+  vote(postId: string, account: string, option: string | null) {
+    return polls.castVote(this.sql, postId, account, option);
+  }
+
+  /** Whether `postId` is no poll, an open one or a closed one (decision 0090). */
+  pollStatus(postId: string) {
+    return polls.pollStatus(this.sql, postId);
+  }
+
+  /** Closes a poll; closing a closed one changes nothing. */
+  closePoll(postId: string): void {
+    polls.closePoll(this.sql, postId);
   }
 
   /**
@@ -184,6 +215,7 @@ export class Space extends DurableObject<Env> {
       this.sql.exec("DELETE FROM posts WHERE post_id = ?", postId);
       this.sql.exec("DELETE FROM comments WHERE post_id = ?", postId);
       this.sql.exec("DELETE FROM reactions WHERE post_id = ?", postId);
+      polls.purgePoll(this.sql, postId);
       // A deleted post is no longer pinned (decision 0080).
       this.sql.exec("DELETE FROM pinned_posts WHERE post_id = ?", postId);
     });
@@ -195,19 +227,7 @@ export class Space extends DurableObject<Env> {
    * "pinned" when it is now featured, "already" when it was.
    */
   pinPost(postId: string): "absent" | "full" | "pinned" | "already" {
-    const exists = this.sql.exec("SELECT 1 FROM posts WHERE post_id = ?", postId).toArray().length;
-    if (!exists) return "absent";
-    if (this.sql.exec("SELECT 1 FROM pinned_posts WHERE post_id = ?", postId).toArray().length) {
-      return "already";
-    }
-    const count = this.sql.exec<{ n: number }>("SELECT COUNT(*) AS n FROM pinned_posts").one().n;
-    if (count >= MAX_FEATURED) return "full";
-    this.sql.exec(
-      "INSERT INTO pinned_posts (post_id, pinned_at) VALUES (?, ?)",
-      postId,
-      Date.now(),
-    );
-    return "pinned";
+    return pinPost(this.sql, postId);
   }
 
   /** Releases `postId` when it is featured; whether it was. */
@@ -217,12 +237,7 @@ export class Space extends DurableObject<Env> {
 
   /** The ids of the featured posts, newest pin first. */
   featured(): string[] {
-    return this.sql
-      .exec<{ post_id: string }>(
-        "SELECT post_id FROM pinned_posts ORDER BY pinned_at DESC, rowid DESC",
-      )
-      .toArray()
-      .map((r) => r.post_id);
+    return featured(this.sql);
   }
 
   /**
@@ -432,6 +447,7 @@ export class Space extends DurableObject<Env> {
       for (const { post_id } of posts) {
         this.sql.exec("DELETE FROM comments WHERE post_id = ?", post_id);
         this.sql.exec("DELETE FROM reactions WHERE post_id = ?", post_id);
+        polls.purgePoll(this.sql, post_id);
       }
       this.sql.exec("DELETE FROM posts WHERE author = ?", account);
       this.sql.exec("DELETE FROM pinned_posts WHERE post_id NOT IN (SELECT post_id FROM posts)");
@@ -450,6 +466,7 @@ export class Space extends DurableObject<Env> {
       );
       this.sql.exec("DELETE FROM comments WHERE author = ?", account);
       this.sql.exec("DELETE FROM reactions WHERE account = ?", account);
+      this.sql.exec("DELETE FROM poll_votes WHERE account = ?", account);
       // Its likes on comments, and every like on a comment that is gone or
       // was blanked to a tombstone (decision 0080).
       this.sql.exec("DELETE FROM comment_reactions WHERE account = ?", account);
@@ -480,6 +497,7 @@ export class Space extends DurableObject<Env> {
         `SELECT author AS id FROM posts WHERE author != ''
           UNION SELECT author FROM comments WHERE author != ''
           UNION SELECT account FROM reactions
+          UNION SELECT account FROM poll_votes
           UNION SELECT account FROM comment_reactions`,
       ),
     };

@@ -8,6 +8,7 @@ import {
   PhotoVersion,
   RATE_LIMITED,
 } from "./common.ts";
+import { Poll, POLL_OPTIONS } from "./poll-schema.ts";
 
 // A community's content (decisions 0060, 0063): posts, comments on them and
 // one reaction per account on each. It is hosted and access-controlled, not
@@ -96,6 +97,9 @@ export const Post = z
     // plus `.openapi()`: those rewrite the shared Comment schema as nullable everywhere.
     latestComment: z.union([Comment, z.null()]),
     state: State,
+    poll: Poll.optional().openapi({
+      description: "Present when the post is a poll (decision 0090)",
+    }),
     pinned: z.boolean().openapi({
       description:
         "A moderator features it (decision 0088); it stays in its place in the feed, marked, and is also in the community's `featured`. `getFeed` never marks it",
@@ -170,6 +174,18 @@ export const createPostRoute = createRoute({
           schema: z.object({
             body: z.string().trim().max(5000).default(""),
             media: z.array(MediaId).max(MAX_POST_MEDIA).default([]),
+            poll: z
+              .object({
+                options: z
+                  .array(z.string().trim().min(1).max(POLL_OPTIONS.textMax))
+                  .min(POLL_OPTIONS.min)
+                  .max(POLL_OPTIONS.max),
+              })
+              .optional()
+              .openapi({
+                description:
+                  "Makes the post a poll (decision 0090): the body is the question and is required, there are two to six distinct options, and no image",
+              }),
           }),
         },
       },
@@ -178,7 +194,7 @@ export const createPostRoute = createRoute({
   responses: {
     200: json("Posted", Post),
     400: errorResponse(
-      "invalid_request: neither a text nor an image; invalid_media: an image that is not the caller's upload to this community, or is already in a post",
+      "invalid_request: neither a text nor an image, or a poll with no question, repeated options or an image; invalid_media: an image that is not the caller's upload to this community, or is already in a post",
     ),
     ...AUTHED,
     ...MEMBERS_POST,

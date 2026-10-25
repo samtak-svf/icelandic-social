@@ -2,6 +2,7 @@ import type {
   Action,
   COMMUNITY_IMAGE_ACTIONS,
   COMMUNITY_PIN_ACTIONS,
+  COMMUNITY_POLL_ACTIONS,
   REPORT_KINDS,
 } from "../../api/moderation.ts";
 import { db } from "../../env/index.ts";
@@ -17,7 +18,8 @@ type Logged =
   | "delete_community"
   | "restore_community"
   | (typeof COMMUNITY_IMAGE_ACTIONS)[number]
-  | (typeof COMMUNITY_PIN_ACTIONS)[number];
+  | (typeof COMMUNITY_PIN_ACTIONS)[number]
+  | (typeof COMMUNITY_POLL_ACTIONS)[number];
 type Kind = (typeof REPORT_KINDS)[number] | "report";
 
 export type Entry = {
