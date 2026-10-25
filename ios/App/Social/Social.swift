@@ -329,6 +329,13 @@ func authorName(_ author: Author?) -> String {
     return author.name ?? localized("person_unnamed")
 }
 
+/// What an anonymous post shows in place of a name, or nil when it names its author. The author is nil to every
+/// reader but its own author, so who wrote it comes from `mine` and never from comparing ids (decision 0091).
+func anonymousByline(_ post: Post) -> String? {
+    guard post.author == nil else { return nil }
+    return localized(post.mine ? "post_anonymous_mine" : "post_anonymous_author")
+}
+
 /// A community's audience, and how many members it has when this account may know.
 func audienceLine(_ community: Community) -> String {
     let audience = localized(community.audience == .open ? "community_open" : "community_private")
@@ -582,6 +589,10 @@ func logActionLabel(_ action: ModerationLogAction) -> String? {
     case .removeCommunityCover: localized("moderation_log_community_cover_removed")
     case .pinPost: localized("moderation_log_post_pinned")
     case .unpinPost: localized("moderation_log_post_unpinned")
+    case .closePoll: localized("moderation_log_poll_closed")
+    case .anonymousPostsOn: localized("moderation_log_anonymous_on")
+    case .anonymousPostsOff: localized("moderation_log_anonymous_off")
+    case .revealAuthor: localized("moderation_log_author_revealed")
     case .unknown: nil
     }
 }

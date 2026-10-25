@@ -90,7 +90,7 @@ fun PostScreen(
                                     onReport = { reporting = "$POST:${post.postId}" },
                                     onOpen = null,
                                     onComment = { focus.requestFocus() },
-                                    onDelete = delete("$POST:${post.postId}", post.author),
+                                    onDelete = { deleting = "$POST:${post.postId}" }.takeIf { post.mine },
                                     onPin = actions::pin.takeIf { state.moderates },
                                     onSendToConversation = { actions.sendToConversation(post.postId) },
                                 ),

@@ -556,13 +556,15 @@ func makeCommunity(
 }
 
 func makePost(
-    _ id: String, _ community: String, body: String = "Halló", author: Author = anna,
-    reactions: [ReactionCount] = [], mine: ReactionKind? = nil, comments: UInt64 = 0,
+    _ id: String, _ community: String, body: String = "Halló", author: Author? = anna,
+    anonymous: Bool = false, own: Bool? = nil, reactions: [ReactionCount] = [], mine: ReactionKind? = nil,
+    comments: UInt64 = 0,
     state: ModerationState = .visible, createdAt: UInt64 = FakeAccount.now, pinned: Bool = false,
     latestComment: Comment? = nil
 ) -> Post {
     Post(
-        postId: id, communityId: community, author: author, body: body, images: [], createdAt: createdAt,
+        postId: id, communityId: community, author: author, anonymous: anonymous,
+        mine: own ?? (author?.accountId == jon.accountId), body: body, images: [], createdAt: createdAt,
         reactions: reactions, myReaction: mine, commentCount: comments, latestComment: latestComment, state: state,
         pinned: pinned)
 }

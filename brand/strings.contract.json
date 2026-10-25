@@ -1950,7 +1950,7 @@
       "description": "Accessible mark on the option the reader voted for (decision 0090)."
     },
     "moderation_log_poll_closed": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Entry in the moderation log: a moderator closed a poll (decision 0090)."
     },
     "community_featured": {
@@ -2204,15 +2204,15 @@
       "description": "Explains the community switch for anonymous posts (decision 0091)."
     },
     "post_anonymous_author": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "The byline of an anonymous post, for everyone but its author (decision 0091)."
     },
     "post_anonymous_mine": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "The author's own byline on their anonymous post (decision 0091)."
     },
     "post_pending": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Marks the author's own anonymous post while it waits for a moderator (decision 0091)."
     },
     "anonymous_queue_title": {
@@ -2259,15 +2259,15 @@
       "description": "Posting anonymously in a community whose switch is off (decision 0091)."
     },
     "moderation_log_anonymous_on": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Entry in the moderation log: the owner turned anonymous posts on (decision 0091)."
     },
     "moderation_log_anonymous_off": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Entry in the moderation log: the owner turned anonymous posts off (decision 0091)."
     },
     "moderation_log_author_revealed": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Entry in the moderation log: a moderator revealed an anonymous post's author (decision 0091)."
     },
     "notice_anonymous_declined": {

@@ -78,7 +78,7 @@ fun PostCard(
             },
     ) {
         StateMark(post.state)
-        AuthorRow(post.author, post.createdAt) {
+        AuthorRow(post.author, post.anonymousBylineRes(), post.createdAt) {
             CardActions(
                 reported = reported,
                 onReport = callbacks.onReport,

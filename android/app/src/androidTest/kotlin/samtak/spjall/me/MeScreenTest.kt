@@ -20,6 +20,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import samtak.spjall.brand.R
 import samtak.spjall.core.AccountDevice
+import samtak.spjall.core.DeviceKind
 import samtak.spjall.core.Me
 import samtak.spjall.core.Platform
 import samtak.spjall.ui.SpjallTheme
@@ -103,8 +104,8 @@ class MeScreenTest {
                 name,
                 verified,
                 listOf(
-                    AccountDevice("d1", Platform.ANDROID, 1_700_000_000_000u, current = true),
-                    AccountDevice("d2", Platform.IOS, 1_710_000_000_000u, current = false),
+                    AccountDevice("d1", Platform.ANDROID, DeviceKind.PHONE, 1_700_000_000_000u, current = true),
+                    AccountDevice("d2", Platform.IOS, DeviceKind.PHONE, 1_710_000_000_000u, current = false),
                 ),
                 photo,
             )

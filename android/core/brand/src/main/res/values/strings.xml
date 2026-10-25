@@ -804,6 +804,8 @@
     <string name="post_pinned">Fest</string>
     <!-- Told when a fourth post is featured: three are featured already and one must be released first (decision 0088) -->
     <string name="post_pin_full">Þrjár færslur eru festar. Losaðu eina fyrst.</string>
+    <!-- Entry in the moderation log: a moderator closed a poll (decision 0090). -->
+    <string name="moderation_log_poll_closed">Könnun var lokað.</string>
     <!-- Heading of the community's featured posts, in the aside on a wide screen (decision 0088) -->
     <string name="community_featured">Fest</string>
     <!-- Accessible name of the row of tabs under a community's header (decision 0089) -->
@@ -895,4 +897,16 @@
     <string name="image_frames_reset">Nota sjálfvirka afmörkun</string>
     <!-- The image has no stored master to frame again, so it must be uploaded again (docs/decisions/0086). -->
     <string name="image_frames_no_master">Settu myndina inn aftur til að breyta afmörkun</string>
+    <!-- The byline of an anonymous post, for everyone but its author (decision 0091). -->
+    <string name="post_anonymous_author">Nafnlaus meðlimur</string>
+    <!-- The author's own byline on their anonymous post (decision 0091). -->
+    <string name="post_anonymous_mine">Þú · nafnlaust</string>
+    <!-- Marks the author's own anonymous post while it waits for a moderator (decision 0091). -->
+    <string name="post_pending">Bíður samþykkis stjórnanda.</string>
+    <!-- Entry in the moderation log: the owner turned anonymous posts on (decision 0091). -->
+    <string name="moderation_log_anonymous_on">Nafnlausar færslur voru leyfðar.</string>
+    <!-- Entry in the moderation log: the owner turned anonymous posts off (decision 0091). -->
+    <string name="moderation_log_anonymous_off">Nafnlausar færslur voru bannaðar.</string>
+    <!-- Entry in the moderation log: a moderator revealed an anonymous post's author (decision 0091). -->
+    <string name="moderation_log_author_revealed">Höfundur nafnlausrar færslu var sýndur.</string>
 </resources>

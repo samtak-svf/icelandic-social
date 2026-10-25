@@ -4657,6 +4657,18 @@
         }
       }
     },
+    "moderation_log_poll_closed": {
+      "comment": "Entry in the moderation log: a moderator closed a poll (decision 0090).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Könnun var lokað."
+          }
+        }
+      }
+    },
     "community_featured": {
       "comment": "Heading of the community's featured posts, in the aside on a wide screen (decision 0088)",
       "extractionState": "manual",
@@ -5205,6 +5217,78 @@
           "stringUnit": {
             "state": "translated",
             "value": "Settu myndina inn aftur til að breyta afmörkun"
+          }
+        }
+      }
+    },
+    "post_anonymous_author": {
+      "comment": "The byline of an anonymous post, for everyone but its author (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nafnlaus meðlimur"
+          }
+        }
+      }
+    },
+    "post_anonymous_mine": {
+      "comment": "The author's own byline on their anonymous post (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þú · nafnlaust"
+          }
+        }
+      }
+    },
+    "post_pending": {
+      "comment": "Marks the author's own anonymous post while it waits for a moderator (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bíður samþykkis stjórnanda."
+          }
+        }
+      }
+    },
+    "moderation_log_anonymous_on": {
+      "comment": "Entry in the moderation log: the owner turned anonymous posts on (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nafnlausar færslur voru leyfðar."
+          }
+        }
+      }
+    },
+    "moderation_log_anonymous_off": {
+      "comment": "Entry in the moderation log: the owner turned anonymous posts off (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nafnlausar færslur voru bannaðar."
+          }
+        }
+      }
+    },
+    "moderation_log_author_revealed": {
+      "comment": "Entry in the moderation log: a moderator revealed an anonymous post's author (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Höfundur nafnlausrar færslu var sýndur."
           }
         }
       }

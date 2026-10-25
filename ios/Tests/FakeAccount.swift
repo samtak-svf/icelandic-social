@@ -59,8 +59,8 @@ final class FakeAccount: Account, @unchecked Sendable {
     var expired: [Outcome] = []
     private var made = 0
     private var devices = [
-        AccountDevice(deviceId: "d1", platform: .ios, createdAt: 1_700_000_000_000, current: true),
-        AccountDevice(deviceId: "d2", platform: .android, createdAt: 1_700_000_100_000, current: false),
+        AccountDevice(deviceId: "d1", platform: .ios, kind: .phone, createdAt: 1_700_000_000_000, current: true),
+        AccountDevice(deviceId: "d2", platform: .android, kind: .phone, createdAt: 1_700_000_100_000, current: false),
     ]
 
     init(signedIn: Bool = false) {

@@ -25,7 +25,7 @@ struct PostView: View {
                         post: post, linked: false, writes: model.writes,
                         onReact: { kind in Task { await model.react(kind) } },
                         onReport: { reporting = Reporting(target: ReportTarget(kind: .post, id: post.postId)) },
-                        onDelete: model.mine(post.author) ? { deletingPost = true } : nil,
+                        onDelete: post.mine ? { deletingPost = true } : nil,
                         onPin: model.moderates ? { Task<Void, Never> { await model.pin(!post.pinned) } } : nil,
                         onShare: { sharing = post.postId })
                     if model.muted {

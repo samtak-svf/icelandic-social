@@ -252,16 +252,19 @@ struct CommunityAudiencePicker: View {
 /// (decision 0080).
 struct Byline<Menu: View>: View {
     let author: Author?
+    /// The name an anonymous post shows in place of its author's (decision 0091).
+    var anonymousName: String?
     let createdAt: UInt64
     var community: Community?
     var short = false
     let menu: Menu
 
     init(
-        author: Author?, createdAt: UInt64, community: Community? = nil, short: Bool = false,
-        @ViewBuilder menu: () -> Menu
+        author: Author?, anonymousName: String? = nil, createdAt: UInt64, community: Community? = nil,
+        short: Bool = false, @ViewBuilder menu: () -> Menu
     ) {
         self.author = author
+        self.anonymousName = anonymousName
         self.createdAt = createdAt
         self.community = community
         self.short = short
@@ -275,7 +278,7 @@ struct Byline<Menu: View>: View {
                 photo: author?.photoOf)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
-                    Text(verbatim: authorName(author))
+                    Text(verbatim: anonymousName ?? authorName(author))
                         .font(.sans(14, black: true))
                         .foregroundStyle(BrandTokens.Colors.fg)
                         .lineLimit(1)
@@ -353,6 +356,7 @@ struct StateMark: View {
         case .visible: EmptyView()
         case .hidden: mark("content_hidden")
         case .removed: mark("content_removed")
+        case .pending: mark("post_pending")
         }
     }
 
@@ -436,7 +440,10 @@ struct PostCard: View {
             VStack(alignment: .leading, spacing: 10) {
                 StateMark(state: post.state)
                 if post.pinned { pinned }
-                Byline(author: post.author, createdAt: post.createdAt, community: community, short: true) {
+                Byline(
+                    author: post.author, anonymousName: anonymousByline(post), createdAt: post.createdAt,
+                    community: community, short: true
+                ) {
                     PostMenu(pinned: post.pinned, onReport: onReport, onDelete: onDelete, onPin: onPin)
                 }
                 wayIn

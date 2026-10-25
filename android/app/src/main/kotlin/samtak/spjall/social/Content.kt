@@ -1,5 +1,6 @@
 package samtak.spjall.social
 
+import samtak.spjall.brand.R
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityRole
@@ -23,6 +24,13 @@ fun Post.reacted(next: ReactionKind?): Post {
             },
     )
 }
+
+/**
+ * The byline string of an anonymous post, or null when the post names its author: the author is null to every
+ * reader but its own author, so who wrote it comes from [Post.mine] and never from comparing ids (decision 0091).
+ */
+fun Post.anonymousBylineRes(): Int? =
+    if (author != null) null else if (mine) R.string.post_anonymous_mine else R.string.post_anonymous_author
 
 /** Whether this account moderates [this]: its owner and its moderators see its report queue. */
 val Community.moderates: Boolean
