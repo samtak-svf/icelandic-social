@@ -129,12 +129,22 @@ pub enum Body {
     Name {
         name: Option<String>,
     },
+    /// Sets the group's photo, or clears it with `None` (0094). Groups only.
+    /// The picture is a blob sealed as media is (0023), kept by the server
+    /// for as long as the group has it; its key travels only here.
+    Photo {
+        photo: Option<PhotoRef>,
+    },
     /// The group's settings as the sender holds them, sent to whoever joined
     /// since (0078): a new account after an add, a new device after an
     /// external join. Folding one that changes nothing shows nothing.
     Settings {
         name: Option<String>,
         timer: Option<u32>,
+        /// The group's photo (0094). A snapshot from a client older than
+        /// the field has none.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        photo: Option<PhotoRef>,
     },
     /// The sender's account is leaving the group (0078); the server stops
     /// listing it, and the next member to check the devices removes its
@@ -145,6 +155,20 @@ pub enum Body {
     Unknown {
         kind: String,
     },
+}
+
+/// Where a group's photo is and how to open it (0094): the fields of a
+/// media body, under the id the photo endpoints take.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PhotoRef {
+    pub id: String,
+    pub mime: String,
+    pub size: u64,
+    /// Base64 of the per-file key.
+    pub key: String,
+    /// Hex SHA-256 of the ciphertext, checked after download.
+    pub sha256: String,
 }
 
 fn is_false(value: &bool) -> bool {
@@ -170,6 +194,7 @@ const KNOWN_KINDS: &[&str] = &[
     "post",
     "location",
     "name",
+    "photo",
     "settings",
     "leave",
 ];
@@ -307,9 +332,11 @@ mod tests {
                 forwarded: false,
             },
             Body::Name { name: None },
+            Body::Photo { photo: None },
             Body::Settings {
                 name: None,
                 timer: None,
+                photo: None,
             },
             Body::Leave {},
         ];
@@ -622,13 +649,80 @@ mod tests {
                     forwarded,
                 }),
             proptest::option::of(s()).prop_map(|name| Body::Name { name }),
+            proptest::option::of(photo_ref()).prop_map(|photo| Body::Photo { photo }),
             (
                 proptest::option::of(s()),
-                proptest::option::of(any::<u32>())
+                proptest::option::of(any::<u32>()),
+                proptest::option::of(photo_ref())
             )
-                .prop_map(|(name, timer)| Body::Settings { name, timer }),
+                .prop_map(|(name, timer, photo)| Body::Settings { name, timer, photo }),
             Just(Body::Leave {}),
         ]
+    }
+
+    fn photo_ref() -> impl Strategy<Value = PhotoRef> {
+        (
+            any::<String>(),
+            any::<String>(),
+            any::<u64>(),
+            any::<String>(),
+            any::<String>(),
+        )
+            .prop_map(|(id, mime, size, key, sha256)| PhotoRef {
+                id,
+                mime,
+                size,
+                key,
+                sha256,
+            })
+    }
+
+    /// A snapshot from before 0094 has no `photo`, and one without a photo
+    /// still writes none, so an older reader sees the bytes it always saw.
+    #[test]
+    fn a_settings_snapshot_without_a_photo_still_reads() {
+        let old = br#"{"v":1,"id":"m","ts":1,"kind":"settings","name":"Group","timer":60}"#;
+        assert_eq!(
+            Envelope::decode(old).unwrap().body,
+            Body::Settings {
+                name: Some("Group".into()),
+                timer: Some(60),
+                photo: None
+            }
+        );
+        let bytes = Envelope {
+            id: "m".into(),
+            ts: 1,
+            body: Body::Settings {
+                name: None,
+                timer: None,
+                photo: None,
+            },
+        }
+        .encode()
+        .unwrap();
+        assert!(!String::from_utf8(bytes).unwrap().contains("photo"));
+    }
+
+    /// A reader from before 0094 skips a photo as it skips any new kind.
+    #[test]
+    fn a_reader_before_group_photos_skips_one() {
+        let older: Vec<&str> = KNOWN_KINDS
+            .iter()
+            .copied()
+            .filter(|k| *k != "photo")
+            .collect();
+        let photo = br#"{"v":1,"id":"m","ts":1,"kind":"photo","photo":null}"#;
+        assert_eq!(
+            Envelope::decode_known(photo, &older).unwrap().body,
+            Body::Unknown {
+                kind: "photo".into()
+            }
+        );
+        assert_eq!(
+            Envelope::decode(photo).unwrap().body,
+            Body::Photo { photo: None }
+        );
     }
 
     proptest! {

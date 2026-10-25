@@ -590,6 +590,61 @@ const MIGRATIONS: &[(u32, &str)] = &[
                               CHECK (phase IN ('requested', 'completed'))
          ) STRICT;",
     ),
+    (
+        18,
+        // Decision 0094: a group's photo.
+        "-- The photo as its members last set it: a `PhotoRef` as JSON, none
+         -- when the group has none. `photo_ready` is 1 while this device holds
+         -- the decrypted picture, 0 when it holds none, and 2 when the fold
+         -- changed the photo and the file is yet to be fetched or removed,
+         -- which happens after the fold, never in it.
+         ALTER TABLE conversations ADD COLUMN photo TEXT;
+         ALTER TABLE conversations ADD COLUMN photo_ready INTEGER NOT NULL DEFAULT 0
+             CHECK (photo_ready IN (0, 1, 2));
+
+         -- The timeline again, with `photo`: a card like `name`. As in 16,
+         -- `reactions` are kept aside from the cascade.
+         CREATE TEMP TABLE reactions_0094 AS SELECT * FROM reactions;
+         CREATE TABLE timeline_0094 (
+             group_id       BLOB NOT NULL
+                            REFERENCES conversations (group_id) ON DELETE CASCADE,
+             seq            INTEGER NOT NULL,
+             kind           TEXT NOT NULL
+                            CHECK (kind IN ('text', 'media', 'members', 'timer', 'post',
+                                            'location', 'name', 'photo')),
+             sender_account TEXT NOT NULL,
+             sender_device  TEXT NOT NULL,
+             envelope_id    TEXT,
+             ts             INTEGER NOT NULL,
+             stored_at      INTEGER NOT NULL,
+             text           TEXT,
+             reply_to       TEXT,
+             detail         TEXT,
+             edited         INTEGER NOT NULL DEFAULT 0 CHECK (edited IN (0, 1)),
+             deleted        INTEGER NOT NULL DEFAULT 0 CHECK (deleted IN (0, 1)),
+             expires_at     INTEGER,
+             received_at    INTEGER,
+             PRIMARY KEY (group_id, seq),
+             CHECK ((envelope_id IS NULL) = (kind IN ('members', 'timer', 'name', 'photo'))),
+             CHECK (deleted = 0 OR (text IS NULL AND reply_to IS NULL AND detail IS NULL)),
+             CHECK (kind NOT IN ('post', 'location') OR text IS NULL)
+         ) STRICT, WITHOUT ROWID;
+         INSERT INTO timeline_0094 (group_id, seq, kind, sender_account, sender_device,
+                                    envelope_id, ts, stored_at, text, reply_to, detail,
+                                    edited, deleted, expires_at, received_at)
+             SELECT group_id, seq, kind, sender_account, sender_device,
+                    envelope_id, ts, stored_at, text, reply_to, detail,
+                    edited, deleted, expires_at, received_at
+             FROM timeline;
+         DROP TABLE timeline;
+         ALTER TABLE timeline_0094 RENAME TO timeline;
+         CREATE INDEX timeline_by_envelope ON timeline (group_id, envelope_id);
+         CREATE INDEX timeline_by_expiry ON timeline (expires_at)
+             WHERE expires_at IS NOT NULL;
+         INSERT INTO reactions (group_id, seq, account, emoji)
+             SELECT group_id, seq, account, emoji FROM reactions_0094;
+         DROP TABLE reactions_0094;",
+    ),
 ];
 
 /// The migrations every store has run before `REPAIRS` apply: from 15 on,

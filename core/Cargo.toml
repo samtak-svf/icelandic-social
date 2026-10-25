@@ -14,6 +14,8 @@ aes-gcm = { version = "0.11", default-features = false, features = ["aes"] }
 anyhow = "1"
 base64 = "0.23"
 getrandom = "0.4"
+# Group photos (0094): decode JPEG, PNG and WebP, encode JPEG; nothing else is compiled in.
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 openmls = "0.9.0"
 openmls_basic_credential = "0.6.0"
 openmls_rust_crypto = "0.6.0"

@@ -214,6 +214,7 @@ impl From<ClientError> for CoreError {
             }
             ClientError::NameInvalid => Self::NameInvalid,
             ClientError::NotAGroup => Self::NotAGroup,
+            ClientError::GroupPhoto(_) => Self::UnsupportedImage,
             ClientError::NoMaster => Self::NoMaster,
             ClientError::Link(LinkError::KeyMismatch) => Self::LinkKeyMismatch,
             ClientError::Link(LinkError::Gone) => Self::LinkExpired,
@@ -594,6 +595,10 @@ pub struct Conversation {
     /// the members' names.
     #[uniffi(default = None)]
     pub name: Option<String>,
+    /// The path of the group photo, a JPEG this core wrote and opened; none
+    /// when the group has none or it is yet to be fetched (0094).
+    #[uniffi(default = None)]
+    pub photo: Option<String>,
     /// Everyone here but this account, named ones first.
     pub members: Vec<Person>,
     /// The newest item, if any.
@@ -651,6 +656,9 @@ impl From<core::Conversation> for Conversation {
             id: conversation.id,
             state: conversation.state.into(),
             name: conversation.name,
+            photo: conversation
+                .photo
+                .map(|path| path.to_string_lossy().into_owned()),
             members: people(conversation.members),
             last: conversation.last.map(Into::into),
             unread: conversation.unread,
@@ -722,6 +730,9 @@ pub enum Content {
     Timer { seconds: Option<u32> },
     /// The group was named, or its name cleared (0078).
     Name { name: Option<String> },
+    /// The group photo was set (`set`) or removed (0094); the picture itself
+    /// is `Conversation.photo`.
+    Photo { set: bool },
     /// A post shared here under 0040: only its id. Since 0080 the app
     /// resolves it as a card through `cards` (#288), which shows only what
     /// the post's own access check shows; the list's last line and a notice
@@ -776,6 +787,7 @@ impl From<core::Content> for Content {
             },
             C::Timer { seconds } => Self::Timer { seconds },
             C::Name { name } => Self::Name { name },
+            C::Photo { set } => Self::Photo { set },
             C::Post { post_id } => Self::Post { post_id },
             C::Location {
                 lat_e6,
@@ -1278,6 +1290,22 @@ impl CoreClient {
     /// control character.
     pub fn rename(&self, conversation: String, name: Option<String>) -> Result<String, CoreError> {
         Ok(self.client()?.rename(&conversation, name)?)
+    }
+
+    /// Sets the group photo from a JPEG, PNG or WebP file (0094): the core
+    /// crops it to a square, shrinks it, strips its metadata and sends it
+    /// sealed to the members; queued like a message, returns its envelope
+    /// id. `NotAGroup` for a conversation of two, `UnsupportedImage` for a
+    /// file it cannot read.
+    pub fn set_group_photo(&self, conversation: String, path: String) -> Result<String, CoreError> {
+        Ok(self
+            .client()?
+            .set_group_photo(&conversation, Path::new(&path))?)
+    }
+
+    /// Removes the group photo (0094); queued like a message.
+    pub fn clear_group_photo(&self, conversation: String) -> Result<String, CoreError> {
+        Ok(self.client()?.clear_group_photo(&conversation)?)
     }
 
     /// Leaves a group (0078): the server stops listing this account, the

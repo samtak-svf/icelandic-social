@@ -25,6 +25,7 @@ mod clock;
 mod directory;
 mod forward;
 pub mod frames;
+pub mod group_photo;
 mod history;
 mod link;
 mod media;
@@ -112,6 +113,10 @@ pub enum ClientError {
     /// can be left (0078).
     #[error("not a group")]
     NotAGroup,
+    /// The file is not a JPEG, PNG or WebP the core can make a group photo
+    /// from (0094).
+    #[error(transparent)]
+    GroupPhoto(#[from] group_photo::GroupPhotoError),
     /// The image was stored before masters were kept (0086), so it cannot be
     /// framed again; the person uploads it once more.
     #[error("the image has no master to frame; upload it again")]
@@ -181,6 +186,9 @@ pub struct Conversation {
     pub name: Option<String>,
     /// The disappearing timer, in seconds.
     pub timer: Option<u32>,
+    /// Where this device keeps the group's photo (0094), once it holds it;
+    /// none for a conversation without one, and until it is fetched.
+    pub photo: Option<PathBuf>,
     /// Whether this account muted it (0042). `unread` still counts.
     pub mute: Mute,
 }
@@ -603,11 +611,11 @@ fn queue_correction(tx: &Transaction, group: &[u8]) -> Result<(), ClientError> {
 
 /// More than two members, this account included: what may take a name or
 /// be left (0078).
-fn is_group(tx: &Transaction, group: &[u8]) -> rusqlite::Result<bool> {
+pub(crate) fn is_group(tx: &Transaction, group: &[u8]) -> rusqlite::Result<bool> {
     Ok(members(tx, group)?.len() > 2)
 }
 
-/// Queues the group's name and timer for whoever just joined (0078); a
+/// Queues the group's name, timer and photo for whoever just joined (0078); a
 /// member who knew them folds it without a card. Nothing when neither is
 /// set.
 fn queue_settings(tx: &Transaction, group: &[u8]) -> Result<(), ClientError> {
@@ -616,13 +624,14 @@ fn queue_settings(tx: &Transaction, group: &[u8]) -> Result<(), ClientError> {
         [group],
         |r| Ok((r.get(0)?, r.get(1)?)),
     )?;
-    if name.is_none() && timer.is_none() {
+    let photo = timeline::photo_of(tx, group)?;
+    if name.is_none() && timer.is_none() && photo.is_none() {
         return Ok(());
     }
     let envelope = Envelope {
         id: random_id(),
         ts: now() as u64,
-        body: Body::Settings { name, timer },
+        body: Body::Settings { name, timer, photo },
     };
     enqueue(tx, group, "message", &envelope.encode()?)
 }
@@ -1176,7 +1185,7 @@ impl<T: Transport> Client<T> {
 
     /// A `View` on this store: its reads never wait for this `Client`.
     pub fn view(&self) -> Result<View, ClientError> {
-        Ok(View::new(self.store.reader()?))
+        Ok(View::new(self.store.reader()?, self.media.clone()))
     }
 
     fn reads(&mut self) -> Result<&mut View, ClientError> {
@@ -1350,6 +1359,7 @@ impl<T: Transport> Client<T> {
         stops_every_step(self.send_push_token())?;
         self.purge()?;
         self.sweep_media()?;
+        self.fetch_group_photos()?;
         Ok(std::mem::take(&mut self.outcome))
     }
 
@@ -1462,6 +1472,7 @@ impl<T: Transport> Client<T> {
                     Some(_) => Ok(()),
                 })?;
                 self.refresh_profiles()?;
+                self.fetch_group_photos()?;
             }
             Incoming::Typing {
                 conversation,
