@@ -6,6 +6,10 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import samtak.spjall.brand.R
+import samtak.spjall.core.Card
+import samtak.spjall.core.CardCommunity
+import samtak.spjall.core.CardKind
+import samtak.spjall.core.CardRef
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.ReactionCount
@@ -39,6 +43,17 @@ class ContentTest {
         assertEquals(
             R.string.post_anonymous_mine,
             post("p1", author = null, anonymous = true, own = true).anonymousBylineRes(),
+        )
+    }
+
+    @Test
+    fun aCardWithNoAuthorIsBylinedAnonymous() {
+        val reference = CardRef(CardKind.POST, "p1")
+        val community = CardCommunity("k1", "K")
+        assertNull(Card.Post(reference, community, self, "Texti", null, 0uL).anonymousBylineRes())
+        assertEquals(
+            R.string.post_anonymous_author,
+            Card.Post(reference, community, null, "Texti", null, 0uL).anonymousBylineRes(),
         )
     }
 

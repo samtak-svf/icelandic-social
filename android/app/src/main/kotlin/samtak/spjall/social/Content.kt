@@ -1,6 +1,7 @@
 package samtak.spjall.social
 
 import samtak.spjall.brand.R
+import samtak.spjall.core.Card
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityRole
@@ -35,6 +36,12 @@ fun Post.anonymousBylineRes(): Int? =
         mine -> R.string.post_anonymous_mine
         else -> R.string.post_anonymous_author
     }
+
+/**
+ * The byline string of a shared or reported post's card when it names no author: a card for an anonymous post has
+ * none, and a card carries no `mine`, so it always reads as anonymous (decision 0091).
+ */
+fun Card.Post.anonymousBylineRes(): Int? = if (author == null) R.string.post_anonymous_author else null
 
 /** Whether this account moderates [this]: its owner and its moderators see its report queue. */
 val Community.moderates: Boolean

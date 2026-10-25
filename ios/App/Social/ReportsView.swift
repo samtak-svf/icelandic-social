@@ -154,18 +154,24 @@ private struct ReportCard: View {
     /// What was reported, as its card shows it, when it is a post or a comment that can still be had.
     @ViewBuilder private var excerpt: some View {
         switch card {
-        case .post(_, _, let author, let excerpt, _, _), .comment(_, _, _, let author, let excerpt, _):
-            VStack(alignment: .leading, spacing: 4) {
-                Text(verbatim: authorName(author)).font(.sans(13, black: true))
-                Text(verbatim: excerpt).font(.sans(13.5)).fixedSize(horizontal: false, vertical: true)
-            }
-            .foregroundStyle(BrandTokens.Colors.fg)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 10))
+        case .post(_, _, let author, let excerpt, _, _):
+            excerptCard(byline: cardByline(author), excerpt: excerpt)
+        case .comment(_, _, _, let author, let excerpt, _):
+            excerptCard(byline: authorName(author), excerpt: excerpt)
         default:
             EmptyView()
         }
+    }
+
+    private func excerptCard(byline: String, excerpt: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(verbatim: byline).font(.sans(13, black: true))
+            Text(verbatim: excerpt).font(.sans(13.5)).fixedSize(horizontal: false, vertical: true)
+        }
+        .foregroundStyle(BrandTokens.Colors.fg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 10))
     }
 
     /// What a closed report came to: the decision, its reason, and who closed it and when (#360).

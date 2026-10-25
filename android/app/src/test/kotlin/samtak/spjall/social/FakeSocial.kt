@@ -547,10 +547,14 @@ class FakeSocial : Social {
             when (ref.kind) {
                 CardKind.POST ->
                     posts.values.flatten().firstOrNull { it.postId == ref.id }?.let { post ->
-                        post.author?.let { author ->
-                            val community = CardCommunity(post.communityId, "K")
-                            Card.Post(ref, community, author, post.body, null, post.createdAt)
-                        }
+                        Card.Post(
+                            ref,
+                            CardCommunity(post.communityId, "K"),
+                            post.author,
+                            post.body,
+                            null,
+                            post.createdAt,
+                        )
                     }
                 CardKind.COMMENT ->
                     comments.values.flatten().firstOrNull { it.commentId == ref.id }?.let {

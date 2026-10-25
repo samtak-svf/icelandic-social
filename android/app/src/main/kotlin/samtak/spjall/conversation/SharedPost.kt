@@ -39,6 +39,7 @@ import samtak.spjall.core.Content
 import samtak.spjall.core.Item
 import samtak.spjall.core.Quote
 import samtak.spjall.social.PostImageView
+import samtak.spjall.social.bylineName
 import samtak.spjall.social.shownName
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
@@ -172,7 +173,7 @@ internal fun SharedCard(
                     )
                     Text(shown.community.name, style = MaterialTheme.typography.labelMedium, color = foreground)
                 }
-                Text(shown.author.shownName(), style = MaterialTheme.typography.labelLarge, color = foreground)
+                Text(shown.bylineName(), style = MaterialTheme.typography.labelLarge, color = foreground)
                 Text(
                     text = shown.excerpt,
                     style = Type.bubble,
