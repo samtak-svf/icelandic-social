@@ -5,6 +5,8 @@ import { conversationTitle, isCard, isGroup, itemLine } from "../chat/people.ts"
 import { strings } from "../generated/brand/strings.ts";
 import type { Conversation, Item } from "../generated/core.d.ts";
 import { Button, Status } from "../ui/kit.tsx";
+import { LAYOUTS } from "../ui/layout.ts";
+import { useSizeClass } from "../ui/size-class.ts";
 
 const PAGE = 50;
 
@@ -98,11 +100,15 @@ function Thread() {
   }
 
   const group = conversation !== null && isGroup(conversation);
+  // Beside the list (0093) there is nothing to go back to.
+  const beside = LAYOUTS[useSizeClass()].conversations === "list-and-thread";
   return (
     <>
-      <Link to="/conversations" className="inline-flex min-h-11 items-center underline">
-        {strings.back}
-      </Link>
+      {!beside && (
+        <Link to="/conversations" className="inline-flex min-h-11 items-center underline">
+          {strings.back}
+        </Link>
+      )}
       {conversation !== null && (
         <h1 className="mt-2 truncate font-headline text-2xl">{conversationTitle(conversation)}</h1>
       )}

@@ -1,20 +1,49 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useMatches } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAccount } from "../account.tsx";
 import { ChatProvider, useChat } from "../chat/chat.tsx";
+import { ConversationList } from "../chat/conversation-list.tsx";
 import { LinkPage } from "../chat/link-page.tsx";
 import { strings } from "../generated/brand/strings.ts";
 import { Button, Status } from "../ui/kit.tsx";
+import { LAYOUTS } from "../ui/layout.ts";
+import { useSizeClass } from "../ui/size-class.ts";
 
 // The conversations (decisions 0064, 0081). The chat is mounted here and
-// nowhere else: only the tab showing these pages competes for the store.
-export const Route = createFileRoute("/conversations")({ component: Conversations });
+// nowhere else: only the tab showing these pages competes for the store. On
+// an expanded window the list stays beside the open conversation (0093).
+export const Route = createFileRoute("/conversations")({
+  component: Conversations,
+  staticData: { width: "wide" },
+});
 
 function Conversations() {
   return (
     <ChatProvider>
       <Gate />
     </ChatProvider>
+  );
+}
+
+/** The list and the open conversation side by side, or the one page shown. */
+function Panes() {
+  const twoPanes = LAYOUTS[useSizeClass()].conversations === "list-and-thread";
+  const open = useMatches({
+    select: (ms) => ms.some((m) => m.routeId === "/conversations/$conversationId"),
+  });
+  if (!twoPanes) return <Outlet />;
+  return (
+    <div className="grid grid-cols-[22rem_minmax(0,1fr)] items-start gap-8">
+      <section
+        aria-label={strings.tab_conversations}
+        className="sticky top-6 max-h-[calc(100dvh-3rem)] overflow-y-auto"
+      >
+        <ConversationList level={open ? 2 : 1} />
+      </section>
+      <div className="min-w-0">
+        <Outlet />
+      </div>
+    </div>
   );
 }
 
@@ -26,7 +55,7 @@ function Gate() {
   }, [state, signedOut]);
   switch (state) {
     case "ready":
-      return <Outlet />;
+      return <Panes />;
     case "elsewhere":
       return (
         <>

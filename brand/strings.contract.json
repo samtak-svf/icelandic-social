@@ -30,6 +30,10 @@
       "surfaces": ["android", "ios"],
       "description": "Heading over the people the conversation list's search found in the directory, below the conversations it found (docs/decisions/0036)."
     },
+    "conversations_pick": {
+      "surfaces": ["web"],
+      "description": "The conversation pane beside the list on an expanded window while none is open (docs/decisions/0093)."
+    },
     "conversations_none_found": {
       "surfaces": ["android", "ios"],
       "description": "The conversation list's search when neither a conversation nor a person matches it."
