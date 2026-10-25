@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { strings } from "../generated/brand/strings.ts";
 import type { Content, Conversation, Item } from "../generated/core.d.ts";
-import { conversationTitle, itemText, lastLine } from "./people.ts";
+import { conversationTitle, isCard, isGroup, itemLine, previewLine, readLine } from "./people.ts";
 
 const person = (name: string | null) => ({ account: "a", name, verified: false, photo: null });
 const conversation = (over: Partial<Conversation>): Conversation => ({
@@ -39,19 +39,90 @@ test("a conversation is titled by its name, else its members, else only you", ()
   expect(conversationTitle(conversation({}))).toBe(strings.conversation_alone_title);
 });
 
-test("text, media and deleted items show a line, cards show none", () => {
-  expect(itemText(item({ kind: "text", text: "hæ", replyTo: null }))).toBe("hæ");
-  const photo = { kind: "media", mime: "image/jpeg", size: 1, name: "a.jpg" } as const;
-  expect(itemText(item({ ...photo, caption: "mynd" }))).toBe("mynd");
-  expect(itemText(item({ ...photo, caption: null }))).toBe("a.jpg");
-  expect(itemText(item({ kind: "deleted" }))).toBe(strings.message_deleted);
-  expect(itemText(item({ kind: "timer", seconds: 60 }))).toBeNull();
+test("members, timer and name items are cards in the thread; what someone said is not", () => {
+  expect(isCard(item({ kind: "members", added: [], removed: [], devices: [] }))).toBe(true);
+  expect(isCard(item({ kind: "timer", seconds: 60 }))).toBe(true);
+  expect(isCard(item({ kind: "name", name: null }))).toBe(true);
+  expect(isCard(item({ kind: "text", text: "hæ", replyTo: null }))).toBe(false);
+  expect(isCard(item({ kind: "post", postId: "p" }))).toBe(false);
+  expect(isCard(item({ kind: "deleted" }))).toBe(false);
 });
 
-test("a conversation's last line is its last item's text, else empty", () => {
-  expect(lastLine(conversation({ last: item({ kind: "text", text: "hæ", replyTo: null }) }))).toBe(
-    "hæ",
+test("every kind of item has a line in the list, never a post's text or a place", () => {
+  const ann = person("Ann Jónsdóttir");
+  const text = { kind: "text", text: "hæ", replyTo: null } as const;
+  const photo = {
+    kind: "media",
+    mime: "image/jpeg",
+    size: 1,
+    name: "a.jpg",
+    caption: null,
+  } as const;
+  expect(itemLine(item(text), true)).toBe("hæ");
+  expect(itemLine(item(photo), true)).toBe(strings.photo);
+  expect(itemLine(item({ ...photo, caption: "mynd" }), true)).toBe("mynd");
+  expect(itemLine(item({ ...photo, mime: "application/pdf" }), true)).toBe(strings.file);
+  expect(itemLine(item({ kind: "deleted" }), true)).toBe(strings.message_deleted);
+  expect(itemLine(item({ kind: "post", postId: "p" }), true)).toBe(strings.post_shared);
+  const place = {
+    kind: "location",
+    latE6: 64_000_000,
+    lonE6: -21_000_000,
+    accuracy: null,
+  } as const;
+  expect(itemLine(item(place), true)).toBe(strings.location);
+  expect(itemLine(item({ kind: "unreadable", code: "x" }), true)).toBe(strings.item_unreadable);
+  const members = { added: [], removed: [], devices: [] };
+  expect(itemLine(item({ kind: "members", ...members, added: [ann, person(null)] }), true)).toBe(
+    strings.member_added_card({ name: `Ann Jónsdóttir, ${strings.person_unnamed}` }),
   );
-  expect(lastLine(conversation({ last: item({ kind: "name", name: "Hópur" }) }))).toBe("");
-  expect(lastLine(conversation({}))).toBe("");
+  expect(itemLine(item({ kind: "members", ...members, removed: [ann] }), true)).toBe(
+    strings.member_removed_card({ name: "Ann Jónsdóttir" }),
+  );
+  expect(itemLine(item({ kind: "members", ...members, removed: [ann] }), false)).toBe(
+    strings.member_removed_card_direct({ name: "Ann Jónsdóttir" }),
+  );
+  expect(itemLine(item({ kind: "members", ...members, devices: [ann] }), true)).toBe(
+    strings.new_device_card({ name: "Ann Jónsdóttir" }),
+  );
+  expect(itemLine(item({ kind: "timer", seconds: 2 * 86_400 }), true)).toBe(
+    strings.disappearing_set_card({ name: "Ása", duration: strings.duration_days({ count: 2 }) }),
+  );
+  expect(itemLine(item({ kind: "timer", seconds: 1800 }), true)).toBe(
+    strings.disappearing_set_card({ name: "Ása", duration: strings.duration_hours({ count: 1 }) }),
+  );
+  expect(itemLine(item({ kind: "timer", seconds: null }), true)).toBe(
+    strings.disappearing_off_card({ name: "Ása" }),
+  );
+  expect(itemLine(item({ kind: "name", name: "Hópur" }), true)).toBe(
+    strings.name_set_card({ who: "Ása", name: "Hópur" }),
+  );
+  expect(itemLine(item({ kind: "name", name: null }), true)).toBe(
+    strings.name_cleared_card({ who: "Ása" }),
+  );
+});
+
+test("the preview says who said it: you, or in a group the sender's first name", () => {
+  const text = { kind: "text", text: "hæ", replyTo: null } as const;
+  const sender = person("Ása Björk Jónsdóttir");
+  expect(previewLine({ ...item(text), own: true }, false)).toBe(
+    strings.last_line_own({ text: "hæ" }),
+  );
+  expect(previewLine({ ...item(text), sender }, true)).toBe(
+    strings.last_line_sender({ name: "Ása", text: "hæ" }),
+  );
+  expect(previewLine({ ...item(text), sender }, false)).toBe("hæ");
+  // A card already names who did it.
+  const card = item({ kind: "timer", seconds: null });
+  expect(previewLine({ ...card, own: true }, true)).toBe(itemLine(card, true));
+});
+
+test("who read the reader's message: the word in a 1:1, the count in a group", () => {
+  expect(readLine(1, false)).toBe(strings.read_marker);
+  expect(readLine(3, true)).toBe(strings.read_by_count({ count: 3 }));
+});
+
+test("a group is a conversation with more than one other member, as on the apps", () => {
+  expect(isGroup(conversation({ members: [person("Ása")] }))).toBe(false);
+  expect(isGroup(conversation({ members: [person("Ása"), person("Bo")] }))).toBe(true);
 });

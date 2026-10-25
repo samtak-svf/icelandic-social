@@ -28,21 +28,51 @@ export const strings = {
   message_sending: "Í sendingu",
   /** Status of an own message that could not be sent; the bubble offers try_again. */
   message_failed: "Ekki send.",
+  /** Day separator for yesterday's messages. */
+  day_yesterday: "Í gær",
   /** Short form of verified_with_kennitala, under the other person's name at the top of a conversation. */
   verified_short: "Vottað",
+  /** The conversation list's preview line when the newest message is the reader's own. */
+  last_line_own: (args: { text: string }): string =>
+    "Þú: " + args.text,
+  /** The conversation list's preview line in a group when the newest message is someone else's; name is the sender's first name. */
+  last_line_sender: (args: { name: string; text: string }): string =>
+    args.name + ": " + args.text,
   /** Unread messages in a conversation. */
   unread_count: (args: { count: number }): string =>
     plural.select(args.count) === "one"
       ? String(args.count) + " ólesin"
       : String(args.count) + " ólesin",
+  /** System card in a conversation when a member adds a device (from an MLS add commit). */
+  new_device_card: (args: { name: string }): string =>
+    args.name + " tengdi nýtt tæki.",
+  /** System card when an account joins a group (docs/decisions/0022). */
+  member_added_card: (args: { name: string }): string =>
+    args.name + " bættist í hópinn.",
+  /** System card when an account leaves a group, is removed, or deletes its account (docs/decisions/0022). */
+  member_removed_card: (args: { name: string }): string =>
+    args.name + " er ekki lengur í hópnum.",
+  /** System card in a 1:1 when the other account leaves it, as on a block; member_removed_card says the same of a group (docs/decisions/0022). */
+  member_removed_card_direct: (args: { name: string }): string =>
+    args.name + " er ekki lengur í samtalinu.",
+  /** A location message (docs/decisions/0059): the attach menu's choice, the card's heading, the conversation list's last line, a quote of one and a notification. Never the place itself. */
+  location: "Staðsetning",
   /** Stands in for an account whose name the server has not given, in titles and rows (docs/decisions/0022). */
   person_unnamed: "Nafnlaus",
+  /** Label of a photo message, in the conversation list and for screen readers. */
+  photo: "Mynd",
+  /** Label of a file message, in the conversation list and for screen readers. */
+  file: "Skrá",
   /** Message menu entry that copies a text message to the clipboard (docs/decisions/0046). */
   copy: "Afrita",
   /** Brief confirmation that a message was copied, where the system shows none (docs/decisions/0046). */
   copied: "Afritað",
   /** Tombstone left where a deleted message was. */
   message_deleted: "Skilaboðin voru tekin til baka.",
+  /** A shared Fljótið post in the conversation list and in a notification: fixed, never the post's text or author (docs/decisions/0040). */
+  post_shared: "Deild færsla",
+  /** A stored message the core cannot read back, shown in its place in the conversation and as the list's last line, with its code under it (docs/decisions/0051). Never says more. */
+  item_unreadable: "Ekki tókst að lesa þessi skilaboð.",
   /** Add a reaction to a message. */
   react: "Bregðast við",
   /** Title of the sheet listing who reacted to a message (docs/decisions/0045). */
@@ -52,6 +82,31 @@ export const strings = {
     plural.select(args.count) === "one"
       ? String(args.count) + " viðbragð"
       : String(args.count) + " viðbrögð",
+  /** System card when a member sets the disappearing timer; duration is formatted by the client. */
+  disappearing_set_card: (args: { name: string; duration: string }): string =>
+    args.name + " stillti á að skilaboð hverfi eftir " + args.duration + ".",
+  /** System card when a member turns the disappearing timer off. */
+  disappearing_off_card: (args: { name: string }): string =>
+    args.name + " slökkti á tímabundnum skilaboðum.",
+  /** What a screen reader says for the muted mark beside the time in a conversation list row. */
+  muted: "Þaggað",
+  /** A duration in hours, in the form that follows "eftir" in disappearing_set_card and disappearing_option. */
+  duration_hours: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " klukkustund"
+      : String(args.count) + " klukkustundir",
+  /** A duration in days, in the form that follows "eftir" in disappearing_set_card and disappearing_option. */
+  duration_days: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " dag"
+      : String(args.count) + " daga",
+  /** Marker on an own message the other party has read. */
+  read_marker: "Lesin",
+  /** Under an own message in a group: how many members have read it (docs/decisions/0022). */
+  read_by_count: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " hefur lesið"
+      : String(args.count) + " hafa lesið",
   /** Under the sign-in button: what Google is asked for, and that Kenni can verify later. */
   sign_in_hint: "Við biðjum Google aðeins um nafn og netfang. Þú getur síðar staðfest auðkenni með rafrænum skilríkjum.",
   /** Primary sign-in button: signs in with Google (docs/decisions/0033). */
@@ -115,6 +170,8 @@ export const strings = {
   sign_out: "Skrá út",
   /** The only permitted statement about where data lives (docs/decisions/0001). */
   residency_claim: "Gögnin eru geymd varanlega innan ESB; unnin á netkerfi Cloudflare.",
+  /** Replaces a conversation row's preview while someone in it is typing; names no one (0022, 0043). */
+  typing_in_row: "er að skrifa…",
   /** Screen-reader text of the placeholder rows shown on a first load (0043). */
   loading: "Hleður…",
   /** Heading of the web's sign-in page (decision 0062). */
@@ -513,6 +570,12 @@ export const strings = {
   support_account_body: "Í Stillingum getur þú séð alla vafra og síma þar sem aðgangurinn þinn er skráður inn og skráð út úr þeim. Í símaappinu undir Ég getur þú einnig aftengt einstök tæki eða valið „Eyða aðgangi“ til að eyða aðganginum og öllum gögnum hans af þjóninum.",
   /** Confirm button that saves a change, such as a group's name (docs/decisions/0078). */
   save: "Vista",
+  /** System card when a member names or renames the group (docs/decisions/0078). */
+  name_set_card: (args: { who: string; name: string }): string =>
+    args.who + " nefndi hópinn „" + args.name + "“.",
+  /** System card when a member clears the group's name (docs/decisions/0078). */
+  name_cleared_card: (args: { who: string }): string =>
+    args.who + " fjarlægði nafn hópsins.",
   /** Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080). */
   community_picture_choose: "Velja mynd samfélagsins",
   /** Button that removes a community's picture (decision 0080). */
