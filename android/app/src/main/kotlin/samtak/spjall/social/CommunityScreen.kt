@@ -1,9 +1,8 @@
 package samtak.spjall.social
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,12 +11,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -41,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,12 +47,9 @@ import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
 import samtak.spjall.ui.AppIcons
-import samtak.spjall.ui.Avatar
-import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.CommunityLayout
 import samtak.spjall.ui.ManageLayout
 import samtak.spjall.ui.Palette
-import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.calendarDate
 import samtak.spjall.ui.currentLayout
 
@@ -89,14 +80,27 @@ internal fun CommunityScreen(
     var searchVisible by rememberSaveable { mutableStateOf(false) }
     // Stjórna as a page of its own (an expanded window); a narrower one opens it as a dialog.
     var managePage by rememberSaveable { mutableStateOf(false) }
+    // The composer opened before anything is written in it.
+    var composing by rememberSaveable { mutableStateOf(false) }
     val layout = currentLayout()
     val managing = managePage && layout.manage == ManageLayout.SIDE_NAV && state.community != null
-    // The scroll position is held here, above the layouts, so a change of size class keeps the reader's place.
+    // The scroll position and the open composer are held here, above the layouts, so a change of size class keeps
+    // the reader's place: the feed moves into another pane there, and what it remembered itself would be lost.
     val listState = rememberLazyListState()
     val openInfo = {
         dialog = CommunityDialog.INFO
         if (state.members.isEmpty()) actions.loadMembers()
     }
+    val callbacks =
+        FeedCallbacks(
+            onManage = {
+                if (layout.manage == ManageLayout.SIDE_NAV) managePage = true else dialog = CommunityDialog.MANAGE
+            },
+            onReport = { reporting = it },
+            onDelete = { deleting = it },
+            onInfo = openInfo,
+            onCompose = { composing = true },
+        )
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(SUB_SCREEN_SIDES))) {
             SubHeader(state.community?.name.orEmpty(), if (managing) ({ managePage = false }) else actions::back) {
@@ -109,36 +113,8 @@ internal fun CommunityScreen(
             }
             if (searchVisible) SearchRow(state.searchQuery, actions)
             if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            val feed =
-                @Composable { modifier: Modifier ->
-                    Feed(
-                        modifier = modifier,
-                        state = state,
-                        actions = actions,
-                        listState = listState,
-                        onManage = {
-                            if (layout.manage == ManageLayout.SIDE_NAV) managePage = true else dialog = CommunityDialog.MANAGE
-                        },
-                        onReport = { reporting = it },
-                        onDelete = { deleting = it },
-                        onInfo = openInfo,
-                    )
-                }
-            val community = state.community
-            if (managing && community != null) {
-                ManagePage(
-                    community = community,
-                    state = state,
-                    actions = actions,
-                    slots = slots,
-                    onDelete = { dialog = CommunityDialog.DELETE },
-                    modifier = Modifier.weight(1f),
-                )
-            } else if (layout.community == CommunityLayout.FEED_AND_ASIDE && community != null) {
-                // The feed in the main pane, Um samfélagið in the supporting pane (decision 0087).
-                CommunityPanes(community, state.members, Modifier.weight(1f).fillMaxWidth(), feed)
-            } else {
-                feed(Modifier.weight(1f))
+            CommunityBody(state, actions, slots, managing, onDeleteCommunity = { dialog = CommunityDialog.DELETE }) {
+                Feed(it, state, actions, listState, composing, callbacks)
             }
         }
     }
@@ -146,6 +122,37 @@ internal fun CommunityScreen(
     CommunityDialogs(state, actions, dialog) { dialog = it }
     deleting?.let { postId ->
         ConfirmDelete(R.string.post_delete_confirm, onDelete = { actions.delete(postId) }) { deleting = null }
+    }
+}
+
+/**
+ * What sits under the header: Stjórna as a page (an expanded window), the feed with Um samfélagið beside it (an
+ * expanded window), or the feed alone. [feed] draws the feed into the modifier it is given.
+ */
+@Composable
+private fun ColumnScope.CommunityBody(
+    state: CommunityViewModel.State,
+    actions: CommunityActions,
+    slots: ManageSlots,
+    managing: Boolean,
+    onDeleteCommunity: () -> Unit,
+    feed: @Composable (Modifier) -> Unit,
+) {
+    val community = state.community
+    when {
+        managing && community != null ->
+            ManagePage(
+                community = community,
+                state = state,
+                actions = actions,
+                slots = slots,
+                onDelete = onDeleteCommunity,
+                modifier = Modifier.weight(1f),
+            )
+        // The feed in the main pane, Um samfélagið in the supporting pane (decision 0087).
+        currentLayout().community == CommunityLayout.FEED_AND_ASIDE && community != null ->
+            CommunityPanes(community, state.members, Modifier.weight(1f).fillMaxWidth(), feed)
+        else -> feed(Modifier.weight(1f))
     }
 }
 
@@ -176,152 +183,11 @@ private fun SearchRow(
 }
 
 /**
- * The community's feed: the box to write a post in for a member who may, then the posts newest first, each
- * reportable, openable and (this account's own) deletable through the callbacks.
- */
-@Composable
-private fun Feed(
-    modifier: Modifier,
-    state: CommunityViewModel.State,
-    actions: CommunityActions,
-    listState: LazyListState,
-    onManage: () -> Unit,
-    onReport: (String) -> Unit,
-    onDelete: (String) -> Unit,
-    onInfo: () -> Unit,
-) {
-    LazyColumn(
-        modifier = modifier,
-        state = listState,
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        state.problem?.let { problem -> item(key = "problem") { ProblemCard(problem) { actions.retry() } } }
-        state.community?.let { community ->
-            item(key = "about") {
-                About(community, state, actions, onManage, onInfo)
-            }
-        }
-        if (state.writes) {
-            item(key = "composer") { ComposerPillOrBox(state, actions) }
-        }
-        if (state.loaded && state.community?.reads == true && state.posts.isEmpty()) {
-            val emptyText =
-                if (state.searchQuery.isNotBlank()) R.string.community_search_empty else R.string.posts_empty
-            item(key = "empty") { Muted(stringResource(emptyText)) }
-        }
-        itemsIndexed(state.posts, key = { _, item -> item.postId }) { index, post ->
-            PostCard(
-                post = post,
-                reacting = post.postId in state.reacting,
-                reported = post.postId in state.reported,
-                callbacks =
-                    PostCardCallbacks(
-                        onReact = { actions.react(post.postId, it) },
-                        onReport = { onReport(post.postId) },
-                        onOpen = { actions.open(post.postId) },
-                        onComment = { actions.comment(post.postId) },
-                        onDelete = { onDelete(post.postId) }.takeIf { post.mine },
-                        onPin =
-                            { pinned: Boolean -> actions.pin(post.postId, pinned) }.takeIf {
-                                state.community?.moderates ==
-                                    true
-                            },
-                        onSendToConversation = { actions.sendToConversation(post.postId) },
-                    ),
-            )
-            if (index == state.posts.lastIndex &&
-                state.next != null
-            ) {
-                LaunchedEffect(state.next) { actions.more() }
-            }
-        }
-    }
-}
-
-/**
- * The box to post in: one row to tap when nothing is written yet, the whole composer once it is, with the
- * images picked for the post.
- */
-@Composable
-private fun ComposerPillOrBox(
-    state: CommunityViewModel.State,
-    actions: CommunityActions,
-) {
-    var composing by rememberSaveable { mutableStateOf(false) }
-    val empty = state.draft.isEmpty() && state.images.isEmpty() && state.imageNotice == null
-    if (composing || !empty) {
-        PostComposer(state, actions)
-    } else {
-        SocialCard(modifier = Modifier.clickable(role = Role.Button) { composing = true }) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Avatar(name = state.me?.name, kind = AvatarKind.Me, size = 36.dp, photo = state.me?.photo)
-                Text(
-                    text = stringResource(R.string.post_compose_prompt),
-                    color = Palette.mutedFg,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(
-                    onClick = {
-                        composing = true
-                        actions.addImage()
-                    },
-                ) {
-                    Icon(AppIcons.Camera, contentDescription = stringResource(R.string.post_add_images))
-                }
-            }
-        }
-    }
-}
-
-/** The box to post in, with the images picked for the post. */
-@Composable
-private fun PostComposer(
-    state: CommunityViewModel.State,
-    actions: CommunityActions,
-) {
-    Composer(
-        label = stringResource(R.string.post_compose),
-        action = stringResource(R.string.post_publish),
-        text = state.draft,
-        sending = state.publishing,
-        onText = actions::draft,
-        onSend = actions::publish,
-        ready = state.postable,
-    ) { ImagesPicked(state, actions) }
-}
-
-/** The images picked for the post, the button that adds one, and why the last one was not taken. */
-@Composable
-private fun ImagesPicked(
-    state: CommunityViewModel.State,
-    actions: CommunityActions,
-) {
-    if (state.images.isNotEmpty()) PickedImages(state.images, actions::removeImage)
-    state.imageNotice?.let { notice ->
-        Text(
-            text = notice.text(),
-            style = MaterialTheme.typography.bodyMedium,
-            color = Palette.danger,
-        )
-    }
-    OutlinedButton(
-        onClick = actions::addImage,
-        enabled = !state.publishing,
-        modifier = Modifier.heightIn(min = 44.dp),
-    ) { Text(stringResource(R.string.post_add_images)) }
-}
-
-/**
  * The community's line and description, the description clamped with a way to read the rest of a long one,
  * what this account may do about joining, and the one button to the tools a moderator and the owner share.
  */
 @Composable
-private fun About(
+internal fun About(
     community: Community,
     state: CommunityViewModel.State,
     actions: CommunityActions,

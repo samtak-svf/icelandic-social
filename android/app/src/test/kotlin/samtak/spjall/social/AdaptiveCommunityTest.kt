@@ -1,9 +1,13 @@
 package samtak.spjall.social
 
+import android.content.res.Configuration
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.test.StateRestorationTester
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -96,8 +100,7 @@ class AdaptiveCommunityTest {
             }
         }
         compose.onNodeWithTag(HUB_COLUMN).assertIsDisplayed()
-        compose.onNodeWithText(RuntimeEnvironment.getApplication().getString(R.string.communities_tab_mine))
-            .assertDoesNotExist()
+        compose.onNodeWithText(app().getString(R.string.communities_tab_mine)).assertDoesNotExist()
     }
 
     @Test
@@ -110,8 +113,7 @@ class AdaptiveCommunityTest {
             }
         }
         compose.onNodeWithTag(HUB_COLUMN).assertDoesNotExist()
-        compose.onNodeWithText(RuntimeEnvironment.getApplication().getString(R.string.communities_tab_mine))
-            .assertIsDisplayed()
+        compose.onNodeWithText(app().getString(R.string.communities_tab_mine)).assertIsDisplayed()
     }
 
     private fun showCreate() {
@@ -137,10 +139,11 @@ class AdaptiveCommunityTest {
         compose.onNodeWithTag(COMMUNITY_PREVIEW).assertDoesNotExist()
     }
 
-    /** A draft in the composer survives the window growing from a phone to a wide one (the reader's place, 0087). */
-    @Test
-    @Config(qualifiers = "w412dp-h900dp")
-    fun aDraftSurvivesTheWindowGrowingFromCompactToExpanded() {
+    /**
+     * The community screen of a member, in a window whose width the test changes, under a tester that throws the
+     * composition away and builds it again from its saved state, as a rotation, a resize or an unfolding does.
+     */
+    private fun showResizable(width: MutableState<Int>): StateRestorationTester {
         val social = FakeSocial().apply { communities["k1"] = community("k1", role = CommunityRole.MEMBER) }
         val restoration = StateRestorationTester(compose)
         restoration.setContent {
@@ -151,26 +154,63 @@ class AdaptiveCommunityTest {
                 object : CommunityActions by nothing<CommunityActions>() {
                     override fun draft(text: String) = model.draft(text)
                 }
-            CompositionLocalProvider(LocalFrameRules provides FakeFrameRules) {
+            // The window's width as the screens read it (`windowWidthDp`), set by the test. The test window is the wide
+            // one, which the pane scaffold measures; the compact layout before the change is one column in it.
+            val window = Configuration(LocalConfiguration.current).apply { screenWidthDp = width.value }
+            CompositionLocalProvider(LocalConfiguration provides window, LocalFrameRules provides FakeFrameRules) {
                 SpjallTheme { CommunityScreen(state, actions) }
             }
         }
-        val app = RuntimeEnvironment.getApplication()
-        compose.waitUntil(WAIT_MS) {
-            compose.onAllNodesWithText(app.getString(R.string.post_compose_prompt)).fetchSemanticsNodes().isNotEmpty()
-        }
-        compose.onNodeWithText(app.getString(R.string.post_compose_prompt)).performClick()
-        compose.onNodeWithText(app.getString(R.string.post_compose)).performTextInput("Halló allir")
+        val prompt = app().getString(R.string.post_compose_prompt)
+        compose.waitUntil(WAIT_MS) { compose.onAllNodesWithText(prompt).fetchSemanticsNodes().isNotEmpty() }
+        return restoration
+    }
+
+    /** The window grows from a phone's to a wide one's, and the screen is built again in it. */
+    private fun growTheWindow(
+        width: MutableState<Int>,
+        restoration: StateRestorationTester,
+    ) {
         compose.onNodeWithTag(COMMUNITY_ASIDE).assertDoesNotExist()
-
-        RuntimeEnvironment.setQualifiers("w1000dp-h900dp")
+        width.value = EXPANDED_DP
         restoration.emulateSavedInstanceStateRestore()
-
         compose.onNodeWithTag(COMMUNITY_ASIDE).assertIsDisplayed()
+    }
+
+    /** A draft in the composer survives the window growing from a phone to a wide one (the reader's place, 0087). */
+    @Test
+    @Config(qualifiers = "w1000dp-h900dp")
+    fun aDraftSurvivesTheWindowGrowingFromCompactToExpanded() {
+        val width = mutableStateOf(COMPACT_DP)
+        val restoration = showResizable(width)
+        compose.onNodeWithText(app().getString(R.string.post_compose_prompt)).performClick()
+        compose.onNodeWithText(app().getString(R.string.post_compose)).performTextInput("Halló allir")
+
+        growTheWindow(width, restoration)
+
         compose.onNodeWithText("Halló allir").assertIsDisplayed()
     }
+
+    /** A composer opened with nothing in it yet stays open when the window grows, and the feed moves into a pane. */
+    @Test
+    @Config(qualifiers = "w1000dp-h900dp")
+    fun anOpenComposerStaysOpenWhenTheWindowGrows() {
+        val width = mutableStateOf(COMPACT_DP)
+        val restoration = showResizable(width)
+        compose.onNodeWithText(app().getString(R.string.post_compose_prompt)).performClick()
+        compose.onNodeWithText(app().getString(R.string.post_compose)).assertIsDisplayed()
+
+        growTheWindow(width, restoration)
+
+        compose.onNodeWithText(app().getString(R.string.post_compose)).assertIsDisplayed()
+        compose.onNodeWithText(app().getString(R.string.post_compose_prompt)).assertDoesNotExist()
+    }
+
+    private fun app() = RuntimeEnvironment.getApplication()
 }
 
+private const val COMPACT_DP = 412
+private const val EXPANDED_DP = 1000
 private const val WAIT_MS = 5_000L
 
 /** Actions that do nothing: a test only looks at the layout. */
