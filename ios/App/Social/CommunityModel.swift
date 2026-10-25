@@ -44,6 +44,11 @@ final class CommunityModel {
     private(set) var loadingGallery = false
     /// The post being written.
     var draft = ""
+    /// The poll's option fields while the post is a poll (decision 0090): nil for a plain post. The draft is the
+    /// question.
+    var pollFields: [String]?
+    /// The post is written without the author's name and waits for a moderator (decision 0091).
+    var anonymous = false
     /// The images picked for it, as local copies, in their order.
     private(set) var images: [String] = []
     /// Why the last image picked or sent was not taken, until the next is picked or the post goes.
@@ -67,6 +72,8 @@ final class CommunityModel {
     /// The media id of each picked image already uploaded, by its local copy, so a retry does not send it again.
     private var uploaded: [String: String] = [:]
     private var loadingMembers = false
+    /// The polls whose vote is on its way, so a second tap waits for the first.
+    private var voting: Set<String> = []
 
     /// The community page's tabs (decision 0089), in the order the row shows them.
     enum Tab: String, CaseIterable, Sendable {
@@ -164,8 +171,55 @@ final class CommunityModel {
     /// The draft may be sent: something written, an image picked, or both, and the text not over the limit.
     var sendable: Bool {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        return writes && (!body.isEmpty || !images.isEmpty) && body.count <= Self.postLimit
+        guard body.count <= Self.postLimit else { return false }
+        if let pollFields {
+            return writes && images.isEmpty && Self.canPublishPoll(question: body, fields: pollFields)
+        }
+        return writes && (!body.isEmpty || !images.isEmpty)
     }
+
+    /// The post is a poll, which takes no images (decision 0090).
+    var isPoll: Bool { pollFields != nil }
+
+    /// This community lets members post without a name (decision 0091).
+    var allowsAnonymous: Bool { community?.anonymousPosts ?? false }
+
+    /// Starts a poll with two empty options, or drops it. A post with images takes none.
+    func setPoll(_ on: Bool) {
+        if on {
+            guard images.isEmpty else { return }
+            pollFields = pollFields ?? Array(repeating: "", count: Self.pollMinOptions)
+        } else {
+            pollFields = nil
+        }
+    }
+
+    func addPollOption() {
+        guard let pollFields, pollFields.count < Self.pollMaxOptions else { return }
+        self.pollFields = pollFields + [""]
+    }
+
+    func removePollOption(at index: Int) {
+        guard var fields = pollFields, fields.count > Self.pollMinOptions, fields.indices.contains(index)
+        else { return }
+        fields.remove(at: index)
+        pollFields = fields
+    }
+
+    /// A poll needs its question, two to six options, none empty or over 80 characters, none the same as another
+    /// when case is ignored (the API's `POLL_OPTIONS`, as the web's `canPublishPoll`).
+    nonisolated static func canPublishPoll(question: String, fields: [String]) -> Bool {
+        let options = fields.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        guard !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            (pollMinOptions...pollMaxOptions).contains(options.count),
+            !options.contains(where: { $0.isEmpty || $0.count > pollOptionLimit })
+        else { return false }
+        return Set(options.map { $0.lowercased() }).count == options.count
+    }
+
+    nonisolated static let pollMinOptions = 2
+    nonisolated static let pollMaxOptions = 6
+    nonisolated static let pollOptionLimit = 80
 
     func load() async {
         let social = social
@@ -526,6 +580,7 @@ final class CommunityModel {
 
     /// Whether another image fits in the post; when none does, says so instead of opening the picker.
     func roomForImage() -> Bool {
+        guard !isPoll else { return false }
         let room = images.count < Self.imageCount
         if !room { imageNotice = .tooMany }
         return room
@@ -597,12 +652,18 @@ final class CommunityModel {
                 uploaded[path] = try await offMain { try social.uploadPostImage(id, path: path).mediaId }
             }
             let media = picked.compactMap { uploaded[$0] }
-            let post = try await offMain { try social.createPost(id, body: body, media: media) }
+            let poll = pollFields.map { $0.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) } }
+            let secret = anonymous && allowsAnonymous
+            let post = try await offMain {
+                try social.createPost(id, body: body, media: media, anonymous: secret, poll: poll)
+            }
             for path in picked { try? FileManager.default.removeItem(atPath: path) }
             uploaded = [:]
             images = []
             posts.insert(post, at: 0)
             draft = ""
+            pollFields = nil
+            anonymous = false
             failed = nil
             posted = true
         } catch {
@@ -679,6 +740,56 @@ final class CommunityModel {
             problem = Problem(error)
         }
         reacting.remove(postId)
+    }
+
+    /// This account may close the poll on `post`: its author, the owner or a moderator, while it is open.
+    func canClose(_ post: Post) -> Bool {
+        guard let poll = post.poll, !poll.closed else { return false }
+        return post.mine || moderates
+    }
+
+    /// Votes for `option` in the poll on a post, or changes the vote (decision 0090); the post then reads as the
+    /// server sent it back. A poll closed meanwhile shows its results and says so.
+    func vote(_ postId: String, option: String) async {
+        let social = social
+        await pollAction(postId) { try social.votePoll(postId, option: option) }
+    }
+
+    /// Takes this account's vote back.
+    func withdrawVote(_ postId: String) async {
+        let social = social
+        await pollAction(postId) { try social.withdrawVote(postId) }
+    }
+
+    /// Closes the poll: no more votes, and everyone sees the results.
+    func closePoll(_ postId: String) async {
+        let social = social
+        await pollAction(postId) { try social.closePoll(postId) }
+    }
+
+    private func pollAction(_ postId: String, _ act: @escaping @Sendable () throws -> Post) async {
+        guard writes, !voting.contains(postId) else { return }
+        let social = social
+        voting.insert(postId)
+        problem = nil
+        do {
+            let post = try await offMain(act)
+            replace(post)
+            failed = nil
+        } catch {
+            if case CoreError.Refused(_, "poll_closed", _) = error,
+                let fresh = try? await offMain({ try social.post(postId) })
+            {
+                replace(fresh)
+            }
+            failed = nil
+            problem = Problem(error)
+        }
+        voting.remove(postId)
+    }
+
+    private func replace(_ post: Post) {
+        if let index = posts.firstIndex(where: { $0.postId == post.postId }) { posts[index] = post }
     }
 
     /// The newest page again, once a post opened from here is closed: the posts on it take their reactions and

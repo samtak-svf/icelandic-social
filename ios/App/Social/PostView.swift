@@ -27,7 +27,10 @@ struct PostView: View {
                         onReport: { reporting = Reporting(target: ReportTarget(kind: .post, id: post.postId)) },
                         onDelete: post.mine ? { deletingPost = true } : nil,
                         onPin: model.moderates ? { Task<Void, Never> { await model.pin(!post.pinned) } } : nil,
-                        onShare: { sharing = post.postId })
+                        onShare: { sharing = post.postId },
+                        onVote: { option in Task { await model.vote(option) } },
+                        onWithdrawVote: { Task { await model.withdrawVote() } },
+                        onClosePoll: model.canClosePoll ? { Task { await model.closePoll() } } : nil)
                     if model.muted {
                         SocialNote(text: "community_muted")
                     }

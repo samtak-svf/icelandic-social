@@ -328,8 +328,8 @@ final class FakeSocial: Social, @unchecked Sendable {
         -> Post
     {
         try call(
-            "createPostWith \(community) \(body)" + (anonymous ? " anonymous" : "")
-                + (poll.map { " poll \($0.joined(separator: ","))" } ?? ""))
+            "createPost \(community) \(body)" + (media.isEmpty ? "" : " \(media.joined(separator: ","))")
+                + (anonymous ? " anonymous" : "") + (poll.map { " poll \($0.joined(separator: ","))" } ?? ""))
         guard !anonymous || communities[community]?.anonymousPosts == true else {
             throw CoreError.Refused(status: 409, code: "anonymous_off", requestId: nil)
         }

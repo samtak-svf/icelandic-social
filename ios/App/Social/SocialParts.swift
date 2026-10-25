@@ -434,6 +434,11 @@ struct PostCard: View {
     var onPin: (() -> Void)?
     /// Opens `Deila`; the action is left out where a screen has none.
     var onShare: (() -> Void)?
+    /// Votes in the post's poll for the option, takes the vote back, or closes the poll (decision 0090). The close is
+    /// set for the poll's author and for a moderator, while it is open.
+    var onVote: ((String) -> Void)?
+    var onWithdrawVote: (() -> Void)?
+    var onClosePoll: (() -> Void)?
 
     var body: some View {
         Panel {
@@ -444,9 +449,16 @@ struct PostCard: View {
                     author: post.author, anonymousName: anonymousByline(post), createdAt: post.createdAt,
                     community: community, short: true
                 ) {
-                    PostMenu(pinned: post.pinned, onReport: onReport, onDelete: onDelete, onPin: onPin)
+                    PostMenu(
+                        pinned: post.pinned, onReport: onReport, onDelete: onDelete, onPin: onPin,
+                        onClosePoll: onClosePoll)
                 }
                 wayIn
+                if let poll = post.poll {
+                    PollView(
+                        poll: poll, question: post.body, canVote: writes && onVote != nil,
+                        onVote: { onVote?($0) }, onWithdraw: { onWithdrawVote?() })
+                }
                 summary
                 Hairline()
                 actions
@@ -660,10 +672,16 @@ private struct PostMenu: View {
     let onReport: (() -> Void)?
     let onDelete: (() -> Void)?
     let onPin: (() -> Void)?
+    var onClosePoll: (() -> Void)?
 
     var body: some View {
-        if onReport != nil || onDelete != nil || onPin != nil {
+        if onReport != nil || onDelete != nil || onPin != nil || onClosePoll != nil {
             Menu {
+                if let onClosePoll {
+                    Button(action: onClosePoll) {
+                        Label("poll_close", systemImage: "lock")
+                    }
+                }
                 if let onPin {
                     Button(action: onPin) {
                         if pinned {

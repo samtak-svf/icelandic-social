@@ -511,4 +511,78 @@ final class CommunityModelTests: XCTestCase {
         await model.loadGallery()
         XCTAssertEqual(social.calls.filter { $0.hasPrefix("communityImages") }.count, 2)
     }
+
+    // MARK: Polls (decision 0090)
+
+    private func openPoll(closed: Bool = false) -> Poll {
+        Poll(
+            options: [
+                PollOption(optionId: "o0", text: "Já", votes: nil), PollOption(optionId: "o1", text: "Nei", votes: nil),
+            ], total: 0, mine: nil, closed: closed)
+    }
+
+    func testAPollNeedsItsQuestionAndTwoToSixDistinctOptions() {
+        let can = CommunityModel.canPublishPoll
+        XCTAssertTrue(can("Hvað?", ["Já", "Nei"]))
+        XCTAssertFalse(can("  ", ["Já", "Nei"]))
+        XCTAssertFalse(can("Hvað?", ["Já"]))
+        XCTAssertFalse(can("Hvað?", ["Já", " "]))
+        XCTAssertFalse(can("Hvað?", ["Já", " já "]))
+        XCTAssertFalse(can("Hvað?", ["Já", String(repeating: "a", count: 81)]))
+        XCTAssertTrue(can("Hvað?", ["Já", String(repeating: "a", count: 80)]))
+        XCTAssertTrue(can("Hvað?", (1...6).map { "v\($0)" }))
+        XCTAssertFalse(can("Hvað?", (1...7).map { "v\($0)" }))
+    }
+
+    func testAPollPostGoesOutWithTrimmedOptionsAndTakesNoImage() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        model.setPoll(true)
+        XCTAssertEqual(model.pollFields, ["", ""])
+        model.draft = "Hvað er best?"
+        XCTAssertFalse(model.sendable)
+        model.pollFields = [" Lóa ", "Spói"]
+        XCTAssertTrue(model.sendable)
+        XCTAssertFalse(model.roomForImage())
+        model.addPollOption()
+        XCTAssertEqual(model.pollFields?.count, 3)
+        model.removePollOption(at: 2)
+        XCTAssertEqual(model.pollFields?.count, 2)
+        model.removePollOption(at: 1)
+        XCTAssertEqual(model.pollFields?.count, 2)
+        let posted = await model.publish()
+        XCTAssertTrue(posted)
+        XCTAssertTrue(social.calls.contains("createPost k1 Hvað er best? poll Lóa,Spói"))
+        XCTAssertNil(model.pollFields)
+        XCTAssertEqual(model.posts.first?.poll?.options.map(\.text), ["Lóa", "Spói"])
+    }
+
+    func testAVoteShowsTheResultsAndCanBeTakenBack() async {
+        let model = await model(
+            makeCommunity("k1", "Fuglar", role: .member), posts: [makePost("p1", "k1", poll: openPoll())])
+        await model.vote("p1", option: "o1")
+        var poll = model.posts[0].poll
+        XCTAssertEqual(poll?.mine, "o1")
+        XCTAssertEqual(poll.map(pollShowsResults), true)
+        XCTAssertEqual(poll?.options.map(\.votes), [0, 1])
+        await model.withdrawVote("p1")
+        poll = model.posts[0].poll
+        XCTAssertNil(poll?.mine)
+        XCTAssertEqual(poll?.total, 0)
+    }
+
+    func testOnlyTheAuthorOrAModeratorClosesAPollAndItClosesForGood() async {
+        let theirs = makePost("p1", "k1", poll: openPoll())
+        let mine = makePost("p2", "k1", author: jon, poll: openPoll())
+        let member = await model(makeCommunity("k1", "Fuglar", role: .member), posts: [theirs, mine])
+        XCTAssertFalse(member.canClose(theirs))
+        XCTAssertTrue(member.canClose(mine))
+        let moderator = await model(makeCommunity("k1", "Fuglar", role: .moderator), posts: [theirs, mine])
+        XCTAssertTrue(moderator.canClose(theirs))
+        await moderator.closePoll("p1")
+        XCTAssertEqual(moderator.posts[0].poll?.closed, true)
+        XCTAssertEqual(moderator.posts[0].poll.map(pollShowsResults), true)
+        XCTAssertFalse(moderator.canClose(moderator.posts[0]))
+        await moderator.vote("p1", option: "o0")
+        XCTAssertEqual(moderator.problem, .pollClosed)
+    }
 }
