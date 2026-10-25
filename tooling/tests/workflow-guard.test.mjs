@@ -113,4 +113,20 @@ describe("workflow-guard", () => {
     ]);
     expect(findInWorkflow(".github/workflows/android.yml", job(runsOn))).toEqual([]);
   });
+
+  it("runs the toolchain action before anything that writes CARGO_HOME", () => {
+    const action = "      - uses: ./.github/actions/rust-toolchain\n";
+    const cache = `      - uses: Swatinem/rust-cache@${SHA} # v2.9.2\n`;
+    const install = `      - uses: taiki-e/install-action@${SHA} # v2.87.29\n`;
+    const cargo = "      - run: cargo install wasm-bindgen-cli --locked\n";
+    for (const step of [cache, install, cargo]) {
+      expect(
+        findInWorkflow("w.yml", job(`    steps:\n${step}`)).map((p) => [p.line, p.rule]),
+      ).toEqual([[5, "cargo-home"]]);
+      expect(findInWorkflow("w.yml", job(`    steps:\n${action}${step}`))).toEqual([]);
+    }
+    // The action in one job does not cover the next one.
+    const two = job(`    steps:\n${action}  y:\n    steps:\n${cache}`);
+    expect(findInWorkflow("w.yml", two).map((p) => [p.line, p.rule])).toEqual([[8, "cargo-home"]]);
+  });
 });
