@@ -39,8 +39,9 @@ export function authorName(author: Author | null): string {
 /** The author's name, with the verified mark when Kenni vouches for them (#358). */
 export function AuthorName({ author }: Readonly<{ author: Author | null }>) {
   return (
-    <span className="inline-flex flex-wrap items-baseline gap-x-2 font-semibold">
-      {authorName(author)}
+    // The mark stays beside the name; only the byline row around it wraps.
+    <span className="inline-flex min-w-0 flex-nowrap items-baseline gap-x-2 font-semibold">
+      <span className="min-w-0 break-words">{authorName(author)}</span>
       {author?.verified === true && <VerifiedMark className="text-sm" />}
     </span>
   );

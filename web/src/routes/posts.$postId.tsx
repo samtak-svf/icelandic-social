@@ -23,6 +23,7 @@ import { AuthorName, authorName, PostView, StateMark, useMine } from "../social/
 import { moderatesAs, RoleBadge } from "../social/roles.tsx";
 import { ReportButton } from "../social/report.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
+import { CardPlaceholders, Loading } from "../ui/placeholder.tsx";
 
 // One post and its comments (decision 0071): each top-level comment with the
 // replies under it, oldest first, and the box to write in, answering a
@@ -41,7 +42,9 @@ function PostPage() {
     <>
       <h1 className="sr-only">{strings.post_title}</h1>
       {post === null ? (
-        <Status>{strings.loading}</Status>
+        <Loading>
+          <CardPlaceholders count={1} />
+        </Loading>
       ) : (
         <Status>
           <ProblemText problem={post.problem} />
@@ -69,7 +72,7 @@ function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () 
   return (
     <>
       <h1 className="sr-only">{strings.post_title}</h1>
-      <div className="sticky top-0 z-10 flex items-center gap-2 bg-bg">
+      <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-bg">
         <Link
           to="/communities/$communityId"
           params={{ communityId }}
@@ -150,7 +153,9 @@ function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () 
         )}
         <div
           data-comment-composer
-          className="sticky bottom-[var(--tabbar-height,0px)] border-t border-border bg-bg py-2"
+          // -mb-6 takes back the page's own bottom padding, so nothing empty sits under the box;
+          // without the tab bar under it, the box itself clears the safe area.
+          className="sticky bottom-[var(--tabbar-height,0px)] -mb-6 border-t border-border bg-bg py-2 medium:pb-[max(0.5rem,env(safe-area-inset-bottom))]"
         >
           <CommentComposer
             communityId={communityId}
