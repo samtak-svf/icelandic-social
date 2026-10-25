@@ -17,8 +17,8 @@ import { relativeTime } from "../lib/relative-time.ts";
 import { Dialog } from "../ui/dialog.tsx";
 import { DotsIcon, Menu, MenuItem } from "../ui/menu.tsx";
 import { Avatar } from "./avatar.tsx";
-import { Button, ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
-import { outcome, when, type Outcome } from "./outcome.ts";
+import { ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
+import { outcome, when } from "./outcome.ts";
 import { ReportForm } from "./report.tsx";
 import { ActionRow, Summary, useReactions } from "./post-actions.tsx";
 import { PollCard } from "./poll.tsx";
@@ -50,33 +50,6 @@ export function AuthorName({ author }: Readonly<{ author: Author | null }>) {
 export function useMine(author: Author | null): boolean {
   const { state } = useAccount();
   return author !== null && state.status === "signed-in" && state.me.accountId === author.accountId;
-}
-
-/** Deletes the author's own post or comment, once they confirm. */
-export function DeleteButton({
-  ask,
-  remove,
-  deleted,
-}: Readonly<{ ask: string; remove: () => Promise<Outcome<unknown>>; deleted: () => void }>) {
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<Problem | null>(null);
-  async function go() {
-    if (!confirm(ask)) return;
-    setBusy(true);
-    setProblem(null);
-    const done = await remove();
-    setBusy(false);
-    if (done.ok) deleted();
-    else setProblem(done.problem);
-  }
-  return (
-    <div className="flex flex-col items-end">
-      <Button tone="danger" className="text-sm" disabled={busy} onClick={() => void go()}>
-        {strings.delete}
-      </Button>
-      <Status>{problem && <ProblemText problem={problem} />}</Status>
-    </div>
-  );
 }
 
 /** The mark on content only a moderator sees, or nothing. */

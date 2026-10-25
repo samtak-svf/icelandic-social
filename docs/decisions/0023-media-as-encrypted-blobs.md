@@ -4,6 +4,7 @@
   show it since e062505 and afb3ba6
 - Date: 2026-10-07
 - Decided by: the maintainer, approving the plan for the conversation UI
+- Amended by: [0094](0094-a-group-photo-end-to-end-encrypted.md) (a group photo outlives the 30 days)
 - Builds on: [0001](0001-eu-storage-and-residency-wording.md) (EU storage),
   [0002](0002-mls-end-to-end-encryption.md), [0014](0014-accounts-devices-and-auth.md)
   (what `DELETE /me` removes), [0015](0015-delivery-protocol.md) (retention),
