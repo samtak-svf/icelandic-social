@@ -48,12 +48,14 @@ fi
 
 # A crashed run leaves its clone behind. Only spjall-test-* devices older than
 # 2 hours (birth time of the device directory) are touched; a failure here
-# never fails the run.
+# never fails the run. The device directory, not its data/ inside: a clone's
+# data/ keeps the template's birth time, so a run clone seconds old looks
+# hours old there, and a second run on the same Mac deleted it mid-test.
 now=$(date +%s)
 xcrun simctl list devices -j \
   | jq -r '.devices[][] | select(.name | startswith("spjall-test-")) | "\(.udid) \(.dataPath // "")"' \
   | while read -r udid data; do
-    born=$(stat -f %B "$data" 2>/dev/null || echo "$now")
+    born=$(stat -f %B "${data%/data}" 2>/dev/null || echo "$now")
     if [ $((now - born)) -gt 7200 ]; then
       xcrun simctl shutdown "$udid" 2>/dev/null || true
       xcrun simctl delete "$udid" 2>/dev/null || true
