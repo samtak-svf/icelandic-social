@@ -214,7 +214,7 @@ private const val EXPANDED_DP = 1000
 private const val WAIT_MS = 5_000L
 
 /** Actions that do nothing: a test only looks at the layout. */
-private inline fun <reified T> nothing(): T =
+internal inline fun <reified T> nothing(): T =
     Proxy.newProxyInstance(T::class.java.classLoader, arrayOf(T::class.java)) { proxy, method, args ->
         when (method.name) {
             "equals" -> proxy === args[0]

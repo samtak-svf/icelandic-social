@@ -39,6 +39,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import samtak.spjall.brand.R
@@ -56,6 +58,7 @@ internal enum class ManagePart { EDIT, REQUESTS, ANONYMOUS, REPORTS, MEMBERS, LO
 /** The test tags of the two panes. */
 internal const val MANAGE_SECTIONS = "manage-sections"
 internal const val MANAGE_DETAIL = "manage-detail"
+internal const val MANAGE_EDIT_NAME = "manage-edit-name"
 
 /**
  * The two parts that have a screen and a view model of their own, drawn in the detail pane. The navigation graph
@@ -217,6 +220,7 @@ private fun SectionDetail(
                         .testTag(MANAGE_DETAIL),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                SectionHeading(chosen)
                 when (chosen) {
                     ManagePart.EDIT -> {
                         val draft = rememberEditDraft(community)
@@ -237,6 +241,23 @@ private fun SectionDetail(
                 }
             }
     }
+}
+
+/** The heading of a part this pane draws itself; a part with a screen of its own carries that screen's header. */
+@Composable
+private fun SectionHeading(part: ManagePart?) {
+    val title =
+        when (part) {
+            ManagePart.EDIT -> R.string.community_edit
+            ManagePart.MEMBERS -> R.string.community_members_title
+            ManagePart.LOG -> R.string.moderation_log_title
+            else -> return
+        }
+    Text(
+        stringResource(title),
+        style = MaterialTheme.typography.headlineSmall,
+        modifier = Modifier.semantics { heading() },
+    )
 }
 
 @Composable
@@ -304,10 +325,16 @@ internal fun EditFields(
         } else {
             listOf(CommunityAudience.PRIVATE to stringResource(R.string.community_private))
         }
-    OutlinedTextField(draft.name, draft.onName, label = { Text(stringResource(R.string.community_name)) })
+    OutlinedTextField(
+        draft.name,
+        draft.onName,
+        label = { Text(stringResource(R.string.community_name)) },
+        modifier = Modifier.fillMaxWidth().testTag(MANAGE_EDIT_NAME),
+    )
     OutlinedTextField(
         draft.description,
         draft.onDescription,
+        modifier = Modifier.fillMaxWidth(),
         label = { Text(stringResource(R.string.community_description)) },
         minLines = 3,
     )
