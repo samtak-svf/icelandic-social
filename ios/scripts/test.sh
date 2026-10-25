@@ -3,6 +3,10 @@
 # ad hoc. ios.yml runs this, and so does tooling/mac-remote.mjs on a Mac of our
 # own, so the two cannot drift.
 #
+# Every run clones its own simulator and deletes it on exit. Two runs at once
+# (a PR and main, or a mac-remote run) used to share one device, and the second
+# install failed with "Busy (Application failed preflight checks)".
+#
 #   ios/scripts/test.sh             the core fetched and the project generated already (CI)
 #   ios/scripts/test.sh --prepare   fetch the core when the lock changed, then xcodegen first
 #
@@ -29,12 +33,48 @@ fi
 
 "$IOS/scripts/lint.sh"
 
-SIM_UDID=$(xcrun simctl list devices available -j | jq -r '[.devices | to_entries[] | select(.key | startswith("com.apple.CoreSimulator.SimRuntime.iOS-")) | {runtime: .key, devices: [.value[] | select(.name | startswith("iPhone"))]} | select(.devices | length > 0)] | sort_by(.runtime) | (last // {}) | (.devices // []) | .[0] | .udid? // empty')
-if [ -z "$SIM_UDID" ]; then
+# The newest runtime's first iPhone is only the template: tests never run on it.
+TEMPLATE_UDID=$(xcrun simctl list devices available -j | jq -r '[.devices | to_entries[] | select(.key | startswith("com.apple.CoreSimulator.SimRuntime.iOS-")) | {runtime: .key, devices: [.value[] | select(.name | startswith("iPhone"))]} | select(.devices | length > 0)] | sort_by(.runtime) | (last // {}) | (.devices // []) | .[0] | .udid? // empty')
+if [ -z "$TEMPLATE_UDID" ]; then
   xcrun simctl list devices available
   echo "::error::no available iPhone simulator"
   exit 1
 fi
+
+# A crashed run leaves its clone behind. Only spjall-test-* devices older than
+# 2 hours (birth time of the device directory) are touched; a failure here
+# never fails the run.
+now=$(date +%s)
+xcrun simctl list devices -j \
+  | jq -r '.devices[][] | select(.name | startswith("spjall-test-")) | "\(.udid) \(.dataPath // "")"' \
+  | while read -r udid data; do
+    born=$(stat -f %B "$data" 2>/dev/null || echo "$now")
+    if [ $((now - born)) -gt 7200 ]; then
+      xcrun simctl shutdown "$udid" 2>/dev/null || true
+      xcrun simctl delete "$udid" 2>/dev/null || true
+    fi
+  done || true
+
+SIM_UDID=
+cleanup() {
+  if [ -n "$SIM_UDID" ]; then
+    xcrun simctl shutdown "$SIM_UDID" 2>/dev/null || true
+    xcrun simctl delete "$SIM_UDID" 2>/dev/null || true
+  fi
+}
+# EXIT also fires on failure; the signals turn an interrupt into an exit.
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+# Only a shut-down device can be cloned; a run from before this script may
+# have left the template booted.
+clone_name="spjall-test-${GITHUB_RUN_ID:-local}-$$"
+SIM_UDID=$(xcrun simctl clone "$TEMPLATE_UDID" "$clone_name" 2>/dev/null) || {
+  xcrun simctl shutdown "$TEMPLATE_UDID" 2>/dev/null || true
+  SIM_UDID=$(xcrun simctl clone "$TEMPLATE_UDID" "$clone_name")
+}
+xcrun simctl boot "$SIM_UDID"
+xcrun simctl bootstatus "$SIM_UDID" -b >/dev/null
 
 if command -v xcpretty >/dev/null; then pretty=(xcpretty)
 elif command -v xcbeautify >/dev/null; then pretty=(xcbeautify --quiet)
