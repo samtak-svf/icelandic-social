@@ -1,5 +1,5 @@
 // @ts-check
-// Run the iOS or Android checks on a Mac of Samtak's own, from a Linux
+// Run the iOS, Android or web e2e checks on a Mac of Samtak's own, from a Linux
 // machine, without a push to GitHub. ios.yml takes ten minutes on a fresh
 // hosted runner; a Mac that keeps its DerivedData and core between runs needs
 // only what changed.
@@ -17,6 +17,7 @@
 //   node tooling/mac-remote.mjs [--host <ssh host>] [--dir <dir>] [ios | android | -- <command…>]
 //     ios (the default) runs ios/scripts/test.sh --prepare there
 //     android runs android/scripts/test.sh --connected (checks and emulator tests)
+//     web runs web/scripts/e2e.sh --prepare (the Worker under cf dev, then Playwright)
 //
 // Without --dir the shared script picks the remote directory itself, one per
 // checkout (remote/<repo>-<hash of the checkout path>), so two worktrees never
@@ -35,6 +36,7 @@ import { ROOT } from "./lib/repo.mjs";
 const TASKS = {
   ios: "ios/scripts/test.sh --prepare",
   android: "android/scripts/test.sh --connected",
+  web: "web/scripts/e2e.sh --prepare",
 };
 
 /**

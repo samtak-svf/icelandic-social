@@ -65,28 +65,10 @@ jobs:
       - name: Chromium
         run: pnpm --filter spjall-web exec playwright install --with-deps chromium
 
-      - name: Start the Worker
-        working-directory: backend
-        timeout-minutes: 5
-        run: |
-          # As in interop.yml: the migrations go where cf dev keeps its state,
-          # and the kennitala key is made for this run.
-          node scripts/d1.ts migrate --local --persist-to .cloudflare/state
-          printf 'KENNITALA_HMAC_KEY=%s\n' "$(openssl rand -hex 32)" > .dev.vars
-          nohup pnpm exec cf dev --mode interop > "$RUNNER_TEMP/worker.log" 2>&1 &
-          for _ in $(seq 60); do
-            curl -sf -m 5 http://127.0.0.1:8787/health >/dev/null && exit 0
-            sleep 1
-          done
-          cat "$RUNNER_TEMP/worker.log"
-          exit 1
-
+      # The Worker under cf dev on fresh local state, then Playwright; the
+      # same script the Mac runs (tooling/mac-remote.mjs web).
       - name: Playwright
-        run: pnpm --filter spjall-web e2e
-
-      - name: Worker log
-        if: failure() || cancelled()
-        run: cat "$RUNNER_TEMP/worker.log"
+        run: web/scripts/e2e.sh
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
