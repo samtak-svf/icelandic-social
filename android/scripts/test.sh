@@ -54,8 +54,10 @@ if adb devices | awk 'NR > 1 && $2 == "device"' | grep -q .; then
   echo "==> reusing the device adb lists"
 else
   echo "==> booting $AVD (log: $EMULATOR_LOG)"
-  nohup emulator -avd "$AVD" -no-window -no-audio -no-boot-anim -no-snapshot-save \
-    -timezone Atlantic/Reykjavik >"$EMULATOR_LOG" 2>&1 &
+  # Ignoring SIGHUP survives exec; macOS nohup also detaches from the console,
+  # which a runner under launchd cannot do, so it exits before the emulator starts.
+  (trap '' HUP; exec emulator -avd "$AVD" -no-window -no-audio -no-boot-anim -no-snapshot-save \
+    -timezone Atlantic/Reykjavik) >"$EMULATOR_LOG" 2>&1 &
   emulator_pid=$!
   deadline=$((SECONDS + BOOT_TIMEOUT))
   until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do
