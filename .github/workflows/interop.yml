@@ -50,6 +50,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          # Per runner: the Mac's two runners share one home directory.
+          dest: ${{ runner.temp }}/setup-pnpm
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
@@ -80,6 +83,12 @@ jobs:
       - name: Core for the browser
         working-directory: core
         run: |
+          # Apple's clang has no wasm32 target, so sqlite-wasm-rs builds its C
+          # with Homebrew's LLVM there (tooling/mac-bootstrap.sh installs it).
+          if [ "$RUNNER_OS" = macOS ]; then
+            export CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm/bin/clang
+            export AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm/bin/llvm-ar
+          fi
           cargo install wasm-bindgen-cli --version 0.2.129 --locked
           cargo xtask core web
 
