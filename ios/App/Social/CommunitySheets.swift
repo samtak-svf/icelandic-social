@@ -180,6 +180,11 @@ struct CommunityManageSheet: View {
                     "join_requests_title", systemImage: "person.crop.circle.badge.questionmark",
                     count: model.pendingRequests)
             }
+            if model.community?.anonymousPosts == true || model.pendingAnonymous > 0 {
+                tool(.anonymous, split: split) {
+                    row("anonymous_queue_title", systemImage: "eye.slash", count: model.pendingAnonymous)
+                }
+            }
             tool(.members, split: split) {
                 row("community_members_title", systemImage: "person.3", count: nil)
             }
@@ -218,6 +223,7 @@ struct CommunityManageSheet: View {
             switch route {
             case .reports: ManageReports(id: model.communityId, social: social)
             case .requests: ManageRequests(id: model.communityId, social: social)
+            case .anonymous: ManageAnonymous(id: model.communityId, social: social)
             case .members: CommunityMembersView(model: model)
             case .log: ModerationLogView(model: model)
             case .edit: EditCommunityView(model: model)
@@ -300,7 +306,7 @@ struct CommunityManageSheet: View {
 
 /// Where the tools lead, inside the sheet's own stack (decision 0079).
 private enum ManageRoute: Hashable {
-    case reports, requests, members, log, edit
+    case reports, requests, anonymous, members, log, edit
 }
 
 /// A report queue, with a model of its own each time it opens.
@@ -313,6 +319,19 @@ private struct ManageReports: View {
 
     var body: some View {
         ReportsView(model: model)
+    }
+}
+
+/// The anonymous posts waiting for a moderator.
+private struct ManageAnonymous: View {
+    @State private var model: AnonymousQueueModel
+
+    init(id: String, social: Social) {
+        _model = State(initialValue: AnonymousQueueModel(social: social, communityId: id))
+    }
+
+    var body: some View {
+        AnonymousQueueView(model: model)
     }
 }
 
@@ -479,6 +498,17 @@ private struct EditCommunityView: View {
             }
             Section {
                 CommunityAudiencePicker(audience: $audience, locked: locked)
+            }
+            Section {
+                Toggle(
+                    "community_anonymous_posts",
+                    isOn: Binding(
+                        get: { model.community?.anonymousPosts ?? false },
+                        set: { on in Task { await model.setAnonymous(on) } })
+                )
+                .disabled(model.busy)
+            } footer: {
+                Text("community_anonymous_posts_hint")
             }
             if let problem = model.problem {
                 Section {

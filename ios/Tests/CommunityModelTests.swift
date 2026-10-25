@@ -585,4 +585,47 @@ final class CommunityModelTests: XCTestCase {
         await moderator.vote("p1", option: "o0")
         XCTAssertEqual(moderator.problem, .pollClosed)
     }
+
+    func testTheAnonymousPostsWaitingAreCountedForAModeratorOnly() async {
+        let moderator = await model(
+            makeCommunity("k1", "Fuglar", role: .moderator, openReports: 1, anonymousPosts: true, pendingAnonymous: 2))
+        XCTAssertEqual(moderator.pendingAnonymous, 2)
+        XCTAssertEqual(moderator.manageCount, 3)
+        let member = await model(
+            makeCommunity("k2", "Fuglar", role: .member, anonymousPosts: true, pendingAnonymous: 2))
+        XCTAssertEqual(member.pendingAnonymous, 0)
+        XCTAssertEqual(member.manageCount, 0)
+    }
+
+    func testOnlyTheOwnerSwitchesAnonymousPostsOn() async {
+        let moderator = await model(makeCommunity("k1", "Fuglar", role: .moderator))
+        await moderator.setAnonymous(true)
+        XCTAssertFalse(social.calls.contains("setAnonymousPosts k1 true"))
+        let owner = await model(makeCommunity("k2", "Fuglar", role: .owner))
+        XCTAssertFalse(owner.allowsAnonymous)
+        await owner.setAnonymous(true)
+        XCTAssertTrue(social.calls.contains("setAnonymousPosts k2 true"))
+        XCTAssertEqual(owner.community?.anonymousPosts, true)
+        XCTAssertTrue(owner.allowsAnonymous)
+    }
+
+    func testAnAnonymousPostWaitsForApprovalAndShowsNoName() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member, anonymousPosts: true))
+        model.draft = "Leyndarmál"
+        model.anonymous = true
+        await model.publish()
+        XCTAssertTrue(social.calls.contains("createPost k1 Leyndarmál anonymous"))
+        XCTAssertEqual(model.posts.first?.state, .pending)
+        XCTAssertNil(model.posts.first?.author)
+        XCTAssertFalse(model.anonymous)
+    }
+
+    func testAnAnonymousDraftGoesOutNamedWhereTheSwitchIsOff() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        model.draft = "Leyndarmál"
+        model.anonymous = true
+        await model.publish()
+        // The switch is off, so the post goes out under the author's name.
+        XCTAssertFalse(social.calls.contains("createPost k1 Leyndarmál anonymous"))
+    }
 }

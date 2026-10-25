@@ -138,6 +138,13 @@ final class CommunityModel {
         return Int(community?.openReports ?? 0)
     }
 
+    /// The anonymous posts that wait for approval, for a moderator; zero when none, or when this account does not
+    /// moderate (decision 0091).
+    var pendingAnonymous: Int {
+        guard moderates else { return 0 }
+        return Int(community?.pendingAnonymous ?? 0)
+    }
+
     /// The tabs this account sees: all of them for a reader of the community, with `Fest` only while a post is
     /// featured; `Um` alone for one who may not read it (decision 0089).
     var tabs: [Tab] {
@@ -154,7 +161,7 @@ final class CommunityModel {
     }
 
     /// The work waiting for this account here, which `Stjórna` counts in its label (decision 0079).
-    var manageCount: Int { openReports + pendingRequests }
+    var manageCount: Int { openReports + pendingRequests + pendingAnonymous }
 
     /// A search is typed, so the list shows what it found and an empty one says none was.
     var searched: Bool { sent != nil }
@@ -358,6 +365,16 @@ final class CommunityModel {
     /// Renames the community, changes its description or makes an open one private; its owner alone may, and a
     /// private one never becomes open again (decisions 0063, 0079). False when a field is empty or too long.
     @discardableResult
+    /// Lets the community's members write anonymous posts, or stops them (decision 0091). The owner alone decides.
+    func setAnonymous(_ on: Bool) async {
+        guard owns else { return }
+        let social = social
+        let id = communityId
+        await perform(again: { await self.setAnonymous(on) }) {
+            self.community = try await offMain { try social.setAnonymousPosts(id, on: on) }
+        }
+    }
+
     func update(name: String, description: String, audience: CommunityAudience) async -> Bool {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let description = description.trimmingCharacters(in: .whitespacesAndNewlines)
