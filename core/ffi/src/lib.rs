@@ -102,6 +102,10 @@ pub enum CoreError {
     /// framed again; the app asks the person to upload it once more.
     #[error("the image has no master to frame; upload it again")]
     NoMaster,
+    /// The file is not a JPEG, PNG or WebP the core can read, so no group
+    /// photo can be made of it (0094).
+    #[error("not an image the core can read")]
+    UnsupportedImage,
 }
 
 /// Why a message cannot be forwarded (0041).
@@ -265,6 +269,9 @@ impl From<envelope::Body> for Body {
             },
             B::Settings { .. } => Self::Unknown {
                 kind: "settings".into(),
+            },
+            B::Photo { .. } => Self::Unknown {
+                kind: "photo".into(),
             },
             B::Leave {} => Self::Unknown {
                 kind: "leave".into(),
@@ -474,6 +481,7 @@ impl CoreError {
             Self::NameInvalid => "group/name-invalid".into(),
             Self::NotAGroup => "group/not-a-group".into(),
             Self::NoMaster => "image/no-master".into(),
+            Self::UnsupportedImage => "image/unsupported".into(),
         })
     }
 }
@@ -620,7 +628,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().to_string_lossy().into_owned();
         let store = CoreStore::open(path.clone(), vec![1; 32]).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 17);
+        assert_eq!(store.schema_version().unwrap(), 18);
         drop(store);
         assert!(matches!(
             CoreStore::open(path.clone(), vec![2; 32]),

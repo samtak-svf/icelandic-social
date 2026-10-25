@@ -4,12 +4,15 @@
 //! through a network call, and none of it writes, so a row whose timer is up
 //! is left out by the `Reader` rather than purged first.
 
+use std::path::{Path, PathBuf};
+
 use spjall_envelope::Envelope;
 use spjall_store::Reader;
 use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 
 use crate::api::{conversation_id, group_id};
 use crate::directory::{fold_name, query, starts_a_word};
+use crate::group_photo;
 use crate::{
     ClientError, Conversation, Device, Item, Message, Person, STATE, Settings, SignedIn, State,
     account, conversation_state, members, mute, notice, read, this_device, timeline,
@@ -19,11 +22,13 @@ use crate::{
 /// `Client` and behind a lock of its own.
 pub struct View {
     reader: Reader,
+    /// The store's folder for decrypted files, where a group's photo is kept.
+    media: PathBuf,
 }
 
 impl View {
-    pub(crate) fn new(reader: Reader) -> Self {
-        Self { reader }
+    pub(crate) fn new(reader: Reader, media: PathBuf) -> Self {
+        Self { reader, media }
     }
 
     /// The account and device this store is signed in as, if it is: what
@@ -45,7 +50,7 @@ impl View {
 
     /// Every conversation, the one with the newest activity first.
     pub fn conversations(&mut self) -> Result<Vec<Conversation>, ClientError> {
-        self.reader.read(conversations)
+        self.reader.read(|tx| conversations(tx, &self.media))
     }
 
     /// Up to `limit` items before the item `before` (or the newest), oldest
@@ -158,9 +163,9 @@ impl View {
     }
 }
 
-fn conversations(tx: &Transaction) -> Result<Vec<Conversation>, ClientError> {
+fn conversations(tx: &Transaction, media: &Path) -> Result<Vec<Conversation>, ClientError> {
     let mut statement = tx.prepare(&format!(
-        "SELECT group_id, {STATE}, timer, name FROM conversations c
+        "SELECT group_id, {STATE}, timer, name, photo_ready FROM conversations c
          ORDER BY MAX(created_at,
                       COALESCE((SELECT MAX(stored_at) FROM timeline t
                                 WHERE t.group_id = c.group_id), 0),
@@ -169,8 +174,8 @@ fn conversations(tx: &Transaction) -> Result<Vec<Conversation>, ClientError> {
                                0)) DESC,
                   created_at DESC"
     ))?;
-    /// group, state, timer, name.
-    type Row = (Vec<u8>, State, Option<u32>, Option<String>);
+    /// group, state, timer, name, photo ready.
+    type Row = (Vec<u8>, State, Option<u32>, Option<String>, bool);
     let rows: Vec<Row> = statement
         .query_map([], |r| {
             Ok((
@@ -178,6 +183,7 @@ fn conversations(tx: &Transaction) -> Result<Vec<Conversation>, ClientError> {
                 State::parse(&r.get::<_, String>(1)?)?,
                 r.get(2)?,
                 r.get(3)?,
+                r.get::<_, u8>(4)? == 1,
             ))
         })?
         .collect::<rusqlite::Result<_>>()?;
@@ -187,7 +193,7 @@ fn conversations(tx: &Transaction) -> Result<Vec<Conversation>, ClientError> {
     }
     let (_, me) = this_device(tx)?;
     let mut conversations = Vec::with_capacity(rows.len());
-    for (group, state, timer, name) in rows {
+    for (group, state, timer, name, photo_ready) in rows {
         conversations.push(Conversation {
             id: conversation_id(&group),
             state,
@@ -196,6 +202,7 @@ fn conversations(tx: &Transaction) -> Result<Vec<Conversation>, ClientError> {
             last: timeline::items(tx, &group, &me.account, None, 1)?.pop(),
             unread: read::unread(tx, &group, &me.account)?,
             timer,
+            photo: photo_ready.then(|| group_photo::path_of(media, &conversation_id(&group))),
             mute: mute::mute_of(tx, &group)?,
         });
     }

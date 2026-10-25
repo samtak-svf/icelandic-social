@@ -109,6 +109,8 @@ struct State {
     page: usize,
     /// (conversation, media id) → the blob.
     media: BTreeMap<(String, String), Vec<u8>>,
+    /// conversation → (media id, blob): its group photo (0094), one at most.
+    group_photos: BTreeMap<String, (String, Vec<u8>)>,
     /// (blocker, blocked) → when, in a counter for order.
     blocks: BTreeMap<(String, String), u64>,
     blocked_at: u64,
@@ -389,6 +391,11 @@ impl Relay {
     }
 
     /// Changes one byte of every blob the server holds.
+    /// Whether the server holds a group photo for `conversation` (0094).
+    pub fn has_group_photo(&self, conversation: &str) -> bool {
+        self.state().group_photos.contains_key(conversation)
+    }
+
     pub fn tamper_media(&self) {
         for blob in self.state().media.values_mut() {
             let middle = blob.len() / 2;
@@ -816,6 +823,15 @@ impl State {
                     json!({ "token": token, "link": format!("https://spjall.samtak.is/l/{token}") }),
                 )
             }
+            (Method::Delete, ["conversations", id, "photo"]) => {
+                match self.group_photo_of(account, device, &request) {
+                    Ok(_) => {
+                        self.group_photos.remove(*id);
+                        answer(204, Value::Null)
+                    }
+                    Err(refused) => refused,
+                }
+            }
             (Method::Delete, ["me", "photo"]) => {
                 self.photos.remove(account);
                 self.masters.remove(account);
@@ -1189,6 +1205,52 @@ impl State {
         Ok(((*id).to_owned(), (*object).to_owned()))
     }
 
+    /// The conversation and media id a group photo request names, once its
+    /// token and roster are checked (`/v1/conversations/{id}/photo[/{mediaId}]`).
+    fn group_photo_of(
+        &self,
+        account: &str,
+        device: &str,
+        request: &Request,
+    ) -> Result<(String, Option<String>), Response> {
+        if request.bearer.is_none() || self.tokens.get(device) != request.bearer.as_ref() {
+            return Err(refuse(401, "unauthorized"));
+        }
+        let parts: Vec<&str> = request.path.split('/').skip(2).collect();
+        let (id, object) = match parts.as_slice() {
+            ["conversations", id, "photo", object] => (*id, Some((*object).to_owned())),
+            ["conversations", id, "photo"] => (*id, None),
+            _ => return Err(refuse(404, "not_found")),
+        };
+        let Some(conversation) = self.conversations.get(id) else {
+            return Err(refuse(404, "not_found"));
+        };
+        if !conversation.roster.contains(account) {
+            return Err(refuse(403, "not_a_member"));
+        }
+        Ok((id.to_owned(), object))
+    }
+
+    fn put_group_photo(
+        &mut self,
+        account: &str,
+        device: &str,
+        request: &Request,
+        blob: Vec<u8>,
+    ) -> Response {
+        let (id, object) = match self.group_photo_of(account, device, request) {
+            Ok((id, Some(object))) => (id, object),
+            Ok(_) => return refuse(404, "not_found"),
+            Err(refused) => return refused,
+        };
+        if blob.len() > 1_000_000 {
+            return refuse(413, "too_large");
+        }
+        // Setting a new one deletes the old object.
+        self.group_photos.insert(id, (object, blob));
+        answer(204, Value::Null)
+    }
+
     fn put_media(
         &mut self,
         account: &str,
@@ -1513,6 +1575,25 @@ impl State {
         (answer(200, Value::Null), Some(webp.clone()))
     }
 
+    fn get_group_photo(
+        &self,
+        account: &str,
+        device: &str,
+        request: &Request,
+    ) -> (Response, Option<Vec<u8>>) {
+        let (id, object) = match self.group_photo_of(account, device, request) {
+            Ok((id, Some(object))) => (id, object),
+            Ok(_) => return (refuse(404, "not_found"), None),
+            Err(refused) => return (refused, None),
+        };
+        match self.group_photos.get(&id) {
+            Some((current, blob)) if *current == object => {
+                (answer(200, Value::Null), Some(blob.clone()))
+            }
+            _ => (refuse(404, "not_found"), None),
+        }
+    }
+
     fn get_media(
         &self,
         account: &str,
@@ -1716,6 +1797,9 @@ impl Transport for Link {
             if request.path.contains("/history/parts/") {
                 return state.put_history_part(device, &request, blob);
             }
+            if request.path.contains("/photo/") {
+                return state.put_group_photo(account, device, &request, blob);
+            }
             state.put_media(account, device, &request, blob)
         })
     }
@@ -1741,6 +1825,9 @@ impl Transport for Link {
             let (response, blob) = match (photo, history) {
                 (Some(id), _) => state.get_photo(account, id),
                 (None, Some(link)) => state.get_history(device, link),
+                (None, None) if path.contains("/photo/") => {
+                    state.get_group_photo(account, device, &request)
+                }
                 (None, None) => state.get_media(account, device, &request),
             };
             if let Some(blob) = blob {

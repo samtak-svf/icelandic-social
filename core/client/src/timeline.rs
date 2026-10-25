@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use spjall_envelope::{Body, Envelope, is_place};
+use spjall_envelope::{Body, Envelope, PhotoRef, is_place};
 use spjall_mls::group::Device;
 use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 
@@ -70,6 +70,9 @@ pub enum Content {
     Timer { seconds: Option<u32> },
     /// The group was named, or its name cleared (0078).
     Name { name: Option<String> },
+    /// The group's photo was set or replaced (`set`), or cleared (0094).
+    /// The picture is `Conversation::photo`, never part of the card.
+    Photo { set: bool },
     /// A post shared here under 0040: only its id. Since 0080 the app resolves
     /// it as a card (#288), which shows only what the post's own access
     /// check shows; where that fails, a fixed line.
@@ -182,6 +185,41 @@ struct TimerCard {
 #[derive(Serialize, Deserialize)]
 struct NameCard {
     name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct PhotoCard {
+    set: bool,
+}
+
+/// A photo ref another member sent, if it names something this device may
+/// fetch and show: an object id of ours, a JPEG (all the core ever seals),
+/// no larger than the core makes one (0094).
+pub(crate) fn usable_photo(photo: &PhotoRef) -> bool {
+    crate::media::is_object(&photo.id)
+        && photo.mime == "image/jpeg"
+        && photo.size <= crate::group_photo::MAX_BYTES
+}
+
+fn set_photo(tx: &Transaction, group: &[u8], photo: &Option<PhotoRef>) -> rusqlite::Result<()> {
+    let photo = photo
+        .as_ref()
+        .map(|p| serde_json::to_string(p).expect("a photo ref serializes"));
+    tx.execute(
+        "UPDATE conversations SET photo = ?2, photo_ready = 2 WHERE group_id = ?1",
+        params![group, photo],
+    )
+    .map(drop)
+}
+
+/// The photo a conversation has now, if it has one.
+pub(crate) fn photo_of(tx: &Transaction, group: &[u8]) -> rusqlite::Result<Option<PhotoRef>> {
+    let json: Option<String> = tx.query_row(
+        "SELECT photo FROM conversations WHERE group_id = ?1",
+        [group],
+        |r| r.get(0),
+    )?;
+    Ok(json.and_then(|j| serde_json::from_str(&j).ok()))
 }
 
 /// A group's name as it is kept (0078): trimmed, 1 to 64 characters, no
@@ -513,10 +551,30 @@ pub(crate) fn fold(
             )?;
             vec![seq]
         }
+        // A photo is a group's (0094): one sent to two is dropped, and so is
+        // one that names nothing this device could open.
+        Body::Photo { photo } => {
+            if photo.as_ref().is_some_and(|p| !usable_photo(p)) || !is_group(tx, group)? {
+                return Ok(None);
+            }
+            set_photo(tx, group, photo)?;
+            card(
+                tx,
+                group,
+                seq,
+                sender,
+                envelope.ts,
+                "photo",
+                json(&PhotoCard {
+                    set: photo.is_some(),
+                }),
+            )?;
+            vec![seq]
+        }
         // A snapshot for whoever joined (0078): what it changes takes, and
-        // a card shows the name if it changed, else the timer. One that
-        // changes nothing writes nothing.
-        Body::Settings { name, timer } => {
+        // a card shows the name if it changed, else the photo, else the
+        // timer. One that changes nothing writes nothing.
+        Body::Settings { name, timer, photo } => {
             let Some(name) = name.as_deref().map_or(Some(None), group_name) else {
                 return Ok(None);
             };
@@ -526,10 +584,17 @@ pub(crate) fn fold(
                 [group],
                 |r| Ok((r.get(0)?, r.get(1)?)),
             )?;
-            let renamed = name != was_name && is_group(tx, group)?;
+            let group_of_many = is_group(tx, group)?;
+            let renamed = name != was_name && group_of_many;
             let retimed = timer != was_timer;
+            let photo = photo.clone().filter(usable_photo);
+            // A snapshot never clears: one from before 0094 has no photo to send.
+            let repictured = group_of_many && photo.is_some() && photo != photo_of(tx, group)?;
             if renamed {
                 set_name(tx, group, &name)?;
+            }
+            if repictured {
+                set_photo(tx, group, &photo)?;
             }
             if retimed {
                 tx.execute(
@@ -539,6 +604,13 @@ pub(crate) fn fold(
             }
             let (kind, detail) = if renamed {
                 ("name", json(&NameCard { name }))
+            } else if repictured {
+                (
+                    "photo",
+                    json(&PhotoCard {
+                        set: photo.is_some(),
+                    }),
+                )
             } else if retimed {
                 ("timer", json(&TimerCard { seconds: timer }))
             } else {
@@ -871,6 +943,13 @@ fn stored(
                     .and_then(|d| serde_json::from_str::<NameCard>(d).ok())
                 {
                     Some(card) => Content::Name { name: card.name },
+                    None => Content::unreadable("a stored card"),
+                },
+                "photo" => match detail
+                    .as_deref()
+                    .and_then(|d| serde_json::from_str::<PhotoCard>(d).ok())
+                {
+                    Some(card) => Content::Photo { set: card.set },
                     None => Content::unreadable("a stored card"),
                 },
                 _ => Content::Text {

@@ -293,7 +293,7 @@ fn hex(bytes: &[u8]) -> String {
 }
 
 /// 128 random bits, as the API's `mediaId` takes them.
-fn object_id() -> String {
+pub(crate) fn object_id() -> String {
     let mut bytes = [0u8; 16];
     getrandom::fill(&mut bytes).expect("the OS has randomness");
     URL_SAFE_NO_PAD.encode(bytes)
