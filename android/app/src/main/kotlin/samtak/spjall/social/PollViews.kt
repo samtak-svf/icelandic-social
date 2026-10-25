@@ -23,6 +23,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -34,6 +35,12 @@ import samtak.spjall.brand.R
 import samtak.spjall.core.Poll
 import samtak.spjall.core.PollOption
 import samtak.spjall.ui.Palette
+
+/** The test tags of a poll card, of its option rows (suffixed with the index) and of its footer actions. */
+internal const val POLL_CARD = "poll-card"
+internal const val POLL_OPTION = "poll-option"
+internal const val POLL_WITHDRAW = "poll-withdraw"
+internal const val POLL_CLOSE = "poll-close"
 
 // The poll (decision 0090) and the anonymous switches (0091), as the web's poll.tsx, poll-fields.tsx and composer.
 
@@ -63,9 +70,9 @@ internal fun PollCard(
 ) {
     val results = poll.showsResults()
     val open = !poll.closed
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        poll.options.forEach { option ->
-            PollOptionRow(option, poll, results, enabled = callbacks != null && !busy && open, callbacks)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.testTag(POLL_CARD)) {
+        poll.options.forEachIndexed { index, option ->
+            PollOptionRow(option, index, poll, results, enabled = callbacks != null && !busy && open, callbacks)
         }
         PollFooter(poll, busy, callbacks)
     }
@@ -74,6 +81,7 @@ internal fun PollCard(
 @Composable
 private fun PollOptionRow(
     option: PollOption,
+    index: Int,
     poll: Poll,
     results: Boolean,
     enabled: Boolean,
@@ -87,6 +95,7 @@ private fun PollOptionRow(
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = 44.dp)
+                .testTag("$POLL_OPTION-$index")
                 .border(
                     BorderStroke(if (mine) 2.dp else 1.dp, if (mine) Palette.primary else Palette.border),
                     RoundedCornerShape(8.dp),
@@ -135,12 +144,18 @@ private fun PollFooter(
         )
         if (callbacks != null && !poll.closed) {
             if (poll.mine != null) {
-                TextButton(onClick = callbacks.onWithdraw, enabled = !busy) {
+                TextButton(
+                    onClick = callbacks.onWithdraw,
+                    enabled = !busy,
+                    modifier = Modifier.testTag(POLL_WITHDRAW),
+                ) {
                     Text(stringResource(R.string.poll_withdraw))
                 }
             }
             callbacks.onClose?.let { close ->
-                TextButton(onClick = close, enabled = !busy) { Text(stringResource(R.string.poll_close)) }
+                TextButton(onClick = close, enabled = !busy, modifier = Modifier.testTag(POLL_CLOSE)) {
+                    Text(stringResource(R.string.poll_close))
+                }
             }
         }
     }
