@@ -118,7 +118,7 @@ test("a phone links this browser, which shows the phone's message and replies", 
   const conversation = page.getByRole("main").getByRole("listitem").getByRole("link");
   await expect(conversation).toHaveCount(1, { timeout: 120_000 });
   await conversation.click();
-  await expect(page.getByText("halló vafri")).toBeVisible();
+  await expect(page.getByText("halló vafri", { exact: true })).toBeVisible();
   // An expanded window keeps the list beside the open conversation (0093).
   const beside = layoutOf(page.viewportSize()!.width).conversations === "list-and-thread";
   await expect(conversation).toHaveCount(beside ? 1 : 0);
@@ -126,7 +126,7 @@ test("a phone links this browser, which shows the phone's message and replies", 
 
   await page.getByRole("textbox", { name: strings.composer_placeholder }).fill("svar úr vafra");
   await page.getByRole("button", { name: strings.send }).click();
-  await expect(page.getByText("svar úr vafra")).toBeVisible();
+  await expect(page.getByText("svar úr vafra", { exact: true })).toBeVisible();
   expect(await phoneDone).toBe(0);
 
   // A second tab of the same browser finds the chat open in the first.
