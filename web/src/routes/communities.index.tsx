@@ -19,6 +19,7 @@ import { moderatesAs } from "../social/roles.tsx";
 import { LAYOUTS } from "../ui/layout.ts";
 import { useSizeClass } from "../ui/size-class.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
+import { CardPlaceholders, Loading, RowPlaceholders } from "../ui/placeholder.tsx";
 
 // Communities (decision 0063) in three tabs (decision 0079): the feed of what
 // is new in them, the ones the person is in with the way to find others by
@@ -125,12 +126,16 @@ function Mine({
 }>) {
   return (
     <>
-      <section aria-labelledby="mine" className="mt-6">
+      <section aria-labelledby="mine" aria-busy={mine === null} className="mt-6">
         <h2 id="mine" className="sr-only">
           {strings.communities_mine}
         </h2>
-        {verified && <CreateRow />}
-        {mine === null && <Status>{strings.loading}</Status>}
+        {verified && mine !== null && <CreateRow />}
+        {mine === null && (
+          <Loading>
+            <RowPlaceholders />
+          </Loading>
+        )}
         {mine?.ok === false && (
           <Status>
             <ProblemText problem={mine.problem} />
@@ -162,9 +167,18 @@ function Feed({ byId }: Readonly<{ byId: Map<string, Community> }>) {
   );
   const feed = usePaged(fetchPage, (post: Post) => post.postId);
   const changed = feed.reload;
+  const loading = feed.items === null && feed.problem === null;
   return (
-    <section aria-label={strings.communities_tab_feed} className="mt-6 flex flex-col gap-4">
-      {feed.items === null && feed.problem === null && <Status>{strings.loading}</Status>}
+    <section
+      aria-label={strings.communities_tab_feed}
+      aria-busy={loading}
+      className="mt-6 flex flex-col gap-4"
+    >
+      {loading && (
+        <Loading>
+          <CardPlaceholders />
+        </Loading>
+      )}
       {feed.problem !== null && (
         <Status>
           <ProblemText problem={feed.problem} />
@@ -251,8 +265,12 @@ function Discover() {
   return (
     <section aria-label={strings.communities_tab_discover} className="mt-6">
       <Find />
-      <section className="mt-4">
-        {browse === null && <Status>{strings.loading}</Status>}
+      <section aria-busy={browse === null} className="mt-4">
+        {browse === null && (
+          <Loading>
+            <RowPlaceholders />
+          </Loading>
+        )}
         {browse?.ok === false && (
           <Status>
             <ProblemText problem={browse.problem} />
