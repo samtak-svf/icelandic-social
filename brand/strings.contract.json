@@ -115,7 +115,7 @@
       "description": "Day separator for today's messages."
     },
     "day_yesterday": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Day separator for yesterday's messages."
     },
     "verified_with_kennitala": {
@@ -127,14 +127,14 @@
       "description": "Short form of verified_with_kennitala, under the other person's name at the top of a conversation."
     },
     "last_line_own": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "The conversation list's preview line when the newest message is the reader's own.",
       "placeholders": {
         "text": "string"
       }
     },
     "last_line_sender": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "The conversation list's preview line in a group when the newest message is someone else's; name is the sender's first name.",
       "placeholders": {
         "name": "string",
@@ -174,28 +174,28 @@
       "description": "Action on the notifications_off row: opens the app's notification settings in the system."
     },
     "new_device_card": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "System card in a conversation when a member adds a device (from an MLS add commit).",
       "placeholders": {
         "name": "string"
       }
     },
     "member_added_card": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "System card when an account joins a group (docs/decisions/0022).",
       "placeholders": {
         "name": "string"
       }
     },
     "member_removed_card": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "System card when an account leaves a group, is removed, or deletes its account (docs/decisions/0022).",
       "placeholders": {
         "name": "string"
       }
     },
     "member_removed_card_direct": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "System card in a 1:1 when the other account leaves it, as on a block; member_removed_card says the same of a group (docs/decisions/0022).",
       "placeholders": {
         "name": "string"
@@ -300,7 +300,7 @@
       "description": "Why the app asks for the camera, shown by iOS in its permission prompt (NSCameraUsageDescription, docs/decisions/0047)."
     },
     "location": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "A location message (docs/decisions/0059): the attach menu's choice, the card's heading, the conversation list's last line, a quote of one and a notification. Never the place itself."
     },
     "location_coordinates": {
@@ -379,11 +379,11 @@
       "description": "Stands in for an account whose name the server has not given, in titles and rows (docs/decisions/0022)."
     },
     "photo": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Label of a photo message, in the conversation list and for screen readers."
     },
     "file": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Label of a file message, in the conversation list and for screen readers."
     },
     "media_too_large": {
@@ -466,11 +466,11 @@
       }
     },
     "post_shared": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "A shared Fljótið post in the conversation list and in a notification: fixed, never the post's text or author (docs/decisions/0040)."
     },
     "item_unreadable": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "A stored message the core cannot read back, shown in its place in the conversation and as the list's last line, with its code under it (docs/decisions/0051). Never says more."
     },
     "post_gone": {
@@ -514,7 +514,7 @@
       "description": "Per-conversation setting: messages delete themselves after a set time."
     },
     "disappearing_set_card": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "System card when a member sets the disappearing timer; duration is formatted by the client.",
       "placeholders": {
         "name": "string",
@@ -522,7 +522,7 @@
       }
     },
     "disappearing_off_card": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "System card when a member turns the disappearing timer off.",
       "placeholders": {
         "name": "string"
@@ -560,11 +560,11 @@
       "description": "Conversation menu item while it is muted: notifications come again."
     },
     "muted": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "What a screen reader says for the muted mark beside the time in a conversation list row."
     },
     "duration_hours": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "A duration in hours, in the form that follows \"eftir\" in disappearing_set_card and disappearing_option.",
       "plural": true,
       "placeholders": {
@@ -572,7 +572,7 @@
       }
     },
     "duration_days": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "A duration in days, in the form that follows \"eftir\" in disappearing_set_card and disappearing_option.",
       "plural": true,
       "placeholders": {
@@ -580,11 +580,11 @@
       }
     },
     "read_marker": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Marker on an own message the other party has read."
     },
     "read_by_count": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Under an own message in a group: how many members have read it (docs/decisions/0022).",
       "plural": true,
       "placeholders": {
@@ -856,7 +856,7 @@
       "description": "On the empty conversation list: opens the new-conversation picker, where everyone signed in is listed (0036, 0043)."
     },
     "typing_in_row": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Replaces a conversation row's preview while someone in it is typing; names no one (0022, 0043)."
     },
     "conversation_info": {
@@ -1729,7 +1729,7 @@
       "description": "Confirm button that saves a change, such as a group's name (docs/decisions/0078)."
     },
     "name_set_card": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "System card when a member names or renames the group (docs/decisions/0078).",
       "placeholders": {
         "who": "string",
@@ -1737,7 +1737,7 @@
       }
     },
     "name_cleared_card": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "System card when a member clears the group's name (docs/decisions/0078).",
       "placeholders": {
         "who": "string"

@@ -1,19 +1,20 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { useChat } from "../chat/chat.tsx";
-import { conversationTitle, lastLine } from "../chat/people.ts";
+import { ConversationRow } from "../chat/conversation-row.tsx";
 import { strings } from "../generated/brand/strings.ts";
 import type { Conversation } from "../generated/core.d.ts";
 import { Status } from "../ui/kit.tsx";
 
 // The conversations of this browser's store, as the core lists them, reloaded
-// when it reports a change.
+// when it reports a change; who is typing comes from the same events.
 export const Route = createFileRoute("/conversations/")({ component: List });
 
 function List() {
   const { call, subscribe } = useChat();
   const [list, setList] = useState<Conversation[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const [typing, setTyping] = useState<ReadonlySet<string>>(new Set());
   const load = useCallback(() => {
     if (call === undefined) return;
     call("conversations").then(
@@ -29,36 +30,32 @@ function List() {
     () =>
       subscribe((events) => {
         if (events.some((e) => e.kind !== "typing")) load();
+        if (!events.some((e) => e.kind === "typing")) return;
+        setTyping((was) => {
+          const next = new Set(was);
+          for (const e of events) {
+            if (e.kind !== "typing") continue;
+            if (e.active) next.add(e.conversation);
+            else next.delete(e.conversation);
+          }
+          return next;
+        });
       }),
     [subscribe, load],
   );
 
+  // The stamps are read against the moment the list was drawn.
+  const now = Date.now();
   return (
     <>
       <h1 className="font-headline text-3xl">{strings.tab_conversations}</h1>
       {list === null && !failed && <Status>{strings.loading}</Status>}
       {failed && <Status>{strings.try_again}</Status>}
       {list?.length === 0 && <p className="mt-4 text-muted-fg">{strings.conversations_empty}</p>}
-      <ul className="mt-4 flex flex-col gap-2">
+      <ul className="-mx-4 mt-4 divide-y divide-border border-y border-border">
         {list?.map((c) => (
           <li key={c.id}>
-            <Link
-              to="/conversations/$conversationId"
-              params={{ conversationId: c.id }}
-              className="flex min-h-11 flex-col gap-1 rounded-md border border-border px-4 py-2"
-            >
-              <span className="flex items-baseline justify-between gap-2">
-                <span className={c.unread > 0 ? "truncate font-semibold" : "truncate"}>
-                  {conversationTitle(c)}
-                </span>
-                {c.unread > 0 && (
-                  <span className="shrink-0 text-sm font-semibold">
-                    {strings.unread_count({ count: c.unread })}
-                  </span>
-                )}
-              </span>
-              <span className="truncate text-sm text-muted-fg">{lastLine(c)}</span>
-            </Link>
+            <ConversationRow conversation={c} typing={typing.has(c.id)} now={now} />
           </li>
         ))}
       </ul>

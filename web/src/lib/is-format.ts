@@ -50,3 +50,30 @@ export function formatIsDateTime(ms: number): string {
   const d = new Date(ms);
   return `${d.getDate()}. ${IS_MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}, ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
+
+// CLDR's abbreviated weekdays, Sunday first as Date.getDay() counts.
+const IS_WEEKDAYS_SHORT = ["sun.", "mán.", "þri.", "mið.", "fim.", "fös.", "lau."];
+
+const DAY_MS = 86_400_000;
+
+/** Midnight of a moment's local day, as a day number that ignores DST shifts. */
+const dayNumber = (d: Date) =>
+  Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY_MS);
+
+/**
+ * A conversation row's stamp, as the apps show it (Android's Dates.stamp): the
+ * time today (or later, a clock a little behind), `yesterday` in lower case,
+ * the short weekday within the week, the day and month this year, else with
+ * the year. The final period goes, as the row is short; a period inside stays.
+ */
+export function listStamp(at: number, now: number, yesterday: string): string {
+  const d = new Date(at);
+  const today = new Date(now);
+  const back = dayNumber(today) - dayNumber(d);
+  if (back <= 0) return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  if (back === 1) return yesterday.toLowerCase();
+  if (back < 7) return (IS_WEEKDAYS_SHORT[d.getDay()] ?? "").replace(/\.$/, "");
+  const month = IS_MONTHS_SHORT[d.getMonth()] ?? "";
+  if (d.getFullYear() === today.getFullYear()) return `${d.getDate()}. ${month.replace(/\.$/, "")}`;
+  return `${d.getDate()}. ${month} ${d.getFullYear()}`;
+}

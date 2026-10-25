@@ -1,15 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type SubmitEvent } from "react";
 import { useChat } from "../chat/chat.tsx";
-import { itemText } from "../chat/people.ts";
+import { conversationTitle, isCard, isGroup, itemLine } from "../chat/people.ts";
 import { strings } from "../generated/brand/strings.ts";
-import type { Item } from "../generated/core.d.ts";
+import type { Conversation, Item } from "../generated/core.d.ts";
 import { Button, Status } from "../ui/kit.tsx";
 
 const PAGE = 50;
 
 // One conversation: the newest items of its timeline, older ones on request,
-// and a composer. The thread reloads its newest page when the core reports a
+// and a composer, under the conversation's title. The thread reloads its newest page when the core reports a
 // change in this conversation. An item still being sent has no seq yet; the
 // newest page ends with those.
 export const Route = createFileRoute("/conversations/$conversationId")({ component: Thread });
@@ -18,6 +18,7 @@ function Thread() {
   const { conversationId } = Route.useParams();
   const { call, subscribe, sync } = useChat();
   const [items, setItems] = useState<Item[]>([]);
+  const [conversation, setConversation] = useState<Conversation | null>(null);
   const [more, setMore] = useState(false);
   const [failed, setFailed] = useState(false);
   const [text, setText] = useState("");
@@ -38,9 +39,15 @@ function Thread() {
       },
       () => setFailed(true),
     );
+    // The title, and whether it is a group, which the cards' wording follows.
+    call("conversations").then(
+      (all) => setConversation(all.find((c) => c.id === conversationId) ?? null),
+      () => setFailed(true),
+    );
   }, [call, conversationId]);
   useEffect(() => {
     setItems([]);
+    setConversation(null);
     setMore(false);
     reload();
   }, [reload]);
@@ -95,6 +102,9 @@ function Thread() {
       <Link to="/conversations" className="inline-flex min-h-11 items-center underline">
         {strings.back}
       </Link>
+      {conversation !== null && (
+        <h1 className="mt-2 truncate font-headline text-2xl">{conversationTitle(conversation)}</h1>
+      )}
       {more && (
         <Button className="mt-2 w-full" onClick={() => void older()}>
           {strings.history_load_older}
@@ -102,8 +112,19 @@ function Thread() {
       )}
       <ol className="mt-4 flex flex-col gap-2">
         {items.map((m, i) => {
-          const shown = itemText(m);
-          if (shown === null) return null;
+          const group = conversation !== null && isGroup(conversation);
+          const line = itemLine(m, group);
+          // A card says what happened to the conversation, between the bubbles.
+          if (isCard(m)) {
+            return (
+              <li
+                key={itemKey(m, i)}
+                className="self-center px-3 text-center text-sm text-muted-fg"
+              >
+                {line}
+              </li>
+            );
+          }
           return (
             <li
               key={itemKey(m, i)}
@@ -111,7 +132,7 @@ function Thread() {
                 m.own ? "self-end bg-primary text-primary-fg" : "self-start bg-muted"
               }`}
             >
-              {shown}
+              {line}
             </li>
           );
         })}

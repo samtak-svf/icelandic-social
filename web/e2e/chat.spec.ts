@@ -139,6 +139,8 @@ test("a phone links this browser, which shows the phone's message and replies", 
   await second.close();
   await page.goBack();
   await expect(conversation).toHaveCount(1);
+  // The row says who said the last thing: here the reader.
+  await expect(conversation).toContainText(strings.last_line_own({ text: "svar úr vafra" }));
   const other = await page.context().browser()!.newContext();
   const elsewhere = await other.newPage();
   await serveOrigin(elsewhere);
