@@ -19,6 +19,10 @@
 //     android runs android/scripts/test.sh --connected (checks and emulator tests)
 //     web runs web/scripts/e2e.sh --prepare (the Worker under cf dev, then Playwright)
 //
+// web and interop runs get a free Worker port (CI=1 makes backend/scripts/dev-worker.sh
+// pick one), so they do not collide with CI or each other; android keeps 8787,
+// where the emulator reaches the Worker at 10.0.2.2.
+//
 // Without --dir the shared script picks the remote directory itself, one per
 // checkout (remote/<repo>-<hash of the checkout path>), so two worktrees never
 // share a directory or its lock; --dir <dir> is forwarded only when given.
@@ -36,7 +40,7 @@ import { ROOT } from "./lib/repo.mjs";
 const TASKS = {
   ios: "ios/scripts/test.sh --prepare",
   android: "android/scripts/test.sh --connected",
-  web: "web/scripts/e2e.sh --prepare",
+  web: "CI=1 web/scripts/e2e.sh --prepare",
 };
 
 /**

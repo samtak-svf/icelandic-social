@@ -39,7 +39,11 @@ describe("seam-guard", () => {
   it("fails on a rate limit or a secret read outside the seam, in the real config", async () => {
     // Rate limits and secrets are configured outside `vars` and the binding
     // lists: a guard that reads only those misses them.
-    const root = copyRepo(["backend/cloudflare.config.ts", "backend/package.json"]);
+    const root = copyRepo([
+      "backend/cloudflare.config.ts",
+      "backend/dev-origin.ts",
+      "backend/package.json",
+    ]);
     // The config imports cf/config, resolved from backend/node_modules.
     symlinkSync(join(ROOT, "backend/node_modules"), join(root, "backend/node_modules"));
     mkdirSync(join(root, "backend/src"), { recursive: true });

@@ -17,5 +17,13 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "scripts", "test", "dev", "vitest.config.ts", "cloudflare.config.ts"]
+  "include": [
+    "src",
+    "scripts",
+    "test",
+    "dev",
+    "vitest.config.ts",
+    "cloudflare.config.ts",
+    "dev-origin.ts"
+  ]
 }

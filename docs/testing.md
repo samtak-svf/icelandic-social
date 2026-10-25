@@ -135,17 +135,22 @@ minutes, and macOS bills ten times Linux. So the PR checks run on Samtak's own M
 | ------------------------- | --------------------------------------------------- | ---------------------------------------------------- |
 | `RUNNER_LABELS`           | the build and test jobs                             | `["self-hosted","macOS","ARM64","samtak-mac"]`       |
 | `GUARD_RUNNER_LABELS`     | the short guards (authorship, peer names, gitleaks) | the same                                             |
-| `EXCLUSIVE_RUNNER_LABELS` | web, interop and the Android device job             | the same plus `spjall-exclusive`, held by one runner |
+| `EXCLUSIVE_RUNNER_LABELS` | the Android device job only                         | the same plus `spjall-exclusive`, held by one runner |
 | `MAC_RUNNER_LABELS`       | the iOS tests                                       | the same as `RUNNER_LABELS`                          |
 
 - **Unset means hosted.** Every lane falls back to `ubuntu-latest`, so deleting a variable moves its
   jobs back to GitHub with no workflow change. A PR from a fork always runs hosted.
-- **The exclusive lane** exists because the Worker under `cf dev` listens on port 8787 and the
-  Android emulator is one AVD: two of those jobs on one machine would answer for each other. Only
-  one runner carries the `spjall-exclusive` label, so they queue instead of colliding. The
-  runners belong to the organisation, so the label is set on its endpoint
-  (`gh api orgs/samtak-svf/actions/runners/<id>/labels`); the repository's endpoint answers 404. A
-  `tooling/mac-remote.mjs` run uses the same port and AVD and is not serialised against CI.
+- **The exclusive lane** exists because the Android emulator is one AVD, and it reaches the dev
+  Worker at the fixed `10.0.2.2:8787`: only the Android device job uses it. Only one runner
+  carries the `spjall-exclusive` label, so those jobs queue instead of colliding. The runners
+  belong to the organisation, so the label is set on its endpoint
+  (`gh api orgs/samtak-svf/actions/runners/<id>/labels`); the repository's endpoint answers 404.
+  `tooling/mac-remote.mjs android` uses the same AVD and is not serialised against CI.
+- **web and interop do not queue on it.** `backend/scripts/dev-worker.sh` starts the Worker on a
+  free port per run (`SPJALL_DEV_PORT`, read by `backend/dev-origin.ts`, exported to the tests as
+  `SPJALL_DEV_URL`), so two Workers share one machine. `tooling/workflow-guard.mjs` keeps a fixed
+  `127.0.0.1:8787` out of the workflows and `EXCLUSIVE_RUNNER_LABELS` out of every workflow but
+  `android.yml`. Run by hand, `cf dev` stays on 8787.
 - **No secret reaches the Mac.** A job that reads a secret (the live jurisdiction check, deploys,
   store uploads, signing) names a hosted runner, and `tooling/workflow-guard.mjs` refuses one that
   reads a runner variable.

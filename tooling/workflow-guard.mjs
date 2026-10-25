@@ -20,6 +20,11 @@
 //    copy in a workflow leaves RUSTUP_TOOLCHAIN unset, and on a runner whose
 //    rustup has no default toolchain (samtak-mac) Swatinem/rust-cache fails
 //    running `rustc -vV` outside core/.
+// 7. No fixed dev Worker port (`127.0.0.1:8787`, `localhost:8787`) in a
+//    workflow, and `EXCLUSIVE_RUNNER_LABELS` only in android.yml. The Worker
+//    takes a free port per job (backend/scripts/dev-worker.sh), so web and
+//    interop share the build lane; only the one-AVD Android device job still
+//    queues on the exclusive runner (docs/testing.md).
 //
 // Line-based on purpose: the rules are about single lines, and the guard stays
 // dependency-free like the others (tooling/lib/repo.mjs).
@@ -41,7 +46,7 @@ const TOOLCHAIN_INSTALL = /\brustup\s+toolchain\s+install\b/;
 const SECRET = /\bsecrets\.(?!GITHUB_TOKEN\b)\w+/;
 
 /**
- * @typedef {{ file: string, line: number, rule: "pin" | "fork-runner" | "trigger" | "secret-runner" | "nohup" | "rust-toolchain", message: string }} Problem
+ * @typedef {{ file: string, line: number, rule: "pin" | "fork-runner" | "trigger" | "secret-runner" | "nohup" | "rust-toolchain" | "fixed-port" | "exclusive-lane", message: string }} Problem
  */
 
 /**
@@ -74,10 +79,19 @@ const BANNED = [
     pattern: TOOLCHAIN_INSTALL,
     message: "install the toolchain with ./.github/actions/rust-toolchain, not rustup directly",
   },
+  {
+    rule: /** @type {const} */ ("fixed-port"),
+    pattern: /\b(?:127\.0\.0\.1|localhost):8787\b/,
+    message:
+      "the dev Worker takes a free port per job: use $SPJALL_DEV_URL (backend/scripts/dev-worker.sh)",
+  },
 ];
 
+const EXCLUSIVE_LANE = /\bEXCLUSIVE_RUNNER_LABELS\b/;
+const EXCLUSIVE_FILE = ".github/workflows/android.yml";
+
 /**
- * The rules that each line answers on its own: pin, fork-runner, trigger, nohup, rust-toolchain.
+ * The rules that each line answers on its own: pin, fork-runner, trigger, nohup, rust-toolchain, fixed-port.
  * @param {string} code a line with its comment removed
  * @returns {{ rule: Problem["rule"], message: string }[]}
  */
@@ -140,6 +154,14 @@ export function findInWorkflow(file, text) {
     if (job && RUNS_ON.exec(code)?.[1]?.includes("vars.")) job.runsOn = line;
 
     for (const p of lineProblems(code)) found.push({ file, line, ...p });
+    if (file !== EXCLUSIVE_FILE && EXCLUSIVE_LANE.test(code)) {
+      found.push({
+        file,
+        line,
+        rule: "exclusive-lane",
+        message: "only android.yml's device job (one AVD) uses the exclusive runner lane",
+      });
+    }
   });
   endJob();
   return found;
@@ -160,7 +182,7 @@ function main() {
   for (const p of problems) console.error(`::error file=${p.file},line=${p.line}::${p.message}`);
   if (problems.length > 0) process.exit(1);
   console.log(
-    "✓ workflows pin every action by SHA, keep fork PRs and secrets off the org runners, use no nohup, and install Rust only through the action",
+    "✓ workflows pin every action by SHA, keep fork PRs and secrets off the org runners, use no nohup, install Rust only through the action, no fixed dev port and the exclusive lane only for Android",
   );
 }
 

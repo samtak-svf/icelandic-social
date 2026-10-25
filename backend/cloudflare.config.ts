@@ -11,6 +11,7 @@
 // `jurisdiction-check.mjs --deploy`. The deploy and its tokens are in
 // backend/README.md.
 import { bindings, defineConfig, exports, triggers } from "cf/config";
+import { devOrigin } from "./dev-origin.ts";
 
 export default defineConfig(({ mode }) => ({
   accountId: "af4d4a9c4527ce1e46d0c2dc1165e801",
@@ -73,9 +74,7 @@ export default defineConfig(({ mode }) => ({
       // its discovery document; the apps get the authorize endpoint from
       // /v1/sign-in. The interop run signs in with dev/worker.ts's fake Kenni.
       KENNI_ISSUER: bindings.text(
-        mode === "interop"
-          ? "http://127.0.0.1:8787/dev/kenni"
-          : "https://idp.kenni.is/innskraning.is",
+        mode === "interop" ? `${devOrigin()}/dev/kenni` : "https://idp.kenni.is/innskraning.is",
       ),
       // Google, the first way to sign in (decision 0033): its issuer, and the
       // web client the consent screen belongs to. The client id is not a
@@ -83,7 +82,7 @@ export default defineConfig(({ mode }) => ({
       // answers 503 and Kenni still works. The interop run signs in with
       // dev/worker.ts's fake Google.
       GOOGLE_ISSUER: bindings.text(
-        mode === "interop" ? "http://127.0.0.1:8787/dev/google" : "https://accounts.google.com",
+        mode === "interop" ? `${devOrigin()}/dev/google` : "https://accounts.google.com",
       ),
       GOOGLE_CLIENT_ID: bindings.text(
         mode === "interop"

@@ -43,9 +43,9 @@ env:
 
 jobs:
   interop:
-    # Port 8787 and the AVD are one per machine, so this job takes the lane of
-    # the single runner that holds them (EXCLUSIVE_RUNNER_LABELS, docs/testing.md).
-    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.EXCLUSIVE_RUNNER_LABELS || '["ubuntu-latest"]') }}
+    # The Worker takes a free port per job (backend/scripts/dev-worker.sh), so
+    # this job shares the build lane with web.
+    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -87,33 +87,21 @@ jobs:
         working-directory: backend
         timeout-minutes: 5
         run: |
-          # cf has no --persist-to for dev: the migrations go where cf dev
-          # keeps its state, and the operator invite goes through the dev
-          # Worker itself (scripts/invite-operator.ts --local).
-          node scripts/d1.ts migrate --local --persist-to .cloudflare/state
-          printf 'KENNITALA_HMAC_KEY=%s\n' "$(openssl rand -hex 32)" > .dev.vars
-          # nohup exits under the launchd runner on samtak-mac without starting
-          # cf dev; ignoring SIGHUP in a subshell works on every runner.
-          (trap '' HUP; exec pnpm exec cf dev --mode interop) > "$RUNNER_TEMP/worker.log" 2>&1 &
-          for _ in $(seq 60); do
-            curl -sf -m 5 http://127.0.0.1:8787/health >/dev/null && break
-            sleep 1
-          done
-          if ! curl -sf -m 5 http://127.0.0.1:8787/health >/dev/null; then
-            echo "::error::the Worker did not answer /health"
-            cat "$RUNNER_TEMP/worker.log"
-            exit 1
-          fi
+          # A free port per job (backend/scripts/dev-worker.sh), exported to the
+          # later steps as SPJALL_DEV_URL and SPJALL_DEV_PORT, and to this one
+          # for the invite. The assignment comes first: eval of a substitution
+          # hides a failed start.
+          started=$(scripts/dev-worker.sh start)
+          eval "$started"
+          export SPJALL_DEV_URL SPJALL_DEV_PORT
           if ! link=$(node scripts/invite-operator.ts --local); then
-            cat "$RUNNER_TEMP/worker.log"
+            cat .cloudflare/worker.log
             exit 1
           fi
           echo "SPJALL_INVITE=$link" >> "$GITHUB_ENV"
 
       - name: Devices through the Worker
         working-directory: core
-        env:
-          SPJALL_DEV_URL: http://127.0.0.1:8787
         run: cargo test --locked -p spjall-client --test backend -- --ignored
 
       # A real browser links from a phone's account and replies through the
@@ -122,10 +110,13 @@ jobs:
         run: pnpm --filter spjall-web exec playwright install --with-deps chromium
       - name: A browser and a phone through the Worker
         env:
-          SPJALL_DEV_URL: http://127.0.0.1:8787
           SPJALL_BROWSER_PHONE: "1"
         run: pnpm --filter spjall-web exec playwright test e2e/chat.spec.ts
 
       - name: Worker log
         if: failure() || cancelled()
-        run: cat "$RUNNER_TEMP/worker.log"
+        run: cat backend/.cloudflare/worker.log
+
+      - name: Stop the Worker
+        if: always()
+        run: backend/scripts/dev-worker.sh stop
