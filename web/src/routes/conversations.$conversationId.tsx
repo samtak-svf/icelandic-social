@@ -9,9 +9,9 @@ import { Button, Status } from "../ui/kit.tsx";
 const PAGE = 50;
 
 // One conversation: the newest items of its timeline, older ones on request,
-// and a composer, under the conversation's title. The thread reloads its newest page when the core reports a
-// change in this conversation. An item still being sent has no seq yet; the
-// newest page ends with those.
+// and a composer, under the conversation's title. The thread reloads its
+// newest page when the core reports a change in this conversation. An item
+// still being sent has no seq yet; the newest page ends with those.
 export const Route = createFileRoute("/conversations/$conversationId")({ component: Thread });
 
 function Thread() {
@@ -97,6 +97,7 @@ function Thread() {
     }
   }
 
+  const group = conversation !== null && isGroup(conversation);
   return (
     <>
       <Link to="/conversations" className="inline-flex min-h-11 items-center underline">
@@ -112,7 +113,6 @@ function Thread() {
       )}
       <ol className="mt-4 flex flex-col gap-2">
         {items.map((m, i) => {
-          const group = conversation !== null && isGroup(conversation);
           const line = itemLine(m, group);
           // A card says what happened to the conversation, between the bubbles.
           if (isCard(m)) {
