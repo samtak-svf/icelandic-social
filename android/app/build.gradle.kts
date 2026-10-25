@@ -126,6 +126,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.material3.adaptive.navigation.suite)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.emoji2.emojipicker)
     implementation(libs.androidx.material.icons.core)

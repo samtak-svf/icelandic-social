@@ -18,12 +18,17 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -52,7 +57,7 @@ class Tab(
  */
 @Composable
 fun TabBar(tabs: List<Tab>) {
-    Column(modifier = Modifier.fillMaxWidth().background(Palette.surface)) {
+    Column(modifier = Modifier.fillMaxWidth().background(Palette.surface).testTag(NAVIGATION_BAR)) {
         HorizontalDivider(color = Palette.border)
         Row(
             modifier =
@@ -74,17 +79,7 @@ fun TabBar(tabs: List<Tab>) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
-                    BadgedBox(
-                        badge = {
-                            if (tab.badge > 0) {
-                                Badge(containerColor = Palette.primary, contentColor = Palette.primaryFg) {
-                                    Text(if (tab.badge > MAX) "$MAX+" else "${tab.badge}")
-                                }
-                            }
-                        },
-                    ) {
-                        Icon(tab.icon, contentDescription = null, tint = tint, modifier = Modifier.size(ICON.dp))
-                    }
+                    TabIcon(tab, tint)
                     // One line always: at a large text size the name gets smaller, down to its size at the standard
                     // text size, and never breaks inside the word.
                     val scale = LocalDensity.current.fontScale
@@ -106,6 +101,59 @@ fun TabBar(tabs: List<Tab>) {
         }
     }
 }
+
+/**
+ * The same tabs down the left edge (decision 0087), for a window of the medium size class and wider: the icon over
+ * the name, the count on the icon, red when it is the one showing.
+ */
+@Composable
+fun TabRail(tabs: List<Tab>) {
+    NavigationRail(
+        modifier = Modifier.testTag(NAVIGATION_RAIL).selectableGroup(),
+        containerColor = Palette.surface,
+        contentColor = Palette.fg,
+    ) {
+        tabs.forEach { tab ->
+            NavigationRailItem(
+                selected = tab.selected,
+                onClick = tab.onClick,
+                icon = { TabIcon(tab, if (tab.selected) Palette.primary else Palette.mutedFg) },
+                label = { Text(tab.label.capitals(), style = LABEL, maxLines = 1, softWrap = false) },
+                alwaysShowLabel = true,
+                modifier = Modifier.semantics { tab.badgeDescription?.let { stateDescription = it } },
+                colors =
+                    NavigationRailItemDefaults.colors(
+                        selectedTextColor = Palette.primary,
+                        unselectedTextColor = Palette.mutedFg,
+                        indicatorColor = Palette.border,
+                    ),
+            )
+        }
+    }
+}
+
+/** A tab's icon with its count drawn on it. */
+@Composable
+private fun TabIcon(
+    tab: Tab,
+    tint: Color,
+) {
+    BadgedBox(
+        badge = {
+            if (tab.badge > 0) {
+                Badge(containerColor = Palette.primary, contentColor = Palette.primaryFg) {
+                    Text(if (tab.badge > MAX) "$MAX+" else "${tab.badge}")
+                }
+            }
+        },
+    ) {
+        Icon(tab.icon, contentDescription = null, tint = tint, modifier = Modifier.size(ICON.dp))
+    }
+}
+
+/** The test tags of the two forms of the tabs. */
+const val NAVIGATION_BAR = "navigation-bar"
+const val NAVIGATION_RAIL = "navigation-rail"
 
 private const val HEIGHT = 56
 private const val ICON = 20

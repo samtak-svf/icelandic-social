@@ -3,10 +3,10 @@ package samtak.spjall.social
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -57,6 +59,7 @@ import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.calendarDate
+import samtak.spjall.ui.currentLayout
 
 /**
  * One community: its name, audience and description, joining or leaving, the box to post in for a member who is
@@ -91,14 +94,28 @@ fun CommunityScreen(
             }
             if (searchVisible) SearchRow(state.searchQuery, actions)
             if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            Feed(
-                state = state,
-                actions = actions,
-                onManage = { dialog = CommunityDialog.MANAGE },
-                onReport = { reporting = it },
-                onDelete = { deleting = it },
-                onInfo = openInfo,
-            )
+            val feed =
+                @Composable { modifier: Modifier ->
+                    Feed(
+                        modifier = modifier,
+                        state = state,
+                        actions = actions,
+                        onManage = { dialog = CommunityDialog.MANAGE },
+                        onReport = { reporting = it },
+                        onDelete = { deleting = it },
+                        onInfo = openInfo,
+                    )
+                }
+            val community = state.community
+            if (currentLayout().aside && community != null) {
+                // The feed in a column of its own, Um samfélagið beside it (decision 0087).
+                Row(modifier = Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    feed(Modifier.widthIn(max = FEED_WIDTH.dp).fillMaxHeight().weight(1f, fill = false))
+                    CommunityAside(community, state.members, Modifier.width(ASIDE_WIDTH.dp).fillMaxHeight())
+                }
+            } else {
+                feed(Modifier.weight(1f))
+            }
         }
     }
     reporting?.let { postId -> ReportPostDialog(postId, actions) { reporting = null } }
@@ -139,7 +156,8 @@ private fun SearchRow(
  * reportable, openable and (this account's own) deletable through the callbacks.
  */
 @Composable
-private fun ColumnScope.Feed(
+private fun Feed(
+    modifier: Modifier,
     state: CommunityViewModel.State,
     actions: CommunityActions,
     onManage: () -> Unit,
@@ -148,7 +166,7 @@ private fun ColumnScope.Feed(
     onInfo: () -> Unit,
 ) {
     LazyColumn(
-        modifier = Modifier.weight(1f),
+        modifier = modifier,
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -398,6 +416,10 @@ private fun ReportPostDialog(
         onDismiss = onDismiss,
     )
 }
+
+/** The widest the feed is drawn, so a line of text stays readable, and the width of the aside beside it. */
+private const val FEED_WIDTH = 640
+private const val ASIDE_WIDTH = 320
 
 /** A description longer than this many characters, or in several lines, is clamped until it is read in full. */
 private const val DESCRIPTION_CHARS = 140

@@ -1,9 +1,9 @@
 package samtak.spjall.frames
 
+import android.annotation.SuppressLint
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalConfiguration
 import samtak.spjall.core.Frame
 import samtak.spjall.core.FrameKind
 import samtak.spjall.core.framesOf
@@ -11,12 +11,15 @@ import samtak.spjall.core.frameForWidth as coreFrameForWidth
 import samtak.spjall.core.frameSize as coreFrameSize
 import samtak.spjall.core.placeFrame as corePlaceFrame
 
-/** The window's width in dp, which picks a cover's frame; it follows a rotation or a resize. */
+/**
+ * The window's width in dp, which picks a cover's frame and the layout; it follows a rotation, a resize and an
+ * unfolding, because the configuration is the window's own. It is read from the configuration and not from
+ * `LocalWindowInfo.containerSize`, which a Robolectric window does not size to its qualifiers, so a layout test
+ * could not set a width.
+ */
+@SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
-fun windowWidthDp(): Int {
-    val width = LocalWindowInfo.current.containerSize.width
-    return (width / LocalDensity.current.density).toInt()
-}
+fun windowWidthDp(): Int = LocalConfiguration.current.screenWidthDp
 
 /** The rules the screens read; a screen test that cannot load the native library provides a stand-in. */
 val LocalFrameRules = compositionLocalOf<FrameRules> { CoreFrameRules }
