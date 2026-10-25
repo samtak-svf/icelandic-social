@@ -588,6 +588,41 @@ fn reports_moderation_and_cards() {
 }
 
 #[test]
+fn a_card_for_an_anonymous_post_has_no_author() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+
+    // The author of an anonymous post is hidden on its card too (decision 0091), and
+    // one such card must not fail the whole answer.
+    phone.answer(
+        200,
+        json!({ "cards": [
+            {
+                "kind": "post", "ref": { "kind": "post", "id": "p_2" },
+                "community": { "communityId": "cm_1", "name": "Kór Hlíðanna", "photo": null },
+                "author": null, "excerpt": "Nafnlaust", "image": null,
+                "createdAt": 1_760_000_100_000u64,
+            },
+            {
+                "kind": "post", "ref": { "kind": "post", "id": "p_1" },
+                "community": { "communityId": "cm_1", "name": "Kór Hlíðanna", "photo": null },
+                "author": author("acc_b"), "excerpt": "Æfing", "image": null,
+                "createdAt": 1_760_000_200_000u64,
+            },
+        ] }),
+    );
+    let refs = ["p_2", "p_1"].map(|id| Ref {
+        kind: RefKind::Post,
+        id: id.into(),
+    });
+    let cards = c.cards(&refs).unwrap();
+    assert!(
+        matches!(&cards[0], Card::Post { author: None, excerpt, .. } if excerpt == "Nafnlaust")
+    );
+    assert!(matches!(&cards[1], Card::Post { author: Some(a), .. } if a.account_id == "acc_b"));
+}
+
+#[test]
 fn notifications_are_paged_and_read_and_an_unknown_kind_is_left_out() {
     let phone = Phone::signed_in();
     let c = &phone.client;
