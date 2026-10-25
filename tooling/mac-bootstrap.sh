@@ -100,6 +100,7 @@ if ! grep -qF "$marker" "$HOME/.zshenv" 2>/dev/null; then
 $marker
 eval "\$(/opt/homebrew/bin/brew shellenv)"
 . "\$HOME/.cargo/env"
+# ios/scripts/test.sh builds in a directory per checkout under it.
 export SPJALL_DERIVED_DATA="\$HOME/Library/Developer/spjall-derived-data"
 EOF
 fi
