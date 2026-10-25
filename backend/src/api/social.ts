@@ -115,7 +115,7 @@ export const Post = z
     }),
     pinned: z.boolean().openapi({
       description:
-        "A moderator features it (decision 0088); it stays in its place in the feed, marked, and is also in the community's `featured`. `getFeed` never marks it",
+        "A moderator features it (decision 0088); it is also in the community's `featured`. The API keeps it in its place in the feed, marked; on an expanded screen a client leaves it out of the community feed because the aside shows it (decision 0092). `getFeed` never marks it",
     }),
   })
   .openapi("Post");

@@ -1,11 +1,13 @@
 # 0088. A community features up to three posts, shown as a strip
 
-- Status: accepted; implemented (Worker and web #183; core #190; Android #199; iOS #198)
+- Status: accepted; implemented (Worker and web #183; core #190; Android #199; iOS #198); amended by 0092
 - Date: 2026-10-24
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0080](0080-communities-follow-the-familiar-group-layout.md) (pinning: up to three
   posts instead of one, shown as a strip instead of leading the feed),
   [0009](0009-v1-scope.md) (featured posts are in v1)
+- Amended by: [0092](0092-at-expanded-featured-posts-leave-the-feed.md) (on an expanded screen
+  the feed leaves featured posts to the aside)
 - Builds on: [0066](0066-moderation-in-d1.md) (every pin is a log entry),
   [0087](0087-wide-screens-get-their-own-layout.md) (the aside)
 
