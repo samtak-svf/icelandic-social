@@ -74,7 +74,7 @@ for (const width of WIDTHS) {
     await member.goto(community);
     await write(member, strings.post_compose, strings.post_publish, "Póstur á breiðum skjá.");
     await post(member, "Póstur á breiðum skjá.")
-      .getByRole("link", { name: strings.post_comments({ count: 0 }) })
+      .getByRole("link", { name: strings.post_comment_action, exact: true })
       .click();
     const backLink = member.getByRole("link", { name: strings.post_back });
     await expect(backLink).toBeVisible();

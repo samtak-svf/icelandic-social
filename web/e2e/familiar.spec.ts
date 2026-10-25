@@ -111,7 +111,7 @@ test("a comment is liked with a count, and the like is taken back", async ({ bro
   await join(member, community);
   await write(owner, strings.post_compose, strings.post_publish, "Póstur til að líka við.");
   await post(owner, "Póstur til að líka")
-    .getByRole("link", { name: strings.post_comments({ count: 0 }) })
+    .getByRole("link", { name: strings.post_comment_action, exact: true })
     .click();
   await write(owner, strings.comment_compose, strings.comment_publish, "Athugasemd til að líka.");
 
@@ -146,7 +146,7 @@ test("Afrita tengil puts the post's address on the clipboard", async ({ browser 
   await write(member, strings.post_compose, strings.post_publish, "Póstur til að deila.");
   const card = post(member, "Póstur til að deila");
   const href = await card
-    .getByRole("link", { name: strings.post_comments({ count: 0 }) })
+    .getByRole("link", { name: strings.post_comment_action, exact: true })
     .getAttribute("href");
   expect(href).toMatch(/^\/posts\/[^/]+$/);
   await card.getByRole("button", { name: strings.share }).click();
@@ -184,5 +184,36 @@ test("Líkar, Athugasemd and Deila take equal thirds of a 360px screen, none spi
   }
   for (const [before, after] of boxes.slice(0, -1).map((box, i) => [box, boxes[i + 1]] as const)) {
     expect(after?.left ?? 0).toBeGreaterThanOrEqual(before.right - 0.5);
+  }
+});
+
+test("the three actions' glyphs share one box, and a post with nothing to count has no summary line", async ({
+  browser,
+}) => {
+  const member = await person(browser, "Táknbox Línudóttir");
+  await found(member, "open");
+  await write(member, strings.post_compose, strings.post_publish, "Póstur án viðbragða.");
+  const card = post(member, "Póstur án viðbragða");
+  // Like Android's summary: with no reactions and no comments there is no line to show.
+  await expect(card.getByText(strings.post_comments({ count: 0 }))).toHaveCount(0);
+  const glyphs = await Promise.all(
+    [
+      card.getByRole("button", { name: strings.post_like, exact: true }),
+      card.getByRole("link", { name: strings.post_comment_action, exact: true }),
+      card.getByRole("button", { name: strings.share, exact: true }),
+    ].map((action) =>
+      action.evaluate((element) => {
+        const glyph = element.firstElementChild;
+        if (glyph === null) return null;
+        const { width, height, top } = glyph.getBoundingClientRect();
+        return { width, height, middle: top + height / 2 };
+      }),
+    ),
+  );
+  const [first] = glyphs;
+  for (const glyph of glyphs) {
+    expect(glyph?.width).toBeCloseTo(first?.width ?? 0, 0);
+    expect(glyph?.height).toBeCloseTo(first?.height ?? 0, 0);
+    expect(glyph?.middle).toBeCloseTo(first?.middle ?? 0, 0);
   }
 });

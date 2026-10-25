@@ -18,7 +18,10 @@ const REACTIONS = [
 ] as const;
 type Kind = (typeof REACTIONS)[number][0];
 
-/** The reactions as a line: the commonest emoji and their count, and the comments. */
+/**
+ * The reactions as a line: the commonest emoji and their count, and the comments. Like the apps,
+ * a post with neither has no line, and a count of none is not shown.
+ */
 export function Summary({
   post,
   reactions,
@@ -29,6 +32,7 @@ export function Summary({
     .filter(([, n]) => n > 0)
     .sort((x, y) => y[1] - x[1])
     .slice(0, 3);
+  if (reactions.total === 0 && post.commentCount === 0) return null;
   return (
     <div className="flex items-center justify-between gap-2 text-sm text-muted-fg">
       {reactions.total > 0 ? (
@@ -39,7 +43,7 @@ export function Summary({
       ) : (
         <span />
       )}
-      {linked ? (
+      {post.commentCount === 0 ? null : linked ? (
         <Link
           to="/posts/$postId"
           params={{ postId: post.postId }}
@@ -53,6 +57,10 @@ export function Summary({
     </div>
   );
 }
+
+// Each action leads with a glyph in the same 20 px box (GLYPH, CommentIcon, ShareIcon), so
+// the emoji and the two drawn icons line up.
+const GLYPH = "inline-flex size-5 shrink-0 items-center justify-center text-base leading-none";
 
 const ACTION =
   "inline-flex min-h-11 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-1 font-medium hover:bg-muted";
@@ -187,7 +195,9 @@ function LikeButton({ reactions }: Readonly<{ reactions: ReactionState }>) {
           void reactions.choose(mine ?? "like");
         }}
       >
-        <span aria-hidden="true">{shown ? shown[1] : "👍"}</span>
+        <span aria-hidden="true" className={GLYPH}>
+          {shown ? shown[1] : "👍"}
+        </span>
         {shown ? shown[2] : strings.post_like}
       </button>
       {open && (
@@ -225,14 +235,14 @@ function CommentIcon() {
     <svg
       aria-hidden="true"
       viewBox="0 0 24 24"
-      className="size-5"
+      className="size-5 shrink-0"
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />
+      <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
   );
 }
@@ -242,7 +252,7 @@ function ShareIcon() {
     <svg
       aria-hidden="true"
       viewBox="0 0 24 24"
-      className="size-5"
+      className="size-5 shrink-0"
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
