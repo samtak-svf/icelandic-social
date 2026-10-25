@@ -279,10 +279,29 @@ impl From<core::SignedIn> for SignedIn {
     }
 }
 
+/// What kind of device an account holds (0064): a phone, or a browser
+/// linked from its session.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum DeviceKind {
+    Phone,
+    Web,
+}
+
+impl From<api::DeviceKind> for DeviceKind {
+    fn from(kind: api::DeviceKind) -> Self {
+        match kind {
+            api::DeviceKind::Phone => Self::Phone,
+            api::DeviceKind::Web => Self::Web,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct AccountDevice {
     pub device_id: String,
     pub platform: Platform,
+    /// A phone unless it is a browser linked from a session (0064).
+    pub kind: DeviceKind,
     /// Milliseconds since the epoch.
     pub created_at: u64,
     /// This device.
@@ -315,6 +334,7 @@ impl From<api::Me> for Me {
                 .map(|d| AccountDevice {
                     device_id: d.device_id,
                     platform: d.platform.into(),
+                    kind: d.kind.into(),
                     created_at: d.created_at,
                     current: d.current,
                 })
@@ -1608,5 +1628,29 @@ impl CoreClient {
     /// changes nothing, so there is nothing for it to leave half done.
     fn view(&self) -> MutexGuard<'_, core::View> {
         self.view.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+}
+
+#[cfg(test)]
+mod device_kind_tests {
+    use super::*;
+
+    fn me(devices: &str) -> Me {
+        let json = format!(
+            r#"{{"accountId":"a","name":null,"verified":false,"photo":null,"devices":{devices}}}"#
+        );
+        serde_json::from_str::<api::Me>(&json).unwrap().into()
+    }
+
+    /// A browser linked from a session reads as `Web`; a server older than
+    /// 0064 names no kind, and the device is a phone (#155).
+    #[test]
+    fn a_device_carries_its_kind() {
+        let found = me(r#"[
+            {"deviceId":"w1","platform":"android","kind":"web","createdAt":2,"current":true},
+            {"deviceId":"a1","platform":"android","createdAt":1,"current":false}
+        ]"#);
+        let kinds: Vec<_> = found.devices.iter().map(|d| d.kind).collect();
+        assert_eq!(kinds, [DeviceKind::Web, DeviceKind::Phone]);
     }
 }

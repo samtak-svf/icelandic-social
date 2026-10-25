@@ -7,9 +7,10 @@
 use std::path::{Path, PathBuf};
 
 use crate::api::{
-    Audience, Card, Comment, CommentPage, Community, CommunityMember, CommunityPage, JoinRequest,
-    JoinState, Moderation, ModerationAction, ModerationLogPage, NewReport, NotificationPage, Post,
-    PostPage, ReactionKind, Ref, ReportPage, ReportState, Role, SocialMedia, Transport,
+    Audience, Author, Card, Comment, CommentPage, Community, CommunityImagePage, CommunityMember,
+    CommunityPage, JoinRequest, JoinState, Moderation, ModerationAction, ModerationLogPage,
+    NewReport, NotificationPage, Post, PostPage, ReactionKind, Ref, ReportPage, ReportState, Role,
+    SocialMedia, Transport,
 };
 use crate::{Client, ClientError, MediaError, authed, is_id};
 
@@ -236,6 +237,19 @@ impl<T: Transport> Client<T> {
         Ok(api.community_posts(community, search(query), before, size.clamp(1, 50))?)
     }
 
+    /// A page of a community's images (0089), newest first; `cursor` is the
+    /// `next` of the page before. At most 50 a page.
+    pub fn community_images(
+        &self,
+        community: &str,
+        cursor: Option<&str>,
+        size: u32,
+    ) -> Result<CommunityImagePage, ClientError> {
+        id(community, "community id")?;
+        let api = authed(&self.transport, &self.token, &self.client)?;
+        Ok(api.community_images(community, cursor, size.clamp(1, 50))?)
+    }
+
     /// Posts a text, images `upload_social_media` returned, or both.
     pub fn create_post(
         &self,
@@ -255,6 +269,106 @@ impl<T: Transport> Client<T> {
         }
         Ok(authed(&self.transport, &self.token, &self.client)?
             .create_post(community, body, media)?)
+    }
+
+    /// `create_post` with the options of 0090 and 0091. `anonymous` posts
+    /// without the author's name and waits for a moderator's approval; a
+    /// community that does not allow it refuses with 409 `anonymous_off`.
+    /// `poll` makes the post a poll: `body` is the question, there are two
+    /// to six distinct options of at most 80 characters, and no image.
+    pub fn create_post_with(
+        &self,
+        community: &str,
+        body: &str,
+        media: &[String],
+        anonymous: bool,
+        poll: Option<&[String]>,
+    ) -> Result<Post, ClientError> {
+        id(community, "community id")?;
+        if let Some(options) = poll {
+            check_poll(body, media, options)?;
+        } else if body.trim().is_empty() && media.is_empty() {
+            return Err(ClientError::Invalid("an empty post"));
+        }
+        if media.len() > MAX_POST_MEDIA {
+            return Err(ClientError::Invalid("over 4 images in a post"));
+        }
+        for m in media {
+            id(m, "media id")?;
+        }
+        let options: Option<Vec<String>> =
+            poll.map(|o| o.iter().map(|t| t.trim().to_owned()).collect());
+        Ok(
+            authed(&self.transport, &self.token, &self.client)?.create_post_with(
+                community,
+                body,
+                media,
+                anonymous,
+                options.as_deref(),
+            )?,
+        )
+    }
+
+    /// Votes in a poll, or changes the vote; 409 `poll_closed` once closed
+    /// (0090). The post, as this account now sees it.
+    pub fn vote_poll(&self, post: &str, option: &str) -> Result<Post, ClientError> {
+        id(post, "post id")?;
+        id(option, "option id")?;
+        Ok(authed(&self.transport, &self.token, &self.client)?.vote_poll(post, option)?)
+    }
+
+    /// Takes this account's vote back; no error when it had none.
+    pub fn withdraw_vote(&self, post: &str) -> Result<Post, ClientError> {
+        id(post, "post id")?;
+        Ok(authed(&self.transport, &self.token, &self.client)?.withdraw_vote(post)?)
+    }
+
+    /// Closes a poll; its author, the community's owner or a moderator may.
+    /// A closed poll shows its results to every reader.
+    pub fn close_poll(&self, post: &str) -> Result<Post, ClientError> {
+        id(post, "post id")?;
+        Ok(authed(&self.transport, &self.token, &self.client)?.close_poll(post)?)
+    }
+
+    /// Lets members of a community post without their name (0091), or stops
+    /// it; only its owner may. Every such post waits for a moderator.
+    pub fn set_anonymous_posts(&self, community: &str, on: bool) -> Result<Community, ClientError> {
+        id(community, "community id")?;
+        Ok(authed(&self.transport, &self.token, &self.client)?
+            .set_anonymous_posts(community, on)?)
+    }
+
+    /// The anonymous posts waiting for approval, newest first (0091); a
+    /// moderator's. `before` is the `next` of the page before. At most 50 a
+    /// page.
+    pub fn pending_anonymous_posts(
+        &self,
+        community: &str,
+        before: Option<&str>,
+        limit: u32,
+    ) -> Result<PostPage, ClientError> {
+        id(community, "community id")?;
+        let api = authed(&self.transport, &self.token, &self.client)?;
+        Ok(api.pending_anonymous_posts(community, before, limit.clamp(1, 50))?)
+    }
+
+    /// Publishes an anonymous post, still without its author; a moderator's.
+    pub fn approve_anonymous_post(&self, post: &str) -> Result<(), ClientError> {
+        id(post, "post id")?;
+        Ok(authed(&self.transport, &self.token, &self.client)?.approve_anonymous_post(post)?)
+    }
+
+    /// Deletes an anonymous post and tells its author; a moderator's.
+    pub fn decline_anonymous_post(&self, post: &str) -> Result<(), ClientError> {
+        id(post, "post id")?;
+        Ok(authed(&self.transport, &self.token, &self.client)?.decline_anonymous_post(post)?)
+    }
+
+    /// Who wrote an anonymous post; a moderator's, and the moderation log
+    /// records who asked, never whom (0091).
+    pub fn reveal_author(&self, post: &str) -> Result<Author, ClientError> {
+        id(post, "post id")?;
+        Ok(authed(&self.transport, &self.token, &self.client)?.reveal_author(post)?)
     }
 
     /// Uploads the image at `path` for a post in `community` (0065). The
@@ -333,8 +447,8 @@ impl<T: Transport> Client<T> {
         Ok(authed(&self.transport, &self.token, &self.client)?.unlike_comment(comment)?)
     }
 
-    /// Pins a post to the top of its community, replacing the pinned one
-    /// (0080); a moderator's.
+    /// Features a post (0080, 0088); a moderator's. 409 `pin_limit` when
+    /// three are featured already: release one first.
     pub fn pin_post(&self, community: &str, post: &str) -> Result<(), ClientError> {
         id(community, "community id")?;
         id(post, "post id")?;
@@ -506,4 +620,33 @@ impl<T: Transport> Client<T> {
     pub fn read_notifications(&self, up_to: u64) -> Result<(), ClientError> {
         Ok(authed(&self.transport, &self.token, &self.client)?.read_notifications(up_to)?)
     }
+}
+
+/// The bounds of a poll's options (0090), as the server holds them.
+const POLL_OPTIONS: std::ops::RangeInclusive<usize> = 2..=6;
+const POLL_OPTION_CHARS: usize = 80;
+
+/// A poll is refused before it is sent when the server would refuse it.
+fn check_poll(body: &str, media: &[String], options: &[String]) -> Result<(), ClientError> {
+    if body.trim().is_empty() {
+        return Err(ClientError::Invalid("a poll needs a question"));
+    }
+    if !media.is_empty() {
+        return Err(ClientError::Invalid("a poll takes no image"));
+    }
+    if !POLL_OPTIONS.contains(&options.len()) {
+        return Err(ClientError::Invalid("a poll has two to six options"));
+    }
+    let mut seen = Vec::with_capacity(options.len());
+    for option in options {
+        let option = option.trim();
+        if option.is_empty() || option.chars().count() > POLL_OPTION_CHARS {
+            return Err(ClientError::Invalid("an option of 1 to 80 characters"));
+        }
+        if seen.contains(&option) {
+            return Err(ClientError::Invalid("a poll's options differ"));
+        }
+        seen.push(option);
+    }
+    Ok(())
 }
