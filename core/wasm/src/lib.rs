@@ -11,6 +11,7 @@ pub mod dto;
 pub mod error;
 pub mod qr;
 pub mod request;
+pub mod types;
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 mod api;

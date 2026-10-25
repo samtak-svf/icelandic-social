@@ -1747,6 +1747,20 @@
         "who": "string"
       }
     },
+    "photo_set_card": {
+      "surfaces": ["web"],
+      "description": "System card when a member sets or changes the group's photo (docs/decisions/0094).",
+      "placeholders": {
+        "who": "string"
+      }
+    },
+    "photo_cleared_card": {
+      "surfaces": ["web"],
+      "description": "System card when a member removes the group's photo (docs/decisions/0094).",
+      "placeholders": {
+        "who": "string"
+      }
+    },
     "remove_member": {
       "surfaces": ["android", "ios"],
       "description": "Action on a member row in a group's info screen: remove the member from the group (docs/decisions/0078)."

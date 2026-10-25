@@ -83,14 +83,14 @@ export function itemLine(item: Item, group: boolean): string {
     case "unreadable":
       return strings.item_unreadable;
     default:
-      // members, timer or name: a new kind would not type-check here.
+      // members, timer, name or photo: a new kind would not type-check here.
       return cardLine(content, item.sender, group);
   }
 }
 
-type CardContent = Extract<Item["content"], { kind: "members" | "timer" | "name" }>;
+type CardContent = Extract<Item["content"], { kind: "members" | "timer" | "name" | "photo" }>;
 
-/** A card's line: who joined, left or got a device; the timer; the name. */
+/** A card's line: who joined, left or got a device; the timer; the name; the photo. */
 function cardLine(content: CardContent, sender: Person, group: boolean): string {
   const who = shownName(sender);
   switch (content.kind) {
@@ -100,10 +100,13 @@ function cardLine(content: CardContent, sender: Person, group: boolean): string 
       return content.seconds === null
         ? strings.disappearing_off_card({ name: who })
         : strings.disappearing_set_card({ name: who, duration: duration(content.seconds) });
-    default:
+    case "name":
       return content.name === null
         ? strings.name_cleared_card({ who })
         : strings.name_set_card({ who, name: content.name });
+    default:
+      // photo, the last card kind left
+      return content.set ? strings.photo_set_card({ who }) : strings.photo_cleared_card({ who });
   }
 }
 
@@ -133,8 +136,8 @@ export function readLine(count: number, group: boolean): string {
   return group ? strings.read_by_count({ count }) : strings.read_marker;
 }
 
-/** A card says what happened to the conversation (members, timer, name), not what someone said. */
+/** A card says what happened to the conversation (members, timer, name, photo), not what someone said. */
 export function isCard(item: Item): boolean {
   const { kind } = item.content;
-  return kind === "members" || kind === "timer" || kind === "name";
+  return kind === "members" || kind === "timer" || kind === "name" || kind === "photo";
 }
