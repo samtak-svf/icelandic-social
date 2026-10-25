@@ -51,4 +51,19 @@ class StoreKeyTest {
         file().writeBytes(bytes)
         assertThrows(AEADBadTagException::class.java) { StoreKey(file()) { wrapping }.load() }
     }
+
+    @Test
+    fun aPartialFileLeftByACrashIsReplaced() {
+        File(folder.root, "store.key.partial").writeBytes(byteArrayOf(1, 2, 3))
+        val key = StoreKey(file()) { wrapping }.load()
+        assertArrayEquals(key, StoreKey(file()) { wrapping }.load())
+        assertFalse(File(folder.root, "store.key.partial").exists())
+    }
+
+    @Test
+    fun anEmptyFileIsRefusedByName() {
+        file().writeBytes(byteArrayOf())
+        val error = assertThrows(IllegalArgumentException::class.java) { StoreKey(file()) { wrapping }.load() }
+        assertEquals("the wrapped key is truncated", error.message)
+    }
 }
