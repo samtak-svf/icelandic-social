@@ -1,8 +1,9 @@
 # 0078. A group's name, leaving a group, and who may change its members
 
-- Status: accepted; implemented in the core, the backend and the apps' screens
+- Status: accepted; implemented in the core, the backend and the apps' screens; amended by 0094
 - Date: 2026-10-21
 - Decided by: Guðröður (all four: add, remove, leave and a name; no admins)
+- Amended by: [0094](0094-a-group-photo-end-to-end-encrypted.md) (a group may have a photo)
 - Amends: [0009](0009-v1-scope.md) (a group name and leaving a group join v1),
   [0022](0022-the-conversation-surfaces.md) (a group is titled by its name when it has one),
   [0028](0028-removing-a-device-from-its-groups.md) (leaving, which it left undecided),
