@@ -31,8 +31,9 @@ if ! command -v brew >/dev/null && [ ! -x /opt/homebrew/bin/brew ]; then
 fi
 eval "$(/opt/homebrew/bin/brew shellenv)"
 
-say "xcodegen, jq, xcbeautify"
-brew install --quiet xcodegen jq xcbeautify
+# llvm: Apple's clang has no wasm32 target, which the browser core needs (interop.yml).
+say "xcodegen, jq, xcbeautify, llvm"
+brew install --quiet xcodegen jq xcbeautify llvm
 
 if ! command -v rustup >/dev/null && [ ! -x "$HOME/.cargo/bin/rustup" ]; then
   # Only rustup itself: core/rust-toolchain.toml names the toolchain, and

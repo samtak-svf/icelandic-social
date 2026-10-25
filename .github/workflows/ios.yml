@@ -108,6 +108,8 @@ jobs:
       # The script also fails when no test ran.
       - name: Build and test (simulator, signed ad hoc)
         run: ios/scripts/test.sh
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # the script fetches the core again on a fresh checkout
 
       # xcpretty prints only the first line of a diagnostic; a conformance
       # failure then hides the error that caused it, which only the raw log has.

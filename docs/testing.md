@@ -151,3 +151,8 @@ minutes, and macOS bills ten times Linux. So the PR checks run on Samtak's own M
   reads a runner variable.
 - Steps that download a binary pick the build from `RUNNER_OS` and `RUNNER_ARCH`, so a job runs
   on either lane.
+- **The two runners share one user and home directory.** Anything a step installs under `~`
+  races the other runner, so `pnpm/action-setup` installs into `$RUNNER_TEMP`. A server started
+  in the background uses `(trap '' HUP; exec …) &`, because macOS `nohup` exits under the launchd
+  runner ("can't detach from console"). The browser core builds its C with Homebrew's LLVM, since
+  Apple's clang has no wasm32 target.

@@ -37,7 +37,8 @@ node scripts/d1.ts migrate --local --persist-to .cloudflare/state
 # Job control gives the Worker its own process group, so stopping it stops
 # workerd too, and nothing outside this run.
 set -m
-nohup pnpm exec cf dev --mode interop > "$WORKER_LOG" 2>&1 &
+# SIGHUP is ignored without nohup, which exits under a launchd runner (android/scripts/test.sh).
+(trap '' HUP; exec pnpm exec cf dev --mode interop) > "$WORKER_LOG" 2>&1 &
 worker=$!
 set +m
 status=1
