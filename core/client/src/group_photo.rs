@@ -189,7 +189,10 @@ impl<T: Transport> Client<T> {
         for (group, photo) in due {
             let conversation = conversation_id(&group);
             let kept = path_of(&self.media, &conversation);
-            let ready = match photo.and_then(|p| serde_json::from_str::<PhotoRef>(&p).ok()) {
+            let ready = match photo
+                .as_deref()
+                .and_then(|p| serde_json::from_str::<PhotoRef>(p).ok())
+            {
                 None => {
                     remove(&*self.blobs, &kept);
                     false
@@ -209,8 +212,8 @@ impl<T: Transport> Client<T> {
                 // changed it meanwhile.
                 tx.execute(
                     "UPDATE conversations SET photo_ready = ?2 WHERE group_id = ?1
-                     AND photo_ready = 2",
-                    params![group, u8::from(ready)],
+                     AND photo_ready = 2 AND photo IS ?3",
+                    params![group, u8::from(ready), photo],
                 )
             })?;
         }
