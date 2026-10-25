@@ -12,6 +12,24 @@ func pollShare(votes: UInt64, total: UInt64) -> Int {
     total == 0 ? 0 : Int((Double(votes) / Double(total) * 100).rounded())
 }
 
+/// Runs one poll action (a vote, taking it back, closing) and says what came of it: the post as the server sent it
+/// back, or the problem, with the post read again when the poll was closed meanwhile so its results show. One
+/// place for every screen that votes: a community, a post, the hub's feed.
+@MainActor
+func runPollAction(
+    _ social: Social, postId: String, _ act: @escaping @Sendable () throws -> Post
+) async -> (post: Post?, problem: Problem?) {
+    do {
+        return (try await offMain(act), nil)
+    } catch {
+        var fresh: Post?
+        if case CoreError.Refused(_, "poll_closed", _) = error {
+            fresh = try? await offMain({ try social.post(postId) })
+        }
+        return (fresh, Problem(error))
+    }
+}
+
 /// The poll on a post card or a post (decision 0090): the options as choices, a bar and a count on each once the
 /// results are shown, the total, whether it is closed, and a way to take the vote back. Nothing here says who voted.
 struct PollView: View {

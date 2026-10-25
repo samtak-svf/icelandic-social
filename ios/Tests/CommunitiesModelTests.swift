@@ -223,4 +223,36 @@ final class CommunitiesModelTests: XCTestCase {
         await model.pin("zz", true)
         XCTAssertFalse(social.calls.contains("pinCommunity zz"))
     }
+
+    func testAFeedPollIsVotedInWhereThisAccountMayWriteAndClosedByItsModerator() async {
+        let model = await model()
+        social.communities["k1"] = makeCommunity("k1", "Fuglar", role: .moderator)
+        social.communities["k3"] = makeCommunity("k3", "Fiskar", audience: .private)
+        social.mine = ["k1", "k3"]
+        let poll = Poll(
+            options: [
+                PollOption(optionId: "o0", text: "Já", votes: nil), PollOption(optionId: "o1", text: "Nei", votes: nil),
+            ], total: 0, mine: nil, closed: false)
+        social.posts = [
+            "k1": [makePost("p1", "k1", createdAt: 400, poll: poll)],
+            "k3": [makePost("p2", "k3", createdAt: 300, poll: poll)],
+        ]
+        await model.load()
+        await model.loadFeed()
+        await model.vote("p1", option: "o1")
+        XCTAssertEqual(model.feedPosts[0].poll?.mine, "o1")
+        XCTAssertEqual(social.calls.last, "votePoll p1 o1")
+        await model.withdrawVote("p1")
+        XCTAssertNil(model.feedPosts[0].poll?.mine)
+        XCTAssertTrue(model.canClose(model.feedPosts[0]))
+        await model.closePoll("p1")
+        XCTAssertEqual(model.feedPosts[0].poll?.closed, true)
+        XCTAssertFalse(model.canClose(model.feedPosts[0]))
+        await model.vote("p1", option: "o0")
+        XCTAssertEqual(model.problem, .pollClosed)
+        // A community this account may not write in takes no vote.
+        let before = social.calls.count
+        await model.vote("p2", option: "o0")
+        XCTAssertEqual(social.calls.count, before)
+    }
 }

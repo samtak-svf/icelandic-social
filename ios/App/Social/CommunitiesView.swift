@@ -141,7 +141,10 @@ struct CommunitiesView: View {
                 post: post, linked: true, writes: model.writes(post),
                 community: model.community(post.communityId),
                 onReact: { kind in Task { await model.react(post.postId, kind) } },
-                onShare: { sharing = post.postId }
+                onShare: { sharing = post.postId },
+                onVote: { option in Task { await model.vote(post.postId, option: option) } },
+                onWithdrawVote: { Task { await model.withdrawVote(post.postId) } },
+                onClosePoll: model.canClose(post) ? { Task { await model.closePoll(post.postId) } } : nil
             )
             .padding(.horizontal, 16)
             .padding(.vertical, 6)

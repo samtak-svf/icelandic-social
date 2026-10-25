@@ -61,6 +61,8 @@ final class CommunitiesModel {
     private let sleep: @Sendable (Duration) async throws -> Void
     /// The feed posts whose reaction is on its way, so a second tap waits for the first.
     private var reacting: Set<String> = []
+    /// The feed's posts whose poll action is on its way, so a second tap waits for the first.
+    private var voting: Set<String> = []
 
     init(
         social: Social,
@@ -169,6 +171,46 @@ final class CommunitiesModel {
             problem = Problem(error)
         }
         reacting.remove(postId)
+    }
+
+    /// Votes for `option` in the poll on a feed post (decision 0090), as the community's own screen does.
+    func vote(_ postId: String, option: String) async {
+        let social = social
+        await pollAction(postId) { try social.votePoll(postId, option: option) }
+    }
+
+    /// Takes this account's vote back.
+    func withdrawVote(_ postId: String) async {
+        let social = social
+        await pollAction(postId) { try social.withdrawVote(postId) }
+    }
+
+    /// Closes the poll; its author and the community's moderators may.
+    func closePoll(_ postId: String) async {
+        let social = social
+        await pollAction(postId) { try social.closePoll(postId) }
+    }
+
+    /// This account may close the poll on a feed post: it wrote it, or moderates the post's community, and it is open.
+    func canClose(_ post: Post) -> Bool {
+        guard let poll = post.poll, !poll.closed else { return false }
+        let role = community(post.communityId)?.role
+        return post.mine || role == .owner || role == .moderator
+    }
+
+    private func pollAction(_ postId: String, _ act: @escaping @Sendable () throws -> Post) async {
+        guard !voting.contains(postId), let index = feedPosts.firstIndex(where: { $0.postId == postId }),
+            writes(feedPosts[index])
+        else { return }
+        voting.insert(postId)
+        problem = nil
+        let outcome = await runPollAction(social, postId: postId, act)
+        if let post = outcome.post, let index = feedPosts.firstIndex(where: { $0.postId == postId }) {
+            feedPosts[index] = post
+        }
+        failed = nil
+        problem = outcome.problem
+        voting.remove(postId)
     }
 
     /// Asks the server for `query` once the typing pauses; a newer search cancels the task. Nothing typed is every

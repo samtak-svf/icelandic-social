@@ -297,18 +297,10 @@ final class PostModel {
         guard writes, !voting else { return }
         voting = true
         problem = nil
-        do {
-            post = try await offMain(act)
-            failed = nil
-        } catch {
-            if case CoreError.Refused(_, "poll_closed", _) = error {
-                let social = social
-                let id = postId
-                if let fresh = try? await offMain({ try social.post(id) }) { post = fresh }
-            }
-            failed = nil
-            problem = Problem(error)
-        }
+        let outcome = await runPollAction(social, postId: postId, act)
+        if let fresh = outcome.post { post = fresh }
+        failed = nil
+        problem = outcome.problem
         voting = false
     }
 
