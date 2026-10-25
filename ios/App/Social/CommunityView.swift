@@ -39,6 +39,7 @@ struct CommunityView: View {
                             systemImage: "magnifyingglass", label: "community_search_posts",
                             fill: BrandTokens.Colors.muted, tint: BrandTokens.Colors.fg, size: 34
                         ) {
+                            model.select(.discussion)
                             searchOpen.toggle()
                         }
                     }
@@ -116,9 +117,12 @@ struct CommunityView: View {
                 feed.frame(maxWidth: contentWidth)
                 if let community = model.community {
                     ScrollView {
-                        CommunityAside(community: community, members: model.members, limit: layout.memberPictures)
-                            .padding(.vertical, 16)
-                            .padding(.trailing, 16)
+                        VStack(alignment: .leading, spacing: 16) {
+                            FeaturedList(posts: model.featured)
+                            CommunityAside(community: community, members: model.members, limit: layout.memberPictures)
+                        }
+                        .padding(.vertical, 16)
+                        .padding(.trailing, 16)
                     }
                     .frame(width: Self.asideWidth)
                 }
@@ -137,19 +141,39 @@ struct CommunityView: View {
             LazyVStack(alignment: .leading, spacing: 12) {
                 if let community = model.community {
                     header(community)
-                    if model.reads {
-                        if searchOpen || model.searched {
-                            SocialSearchField(
-                                prompt: "community_search_posts",
-                                text: Binding(get: { model.query }, set: { model.query = $0 }))
-                        }
-                        posts
+                    if model.loaded {
+                        CommunityTabRow(
+                            tabs: model.tabs, selected: model.shownTab, tabsLayout: layout.tabs,
+                            onSelect: { model.select($0) })
+                        tabContent(community)
                     }
                 } else if !model.loaded {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 40)
                 }
             }
             .padding(16)
+        }
+    }
+
+    /// What the chosen tab shows (decision 0089). The featured strip leads the discussion on a window without an aside.
+    @ViewBuilder private func tabContent(_ community: Community) -> some View {
+        switch model.shownTab {
+        case .discussion:
+            if layout.featured == .strip { FeaturedStrip(posts: model.featured) }
+            if searchOpen || model.searched {
+                SocialSearchField(
+                    prompt: "community_search_posts",
+                    text: Binding(get: { model.query }, set: { model.query = $0 }))
+            }
+            posts
+        case .featured:
+            FeaturedList(posts: model.featured)
+        case .images:
+            CommunityGallery(model: model)
+        case .members:
+            CommunityMembersTab(model: model)
+        case .about:
+            Panel { AboutFacts(community: community).padding(14) }
         }
     }
 
@@ -283,7 +307,10 @@ struct CommunityView: View {
                 onReport: { reporting = Reporting(target: ReportTarget(kind: .post, id: post.postId)) },
                 onDelete: post.mine ? { deleting = post.postId } : nil,
                 onPin: model.moderates ? { Task<Void, Never> { await model.pin(post.postId, !post.pinned) } } : nil,
-                onShare: { sharing = post.postId })
+                onShare: { sharing = post.postId },
+                onVote: { option in Task { await model.vote(post.postId, option: option) } },
+                onWithdrawVote: { Task { await model.withdrawVote(post.postId) } },
+                onClosePoll: model.canClose(post) ? { Task { await model.closePoll(post.postId) } } : nil)
         }
         if model.next != nil {
             Color.clear.frame(height: 1).task(id: model.next) { await model.more() }
@@ -392,12 +419,22 @@ private struct ComposerSheet: View {
                     beginsFocused: true,
                     above: { composerImages },
                     leading: {
-                        RoundButton(
-                            systemImage: "photo.badge.plus", label: "post_add_images",
-                            fill: BrandTokens.Colors.muted, tint: BrandTokens.Colors.fg, size: 40,
-                            enabled: !model.busy
-                        ) {
-                            if model.roomForImage() { picking = true }
+                        HStack(spacing: 6) {
+                            RoundButton(
+                                systemImage: "photo.badge.plus", label: "post_add_images",
+                                fill: BrandTokens.Colors.muted, tint: BrandTokens.Colors.fg, size: 40,
+                                enabled: !model.busy && !model.isPoll
+                            ) {
+                                if model.roomForImage() { picking = true }
+                            }
+                            RoundButton(
+                                systemImage: "chart.bar", label: "composer_poll",
+                                fill: model.isPoll ? BrandTokens.Colors.primary : BrandTokens.Colors.muted,
+                                tint: model.isPoll ? BrandTokens.Colors.bg : BrandTokens.Colors.fg, size: 40,
+                                enabled: !model.busy && (model.isPoll || model.images.isEmpty)
+                            ) {
+                                model.setPoll(!model.isPoll)
+                            }
                         }
                     })
             }
@@ -430,6 +467,19 @@ private struct ComposerSheet: View {
 
     /// The images picked for the post, and why the last one was not taken.
     @ViewBuilder private var composerImages: some View {
+        if model.isPoll { PollFields(model: model) }
+        if model.allowsAnonymous {
+            VStack(alignment: .leading, spacing: 2) {
+                Toggle(isOn: Binding(get: { model.anonymous }, set: { model.anonymous = $0 })) {
+                    Text("composer_anonymous").font(.sans(14, black: true))
+                }
+                Text("composer_anonymous_hint")
+                    .font(TypeStyle.meta)
+                    .foregroundStyle(BrandTokens.Colors.mutedFg)
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+        }
         if !model.images.isEmpty {
             PickedImages(paths: model.images) { path in model.unpick(path) }
         }
@@ -448,4 +498,60 @@ private struct ComposerSheet: View {
         case .invalid: "post_image_failed"
         }
     }
+}
+
+/// The poll's option fields in the composer (decision 0090): two to six, each up to 80 characters, with a way to add
+/// one and to take one out once there are more than two. The post's text above is the question.
+private struct PollFields: View {
+    let model: CommunityModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            let fields = model.pollFields ?? []
+            ForEach(fields.indices, id: \.self) { index in
+                HStack(spacing: 6) {
+                    TextField(
+                        localized("composer_poll_option", index + 1),
+                        text: Binding(
+                            get: { model.pollFields?[safe: index] ?? "" },
+                            set: { text in
+                                guard model.pollFields?.indices.contains(index) == true else { return }
+                                model.pollFields?[index] = String(text.prefix(CommunityModel.pollOptionLimit))
+                            })
+                    )
+                    .font(.sans(14))
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 40)
+                    .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 10))
+                    if fields.count > CommunityModel.pollMinOptions {
+                        RoundButton(
+                            systemImage: "minus.circle", label: "composer_poll_remove_option",
+                            fill: BrandTokens.Colors.muted, tint: BrandTokens.Colors.fg, size: 36
+                        ) {
+                            model.removePollOption(at: index)
+                        }
+                    }
+                }
+            }
+            if fields.count < CommunityModel.pollMaxOptions {
+                Button {
+                    model.addPollOption()
+                } label: {
+                    Label("composer_poll_add_option", systemImage: "plus")
+                        .font(.sans(13, black: true))
+                        .foregroundStyle(BrandTokens.Colors.primary)
+                        .frame(minHeight: 36)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
+    }
+}
+
+extension Array {
+    /// The element at `index`, or nil outside the array.
+    fileprivate subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
 }

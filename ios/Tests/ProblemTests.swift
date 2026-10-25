@@ -31,4 +31,21 @@ final class ProblemTests: XCTestCase {
         XCTAssertNil(Problem(CoreError.Refused(status: 403, code: "blocked", requestId: "req-1")).code)
         XCTAssertNil(ProblemCard.codeLine(.unreachable))
     }
+
+    func testTheSocialRefusalsHaveTheirOwnProblems() {
+        let full = Problem(CoreError.Refused(status: 409, code: "pin_limit", requestId: "r"))
+        XCTAssertEqual(full, .pinFull)
+        XCTAssertEqual(Problem(CoreError.Refused(status: 409, code: "anonymous_off", requestId: nil)), .anonymousOff)
+        XCTAssertEqual(Problem(CoreError.Refused(status: 409, code: "poll_closed", requestId: nil)), .pollClosed)
+        XCTAssertFalse(full.canRetry)
+        XCTAssertNil(ProblemCard.requestIdLine(full))
+    }
+
+    /// A browser linked from a session is named so in the device list (#155); a phone names its platform.
+    func testTheDeviceListNamesAWebDevice() {
+        let web = AccountDevice(deviceId: "w", platform: .android, kind: .web, createdAt: 1, current: false)
+        XCTAssertEqual(deviceTitle(web), localized("device_kind_web"))
+        let phone = AccountDevice(deviceId: "p", platform: .ios, kind: .phone, createdAt: 1, current: true)
+        XCTAssertEqual(deviceTitle(phone), "iPhone")
+    }
 }

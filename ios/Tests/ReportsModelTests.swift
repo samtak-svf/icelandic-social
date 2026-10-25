@@ -157,4 +157,27 @@ final class ReportsModelTests: XCTestCase {
         XCTAssertEqual(moderation(report, .remove), .removeComment)
         XCTAssertNil(moderation(report, .dismiss))
     }
+
+    func testAModeratorAsksWhoWroteAnAnonymousPostFromItsReport() async {
+        social.reports = [
+            "k1": [
+                makeReport("r1", in: "k1", .post, "p1", author: nil, anonymous: true),
+                makeReport("r2", in: "k1", .post, "p2"),
+                makeReport("r3", in: "k1", .comment, "c1", author: nil, anonymous: true),
+            ]
+        ]
+        social.authors = ["p1": Author(accountId: "a9", name: "Gunna", verified: false)]
+        let model = ReportsModel(social: social, communityId: "k1", now: { FakeAccount.now })
+        await model.load()
+        await model.more()
+        XCTAssertTrue(model.canReveal(model.reports[0]))
+        XCTAssertFalse(model.canReveal(model.reports[1]))
+        XCTAssertFalse(model.canReveal(model.reports[2]))
+        await model.reveal(model.reports[1])
+        XCTAssertFalse(social.calls.contains("revealAuthor p2"))
+        await model.reveal(model.reports[0])
+        XCTAssertTrue(social.calls.contains("revealAuthor p1"))
+        XCTAssertEqual(model.revealed["r1"]?.name, "Gunna")
+        XCTAssertFalse(model.canReveal(model.reports[0]))
+    }
 }

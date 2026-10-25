@@ -51,6 +51,9 @@ struct ProblemCard: View {
         case .notFound: "problem_not_found"
         case .joinDeclined: "problem_join_declined"
         case .noMaster: "image_frames_no_master"
+        case .pinFull: "post_pin_full"
+        case .anonymousOff: "problem_anonymous_off"
+        case .pollClosed: "poll_closed_problem"
         case .generic: "error_generic"
         }
     }

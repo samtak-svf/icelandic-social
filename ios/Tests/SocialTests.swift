@@ -137,4 +137,24 @@ final class SocialTests: XCTestCase {
         XCTAssertEqual(logActionLabel(.closeReport), localized("moderation_decision_dismissed"))
         XCTAssertEqual(logActionLabel(.restoreCommunity), localized("moderation_restore"))
     }
+
+    func testAPollShareIsAWholePercentageOfTheTotal() {
+        XCTAssertEqual(pollShare(votes: 1, total: 3), 33)
+        XCTAssertEqual(pollShare(votes: 2, total: 3), 67)
+        XCTAssertEqual(pollShare(votes: 1, total: 8), 13)
+        XCTAssertEqual(pollShare(votes: 0, total: 0), 0)
+    }
+
+    func testResultsShowOnlyWhenEveryCountCameWithThePoll() {
+        let hidden = Poll(
+            options: [
+                PollOption(optionId: "a", text: "A", votes: nil), PollOption(optionId: "b", text: "B", votes: nil),
+            ], total: 3, mine: nil, closed: false)
+        XCTAssertFalse(pollShowsResults(hidden))
+        var shown = hidden
+        shown.options = shown.options.map { PollOption(optionId: $0.optionId, text: $0.text, votes: 1) }
+        XCTAssertTrue(pollShowsResults(shown))
+        shown.options[0].votes = nil
+        XCTAssertFalse(pollShowsResults(shown))
+    }
 }

@@ -437,16 +437,29 @@ final class CommunityModelTests: XCTestCase {
         XCTAssertFalse(social.calls.contains { $0.hasPrefix("createPost") })
     }
 
-    func testFestaPinsThePostAndTheFeedLeadsWithIt() async {
+    func testFestaFeaturesThePostAndTheFeedStaysChronological() async {
         let model = await model(makeCommunity("k1", "Fuglar", role: .moderator))
         XCTAssertEqual(model.posts.map(\.postId), ["p3", "p2"])
+        XCTAssertTrue(model.featured.isEmpty)
         await model.pin("p1", true)
         XCTAssertTrue(social.calls.contains("pinPost k1 p1"))
-        XCTAssertEqual(model.posts.first?.postId, "p1")
-        XCTAssertEqual(model.posts.first?.pinned, true)
+        XCTAssertEqual(model.featured.map(\.postId), ["p1"])
+        XCTAssertEqual(model.posts.map(\.postId), ["p3", "p2"])
+        await model.pin("p2", true)
+        XCTAssertEqual(model.featured.map(\.postId), ["p2", "p1"])
+        XCTAssertEqual(model.posts.first(where: { $0.postId == "p2" })?.pinned, true)
         await model.pin("p1", false)
         XCTAssertTrue(social.calls.contains("unpinPost k1 p1"))
-        XCTAssertEqual(model.posts.contains { $0.pinned }, false)
+        XCTAssertEqual(model.featured.map(\.postId), ["p2"])
+    }
+
+    func testAFourthFeaturedPostIsRefusedWithTheFullProblem() async {
+        let held = (7...9).map { makePost("p\($0)", "k1", pinned: true) }
+        let model = await model(makeCommunity("k1", "Fuglar", role: .owner, featured: held))
+        XCTAssertEqual(model.featured.count, 3)
+        await model.pin("p1", true)
+        XCTAssertEqual(model.problem, .pinFull)
+        XCTAssertEqual(model.featured.count, 3)
     }
 
     func testAMemberCannotPinAPost() async {
@@ -459,5 +472,160 @@ final class CommunityModelTests: XCTestCase {
         let model = await model(makeCommunity("k1", "Fuglar", role: .member))
         XCTAssertEqual(model.myName, "Jón Jónsson")
         XCTAssertNil(model.myPhoto)
+    }
+
+    // MARK: Tabs (decision 0089)
+
+    func testAReaderSeesAllTabsAndFestOnlyWhileAPostIsFeatured() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .moderator))
+        XCTAssertEqual(model.tabs, [.discussion, .images, .members, .about])
+        XCTAssertEqual(model.shownTab, .discussion)
+        await model.pin("p1", true)
+        XCTAssertEqual(model.tabs, [.discussion, .featured, .images, .members, .about])
+        model.select(.featured)
+        XCTAssertEqual(model.shownTab, .featured)
+        await model.pin("p1", false)
+        XCTAssertEqual(model.shownTab, .discussion)
+    }
+
+    func testWhoMayNotReadSeesOnlyAbout() async {
+        let model = await model(makeCommunity("k1", "Fiskar", audience: .private))
+        XCTAssertEqual(model.tabs, [.about])
+        model.select(.images)
+        XCTAssertEqual(model.shownTab, .about)
+    }
+
+    func testTheGalleryPagesThroughTheCommunitiesImages() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        social.images["k1"] = (1...3).map {
+            CommunityImage(
+                mediaId: "m\($0)", postId: "p\($0)", commentId: nil, width: 4, height: 3, createdAt: UInt64($0))
+        }
+        await model.loadGallery()
+        XCTAssertEqual(model.gallery.map(\.mediaId), ["m1", "m2"])
+        XCTAssertNotNil(model.galleryNext)
+        await model.moreGallery()
+        XCTAssertEqual(model.gallery.map(\.mediaId), ["m1", "m2", "m3"])
+        XCTAssertNil(model.galleryNext)
+        XCTAssertTrue(model.galleryLoaded)
+        await model.loadGallery()
+        XCTAssertEqual(social.calls.filter { $0.hasPrefix("communityImages") }.count, 2)
+    }
+
+    // MARK: Polls (decision 0090)
+
+    private func openPoll(closed: Bool = false) -> Poll {
+        Poll(
+            options: [
+                PollOption(optionId: "o0", text: "Já", votes: nil), PollOption(optionId: "o1", text: "Nei", votes: nil),
+            ], total: 0, mine: nil, closed: closed)
+    }
+
+    func testAPollNeedsItsQuestionAndTwoToSixDistinctOptions() {
+        let can = CommunityModel.canPublishPoll
+        XCTAssertTrue(can("Hvað?", ["Já", "Nei"]))
+        XCTAssertFalse(can("  ", ["Já", "Nei"]))
+        XCTAssertFalse(can("Hvað?", ["Já"]))
+        XCTAssertFalse(can("Hvað?", ["Já", " "]))
+        XCTAssertFalse(can("Hvað?", ["Já", " já "]))
+        XCTAssertFalse(can("Hvað?", ["Já", String(repeating: "a", count: 81)]))
+        XCTAssertTrue(can("Hvað?", ["Já", String(repeating: "a", count: 80)]))
+        XCTAssertTrue(can("Hvað?", (1...6).map { "v\($0)" }))
+        XCTAssertFalse(can("Hvað?", (1...7).map { "v\($0)" }))
+    }
+
+    func testAPollPostGoesOutWithTrimmedOptionsAndTakesNoImage() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        model.setPoll(true)
+        XCTAssertEqual(model.pollFields, ["", ""])
+        model.draft = "Hvað er best?"
+        XCTAssertFalse(model.sendable)
+        model.pollFields = [" Lóa ", "Spói"]
+        XCTAssertTrue(model.sendable)
+        XCTAssertFalse(model.roomForImage())
+        model.addPollOption()
+        XCTAssertEqual(model.pollFields?.count, 3)
+        model.removePollOption(at: 2)
+        XCTAssertEqual(model.pollFields?.count, 2)
+        model.removePollOption(at: 1)
+        XCTAssertEqual(model.pollFields?.count, 2)
+        let posted = await model.publish()
+        XCTAssertTrue(posted)
+        XCTAssertTrue(social.calls.contains("createPost k1 Hvað er best? poll Lóa,Spói"))
+        XCTAssertNil(model.pollFields)
+        XCTAssertEqual(model.posts.first?.poll?.options.map(\.text), ["Lóa", "Spói"])
+    }
+
+    func testAVoteShowsTheResultsAndCanBeTakenBack() async {
+        let model = await model(
+            makeCommunity("k1", "Fuglar", role: .member), posts: [makePost("p1", "k1", poll: openPoll())])
+        await model.vote("p1", option: "o1")
+        var poll = model.posts[0].poll
+        XCTAssertEqual(poll?.mine, "o1")
+        XCTAssertEqual(poll.map(pollShowsResults), true)
+        XCTAssertEqual(poll?.options.map(\.votes), [0, 1])
+        await model.withdrawVote("p1")
+        poll = model.posts[0].poll
+        XCTAssertNil(poll?.mine)
+        XCTAssertEqual(poll?.total, 0)
+    }
+
+    func testOnlyTheAuthorOrAModeratorClosesAPollAndItClosesForGood() async {
+        let theirs = makePost("p1", "k1", poll: openPoll())
+        let mine = makePost("p2", "k1", author: jon, poll: openPoll())
+        let member = await model(makeCommunity("k1", "Fuglar", role: .member), posts: [theirs, mine])
+        XCTAssertFalse(member.canClose(theirs))
+        XCTAssertTrue(member.canClose(mine))
+        let moderator = await model(makeCommunity("k1", "Fuglar", role: .moderator), posts: [theirs, mine])
+        XCTAssertTrue(moderator.canClose(theirs))
+        await moderator.closePoll("p1")
+        XCTAssertEqual(moderator.posts[0].poll?.closed, true)
+        XCTAssertEqual(moderator.posts[0].poll.map(pollShowsResults), true)
+        XCTAssertFalse(moderator.canClose(moderator.posts[0]))
+        await moderator.vote("p1", option: "o0")
+        XCTAssertEqual(moderator.problem, .pollClosed)
+    }
+
+    func testTheAnonymousPostsWaitingAreCountedForAModeratorOnly() async {
+        let moderator = await model(
+            makeCommunity("k1", "Fuglar", role: .moderator, openReports: 1, anonymousPosts: true, pendingAnonymous: 2))
+        XCTAssertEqual(moderator.pendingAnonymous, 2)
+        XCTAssertEqual(moderator.manageCount, 3)
+        let member = await model(
+            makeCommunity("k2", "Fuglar", role: .member, anonymousPosts: true, pendingAnonymous: 2))
+        XCTAssertEqual(member.pendingAnonymous, 0)
+        XCTAssertEqual(member.manageCount, 0)
+    }
+
+    func testOnlyTheOwnerSwitchesAnonymousPostsOn() async {
+        let moderator = await model(makeCommunity("k1", "Fuglar", role: .moderator))
+        await moderator.setAnonymous(true)
+        XCTAssertFalse(social.calls.contains("setAnonymousPosts k1 true"))
+        let owner = await model(makeCommunity("k2", "Fuglar", role: .owner))
+        XCTAssertFalse(owner.allowsAnonymous)
+        await owner.setAnonymous(true)
+        XCTAssertTrue(social.calls.contains("setAnonymousPosts k2 true"))
+        XCTAssertEqual(owner.community?.anonymousPosts, true)
+        XCTAssertTrue(owner.allowsAnonymous)
+    }
+
+    func testAnAnonymousPostWaitsForApprovalAndShowsNoName() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member, anonymousPosts: true))
+        model.draft = "Leyndarmál"
+        model.anonymous = true
+        await model.publish()
+        XCTAssertTrue(social.calls.contains("createPost k1 Leyndarmál anonymous"))
+        XCTAssertEqual(model.posts.first?.state, .pending)
+        XCTAssertNil(model.posts.first?.author)
+        XCTAssertFalse(model.anonymous)
+    }
+
+    func testAnAnonymousDraftGoesOutNamedWhereTheSwitchIsOff() async {
+        let model = await model(makeCommunity("k1", "Fuglar", role: .member))
+        model.draft = "Leyndarmál"
+        model.anonymous = true
+        await model.publish()
+        // The switch is off, so the post goes out under the author's name.
+        XCTAssertFalse(social.calls.contains("createPost k1 Leyndarmál anonymous"))
     }
 }

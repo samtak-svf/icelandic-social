@@ -33,8 +33,22 @@ final class CommunityModel {
     private(set) var logLoaded = false
     private(set) var loadingLog = false
     private(set) var loaded = false
+    /// The tab chosen on the community's tab row (decision 0089); `shownTab` is the one actually on screen.
+    private(set) var tab: Tab = .discussion
+    /// The community's images, newest first, for `Myndir` (decision 0089).
+    private(set) var gallery: [CommunityImage] = []
+    /// The cursor of the gallery's next, older page, nil on the last.
+    private(set) var galleryNext: String?
+    /// The gallery has been asked for, so an empty one says so rather than waiting.
+    private(set) var galleryLoaded = false
+    private(set) var loadingGallery = false
     /// The post being written.
     var draft = ""
+    /// The poll's option fields while the post is a poll (decision 0090): nil for a plain post. The draft is the
+    /// question.
+    var pollFields: [String]?
+    /// The post is written without the author's name and waits for a moderator (decision 0091).
+    var anonymous = false
     /// The images picked for it, as local copies, in their order.
     private(set) var images: [String] = []
     /// Why the last image picked or sent was not taken, until the next is picked or the post goes.
@@ -58,6 +72,13 @@ final class CommunityModel {
     /// The media id of each picked image already uploaded, by its local copy, so a retry does not send it again.
     private var uploaded: [String: String] = [:]
     private var loadingMembers = false
+    /// The polls whose vote is on its way, so a second tap waits for the first.
+    private var voting: Set<String> = []
+
+    /// The community page's tabs (decision 0089), in the order the row shows them.
+    enum Tab: String, CaseIterable, Sendable {
+        case discussion, featured, images, members, about
+    }
 
     /// Why an image did not go with the post.
     enum ImageNotice: Error, Equatable, Sendable {
@@ -117,8 +138,30 @@ final class CommunityModel {
         return Int(community?.openReports ?? 0)
     }
 
+    /// The anonymous posts that wait for approval, for a moderator; zero when none, or when this account does not
+    /// moderate (decision 0091).
+    var pendingAnonymous: Int {
+        guard moderates else { return 0 }
+        return Int(community?.pendingAnonymous ?? 0)
+    }
+
+    /// The tabs this account sees: all of them for a reader of the community, with `Fest` only while a post is
+    /// featured; `Um` alone for one who may not read it (decision 0089).
+    var tabs: [Tab] {
+        guard reads else { return [.about] }
+        return Tab.allCases.filter { $0 != .featured || !featured.isEmpty }
+    }
+
+    /// The tab on screen: the chosen one while it is offered, else the first (`Fest` goes when its last post lets go).
+    var shownTab: Tab { tabs.contains(tab) ? tab : (tabs.first ?? .about) }
+
+    func select(_ tab: Tab) {
+        guard tabs.contains(tab) else { return }
+        self.tab = tab
+    }
+
     /// The work waiting for this account here, which `Stjórna` counts in its label (decision 0079).
-    var manageCount: Int { openReports + pendingRequests }
+    var manageCount: Int { openReports + pendingRequests + pendingAnonymous }
 
     /// A search is typed, so the list shows what it found and an empty one says none was.
     var searched: Bool { sent != nil }
@@ -135,8 +178,55 @@ final class CommunityModel {
     /// The draft may be sent: something written, an image picked, or both, and the text not over the limit.
     var sendable: Bool {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        return writes && (!body.isEmpty || !images.isEmpty) && body.count <= Self.postLimit
+        guard body.count <= Self.postLimit else { return false }
+        if let pollFields {
+            return writes && images.isEmpty && Self.canPublishPoll(question: body, fields: pollFields)
+        }
+        return writes && (!body.isEmpty || !images.isEmpty)
     }
+
+    /// The post is a poll, which takes no images (decision 0090).
+    var isPoll: Bool { pollFields != nil }
+
+    /// This community lets members post without a name (decision 0091).
+    var allowsAnonymous: Bool { community?.anonymousPosts ?? false }
+
+    /// Starts a poll with two empty options, or drops it. A post with images takes none.
+    func setPoll(_ on: Bool) {
+        if on {
+            guard images.isEmpty else { return }
+            pollFields = pollFields ?? Array(repeating: "", count: Self.pollMinOptions)
+        } else {
+            pollFields = nil
+        }
+    }
+
+    func addPollOption() {
+        guard let pollFields, pollFields.count < Self.pollMaxOptions else { return }
+        self.pollFields = pollFields + [""]
+    }
+
+    func removePollOption(at index: Int) {
+        guard var fields = pollFields, fields.count > Self.pollMinOptions, fields.indices.contains(index)
+        else { return }
+        fields.remove(at: index)
+        pollFields = fields
+    }
+
+    /// A poll needs its question, two to six options, none empty or over 80 characters, none the same as another
+    /// when case is ignored (the API's `POLL_OPTIONS`, as the web's `canPublishPoll`).
+    nonisolated static func canPublishPoll(question: String, fields: [String]) -> Bool {
+        let options = fields.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        guard !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            (pollMinOptions...pollMaxOptions).contains(options.count),
+            !options.contains(where: { $0.isEmpty || $0.count > pollOptionLimit })
+        else { return false }
+        return Set(options.map { $0.lowercased() }).count == options.count
+    }
+
+    nonisolated static let pollMinOptions = 2
+    nonisolated static let pollMaxOptions = 6
+    nonisolated static let pollOptionLimit = 80
 
     func load() async {
         let social = social
@@ -269,6 +359,16 @@ final class CommunityModel {
         await perform(again: { await self.deleteCommunity() }) {
             try await offMain { try social.deleteCommunity(id) }
             self.deleted = true
+        }
+    }
+
+    /// Lets the community's members write anonymous posts, or stops them (decision 0091). The owner alone decides.
+    func setAnonymous(_ on: Bool) async {
+        guard owns else { return }
+        let social = social
+        let id = communityId
+        await perform(again: { await self.setAnonymous(on) }) {
+            self.community = try await offMain { try social.setAnonymousPosts(id, on: on) }
         }
     }
 
@@ -458,8 +558,46 @@ final class CommunityModel {
         loadingLog = false
     }
 
+    /// The gallery's newest page, for `Myndir`; asked for once.
+    func loadGallery() async {
+        guard !galleryLoaded, !loadingGallery, reads else { return }
+        await galleryPage(cursor: nil)
+    }
+
+    /// The gallery's next, older page, if there is one and none is on its way.
+    func moreGallery() async {
+        guard let cursor = galleryNext, !loadingGallery else { return }
+        await galleryPage(cursor: cursor)
+    }
+
+    private func galleryPage(cursor: String?) async {
+        let social = social
+        let id = communityId
+        loadingGallery = true
+        problem = nil
+        do {
+            let page = try await offMain {
+                try social.communityImages(id, cursor: cursor, limit: Self.galleryPage)
+            }
+            if cursor == nil {
+                gallery = page.images
+            } else {
+                let shown = Set(gallery.map(\.mediaId))
+                gallery += page.images.filter { !shown.contains($0.mediaId) }
+            }
+            galleryNext = page.next
+            failed = nil
+            galleryLoaded = true
+        } catch {
+            failed = { await self.galleryPage(cursor: cursor) }
+            problem = Problem(error)
+        }
+        loadingGallery = false
+    }
+
     /// Whether another image fits in the post; when none does, says so instead of opening the picker.
     func roomForImage() -> Bool {
+        guard !isPoll else { return false }
         let room = images.count < Self.imageCount
         if !room { imageNotice = .tooMany }
         return room
@@ -531,12 +669,18 @@ final class CommunityModel {
                 uploaded[path] = try await offMain { try social.uploadPostImage(id, path: path).mediaId }
             }
             let media = picked.compactMap { uploaded[$0] }
-            let post = try await offMain { try social.createPost(id, body: body, media: media) }
+            let poll = pollFields.map { $0.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) } }
+            let secret = anonymous && allowsAnonymous
+            let post = try await offMain {
+                try social.createPost(id, body: body, media: media, anonymous: secret, poll: poll)
+            }
             for path in picked { try? FileManager.default.removeItem(atPath: path) }
             uploaded = [:]
             images = []
             posts.insert(post, at: 0)
             draft = ""
+            pollFields = nil
+            anonymous = false
             failed = nil
             posted = true
         } catch {
@@ -563,15 +707,20 @@ final class CommunityModel {
         }
     }
 
-    /// Pins a post to the top of the feed, or takes the pin off, for a moderator or the owner, and reads the first
-    /// page again so the pinned post leads (decision 0080).
+    /// The posts a moderator featured, at most three, newest pin first (decision 0088). The feed stays
+    /// chronological; these are shown beside it.
+    var featured: [Post] { community?.featured ?? [] }
+
+    /// Features a post or lets it go, for a moderator or the owner (decision 0088): the community is read
+    /// again for its featured list, and the posts for the marks. A fourth is refused with `.pinFull`.
     func pin(_ postId: String, _ pinned: Bool) async {
         guard moderates else { return }
         let social = social
         let id = communityId
         await perform(again: { await self.pin(postId, pinned) }) {
-            try await offMain {
+            self.community = try await offMain { () -> Community in
                 if pinned { try social.pinPost(id, post: postId) } else { try social.unpinPost(id, post: postId) }
+                return try social.community(id)
             }
             try await self.page(before: nil, self.sent)
         }
@@ -608,6 +757,46 @@ final class CommunityModel {
             problem = Problem(error)
         }
         reacting.remove(postId)
+    }
+
+    /// This account may close the poll on `post`: its author, the owner or a moderator, while it is open.
+    func canClose(_ post: Post) -> Bool {
+        guard let poll = post.poll, !poll.closed else { return false }
+        return post.mine || moderates
+    }
+
+    /// Votes for `option` in the poll on a post, or changes the vote (decision 0090); the post then reads as the
+    /// server sent it back. A poll closed meanwhile shows its results and says so.
+    func vote(_ postId: String, option: String) async {
+        let social = social
+        await pollAction(postId) { try social.votePoll(postId, option: option) }
+    }
+
+    /// Takes this account's vote back.
+    func withdrawVote(_ postId: String) async {
+        let social = social
+        await pollAction(postId) { try social.withdrawVote(postId) }
+    }
+
+    /// Closes the poll: no more votes, and everyone sees the results.
+    func closePoll(_ postId: String) async {
+        let social = social
+        await pollAction(postId) { try social.closePoll(postId) }
+    }
+
+    private func pollAction(_ postId: String, _ act: @escaping @Sendable () throws -> Post) async {
+        guard writes, !voting.contains(postId) else { return }
+        voting.insert(postId)
+        problem = nil
+        let outcome = await runPollAction(social, postId: postId, act)
+        if let post = outcome.post { replace(post) }
+        failed = nil
+        problem = outcome.problem
+        voting.remove(postId)
+    }
+
+    private func replace(_ post: Post) {
+        if let index = posts.firstIndex(where: { $0.postId == post.postId }) { posts[index] = post }
     }
 
     /// The newest page again, once a post opened from here is closed: the posts on it take their reactions and
@@ -655,6 +844,9 @@ final class CommunityModel {
 
     /// A page of posts: a screenful and some.
     private nonisolated static let page: UInt32 = 20
+
+    /// A page of the gallery: a screenful of thumbnails and some (decision 0089).
+    private nonisolated static let galleryPage: UInt32 = 30
 
     /// A page of the moderation log: a screenful and some (decision 0079).
     private nonisolated static let logSize: UInt32 = 30

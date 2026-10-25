@@ -106,6 +106,15 @@ struct VersionLine: View {
     }
 }
 
+/// What a device is called in the list (decision 0064): a browser linked from a session says so, a phone names its
+/// platform.
+func deviceTitle(_ device: AccountDevice) -> String {
+    switch device.kind {
+    case .web: localized("device_kind_web")
+    case .phone: device.platform == .ios ? "iPhone" : "Android"
+    }
+}
+
 private struct DeviceRow: View {
     let device: AccountDevice
     let enabled: Bool
@@ -114,14 +123,14 @@ private struct DeviceRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: "iphone")
+            Image(systemName: device.kind == .web ? "globe" : "iphone")
                 .font(.system(size: 16))
                 .foregroundStyle(BrandTokens.Colors.fg)
                 .frame(width: 30, height: 30)
                 .background(BrandTokens.Colors.muted, in: RoundedRectangle(cornerRadius: 8))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: device.platform == .ios ? "iPhone" : "Android")
+                Text(verbatim: deviceTitle(device))
                     .font(.sans(14.5, black: true))
                     .foregroundStyle(BrandTokens.Colors.fg)
                     .lineLimit(1)

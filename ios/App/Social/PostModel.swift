@@ -42,6 +42,8 @@ final class PostModel {
     private let now: @Sendable () -> UInt64
     private var failed: (() async -> Void)?
     private var reacting = false
+    /// A vote is on its way.
+    private var voting = false
     /// The comments whose like is on its way, so a second tap waits for the first.
     private var liking: Set<String> = []
 
@@ -263,6 +265,43 @@ final class PostModel {
                 return try social.post(id)
             }
         }
+    }
+
+    /// This account may close the post's poll: its author, the owner or a moderator, while it is open.
+    var canClosePoll: Bool {
+        guard let post, let poll = post.poll, !poll.closed else { return false }
+        return post.mine || moderates
+    }
+
+    /// Votes in the post's poll, takes the vote back, or closes the poll (decision 0090); the post then reads as
+    /// the server sent it back.
+    func vote(_ option: String) async {
+        let social = social
+        let id = postId
+        await pollAction { try social.votePoll(id, option: option) }
+    }
+
+    func withdrawVote() async {
+        let social = social
+        let id = postId
+        await pollAction { try social.withdrawVote(id) }
+    }
+
+    func closePoll() async {
+        let social = social
+        let id = postId
+        await pollAction { try social.closePoll(id) }
+    }
+
+    private func pollAction(_ act: @escaping @Sendable () throws -> Post) async {
+        guard writes, !voting else { return }
+        voting = true
+        problem = nil
+        let outcome = await runPollAction(social, postId: postId, act)
+        if let fresh = outcome.post { post = fresh }
+        failed = nil
+        problem = outcome.problem
+        voting = false
     }
 
     /// Gives a comment this account's one 👍, or takes it back, shown at once and put back if the server refuses
