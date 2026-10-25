@@ -30,6 +30,30 @@ export function isGroup(conversation: Conversation): boolean {
   return conversation.members.length > 1;
 }
 
+/** Whether this device can take part: on the apps the composer shows only then. */
+export function canSend(conversation: Conversation): boolean {
+  const open = conversation.state === "active" || conversation.state === "new";
+  return open && conversation.members.length > 0;
+}
+
+/** The line above the thread that says why it is quiet, as the apps show it. */
+export function conversationBanner(conversation: Conversation): string | null {
+  switch (conversation.state) {
+    case "removed":
+      return strings.conversation_removed_banner;
+    case "left":
+      return strings.left_banner;
+    case "excluded":
+      return strings.conversation_excluded_banner;
+    case "stale":
+      return strings.conversation_stale_banner;
+    case "new":
+    case "active":
+      break;
+  }
+  return conversation.members.length === 0 ? strings.conversation_alone_banner : null;
+}
+
 const HOUR = 3_600;
 const DAY = 86_400;
 

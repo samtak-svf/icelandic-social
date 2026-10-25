@@ -1,7 +1,16 @@
 import { expect, test } from "vitest";
 import { strings } from "../generated/brand/strings.ts";
 import type { Content, Conversation, Item } from "../generated/core.d.ts";
-import { conversationTitle, isCard, isGroup, itemLine, previewLine, readLine } from "./people.ts";
+import {
+  canSend,
+  conversationBanner,
+  conversationTitle,
+  isCard,
+  isGroup,
+  itemLine,
+  previewLine,
+  readLine,
+} from "./people.ts";
 
 const person = (name: string | null) => ({ account: "a", name, verified: false, photo: null });
 const conversation = (over: Partial<Conversation>): Conversation => ({
@@ -125,4 +134,22 @@ test("who read the reader's message: the word in a 1:1, the count in a group", (
 test("a group is a conversation with more than one other member, as on the apps", () => {
   expect(isGroup(conversation({ members: [person("Ása")] }))).toBe(false);
   expect(isGroup(conversation({ members: [person("Ása"), person("Bo")] }))).toBe(true);
+});
+
+test("a quiet conversation says why, in the apps' words, and takes no message", () => {
+  const ann = person("Ann");
+  const at = (state: Conversation["state"], members = [ann]) => conversation({ state, members });
+  expect(conversationBanner(at("stale"))).toBe(strings.conversation_stale_banner);
+  expect(conversationBanner(at("excluded"))).toBe(strings.conversation_excluded_banner);
+  expect(conversationBanner(at("removed"))).toBe(strings.conversation_removed_banner);
+  expect(conversationBanner(at("left"))).toBe(strings.left_banner);
+  expect(conversationBanner(at("active", []))).toBe(strings.conversation_alone_banner);
+  expect(conversationBanner(at("active"))).toBeNull();
+  expect(conversationBanner(at("new"))).toBeNull();
+  expect(canSend(at("active"))).toBe(true);
+  expect(canSend(at("new"))).toBe(true);
+  for (const state of ["stale", "excluded", "removed", "left"] as const) {
+    expect(canSend(at(state))).toBe(false);
+  }
+  expect(canSend(at("active", []))).toBe(false);
 });
