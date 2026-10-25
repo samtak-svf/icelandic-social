@@ -68,9 +68,14 @@ jobs:
           BASE: origin/${{ github.base_ref }}
         run: |
           set -euo pipefail
-          if ! git show "$BASE:api/openapi.json" > /tmp/base-openapi.json 2>/dev/null; then
+          if ! git show "$BASE:api/openapi.json" > "$RUNNER_TEMP/base-openapi.json" 2>/dev/null; then
             echo "::notice::$BASE has no api/openapi.json yet; nothing to break."
             exit 0
           fi
-          curl -sSfL "https://github.com/oasdiff/oasdiff/releases/download/v${OASDIFF_VERSION}/oasdiff_${OASDIFF_VERSION}_linux_amd64.tar.gz" | tar -xz oasdiff
-          ./oasdiff breaking /tmp/base-openapi.json api/openapi.json --fail-on ERR
+          case "$RUNNER_OS-$RUNNER_ARCH" in
+            Linux-X64) asset=linux_amd64 ;;
+            macOS-ARM64) asset=darwin_all ;;
+            *) echo "::error::no oasdiff build for $RUNNER_OS-$RUNNER_ARCH"; exit 1 ;;
+          esac
+          curl -sSfL "https://github.com/oasdiff/oasdiff/releases/download/v${OASDIFF_VERSION}/oasdiff_${OASDIFF_VERSION}_${asset}.tar.gz" | tar -xz oasdiff
+          ./oasdiff breaking "$RUNNER_TEMP/base-openapi.json" api/openapi.json --fail-on ERR

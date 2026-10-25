@@ -124,3 +124,30 @@ workers pool does not support v8) and `cargo llvm-cov --workspace --json --summa
 point under what `--record` measured, because a Durable Object alarm racing a test moves a
 branch between runs. Raise a floor with `--record` in a PR of its own; lowering one says why in that PR. The apps are left
 out: their critical logic is in the core (0022), and UI coverage measures layout.
+
+## Where CI runs
+
+While the repository is private, a hosted job draws on the organisation's monthly Actions
+minutes, and macOS bills ten times Linux. So the PR checks run on Samtak's own Mac mini
+(`samtak-mac`, two organisation runner instances), chosen by four repository variables:
+
+| Variable                  | Jobs                                                | Value on the Mac                                     |
+| ------------------------- | --------------------------------------------------- | ---------------------------------------------------- |
+| `RUNNER_LABELS`           | the build and test jobs                             | `["self-hosted","macOS","ARM64","samtak-mac"]`       |
+| `GUARD_RUNNER_LABELS`     | the short guards (authorship, peer names, gitleaks) | the same                                             |
+| `EXCLUSIVE_RUNNER_LABELS` | web, interop and the Android device job             | the same plus `spjall-exclusive`, held by one runner |
+| `MAC_RUNNER_LABELS`       | the iOS tests                                       | the same as `RUNNER_LABELS`                          |
+
+- **Unset means hosted.** Every lane falls back to `ubuntu-latest`, so deleting a variable moves its
+  jobs back to GitHub with no workflow change. A PR from a fork always runs hosted.
+- **The exclusive lane** exists because the Worker under `cf dev` listens on port 8787 and the
+  Android emulator is one AVD: two of those jobs on one machine would answer for each other. Only
+  one runner carries the `spjall-exclusive` label, so they queue instead of colliding. The
+  runners belong to the organisation, so the label is set on its endpoint
+  (`gh api orgs/samtak-svf/actions/runners/<id>/labels`); the repository's endpoint answers 404. A
+  `tooling/mac-remote.mjs` run uses the same port and AVD and is not serialised against CI.
+- **No secret reaches the Mac.** A job that reads a secret (the live jurisdiction check, deploys,
+  store uploads, signing) names a hosted runner, and `tooling/workflow-guard.mjs` refuses one that
+  reads a runner variable.
+- Steps that download a binary pick the build from `RUNNER_OS` and `RUNNER_ARCH`, so a job runs
+  on either lane.
