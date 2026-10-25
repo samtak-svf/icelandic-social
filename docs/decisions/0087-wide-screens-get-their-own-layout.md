@@ -1,6 +1,6 @@
 # 0087. Wide screens get their own layout, keyed to the size classes of 0086
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented (web #175, #176, #177, #182, #185; Android #195; iOS #196)
 - Date: 2026-10-24
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0080](0080-communities-follow-the-familiar-group-layout.md) (navigation on the web,

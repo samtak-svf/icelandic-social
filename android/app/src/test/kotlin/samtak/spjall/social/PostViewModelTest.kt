@@ -14,6 +14,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -21,6 +22,8 @@ import samtak.spjall.account.Problem
 import samtak.spjall.account.unreachable
 import samtak.spjall.conversation.Picked
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.Poll
+import samtak.spjall.core.PollOption
 import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
@@ -360,4 +363,41 @@ class PostViewModelTest {
                     ?.commentCount,
             )
         }
+
+    @Test
+    fun aPollOnThePostScreenIsVotedWithdrawnAndClosed() =
+        runTest(dispatcher) {
+            social.posts["k1"] = mutableListOf(post("p1", poll = poll(), own = true))
+            val model = model()
+            model.vote("o1")
+            advanceUntilIdle()
+            assertEquals("o1", model.pollOf().mine)
+            assertFalse(model.state.value.answering)
+            model.withdrawVote()
+            advanceUntilIdle()
+            assertNull(model.pollOf().mine)
+            model.closePoll()
+            advanceUntilIdle()
+            assertTrue(model.pollOf().closed)
+            model.vote("o0")
+            advanceUntilIdle()
+            assertEquals(Problem.PollClosed, model.state.value.problem)
+            assertFalse(model.state.value.answering)
+        }
+
+    @Test
+    fun aFourthPinIsRefusedWithThePinFullProblem() =
+        runTest(dispatcher) {
+            social.posts["k1"] = mutableListOf(post("p1"), post("p2"), post("p3"), post("p4"))
+            social.featuredIds["k1"] = listOf("p2", "p3", "p4")
+            val model = model()
+            model.pin(true)
+            advanceUntilIdle()
+            assertEquals(Problem.PinFull, model.state.value.problem)
+        }
 }
+
+private fun PostViewModel.pollOf() = state.value.post!!.poll!!
+
+private fun poll(closed: Boolean = false) =
+    Poll(listOf(PollOption("o0", "Já", 0uL), PollOption("o1", "Nei", 0uL)), 0uL, null, closed)

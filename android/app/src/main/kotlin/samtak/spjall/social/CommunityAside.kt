@@ -31,6 +31,7 @@ import samtak.spjall.brand.R
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityMember
+import samtak.spjall.core.Post
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.CONTENT_WIDTH
 import samtak.spjall.ui.Palette
@@ -83,6 +84,8 @@ internal fun CommunityPanes(
     community: Community,
     members: List<CommunityMember>,
     modifier: Modifier = Modifier,
+    featured: List<Post> = emptyList(),
+    onOpen: (String) -> Unit = {},
     feed: @Composable (Modifier) -> Unit,
 ) {
     val navigator = rememberSupportingPaneScaffoldNavigator<Nothing>(scaffoldDirective = sideBySide())
@@ -97,7 +100,9 @@ internal fun CommunityPanes(
                 }
             }
         },
-        supportingPane = { AnimatedPane { CommunityAside(community, members, Modifier.fillMaxHeight()) } },
+        supportingPane = {
+            AnimatedPane { CommunityAside(community, members, Modifier.fillMaxHeight(), featured, onOpen) }
+        },
     )
 }
 
@@ -111,6 +116,8 @@ internal fun CommunityAside(
     community: Community,
     members: List<CommunityMember>,
     modifier: Modifier = Modifier,
+    featured: List<Post> = emptyList(),
+    onOpen: (String) -> Unit = {},
 ) {
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp).testTag(COMMUNITY_ASIDE),
@@ -122,6 +129,7 @@ internal fun CommunityAside(
             color = Palette.fg,
             modifier = Modifier.semantics { heading() },
         )
+        if (featured.isNotEmpty()) FeaturedList(featured, onOpen)
         AboutFacts(community, members)
         if (members.isNotEmpty()) {
             Text(

@@ -159,6 +159,7 @@ private fun ManageDialog(
                         },
                     )
                 }
+                if (community.anonymousPosts) AnonymousQueueButton(community, actions, onDismiss)
                 if (community.role == CommunityRole.OWNER) OwnerTools(busy, onEdit, onMembers, onDelete)
                 if (community.moderates) {
                     TextButton(onClick = onLog, enabled = !busy) {
@@ -170,6 +171,29 @@ private fun ManageDialog(
         confirmButton = {},
         dismissButton = { CancelButton(onDismiss) },
     )
+}
+
+@Composable
+private fun AnonymousQueueButton(
+    community: Community,
+    actions: CommunityActions,
+    onDismiss: () -> Unit,
+) {
+    val queued = community.pendingAnonymous.toInt()
+    TextButton(
+        onClick = {
+            onDismiss()
+            actions.anonymousQueue()
+        },
+    ) {
+        Text(
+            if (queued > 0) {
+                pluralStringResource(R.plurals.anonymous_queue_waiting, queued, queued)
+            } else {
+                stringResource(R.string.anonymous_queue_title)
+            },
+        )
+    }
 }
 
 @Composable

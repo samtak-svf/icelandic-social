@@ -44,6 +44,8 @@ class ReportsViewModel(
         val reasons: Map<String, String> = emptyMap(),
         val loaded: Boolean = false,
         val busy: Boolean = false,
+        /** The authors a moderator asked for, by the anonymous post's id; an empty name is an account without one. */
+        val revealed: Map<String, String> = emptyMap(),
         /** The last action was recorded. */
         val done: Boolean = false,
         val problem: Problem? = null,
@@ -120,6 +122,18 @@ class ReportsViewModel(
             _state.update { it.copy(reasons = it.reasons - report.reportId) }
             reload()
             _state.update { it.copy(done = true) }
+        }
+    }
+
+    /** Asks for the author of the anonymous post a report names (the log records who asked, 0091). */
+    fun revealAuthor(postId: String) {
+        viewModelScope.launch {
+            try {
+                val author = withContext(io) { social.revealAuthor(postId) }
+                _state.update { it.copy(revealed = it.revealed + (postId to author.name.orEmpty())) }
+            } catch (e: CoreException) {
+                _state.update { it.copy(problem = e.problem()) }
+            }
         }
     }
 

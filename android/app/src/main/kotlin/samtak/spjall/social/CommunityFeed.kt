@@ -1,12 +1,16 @@
 package samtak.spjall.social
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -21,16 +25,20 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
+import samtak.spjall.core.Post
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
+import samtak.spjall.ui.FeaturedLayout
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
+import samtak.spjall.ui.currentLayout
 
 /**
  * The community's feed: the box to write a post in for a member who may, then the posts newest first, each
  * reportable, openable and (this account's own) deletable through the callbacks.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun Feed(
     modifier: Modifier,
@@ -40,6 +48,8 @@ internal fun Feed(
     composing: Boolean,
     callbacks: FeedCallbacks,
 ) {
+    val shown = state.shownTab()
+    val strip = currentLayout().featured == FeaturedLayout.STRIP
     LazyColumn(
         modifier = modifier,
         state = listState,
@@ -51,40 +61,84 @@ internal fun Feed(
             item(key = "about") {
                 About(community, state, actions, callbacks.onManage, callbacks.onInfo)
             }
-        }
-        if (state.writes) {
-            item(key = "composer") { ComposerPillOrBox(state, actions, composing, callbacks.onCompose) }
-        }
-        if (state.loaded && state.community?.reads == true && state.posts.isEmpty()) {
-            val emptyText =
-                if (state.searchQuery.isNotBlank()) R.string.community_search_empty else R.string.posts_empty
-            item(key = "empty") { Muted(stringResource(emptyText)) }
-        }
-        itemsIndexed(state.posts, key = { _, item -> item.postId }) { index, post ->
-            PostCard(
-                post = post,
-                reacting = post.postId in state.reacting,
-                reported = post.postId in state.reported,
-                callbacks =
-                    PostCardCallbacks(
-                        onReact = { actions.react(post.postId, it) },
-                        onReport = { callbacks.onReport(post.postId) },
-                        onOpen = { actions.open(post.postId) },
-                        onComment = { actions.comment(post.postId) },
-                        onDelete = { callbacks.onDelete(post.postId) }.takeIf { post.mine },
-                        onPin =
-                            { pinned: Boolean -> actions.pin(post.postId, pinned) }.takeIf {
-                                state.community?.moderates ==
-                                    true
-                            },
-                        onSendToConversation = { actions.sendToConversation(post.postId) },
-                    ),
-            )
-            if (index == state.posts.lastIndex &&
-                state.next != null
-            ) {
-                LaunchedEffect(state.next) { actions.more() }
+            if (community.reads) {
+                stickyHeader(key = "tabs") {
+                    CommunityTabRow(state.visibleTabs(), shown, actions::selectTab)
+                }
             }
+        }
+        when (shown) {
+            CommunityTab.DISCUSSION -> discussionTab(state, actions, composing, strip, callbacks)
+            CommunityTab.FEATURED -> postItems(state, state.featured, actions, callbacks, "featured")
+            CommunityTab.IMAGES -> imagesTab(state, actions)
+            CommunityTab.MEMBERS ->
+                items(state.members, key = { "member-${it.accountId}" }) { CommunityMemberRow(it) }
+            CommunityTab.ABOUT ->
+                state.community?.let { community ->
+                    item(key = "about-facts") {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            AboutFacts(community, state.members)
+                        }
+                    }
+                }
+        }
+    }
+}
+
+/** Umræða: the composer, the featured strip (compact and medium windows), then the posts newest first. */
+private fun LazyListScope.discussionTab(
+    state: CommunityViewModel.State,
+    actions: CommunityActions,
+    composing: Boolean,
+    strip: Boolean,
+    callbacks: FeedCallbacks,
+) {
+    if (state.writes) {
+        item(key = "composer") { ComposerPillOrBox(state, actions, composing, callbacks.onCompose) }
+    }
+    if (state.featured.isNotEmpty() && strip) {
+        item(key = "featured-strip") { FeaturedStrip(state.featured, actions::open) }
+    }
+    if (state.loaded && state.community?.reads == true && state.posts.isEmpty()) {
+        val emptyText =
+            if (state.searchQuery.isNotBlank()) R.string.community_search_empty else R.string.posts_empty
+        item(key = "empty") { Muted(stringResource(emptyText)) }
+    }
+    postItems(state, state.posts, actions, callbacks, "post", paged = true)
+}
+
+/** [posts] as cards; the feed asks for its next page when its last card is drawn. */
+private fun LazyListScope.postItems(
+    state: CommunityViewModel.State,
+    posts: List<Post>,
+    actions: CommunityActions,
+    callbacks: FeedCallbacks,
+    prefix: String,
+    paged: Boolean = false,
+) {
+    val moderates = state.community?.moderates == true
+    itemsIndexed(posts, key = { _, item -> "$prefix-${item.postId}" }) { index, post ->
+        PostCard(
+            post = post,
+            reacting = post.postId in state.reacting,
+            reported = post.postId in state.reported,
+            callbacks =
+                PostCardCallbacks(
+                    onReact = { actions.react(post.postId, it) },
+                    onReport = { callbacks.onReport(post.postId) },
+                    onOpen = { actions.open(post.postId) },
+                    onComment = { actions.comment(post.postId) },
+                    onDelete = { callbacks.onDelete(post.postId) }.takeIf { post.mine },
+                    onPin = { pinned: Boolean -> actions.pin(post.postId, pinned) }.takeIf { moderates },
+                    onSendToConversation = { actions.sendToConversation(post.postId) },
+                    poll = actions.callbacksFor(post.postId, mayClose = post.mine || moderates),
+                    answering = post.postId in state.answering,
+                    onReveal = { actions.revealAuthor(post.postId) }.takeIf { moderates },
+                    revealed = state.revealed[post.postId],
+                ),
+        )
+        if (paged && index == posts.lastIndex && state.next != null) {
+            LaunchedEffect(state.next) { actions.more() }
         }
     }
 }
@@ -143,7 +197,27 @@ private fun PostComposer(
         onText = actions::draft,
         onSend = actions::publish,
         ready = state.postable,
-    ) { ImagesPicked(state, actions) }
+    ) { ComposerExtras(state, actions) }
+}
+
+/** What goes with the post's text: its images or its poll, and the anonymous switch where the community allows it. */
+@Composable
+private fun ComposerExtras(
+    state: CommunityViewModel.State,
+    actions: CommunityActions,
+) {
+    val poll = state.poll
+    if (poll != null) PollFields(poll, actions) else ImagesPicked(state, actions)
+    if (state.images.isEmpty()) {
+        OutlinedButton(
+            onClick = actions::togglePoll,
+            enabled = !state.publishing,
+            modifier = Modifier.heightIn(min = 44.dp),
+        ) { Text(stringResource(R.string.composer_poll)) }
+    }
+    if (state.community?.anonymousPosts == true) {
+        AnonymousSwitch(state.anonymous, !state.publishing, actions::setAnonymous)
+    }
 }
 
 /** The images picked for the post, the button that adds one, and why the last one was not taken. */

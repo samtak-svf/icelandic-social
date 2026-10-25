@@ -63,6 +63,9 @@ fun NavGraphBuilder.socialScreens(
     screen("${SocialRoutes.REQUESTS}/{id}") { entry ->
         entry.arguments?.getString("id")?.let { JoinRequests(it, social, nav) }
     }
+    screen("${SocialRoutes.ANONYMOUS}/{id}") { entry ->
+        entry.arguments?.getString("id")?.let { AnonymousQueue(it, social, nav) }
+    }
 }
 
 @Composable
@@ -91,6 +94,15 @@ private fun Communities(
                 postId: String,
                 kind: ReactionKind,
             ) = model.react(postId, kind)
+
+            override fun vote(
+                postId: String,
+                optionId: String,
+            ) = model.vote(postId, optionId)
+
+            override fun withdrawVote(postId: String) = model.withdrawVote(postId)
+
+            override fun closePoll(postId: String) = model.closePoll(postId)
 
             override fun report(
                 postId: String,
@@ -210,6 +222,7 @@ private fun CommunityEntry(
             ManageSlots(
                 requests = { JoinRequestsPane(id, social) },
                 reports = { ReportsPane(id, social) },
+                anonymous = { AnonymousQueuePane(id, social) },
             ),
         actions =
             object : CommunityActions {
@@ -233,6 +246,38 @@ private fun CommunityEntry(
                 override fun reports() = nav.navigate(SocialRoutes.reports(id))
 
                 override fun requests() = nav.navigate(SocialRoutes.requests(id))
+
+                override fun anonymousQueue() = nav.navigate(SocialRoutes.anonymous(id))
+
+                override fun selectTab(tab: CommunityTab) = model.selectTab(tab)
+
+                override fun moreGallery() = model.moreGallery()
+
+                override fun togglePoll() = model.togglePoll()
+
+                override fun pollOption(
+                    index: Int,
+                    text: String,
+                ) = model.pollOption(index, text)
+
+                override fun addPollOption() = model.addPollOption()
+
+                override fun removePollOption(index: Int) = model.removePollOption(index)
+
+                override fun setAnonymous(on: Boolean) = model.setAnonymous(on)
+
+                override fun setAnonymousPosts(on: Boolean) = model.setAnonymousPosts(on)
+
+                override fun vote(
+                    postId: String,
+                    optionId: String,
+                ) = model.vote(postId, optionId)
+
+                override fun withdrawVote(postId: String) = model.withdrawVote(postId)
+
+                override fun closePoll(postId: String) = model.closePoll(postId)
+
+                override fun revealAuthor(postId: String) = model.revealAuthor(postId)
 
                 override fun onSearchQuery(query: String) = model.onSearchQuery(query)
 
@@ -365,6 +410,12 @@ private fun PostEntry(
         actions =
             object : PostActions {
                 override fun community(communityId: String) = nav.leavePostForCommunity(communityId)
+
+                override fun vote(optionId: String) = model.vote(optionId)
+
+                override fun withdrawVote() = model.withdrawVote()
+
+                override fun closePoll() = model.closePoll()
 
                 override fun deletePost() = model.deletePost()
 

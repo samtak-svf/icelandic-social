@@ -20,6 +20,8 @@ import samtak.spjall.account.FakeAccount
 import samtak.spjall.account.Problem
 import samtak.spjall.account.unreachable
 import samtak.spjall.core.CommunityRole
+import samtak.spjall.core.Poll
+import samtak.spjall.core.PollOption
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommunitiesViewModelTest {
@@ -173,4 +175,36 @@ class CommunitiesViewModelTest {
                     .unread,
             )
         }
+
+    @Test
+    fun aPollInTheHubFeedIsVotedWithdrawnAndClosed() =
+        runTest(dispatcher) {
+            social.communities["k1"] = community("k1", role = CommunityRole.MEMBER)
+            social.posts["k1"] = mutableListOf(post("p1", communityId = "k1", poll = poll(), own = true))
+            val model = model()
+            model.vote("p1", "o1")
+            advanceUntilIdle()
+            assertEquals("o1", model.pollOf().mine)
+            assertTrue(model.answering().isEmpty())
+            model.withdrawVote("p1")
+            advanceUntilIdle()
+            assertNull(model.pollOf().mine)
+            model.closePoll("p1")
+            advanceUntilIdle()
+            assertTrue(model.pollOf().closed)
+            model.vote("p1", "o0")
+            advanceUntilIdle()
+            assertEquals(Problem.PollClosed, model.state.value.problem)
+            assertTrue(model.answering().isEmpty())
+        }
 }
+
+private fun CommunitiesViewModel.answering() = state.value.answering
+
+private fun CommunitiesViewModel.pollOf(): Poll {
+    val feed = state.value.feed
+    return feed.single().poll!!
+}
+
+private fun poll(closed: Boolean = false) =
+    Poll(listOf(PollOption("o0", "Já", 0uL), PollOption("o1", "Nei", 0uL)), 0uL, null, closed)

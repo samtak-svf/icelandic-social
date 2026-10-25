@@ -544,23 +544,4 @@ class CommunityViewModelTest {
             advanceUntilIdle()
             assertTrue("removeCommunityAvatar k1" in social.calls)
         }
-
-    @Test
-    fun pinningAPostCallsTheServerAndTheFeedIsReadAgainWithItFirst() =
-        runTest(dispatcher) {
-            social.communities["k1"] = community("k1", role = CommunityRole.OWNER)
-            social.posts["k1"] = mutableListOf(post("p1"), post("p2"))
-            val model = model()
-            model.pin("p2", true)
-            advanceUntilIdle()
-            assertTrue("pinPost k1 p2" in social.calls)
-            assertEquals(
-                listOf("p2", "p1"),
-                model.state.value.posts
-                    .map { it.postId },
-            )
-            model.pin("p2", false)
-            advanceUntilIdle()
-            assertTrue("unpinPost k1 p2" in social.calls)
-        }
 }

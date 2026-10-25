@@ -63,6 +63,15 @@ class CommunitiesScreenTest {
             override fun moreFeed() = Unit
 
             override fun retry() = Unit
+
+            override fun vote(
+                postId: String,
+                optionId: String,
+            ) = Unit
+
+            override fun withdrawVote(postId: String) = Unit
+
+            override fun closePoll(postId: String) = Unit
         }
 
     private fun community() =

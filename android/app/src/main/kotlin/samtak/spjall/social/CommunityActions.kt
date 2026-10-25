@@ -8,7 +8,7 @@ import samtak.spjall.core.ReportTarget
 
 /** What [CommunityScreen] can ask for. */
 @Suppress("TooManyFunctions")
-interface CommunityActions {
+interface CommunityActions : PollActions {
     fun back()
 
     fun join()
@@ -26,6 +26,36 @@ interface CommunityActions {
 
     /** The join requests that wait, for the owner and moderators. */
     fun requests()
+
+    /** The anonymous posts that wait for approval (0091), for the owner and moderators. */
+    fun anonymousQueue()
+
+    /** Shows a tab of the community (0089). */
+    fun selectTab(tab: CommunityTab)
+
+    /** The end of Myndir came into view: the next page of pictures. */
+    fun moreGallery()
+
+    /** Turns the post being written into a poll (0090), or back. */
+    fun togglePoll()
+
+    fun pollOption(
+        index: Int,
+        text: String,
+    )
+
+    fun addPollOption()
+
+    fun removePollOption(index: Int)
+
+    /** Whether the post being written goes without the author's name (0091). */
+    fun setAnonymous(on: Boolean)
+
+    /** The owner allows or stops anonymous posts in the community (0091). */
+    fun setAnonymousPosts(on: Boolean)
+
+    /** Asks for the author of an anonymous post; the community's log records who asked. */
+    fun revealAuthor(postId: String)
 
     fun onSearchQuery(query: String)
 

@@ -58,6 +58,19 @@ class ReportsViewModelTest {
         }
 
     @Test
+    fun theAuthorOfAnAnonymousPostIsRevealedFromItsReport() =
+        runTest(dispatcher) {
+            social.reports["k1"] = mutableListOf(report("r1", ReportTargetKind.POST, "p1", anonymous = true))
+            val model = model()
+            val reports = model.state.value.reports
+            assertTrue(reports[0].targetAnonymous)
+            model.revealAuthor("p1")
+            advanceUntilIdle()
+            assertTrue("revealAuthor p1" in social.calls)
+            assertEquals("Anna", model.state.value.revealed["p1"])
+        }
+
+    @Test
     fun nothingIsDoneWithoutAReason() =
         runTest(dispatcher) {
             val model = model()

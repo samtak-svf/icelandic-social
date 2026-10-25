@@ -26,5 +26,8 @@ interface ReportsActions {
         period: ReportsViewModel.MutePeriod,
     )
 
+    /** Asks for the author of the anonymous post a report names, once the moderator confirmed. */
+    fun revealAuthor(postId: String)
+
     fun retry()
 }

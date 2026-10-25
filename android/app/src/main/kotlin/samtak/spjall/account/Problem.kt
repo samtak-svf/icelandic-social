@@ -40,6 +40,15 @@ sealed interface Problem {
     /** A moderator declined this account's join request, which it may repeat after 30 days (`join_declined`). */
     data object JoinDeclined : Problem
 
+    /** The poll was closed while this account voted (`poll_closed`, 0090): trying again cannot help. */
+    data object PollClosed : Problem
+
+    /** Three posts are already featured (`pin_limit`, 0088): unpin one first, trying again cannot help. */
+    data object PinFull : Problem
+
+    /** The community stopped allowing anonymous posts meanwhile (`anonymous_off`, 0091). */
+    data object AnonymousOff : Problem
+
     /** Anything else. */
     data class Generic(
         override val requestId: String? = null,
@@ -51,13 +60,21 @@ fun Throwable.problem(): Problem =
     when {
         this is CoreException.Unreachable -> Problem.Unreachable
         this is CoreException.Refused && code == "identity_taken" -> Problem.IdentityTaken(requestId)
-        this is CoreException.Refused && code == "not_permitted" -> Problem.NotPermitted
-        this is CoreException.Refused && code == "not_found" -> Problem.NotFound
-        this is CoreException.Refused && code == "join_declined" -> Problem.JoinDeclined
-        this is CoreException.Refused -> Problem.Generic(requestId)
+        this is CoreException.Refused -> REFUSALS[code] ?: Problem.Generic(requestId)
         this is CoreException -> Problem.Generic(code = localCode())
         else -> Problem.Generic()
     }
+
+/** The refusals that carry no request id of their own: the server's code, and what it means to the reader. */
+private val REFUSALS: Map<String?, Problem> =
+    mapOf(
+        "not_permitted" to Problem.NotPermitted,
+        "not_found" to Problem.NotFound,
+        "join_declined" to Problem.JoinDeclined,
+        "poll_closed" to Problem.PollClosed,
+        "anonymous_off" to Problem.AnonymousOff,
+        "pin_limit" to Problem.PinFull,
+    )
 
 /**
  * The core makes the code (0049). A JVM unit test has no native core and a fake account throws

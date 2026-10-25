@@ -4657,6 +4657,138 @@
         }
       }
     },
+    "composer_poll": {
+      "comment": "Button in the post form that turns the post into a poll (decision 0090).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Könnun"
+          }
+        }
+      }
+    },
+    "composer_poll_option": {
+      "comment": "Placeholder of the n-th option field of a poll being written (decision 0090).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Valkostur %1$lld"
+          }
+        }
+      }
+    },
+    "composer_poll_add_option": {
+      "comment": "Button that adds an option field to a poll being written, up to six (decision 0090).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bæta við valkosti"
+          }
+        }
+      }
+    },
+    "composer_poll_remove_option": {
+      "comment": "Accessible name of the button that removes an option field, down to two (decision 0090).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjarlægja valkost"
+          }
+        }
+      }
+    },
+    "poll_votes": {
+      "comment": "How many votes a poll has, always shown (decision 0090).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld atkvæði"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld atkvæði"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "poll_withdraw": {
+      "comment": "Button that withdraws the reader's vote while a poll is open (decision 0090).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Draga atkvæði til baka"
+          }
+        }
+      }
+    },
+    "poll_close": {
+      "comment": "Menu item that closes a poll, for its author and the moderators (decision 0090).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loka könnun"
+          }
+        }
+      }
+    },
+    "poll_closed": {
+      "comment": "Marker on a poll that takes no more votes and shows its final results (decision 0090).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Könnun lokið"
+          }
+        }
+      }
+    },
+    "poll_closed_problem": {
+      "comment": "Told when a vote is sent to a poll that was closed meanwhile (decision 0090).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Könnuninni er lokið."
+          }
+        }
+      }
+    },
+    "poll_your_choice": {
+      "comment": "Accessible mark on the option the reader voted for (decision 0090).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þitt val"
+          }
+        }
+      }
+    },
     "moderation_log_poll_closed": {
       "comment": "Entry in the moderation log: a moderator closed a poll (decision 0090).",
       "extractionState": "manual",
@@ -5221,6 +5353,54 @@
         }
       }
     },
+    "composer_anonymous": {
+      "comment": "The composer's switch to post without the author's name; shown only in a community that allows it (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Birta nafnlaust"
+          }
+        }
+      }
+    },
+    "composer_anonymous_hint": {
+      "comment": "Explains the anonymous switch in the composer (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stjórnandi fer yfir færsluna áður en hún birtist. Stjórnandi getur afhjúpað höfundinn."
+          }
+        }
+      }
+    },
+    "community_anonymous_posts": {
+      "comment": "The owner's switch in Breyta samfélagi that lets members post without their name (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nafnlausar færslur"
+          }
+        }
+      }
+    },
+    "community_anonymous_posts_hint": {
+      "comment": "Explains the community switch for anonymous posts (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Færslur eru yfirfarnar af stjórnanda áður en þær birtast. Stjórnandi getur afhjúpað höfundinn."
+          }
+        }
+      }
+    },
     "post_anonymous_author": {
       "comment": "The byline of an anonymous post, for everyone but its author (decision 0091).",
       "extractionState": "manual",
@@ -5253,6 +5433,126 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bíður samþykkis stjórnanda."
+          }
+        }
+      }
+    },
+    "anonymous_queue_title": {
+      "comment": "Title of the page and link where moderators review anonymous posts (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nafnlausar færslur"
+          }
+        }
+      }
+    },
+    "anonymous_queue_waiting": {
+      "comment": "How many anonymous posts wait, as the link to the list (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld nafnlaus færsla bíður"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld nafnlausar færslur bíða"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "anonymous_queue_empty": {
+      "comment": "The anonymous queue when it is empty (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engin nafnlaus færsla bíður."
+          }
+        }
+      }
+    },
+    "anonymous_approve": {
+      "comment": "Approves a waiting anonymous post (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Birta"
+          }
+        }
+      }
+    },
+    "anonymous_decline": {
+      "comment": "Declines a waiting anonymous post; the author is told (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hafna"
+          }
+        }
+      }
+    },
+    "anonymous_reveal": {
+      "comment": "A moderator asks for the author of an anonymous post; the community's log records it (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sýna höfund"
+          }
+        }
+      }
+    },
+    "anonymous_reveal_confirm": {
+      "comment": "Confirmation before revealing the author of an anonymous post (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sýna höfund? Aðgerðin er skráð í aðgerðaskrá samfélagsins."
+          }
+        }
+      }
+    },
+    "anonymous_revealed": {
+      "comment": "The author of an anonymous post, shown to the moderator who revealed it (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Höfundur: %1$@"
+          }
+        }
+      }
+    },
+    "problem_anonymous_off": {
+      "comment": "Posting anonymously in a community whose switch is off (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þetta samfélag leyfir ekki nafnlausar færslur."
           }
         }
       }

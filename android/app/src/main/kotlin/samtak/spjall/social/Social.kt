@@ -1,11 +1,13 @@
 package samtak.spjall.social
 
+import samtak.spjall.core.Author
 import samtak.spjall.core.Card
 import samtak.spjall.core.CardRef
 import samtak.spjall.core.Comment
 import samtak.spjall.core.CommentPage
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
+import samtak.spjall.core.CommunityImagePage
 import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.CommunityPage
 import samtak.spjall.core.CoreClient
@@ -121,6 +123,56 @@ interface Social {
         body: String,
         media: List<String>,
     ): Post
+
+    /** [createPost] with a poll (2 to 6 option texts) or without the author's name (0090, 0091). */
+    fun createPostWith(
+        communityId: String,
+        body: String,
+        media: List<String>,
+        anonymous: Boolean,
+        poll: List<String>?,
+    ): Post
+
+    /** Votes for an option of a poll, or changes the vote to it. */
+    fun votePoll(
+        postId: String,
+        optionId: String,
+    ): Post
+
+    /** Takes this account's vote back. */
+    fun withdrawVote(postId: String): Post
+
+    /** Closes a poll (its author or a moderator). */
+    fun closePoll(postId: String): Post
+
+    /** A page of the community's pictures, newest first (0089); [cursor] is the `next` of the page before. */
+    fun communityImages(
+        communityId: String,
+        cursor: String?,
+        limit: UInt,
+    ): CommunityImagePage
+
+    /** Lets members post without their name, or stops it (the owner's, 0091). */
+    fun setAnonymousPosts(
+        communityId: String,
+        on: Boolean,
+    ): Community
+
+    /** The anonymous posts that wait for a moderator, newest first (0091). */
+    fun pendingAnonymousPosts(
+        communityId: String,
+        before: String?,
+        limit: UInt,
+    ): PostPage
+
+    /** Publishes a waiting anonymous post. */
+    fun approveAnonymousPost(postId: String)
+
+    /** Deletes a waiting anonymous post; its author is told. */
+    fun declineAnonymousPost(postId: String)
+
+    /** Who wrote an anonymous post (a moderator's; the log records who asked). */
+    fun revealAuthor(postId: String): Author
 
     /** Uploads the image file at [path] for a post in the community; its media id goes in [createPost]. */
     fun uploadPostImage(
@@ -389,6 +441,46 @@ class CoreSocial(
         body: String,
         media: List<String>,
     ) = client.createPost(communityId, body, media)
+
+    override fun createPostWith(
+        communityId: String,
+        body: String,
+        media: List<String>,
+        anonymous: Boolean,
+        poll: List<String>?,
+    ) = client.createPostWith(communityId, body, media, anonymous, poll)
+
+    override fun votePoll(
+        postId: String,
+        optionId: String,
+    ) = client.votePoll(postId, optionId)
+
+    override fun withdrawVote(postId: String) = client.withdrawVote(postId)
+
+    override fun closePoll(postId: String) = client.closePoll(postId)
+
+    override fun communityImages(
+        communityId: String,
+        cursor: String?,
+        limit: UInt,
+    ) = client.communityImages(communityId, cursor, limit)
+
+    override fun setAnonymousPosts(
+        communityId: String,
+        on: Boolean,
+    ) = client.setAnonymousPosts(communityId, on)
+
+    override fun pendingAnonymousPosts(
+        communityId: String,
+        before: String?,
+        limit: UInt,
+    ) = client.pendingAnonymousPosts(communityId, before, limit)
+
+    override fun approveAnonymousPost(postId: String) = client.approveAnonymousPost(postId)
+
+    override fun declineAnonymousPost(postId: String) = client.declineAnonymousPost(postId)
+
+    override fun revealAuthor(postId: String) = client.revealAuthor(postId)
 
     override fun uploadPostImage(
         communityId: String,

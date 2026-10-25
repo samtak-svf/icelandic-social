@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Author
 import samtak.spjall.core.ModerationState
+import samtak.spjall.core.Post
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
 import samtak.spjall.ui.Palette
@@ -80,20 +81,13 @@ fun PostScreen(
                 state.problem?.let { problem -> item(key = "problem") { ProblemCard(problem) { actions.retry() } } }
                 if (post != null) {
                     item(key = "post") {
-                        PostCard(
+                        PostItem(
                             post = post,
-                            reacting = state.reacting,
-                            reported = post.postId in state.reported,
-                            callbacks =
-                                PostCardCallbacks(
-                                    onReact = actions::react,
-                                    onReport = { reporting = "$POST:${post.postId}" },
-                                    onOpen = null,
-                                    onComment = { focus.requestFocus() },
-                                    onDelete = { deleting = "$POST:${post.postId}" }.takeIf { post.mine },
-                                    onPin = actions::pin.takeIf { state.moderates },
-                                    onSendToConversation = { actions.sendToConversation(post.postId) },
-                                ),
+                            state = state,
+                            actions = actions,
+                            onReport = { reporting = "$POST:${post.postId}" },
+                            onComment = { focus.requestFocus() },
+                            onDelete = { deleting = "$POST:${post.postId}" },
                         )
                     }
                 }
@@ -107,6 +101,40 @@ fun PostScreen(
         }
     }
     Dialogs(target, deleting?.let(::target), actions, onReported = { reporting = null }) { deleting = null }
+}
+
+/** The post itself at the head of the screen, with its poll when it is one. */
+@Composable
+private fun PostItem(
+    post: Post,
+    state: PostViewModel.State,
+    actions: PostActions,
+    onReport: () -> Unit,
+    onComment: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    PostCard(
+        post = post,
+        reacting = state.reacting,
+        reported = post.postId in state.reported,
+        callbacks =
+            PostCardCallbacks(
+                onReact = actions::react,
+                onReport = onReport,
+                onOpen = null,
+                onComment = onComment,
+                onDelete = onDelete.takeIf { post.mine },
+                onPin = actions::pin.takeIf { state.moderates },
+                onSendToConversation = { actions.sendToConversation(post.postId) },
+                poll =
+                    PollCallbacks(
+                        onVote = actions::vote,
+                        onWithdraw = actions::withdrawVote,
+                        onClose = actions::closePoll.takeIf { post.mine || state.moderates },
+                    ),
+                answering = state.answering,
+            ),
+    )
 }
 
 /** The top-level comments oldest first, each with its replies indented under it; asks for the next page at the end. */

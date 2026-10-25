@@ -5,7 +5,7 @@ import samtak.spjall.core.ReportReason
 
 /** What [CommunitiesScreen] can ask for. */
 @Suppress("TooManyFunctions")
-interface CommunitiesActions {
+interface CommunitiesActions : PollActions {
     fun open(communityId: String)
 
     fun openPost(postId: String)
