@@ -1,6 +1,6 @@
 # 0092. On an expanded screen a featured post is shown in the aside only
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented (#212)
 - Date: 2026-10-25
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0088](0088-a-community-features-several-posts.md) (the feed is complete on compact
