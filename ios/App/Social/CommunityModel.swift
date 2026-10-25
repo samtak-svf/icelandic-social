@@ -362,9 +362,6 @@ final class CommunityModel {
         }
     }
 
-    /// Renames the community, changes its description or makes an open one private; its owner alone may, and a
-    /// private one never becomes open again (decisions 0063, 0079). False when a field is empty or too long.
-    @discardableResult
     /// Lets the community's members write anonymous posts, or stops them (decision 0091). The owner alone decides.
     func setAnonymous(_ on: Bool) async {
         guard owns else { return }
@@ -375,6 +372,9 @@ final class CommunityModel {
         }
     }
 
+    /// Renames the community, changes its description or makes an open one private; its owner alone may, and a
+    /// private one never becomes open again (decisions 0063, 0079). False when a field is empty or too long.
+    @discardableResult
     func update(name: String, description: String, audience: CommunityAudience) async -> Bool {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let description = description.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -786,22 +786,12 @@ final class CommunityModel {
 
     private func pollAction(_ postId: String, _ act: @escaping @Sendable () throws -> Post) async {
         guard writes, !voting.contains(postId) else { return }
-        let social = social
         voting.insert(postId)
         problem = nil
-        do {
-            let post = try await offMain(act)
-            replace(post)
-            failed = nil
-        } catch {
-            if case CoreError.Refused(_, "poll_closed", _) = error,
-                let fresh = try? await offMain({ try social.post(postId) })
-            {
-                replace(fresh)
-            }
-            failed = nil
-            problem = Problem(error)
-        }
+        let outcome = await runPollAction(social, postId: postId, act)
+        if let post = outcome.post { replace(post) }
+        failed = nil
+        problem = outcome.problem
         voting.remove(postId)
     }
 
