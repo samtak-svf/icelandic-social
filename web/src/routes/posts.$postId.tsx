@@ -17,15 +17,9 @@ import { relativeTime } from "../lib/relative-time.ts";
 import { commentThreads, isTombstone } from "../social/comments.ts";
 import { CommentImage } from "../social/comment-image.tsx";
 import { CommentComposer } from "../social/composer.tsx";
+import { DeleteButton } from "../social/delete-button.tsx";
 import { outcome, useLoad, when } from "../social/outcome.ts";
-import {
-  AuthorName,
-  authorName,
-  DeleteButton,
-  PostView,
-  StateMark,
-  useMine,
-} from "../social/post.tsx";
+import { AuthorName, authorName, PostView, StateMark, useMine } from "../social/post.tsx";
 import { moderatesAs, RoleBadge } from "../social/roles.tsx";
 import { ReportButton } from "../social/report.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
@@ -127,7 +121,7 @@ function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () 
                 />
                 {thread.replies.length > 0 && (
                   <>
-                    <p className="text-sm text-muted-fg">
+                    <p className="ml-4 pl-4 text-sm text-muted-fg">
                       {strings.comment_replies_count({ count: thread.replies.length })}
                     </p>
                     <ul className="ml-4 flex flex-col gap-3 border-l border-border pl-4">
@@ -209,8 +203,8 @@ function CommentView({
       />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <StateMark state={comment.state} />
-        <div className="relative flex flex-col gap-1 rounded-2xl bg-muted px-3 py-2">
-          <span className="flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold">
+        <div className="flex w-fit max-w-full flex-col gap-1 rounded-2xl bg-muted px-3 py-2">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold">
             <AuthorName author={comment.author} />
             <RoleBadge role={comment.author.role} />
           </span>
@@ -218,26 +212,19 @@ function CommentView({
           {comment.media[0] !== undefined && (
             <CommentImage postId={comment.postId} media={comment.media[0]} />
           )}
-          {like.likes > 0 && (
-            <span className="absolute -bottom-3 right-2 rounded-full border border-border bg-bg px-2 text-xs">
-              <span aria-hidden="true">👍</span> {like.likes}
-            </span>
-          )}
         </div>
-        <div className="flex flex-wrap items-center gap-x-2 px-3 text-sm text-muted-fg">
+        <div className="flex flex-wrap items-center gap-x-1 px-1 text-sm text-muted-fg">
           <time
+            className="px-2"
             dateTime={new Date(comment.createdAt).toISOString()}
             title={when(comment.createdAt)}
           >
             {relativeTime(comment.createdAt)}
           </time>
           {onReply !== null && (
-            <>
-              <span aria-hidden="true">·</span>
-              <Button className="text-sm" onClick={onReply}>
-                {strings.comment_reply}
-              </Button>
-            </>
+            <Button tone="link" className="text-sm" onClick={onReply}>
+              {strings.comment_reply}
+            </Button>
           )}
           <LikeComment like={like} />
           <span className="ml-auto">
@@ -248,9 +235,10 @@ function CommentView({
                   outcome(deleteComment({ path: { commentId: comment.commentId } }), 204)
                 }
                 deleted={deleted}
+                tone="link"
               />
             ) : (
-              <ReportButton target={{ kind: "comment", id: comment.commentId }} />
+              <ReportButton tone="link" target={{ kind: "comment", id: comment.commentId }} />
             )}
           </span>
         </div>
@@ -287,8 +275,8 @@ function useCommentLike(comment: Comment): CommentLike {
 function LikeComment({ like }: Readonly<{ like: CommentLike }>) {
   return (
     <>
-      <span aria-hidden="true">·</span>
       <Button
+        tone="link"
         className={`text-sm ${like.liked ? "font-bold text-fg" : ""}`}
         aria-pressed={like.liked}
         disabled={like.busy}
@@ -296,6 +284,11 @@ function LikeComment({ like }: Readonly<{ like: CommentLike }>) {
       >
         {strings.comment_like}
       </Button>
+      {like.likes > 0 && (
+        <span>
+          <span aria-hidden="true">👍</span> {like.likes}
+        </span>
+      )}
     </>
   );
 }
