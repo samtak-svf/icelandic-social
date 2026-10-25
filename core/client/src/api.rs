@@ -1257,7 +1257,8 @@ pub enum Card {
         #[serde(rename = "ref")]
         reference: Ref,
         community: CardCommunity,
-        author: Author,
+        /// None on an anonymous post (0091).
+        author: Option<Author>,
         excerpt: String,
         image: Option<SocialMedia>,
         created_at: u64,

@@ -1105,7 +1105,8 @@ pub enum Card {
     Post {
         reference: CardRef,
         community: CardCommunity,
-        author: Author,
+        /// None on an anonymous post (0091).
+        author: Option<Author>,
         excerpt: String,
         image: Option<PostImage>,
         /// Unix milliseconds.
@@ -1146,7 +1147,7 @@ impl From<api::Card> for Card {
             } => Self::Post {
                 reference: reference.into(),
                 community: community.into(),
-                author: author.into(),
+                author: author.map(Into::into),
                 excerpt,
                 image: image.map(Into::into),
                 created_at,
