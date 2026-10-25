@@ -41,6 +41,30 @@ describe("workflow-guard", () => {
     expect(findInWorkflow("w.yml", job(`    runs-on: ${runsOn}\n`))).toEqual([]);
   });
 
+  it("keeps a job that reads a secret off the runners a variable names", () => {
+    const fork = "github.event.pull_request.head.repo.fork && '[\"ubuntu-latest\"]' || ";
+    const runsOn = `    runs-on: \${{ fromJSON(${fork}vars.RUNNER_LABELS || '["ubuntu-latest"]') }}\n`;
+    const secret = "    env:\n      TOKEN: ${{ secrets.API_TOKEN }}\n";
+    expect(findInWorkflow("w.yml", job(runsOn + secret)).map((p) => [p.line, p.rule])).toEqual([
+      [4, "secret-runner"],
+    ]);
+    // The secret before runs-on, and in the next job's scope only.
+    const other = `  y:\n${runsOn}`;
+    expect(findInWorkflow("w.yml", job(secret + runsOn)).map((p) => p.rule)).toEqual([
+      "secret-runner",
+    ]);
+    expect(findInWorkflow("w.yml", job(`    runs-on: ubuntu-latest\n${secret}`) + other)).toEqual(
+      [],
+    );
+  });
+
+  it("lets GITHUB_TOKEN and a hosted runner through", () => {
+    const fork = "github.event.pull_request.head.repo.fork && '[\"ubuntu-latest\"]' || ";
+    const runsOn = `    runs-on: \${{ fromJSON(${fork}vars.RUNNER_LABELS || '["ubuntu-latest"]') }}\n`;
+    const token = "    env:\n      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n";
+    expect(findInWorkflow("w.yml", job(runsOn + token))).toEqual([]);
+  });
+
   it("rejects pull_request_target, which runs fork code with the repo's secrets", () => {
     const text = "on:\n  pull_request_target:\njobs: {}\n";
     expect(findInWorkflow("w.yml", text).map((p) => p.rule)).toEqual(["trigger"]);

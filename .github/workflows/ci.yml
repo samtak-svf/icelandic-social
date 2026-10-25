@@ -68,5 +68,10 @@ jobs:
           RANGE: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || 'HEAD~1..HEAD' }}
         run: |
           set -euo pipefail
-          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz gitleaks
+          case "$RUNNER_OS-$RUNNER_ARCH" in
+            Linux-X64) asset=linux_x64 ;;
+            macOS-ARM64) asset=darwin_arm64 ;;
+            *) echo "::error::no gitleaks build for $RUNNER_OS-$RUNNER_ARCH"; exit 1 ;;
+          esac
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_${asset}.tar.gz" | tar -xz gitleaks
           ./gitleaks git --redact --verbose --config .gitleaks.toml --log-opts="$RANGE" .

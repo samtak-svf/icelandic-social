@@ -31,7 +31,9 @@ on:
 
 jobs:
   web:
-    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
+    # Port 8787 and the AVD are one per machine, so this job takes the lane of
+    # the single runner that holds them (EXCLUSIVE_RUNNER_LABELS, docs/testing.md).
+    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.EXCLUSIVE_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
