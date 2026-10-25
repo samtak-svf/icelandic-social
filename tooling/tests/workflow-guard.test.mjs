@@ -65,6 +65,15 @@ describe("workflow-guard", () => {
     expect(findInWorkflow("w.yml", job(runsOn + token))).toEqual([]);
   });
 
+  it("rejects nohup, which exits on a launchd runner instead of starting the command", () => {
+    const text = job("    steps:\n      - run: |\n          nohup pnpm exec cf dev > log 2>&1 &\n");
+    expect(findInWorkflow("w.yml", text).map((p) => [p.line, p.rule])).toEqual([[6, "nohup"]]);
+    const trap = job(
+      "    steps:\n      - run: (trap '' HUP; exec pnpm exec cf dev) > log 2>&1 &\n",
+    );
+    expect(findInWorkflow("w.yml", trap)).toEqual([]);
+  });
+
   it("rejects pull_request_target, which runs fork code with the repo's secrets", () => {
     const text = "on:\n  pull_request_target:\njobs: {}\n";
     expect(findInWorkflow("w.yml", text).map((p) => p.rule)).toEqual(["trigger"]);
