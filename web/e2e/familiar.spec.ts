@@ -71,6 +71,9 @@ test("a pinned community leads the list, and unpinning gives the place back", as
 test("a moderator pins a post to the top of the feed and takes it back", async ({ browser }) => {
   const owner = await person(browser, "Eigandi Nælingardóttir");
   const member = await person(browser, "Meðlimur Nælingarson");
+  // Below expanded the feed stays complete (0088); on an expanded window a
+  // featured post is in the aside only (0092, wide-community.spec.ts).
+  for (const page of [owner, member]) await page.setViewportSize({ width: 412, height: 800 });
   const community = await found(owner, "open");
   await join(member, community);
   await write(member, strings.post_compose, strings.post_publish, "Eldri pósturinn.");
