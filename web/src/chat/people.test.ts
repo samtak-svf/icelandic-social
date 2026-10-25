@@ -17,6 +17,7 @@ const conversation = (over: Partial<Conversation>): Conversation => ({
   id: "c",
   state: "active",
   name: null,
+  photo: null,
   members: [],
   last: null,
   unread: 0,
@@ -48,10 +49,11 @@ test("a conversation is titled by its name, else its members, else only you", ()
   expect(conversationTitle(conversation({}))).toBe(strings.conversation_alone_title);
 });
 
-test("members, timer and name items are cards in the thread; what someone said is not", () => {
+test("members, timer, name and photo items are cards in the thread; what someone said is not", () => {
   expect(isCard(item({ kind: "members", added: [], removed: [], devices: [] }))).toBe(true);
   expect(isCard(item({ kind: "timer", seconds: 60 }))).toBe(true);
   expect(isCard(item({ kind: "name", name: null }))).toBe(true);
+  expect(isCard(item({ kind: "photo", set: true }))).toBe(true);
   expect(isCard(item({ kind: "text", text: "hæ", replyTo: null }))).toBe(false);
   expect(isCard(item({ kind: "post", postId: "p" }))).toBe(false);
   expect(isCard(item({ kind: "deleted" }))).toBe(false);
@@ -108,6 +110,12 @@ test("every kind of item has a line in the list, never a post's text or a place"
   );
   expect(itemLine(item({ kind: "name", name: null }), true)).toBe(
     strings.name_cleared_card({ who: "Ása" }),
+  );
+  expect(itemLine(item({ kind: "photo", set: true }), true)).toBe(
+    strings.photo_set_card({ who: "Ása" }),
+  );
+  expect(itemLine(item({ kind: "photo", set: false }), true)).toBe(
+    strings.photo_cleared_card({ who: "Ása" }),
   );
 });
 
