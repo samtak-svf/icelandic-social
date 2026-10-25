@@ -11,14 +11,19 @@
 #   ios/scripts/test.sh --prepare   fetch the core when the lock changed, then xcodegen first
 #
 # SPJALL_DERIVED_DATA keeps the build outside the checkout on a Mac that is
-# reused, which is what makes the second run incremental. By default it is
-# ios/build, which a hosted runner throws away.
+# reused, which is what makes the second run incremental. Each checkout gets a
+# directory of its own under it: two worktrees on different cores that shared
+# one compiled each other's stale SpjallCore module ("cannot find
+# 'uniffi_spjall_core_checksum_…' in scope"). By default it is ios/build, which
+# a hosted runner throws away.
 set -euo pipefail
 
 IOS=$(cd "$(dirname "$0")/.." && pwd)
 ROOT=$(dirname "$IOS")
-DERIVED=${SPJALL_DERIVED_DATA:-build}
-LOG=${RUNNER_TEMP:-${TMPDIR:-/tmp}}/xcodebuild-test.log
+DERIVED=${SPJALL_DERIVED_DATA:+$SPJALL_DERIVED_DATA/$(basename "$ROOT")}
+DERIVED=${DERIVED:-build}
+# Its own log too, so the check at the end never reads another run's.
+LOG=$(mktemp "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/xcodebuild-test.XXXXXX")
 
 if [ "${1:-}" = "--prepare" ]; then
   # cargo xtask fetch downloads and verifies every time; the stamp skips it
