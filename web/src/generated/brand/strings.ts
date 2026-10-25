@@ -588,6 +588,12 @@ export const strings = {
   /** System card when a member clears the group's name (docs/decisions/0078). */
   name_cleared_card: (args: { who: string }): string =>
     args.who + " fjarlægði nafn hópsins.",
+  /** System card when a member sets or changes the group's photo (docs/decisions/0094). */
+  photo_set_card: (args: { who: string }): string =>
+    args.who + " breytti mynd hópsins.",
+  /** System card when a member removes the group's photo (docs/decisions/0094). */
+  photo_cleared_card: (args: { who: string }): string =>
+    args.who + " fjarlægði mynd hópsins.",
   /** Banner shown in a conversation the user has left (docs/decisions/0078). */
   left_banner: "Þú hefur yfirgefið þennan hóp.",
   /** Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080). */

@@ -31,7 +31,7 @@ struct Offer {
             // Sent once and never edited (decision 0059).
             place = true
             copyable = true
-        case .post, .deleted, .members, .timer, .name:
+        case .post, .deleted, .members, .timer, .name, .photo:
             break
         case .unreadable:
             // Nothing in it to act on (decision 0051).
@@ -308,7 +308,7 @@ private struct BodyText: View {
             SharedCard(postId: postId, foreground: foreground)
         case .location(let latE6, let lonE6, let accuracy):
             LocationCard(latE6: latE6, lonE6: lonE6, accuracy: accuracy, foreground: foreground)
-        case .members, .timer, .name:
+        case .members, .timer, .name, .photo:
             Text(verbatim: lastLine(item)).font(TypeStyle.bubble).foregroundStyle(foreground)
         case .unreadable(let code):
             // One fixed line and its code to quote (decision 0051).

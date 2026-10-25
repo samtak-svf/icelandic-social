@@ -428,6 +428,8 @@
   "save": "Vista",
   "name_set_card": "{who} nefndi hópinn „{name}“.",
   "name_cleared_card": "{who} fjarlægði nafn hópsins.",
+  "photo_set_card": "{who} breytti mynd hópsins.",
+  "photo_cleared_card": "{who} fjarlægði mynd hópsins.",
   "remove_member": "Fjarlægja úr hópnum",
   "remove_member_confirm": "Fjarlægja {name} úr hópnum?",
   "leave_group": "Yfirgefa hópinn",

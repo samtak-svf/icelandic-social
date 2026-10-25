@@ -732,6 +732,10 @@
     <string name="name_set_card">%1$s nefndi hópinn „%2$s“.</string>
     <!-- System card when a member clears the group's name (docs/decisions/0078). -->
     <string name="name_cleared_card">%1$s fjarlægði nafn hópsins.</string>
+    <!-- System card when a member sets or changes the group's photo (docs/decisions/0094). -->
+    <string name="photo_set_card">%1$s breytti mynd hópsins.</string>
+    <!-- System card when a member removes the group's photo (docs/decisions/0094). -->
+    <string name="photo_cleared_card">%1$s fjarlægði mynd hópsins.</string>
     <!-- Action on a member row in a group's info screen: remove the member from the group (docs/decisions/0078). -->
     <string name="remove_member">Fjarlægja úr hópnum</string>
     <!-- Confirmation prompt before removing {name} from the group (docs/decisions/0078). -->

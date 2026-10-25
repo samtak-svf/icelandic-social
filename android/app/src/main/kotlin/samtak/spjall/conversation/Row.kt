@@ -105,7 +105,8 @@ fun Row.Bubble.meta(open: Boolean = false): List<MetaPart> =
         MetaPart.READ.takeIf { readBy != null },
     )
 
-fun Item.isCard() = content is Content.Members || content is Content.Timer || content is Content.Name
+fun Item.isCard() =
+    content is Content.Members || content is Content.Timer || content is Content.Name || content is Content.Photo
 
 private fun Item.key() = seq?.let { "s$it" } ?: envelopeId?.let { "e$it" } ?: "t$ts"
 

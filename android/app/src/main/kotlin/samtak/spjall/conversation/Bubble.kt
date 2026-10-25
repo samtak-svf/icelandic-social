@@ -274,7 +274,7 @@ internal fun Body(
         Content.Deleted -> Unit
         is Content.Media -> Attachment(item, content, media, foreground, actions)
         is Content.Post -> SharedCard(content.postId, foreground)
-        is Content.Members, is Content.Timer, is Content.Name ->
+        is Content.Members, is Content.Timer, is Content.Name, is Content.Photo ->
             Text(text = lastLine(item), style = Type.bubble, color = foreground)
         is Content.Unreadable -> Unreadable(content.code, foreground)
         is Content.Location -> LocationCard(content, foreground, actions, onLongPress)
