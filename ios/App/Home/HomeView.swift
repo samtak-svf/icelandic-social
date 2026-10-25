@@ -46,6 +46,11 @@ struct HomeView: View {
     @State private var photos: PhotoCache<UIImage>
 
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    /// The window's width, which decides the layout (decision 0087); unknown until the first pass.
+    @State private var width: CGFloat?
+    /// The models of the screens the stacks hold open, kept here so they outlive a change of container.
+    @State private var routeModels = RouteModels()
 
     init(
         signIn: SignInModel,
@@ -76,30 +81,30 @@ struct HomeView: View {
                 // The photo is set as on "Ég", by the same model.
                 OnboardingView(model: onboarding, me: me)
             } else {
-                switch tab {
-                case .conversations: conversationsStack
-                case .communities:
-                    socialStack($communitiesPath) {
-                        CommunitiesView(model: communities) { communitiesPath.append(.community($0)) }
+                // One structure at every size class: the screens stay at the same place in the tree when the bar
+                // under them becomes a rail beside them, so a stack keeps its scroll position (decision 0087).
+                HStack(spacing: 0) {
+                    if layout.navigation == .rail {
+                        NavRail(selection: $tab, items: tabItems)
                     }
-                case .notifications: socialStack($noticesPath) { NotificationsView(model: notices) }
-                case .me: meStack
+                    VStack(spacing: 0) {
+                        tabContent
+                            .frame(maxWidth: layout.community == .feedAndAside && wide ? .infinity : contentWidth)
+                            .frame(maxWidth: .infinity)
+                        // Only on the roots: what they lead to has the screen to itself.
+                        if layout.navigation == .bar && atRoot {
+                            TabBar(selection: $tab, items: tabItems)
+                        }
+                    }
                 }
             }
-            // Only on the roots: what they lead to has the screen to itself.
-            if onboarding.step == .done && atRoot {
-                TabBar(
-                    selection: $tab,
-                    items: [
-                        .init(tab: .conversations, label: localized("tab_conversations"), systemImage: "bubble.left"),
-                        .init(tab: .communities, label: localized("tab_communities"), systemImage: "person.3"),
-                        .init(
-                            tab: .notifications, label: localized("tab_notifications"), systemImage: "bell",
-                            badge: notices.unread),
-                        .init(tab: .me, label: localized("tab_me"), systemImage: "person"),
-                    ])
-            }
         }
+        .onGeometryChange(for: CGFloat.self) {
+            $0.size.width
+        } action: {
+            width = $0
+        }
+        .environment(\.layout, layout)
         .tint(BrandTokens.Colors.primary)
         .environment(\.photos, photos)
         .task {
@@ -114,6 +119,7 @@ struct HomeView: View {
         .task {
             for await _ in socket.events() { await push.quiet() }
         }
+        .onChange(of: openRoutes) { routeModels.keep(openRoutes) }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
@@ -170,6 +176,38 @@ struct HomeView: View {
         }
     }
 
+    /// Every route a stack holds open: the models of any other are let go.
+    private var openRoutes: Set<AnyHashable> {
+        Set(path.map(AnyHashable.init) + communitiesPath.map(AnyHashable.init) + noticesPath.map(AnyHashable.init))
+    }
+
+    private var layout: WindowLayout {
+        layoutOf(width.map(windowClass(width:)), horizontalSizeClass: horizontalSizeClass)
+    }
+
+    private var tabItems: [TabBar<Tab>.Item] {
+        [
+            .init(tab: .conversations, label: localized("tab_conversations"), systemImage: "bubble.left"),
+            .init(tab: .communities, label: localized("tab_communities"), systemImage: "person.3"),
+            .init(
+                tab: .notifications, label: localized("tab_notifications"), systemImage: "bell", badge: notices.unread),
+            .init(tab: .me, label: localized("tab_me"), systemImage: "person"),
+        ]
+    }
+
+    /// The selected tab's screen and the stack it leads into.
+    @ViewBuilder private var tabContent: some View {
+        switch tab {
+        case .conversations: conversationsStack
+        case .communities:
+            socialStack($communitiesPath) {
+                CommunitiesView(model: communities) { communitiesPath.append(.community($0)) }
+            }
+        case .notifications: socialStack($noticesPath) { NotificationsView(model: notices) }
+        case .me: meStack
+        }
+    }
+
     /// `Deila` on a post: the forward picker, sending the post as a card into each conversation picked (decision 0080).
     private var postSharing: PostSharing {
         let account = signIn.account
@@ -209,7 +247,10 @@ struct HomeView: View {
                         path = [.conversation($0)]
                     }
                 case .conversation(let id):
-                    ConversationRoute(id: id, account: signIn.account, live: socket)
+                    let model = routeModels.model(for: route) {
+                        ConversationModel(id: id, account: signIn.account, live: socket)
+                    }
+                    ConversationRoute(model: model)
                         .task(id: id) { await push.dismiss(id) }
                 }
             }
@@ -245,12 +286,22 @@ struct HomeView: View {
         NavigationStack(path: path) {
             root()
                 .navigationDestination(for: SocialRoute.self) { route in
-                    SocialDestination(route: route, social: social)
+                    SocialDestination(route: route, social: social, models: routeModels)
                 }
         }
         // Any screen in the stack can draw a post card, the hub's feed included.
         .environment(\.postImages, PostImages(social: social))
         .environment(\.postSharing, postSharing)
+    }
+
+    /// Whether the screen on top takes the whole width on an expanded window (decision 0087): the hub, a community
+    /// and its queues, as the web's wide pages. Every other screen is one column.
+    private var wide: Bool {
+        switch tab {
+        case .communities: communitiesPath.last?.wide ?? true
+        case .notifications: noticesPath.last?.wide ?? false
+        case .conversations, .me: false
+        }
     }
 
     private var atRoot: Bool {
@@ -306,82 +357,35 @@ private struct PeopleRoute: View {
     }
 }
 
-/// A conversation, with a model of its own each time it opens.
+/// A conversation, with the model the root keeps for it.
 private struct ConversationRoute: View {
-    @State private var model: ConversationModel
-
-    init(id: String, account: Account, live: Live) {
-        _model = State(initialValue: ConversationModel(id: id, account: account, live: live))
-    }
+    let model: ConversationModel
 
     var body: some View {
         ConversationView(model: model)
     }
 }
 
-/// A community, a post or a report queue, with a model of its own each time it opens.
+/// A community, a post or a report queue, with the model the root keeps for it while its route is open.
 private struct SocialDestination: View {
     let route: SocialRoute
     let social: Social
+    let models: RouteModels
 
     var body: some View {
         switch route {
-        case .community(let id): CommunityRoute(id: id, social: social).id(route)
-        case .post(let id): PostRoute(id: id, social: social).id(route)
-        case .reports(let id): ReportsRoute(id: id, social: social).id(route)
-        case .requests(let id): RequestsRoute(id: id, social: social).id(route)
+        case .community(let id):
+            CommunityView(
+                model: models.model(for: route) { CommunityModel(social: social, communityId: id) }, social: social
+            ).id(route)
+        case .post(let id):
+            PostView(model: models.model(for: route) { PostModel(social: social, postId: id) }, social: social)
+                .id(route)
+        case .reports(let id):
+            ReportsView(model: models.model(for: route) { ReportsModel(social: social, communityId: id) }).id(route)
+        case .requests(let id):
+            JoinRequestsView(model: models.model(for: route) { JoinRequestsModel(social: social, communityId: id) })
+                .id(route)
         }
-    }
-}
-
-private struct CommunityRoute: View {
-    @State private var model: CommunityModel
-    let social: Social
-
-    init(id: String, social: Social) {
-        _model = State(initialValue: CommunityModel(social: social, communityId: id))
-        self.social = social
-    }
-
-    var body: some View {
-        CommunityView(model: model, social: social)
-    }
-}
-
-private struct PostRoute: View {
-    @State private var model: PostModel
-    let social: Social
-
-    init(id: String, social: Social) {
-        _model = State(initialValue: PostModel(social: social, postId: id))
-        self.social = social
-    }
-
-    var body: some View {
-        PostView(model: model, social: social)
-    }
-}
-
-private struct RequestsRoute: View {
-    @State private var model: JoinRequestsModel
-
-    init(id: String, social: Social) {
-        _model = State(initialValue: JoinRequestsModel(social: social, communityId: id))
-    }
-
-    var body: some View {
-        JoinRequestsView(model: model)
-    }
-}
-
-private struct ReportsRoute: View {
-    @State private var model: ReportsModel
-
-    init(id: String, social: Social) {
-        _model = State(initialValue: ReportsModel(social: social, communityId: id))
-    }
-
-    var body: some View {
-        ReportsView(model: model)
     }
 }

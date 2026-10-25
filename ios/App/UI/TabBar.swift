@@ -56,7 +56,7 @@ struct TabBar<Tab: Hashable>: View {
 }
 
 /// The count on a tab's icon: up to 99, then "99+".
-private struct Badge: View {
+struct Badge: View {
     let count: Int
 
     var body: some View {

@@ -5,9 +5,8 @@ import SwiftUI
 // `Stjórna`, which its moderators and its owner have. A member's tools are nowhere else: not above the composer,
 // not on a post card, not behind a long press.
 
-/// `Um samfélagið` (decision 0079): the whole description, the notice that a community's content is hosted and not
-/// end-to-end encrypted (decisions 0060, 0063), and the member list with each member's role. It is what a plain
-/// member has instead of `Stjórna`.
+/// `Um samfélagið` (decision 0079): the facts about the community (`AboutFacts`) and the member list with each
+/// member's role. It is what a plain member has instead of `Stjórna`.
 struct CommunityInfoSheet: View {
     let model: CommunityModel
 
@@ -16,19 +15,10 @@ struct CommunityInfoSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                if let community = model.community, !community.description.isEmpty {
+                if let community = model.community {
                     Section {
-                        Text(verbatim: community.description)
-                            .font(.sans(14))
-                            .foregroundStyle(BrandTokens.Colors.proseBody)
-                            .fixedSize(horizontal: false, vertical: true)
+                        AboutFacts(community: community)
                     }
-                }
-                Section {
-                    Text("community_not_encrypted_notice")
-                        .font(.sans(13.5))
-                        .foregroundStyle(BrandTokens.Colors.mutedFg)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Section("community_members_title") {
                     if !model.membersLoaded {
@@ -58,6 +48,75 @@ struct CommunityInfoSheet: View {
             .task { await model.loadMembers() }
         }
         .presentationDetents([.medium, .large])
+    }
+}
+
+/// `Um samfélagið` beside the feed on an expanded window (decision 0087): the facts about the community
+/// (`AboutFacts`) and the first members' faces. A narrower window shows none of it; the header and `Um samfélagið`
+/// carry the same there.
+struct CommunityAside: View {
+    let community: Community
+    let members: [CommunityMember]
+    let limit: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("community_info")
+                .font(.sans(17, black: true))
+                .foregroundStyle(BrandTokens.Colors.fg)
+                .accessibilityAddTraits(.isHeader)
+            AboutFacts(community: community)
+            if !members.isEmpty {
+                Text("community_members_title")
+                    .font(.sans(14.5, black: true))
+                    .foregroundStyle(BrandTokens.Colors.fg)
+                    .accessibilityAddTraits(.isHeader)
+                MemberFaces(members: members, limit: limit)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(BrandTokens.Colors.border) }
+    }
+}
+
+/// What `Um samfélagið` says about a community, in the sheet and in the aside alike, as the web's `AboutFacts`
+/// (`web/src/social/about.tsx`): the description, who may read and join, how many members it has when this account
+/// may know, that the content is not end-to-end encrypted (decisions 0060, 0063), and where it is kept (0001).
+struct AboutFacts: View {
+    let community: Community
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if !community.description.isEmpty {
+                Text(verbatim: community.description)
+                    .font(.sans(14))
+                    .foregroundStyle(BrandTokens.Colors.proseBody)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(community.audience == .open ? "community_open_full" : "community_private_full")
+                    .font(.sans(13.5, black: true))
+                    .foregroundStyle(BrandTokens.Colors.fg)
+                Text(community.audience == .open ? "community_open_hint" : "community_private_hint")
+                    .font(.sans(13.5))
+                    .foregroundStyle(BrandTokens.Colors.proseBody)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let count = community.memberCount {
+                Text(verbatim: plural("community_members", Int(count)))
+                    .font(TypeStyle.meta)
+                    .foregroundStyle(BrandTokens.Colors.mutedFg)
+            }
+            Text("community_not_encrypted_notice")
+                .font(.sans(13.5))
+                .foregroundStyle(BrandTokens.Colors.mutedFg)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("residency_claim")
+                .font(.sans(13.5))
+                .foregroundStyle(BrandTokens.Colors.mutedFg)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 
@@ -97,72 +156,126 @@ struct CommunityManageSheet: View {
     /// The owner is being asked to confirm the deletion of the community.
     @State private var deleting = false
 
+    @Environment(\.layout) private var layout
+    /// The page shown beside the list on an expanded window.
+    @State private var chosen: ManageRoute? = .reports
+
     var body: some View {
-        NavigationStack {
-            Form {
-                if let problem = model.problem {
-                    Section {
-                        ProblemCard(problem: problem) { Task { await model.retry() } }
-                    }
+        if layout.manage == .sideNav { twoPanes } else { oneScreen }
+    }
+
+    /// The tools of the list, as rows of a navigation list; `split` makes them selections of the list-detail.
+    @ViewBuilder private func tools(split: Bool) -> some View {
+        if let problem = model.problem {
+            Section {
+                ProblemCard(problem: problem) { Task { await model.retry() } }
+            }
+        }
+        Section {
+            tool(.reports, split: split) {
+                row("moderation_queue", systemImage: "tray", count: model.openReports)
+            }
+            tool(.requests, split: split) {
+                row(
+                    "join_requests_title", systemImage: "person.crop.circle.badge.questionmark",
+                    count: model.pendingRequests)
+            }
+            tool(.members, split: split) {
+                row("community_members_title", systemImage: "person.3", count: nil)
+            }
+            tool(.log, split: split) {
+                row("moderation_log_title", systemImage: "list.bullet.rectangle", count: nil)
+            }
+        }
+        if model.owns {
+            Section {
+                tool(.edit, split: split) {
+                    row("community_edit", systemImage: "pencil", count: nil)
                 }
-                Section {
-                    NavigationLink(value: ManageRoute.reports) {
-                        row("moderation_queue", systemImage: "tray", count: model.openReports)
-                    }
-                    NavigationLink(value: ManageRoute.requests) {
-                        row(
-                            "join_requests_title", systemImage: "person.crop.circle.badge.questionmark",
-                            count: model.pendingRequests)
-                    }
-                    NavigationLink(value: ManageRoute.members) {
-                        row("community_members_title", systemImage: "person.3", count: nil)
-                    }
-                    NavigationLink(value: ManageRoute.log) {
-                        row("moderation_log_title", systemImage: "list.bullet.rectangle", count: nil)
-                    }
+            }
+            Section {
+                Button(role: .destructive) {
+                    deleting = true
+                } label: {
+                    Text("community_delete")
                 }
-                if model.owns {
-                    Section {
-                        NavigationLink(value: ManageRoute.edit) {
-                            row("community_edit", systemImage: "pencil", count: nil)
-                        }
-                    }
-                    Section {
-                        Button(role: .destructive) {
-                            deleting = true
+            }
+        }
+    }
+
+    @ViewBuilder private func tool<Label: View>(
+        _ route: ManageRoute, split: Bool, @ViewBuilder label: () -> Label
+    ) -> some View {
+        if split {
+            label().tag(route)
+        } else {
+            NavigationLink(value: route, label: label)
+        }
+    }
+
+    private func page(_ route: ManageRoute) -> some View {
+        Group {
+            switch route {
+            case .reports: ManageReports(id: model.communityId, social: social)
+            case .requests: ManageRequests(id: model.communityId, social: social)
+            case .members: CommunityMembersView(model: model)
+            case .log: ModerationLogView(model: model)
+            case .edit: EditCommunityView(model: model)
+            }
+        }
+    }
+
+    /// An expanded window (decision 0087): the tools down the left, the chosen page kept in place beside them.
+    private var twoPanes: some View {
+        NavigationSplitView {
+            List(selection: $chosen) { tools(split: true) }
+                .navigationTitle(Text("community_manage"))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button {
+                            dismiss()
                         } label: {
-                            Text("community_delete")
+                            Text("cancel")
                         }
                     }
                 }
+        } detail: {
+            NavigationStack {
+                if let chosen { page(chosen).id(chosen) }
             }
-            .navigationTitle(Text("community_manage"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Text("cancel")
+        }
+        .alert(
+            Text(verbatim: localized("community_delete_confirm", model.community?.name ?? "")),
+            isPresented: $deleting
+        ) {
+            Button("community_delete", role: .destructive) { Task { await model.deleteCommunity() } }
+            Button("cancel", role: .cancel) {}
+        }
+    }
+
+    private var oneScreen: some View {
+        NavigationStack {
+            Form { tools(split: false) }
+                .navigationTitle(Text("community_manage"))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Text("cancel")
+                        }
                     }
                 }
-            }
-            .navigationDestination(for: ManageRoute.self) { route in
-                switch route {
-                case .reports: ManageReports(id: model.communityId, social: social)
-                case .requests: ManageRequests(id: model.communityId, social: social)
-                case .members: CommunityMembersView(model: model)
-                case .log: ModerationLogView(model: model)
-                case .edit: EditCommunityView(model: model)
+                .navigationDestination(for: ManageRoute.self) { route in page(route) }
+                .alert(
+                    Text(verbatim: localized("community_delete_confirm", model.community?.name ?? "")),
+                    isPresented: $deleting
+                ) {
+                    Button("community_delete", role: .destructive) { Task { await model.deleteCommunity() } }
+                    Button("cancel", role: .cancel) {}
                 }
-            }
-            .alert(
-                Text(verbatim: localized("community_delete_confirm", model.community?.name ?? "")),
-                isPresented: $deleting
-            ) {
-                Button("community_delete", role: .destructive) { Task { await model.deleteCommunity() } }
-                Button("cancel", role: .cancel) {}
-            }
         }
         .presentationDetents([.medium, .large])
     }

@@ -12,6 +12,7 @@ struct CommunityView: View {
     let social: Social
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.layout) private var layout
 
     @State private var reporting: Reporting?
     /// The screen has been left for a post and come back to, so the posts are asked for again.
@@ -26,6 +27,112 @@ struct CommunityView: View {
     @State private var searchOpen = false
 
     var body: some View {
+        screen
+            .background(BrandTokens.Colors.bg)
+            .navigationTitle(Text(verbatim: model.community?.name ?? ""))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.visible, for: .navigationBar)
+            .toolbar {
+                if model.community != nil, model.reads {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        RoundButton(
+                            systemImage: "magnifyingglass", label: "community_search_posts",
+                            fill: BrandTokens.Colors.muted, tint: BrandTokens.Colors.fg, size: 34
+                        ) {
+                            searchOpen.toggle()
+                        }
+                    }
+                }
+                if model.community != nil, !model.moderates {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        RoundButton(
+                            systemImage: "info.circle", label: "community_info",
+                            fill: BrandTokens.Colors.muted, tint: BrandTokens.Colors.fg, size: 34
+                        ) {
+                            about = true
+                        }
+                    }
+                }
+            }
+            .safeAreaInset(edge: .top) {
+                if let problem = model.problem {
+                    ProblemCard(problem: problem) { Task { await model.retry() } }.padding(16)
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                if model.writes {
+                    ComposePrompt(name: model.myName, photo: model.myPhoto) { composing = true }
+                }
+            }
+            .alert(
+                "post_delete_confirm",
+                isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+                presenting: deleting
+            ) { postId in
+                Button("delete", role: .destructive) { Task { await model.delete(postId) } }
+                Button("cancel", role: .cancel) {}
+            }
+            .onChange(of: model.deleted) { _, deleted in
+                if deleted { dismiss() }
+            }
+            .sharingPost($sharing)
+            .sheet(item: $reporting) { reporting in
+                ReportSheet(social: social, target: reporting.target)
+            }
+            .sheet(isPresented: $about) {
+                CommunityInfoSheet(model: model)
+            }
+            .sheet(isPresented: Binding(get: { managing && layout.manage == .oneScreen }, set: { managing = $0 })) {
+                CommunityManageSheet(model: model, social: social)
+            }
+            // Two panes need the room a sheet does not have on a wide window (decision 0087).
+            .fullScreenCover(
+                isPresented: Binding(get: { managing && layout.manage == .sideNav }, set: { managing = $0 })
+            ) {
+                CommunityManageSheet(model: model, social: social)
+            }
+            .sheet(isPresented: $composing) {
+                ComposerSheet(model: model)
+            }
+            .task { await model.load() }
+            .task(id: model.reads) {
+                // The row of faces under the name; quiet, so a failure leaves the row out rather than a problem card.
+                if model.reads { await model.loadMembers() }
+            }
+            .task(id: model.query) { await model.search() }
+            .onAppear {
+                guard away else { return }
+                away = false
+                Task { await model.refresh() }
+            }
+            .onDisappear { away = true }
+    }
+
+    /// The feed alone, or on an expanded window (decision 0087) the feed in a readable column with the aside beside
+    /// it. The aside scrolls on its own, so it stays in view while the feed moves.
+    @ViewBuilder private var screen: some View {
+        if layout.community == .feedAndAside {
+            HStack(alignment: .top, spacing: 0) {
+                feed.frame(maxWidth: contentWidth)
+                if let community = model.community {
+                    ScrollView {
+                        CommunityAside(community: community, members: model.members, limit: layout.memberPictures)
+                            .padding(.vertical, 16)
+                            .padding(.trailing, 16)
+                    }
+                    .frame(width: Self.asideWidth)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        } else {
+            feed
+        }
+    }
+
+    /// The width of the aside on an expanded window.
+    private static let asideWidth: CGFloat = 340
+
+    private var feed: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
                 if let community = model.community {
@@ -44,78 +151,6 @@ struct CommunityView: View {
             }
             .padding(16)
         }
-        .background(BrandTokens.Colors.bg)
-        .navigationTitle(Text(verbatim: model.community?.name ?? ""))
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.visible, for: .navigationBar)
-        .toolbar {
-            if model.community != nil, model.reads {
-                ToolbarItem(placement: .topBarTrailing) {
-                    RoundButton(
-                        systemImage: "magnifyingglass", label: "community_search_posts",
-                        fill: BrandTokens.Colors.muted, tint: BrandTokens.Colors.fg, size: 34
-                    ) {
-                        searchOpen.toggle()
-                    }
-                }
-            }
-            if model.community != nil, !model.moderates {
-                ToolbarItem(placement: .topBarTrailing) {
-                    RoundButton(
-                        systemImage: "info.circle", label: "community_info",
-                        fill: BrandTokens.Colors.muted, tint: BrandTokens.Colors.fg, size: 34
-                    ) {
-                        about = true
-                    }
-                }
-            }
-        }
-        .safeAreaInset(edge: .top) {
-            if let problem = model.problem {
-                ProblemCard(problem: problem) { Task { await model.retry() } }.padding(16)
-            }
-        }
-        .safeAreaInset(edge: .bottom) {
-            if model.writes {
-                ComposePrompt(name: model.myName, photo: model.myPhoto) { composing = true }
-            }
-        }
-        .alert(
-            "post_delete_confirm",
-            isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
-            presenting: deleting
-        ) { postId in
-            Button("delete", role: .destructive) { Task { await model.delete(postId) } }
-            Button("cancel", role: .cancel) {}
-        }
-        .onChange(of: model.deleted) { _, deleted in
-            if deleted { dismiss() }
-        }
-        .sharingPost($sharing)
-        .sheet(item: $reporting) { reporting in
-            ReportSheet(social: social, target: reporting.target)
-        }
-        .sheet(isPresented: $about) {
-            CommunityInfoSheet(model: model)
-        }
-        .sheet(isPresented: $managing) {
-            CommunityManageSheet(model: model, social: social)
-        }
-        .sheet(isPresented: $composing) {
-            ComposerSheet(model: model)
-        }
-        .task { await model.load() }
-        .task(id: model.reads) {
-            // The row of faces under the name; quiet, so a failure leaves the row out rather than a problem card.
-            if model.reads { await model.loadMembers() }
-        }
-        .task(id: model.query) { await model.search() }
-        .onAppear {
-            guard away else { return }
-            away = false
-            Task { await model.refresh() }
-        }
-        .onDisappear { away = true }
     }
 
     /// The community as the groups readers know lay it out (decision 0080): a cover band with the picture over its
@@ -123,21 +158,11 @@ struct CommunityView: View {
     /// the description. The band is plain while the cover loads and when there is none.
     private func header(_ community: Community) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            ZStack(alignment: .bottomLeading) {
+            CommunityHeadline(name: community.name) {
                 cover(community)
-                CommunityBadge(community: community, size: 64)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 64 * 0.28).strokeBorder(BrandTokens.Colors.bg, lineWidth: 3)
-                    }
-                    .offset(x: 16, y: 28)
-            }
-            .padding(.bottom, 28)
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(verbatim: community.name)
-                    .font(TypeStyle.accountName)
-                    .foregroundStyle(BrandTokens.Colors.fg)
-                    .accessibilityAddTraits(.isHeader)
-                Spacer(minLength: 8)
+            } picture: {
+                CommunityBadge(community: community, size: communityPictureSize)
+            } trailing: {
                 if model.moderates {
                     ManageButton(count: model.manageCount) { managing = true }
                 }
@@ -182,7 +207,7 @@ struct CommunityView: View {
                 }
             }
             HStack(spacing: 12) {
-                MemberFaces(members: model.members)
+                MemberFaces(members: model.members, limit: layout.memberPictures)
                 Spacer(minLength: 8)
                 invite(community)
             }
@@ -319,12 +344,14 @@ private struct ComposePrompt: View {
 
 /// Up to five of a community's members as overlapping faces (decision 0080): the account's photo, or the initials in
 /// the fill the person's mark sets.
-private struct MemberFaces: View {
+struct MemberFaces: View {
     let members: [CommunityMember]
+    /// At most this many (5 on a phone, 12 from the expanded class: `WindowLayout.memberPictures`).
+    var limit = WindowLayout.compact.memberPictures
 
     var body: some View {
         HStack(spacing: -8) {
-            ForEach(Array(members.prefix(5)), id: \.accountId) { member in
+            ForEach(Array(members.prefix(limit)), id: \.accountId) { member in
                 Avatar(
                     name: member.name, kind: member.verified ? .verified : .unverified, size: 28,
                     photo: member.photoOf
