@@ -48,6 +48,7 @@ import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.ui.CancelButton
 import samtak.spjall.ui.Palette
+import samtak.spjall.ui.sideBySide
 
 /** The five parts of Stjórna, in the order of decision 0087. */
 internal enum class ManagePart { EDIT, REQUESTS, REPORTS, MEMBERS, LOG }
@@ -93,6 +94,7 @@ internal fun ManagePage(
         }
     val navigator =
         rememberListDetailPaneScaffoldNavigator<ManagePart>(
+            scaffoldDirective = sideBySide(),
             initialDestinationHistory =
                 listOfNotNull(parts.firstOrNull()).map {
                     ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.Detail, it)

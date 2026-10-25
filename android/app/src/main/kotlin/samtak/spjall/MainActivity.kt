@@ -290,7 +290,11 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(route) { unread.refresh() }
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { unread.refresh() }
         // Each screen pads for the status bar itself, so its cream band can reach the top edge.
-        AdaptiveNavigation(tabs = tabs(route, count) { nav.navigate(it) { tab() } }, shown = route in TABS) {
+        AdaptiveNavigation(
+            tabs = tabs(route, count) { nav.navigate(it) { tab() } },
+            shown = route in TABS,
+            wide = route in SocialRoutes.WIDE,
+        ) {
             NavHost(
                 navController = nav,
                 startDestination = LIST,

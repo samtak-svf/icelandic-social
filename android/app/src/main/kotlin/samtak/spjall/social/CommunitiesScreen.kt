@@ -46,6 +46,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.ui.AppIcons
+import samtak.spjall.ui.CONTENT_WIDTH
 import samtak.spjall.ui.EmptyState
 import samtak.spjall.ui.HubLayout
 import samtak.spjall.ui.Palette
@@ -80,7 +81,7 @@ fun CommunitiesScreen(
                 // The feed in the middle, the reader's communities in a column beside it (decision 0087).
                 Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
-                        Box(modifier = Modifier.widthIn(max = FEED_WIDTH.dp)) {
+                        Box(modifier = Modifier.widthIn(max = CONTENT_WIDTH.dp)) {
                             Content(state, actions, hubColumn = true) { reporting = it }
                         }
                     }
@@ -302,5 +303,4 @@ private fun androidx.compose.foundation.lazy.LazyListScope.discover(
 private const val NEW_BUTTON = 34
 
 /** The widest the feed is drawn, so a line of text stays readable, and the width of the column beside it. */
-private const val FEED_WIDTH = 640
 private const val HUB_WIDTH = 340

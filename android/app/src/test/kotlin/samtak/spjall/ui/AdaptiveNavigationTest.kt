@@ -1,11 +1,17 @@
 package samtak.spjall.ui
 
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -30,7 +36,10 @@ import samtak.spjall.frames.LocalFrameRules
 class AdaptiveNavigationTest {
     @get:Rule val compose = createComposeRule()
 
-    private fun show(shown: Boolean = true) {
+    private fun show(
+        shown: Boolean = true,
+        wide: Boolean = false,
+    ) {
         val context = RuntimeEnvironment.getApplication()
         val tabs =
             listOf(
@@ -41,7 +50,11 @@ class AdaptiveNavigationTest {
             )
         compose.setContent {
             CompositionLocalProvider(LocalFrameRules provides FakeFrameRules) {
-                SpjallTheme { AdaptiveNavigation(tabs, shown) { Text("content") } }
+                SpjallTheme {
+                    AdaptiveNavigation(tabs, shown, wide) {
+                        Text("content", Modifier.fillMaxWidth().testTag(CONTENT))
+                    }
+                }
             }
         }
     }
@@ -84,6 +97,28 @@ class AdaptiveNavigationTest {
         compose.onNodeWithTag(NAVIGATION_BAR).assertDoesNotExist()
         compose.onNodeWithTag(NAVIGATION_RAIL).assertDoesNotExist()
         compose.onNodeWithText("content").assertIsDisplayed()
+    }
+
+    // The content is one column no wider than the web's (0087), on a window wider than that beside the rail.
+    @Test
+    @Config(qualifiers = "w700dp-h900dp")
+    fun oneColumnAtMedium() {
+        show(wide = true)
+        compose.onNodeWithTag(CONTENT).assertWidthIsEqualTo(CONTENT_WIDTH.dp)
+    }
+
+    @Test
+    @Config(qualifiers = "w1000dp-h900dp")
+    fun oneColumnAtExpandedOnAScreenThatIsNotWide() {
+        show()
+        compose.onNodeWithTag(CONTENT).assertWidthIsEqualTo(CONTENT_WIDTH.dp)
+    }
+
+    @Test
+    @Config(qualifiers = "w1000dp-h900dp")
+    fun aWideScreenTakesTheWholeWidthAtExpanded() {
+        show(wide = true)
+        compose.onNodeWithTag(CONTENT).assertWidthIsAtLeast((CONTENT_WIDTH + 1).dp)
     }
 
     // The table of web/src/ui/layout.ts, field by field, class by class.
@@ -133,4 +168,8 @@ class AdaptiveNavigationTest {
 
     @Test
     fun aSquareWindowIsLaidOutAsCompact() = layout(Frame.SQUARE, layoutOf(Frame.COMPACT))
+
+    private companion object {
+        const val CONTENT = "content"
+    }
 }

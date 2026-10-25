@@ -1,5 +1,9 @@
 package samtak.spjall.ui
 
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.runtime.Composable
 import samtak.spjall.core.Frame
 import samtak.spjall.core.FrameKind
@@ -87,6 +91,18 @@ fun layoutOf(window: Frame): Layout =
         Frame.EXPANDED -> EXPANDED_LAYOUT
     }
 
+/** The widest a column of content is drawn, so a line of text stays readable: 42rem less the web's padding (0087). */
+const val CONTENT_WIDTH = 640
+
 /** The layout of the window being drawn in; it follows a rotation, a resize and an unfolding. */
 @Composable
 fun currentLayout(): Layout = layoutOf(windowClassOf(windowWidthDp(), LocalFrameRules.current))
+
+/**
+ * The directive of a two-pane scaffold, which is composed only when [currentLayout] is expanded: always two panes
+ * side by side, so the library's own breakpoints never decide a layout the core's size class has already decided.
+ */
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+@Composable
+internal fun sideBySide(): PaneScaffoldDirective =
+    calculatePaneScaffoldDirective(currentWindowAdaptiveInfo()).copy(maxHorizontalPartitions = 2)
