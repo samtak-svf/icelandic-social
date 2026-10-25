@@ -58,9 +58,11 @@ export function Summary({
   );
 }
 
-// Each action leads with a glyph in the same 20 px box (GLYPH, CommentIcon, ShareIcon), so
-// the emoji and the two drawn icons line up.
+// Each action leads with a glyph in the same 20 px box (GLYPH, ICON), so the emoji and the two
+// drawn icons line up. On compact a third of the screen has no room for an icon beside
+// Athugasemd, so there, as in the apps, only Líkar has one.
 const GLYPH = "inline-flex size-5 shrink-0 items-center justify-center text-base leading-none";
+const ICON = "hidden size-5 shrink-0 medium:block";
 
 const ACTION =
   "inline-flex min-h-11 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-1 font-medium hover:bg-muted";
@@ -235,7 +237,7 @@ function CommentIcon() {
     <svg
       aria-hidden="true"
       viewBox="0 0 24 24"
-      className="size-5 shrink-0"
+      className={ICON}
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
@@ -252,7 +254,7 @@ function ShareIcon() {
     <svg
       aria-hidden="true"
       viewBox="0 0 24 24"
-      className="size-5 shrink-0"
+      className={ICON}
       fill="none"
       stroke="currentColor"
       strokeWidth="2"

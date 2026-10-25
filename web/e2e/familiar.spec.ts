@@ -173,13 +173,19 @@ test("Líkar, Athugasemd and Deila take equal thirds of a 360px screen, none spi
     actions.map((action) =>
       action.evaluate((element) => {
         const { left, right } = element.getBoundingClientRect();
-        return { left, right, spill: element.scrollWidth - element.clientWidth };
+        // An icon shrunk to make room is a spill too, one that scrollWidth cannot see.
+        const squashed = [...element.querySelectorAll("svg")].filter((icon) => {
+          const { width } = icon.getBoundingClientRect();
+          return width > 0 && width < 20;
+        }).length;
+        return { left, right, spill: element.scrollWidth - element.clientWidth, squashed };
       }),
     ),
   );
   const [first] = boxes;
   for (const box of boxes) {
     expect(box.spill).toBeLessThanOrEqual(0);
+    expect(box.squashed).toBe(0);
     expect(box.right - box.left).toBeCloseTo((first?.right ?? 0) - (first?.left ?? 0), 0);
   }
   for (const [before, after] of boxes.slice(0, -1).map((box, i) => [box, boxes[i + 1]] as const)) {
@@ -193,6 +199,8 @@ test("the three actions' glyphs share one box, and a post with nothing to count 
   const member = await person(browser, "Táknbox Línudóttir");
   await found(member, "open");
   await write(member, strings.post_compose, strings.post_publish, "Póstur án viðbragða.");
+  // From medium up every action has a glyph; on compact only Líkar does, as in the apps.
+  await member.setViewportSize({ width: 1280, height: 800 });
   const card = post(member, "Póstur án viðbragða");
   // Like Android's summary: with no reactions and no comments there is no line to show.
   await expect(card.getByText(strings.post_comments({ count: 0 }))).toHaveCount(0);
