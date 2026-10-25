@@ -74,3 +74,52 @@ test("the hub's column and the create preview appear only on an expanded window"
     }
   }
 });
+
+test("while the hub loads, the column keeps its place and shape and offers nothing to click", async ({
+  browser,
+}) => {
+  test.slow();
+  const owner = await person(browser, "Eigandi Biðdal");
+  const community = await found(owner, "open");
+  for (const text of ["Fyrsta bið.", "Önnur bið.", "Þriðja bið."]) {
+    await write(owner, strings.post_compose, strings.post_publish, text);
+  }
+  // Short enough that the loaded feed scrolls and the loading one does not.
+  await owner.setViewportSize({ width: 1440, height: 500 });
+
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const held = /\/v1\/(me\/communities|feed)(\?|$)/;
+  await owner.route(held, async (route) => {
+    await gate;
+    await route.fallback();
+  });
+
+  await owner.goto(new URL("/communities", community).href);
+  const main = owner.getByRole("main");
+  const column = main.getByRole("complementary", { name: strings.communities_mine });
+  const feed = main.getByRole("region", { name: strings.communities_tab_feed });
+  const create = column.getByRole("link", { name: new RegExp(`^${strings.community_create}`) });
+  await expect(column).toBeVisible();
+  // Loading: both parts say so to assistive technology and draw placeholders,
+  // and the create row waits for the list it sits above.
+  await expect(column).toHaveAttribute("aria-busy", "true");
+  await expect(feed).toHaveAttribute("aria-busy", "true");
+  await expect(create).toHaveCount(0);
+  const loading = (await column.boundingBox())!;
+
+  release();
+  await owner.unroute(held);
+  await expect(column).not.toHaveAttribute("aria-busy", "true");
+  await expect(feed.getByText("Þriðja bið.")).toBeVisible();
+  await expect(create).toBeVisible();
+  expect(await owner.evaluate(() => document.documentElement.scrollHeight > innerHeight)).toBe(
+    true,
+  );
+  const loaded = (await column.boundingBox())!;
+  // The scrollbar that comes with the loaded feed must not push the column aside.
+  expect(loaded.x).toBe(loading.x);
+  expect(loaded.width).toBe(loading.width);
+});

@@ -6,6 +6,12 @@
 
 /* Every control shows where the keyboard is. */
 @layer base {
+  /* Room for the scrollbar even when the page is short, so content does not
+     move sideways when a list loads and the page starts to scroll. */
+  html {
+    scrollbar-gutter: stable;
+  }
+
   :focus-visible {
     outline: 3px solid var(--color-primary);
     outline-offset: 2px;

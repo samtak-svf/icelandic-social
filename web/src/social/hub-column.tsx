@@ -1,6 +1,7 @@
 import type { Community } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { ProblemText, Status } from "../ui/kit.tsx";
+import { Loading, RowPlaceholders } from "../ui/placeholder.tsx";
 import { CommunityList, CreateRow } from "./community-card.tsx";
 import type { Outcome } from "./outcome.ts";
 
@@ -23,12 +24,17 @@ export function HubColumn({
   verified: boolean;
 }>) {
   return (
-    <aside aria-labelledby="hub-column" className={HUB_COLUMN}>
+    <aside aria-labelledby="hub-column" aria-busy={mine === null} className={HUB_COLUMN}>
       <h2 id="hub-column" className="text-xl font-semibold">
         {strings.communities_mine}
       </h2>
-      {verified && <CreateRow />}
-      {mine === null && <Status>{strings.loading}</Status>}
+      {/* The create row waits for the list, so it does not sit alone above it. */}
+      {verified && mine !== null && <CreateRow />}
+      {mine === null && (
+        <Loading>
+          <RowPlaceholders />
+        </Loading>
+      )}
       {mine?.ok === false && (
         <Status>
           <ProblemText problem={mine.problem} />
