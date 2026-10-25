@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import samtak.spjall.brand.R
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.ReactionCount
@@ -25,6 +26,20 @@ class ContentTest {
         val taken = changed.reacted(null)
         assertNull(taken.myReaction)
         assertEquals(listOf(ReactionCount(ReactionKind.SAD, 2uL)), taken.reactions)
+    }
+
+    @Test
+    fun anAnonymousPostIsBylinedFromMineNeverFromTheAuthor() {
+        assertNull(post("p1").anonymousBylineRes())
+        assertNull(post("p1", author = self).anonymousBylineRes())
+        assertEquals(
+            R.string.post_anonymous_author,
+            post("p1", author = null, anonymous = true, own = false).anonymousBylineRes(),
+        )
+        assertEquals(
+            R.string.post_anonymous_mine,
+            post("p1", author = null, anonymous = true, own = true).anonymousBylineRes(),
+        )
     }
 
     @Test

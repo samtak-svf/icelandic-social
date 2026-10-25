@@ -32,6 +32,17 @@ final class SocialTests: XCTestCase {
         XCTAssertEqual(authorName(nil), localized("person_deleted"))
     }
 
+    func testAnAnonymousPostIsBylinedFromMineNeverFromTheAuthor() {
+        XCTAssertNil(anonymousByline(makePost("p1", "k1")))
+        XCTAssertNil(anonymousByline(makePost("p1", "k1", author: jon)))
+        XCTAssertEqual(
+            anonymousByline(makePost("p1", "k1", author: nil, anonymous: true, own: false)),
+            localized("post_anonymous_author"))
+        XCTAssertEqual(
+            anonymousByline(makePost("p1", "k1", author: nil, anonymous: true, own: true)),
+            localized("post_anonymous_mine"))
+    }
+
     func testANotificationOpensItsPostUnlessAModeratorActedOnIt() {
         XCTAssertEqual(noticeRoute(makeNotice("n1", .comment, post: "p1")), .post("p1"))
         XCTAssertEqual(noticeRoute(makeNotice("n2", .reaction, post: "p1")), .post("p1"))

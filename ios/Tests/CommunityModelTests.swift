@@ -356,8 +356,8 @@ final class CommunityModelTests: XCTestCase {
         social.posts = ["k1": [makePost("p2", "k1", author: jon), makePost("p1", "k1")]]
         let model = CommunityModel(social: social, communityId: "k1", now: { FakeAccount.now })
         await model.load()
-        XCTAssertTrue(model.mine(model.posts[0].author))
-        XCTAssertFalse(model.mine(model.posts[1].author))
+        XCTAssertTrue(model.posts[0].mine)
+        XCTAssertFalse(model.posts[1].mine)
         await model.delete("p2")
         XCTAssertTrue(social.calls.contains("deletePost p2"))
         XCTAssertEqual(model.posts.map(\.postId), ["p1"])

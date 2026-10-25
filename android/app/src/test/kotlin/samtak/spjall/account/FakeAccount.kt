@@ -6,6 +6,7 @@ import samtak.spjall.core.Content
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.ConversationState
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.DeviceKind
 import samtak.spjall.core.Frame
 import samtak.spjall.core.Framing
 import samtak.spjall.core.Inviter
@@ -40,8 +41,8 @@ class FakeAccount(
     var inviters = mapOf<String, Inviter?>()
     var devices =
         listOf(
-            AccountDevice("d1", Platform.ANDROID, 1_700_000_000_000u, current = true),
-            AccountDevice("d2", Platform.IOS, 1_700_000_100_000u, current = false),
+            AccountDevice("d1", Platform.ANDROID, DeviceKind.PHONE, 1_700_000_000_000u, current = true),
+            AccountDevice("d2", Platform.IOS, DeviceKind.PHONE, 1_700_000_100_000u, current = false),
         )
     var link: String? = null
     private var links = 0

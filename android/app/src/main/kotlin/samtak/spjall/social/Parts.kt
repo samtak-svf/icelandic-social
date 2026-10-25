@@ -138,6 +138,7 @@ fun StateMark(state: ModerationState) {
             ModerationState.VISIBLE -> return
             ModerationState.HIDDEN -> R.string.content_hidden
             ModerationState.REMOVED -> R.string.content_removed
+            ModerationState.PENDING -> R.string.post_pending
         }
     Text(
         text = stringResource(text),

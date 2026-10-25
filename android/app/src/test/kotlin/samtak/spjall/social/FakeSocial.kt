@@ -546,8 +546,11 @@ class FakeSocial : Social {
         return refs.map { ref ->
             when (ref.kind) {
                 CardKind.POST ->
-                    posts.values.flatten().firstOrNull { it.postId == ref.id }?.let {
-                        Card.Post(ref, CardCommunity(it.communityId, "K"), it.author, it.body, null, it.createdAt)
+                    posts.values.flatten().firstOrNull { it.postId == ref.id }?.let { post ->
+                        post.author?.let { author ->
+                            val community = CardCommunity(post.communityId, "K")
+                            Card.Post(ref, community, author, post.body, null, post.createdAt)
+                        }
                     }
                 CardKind.COMMENT ->
                     comments.values.flatten().firstOrNull { it.commentId == ref.id }?.let {
@@ -617,11 +620,15 @@ fun post(
     reactions: List<samtak.spjall.core.ReactionCount> = emptyList(),
     mine: ReactionKind? = null,
     comments: ULong = 0uL,
-    author: Author = anna,
+    author: Author? = anna,
+    anonymous: Boolean = false,
+    own: Boolean = author?.accountId == self.accountId,
 ) = Post(
     postId = id,
     communityId = communityId,
     author = author,
+    anonymous = anonymous,
+    mine = own,
     body = body,
     images = emptyList(),
     createdAt = 1_700_000_000_000uL,

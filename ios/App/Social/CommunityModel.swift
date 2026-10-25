@@ -138,9 +138,6 @@ final class CommunityModel {
         return writes && (!body.isEmpty || !images.isEmpty) && body.count <= Self.postLimit
     }
 
-    /// The post or comment is this account's own, which it may delete.
-    func mine(_ author: Author) -> Bool { me != nil && author.accountId == me }
-
     func load() async {
         let social = social
         let id = communityId

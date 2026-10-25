@@ -177,7 +177,7 @@ private fun ColumnScope.Feed(
                         onReport = { onReport(post.postId) },
                         onOpen = { actions.open(post.postId) },
                         onComment = { actions.comment(post.postId) },
-                        onDelete = { onDelete(post.postId) }.takeIf { post.author.accountId == state.me?.id },
+                        onDelete = { onDelete(post.postId) }.takeIf { post.mine },
                         onPin =
                             { pinned: Boolean -> actions.pin(post.postId, pinned) }.takeIf {
                                 state.community?.moderates ==

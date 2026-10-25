@@ -404,6 +404,10 @@ private val logLabels =
         ModerationLogAction.REMOVE_COMMUNITY_COVER to R.string.moderation_log_community_cover_removed,
         ModerationLogAction.PIN_POST to R.string.moderation_log_post_pinned,
         ModerationLogAction.UNPIN_POST to R.string.moderation_log_post_unpinned,
+        ModerationLogAction.CLOSE_POLL to R.string.moderation_log_poll_closed,
+        ModerationLogAction.ANONYMOUS_POSTS_ON to R.string.moderation_log_anonymous_on,
+        ModerationLogAction.ANONYMOUS_POSTS_OFF to R.string.moderation_log_anonymous_off,
+        ModerationLogAction.REVEAL_AUTHOR to R.string.moderation_log_author_revealed,
     )
 
 private fun ModerationLogAction.label(): Int = logLabels[this] ?: R.string.moderation_done

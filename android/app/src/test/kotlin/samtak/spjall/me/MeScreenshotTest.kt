@@ -18,6 +18,7 @@ import org.robolectric.annotation.GraphicsMode
 import samtak.spjall.conversations.SCREENSHOT_DEVICE
 import samtak.spjall.conversations.SCREENSHOT_SDK
 import samtak.spjall.core.AccountDevice
+import samtak.spjall.core.DeviceKind
 import samtak.spjall.core.Me
 import samtak.spjall.core.Platform
 import samtak.spjall.ui.Palette
@@ -92,8 +93,8 @@ class MeScreenshotTest {
                     "Jón Jónsson",
                     true,
                     listOf(
-                        AccountDevice("d1", Platform.ANDROID, 1_700_000_000_000u, current = true),
-                        AccountDevice("d2", Platform.IOS, 1_700_000_100_000u, current = false),
+                        AccountDevice("d1", Platform.ANDROID, DeviceKind.PHONE, 1_700_000_000_000u, current = true),
+                        AccountDevice("d2", Platform.IOS, DeviceKind.PHONE, 1_700_000_100_000u, current = false),
                     ),
                     "v1",
                 ),

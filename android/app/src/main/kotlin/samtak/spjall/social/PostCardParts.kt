@@ -78,26 +78,27 @@ internal fun RoleBadge(role: AuthorRole?) {
 /** Who wrote it: picture, name with the role badge, how long ago; [trailing] sits on the right. */
 @Composable
 internal fun AuthorRow(
-    author: Author,
+    author: Author?,
+    anonymousRes: Int?,
     createdAt: ULong,
     trailing: @Composable () -> Unit = {},
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Avatar(
-            name = author.name,
-            kind = if (author.verified) AvatarKind.Verified else AvatarKind.Unverified,
+            name = author?.name,
+            kind = if (author?.verified == true) AvatarKind.Verified else AvatarKind.Unverified,
             size = 40.dp,
-            photo = author.photoOf(),
+            photo = author?.photoOf(),
         )
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    text = author.shownName(),
+                    text = anonymousRes?.let { stringResource(it) } ?: author?.shownName().orEmpty(),
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.weight(1f, fill = false),
                 )
-                if (author.verified) VerifiedMark()
-                RoleBadge(author.role)
+                if (author?.verified == true) VerifiedMark()
+                author?.let { RoleBadge(it.role) }
             }
             Text(text = agoText(createdAt), style = MaterialTheme.typography.bodySmall, color = Palette.mutedFg)
         }
