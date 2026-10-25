@@ -86,7 +86,7 @@ export function Shell({ children }: Readonly<{ children: ReactNode }>) {
         >
           {strings.app_name}
         </span>
-        <ul className="mx-auto flex max-w-2xl justify-around gap-1 medium:mx-0 medium:w-full medium:flex-col medium:px-2">
+        <ul className="mx-auto flex max-w-2xl justify-around gap-0 medium:gap-1 medium:mx-0 medium:w-full medium:flex-col medium:px-2">
           <NavLink to="/" icon={<PersonIcon />}>
             {strings.tab_me}
           </NavLink>
@@ -132,9 +132,11 @@ function NavLink({
     <li className="flex-1 medium:flex-none">
       <Link
         to={to}
-        // aria-current="page" is set by the link itself on the place shown.
-        className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-md px-1 text-center text-xs [overflow-wrap:anywhere] medium:min-h-16"
-        activeProps={{ className: "bg-muted font-semibold" }}
+        // aria-current="page" is set by the link itself on the place shown. The current place is
+        // marked by colour, not weight: bold "Tilkynningar" is wider than the slot at 360 px.
+        className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-md px-0.5 text-center text-xs [overflow-wrap:anywhere] medium:min-h-16 medium:px-1"
+        activeProps={{ className: "bg-muted text-fg" }}
+        inactiveProps={{ className: "text-muted-fg" }}
         activeOptions={{ exact: to === "/" }}
       >
         {icon}

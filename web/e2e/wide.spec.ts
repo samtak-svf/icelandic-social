@@ -88,3 +88,37 @@ for (const width of WIDTHS) {
     expect(await overflow(member)).toBeLessThanOrEqual(0);
   });
 }
+
+// Every place's name stays on one line, on a small phone and in the rail, and
+// marking a place as the current one does not change how wide its name is.
+for (const width of [360, ...WIDTHS]) {
+  test(`at ${width} px every place's name is one line, the current one too`, async ({
+    browser,
+  }) => {
+    const member = await person(browser, "Einlína Merkisdóttir");
+    await member.setViewportSize({ width, height: HEIGHT });
+    const nav = member.getByRole("navigation", { name: strings.main_navigation });
+    const lines = () =>
+      nav.evaluate((element) =>
+        [...element.querySelectorAll("a")].map((link) => {
+          const range = document.createRange();
+          range.selectNodeContents(link.querySelector("span:last-child")!);
+          return [link.textContent, new Set([...range.getClientRects()].map((r) => r.top)).size];
+        }),
+      );
+    const widths = () =>
+      nav.evaluate((element) =>
+        [...element.querySelectorAll("a span:last-child")].map(
+          (s) => s.getBoundingClientRect().width,
+        ),
+      );
+    const before = await widths();
+    await nav.getByRole("link", { name: strings.tab_notifications }).click();
+    await expect(nav.getByRole("link", { name: strings.tab_notifications })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    for (const [name, count] of await lines()) expect(count, `${name}`).toBe(1);
+    expect(await widths()).toEqual(before);
+  });
+}
