@@ -5,10 +5,10 @@ import { expect, test } from "./origin.ts";
 import { cardMenu, found, join, openComposer, person, post, write } from "./social-helpers.ts";
 
 // A community's tabs (decision 0089): Umræða, Fest, Myndir, Meðlimir and Um
-// are routes of their own, in a sticky row that scrolls sideways on a compact
-// window, and a non-member of a private community has only Um.
+// are routes of their own, in a sticky row that fits a compact window, and a
+// non-member of a private community has only Um.
 
-const WIDTHS = [412, 1440];
+const WIDTHS = [360, 412, 1440];
 
 const tabs = (page: Page) => page.getByRole("navigation", { name: strings.community_tabs });
 const tab = (page: Page, name: string) => tabs(page).getByRole("link", { name, exact: true });
@@ -116,13 +116,25 @@ test("each tab is a route with its own content, the row sticks and back returns 
       .toBeLessThan(80);
     await expect(tabs(owner)).toBeInViewport();
 
-    // On compact the row scrolls sideways, and the page itself does not.
-    const overflow = await tabs(owner).evaluate((nav) => ({
+    // Every tab and the search icon fit the window: no sideways scroll in the
+    // row or the page, and each box lies inside [0, width].
+    const fit = await tabs(owner).evaluate((nav) => ({
       row: nav.scrollWidth > nav.clientWidth,
+      sizes: [nav.scrollWidth, nav.clientWidth],
       page: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      boxes: [...nav.querySelectorAll("a, button")].map((el) => {
+        const { left, right, height } = el.getBoundingClientRect();
+        return { left, right, height };
+      }),
     }));
-    expect(overflow.page).toBe(false);
-    if (width < 600) expect(overflow.row).toBe(true);
+    expect(fit.page).toBe(false);
+    expect(fit.row, `${width}px: ${fit.sizes.join(" > ")}`).toBe(false);
+    expect(fit.boxes).toHaveLength(6);
+    for (const box of fit.boxes) {
+      expect(box.left).toBeGreaterThanOrEqual(0);
+      expect(box.right).toBeLessThanOrEqual(width);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
   }
 });
 

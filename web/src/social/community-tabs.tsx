@@ -3,8 +3,9 @@ import { strings } from "../generated/brand/strings.ts";
 
 // The row of tabs under a community's header (decision 0089). Each tab is a
 // route, so a link to one works and back returns to the one before. The row
-// sticks under the top of the page while it scrolls and scrolls sideways on
-// a compact window (`LAYOUTS[..].tabs`); the community's search is an icon at
+// sticks under the top of the page while it scrolls. On a compact window the
+// tabs share the row; `overflow-x-auto` is only the safety
+// net for a screen too narrow for them. The community's search is an icon at
 // its end.
 
 export type CommunityTab = "discussion" | "featured" | "images" | "members" | "about";
@@ -50,7 +51,7 @@ const LABEL: Readonly<Record<CommunityTab, string>> = {
 };
 
 const TAB_CLASS =
-  "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap border-b-2 px-3 font-medium";
+  "inline-flex min-h-11 flex-1 items-center justify-center whitespace-nowrap border-b-2 px-1.5 text-sm font-medium medium:flex-none medium:shrink-0 medium:px-3 medium:text-base";
 
 function SearchIcon() {
   return (
