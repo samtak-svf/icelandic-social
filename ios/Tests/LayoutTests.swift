@@ -29,25 +29,53 @@ final class LayoutTests: XCTestCase {
         XCTAssertEqual(windowClass(width: -5), .compact, "no width is never an error")
     }
 
-    func testOnlyARegularExpandedWindowGetsTheSidebarAndTheAside() {
-        let wide = layoutOf(.expanded, horizontalSizeClass: .regular)
-        XCTAssertEqual(wide.navigation, .sidebar)
-        XCTAssertEqual(wide.community, .feedAndAside)
-        XCTAssertEqual(wide.manage, .listDetail)
-        XCTAssertEqual(wide.memberPictures, 12)
+    // The table below is the web's `LAYOUTS` in `web/src/ui/layout.ts`, field by field.
+
+    func testCompactIsTheBarAndOneColumn() {
+        let layout = layoutOf(.compact, horizontalSizeClass: .regular)
+        XCTAssertEqual(layout, .compact)
+        XCTAssertEqual(layout.navigation, .bar)
+        XCTAssertEqual(layout.community, .column)
+        XCTAssertEqual(layout.memberPictures, 5)
+        XCTAssertEqual(layout.manage, .oneScreen)
+        XCTAssertEqual(layout.featured, .strip)
+        XCTAssertEqual(layout.hub, .tabs)
+        XCTAssertEqual(layout.create, .form)
+        XCTAssertEqual(layout.tabs, .scroll)
     }
 
-    func testCompactAndMediumKeepTheTabsAndOneColumn() {
-        for window in [Frame.compact, .medium] {
-            XCTAssertEqual(layoutOf(window, horizontalSizeClass: .regular), .compact)
+    func testMediumIsARailAndOneColumn() {
+        let layout = layoutOf(.medium, horizontalSizeClass: .regular)
+        XCTAssertEqual(layout, .medium)
+        XCTAssertEqual(layout.navigation, .rail)
+        XCTAssertEqual(layout.community, .column)
+        XCTAssertEqual(layout.memberPictures, 12)
+        XCTAssertEqual(layout.manage, .oneScreen)
+        XCTAssertEqual(layout.featured, .strip)
+        XCTAssertEqual(layout.hub, .tabs)
+        XCTAssertEqual(layout.create, .form)
+        XCTAssertEqual(layout.tabs, .row)
+    }
+
+    func testExpandedIsARailAFeedAndAnAside() {
+        let layout = layoutOf(.expanded, horizontalSizeClass: .regular)
+        XCTAssertEqual(layout, .expanded)
+        XCTAssertEqual(layout.navigation, .rail)
+        XCTAssertEqual(layout.community, .feedAndAside)
+        XCTAssertEqual(layout.memberPictures, 12)
+        XCTAssertEqual(layout.manage, .sideNav)
+        XCTAssertEqual(layout.featured, .aside)
+        XCTAssertEqual(layout.hub, .column)
+        XCTAssertEqual(layout.create, .formAndPreview)
+        XCTAssertEqual(layout.tabs, .row)
+    }
+
+    func testACompactHorizontalSizeClassKeepsThePhoneLayoutAtEveryWindowClass() {
+        // iPad split view and Slide Over report compact when narrow, whatever the window measures.
+        for window in [Frame.compact, .medium, .expanded] {
+            XCTAssertEqual(layoutOf(window, horizontalSizeClass: .compact), .compact)
+            XCTAssertEqual(layoutOf(window, horizontalSizeClass: nil), .compact)
         }
-        XCTAssertEqual(layoutOf(.compact, horizontalSizeClass: .compact).navigation, .tabs)
-        XCTAssertEqual(layoutOf(.compact, horizontalSizeClass: .compact).memberPictures, 5)
-    }
-
-    func testANarrowIPadPaneKeepsThePhoneLayoutEvenWhenTheWindowIsWide() {
-        XCTAssertEqual(layoutOf(.expanded, horizontalSizeClass: .compact), .compact)
-        XCTAssertEqual(layoutOf(.expanded, horizontalSizeClass: nil), .compact)
         XCTAssertEqual(layoutOf(nil, horizontalSizeClass: .regular), .compact, "until the width is known")
     }
 }

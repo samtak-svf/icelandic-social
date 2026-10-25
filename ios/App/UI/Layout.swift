@@ -12,31 +12,56 @@ func windowClass(width: CGFloat) -> Frame {
     frameForWidth(kind: .cover, widthDp: UInt32(max(0, width.rounded(.down))))
 }
 
-/// What a window lays out.
+/// What a window lays out: the same eight fields, with the same values for each class, as `LAYOUTS` in the web's
+/// `ui/layout.ts`.
 struct WindowLayout: Equatable, Sendable {
-    /// The five places: the bar under the root screens, or a sidebar beside them.
-    enum Navigation: Equatable, Sendable { case tabs, sidebar }
+    /// The five places: a bar at the bottom of the screen, or a rail down the leading edge.
+    enum Navigation: Equatable, Sendable { case bar, rail }
     /// The community page: one column, or the feed with `Um samfélagið` beside it.
     enum Community: Equatable, Sendable { case column, feedAndAside }
-    /// `Stjórna`: one screen, or a list with the chosen page beside it.
-    enum Manage: Equatable, Sendable { case oneScreen, listDetail }
+    /// `Stjórna`: one screen, or a side navigation with a page for each part.
+    enum Manage: Equatable, Sendable { case oneScreen, sideNav }
+    /// The featured posts: a strip between the composer and the feed, or in the aside (0088).
+    enum Featured: Equatable, Sendable { case strip, aside }
+    /// The hub: `Nýjast`, `Mín samfélög` and `Finna` as tabs, or the reader's communities in a column beside the feed.
+    enum Hub: Equatable, Sendable { case tabs, column }
+    /// `Stofna samfélag`: the form alone, or the form beside a live preview of the community's header.
+    enum Create: Equatable, Sendable { case form, formAndPreview }
+    /// The community's tab row: it scrolls sideways when it does not fit, or lies in one row (0089).
+    enum Tabs: Equatable, Sendable { case scroll, row }
 
     var navigation: Navigation
     var community: Community
-    var manage: Manage
     /// How many members' pictures the community header or aside shows at most.
     var memberPictures: Int
+    var manage: Manage
+    var featured: Featured
+    var hub: Hub
+    var create: Create
+    var tabs: Tabs
 
-    static let compact = WindowLayout(navigation: .tabs, community: .column, manage: .oneScreen, memberPictures: 5)
+    static let compact = WindowLayout(
+        navigation: .bar, community: .column, memberPictures: 5, manage: .oneScreen, featured: .strip, hub: .tabs,
+        create: .form, tabs: .scroll)
+    static let medium = WindowLayout(
+        navigation: .rail, community: .column, memberPictures: 12, manage: .oneScreen, featured: .strip, hub: .tabs,
+        create: .form, tabs: .row)
     static let expanded = WindowLayout(
-        navigation: .sidebar, community: .feedAndAside, manage: .listDetail, memberPictures: 12)
+        navigation: .rail, community: .feedAndAside, memberPictures: 12, manage: .sideNav, featured: .aside,
+        hub: .column, create: .formAndPreview, tabs: .row)
 }
 
-/// The layout of a window of class `windowClass`. The two panes need a regular horizontal size class too: iPad split
-/// view and Slide Over report a compact one when narrow, and keep the phone layout. Medium keeps the bottom tabs and
-/// one column until its rail is built.
+/// The layout of a window of class `windowClass`. Anything wider than compact needs a regular horizontal size class
+/// too: iPad split view and Slide Over report a compact one when narrow and keep the phone layout, and so does a
+/// window whose width is not known yet.
 func layoutOf(_ windowClass: Frame?, horizontalSizeClass: UserInterfaceSizeClass?) -> WindowLayout {
-    windowClass == .expanded && horizontalSizeClass == .regular ? .expanded : .compact
+    guard horizontalSizeClass == .regular, let windowClass else { return .compact }
+    switch windowClass {
+    // `square` is a photo's frame; a cover's width is never one.
+    case .compact, .square: return .compact
+    case .medium: return .medium
+    case .expanded: return .expanded
+    }
 }
 
 extension EnvironmentValues {

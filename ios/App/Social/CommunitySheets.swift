@@ -143,7 +143,7 @@ struct CommunityManageSheet: View {
     @State private var chosen: ManageRoute? = .reports
 
     var body: some View {
-        if layout.manage == .listDetail { twoPanes } else { oneScreen }
+        if layout.manage == .sideNav { twoPanes } else { oneScreen }
     }
 
     /// The tools of the list, as rows of a navigation list; `split` makes them selections of the list-detail.

@@ -87,7 +87,7 @@ struct CommunityView: View {
             }
             // Two panes need the room a sheet does not have on a wide window (decision 0087).
             .fullScreenCover(
-                isPresented: Binding(get: { managing && layout.manage == .listDetail }, set: { managing = $0 })
+                isPresented: Binding(get: { managing && layout.manage == .sideNav }, set: { managing = $0 })
             ) {
                 CommunityManageSheet(model: model, social: social)
             }
@@ -159,21 +159,11 @@ struct CommunityView: View {
     /// the description. The band is plain while the cover loads and when there is none.
     private func header(_ community: Community) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            ZStack(alignment: .bottomLeading) {
+            CommunityHeadline(name: community.name) {
                 cover(community)
-                CommunityBadge(community: community, size: 64)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 64 * 0.28).strokeBorder(BrandTokens.Colors.bg, lineWidth: 3)
-                    }
-                    .offset(x: 16, y: 28)
-            }
-            .padding(.bottom, 28)
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(verbatim: community.name)
-                    .font(TypeStyle.accountName)
-                    .foregroundStyle(BrandTokens.Colors.fg)
-                    .accessibilityAddTraits(.isHeader)
-                Spacer(minLength: 8)
+            } picture: {
+                CommunityBadge(community: community, size: communityPictureSize)
+            } trailing: {
                 if model.moderates {
                     ManageButton(count: model.manageCount) { managing = true }
                 }
@@ -218,7 +208,7 @@ struct CommunityView: View {
                 }
             }
             HStack(spacing: 12) {
-                MemberFaces(members: model.members)
+                MemberFaces(members: model.members, limit: layout.memberPictures)
                 Spacer(minLength: 8)
                 invite(community)
             }

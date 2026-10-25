@@ -6,6 +6,8 @@ import SwiftUI
 /// Until the width is known the horizontal size class stands in.
 struct CoverBand: View {
     let community: Community
+    /// An image picked but not sent yet, drawn in place of the community's own cover: the create screen's preview.
+    var local: UIImage?
 
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var width: CGFloat?
@@ -22,17 +24,23 @@ struct CoverBand: View {
         Color.clear
             .aspectRatio(ratio, contentMode: .fit)
             .overlay {
-                LoadedPhoto(community.coverOf(frame)) { image in
+                if let local {
                     Color.clear
-                        .overlay {
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFill()
-                                .accessibilityLabel(Text("community_cover_alt"))
-                        }
+                        .overlay { Image(uiImage: local).resizable().scaledToFill() }
                         .clipShape(shape)
-                } placeholder: {
-                    shape.fill(BrandTokens.Colors.secondarySubtle).accessibilityHidden(true)
+                } else {
+                    LoadedPhoto(community.coverOf(frame)) { image in
+                        Color.clear
+                            .overlay {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .accessibilityLabel(Text("community_cover_alt"))
+                            }
+                            .clipShape(shape)
+                    } placeholder: {
+                        shape.fill(BrandTokens.Colors.secondarySubtle).accessibilityHidden(true)
+                    }
                 }
             }
             .onGeometryChange(for: CGFloat.self) {
