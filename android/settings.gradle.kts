@@ -25,5 +25,4 @@ rootProject.name = "spjall"
 
 include(":app")
 include(":core:brand")
-include(":core:network")
 include(":core:crypto")

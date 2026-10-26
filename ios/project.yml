@@ -45,8 +45,6 @@ settings:
 packages:
   SpjallCore:
     path: Packages/SpjallCore
-  SpjallAPI:
-    path: Packages/SpjallAPI
 
 targets:
   Spjall:
@@ -65,7 +63,6 @@ targets:
         buildPhase: resources
     dependencies:
       - package: SpjallCore
-      - package: SpjallAPI
       - target: NotificationService
     settings:
       base:
@@ -145,7 +142,6 @@ targets:
     dependencies:
       - target: Spjall
       - package: SpjallCore
-      - package: SpjallAPI
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(SPJALL_BUNDLE_ID).tests

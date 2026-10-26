@@ -1,9 +1,8 @@
 import { z } from "@hono/zod-openapi";
 import { base64, OpaqueId } from "./common.ts";
 
-// WebSocket frames: one union tagged by `type` (decisions 0005, 0015). Swift decodes
-// the generated union; Kotlin gets a sealed interface from
-// tooling/ws-kotlin.mjs, because openapi-generator cannot decode it.
+// WebSocket frames: one union tagged by `type` (decisions 0005, 0015). The web decodes
+// the generated union; the apps hand raw frames to the Rust core (decision 0097).
 //
 // Each member is a named component with a literal `type`. Only the shapes the
 // emitter maps are allowed: string, integer, number, boolean, arrays of those,
