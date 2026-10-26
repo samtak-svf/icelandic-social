@@ -315,6 +315,55 @@ fn target(tx: &Transaction, group: &[u8], envelope_id: &str) -> rusqlite::Result
     .optional()
 }
 
+/// The emoji `account` shows on the message `envelope_id` as this device
+/// sees it (0101): the folded rows, with the queued reactions of `group`'s
+/// outbox applied over them in order, an add replacing and a remove taking
+/// back, as the fold and the overlay do.
+pub(crate) fn own_reactions(
+    tx: &Transaction,
+    group: &[u8],
+    account: &str,
+    envelope_id: &str,
+) -> Result<Vec<String>, ClientError> {
+    let mut shown: Vec<String> = match target(tx, group, envelope_id)? {
+        Some(t) => tx
+            .prepare(
+                "SELECT emoji FROM reactions
+                 WHERE group_id = ?1 AND seq = ?2 AND account = ?3 ORDER BY emoji",
+            )?
+            .query_map(params![group, t as i64, account], |r| r.get(0))?
+            .collect::<rusqlite::Result<_>>()?,
+        None => Vec::new(),
+    };
+    let mut statement = tx.prepare(
+        "SELECT intent FROM outbox WHERE group_id = ?1 AND kind = 'message' ORDER BY id",
+    )?;
+    let queued: Vec<Vec<u8>> = statement
+        .query_map([group], |r| r.get(0))?
+        .collect::<rusqlite::Result<_>>()?;
+    for intent in queued {
+        if let Ok(Envelope {
+            body:
+                Body::Reaction {
+                    target,
+                    emoji,
+                    remove,
+                },
+            ..
+        }) = Envelope::decode(&intent)
+            && target == envelope_id
+            && !emoji.is_empty()
+        {
+            if remove {
+                shown.retain(|e| *e != emoji);
+            } else {
+                shown = vec![emoji];
+            }
+        }
+    }
+    Ok(shown)
+}
+
 struct Row<'a> {
     kind: &'a str,
     sender: &'a Device,
@@ -476,15 +525,39 @@ pub(crate) fn fold(
             if deleted || emoji.is_empty() {
                 return Ok(None);
             }
-            let sql = if *remove {
-                "DELETE FROM reactions
-                 WHERE group_id = ?1 AND seq = ?2 AND account = ?3 AND emoji = ?4"
+            if *remove {
+                // Takes back only the emoji named: a late remove of an old
+                // one does not undo the one that replaced it.
+                if tx.execute(
+                    "DELETE FROM reactions
+                     WHERE group_id = ?1 AND seq = ?2 AND account = ?3 AND emoji = ?4",
+                    params![group, t as i64, sender.account, emoji],
+                )? == 0
+                {
+                    return Ok(None);
+                }
             } else {
-                "INSERT OR IGNORE INTO reactions (group_id, seq, account, emoji)
-                 VALUES (?1, ?2, ?3, ?4)"
-            };
-            if tx.execute(sql, params![group, t as i64, sender.account, emoji])? == 0 {
-                return Ok(None);
+                // One reaction per person (0101): the newest add replaces the
+                // earlier one, and envelopes fold in server order, so every
+                // device ends on the same emoji.
+                let same: bool = tx.query_row(
+                    "SELECT COUNT(*) = 1 AND MAX(emoji = ?4) FROM reactions
+                     WHERE group_id = ?1 AND seq = ?2 AND account = ?3",
+                    params![group, t as i64, sender.account, emoji],
+                    |r| r.get(0),
+                )?;
+                if same {
+                    return Ok(None);
+                }
+                tx.execute(
+                    "DELETE FROM reactions WHERE group_id = ?1 AND seq = ?2 AND account = ?3",
+                    params![group, t as i64, sender.account],
+                )?;
+                tx.execute(
+                    "INSERT INTO reactions (group_id, seq, account, emoji)
+                     VALUES (?1, ?2, ?3, ?4)",
+                    params![group, t as i64, sender.account, emoji],
+                )?;
             }
             vec![t]
         }
@@ -842,6 +915,14 @@ fn overlay(
                         }
                     }
                 } else {
+                    // One reaction per person (0101): an add replaces the
+                    // earlier one, as the fold does.
+                    for other in item.reactions.iter_mut().filter(|r| r.emoji != emoji) {
+                        other.people.retain(|p| p.account != me);
+                        other.own = false;
+                    }
+                    item.reactions.retain(|r| !r.people.is_empty());
+                    let at = item.reactions.iter().position(|r| r.emoji == emoji);
                     let at = at.unwrap_or_else(|| {
                         item.reactions.push(Reaction {
                             emoji,

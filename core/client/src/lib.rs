@@ -1059,6 +1059,31 @@ impl<T: Transport> Client<T> {
         let bytes = envelope.encode()?;
         self.store.try_write(|tx| {
             open_conversation(tx, &group)?;
+            // One reaction per person (0101): a build that still folds adds
+            // one by one must end with one too, so each emoji this account
+            // shows on the target is taken back before the new one is added.
+            if let Body::Reaction {
+                target,
+                emoji,
+                remove: false,
+            } = &envelope.body
+            {
+                let (_, me) = this_device(tx)?;
+                for old in timeline::own_reactions(tx, &group, &me.account, target)? {
+                    if old != *emoji && !emoji.is_empty() {
+                        let take_back = Envelope {
+                            id: random_id(),
+                            ts: envelope.ts,
+                            body: Body::Reaction {
+                                target: target.clone(),
+                                emoji: old,
+                                remove: true,
+                            },
+                        };
+                        enqueue(tx, &group, "message", &take_back.encode()?)?;
+                    }
+                }
+            }
             enqueue(tx, &group, "message", &bytes)
         })?;
         Ok(envelope.id)

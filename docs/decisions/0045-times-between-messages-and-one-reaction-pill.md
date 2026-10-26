@@ -2,7 +2,8 @@
 
 - Status: accepted; time lines amended by [0048](0048-server-time-lines-attachment-preview-and-photo-location.md)
   (the server's time; no line for a late message), implemented in the apps (77774c9),
-  released as 0.6.0
+  released as 0.6.0; one reaction per person, amended by
+  [0101](0101-one-reaction-per-person-on-a-message.md)
 - Date: 2026-10-11
 - Decided by: the maintainer, choosing items 1, 3 and 4 of the 0.5.0 UX review
 - Amends: [0022](0022-the-conversation-surfaces.md) (grouping: "one time"; the reaction
