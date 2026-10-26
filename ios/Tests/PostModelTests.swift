@@ -52,7 +52,7 @@ final class PostModelTests: XCTestCase {
         XCTAssertFalse(model.writes)
         model.draft = "Halló"
         XCTAssertFalse(model.sendable)
-        await model.react(.like)
+        await model.react("👍")
         XCTAssertFalse(social.calls.contains { $0.hasPrefix("react") })
     }
 
