@@ -19,7 +19,8 @@
 ## Why
 
 The bucket was planned for build artifacts before the core moved to GitHub releases. It was
-never created and never bound: no `backend/` config, binding, script or workflow names it, and
+never created (measured 2026-10-26: `wrangler r2 bucket list`, with and without
+`--jurisdiction eu`, lists no `spjall-artifacts` on the account) and never bound: no `backend/` config, binding, script or workflow names it, and
 the only places it appeared were the identifier files, the schema, a test and decision text.
 Its git history adds nothing else. A frozen id that nothing uses promises a
 bucket whose jurisdiction nobody checks, and it keeps the first line of 0013's reasoning alive
