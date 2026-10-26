@@ -17,11 +17,18 @@ pub struct Person {
 
 impl From<core::Person> for Person {
     fn from(person: core::Person) -> Self {
+        let core::Person {
+            account,
+            name,
+            verified,
+            photo,
+        } = person;
+
         Self {
-            account: person.account,
-            name: person.name,
-            verified: person.verified,
-            photo: person.photo,
+            account,
+            name,
+            verified,
+            photo,
         }
     }
 }
@@ -155,13 +162,21 @@ impl From<core::Content> for Content {
         match content {
             C::Text { text, reply_to } => Self::Text {
                 text,
-                reply_to: reply_to.map(|quote| Quote {
-                    envelope_id: quote.envelope_id,
-                    sender: quote.sender.map(Into::into),
-                    text: quote.text,
-                    post_id: quote.post_id,
-                    location: quote.location,
-                }),
+                reply_to: reply_to.map(
+                    |core::Quote {
+                         envelope_id,
+                         sender,
+                         text,
+                         post_id,
+                         location,
+                     }| Quote {
+                        envelope_id,
+                        sender: sender.map(Into::into),
+                        text,
+                        post_id,
+                        location,
+                    },
+                ),
             },
             C::Media {
                 mime,
@@ -230,28 +245,49 @@ pub struct Item {
 
 impl From<core::Item> for Item {
     fn from(item: core::Item) -> Self {
+        let core::Item {
+            seq,
+            envelope_id,
+            sender,
+            own,
+            ts,
+            received_at,
+            status,
+            content,
+            edited,
+            read_by,
+            expires_at,
+            forwarded,
+            reactions,
+        } = item;
+
         Self {
-            seq: item.seq,
-            envelope_id: item.envelope_id,
-            sender: item.sender.into(),
-            own: item.own,
-            ts: item.ts,
-            received_at: item.received_at,
-            status: item.status.into(),
-            content: item.content.into(),
-            edited: item.edited,
-            reactions: item
-                .reactions
+            seq,
+            envelope_id,
+            sender: sender.into(),
+            own,
+            ts,
+            received_at,
+            status: status.into(),
+            content: content.into(),
+            edited,
+            reactions: reactions
                 .into_iter()
-                .map(|reaction| Reaction {
-                    emoji: reaction.emoji,
-                    own: reaction.own,
-                    people: people(reaction.people),
-                })
+                .map(
+                    |core::Reaction {
+                         emoji,
+                         own,
+                         people: reacted,
+                     }| Reaction {
+                        emoji,
+                        own,
+                        people: people(reacted),
+                    },
+                )
                 .collect(),
-            read_by: item.read_by,
-            expires_at: item.expires_at,
-            forwarded: item.forwarded,
+            read_by,
+            expires_at,
+            forwarded,
         }
     }
 }
@@ -272,18 +308,28 @@ pub struct Conversation {
 
 impl From<core::Conversation> for Conversation {
     fn from(conversation: core::Conversation) -> Self {
+        let core::Conversation {
+            id,
+            state,
+            name,
+            members,
+            last,
+            unread,
+            timer,
+            mute,
+            photo,
+        } = conversation;
+
         Self {
-            id: conversation.id,
-            state: conversation.state.into(),
-            name: conversation.name,
-            photo: conversation
-                .photo
-                .map(|path| path.to_string_lossy().into_owned()),
-            members: people(conversation.members),
-            last: conversation.last.map(Into::into),
-            unread: conversation.unread,
-            timer: conversation.timer,
-            mute: conversation.mute.into(),
+            id,
+            state: state.into(),
+            name,
+            photo: photo.map(|path| path.to_string_lossy().into_owned()),
+            members: people(members),
+            last: last.map(Into::into),
+            unread,
+            timer,
+            mute: mute.into(),
         }
     }
 }
@@ -310,17 +356,25 @@ pub struct Envelope {
 
 impl From<core::Message> for Message {
     fn from(message: core::Message) -> Self {
+        let core::Message {
+            conversation,
+            seq,
+            sender,
+            envelope,
+            own,
+        } = message;
+
         Self {
-            conversation: message.conversation,
-            seq: message.seq,
-            sender_account: message.sender.account,
-            sender_device: message.sender.device,
+            conversation,
+            seq,
+            sender_account: sender.account,
+            sender_device: sender.device,
             envelope: Envelope {
-                id: message.envelope.id,
-                ts: message.envelope.ts,
-                body: message.envelope.body,
+                id: envelope.id,
+                ts: envelope.ts,
+                body: envelope.body,
             },
-            own: message.own,
+            own,
         }
     }
 }
@@ -401,10 +455,12 @@ impl From<core::Event> for Event {
                 conversation,
                 joined: joined
                     .into_iter()
-                    .map(|device| GroupDevice {
-                        account: device.account,
-                        device: device.device,
-                    })
+                    .map(
+                        |spjall_mls::group::Device { account, device }| GroupDevice {
+                            account,
+                            device,
+                        },
+                    )
                     .collect(),
             },
             E::Removed { conversation } => Self::Removed { conversation },
@@ -443,9 +499,11 @@ pub struct Outcome {
 
 impl From<core::Outcome> for Outcome {
     fn from(outcome: core::Outcome) -> Self {
+        let core::Outcome { events, frames } = outcome;
+
         Self {
-            events: outcome.events.into_iter().map(Into::into).collect(),
-            frames: outcome.frames,
+            events: events.into_iter().map(Into::into).collect(),
+            frames,
         }
     }
 }
@@ -473,25 +531,40 @@ pub struct Me {
 
 impl From<api::Me> for Me {
     fn from(me: api::Me) -> Self {
+        let api::Me {
+            account_id,
+            name,
+            verified,
+            photo,
+            devices,
+        } = me;
+
         Self {
-            account_id: me.account_id,
-            name: me.name,
-            verified: me.verified,
-            devices: me
-                .devices
+            account_id,
+            name,
+            verified,
+            devices: devices
                 .into_iter()
-                .map(|device| AccountDevice {
-                    device_id: device.device_id,
-                    platform: device.platform,
-                    kind: match device.kind {
-                        api::DeviceKind::Phone => "phone",
-                        api::DeviceKind::Web => "web",
+                .map(
+                    |api::AccountDevice {
+                         device_id,
+                         platform,
+                         kind,
+                         created_at,
+                         current,
+                     }| AccountDevice {
+                        device_id,
+                        platform,
+                        kind: match kind {
+                            api::DeviceKind::Phone => "phone",
+                            api::DeviceKind::Web => "web",
+                        },
+                        created_at,
+                        current,
                     },
-                    created_at: device.created_at,
-                    current: device.current,
-                })
+                )
                 .collect(),
-            photo: me.photo,
+            photo,
         }
     }
 }
@@ -506,10 +579,16 @@ pub struct DeviceLink {
 
 impl From<core::DeviceLink> for DeviceLink {
     fn from(link: core::DeviceLink) -> Self {
+        let core::DeviceLink {
+            code,
+            link_id,
+            expires_at,
+        } = link;
+
         Self {
-            code: link.code,
-            link_id: link.link_id,
-            expires_at: link.expires_at,
+            code,
+            link_id,
+            expires_at,
         }
     }
 }

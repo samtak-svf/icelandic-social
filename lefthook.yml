@@ -109,6 +109,10 @@ pre-push:
     core:
       run: node tooling/core-guard.mjs
 
+    # Every ffi and wasm From converts its core type exhaustively (#267).
+    core-dto:
+      run: node tooling/core-dto-guard.mjs
+
     # Rust formatting and lints, only when the core changed since main.
     core-rust:
       run: |

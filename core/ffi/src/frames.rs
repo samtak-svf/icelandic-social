@@ -5,6 +5,8 @@
 //! vectors against.
 
 use spjall_client::frames as core;
+pub use spjall_client::frames::Frame;
+pub use spjall_client::frames::PixelRect;
 
 /// What an image is framed as.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -16,7 +18,7 @@ pub enum FrameKind {
 }
 
 /// One frame of an image.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[uniffi::remote(Enum)]
 pub enum Frame {
     /// A cover on a window below 600 dp, 3:1 (1200 by 400).
     Compact,
@@ -37,6 +39,22 @@ pub struct Focus {
     pub y: f64,
 }
 
+impl From<Focus> for core::Focus {
+    fn from(focus: Focus) -> Self {
+        let Focus { x, y } = focus;
+
+        Self { x, y }
+    }
+}
+
+impl From<core::Focus> for Focus {
+    fn from(focus: core::Focus) -> Self {
+        let core::Focus { x, y } = focus;
+
+        Self { x, y }
+    }
+}
+
 /// A rectangle of the image as fractions of its width and height.
 #[derive(Debug, Clone, Copy, PartialEq, uniffi::Record)]
 pub struct FrameRect {
@@ -46,13 +64,29 @@ pub struct FrameRect {
     pub h: f64,
 }
 
+impl From<FrameRect> for core::FrameRect {
+    fn from(r: FrameRect) -> Self {
+        let FrameRect { x, y, w, h } = r;
+
+        Self { x, y, w, h }
+    }
+}
+
+impl From<core::FrameRect> for FrameRect {
+    fn from(r: core::FrameRect) -> Self {
+        let core::FrameRect { x, y, w, h } = r;
+
+        Self { x, y, w, h }
+    }
+}
+
 // The fractions come from JSON or a gesture, never NaN, so equality is
 // reflexive and the records that hold them keep their `Eq`.
 impl Eq for Focus {}
 impl Eq for FrameRect {}
 
 /// A rectangle of an image in pixels.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+#[uniffi::remote(Record)]
 pub struct PixelRect {
     pub x: u32,
     pub y: u32,
@@ -99,88 +133,16 @@ impl From<FrameKind> for core::FrameKind {
     }
 }
 
-impl From<Frame> for core::Frame {
-    fn from(frame: Frame) -> Self {
-        match frame {
-            Frame::Compact => Self::Compact,
-            Frame::Medium => Self::Medium,
-            Frame::Expanded => Self::Expanded,
-            Frame::Square => Self::Square,
-        }
-    }
-}
-
-impl From<core::Frame> for Frame {
-    fn from(frame: core::Frame) -> Self {
-        match frame {
-            core::Frame::Compact => Self::Compact,
-            core::Frame::Medium => Self::Medium,
-            core::Frame::Expanded => Self::Expanded,
-            core::Frame::Square => Self::Square,
-        }
-    }
-}
-
-impl From<Focus> for core::Focus {
-    fn from(focus: Focus) -> Self {
-        Self {
-            x: focus.x,
-            y: focus.y,
-        }
-    }
-}
-
-impl From<core::Focus> for Focus {
-    fn from(focus: core::Focus) -> Self {
-        Self {
-            x: focus.x,
-            y: focus.y,
-        }
-    }
-}
-
-impl From<FrameRect> for core::FrameRect {
-    fn from(r: FrameRect) -> Self {
-        Self {
-            x: r.x,
-            y: r.y,
-            w: r.w,
-            h: r.h,
-        }
-    }
-}
-
-impl From<core::FrameRect> for FrameRect {
-    fn from(r: core::FrameRect) -> Self {
-        Self {
-            x: r.x,
-            y: r.y,
-            w: r.w,
-            h: r.h,
-        }
-    }
-}
-
-impl From<core::PixelRect> for PixelRect {
-    fn from(r: core::PixelRect) -> Self {
-        Self {
-            x: r.x,
-            y: r.y,
-            w: r.w,
-            h: r.h,
-        }
-    }
-}
-
 impl From<Framing> for core::Framing {
     /// A frame named twice keeps the last rectangle.
     fn from(framing: Framing) -> Self {
+        let Framing { focus, overrides } = framing;
+
         Self {
-            focus: framing.focus.into(),
-            overrides: framing
-                .overrides
+            focus: focus.into(),
+            overrides: overrides
                 .into_iter()
-                .map(|o| (o.frame.into(), o.rect.into()))
+                .map(|FrameOverride { frame, rect }| (frame, rect.into()))
                 .collect(),
         }
     }
@@ -188,13 +150,14 @@ impl From<Framing> for core::Framing {
 
 impl From<core::Framing> for Framing {
     fn from(framing: core::Framing) -> Self {
+        let core::Framing { focus, overrides } = framing;
+
         Self {
-            focus: framing.focus.into(),
-            overrides: framing
-                .overrides
+            focus: focus.into(),
+            overrides: overrides
                 .into_iter()
                 .map(|(frame, rect)| FrameOverride {
-                    frame: frame.into(),
+                    frame,
                     rect: rect.into(),
                 })
                 .collect(),
@@ -208,7 +171,7 @@ impl From<core::Framing> for Framing {
 /// Android, points on iOS and CSS pixels on the web.
 #[uniffi::export]
 pub fn frame_for_width(kind: FrameKind, width_dp: u32) -> Frame {
-    core::frame_for_width(kind.into(), width_dp).into()
+    core::frame_for_width(kind.into(), width_dp)
 }
 
 /// The size `frame` is stored at, none when `kind` has no such frame. Its
@@ -216,7 +179,7 @@ pub fn frame_for_width(kind: FrameKind, width_dp: u32) -> Frame {
 #[uniffi::export]
 pub fn frame_size(kind: FrameKind, frame: Frame) -> Option<FrameSize> {
     core::FrameKind::from(kind)
-        .size(frame.into())
+        .size(frame)
         .map(|s| FrameSize { w: s.w, h: s.h })
 }
 
@@ -226,7 +189,7 @@ pub fn frames_of(kind: FrameKind) -> Vec<Frame> {
     core::FrameKind::from(kind)
         .specs()
         .iter()
-        .map(|(frame, _)| (*frame).into())
+        .map(|(frame, _)| *frame)
         .collect()
 }
 
@@ -241,13 +204,13 @@ pub fn place_frame(
     aspect_h: u32,
     focus: Focus,
 ) -> PixelRect {
-    core::place_frame(image_w, image_h, aspect_w, aspect_h, focus.into()).into()
+    core::place_frame(image_w, image_h, aspect_w, aspect_h, focus.into())
 }
 
 /// A rectangle of fractions as pixels of an image, moved inside it.
 #[uniffi::export]
 pub fn override_rect(image_w: u32, image_h: u32, rect: FrameRect) -> PixelRect {
-    core::override_rect(image_w, image_h, rect.into()).into()
+    core::override_rect(image_w, image_h, rect.into())
 }
 
 /// Where each frame of `kind` falls in an image `image_w` by `image_h` under
@@ -261,10 +224,7 @@ pub fn frames_for(
 ) -> Vec<PlacedFrame> {
     core::frames_for(kind.into(), image_w, image_h, &framing.into())
         .into_iter()
-        .map(|(frame, rect)| PlacedFrame {
-            frame: frame.into(),
-            rect: rect.into(),
-        })
+        .map(|(frame, rect)| PlacedFrame { frame, rect })
         .collect()
 }
 

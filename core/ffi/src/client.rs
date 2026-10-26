@@ -9,6 +9,10 @@ use spjall_client::{self as core, ClientError, HistoryError, LinkError, MediaErr
 
 use crate::frames::{Frame, Framing};
 use crate::{Body, CoreError, Envelope, store_code};
+pub use spjall_client::LinkRequest;
+pub use spjall_client::Person;
+pub use spjall_client::api::DeviceKind;
+pub use spjall_client::api::Platform;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum HttpMethod {
@@ -204,9 +208,7 @@ impl From<ClientError> for CoreError {
             ClientError::History(HistoryError::File(error)) => Self::File {
                 detail: format!("{:?}", error.kind()),
             },
-            ClientError::CannotForward(reason) => Self::CannotForward {
-                reason: reason.into(),
-            },
+            ClientError::CannotForward(reason) => Self::CannotForward { reason },
             // NotApproved is only raised by a browser completing its own link;
             // the apps never call that, so it shares the code's error.
             ClientError::Link(LinkError::InvalidCode | LinkError::NotApproved) => {
@@ -224,28 +226,10 @@ impl From<ClientError> for CoreError {
 }
 
 /// Which app is signing in; registerDevice records it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[uniffi::remote(Enum)]
 pub enum Platform {
     Android,
     Ios,
-}
-
-impl From<Platform> for api::Platform {
-    fn from(platform: Platform) -> Self {
-        match platform {
-            Platform::Android => Self::Android,
-            Platform::Ios => Self::Ios,
-        }
-    }
-}
-
-impl From<api::Platform> for Platform {
-    fn from(platform: api::Platform) -> Self {
-        match platform {
-            api::Platform::Android => Self::Android,
-            api::Platform::Ios => Self::Ios,
-        }
-    }
 }
 
 /// Who a person signs in with (0033): Google first, Kenni for the mark.
@@ -273,28 +257,21 @@ pub struct SignedIn {
 
 impl From<core::SignedIn> for SignedIn {
     fn from(device: core::SignedIn) -> Self {
+        let core::SignedIn { account, device } = device;
+
         Self {
-            account_id: device.account,
-            device_id: device.device,
+            account_id: account,
+            device_id: device,
         }
     }
 }
 
 /// What kind of device an account holds (0064): a phone, or a browser
 /// linked from its session.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[uniffi::remote(Enum)]
 pub enum DeviceKind {
     Phone,
     Web,
-}
-
-impl From<api::DeviceKind> for DeviceKind {
-    fn from(kind: api::DeviceKind) -> Self {
-        match kind {
-            api::DeviceKind::Phone => Self::Phone,
-            api::DeviceKind::Web => Self::Web,
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -324,21 +301,36 @@ pub struct Me {
 
 impl From<api::Me> for Me {
     fn from(me: api::Me) -> Self {
+        let api::Me {
+            account_id,
+            name,
+            verified,
+            photo,
+            devices,
+        } = me;
+
         Self {
-            account_id: me.account_id,
-            name: me.name,
-            verified: me.verified,
-            photo: me.photo,
-            devices: me
-                .devices
+            account_id,
+            name,
+            verified,
+            photo,
+            devices: devices
                 .into_iter()
-                .map(|d| AccountDevice {
-                    device_id: d.device_id,
-                    platform: d.platform.into(),
-                    kind: d.kind.into(),
-                    created_at: d.created_at,
-                    current: d.current,
-                })
+                .map(
+                    |api::AccountDevice {
+                         device_id,
+                         platform,
+                         kind,
+                         created_at,
+                         current,
+                     }| AccountDevice {
+                        device_id,
+                        platform,
+                        kind,
+                        created_at,
+                        current,
+                    },
+                )
                 .collect(),
         }
     }
@@ -389,10 +381,16 @@ pub struct ImportedHistory {
 
 impl From<core::Imported> for ImportedHistory {
     fn from(imported: core::Imported) -> Self {
+        let core::Imported {
+            conversations,
+            items,
+            files,
+        } = imported;
+
         Self {
-            conversations: imported.conversations,
-            items: imported.items,
-            files: imported.files,
+            conversations,
+            items,
+            files,
         }
     }
 }
@@ -407,23 +405,12 @@ pub fn is_link_code(text: String) -> bool {
 /// A browser's pending request to be linked to this account (0064), as the
 /// phone shows it before approving: `browser` and `os` as the server read
 /// them, and when it expires, in milliseconds.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+#[uniffi::remote(Record)]
 pub struct LinkRequest {
     pub browser: Option<String>,
     pub os: Option<String>,
     pub expires_at: i64,
     pub approved: bool,
-}
-
-impl From<core::LinkRequest> for LinkRequest {
-    fn from(request: core::LinkRequest) -> Self {
-        Self {
-            browser: request.browser,
-            os: request.os,
-            expires_at: request.expires_at,
-            approved: request.approved,
-        }
-    }
 }
 
 #[uniffi::export]
@@ -464,7 +451,7 @@ impl From<core::State> for ConversationState {
 
 /// An account as the screens show it: the name and mark the server gave,
 /// none until the core has fetched them.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+#[uniffi::remote(Record)]
 pub struct Person {
     pub account: String,
     pub name: Option<String>,
@@ -473,17 +460,6 @@ pub struct Person {
     /// a block stands between the two, or the core has not fetched it.
     #[uniffi(default = None)]
     pub photo: Option<String>,
-}
-
-impl From<core::Person> for Person {
-    fn from(person: core::Person) -> Self {
-        Self {
-            account: person.account,
-            name: person.name,
-            verified: person.verified,
-            photo: person.photo,
-        }
-    }
 }
 
 /// A page of the directory (0036), verified first, then by name.
@@ -496,9 +472,14 @@ pub struct PersonPage {
 
 impl From<core::Directory> for PersonPage {
     fn from(page: core::Directory) -> Self {
+        let core::Directory {
+            people: listed,
+            next,
+        } = page;
+
         Self {
-            people: people(page.people),
-            next: page.next,
+            people: people(listed),
+            next,
         }
     }
 }
@@ -513,15 +494,20 @@ pub struct ListSearch {
 
 impl From<core::ListSearch> for ListSearch {
     fn from(found: core::ListSearch) -> Self {
+        let core::ListSearch {
+            conversations,
+            people: listed,
+        } = found;
+
         Self {
-            conversations: found.conversations.into_iter().map(Into::into).collect(),
-            people: people(found.people),
+            conversations: conversations.into_iter().map(Into::into).collect(),
+            people: people(listed),
         }
     }
 }
 
 fn people(people: Vec<core::Person>) -> Vec<Person> {
-    people.into_iter().map(Into::into).collect()
+    people.into_iter().collect()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -561,27 +547,38 @@ pub struct Notices {
 
 impl From<core::Notices> for Notices {
     fn from(notices: core::Notices) -> Self {
+        let core::Notices { cleared, shown } = notices;
+
         Self {
-            shown: notices
-                .shown
+            shown: shown
                 .into_iter()
-                .map(|n| Notice {
-                    conversation: n.conversation,
-                    members: people(n.members),
-                    seq: n.seq,
-                    sender: n.sender.into(),
-                    kind: match n.kind {
-                        core::NoticeKind::Text => NoticeKind::Text,
-                        core::NoticeKind::Photo => NoticeKind::Photo,
-                        core::NoticeKind::File => NoticeKind::File,
-                        core::NoticeKind::Post => NoticeKind::Post,
-                        core::NoticeKind::Location => NoticeKind::Location,
+                .map(
+                    |core::Notice {
+                         conversation,
+                         members,
+                         seq,
+                         sender,
+                         kind,
+                         text,
+                         ts,
+                     }| Notice {
+                        conversation,
+                        members: people(members),
+                        seq,
+                        sender,
+                        kind: match kind {
+                            core::NoticeKind::Text => NoticeKind::Text,
+                            core::NoticeKind::Photo => NoticeKind::Photo,
+                            core::NoticeKind::File => NoticeKind::File,
+                            core::NoticeKind::Post => NoticeKind::Post,
+                            core::NoticeKind::Location => NoticeKind::Location,
+                        },
+                        text,
+                        ts,
                     },
-                    text: n.text,
-                    ts: n.ts,
-                })
+                )
                 .collect(),
-            cleared: notices.cleared,
+            cleared,
         }
     }
 }
@@ -652,18 +649,28 @@ impl From<MuteFor> for core::MuteFor {
 
 impl From<core::Conversation> for Conversation {
     fn from(conversation: core::Conversation) -> Self {
+        let core::Conversation {
+            id,
+            state,
+            name,
+            members,
+            last,
+            unread,
+            timer,
+            mute,
+            photo,
+        } = conversation;
+
         Self {
-            id: conversation.id,
-            state: conversation.state.into(),
-            name: conversation.name,
-            photo: conversation
-                .photo
-                .map(|path| path.to_string_lossy().into_owned()),
-            members: people(conversation.members),
-            last: conversation.last.map(Into::into),
-            unread: conversation.unread,
-            timer: conversation.timer,
-            mute: conversation.mute.into(),
+            id,
+            state: state.into(),
+            name,
+            photo: photo.map(|path| path.to_string_lossy().into_owned()),
+            members: people(members),
+            last: last.map(Into::into),
+            unread,
+            timer,
+            mute: mute.into(),
         }
     }
 }
@@ -756,13 +763,21 @@ impl From<core::Content> for Content {
         match content {
             C::Text { text, reply_to } => Self::Text {
                 text,
-                reply_to: reply_to.map(|quote| Quote {
-                    envelope_id: quote.envelope_id,
-                    sender: quote.sender.map(Into::into),
-                    text: quote.text,
-                    post_id: quote.post_id,
-                    location: quote.location,
-                }),
+                reply_to: reply_to.map(
+                    |core::Quote {
+                         envelope_id,
+                         sender,
+                         text,
+                         post_id,
+                         location,
+                     }| Quote {
+                        envelope_id,
+                        sender,
+                        text,
+                        post_id,
+                        location,
+                    },
+                ),
             },
             C::Media {
                 mime,
@@ -847,28 +862,49 @@ pub struct Item {
 
 impl From<core::Item> for Item {
     fn from(item: core::Item) -> Self {
+        let core::Item {
+            seq,
+            envelope_id,
+            sender,
+            own,
+            ts,
+            status,
+            content,
+            edited,
+            read_by,
+            expires_at,
+            forwarded,
+            received_at,
+            reactions,
+        } = item;
+
         Self {
-            seq: item.seq,
-            envelope_id: item.envelope_id,
-            sender: item.sender.into(),
-            own: item.own,
-            ts: item.ts,
-            status: item.status.into(),
-            content: item.content.into(),
-            edited: item.edited,
-            reactions: item
-                .reactions
+            seq,
+            envelope_id,
+            sender,
+            own,
+            ts,
+            status: status.into(),
+            content: content.into(),
+            edited,
+            reactions: reactions
                 .into_iter()
-                .map(|r| Reaction {
-                    emoji: r.emoji,
-                    own: r.own,
-                    people: people(r.people),
-                })
+                .map(
+                    |core::Reaction {
+                         emoji,
+                         own,
+                         people: reacted,
+                     }| Reaction {
+                        emoji,
+                        own,
+                        people: people(reacted),
+                    },
+                )
                 .collect(),
-            read_by: item.read_by,
-            expires_at: item.expires_at,
-            forwarded: item.forwarded,
-            received_at: item.received_at,
+            read_by,
+            expires_at,
+            forwarded,
+            received_at,
         }
     }
 }
@@ -893,17 +929,25 @@ pub struct Message {
 
 impl From<core::Message> for Message {
     fn from(message: core::Message) -> Self {
+        let core::Message {
+            conversation,
+            seq,
+            sender,
+            envelope,
+            own,
+        } = message;
+
         Self {
-            conversation: message.conversation,
-            seq: message.seq,
-            sender_account: message.sender.account,
-            sender_device: message.sender.device,
+            conversation,
+            seq,
+            sender_account: sender.account,
+            sender_device: sender.device,
             envelope: Envelope {
-                id: message.envelope.id,
-                ts: message.envelope.ts,
-                body: message.envelope.body.into(),
+                id: envelope.id,
+                ts: envelope.ts,
+                body: envelope.body.into(),
             },
-            own: message.own,
+            own,
         }
     }
 }
@@ -986,10 +1030,12 @@ impl From<core::Event> for Event {
                 conversation,
                 joined: joined
                     .into_iter()
-                    .map(|d| GroupDevice {
-                        account: d.account,
-                        device: d.device,
-                    })
+                    .map(
+                        |spjall_mls::group::Device { account, device }| GroupDevice {
+                            account,
+                            device,
+                        },
+                    )
                     .collect(),
             },
             E::Removed { conversation } => Self::Removed { conversation },
@@ -1029,9 +1075,11 @@ pub struct Outcome {
 
 impl From<core::Outcome> for Outcome {
     fn from(outcome: core::Outcome) -> Self {
+        let core::Outcome { events, frames } = outcome;
+
         Self {
-            events: outcome.events.into_iter().map(Into::into).collect(),
-            frames: outcome.frames,
+            events: events.into_iter().map(Into::into).collect(),
+            frames,
         }
     }
 }
@@ -1064,7 +1112,7 @@ impl CoreClient {
             detail: format!("key-length/{}", key.len()),
         })?;
         let mut client = core::Client::open(Path::new(&dir), &key, Foreign(transport))?;
-        client.set_client_version(platform.into(), &version)?;
+        client.set_client_version(platform, &version)?;
         let view = client.view()?;
         let header = client.client_header().unwrap_or_default().to_owned();
         Ok(Arc::new(Self {
@@ -1107,7 +1155,7 @@ impl CoreClient {
     ) -> Result<SignedIn, CoreError> {
         Ok(self
             .client()?
-            .complete_sign_in(&callback, invite_token.as_deref(), platform.into())?
+            .complete_sign_in(&callback, invite_token.as_deref(), platform)?
             .into())
     }
 
@@ -1175,7 +1223,7 @@ impl CoreClient {
     /// The pending link request the code `code` names, once its keys are
     /// checked against the code's (0077).
     pub fn inspect_link(&self, code: String) -> Result<LinkRequest, CoreError> {
-        Ok(self.client()?.inspect_link(&code)?.into())
+        Ok(self.client()?.inspect_link(&code)?)
     }
 
     /// Approves the link request the code `code` names with this phone's
@@ -1440,7 +1488,7 @@ impl CoreClient {
     /// An account's name and mark, fetched now; the stored one when there
     /// is no answer.
     pub fn profile(&self, account: String) -> Result<Person, CoreError> {
-        Ok(self.client()?.profile(&account)?.into())
+        Ok(self.client()?.profile(&account)?)
     }
 
     /// Sets this account's photo from the image at `path` (0039), in place
@@ -1484,7 +1532,7 @@ impl CoreClient {
     ) -> Result<Option<String>, CoreError> {
         Ok(self
             .client()?
-            .photo_framed(&account, &version, frame.into())?
+            .photo_framed(&account, &version, frame)?
             .as_deref()
             .map(path_string))
     }
