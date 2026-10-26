@@ -3,7 +3,8 @@
 // trusts it most (#279). Every backticked repo path in AGENTS.md and docs/**/*.md
 // must exist, unless the decision record that cites it is superseded or
 // amended (its paths are history) or the path is on the short historical list.
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -106,18 +107,33 @@ function markdownUnder(dir) {
 }
 
 /**
+ * Whether git ignores a path that need not exist. A directory pattern such as
+ * `target/` matches only a path git knows is a directory, so a fresh clone
+ * without the built `core/target` would miss it; the path is asked about with
+ * a trailing slash as well.
+ *
+ * @param {string} path
+ * @param {string} [cwd]
+ */
+export function ignoredByGit(path, cwd = ROOT) {
+  const candidates = path.endsWith("/") ? [path] : [path, `${path}/`];
+  return candidates.some((candidate) => {
+    try {
+      execFileSync("git", ["check-ignore", "-q", candidate], { cwd, env: GIT_ENV });
+      return true;
+    } catch {
+      return false;
+    }
+  });
+}
+
+/**
  * A path a fresh clone lacks on purpose (built or fetched, gitignored) counts
  * as existing.
  * @param {string} path
  */
 function onDisk(path) {
-  if (existsSync(join(ROOT, path))) return true;
-  try {
-    execFileSync("git", ["check-ignore", "-q", path], { cwd: ROOT, env: GIT_ENV });
-    return true;
-  } catch {
-    return false;
-  }
+  return existsSync(join(ROOT, path)) || ignoredByGit(path);
 }
 
 describe("doc paths", () => {
@@ -152,6 +168,18 @@ describe("doc paths", () => {
       "doc-paths.historical.json: core/here.rs has no reason",
       "doc-paths.historical.json: core/here.rs in docs/a.md no longer needs its entry",
     ]);
+  });
+
+  it("counts a gitignored build directory as present in a clone that never built it", () => {
+    const repo = mkdtempSync(join(tmpdir(), "doc-paths-"));
+    try {
+      execFileSync("git", ["init", "-q"], { cwd: repo, env: GIT_ENV });
+      writeFileSync(join(repo, ".gitignore"), "target/\n");
+      expect(ignoredByGit("core/target", repo)).toBe(true);
+      expect(ignoredByGit("core/src", repo)).toBe(false);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
   });
 
   it("holds for AGENTS.md and every document under docs/", () => {
