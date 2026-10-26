@@ -150,19 +150,19 @@ final class CommunityModelTests: XCTestCase {
 
     func testAReactionTogglesAndTheSecondTapTakesItOff() async {
         let model = await model(makeCommunity("k1", "Fuglar", role: .member))
-        await model.react("p2", .love)
-        XCTAssertEqual(model.posts[1].myReaction, .love)
-        XCTAssertEqual(reactionCount(model.posts[1], .love), 1)
-        await model.react("p2", .love)
-        XCTAssertNil(model.posts[1].myReaction)
-        XCTAssertEqual(social.calls.suffix(2), ["react p2 love", "unreact p2"])
+        await model.react("p2", "❤️")
+        XCTAssertEqual(model.posts[1].myEmoji, "❤️")
+        XCTAssertEqual(reactionCount(model.posts[1], "❤️"), 1)
+        await model.react("p2", "❤️")
+        XCTAssertNil(model.posts[1].myEmoji)
+        XCTAssertEqual(social.calls.suffix(2), ["react p2 ❤️", "unreact p2"])
     }
 
     func testARefusedReactionPutsThePostBack() async {
         let model = await model(makeCommunity("k1", "Fuglar", role: .member))
         let before = model.posts[0]
         social.failNext = unreachable
-        await model.react("p3", .like)
+        await model.react("p3", "👍")
         XCTAssertEqual(model.posts[0], before)
         XCTAssertEqual(model.problem, .unreachable)
     }

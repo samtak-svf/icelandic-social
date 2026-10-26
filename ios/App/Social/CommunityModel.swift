@@ -746,18 +746,18 @@ final class CommunityModel {
 
     /// Sets this account's reaction on a post to `kind`, or takes it off when it is `kind` already. The post
     /// shows the change at once and goes back to what it was if the server refuses.
-    func react(_ postId: String, _ kind: ReactionKind) async {
+    func react(_ postId: String, _ emoji: String) async {
         guard writes, !reacting.contains(postId), let index = posts.firstIndex(where: { $0.postId == postId })
         else { return }
         let before = posts[index]
-        let off = before.myReaction == kind
-        posts[index] = reacted(before, off ? nil : kind)
+        let off = before.myEmoji == emoji
+        posts[index] = reacted(before, off ? nil : emoji)
         reacting.insert(postId)
         let social = social
         problem = nil
         do {
             try await offMain {
-                if off { try social.unreact(postId) } else { try social.react(postId, kind: kind) }
+                if off { try social.unreact(postId) } else { try social.react(postId, emoji: emoji) }
             }
             failed = nil
         } catch {

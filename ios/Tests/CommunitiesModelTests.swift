@@ -91,11 +91,11 @@ final class CommunitiesModelTests: XCTestCase {
         await model.loadFeed()
         XCTAssertTrue(model.writes(model.feedPosts[0]))
         XCTAssertFalse(model.writes(model.feedPosts[1]))
-        await model.react("p2", .love)
-        XCTAssertNil(model.feedPosts[1].myReaction)
-        await model.react("p1", .love)
-        XCTAssertEqual(model.feedPosts[0].myReaction, .love)
-        XCTAssertEqual(social.calls.last, "react p1 love")
+        await model.react("p2", "❤️")
+        XCTAssertNil(model.feedPosts[1].myEmoji)
+        await model.react("p1", "❤️")
+        XCTAssertEqual(model.feedPosts[0].myEmoji, "❤️")
+        XCTAssertEqual(social.calls.last, "react p1 ❤️")
     }
 
     func testAFailedFeedSaysWhyAndRetries() async {

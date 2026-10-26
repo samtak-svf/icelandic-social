@@ -70,7 +70,7 @@ protocol Social: Sendable {
     /// Deletes this account's own post.
     func deletePost(_ id: String) throws
     /// Sets this account's one reaction on a post, in place of any other.
-    func react(_ post: String, kind: ReactionKind) throws
+    func react(_ post: String, emoji: String) throws
     func unreact(_ post: String) throws
     /// A page of a post's comments, oldest first.
     func comments(_ post: String, after: String?, limit: UInt32) throws -> CommentPage
@@ -248,7 +248,7 @@ extension CoreAccount: Social {
 
     func deletePost(_ id: String) throws { try core().deletePost(postId: id) }
 
-    func react(_ post: String, kind: ReactionKind) throws { try core().react(postId: post, kind: kind) }
+    func react(_ post: String, emoji: String) throws { try core().react(postId: post, emoji: emoji) }
 
     func unreact(_ post: String) throws { try core().unreact(postId: post) }
 
@@ -359,8 +359,25 @@ enum SocialRoute: Hashable {
     case requests(String)
 }
 
-/// The five reactions a post takes, in the order they are offered.
-let reactionKinds: [ReactionKind] = [.like, .love, .laugh, .wow, .sad]
+/// One of the reactions the quick bar offers: its emoji, and the key of the words a screen reader says in place of it.
+struct QuickReaction: Hashable {
+    let emoji: String
+    let label: String
+}
+
+/// The reactions of the quick bar, in the order they are offered. Any other single emoji is a reaction too, picked
+/// from the full list (decision 0100).
+let quickReactions: [QuickReaction] = [
+    QuickReaction(emoji: "👍", label: "reaction_like"),
+    QuickReaction(emoji: "❤️", label: "reaction_love"),
+    QuickReaction(emoji: "😂", label: "reaction_laugh"),
+    QuickReaction(emoji: "😮", label: "reaction_wow"),
+    QuickReaction(emoji: "😢", label: "reaction_sad"),
+    QuickReaction(emoji: "🙏", label: "reaction_pray"),
+]
+
+/// What a tap on `Líkar` gives.
+let likeEmoji = "👍"
 
 /// The reasons a report gives, in the order they are offered.
 let reportReasons: [ReportReason] = [.unlawful, .harassment, .spam, .other]
@@ -413,26 +430,10 @@ func communityLink(_ communityId: String) -> URL? {
     URL(string: "\(webOrigin)/communities/\(communityId)")
 }
 
-/// The words for a reaction, which a screen reader says in place of its emoji.
-func reactionLabel(_ kind: ReactionKind) -> String {
-    switch kind {
-    case .like: localized("reaction_like")
-    case .love: localized("reaction_love")
-    case .laugh: localized("reaction_laugh")
-    case .wow: localized("reaction_wow")
-    case .sad: localized("reaction_sad")
-    }
-}
-
-/// A reaction as the button shows it.
-func reactionEmoji(_ kind: ReactionKind) -> String {
-    switch kind {
-    case .like: "👍"
-    case .love: "❤️"
-    case .laugh: "😂"
-    case .wow: "😮"
-    case .sad: "😢"
-    }
+/// The words for a reaction, which a screen reader says in place of its emoji; an emoji of the full list has no
+/// words of its own, and VoiceOver names it.
+func reactionLabel(_ emoji: String) -> String {
+    quickReactions.first { $0.emoji == emoji }.map { localized($0.label) } ?? emoji
 }
 
 func reasonLabel(_ reason: ReportReason) -> String {
@@ -448,7 +449,10 @@ func reasonLabel(_ reason: ReportReason) -> String {
 func noticeLine(_ notification: SocialNotification) -> String {
     switch notification.kind {
     case .comment: localized("notice_comment", authorName(notification.actor))
-    case .reaction: localized("notice_reaction", authorName(notification.actor))
+    case .reaction:
+        // The emoji the account reacted with leads the sentence (decision 0100); an old server sends none.
+        [notification.emoji, localized("notice_reaction", authorName(notification.actor))]
+            .compactMap { $0 }.joined(separator: " ")
     case .joinApproved: localized("notice_join_approved")
     case .moderated: localized("notice_moderated")
     }
@@ -460,28 +464,35 @@ func noticeRoute(_ notification: SocialNotification) -> SocialRoute {
     return .community(notification.communityId)
 }
 
-/// `post` with this account's reaction set to `kind`, or taken off for nil, and the counts moved to match.
-func reacted(_ post: Post, _ kind: ReactionKind?) -> Post {
+/// `post` with this account's reaction set to `emoji`, or taken off for nil, and the counts moved to match: most
+/// given first, equal counts in the order they had, the new emoji last among its equals.
+func reacted(_ post: Post, _ emoji: String?) -> Post {
     var changed = post
-    var counts = post.reactions
-    if let old = post.myReaction, let index = counts.firstIndex(where: { $0.kind == old }) {
+    var counts = post.emojis
+    if let old = post.myEmoji, let index = counts.firstIndex(where: { $0.emoji == old }) {
         counts[index].count -= min(counts[index].count, 1)
     }
-    if let kind {
-        if let index = counts.firstIndex(where: { $0.kind == kind }) {
+    if let emoji {
+        if let index = counts.firstIndex(where: { $0.emoji == emoji }) {
             counts[index].count += 1
         } else {
-            counts.append(ReactionCount(kind: kind, count: 1))
+            counts.append(EmojiCount(emoji: emoji, count: 1))
         }
     }
-    changed.reactions = counts.filter { $0.count > 0 }
-    changed.myReaction = kind
+    changed.emojis = counts.filter { $0.count > 0 }.enumerated()
+        .sorted { ($0.element.count, $1.offset) > ($1.element.count, $0.offset) }.map(\.element)
+    changed.myEmoji = emoji
     return changed
 }
 
-/// How many of `kind` a post has.
-func reactionCount(_ post: Post, _ kind: ReactionKind) -> UInt64 {
-    post.reactions.first { $0.kind == kind }?.count ?? 0
+/// How many of `emoji` a post has.
+func reactionCount(_ post: Post, _ emoji: String) -> UInt64 {
+    post.emojis.first { $0.emoji == emoji }?.count ?? 0
+}
+
+/// The commonest emoji of a post, most given first, as the line under it shows them.
+func summaryEmojis(_ post: Post, limit: Int = 3) -> String {
+    post.emojis.filter { $0.count > 0 }.sorted { $0.count > $1.count }.prefix(limit).map(\.emoji).joined()
 }
 
 /// Whether this account may post, comment and react in `community`: a member, in a community that is not

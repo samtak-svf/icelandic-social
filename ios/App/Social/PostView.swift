@@ -23,7 +23,7 @@ struct PostView: View {
                 if let post = model.post {
                     PostCard(
                         post: post, linked: false, writes: model.writes,
-                        onReact: { kind in Task { await model.react(kind) } },
+                        onReact: { emoji in Task { await model.react(emoji) } },
                         onReport: { reporting = Reporting(target: ReportTarget(kind: .post, id: post.postId)) },
                         onDelete: post.mine ? { deletingPost = true } : nil,
                         onPin: model.moderates ? { Task<Void, Never> { await model.pin(!post.pinned) } } : nil,
