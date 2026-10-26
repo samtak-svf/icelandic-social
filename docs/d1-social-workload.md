@@ -22,7 +22,7 @@ argued from numbers. Nothing here is a decision.
 
 ## Method
 
-`backend/scripts/d1-workload.ts` builds the schema and seeds rows in a throwaway local D1,
+`spikes/d1-workload/measure.ts` builds the schema and seeds rows in a throwaway local D1,
 using wrangler's `getPlatformProxy`. That is the same workerd D1 that `cf dev` runs. It then
 times reads and writes and measures each table's growth. The schema exists only in the
 script: no migration holds it.
@@ -65,7 +65,7 @@ They are constants at the top of the script, and the results follow them.
 
 ## Results
 
-Produced by `pnpm --filter spjall-backend measure:d1 --write` (the default seed):
+Produced by `pnpm --filter spjall-spike-d1-workload measure --write` (the default seed):
 
 <!-- results:start -->
 
@@ -274,11 +274,11 @@ by time, and the one-scan feed is the one not to use.
 
 ```bash
 pnpm install
-pnpm --filter spjall-backend measure:d1                    # print the results (about two minutes)
-pnpm --filter spjall-backend measure:d1 --accounts 2000    # a quick, smaller seed
-pnpm --filter spjall-backend measure:d1 --write && pnpm format   # refresh the results above
+pnpm --filter spjall-spike-d1-workload measure                    # print the results (about two minutes)
+pnpm --filter spjall-spike-d1-workload measure --accounts 2000    # a quick, smaller seed
+pnpm --filter spjall-spike-d1-workload measure --write && pnpm format   # refresh the results above
 ```
 
-Change an assumption in the constants at the top of `backend/scripts/d1-workload.ts`, then run
+Change an assumption in the constants at the top of `spikes/d1-workload/measure.ts`, then run
 it again. The seed draws from SQLite's `random()`, so the counts move by a few percent from run
 to run. Times also vary from one machine to another. The sizes per row hardly move.

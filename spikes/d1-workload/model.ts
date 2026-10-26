@@ -1,4 +1,4 @@
-// The model behind scripts/d1-workload.ts: the usage assumptions, the
+// The model behind spikes/d1-workload/measure.ts: the usage assumptions, the
 // hypothetical social schema, the SQL that seeds it and the reads measured.
 
 // ---- The assumptions. Change them here, and the report follows. ----

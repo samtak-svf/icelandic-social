@@ -1,18 +1,18 @@
 // A repeatable measurement of a social workload on D1 (issue #275), for the
 // scope and community records (#267, #270): does one database hold it?
 //
-//   pnpm --filter spjall-backend measure:d1            # prints the results
-//   pnpm --filter spjall-backend measure:d1 --write    # and puts them in docs/d1-social-workload.md
-//   pnpm --filter spjall-backend measure:d1 --accounts 2000   # a quicker, smaller seed
+//   pnpm --filter spjall-spike-d1-workload measure            # prints the results
+//   pnpm --filter spjall-spike-d1-workload measure --write    # and puts them in docs/d1-social-workload.md
+//   pnpm --filter spjall-spike-d1-workload measure --accounts 2000   # a quicker, smaller seed
 //
 // It runs against a local D1 in workerd (wrangler's getPlatformProxy), the
 // same SQLite build and the same authorizer as `cf dev`, in a throwaway
-// directory. The social tables are hypothetical (d1-workload/model.ts): no
+// directory. The social tables are hypothetical (model.ts): no
 // migration holds them, because the records that would shape them are not
 // yet accepted. Rows are generated inside SQLite (recursive CTEs), so seeding
 // a few million rows does not cross the proxy one at a time.
 //
-// Runs under plain `node`, like scripts/openapi.ts.
+// Runs under plain `node`; a spike package of its own, not part of the Worker (#283).
 
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -35,7 +35,7 @@ import {
   projectedRows,
   seedFor,
   seedStatements,
-} from "./d1-workload/model.ts";
+} from "./model.ts";
 
 type Db = D1Database;
 type Sample = { sqlMs: number; rowsRead: number };
