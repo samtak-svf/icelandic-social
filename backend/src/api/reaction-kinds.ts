@@ -26,7 +26,7 @@ export const emojiOfKind = (kind: ReactionKind): string => KIND_EMOJI[kind];
 export const kindOfEmoji = (emoji: string): ReactionKind | null =>
   REACTIONS.find((kind) => KIND_EMOJI[kind] === emoji) ?? null;
 
-export const Reaction = z.enum(REACTIONS);
+const Reaction = z.enum(REACTIONS);
 
 export const ReactionBody = z
   .object({

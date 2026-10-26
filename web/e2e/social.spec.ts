@@ -81,11 +81,16 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
   const mine = post(member, "Tómatarnir");
   const like = mine.getByRole("button", { name: strings.post_like, exact: true });
   await like.click();
-  await expect(mine.getByRole("button", { name: strings.reaction_like })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
   await expect(mine.getByText(strings.reaction_count({ count: 1 }))).toBeVisible();
+
+  // Any emoji is a reaction (decision 0100): the plus of the quick bar opens the full picker.
+  await like.focus();
+  await like.press("ArrowUp");
+  await mine.getByRole("button", { name: strings.post_reactions_all, exact: true }).click();
+  await mine.getByRole("button", { name: "🎉", exact: true }).click();
+  await expect(mine.getByText("🎉")).toBeVisible();
+  await expect(mine.getByText(strings.reaction_count({ count: 1 }))).toBeVisible();
+  await expect(mine.getByRole("button", { name: strings.post_like, exact: true })).toHaveCount(0);
 
   // The owner comments on it.
   await owner.goto(community);

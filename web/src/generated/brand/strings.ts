@@ -388,6 +388,8 @@ export const strings = {
   reaction_wow: "Vá",
   /** The sad reaction. */
   reaction_sad: "Leitt",
+  /** The thanks reaction (folded hands), the sixth of the quick bar (decision 0100). */
+  reaction_pray: "Takk",
   /** Marks a post or comment a moderator hid; only moderators see it. */
   content_hidden: "Falið af stjórnanda",
   /** Marks a post or comment a moderator removed; only moderators see it. */
@@ -677,8 +679,10 @@ export const strings = {
   post_pin: "Festa",
   /** Pill under a post card that opens its comments */
   post_write_comment: "Skrifaðu athugasemd…",
-  /** Name of the group of five reactions opened from the like action */
+  /** Name of the quick bar of reactions opened from the like action */
   post_reactions_more: "Fleiri viðbrögð",
+  /** The plus of the quick bar, and the name of the full emoji picker it opens (decision 0100) */
+  post_reactions_all: "Öll viðbrögð",
   /** Menu item that releases a featured post */
   post_unpin: "Losa",
   /** Marker on the card of a featured post, in its place in the feed and on the strip (decision 0088) */
