@@ -335,7 +335,7 @@ class ConversationViewModelTest {
         }
 
     @Test
-    fun anUnreadableImageAndAnyOtherFailureAreTwoProblems() =
+    fun anUnreadableImageALostConnectionAndAnyOtherFailureAreThreeProblems() =
         runTest(dispatcher) {
             val model = model()
             account.failNext = CoreException.UnsupportedImage()
@@ -344,6 +344,11 @@ class ConversationViewModelTest {
             assertEquals(Problem.GroupPhotoUnsupported, model.state.value.problem)
 
             account.failNext = unreachable()
+            model.clearGroupPhoto()
+            advanceUntilIdle()
+            assertEquals(Problem.Unreachable, model.state.value.problem)
+
+            account.failNext = CoreException.Refused(403u, "blocked", null)
             model.clearGroupPhoto()
             advanceUntilIdle()
             assertEquals(Problem.GroupPhotoFailed, model.state.value.problem)

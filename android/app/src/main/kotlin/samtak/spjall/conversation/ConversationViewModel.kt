@@ -642,10 +642,14 @@ class ConversationViewModel(
         }
     }
 
-    /** A file the core or the device cannot read is the picture's fault; anything else is the call's (0094). */
+    /**
+     * A file the core or the device cannot read is the picture's fault, a lost connection says so as everywhere
+     * else, and anything else is the call's (0094).
+     */
     private fun groupPhotoProblem(e: Throwable): Problem =
         when (e) {
             is CoreException.UnsupportedImage, is IOException -> Problem.GroupPhotoUnsupported
+            is CoreException.Unreachable -> Problem.Unreachable
             else -> Problem.GroupPhotoFailed
         }
 
