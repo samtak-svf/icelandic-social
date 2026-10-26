@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -173,6 +174,7 @@ fun NameWithMark(
     color: Color,
     modifier: Modifier = Modifier,
     markSize: Dp = MARK.dp,
+    onTextLayout: (TextLayoutResult) -> Unit = {},
 ) {
     val mark = with(LocalDensity.current) { markSize.toSp() }
     val description = stringResource(R.string.verified_with_kennitala)
@@ -181,13 +183,14 @@ fun NameWithMark(
             buildAnnotatedString {
                 append(name)
                 if (verified) {
-                    append(" ")
+                    append(NO_BREAK_SPACE)
                     appendInlineContent(MARK_ID, description)
                 }
             },
         style = style,
         color = color,
         modifier = modifier,
+        onTextLayout = onTextLayout,
         inlineContent =
             mapOf(
                 MARK_ID to
@@ -263,6 +266,9 @@ fun duration(seconds: UInt): String {
 internal const val AVATAR_SIZE = 46
 private const val MARK = 14
 private const val MARK_ID = "mark"
+
+// No line break before or after it, so the mark cannot start a line of its own.
+private const val NO_BREAK_SPACE = "\u00A0"
 
 /** The gold ring around a verified person's photo. */
 private const val RING = 2
