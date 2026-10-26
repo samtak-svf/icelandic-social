@@ -89,6 +89,17 @@ object AppIcons {
             "M7 12.5h2",
         )
 
+    /** A browser in the device list: a circle, its meridian and its equator. */
+    val Globe =
+        outline(
+            "globe",
+            16f,
+            1.6f,
+            "M1.8 8a6.2 6.2 0 1 0 12.4 0a6.2 6.2 0 1 0-12.4 0z",
+            "M1.8 8h12.4",
+            "M8 1.8c1.8 1.7 2.7 3.8 2.7 6.2S9.8 12.5 8 14.2C6.2 12.5 5.3 10.4 5.3 8S6.2 3.5 8 1.8z",
+        )
+
     /** The first launch's notifications step (decision 0043): a bell. */
     val Bell = outline("bell", 20f, 1.8f, "M10 3a5 5 0 015 5v4l2 3H3l2-3V8a5 5 0 015-5z", "M8 17.5h4")
 
