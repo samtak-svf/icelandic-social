@@ -36,6 +36,10 @@
 //    were a policy change away from drifting (#281).
 // 10. The composite actions in .github/actions are walked too: their remote
 //    actions are pinned like the workflows' (rule 1) and they run no nohup.
+// 11. A workflow with a path filter lists every local action it uses, and the
+//    local actions those use, in each filter (`.github/actions/<name>/**`).
+//    Otherwise a change to a shared action alone runs none of its callers and
+//    merges untested.
 //
 // Line-based on purpose: the rules are about single lines, and the guard stays
 // dependency-free like the others (tooling/lib/repo.mjs).
@@ -60,10 +64,13 @@ const TOOLCHAIN_ACTION =
   /^\s*(?:-\s+)?uses:\s*\.\/\.github\/actions\/(?:rust-toolchain|core-artifact)\s*$/;
 const CARGO_HOME_WRITER =
   /^\s*(?:-\s+)?uses:\s*(?:Swatinem\/rust-cache|taiki-e\/install-action)@|\bcargo\s+install\b/;
+const LOCAL_ACTION = /^\s*(?:-\s+)?uses:\s*\.\/\.github\/actions\/([\w-]+)\s*$/;
+const PATHS = /^(\s+)paths:\s*$/;
+const ENTRY = /^\s+-\s+["']?([^"'\s]+)["']?\s*$/;
 const SECRET = /\bsecrets\.(?!GITHUB_TOKEN\b)\w+/;
 
 /**
- * @typedef {{ file: string, line: number, rule: "pin" | "fork-runner" | "trigger" | "secret-runner" | "nohup" | "rust-toolchain" | "fixed-port" | "exclusive-lane" | "cargo-home" | "runner-expr", message: string }} Problem
+ * @typedef {{ file: string, line: number, rule: "pin" | "fork-runner" | "trigger" | "secret-runner" | "nohup" | "rust-toolchain" | "fixed-port" | "exclusive-lane" | "cargo-home" | "runner-expr" | "action-paths", message: string }} Problem
  */
 
 /**
@@ -250,15 +257,78 @@ export function findInAction(file, text) {
 }
 
 /**
+ * The local actions (`./.github/actions/<name>`) a file uses directly.
+ * @param {string} text
+ * @returns {Set<string>}
+ */
+function localActions(text) {
+  const names = new Set();
+  for (const raw of text.split("\n")) {
+    const name = LOCAL_ACTION.exec(raw.replace(/^(\s*)#.*$/, "$1"))?.[1];
+    if (name) names.add(name);
+  }
+  return names;
+}
+
+/**
+ * Rule 11: each path filter of a workflow lists every local action it reaches.
+ * @param {string} file repo-relative path
+ * @param {string} text
+ * @param {Map<string, Set<string>>} actionUses each action's own local actions
+ * @returns {Problem[]}
+ */
+export function actionPathProblems(file, text, actionUses) {
+  const reached = new Set();
+  const visit = (/** @type {string} */ name) => {
+    if (reached.has(name)) return;
+    reached.add(name);
+    for (const next of actionUses.get(name) ?? []) visit(next);
+  };
+  for (const name of localActions(text)) visit(name);
+  if (reached.size === 0) return [];
+
+  /** @type {Problem[]} */
+  const found = [];
+  const lines = text.split("\n");
+  lines.forEach((raw, index) => {
+    const indent = PATHS.exec(raw)?.[1];
+    if (indent === undefined) return;
+    const listed = new Set();
+    for (const next of lines.slice(index + 1)) {
+      const entry = ENTRY.exec(next);
+      if (!entry || (/^\s*/.exec(next)?.[0].length ?? 0) <= indent.length) break;
+      listed.add(entry[1]);
+    }
+    const missing = [...reached].sort().filter((n) => !listed.has(`.github/actions/${n}/**`));
+    if (missing.length > 0) {
+      found.push({
+        file,
+        line: index + 1,
+        rule: "action-paths",
+        message: `the path filter misses ${missing.map((n) => `.github/actions/${n}/**`).join(", ")}, so a change to it runs none of this workflow`,
+      });
+    }
+  });
+  return found;
+}
+
+/**
  * @param {string} [root]
  * @returns {Problem[]}
  */
 export function findProblems(root = ROOT) {
   const files = visibleFiles(root);
   const read = (/** @type {string} */ file) => readFileSync(join(root, file), "utf8");
+  const actions = files.filter((f) => ACTION.test(f));
+  const actionUses = new Map(actions.map((f) => [f.split("/")[2] ?? "", localActions(read(f))]));
   return [
-    ...files.filter((f) => WORKFLOW.test(f)).flatMap((f) => findInWorkflow(f, read(f))),
-    ...files.filter((f) => ACTION.test(f)).flatMap((f) => findInAction(f, read(f))),
+    ...files
+      .filter((f) => WORKFLOW.test(f))
+      .flatMap((f) => [
+        ...findInWorkflow(f, read(f)),
+        ...actionPathProblems(f, read(f), actionUses),
+      ]),
+    ...actions.flatMap((f) => findInAction(f, read(f))),
   ];
 }
 
@@ -267,7 +337,7 @@ function main() {
   for (const p of problems) console.error(`::error file=${p.file},line=${p.line}::${p.message}`);
   if (problems.length > 0) process.exit(1);
   console.log(
-    "✓ workflows pin every action by SHA, keep fork PRs and secrets off the org runners, use no nohup, install Rust only through the action, no fixed dev port, the exclusive lane only for Android and the toolchain action before CARGO_HOME is written, one runs-on expression per runner variable, composite actions pinned too",
+    "✓ workflows pin every action by SHA, keep fork PRs and secrets off the org runners, use no nohup, install Rust only through the action, no fixed dev port, the exclusive lane only for Android and the toolchain action before CARGO_HOME is written, one runs-on expression per runner variable, composite actions pinned too, every used local action in the path filters",
   );
 }
 

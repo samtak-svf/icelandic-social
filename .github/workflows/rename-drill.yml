@@ -23,6 +23,9 @@ on:
       - "core/artifact.lock.json"
       - "pnpm-lock.yaml"
       - ".github/workflows/rename-drill.yml"
+      - ".github/actions/core-artifact/**"
+      - ".github/actions/node-workspace/**"
+      - ".github/actions/rust-toolchain/**"
   push:
     branches: [main]
     paths:
@@ -34,6 +37,9 @@ on:
       - "core/artifact.lock.json"
       - "pnpm-lock.yaml"
       - ".github/workflows/rename-drill.yml"
+      - ".github/actions/core-artifact/**"
+      - ".github/actions/node-workspace/**"
+      - ".github/actions/rust-toolchain/**"
 
 concurrency:
   group: rename-drill-${{ github.head_ref || github.ref }}

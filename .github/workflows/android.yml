@@ -24,6 +24,8 @@ on:
       - "core/xtask/**"
       - "core/rust-toolchain.toml"
       - ".github/workflows/android.yml"
+      - ".github/actions/core-artifact/**"
+      - ".github/actions/rust-toolchain/**"
   push:
     branches: [main]
     paths:
@@ -35,6 +37,8 @@ on:
       - "core/xtask/**"
       - "core/rust-toolchain.toml"
       - ".github/workflows/android.yml"
+      - ".github/actions/core-artifact/**"
+      - ".github/actions/rust-toolchain/**"
 
 concurrency:
   group: android-${{ github.head_ref || github.ref }}

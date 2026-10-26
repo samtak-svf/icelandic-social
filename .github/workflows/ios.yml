@@ -23,6 +23,8 @@ on:
       - "core/xtask/**"
       - "core/rust-toolchain.toml"
       - ".github/workflows/ios.yml"
+      - ".github/actions/core-artifact/**"
+      - ".github/actions/rust-toolchain/**"
   push:
     branches: [main]
     paths:
@@ -34,6 +36,8 @@ on:
       - "core/xtask/**"
       - "core/rust-toolchain.toml"
       - ".github/workflows/ios.yml"
+      - ".github/actions/core-artifact/**"
+      - ".github/actions/rust-toolchain/**"
   workflow_dispatch:
 
 concurrency:

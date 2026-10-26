@@ -22,6 +22,9 @@ on:
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - ".github/workflows/backend.yml"
+      - ".github/actions/core-artifact/**"
+      - ".github/actions/node-workspace/**"
+      - ".github/actions/rust-toolchain/**"
   push:
     branches: [main]
     paths:
@@ -32,6 +35,9 @@ on:
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - ".github/workflows/backend.yml"
+      - ".github/actions/core-artifact/**"
+      - ".github/actions/node-workspace/**"
+      - ".github/actions/rust-toolchain/**"
 
 concurrency:
   group: backend-${{ github.head_ref || github.ref }}

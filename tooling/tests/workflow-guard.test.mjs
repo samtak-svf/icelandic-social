@@ -1,6 +1,7 @@
 // @ts-check
 import { describe, expect, it } from "vitest";
 import {
+  actionPathProblems,
   findInAction,
   findInWorkflow,
   findProblems,
@@ -168,5 +169,25 @@ describe("workflow-guard", () => {
     expect(findInAction(".github/actions/x/action.yml", action).map((p) => p.rule)).toEqual([
       "pin",
     ]);
+  });
+
+  it("puts every local action a path-filtered workflow uses, through its actions too, in each path filter", () => {
+    const uses = new Map([
+      ["core-artifact", new Set(["rust-toolchain"])],
+      ["rust-toolchain", new Set()],
+    ]);
+    const steps = "jobs:\n  x:\n    steps:\n      - uses: ./.github/actions/core-artifact\n";
+    const filter = (/** @type {string[]} */ extra) =>
+      ["    paths:", '      - "android/**"', ...extra.map((e) => `      - "${e}"`)].join("\n");
+    const both = [".github/actions/core-artifact/**", ".github/actions/rust-toolchain/**"];
+    const text = (/** @type {string[]} */ pr, /** @type {string[]} */ push) =>
+      `on:\n  pull_request:\n${filter(pr)}\n  push:\n${filter(push)}\n${steps}`;
+    expect(actionPathProblems("w.yml", text(both, both), uses)).toEqual([]);
+    // The push filter misses the action core-artifact itself runs.
+    expect(
+      actionPathProblems("w.yml", text(both, [both[0] ?? ""]), uses).map((p) => [p.line, p.rule]),
+    ).toEqual([[8, "action-paths"]]);
+    // A workflow with no path filter runs on every change already.
+    expect(actionPathProblems("w.yml", `on: push\n${steps}`, uses)).toEqual([]);
   });
 });

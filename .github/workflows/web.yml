@@ -19,6 +19,9 @@ on:
       - "identifiers/**"
       - "pnpm-lock.yaml"
       - ".github/workflows/web.yml"
+      - ".github/actions/core-artifact/**"
+      - ".github/actions/node-workspace/**"
+      - ".github/actions/rust-toolchain/**"
   push:
     branches: [main]
     paths:
@@ -28,6 +31,9 @@ on:
       - "identifiers/**"
       - "pnpm-lock.yaml"
       - ".github/workflows/web.yml"
+      - ".github/actions/core-artifact/**"
+      - ".github/actions/node-workspace/**"
+      - ".github/actions/rust-toolchain/**"
 
 concurrency:
   group: web-${{ github.head_ref || github.ref }}

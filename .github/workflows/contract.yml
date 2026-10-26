@@ -21,6 +21,7 @@ on:
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - ".github/workflows/contract.yml"
+      - ".github/actions/node-workspace/**"
 
 concurrency:
   group: contract-${{ github.head_ref || github.ref }}
