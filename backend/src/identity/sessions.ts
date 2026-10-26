@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 import { getCookie } from "hono/cookie";
 import { db } from "../env/index.ts";
-import type { Platform } from "../platforms.ts";
+import type { Platform } from "../shared/platforms.ts";
 import { type Device, randomToken, tokenHash } from "./accounts.ts";
 import { touchLinkedDevice } from "./linked-device-lifecycle.ts";
 

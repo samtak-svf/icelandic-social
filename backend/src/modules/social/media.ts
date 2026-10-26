@@ -1,6 +1,6 @@
 import { db, images, socialBucket } from "../../env/index.ts";
-import { communityCoverKey, communityPictureKey, deleteImage } from "../../images.ts";
-import { log } from "../../log.ts";
+import { communityCoverKey, communityPictureKey, deleteImage } from "../../shared/images.ts";
+import { log } from "../../shared/log.ts";
 import type { MediaRef } from "./do/space.ts";
 import { REMOVED_KEPT_MS } from "./do/space-schema.ts";
 import { mediaKey, parseCursor } from "./posts.ts";

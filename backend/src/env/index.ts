@@ -7,11 +7,11 @@
 
 import ids from "../../../identifiers/ids.json" with { type: "json" };
 import { brandStrings } from "../brand.gen.ts";
-import { log } from "../log.ts";
+import { log } from "../shared/log.ts";
 import type { ApnsKey, FcmAccount } from "../modules/messaging/index.ts";
 import type { Conversation, Inbox } from "../modules/messaging/objects.ts";
 import type { Space } from "../modules/social/objects.ts";
-import { type Client, CLIENTS } from "../platforms.ts";
+import { type Client, CLIENTS } from "../shared/platforms.ts";
 
 // `cf workers types` types a Durable Object binding by its class only when the
 // config holds the Worker's module, and cloudflare.config.ts names its own

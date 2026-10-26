@@ -1,8 +1,8 @@
 import type { Framing } from "../api/image-frames.ts";
-import { base64url } from "../bytes.ts";
+import { base64url } from "../shared/bytes.ts";
 import { db, kennitalaKeys, type ProviderName } from "../env/index.ts";
 import type { Person } from "./providers.ts";
-import type { Platform } from "../platforms.ts";
+import type { Platform } from "../shared/platforms.ts";
 import { phoneSession } from "./sessions.ts";
 
 // Accounts and devices in D1 (decision 0014).

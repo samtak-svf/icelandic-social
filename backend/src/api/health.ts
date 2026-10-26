@@ -1,5 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import { CLIENTS } from "../platforms.ts";
+import { CLIENTS } from "../shared/platforms.ts";
 import { PUBLIC } from "./common.ts";
 
 const Version = z

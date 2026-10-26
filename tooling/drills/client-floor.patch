@@ -1,6 +1,6 @@
-diff --git a/backend/src/client-version.ts b/backend/src/client-version.ts
---- a/backend/src/client-version.ts
-+++ b/backend/src/client-version.ts
+diff --git a/backend/src/shared/client-version.ts b/backend/src/shared/client-version.ts
+--- a/backend/src/shared/client-version.ts
++++ b/backend/src/shared/client-version.ts
 @@ -70,6 +70,6 @@ export function belowFloorOf(
        return { error: "invalid_request" };
      floor = floors[platform]!;

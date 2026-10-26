@@ -3,8 +3,8 @@ import ids from "../../../identifiers/ids.json" with { type: "json" };
 import { resolveInviteRoute, revokeInviteRoute, rotateInviteRoute } from "../api/invites.ts";
 import type { AppEnv } from "../http.ts";
 import { db } from "../env/index.ts";
-import { fail } from "../errors.ts";
-import { log } from "../log.ts";
+import { fail } from "../shared/errors.ts";
+import { log } from "../shared/log.ts";
 import { randomToken, tokenHash } from "./accounts.ts";
 
 // Invites (decisions 0009, 0019). D1 keeps only a token's hash, so a link can

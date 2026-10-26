@@ -1,4 +1,4 @@
-import { base64url, fromBase64 } from "../../bytes.ts";
+import { base64url, fromBase64 } from "../../shared/bytes.ts";
 import type { SendInput } from "./do/conversation.ts";
 import { type Framing, FramingError, type Leaf, readFraming } from "../../mls/framing.ts";
 

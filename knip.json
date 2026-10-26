@@ -15,6 +15,9 @@
       "entry": ["*.mjs", "page/bench.js", "page/a-worker.js"],
       "project": ["*.mjs", "page/*.js"]
     },
+    "spikes/d1-workload": {
+      "project": ["*.ts"]
+    },
     "web": {
       "entry": [
         "src/routes/**/*.tsx",

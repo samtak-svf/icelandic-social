@@ -22,7 +22,7 @@ support can find.
   to add a header.
 - **It is in every error body** as the required field `requestId` of `ApiError`, next to
   `error` (and `minVersion` with a 426). Every error answer is built by one helper,
-  `fail()` in `backend/src/errors.ts`; `tooling/seam-guard.mjs` refuses an error body built
+  `fail()` in `backend/src/shared/errors.ts`; `tooling/seam-guard.mjs` refuses an error body built
   anywhere else. The schema's `invalid_request`, a body that is not JSON, a path no route
   serves (`not_found`) and an exception (`internal_error`, 500) go through it too.
 - **It is logged with the error line**: an exception is logged as `request.failed` with the

@@ -8,8 +8,8 @@ import {
   putHistoryPartRoute,
 } from "../../api/history.ts";
 import type { AppEnv } from "../../http.ts";
-import { fail } from "../../errors.ts";
-import { log } from "../../log.ts";
+import { fail } from "../../shared/errors.ts";
+import { log } from "../../shared/log.ts";
 import {
   completeTransfer,
   createTransfer,

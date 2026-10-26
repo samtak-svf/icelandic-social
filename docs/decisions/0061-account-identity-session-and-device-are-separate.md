@@ -87,7 +87,7 @@ They are three actions, each on its own route, and none implies a broader one:
 
 - **The device token of 0014 keeps working.** A migration gives every active device a
   session, so no app build at the current floor (0030) changes what it sends.
-- `web` joins the platform list (`backend/src/platforms.ts`) with the first web build. It
+- `web` joins the platform list (`backend/src/shared/platforms.ts`) with the first web build. It
   joined as a client of the version floor (`CLIENTS`), not as a device platform, so the D1
   CHECK on `devices.platform` still names only the apps (#324).
 

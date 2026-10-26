@@ -12,7 +12,7 @@ import {
   PhotoVersion,
   RATE_LIMITED,
 } from "./common.ts";
-import { PLATFORMS } from "../platforms.ts";
+import { PLATFORMS } from "../shared/platforms.ts";
 
 // Accounts and devices (decision 0014).
 

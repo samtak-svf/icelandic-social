@@ -10,6 +10,7 @@ import {
   OWNERS,
   RAW,
   READS,
+  ROOT_FILES,
 } from "../module-guard.mjs";
 import { ROOT } from "../lib/repo.mjs";
 import { copyRepo, initRepo } from "./helpers.mjs";
@@ -56,9 +57,9 @@ describe("module-guard", () => {
   it("fails on an import of the composition root, except from the entries that compose it", () => {
     const app = 'import type { AppEnv } from "../../app.ts";';
     expect(rules(PROFILES, app)).toEqual(["app-import:1"]);
-    expect(rules("backend/src/errors.ts", 'import type { AppEnv } from "./app.ts";')).toEqual([
-      "app-import:1",
-    ]);
+    expect(
+      rules("backend/src/shared/errors.ts", 'import type { AppEnv } from "../app.ts";'),
+    ).toEqual(["app-import:1"]);
     expect(rules("backend/src/api/health.ts", 'export type { AppEnv } from "../app.ts";')).toEqual([
       "app-import:1",
     ]);
@@ -73,7 +74,7 @@ describe("module-guard", () => {
       rules("backend/src/index.ts", 'export { Inbox } from "./modules/messaging/objects.ts";'),
     ).toEqual([]);
     expect(rules(PROFILES, 'import { profile } from "./profiles.ts";')).toEqual([]);
-    expect(rules(PROFILES, 'import { log } from "../../log.ts";')).toEqual([]);
+    expect(rules(PROFILES, 'import { log } from "../../shared/log.ts";')).toEqual([]);
   });
 
   it("ignores an import a comment or a string names", () => {
@@ -192,6 +193,15 @@ describe("module-guard", () => {
     expect(
       findViolations(undefined, { owners: OWNERS, reads: stale }).violations.map((v) => v.rule),
     ).toEqual(["stale-read"]);
+  });
+
+  it("refuses a file directly in backend/src except the named entries", () => {
+    expect(rules("backend/src/helper.ts", "export const x = 1;")).toEqual(["root-file:1"]);
+    expect(rules("backend/src/shared/log.ts", "export const x = 1;")).toEqual([]);
+    expect(rules("backend/src/compose/job-handlers.ts", "export const x = 1;")).toEqual([]);
+    for (const name of ROOT_FILES) {
+      expect(rules(`backend/src/${name}`, "export const x = 1;"), name).toEqual([]);
+    }
   });
 
   it("scans the files of a checkout, in its own modules", () => {

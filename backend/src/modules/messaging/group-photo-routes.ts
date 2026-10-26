@@ -2,7 +2,7 @@ import type { OpenAPIHono } from "@hono/zod-openapi";
 import { deleteGroupPhotoRoute, getGroupPhotoRoute, putGroupPhotoRoute } from "../../api/media.ts";
 import type { AppEnv } from "../../http.ts";
 import { conversation } from "../../env/index.ts";
-import { fail } from "../../errors.ts";
+import { fail } from "../../shared/errors.ts";
 import { deleteGroupPhoto, getGroupPhoto, MAX_GROUP_PHOTO, putGroupPhoto } from "./group-photos.ts";
 
 // A group's photo (decision 0094): set, read and cleared only by a member, as

@@ -15,7 +15,7 @@ import { MAX_PHOTO_UPLOAD } from "../../api/accounts.ts";
 import type { AppEnv } from "../../http.ts";
 import { framingFits } from "../../api/image-frames.ts";
 import { db, withinLimit } from "../../env/index.ts";
-import { fail } from "../../errors.ts";
+import { fail } from "../../shared/errors.ts";
 import {
   communityCoverKey,
   communityPictureKey,
@@ -26,14 +26,14 @@ import {
   renderFrames,
   storeImage,
   takeUpload,
-} from "../../images.ts";
-import { log } from "../../log.ts";
+} from "../../shared/images.ts";
+import { log } from "../../shared/log.ts";
 import { canRead, moderates } from "./access.ts";
 import { imageVersion, standing } from "./communities.ts";
 import type { LifecycleHooks } from "./lifecycle.ts";
 
 // A community's picture and cover (decision 0080): the account photo's path
-// (src/images.ts) with another size and R2 key, written by the community's
+// (src/shared/images.ts) with another size and R2 key, written by the community's
 // owner and moderators, and read by whoever the community's read rule admits,
 // so a private community's images are as private as its posts. Each change is
 // one batch with its moderation log entry (0066). A log line carries the

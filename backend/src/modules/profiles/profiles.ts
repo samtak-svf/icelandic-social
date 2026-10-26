@@ -1,5 +1,5 @@
 import { type Framing, parseFraming } from "../../api/image-frames.ts";
-import { base64url } from "../../bytes.ts";
+import { base64url } from "../../shared/bytes.ts";
 import { db } from "../../env/index.ts";
 import { UNBLOCKED } from "../../identity/index.ts";
 
