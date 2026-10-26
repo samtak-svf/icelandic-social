@@ -77,6 +77,37 @@ final class PhotoCacheTests: XCTestCase {
         XCTAssertEqual(community.pictureOf?.frame, .square, "a picture is always the square frame")
     }
 
+    func testAGroupsPhotoIsItsFileAndAOneToOnesIsThePerson() throws {
+        let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+        try Data([1, 2, 3]).write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+        var gunna = person("a2", "Gunna")
+        gunna.photo = "v3"
+        let members = [gunna, person("a3", "Siggi")]
+        let group = photoOf(conversation("c1", members: members, name: "Bókaklúbbur", photo: file.path))
+        XCTAssertEqual(group?.kind, .groupFile)
+        XCTAssertEqual(group?.owner, file.path)
+        XCTAssertNil(photoOf(conversation("c2", members: members, name: "Bókaklúbbur")), "a group with none")
+        XCTAssertNil(photoOf(conversation("c3", members: members)), "a group without a name has no photo either")
+        let one = photoOf(conversation("c4", members: [gunna]))
+        XCTAssertEqual(one, PhotoOf(owner: "a2", version: "v3"))
+    }
+
+    func testAReplacedGroupPhotoIsANewKeyAndIsLoadedFromDisk() async {
+        let before = PhotoOf.groupFile(path: "/media/g1.jpg", stamp: "100-10")
+        let after = PhotoOf.groupFile(path: "/media/g1.jpg", stamp: "200-12")
+        XCTAssertNotEqual(before, after)
+        XCTAssertEqual(before, PhotoOf.groupFile(path: "/media/g1.jpg", stamp: "100-10"))
+        let photos = cache()
+        let first = await photos.load(before)
+        let second = await photos.load(after)
+        XCTAssertEqual(first, "image of /media/g1.jpg")
+        XCTAssertEqual(second, "image of /media/g1.jpg")
+        XCTAssertNotNil(photos.kept(before))
+        XCTAssertNotNil(photos.kept(after))
+        XCTAssertEqual(account.calls.filter { $0.hasPrefix("photoFramed") }, [], "a group photo is the core's file")
+    }
+
     func testANewVersionIsFetchedAgain() async {
         account.photoFiles = ["a2/v1": "old.webp", "a2/v2": "new.webp"]
         let photos = cache()

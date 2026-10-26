@@ -282,6 +282,47 @@ final class ConversationModelTests: XCTestCase {
             "a short page ends the paging")
     }
 
+    private func picture() throws -> URL {
+        let file = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
+        try Data([1, 2, 3]).write(to: file)
+        return file
+    }
+
+    func testSetsAndClearsTheGroupPhotoThenSyncsAndReloads() async throws {
+        let model = await model(conversation("c1", members: [person("a2", "Anna"), person("a3", "Bjarni")]))
+        let file = try picture()
+        await model.setGroupPhoto { file }
+        XCTAssertEqual(model.conversation?.photo, file.path)
+        XCTAssertNil(model.problem)
+        let set = try XCTUnwrap(account.calls.lastIndex(of: "setGroupPhoto c1 \(file.path)"))
+        XCTAssertTrue(account.calls[set...].contains("sync"), "the set is synced")
+        XCTAssertTrue(account.calls[set...].contains { $0 == "conversations" }, "and read again")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path), "the temporary master is deleted")
+
+        await model.clearGroupPhoto()
+        XCTAssertNil(model.conversation?.photo)
+        XCTAssertTrue(account.calls.contains("clearGroupPhoto c1"))
+        XCTAssertEqual(account.calls.last, "sync")
+    }
+
+    func testAnUnsupportedImageSaysSoAndAnyOtherFailureIsGeneric() async throws {
+        let model = await model(conversation("c1", members: [person("a2", "Anna"), person("a3", "Bjarni")]))
+        let file = try picture()
+        account.failNext = CoreError.UnsupportedImage
+        await model.setGroupPhoto { file }
+        XCTAssertEqual(model.problem, .groupPhotoUnsupported)
+        XCTAssertNil(model.conversation?.photo)
+
+        let again = try picture()
+        account.failNext = CoreError.NotAGroup
+        await model.setGroupPhoto { again }
+        XCTAssertEqual(model.problem, .groupPhotoFailed)
+
+        account.failNext = unreachable
+        await model.clearGroupPhoto()
+        XCTAssertEqual(model.problem, .unreachable, "a lost connection is retryable, not a failed photo")
+    }
+
     func testRenamesRemovesAndLeavesAGroup() async {
         let anna = person("a2", "Anna")
         let bjarni = person("a3", "Bjarni")
