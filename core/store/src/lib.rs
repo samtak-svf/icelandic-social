@@ -1149,8 +1149,7 @@ mod tests {
 
     /// Migration 19 (0101) keys `reactions` by account: a store that holds
     /// several emoji from one account on one message keeps the smallest by
-    /// bytes, and
-    /// the table refuses a second one afterwards.
+    /// bytes, and the table refuses a second one afterwards.
     #[test]
     fn one_reaction_per_account_survives_the_migration() {
         let dir = tempfile::tempdir().unwrap();
