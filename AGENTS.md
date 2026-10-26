@@ -56,9 +56,8 @@ Consequences, all enforced by `tooling/brand-leak-guard.mjs`:
 
 ```bash
 pnpm install           # also installs the lefthook hooks
-pnpm check             # lint, types, format, ids, critical rules, drills, quarantine, brand, brand-gen, brand-leak,
-                       # þankastrik, PII, peer names, seams, modules, jurisdiction, migrations, core lock, web-api,
-                       # frames, workflows, line cap (.kt/.swift/.rs, shrink-only list in tooling/line-count.allow.json), index, knip
+pnpm check             # lint, types, format, every guard CI runs (the list, and the stage each runs at: tooling/guards.json),
+                       # knip; the line cap's shrink-only list is tooling/line-count.allow.json
 pnpm brand:gen         # regenerate the platform files from brand/$BRAND
 pnpm test              # guard tests (vitest); each guard is proven to fail when it should
                        # what deserves a test, and the known sources of noise: docs/testing.md

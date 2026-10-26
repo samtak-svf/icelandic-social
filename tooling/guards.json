@@ -1,0 +1,165 @@
+{
+  "guards": [
+    {
+      "name": "brand-check",
+      "script": "brand-check",
+      "stages": ["push", "ci"]
+    },
+    {
+      "name": "brand-gen-check",
+      "script": "brand-gen",
+      "stages": ["push", "ci"],
+      "flag": "--check"
+    },
+    {
+      "name": "brand-leak",
+      "script": "brand-leak-guard",
+      "stages": ["push", "ci"]
+    },
+    {
+      "name": "core",
+      "script": "core-guard",
+      "stages": ["push", "ci"]
+    },
+    {
+      "name": "core-dto",
+      "script": "core-dto-guard",
+      "stages": ["push", "ci"]
+    },
+    {
+      "name": "coverage-floor",
+      "script": "coverage-floor",
+      "stages": ["ci"],
+      "reason": "Reads the coverage report that the backend and core coverage runs write, which only CI produces."
+    },
+    {
+      "name": "critical-rules",
+      "script": "critical-rules",
+      "stages": ["push", "ci"]
+    },
+    {
+      "name": "frames-check",
+      "script": "frames-check",
+      "stages": ["push", "ci"]
+    },
+    {
+      "name": "ids-freeze",
+      "script": "ids-freeze",
+      "stages": ["push", "ci"]
+    },
+    {
+      "name": "index",
+      "script": "index-check",
+      "stages": ["push", "ci"]
+    },
+    {
+      "name": "jurisdiction",
+      "script": "jurisdiction-check",
+      "stages": ["push", "ci"]
+    },
+    {
+      "name": "line-count",
+      "script": "line-count",
+      "stages": ["push", "ci"]
+    },
+    {
+      "name": "migration-guard",
+      "script": "migration-guard",
+      "stages": ["push", "ci"]
+    },
+    {
+      "name": "migrations-freeze",
+      "script": "migrations-freeze",
+      "stages": ["push", "ci"]
+    },
+    {
+      "name": "module-guard",
+      "script": "module-guard",
+      "stages": ["push", "ci"]
+    },
+    {
+      "name": "peer-names",
+      "script": "peer-name-guard",
+      "stages": ["commit", "ci"]
+    },
+    {
+      "name": "pii",
+      "script": "pii-guard",
+      "stages": ["commit", "ci"]
+    },
+    {
+      "name": "preload-check",
+      "script": "preload-check",
+      "stages": ["ci"],
+      "reason": "Reads the built web app, which a local push does not build."
+    },
+    {
+      "name": "presentation-check",
+      "script": "presentation-check",
+      "stages": ["push", "ci"]
+    },
+    {
+      "name": "push-guard",
+      "script": "push-guard",
+      "stages": ["push"]
+    },
+    {
+      "name": "quarantine",
+      "script": "quarantine",
+      "stages": ["push", "ci"]
+    },
+    {
+      "name": "rename-drill",
+      "script": "rename-drill",
+      "stages": ["ci"],
+      "reason": "Builds the apps from a fixture brand, far too slow for a hook."
+    },
+    {
+      "name": "rule-drill",
+      "script": "rule-drill",
+      "stages": ["ci"],
+      "reason": "Breaks each critical rule with a patch and runs its tests, far too slow for a hook."
+    },
+    {
+      "name": "seams",
+      "script": "seam-guard",
+      "stages": ["push", "ci"]
+    },
+    {
+      "name": "sri-check",
+      "script": "sri-check",
+      "stages": ["ci"],
+      "reason": "Reads the built web app, which a local push does not build."
+    },
+    {
+      "name": "thankastrik",
+      "script": "thankastrik",
+      "stages": ["push", "ci"]
+    },
+    {
+      "name": "web-api-check",
+      "script": "web-api",
+      "stages": ["push", "ci"],
+      "flag": "--check"
+    },
+    {
+      "name": "workflow-guard",
+      "script": "workflow-guard",
+      "stages": ["push", "ci"]
+    }
+  ],
+  "tools": [
+    {
+      "script": "core-reuse",
+      "reason": "Names and picks the cached core build for the app jobs in core.yml; it checks nothing."
+    },
+    {
+      "script": "mac-remote",
+      "reason": "Runs checks on the Mac from a Linux machine; it is a runner, not a check."
+    },
+    {
+      "script": "worker-secrets",
+      "reason": "Copies the vault secrets into the deployed Worker; it checks nothing."
+    }
+  ]
+}
