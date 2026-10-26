@@ -89,8 +89,10 @@ cargo xtask core ios         # macOS only
 GH_TOKEN=$(gh auth token) cargo xtask fetch android   # the pinned published artifact, checksum-verified;
                              # the repo is private, so its releases need a token (CI passes github.token)
 
-# The apps (they read the core from the paths xtask fills, never build it)
-cd android && ./gradlew check assembleDebug   # ktlint, detekt, lint (warnings are errors), unit tests
+# The apps (they read the core from the paths xtask fills, never build it). Gradle, Xcode and the
+# emulator run on samtak-mac only, never on the Linux workstation (a local daemon fills its swap).
+node tooling/mac-remote.mjs -- android/scripts/test.sh   # ktlint, detekt, lint (warnings are errors), unit tests, assembleDebug
+node tooling/mac-remote.mjs -- 'cd android && ./gradlew <task>'   # any one Gradle task
 ios/scripts/test.sh --prepare   # macOS only: the iOS tests, as ios.yml runs them (runs lint.sh first)
 ios/scripts/lint.sh             # macOS only: swift-format --strict, the same command ios.yml runs
 node tooling/mac-remote.mjs android   # the Android checks and emulator tests on that Mac (`-- android/scripts/test.sh` alone: check + assembleDebug)
