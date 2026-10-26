@@ -71,10 +71,9 @@
         "r2": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["media", "artifacts", "profiles"],
+          "required": ["media", "profiles"],
           "properties": {
             "media": { "$ref": "#/$defs/slug" },
-            "artifacts": { "$ref": "#/$defs/slug" },
             "profiles": { "$ref": "#/$defs/slug" }
           }
         },
