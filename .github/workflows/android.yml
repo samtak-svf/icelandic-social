@@ -127,11 +127,50 @@ jobs:
           working-directory: android
           script: ./gradlew --console=plain connectedDebugAndroidTest
 
+      # One AVD per Mac, shared with agent runs (scripts/mac-remote.mjs in agent-config takes the
+      # same lock, docs/samtak-mac-workloads.md there). The owner is this job's Runner.Worker
+      # (--owner-ancestor), so a killed job's lock is stale at once. Until ~/remote/bin/mac-lock.sh
+      # exists on the runner (mac-remote installs it) the step warns and goes on unlocked. So does
+      # exit 2: a runner whose installed mac-lock.sh predates --owner-ancestor fails on the unknown
+      # argument, and that must not fail the job.
+      # --wait 1500 leaves the connected tests (10-15 min) inside the job's 45 min timeout, so a
+      # long agent hold ends in a clean exit 3, not a job timeout.
+      - name: Take the AVD lock
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          LOCK_WHO: ci ${{ github.repository }} run ${{ github.run_id }}
+        run: |
+          lock="$HOME/remote/bin/mac-lock.sh"
+          if [ ! -x "$lock" ]; then
+            echo "::warning::$lock is missing, so the AVD is not locked against agent runs"
+            exit 0
+          fi
+          rc=0
+          "$lock" acquire android-avd --wait 1500 --owner-ancestor Runner.Worker --who "$LOCK_WHO" || rc=$?
+          if [ "$rc" -eq 2 ]; then
+            echo "::warning::$lock refused its arguments (an older copy, or no Runner.Worker above this step), so the AVD is not locked against agent runs"
+            exit 0
+          fi
+          exit "$rc"
+
       - name: Instrumented tests (the Mac's AVD)
         if: runner.os == 'macOS'
         run: android/scripts/test.sh --connected
         env:
           GITHUB_TOKEN: ${{ github.token }} # the script fetches the core again on a fresh checkout
+
+      - name: Release the AVD lock
+        if: always() && runner.os == 'macOS'
+        shell: bash
+        run: |
+          lock="$HOME/remote/bin/mac-lock.sh"
+          [ -x "$lock" ] || exit 0
+          # Exit 4: the lock is someone else's (this job never got it), leave it alone. Exit 2: no
+          # lock was taken (older script, or no Runner.Worker above), nothing to release.
+          rc=0
+          "$lock" release android-avd --owner-ancestor Runner.Worker || rc=$?
+          [ "$rc" -eq 0 ] || [ "$rc" -eq 2 ] || [ "$rc" -eq 4 ]
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
