@@ -39,6 +39,9 @@ protocol Live: AnyObject {
     func perform(_ call: @escaping @Sendable (Account) throws -> Outcome)
     /// As `perform`, but waits for the call, and throws what it threw.
     func performAndWait(_ call: @escaping @Sendable (Account) throws -> Outcome) async throws
+    /// Syncs one conversation and waits for it (decision 0099). A failed call changed nothing: what was
+    /// queued stays queued and the next sync sends it.
+    func syncConversation(_ conversation: String) async
     /// Sends a frame the core made, such as `typing`; dropped while the socket is closed.
     func send(_ frame: String)
 }
@@ -105,6 +108,11 @@ final class Socket: Live {
     func perform(_ call: @escaping @Sendable (Account) throws -> Outcome) {
         let account = account
         Task { await deliver { try call(account) } }
+    }
+
+    func syncConversation(_ conversation: String) async {
+        let account = account
+        await deliver { try account.syncConversation(conversation) }
     }
 
     func performAndWait(_ call: @escaping @Sendable (Account) throws -> Outcome) async throws {

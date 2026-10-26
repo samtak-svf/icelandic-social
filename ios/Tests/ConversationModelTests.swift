@@ -163,6 +163,23 @@ final class ConversationModelTests: XCTestCase {
             ])
     }
 
+    func testAQueuedChangeIsShownAtOnceThenSyncedForThisConversationAlone() async {
+        account.timelines["c1"] = [item(4)]
+        let model = await model()
+        let before = account.calls.count
+        await model.react(item(4), "👍")
+        let calls = Array(account.calls.dropFirst(before))
+        XCTAssertEqual(
+            calls.filter { $0.hasPrefix("send ") || $0.hasPrefix("timeline ") || $0.hasPrefix("syncConversation") },
+            [
+                "send c1 \(Body.reaction(target: "e4", emoji: "👍", remove: false))",
+                "timeline c1 -",
+                "syncConversation c1",
+                "timeline c1 -",
+            ])
+        XCTAssertFalse(calls.contains("sync"), "the full sync is the socket's")
+    }
+
     func testAFailedSendIsAProblemThatRetrySendsAgain() async {
         account.typingOn = false
         let model = await model()

@@ -103,6 +103,8 @@ android {
     // The screenshot tests (Roborazzi on Robolectric) render the real
     // resources: the brand's fonts, strings and icons.
     testOptions.unitTests.isIncludeAndroidResources = true
+    // The send path logs its timing with android.util.Log; a plain unit test reads no log.
+    testOptions.unitTests.isReturnDefaultValues = true
     // Robolectric's Android 16 sandbox reaches into the JDK's file
     // descriptors, which a JDK newer than 21 no longer exports by default.
     testOptions.unitTests.all { it.jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED") }

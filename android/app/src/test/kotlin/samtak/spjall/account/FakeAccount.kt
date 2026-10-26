@@ -180,6 +180,11 @@ class FakeAccount(
         return outcomes.removeFirstOrNull() ?: Outcome(emptyList(), emptyList())
     }
 
+    override fun syncConversation(conversation: String): Outcome {
+        call("syncConversation $conversation")
+        return outcomes.removeFirstOrNull() ?: Outcome(emptyList(), emptyList())
+    }
+
     override fun setPushToken(
         token: String,
         sandbox: Boolean,

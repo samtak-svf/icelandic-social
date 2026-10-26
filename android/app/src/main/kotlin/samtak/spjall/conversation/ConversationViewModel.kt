@@ -1,5 +1,6 @@
 package samtak.spjall.conversation
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
@@ -43,6 +44,7 @@ class ConversationViewModel(
     private val account: Account,
     private val live: Live,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val timing: (queuedMs: Long, syncMs: Long) -> Unit = ::logSendTiming,
     private val now: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
     /** What the composer's text does when sent. */
@@ -484,11 +486,20 @@ class ConversationViewModel(
         stopTyping()
     }
 
+    /**
+     * Queues [body], shows it from the core's own store at once (the reader overlays what this device
+     * queued, decision 0099), then syncs this conversation alone and reads again. A sync that fails
+     * leaves it queued for the next one.
+     */
     private fun queue(body: Body) {
         perform({ queue(body) }) {
+            val start = now()
             account.send(id, body)
-            live.sync()
             load()
+            val queued = now()
+            live.syncConversation(id)
+            load()
+            timing(queued - start, now() - queued)
         }
     }
 
@@ -682,3 +693,11 @@ private fun Event.concerns(conversation: String): Boolean =
         is Event.Timeline -> this.conversation == conversation
         is Event.Expired -> this.conversation == conversation
     }
+
+/** How long a send took to queue and to sync: durations only, never an id, a text or an emoji (decision 0008). */
+private fun logSendTiming(
+    queuedMs: Long,
+    syncMs: Long,
+) {
+    Log.i("spjall.send", "queued=${queuedMs}ms sync=${syncMs}ms")
+}
