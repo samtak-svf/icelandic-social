@@ -1,6 +1,6 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { EXCERPT_LENGTH, REF_KINDS, resolveCardsRoute } from "../../api/cards.ts";
-import type { AppEnv } from "../../app.ts";
+import type { AppEnv } from "../../http.ts";
 import { standing } from "../communities/index.ts";
 import { commentAccess, postAccess } from "./access.ts";
 import { authors } from "./bylines.ts";

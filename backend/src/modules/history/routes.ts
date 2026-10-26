@@ -7,7 +7,7 @@ import {
   getHistoryRoute,
   putHistoryPartRoute,
 } from "../../api/history.ts";
-import type { AppEnv } from "../../app.ts";
+import type { AppEnv } from "../../http.ts";
 import { fail } from "../../errors.ts";
 import { log } from "../../log.ts";
 import {

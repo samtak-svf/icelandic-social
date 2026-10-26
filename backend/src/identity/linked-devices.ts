@@ -1,5 +1,5 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
-import type { AppEnv } from "../app.ts";
+import type { AppEnv } from "../http.ts";
 import {
   approveDeviceLinkRoute,
   completeDeviceLinkRoute,

@@ -17,7 +17,7 @@ import {
 import { communityImagesRoute } from "../../api/community-gallery.ts";
 import { voteRoute, withdrawVoteRoute } from "../../api/polls.ts";
 import { likeCommentRoute, unlikeCommentRoute } from "../../api/social-hub.ts";
-import type { AppEnv } from "../../app.ts";
+import type { AppEnv } from "../../http.ts";
 import { space, withinLimit } from "../../env/index.ts";
 import { blockedEither } from "../../identity/index.ts";
 import { fail } from "../../errors.ts";

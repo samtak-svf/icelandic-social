@@ -1,6 +1,6 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { notificationsRoute, readNotificationsRoute } from "../../api/notifications.ts";
-import type { AppEnv } from "../../app.ts";
+import type { AppEnv } from "../../http.ts";
 import { markRead, notificationPage } from "./list.ts";
 
 export function notificationRoutes(app: OpenAPIHono<AppEnv>): void {

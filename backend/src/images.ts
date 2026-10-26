@@ -1,5 +1,5 @@
 import type { Context } from "hono";
-import type { AppEnv } from "./app.ts";
+import type { AppEnv } from "./http.ts";
 import { base64url } from "./bytes.ts";
 import { images, profilesBucket, withinLimit } from "./env/index.ts";
 import {

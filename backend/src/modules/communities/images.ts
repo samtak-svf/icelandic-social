@@ -12,7 +12,7 @@ import {
   putCommunityCoverRoute,
 } from "../../api/community-images.ts";
 import { MAX_PHOTO_UPLOAD } from "../../api/accounts.ts";
-import type { AppEnv } from "../../app.ts";
+import type { AppEnv } from "../../http.ts";
 import { framingFits } from "../../api/image-frames.ts";
 import { db, withinLimit } from "../../env/index.ts";
 import { fail } from "../../errors.ts";

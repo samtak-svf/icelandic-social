@@ -22,7 +22,7 @@ import {
   setRoleRoute,
   transferOwnershipRoute,
 } from "../../api/community-members.ts";
-import type { AppEnv } from "../../app.ts";
+import type { AppEnv } from "../../http.ts";
 import { fail } from "../../errors.ts";
 import { log } from "../../log.ts";
 import { canRead, moderates } from "./access.ts";
