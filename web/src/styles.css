@@ -4,6 +4,14 @@
 @import "./generated/brand/theme.css";
 @import "./generated/size-classes.css";
 
+/* The brand theme clears Tailwind's palette. Black and white are not the
+   brand's: a QR code and the backdrop behind a photo are the same for every
+   brand and in both colour schemes. */
+@theme static {
+  --color-white: #ffffff;
+  --color-black: #000000;
+}
+
 /* Every control shows where the keyboard is. */
 @layer base {
   /* Room for the scrollbar even when the page is short, so content does not

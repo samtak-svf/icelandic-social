@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { qrRects } from "./qr.ts";
+import { QUIET_ZONE, qrRects, qrFrame } from "./qr.ts";
 
 test("one rect per dark module, at its column and row", () => {
   // 1 0 1
@@ -16,4 +16,9 @@ test("one rect per dark module, at its column and row", () => {
 
 test("an all-light matrix draws nothing", () => {
   expect(qrRects({ size: 2, modules: new Uint8Array(4) })).toEqual([]);
+});
+
+test("the view takes in a quiet zone of four modules on every side", () => {
+  expect(QUIET_ZONE).toBe(4);
+  expect(qrFrame({ size: 25 })).toEqual({ origin: -4, side: 33 });
 });

@@ -1,6 +1,7 @@
 // The link QR as vector rectangles (decision 0081): the core returns a
 // `size × size` matrix, one byte per module, non-zero where the module is dark.
-// One unit square per dark module; the viewBox is the matrix itself.
+// One unit square per dark module, on a light square that takes in the quiet
+// zone, so the code reads the same whatever colours the page around it has.
 
 import type { LinkQr } from "../generated/core.d.ts";
 
@@ -17,4 +18,12 @@ export function qrRects(qr: LinkQr): Rect[] {
     }
   }
   return rects;
+}
+
+/** The light margin around the code, in modules: the least ISO/IEC 18004 allows. */
+export const QUIET_ZONE = 4;
+
+/** The square the code is drawn on: the matrix and its quiet zone on every side. */
+export function qrFrame(qr: Pick<LinkQr, "size">): { origin: number; side: number } {
+  return { origin: -QUIET_ZONE, side: qr.size + 2 * QUIET_ZONE };
 }
