@@ -16,11 +16,11 @@ use std::sync::{Arc, Mutex};
 use relay::{Link, Relay};
 use serde_json::{Value, json};
 use spjall_client::api::{
-    ApiError, Audience, Author, AuthorRole, Card, CardCommunity, JoinState, LogTargetKind, Method,
-    Moderation, ModerationAction, ModerationLogAction, ModerationState, NewReport,
-    NotificationKind, Platform, Provider, ReactionCount, ReactionKind, Ref, RefKind,
-    ReportDecision, ReportReason, ReportState, Request, Response, Role, SocialMedia, Target,
-    TargetKind, TargetStanding, TargetState, Transport, Unreachable,
+    ApiError, Audience, Author, AuthorRole, Card, CardCommunity, EmojiCount, JoinState,
+    LogTargetKind, Method, Moderation, ModerationAction, ModerationLogAction, ModerationState,
+    NewReport, NotificationKind, Platform, Provider, Ref, RefKind, ReportDecision, ReportReason,
+    ReportState, Request, Response, Role, SocialMedia, Target, TargetKind, TargetStanding,
+    TargetState, Transport, Unreachable,
 };
 use spjall_client::frames::{Focus, Frame, FrameRect, Framing};
 use spjall_client::{Client, ClientError};
@@ -185,6 +185,8 @@ fn post(id: &str) -> Value {
         "createdAt": 1_760_000_100_000u64,
         "reactions": [{ "kind": "like", "count": 3 }, { "kind": "sad", "count": 1 }],
         "myReaction": "like",
+        "emojis": [{ "emoji": "🙏", "count": 3 }, { "emoji": "👍", "count": 1 }],
+        "myEmoji": "🙏",
         "commentCount": 2,
         "state": "visible",
     })
@@ -281,19 +283,19 @@ fn posts_comments_and_reactions_go_by_their_ids() {
     assert_eq!(page.next, None);
     let first = &page.posts[0];
     assert_eq!(
-        first.reactions,
+        first.emojis,
         [
-            ReactionCount {
-                kind: ReactionKind::Like,
+            EmojiCount {
+                emoji: "🙏".into(),
                 count: 3
             },
-            ReactionCount {
-                kind: ReactionKind::Sad,
+            EmojiCount {
+                emoji: "👍".into(),
                 count: 1
             }
         ]
     );
-    assert_eq!(first.my_reaction, Some(ReactionKind::Like));
+    assert_eq!(first.my_emoji.as_deref(), Some("🙏"));
     assert_eq!(
         first.media,
         [SocialMedia {
@@ -326,7 +328,7 @@ fn posts_comments_and_reactions_go_by_their_ids() {
     phone.ok();
     c.delete_post("p_2").unwrap();
     phone.ok();
-    c.react("p_1", ReactionKind::Love).unwrap();
+    c.react("p_1", "🙏").unwrap();
     phone.ok();
     c.unreact("p_1").unwrap();
 
@@ -363,7 +365,7 @@ fn posts_comments_and_reactions_go_by_their_ids() {
             (
                 Method::Put,
                 "/v1/posts/p_1/reaction".into(),
-                json!({ "kind": "love" })
+                json!({ "emoji": "🙏" })
             ),
             (Method::Delete, "/v1/posts/p_1/reaction".into(), Value::Null),
             (
@@ -636,6 +638,7 @@ fn notifications_are_paged_and_read_and_an_unknown_kind_is_left_out() {
             "postId": "p_1",
             "commentId": null,
             "action": action,
+            "emoji": if kind == "reaction" { json!("🙏") } else { Value::Null },
             "createdAt": 1_760_000_400_000u64,
             "read": false,
         })
@@ -659,18 +662,26 @@ fn notifications_are_paged_and_read_and_an_unknown_kind_is_left_out() {
     let kinds: Vec<_> = page
         .notifications
         .iter()
-        .map(|n| (n.notification_id.as_str(), n.kind, n.action))
+        .map(|n| {
+            (
+                n.notification_id.as_str(),
+                n.kind,
+                n.action,
+                n.emoji.as_deref(),
+            )
+        })
         .collect();
     assert_eq!(
         kinds,
         [
-            ("n_3", NotificationKind::Reaction, None),
+            ("n_3", NotificationKind::Reaction, None, Some("🙏")),
             (
                 "n_1",
                 NotificationKind::Moderated,
-                Some(ModerationAction::HidePost)
+                Some(ModerationAction::HidePost),
+                None
             ),
-            ("n_0", NotificationKind::Moderated, None),
+            ("n_0", NotificationKind::Moderated, None, None),
         ]
     );
     assert_eq!(page.notifications[1].actor, None);
@@ -764,7 +775,7 @@ fn a_refusal_keeps_its_code_and_a_bad_id_is_never_sent() {
         c.community("../me").map(drop),
         c.post("p_1?x=1").map(drop),
         c.delete_comment("").map(drop),
-        c.react("p 1", ReactionKind::Like),
+        c.react("p 1", "👍"),
         c.create_comment("p_1", "  ", None, &[]).map(drop),
         c.create_comment("p_1", "", None, &["sm_1".into(), "sm_2".into()])
             .map(drop),

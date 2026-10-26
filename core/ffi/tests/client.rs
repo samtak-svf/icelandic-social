@@ -18,9 +18,9 @@ use spjall_core::client::{
     TransportError, invite_token,
 };
 use spjall_core::social::{
-    Author, Card, CardCommunity, CardKind, CardRef, CommunityAudience, CommunityRole,
-    LogTargetKind, ModerationAction, ModerationLogAction, ModerationState, ReactionCount,
-    ReactionKind, ReportReason, ReportTarget, ReportTargetKind, SocialNotificationKind,
+    Author, Card, CardCommunity, CardKind, CardRef, CommunityAudience, CommunityRole, EmojiCount,
+    LogTargetKind, ModerationAction, ModerationLogAction, ModerationState, ReportReason,
+    ReportTarget, ReportTargetKind, SocialNotificationKind,
 };
 use spjall_core::{Body, CoreError};
 
@@ -836,7 +836,8 @@ fn the_social_calls_cross_the_exported_api() {
         r#"{"posts":[{"postId":"p_1","communityId":"cm_1",
         "author":{"accountId":"a","name":null,"verified":false},"body":"Halló",
         "media":[{"mediaId":"sm_1","width":4,"height":3}],"createdAt":2,
-        "reactions":[{"kind":"laugh","count":2}],"myReaction":null,"commentCount":0,
+        "reactions":[{"kind":"laugh","count":2}],"myReaction":null,
+        "emojis":[{"emoji":"😂","count":2}],"myEmoji":null,"commentCount":0,
         "state":"removed"}],"next":"2"}"#,
     );
     let page = a1
@@ -856,9 +857,9 @@ fn the_social_calls_cross_the_exported_api() {
         })
     );
     assert_eq!(
-        post.reactions,
-        [ReactionCount {
-            kind: ReactionKind::Laugh,
+        post.emojis,
+        [EmojiCount {
+            emoji: "😂".into(),
             count: 2
         }]
     );
@@ -868,7 +869,7 @@ fn the_social_calls_cross_the_exported_api() {
     );
 
     answer(204, "");
-    a1.client.react("p_1".into(), ReactionKind::Wow).unwrap();
+    a1.client.react("p_1".into(), "😮".into()).unwrap();
     for _ in 0..6 {
         answer(204, "");
     }
