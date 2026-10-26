@@ -2,3 +2,4 @@ packages:
   - backend
   - web
   - spikes/browser-storage
+  - spikes/d1-workload

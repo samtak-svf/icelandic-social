@@ -81,7 +81,7 @@ describe("seam-guard", () => {
   });
 
   it("allows console in the log helper and in comments or strings", () => {
-    expect(rules("backend/src/log.ts", "console.log(JSON.stringify(line));")).toEqual([]);
+    expect(rules("backend/src/shared/log.ts", "console.log(JSON.stringify(line));")).toEqual([]);
     expect(rules("backend/src/app.ts", '// console.log here\nconst s = "console.log";')).toEqual(
       [],
     );
@@ -101,7 +101,7 @@ describe("seam-guard", () => {
 
   it("allows an error body in the error helper, and a success body anywhere", () => {
     const helper = "return c.json({ error, ...extra, requestId: c.var.requestId }, status);";
-    expect(rules("backend/src/errors.ts", helper)).toEqual([]);
+    expect(rules("backend/src/shared/errors.ts", helper)).toEqual([]);
     expect(rules("backend/src/app.ts", "return c.json({ errors: [] }, 200);")).toEqual([]);
     expect(rules("backend/src/app.ts", '// c.json({ error: "x" })\nfail(c, 404, "x");')).toEqual(
       [],

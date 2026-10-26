@@ -167,7 +167,7 @@ comments, docs, commits, PRs, issues) is English.
   `backend/cloudflare.config.ts` names the frozen ids with R2 jurisdiction `eu`; with `--live` (CI,
   read-only token) it asks the Cloudflare API whether D1 and R2 really are in the EU.
 - Local workerd does not implement DO jurisdictions: `jurisdiction()` throws there. Tests wrap
-  the namespace (`backend/test/env.test.ts`) instead of loosening the seam.
+  the namespace (`backend/test/shared/env.test.ts`) instead of loosening the seam.
 - **Never deploy before D1 and R2 exist.** `cf deploy` provisions a missing one without a
   jurisdiction, so every deploy runs `cf deploy --no-provision` behind
   `jurisdiction-check.mjs --deploy`. The creation commands are in `backend/README.md`.

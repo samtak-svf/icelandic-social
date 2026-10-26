@@ -1,0 +1,13 @@
+{
+  "name": "spjall-spike-d1-workload",
+  "private": true,
+  "description": "A measurement, not a product: a social workload seeded into a local D1 to see whether one database holds it (#275). Results in docs/d1-social-workload.md.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "measure": "node measure.ts"
+  },
+  "devDependencies": {
+    "wrangler": "4.152.0"
+  }
+}

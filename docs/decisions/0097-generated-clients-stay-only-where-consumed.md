@@ -11,7 +11,7 @@ The generated native clients go. What stays of decision 0005:
 
 - `api/openapi.json`, generated from the zod schemas in `backend/src/api/`, and its drift check;
 - the web client `web/src/generated/api.ts` (`tooling/web-api.mjs`), which the web app imports;
-- the `oasdiff breaking` check in `contract.yml` and `backend/test/contract.test.ts`.
+- the `oasdiff breaking` check in `contract.yml` and `backend/test/api/contract.test.ts`.
 
 What is removed: the Android module `:core:network` (the generated Kotlin REST client),
 the Kotlin `WsFrame` and its emitter `tooling/ws-kotlin.mjs`, the iOS package `SpjallAPI`,

@@ -7,8 +7,8 @@ import {
 } from "../../api/anonymous.ts";
 import type { AppEnv } from "../../http.ts";
 import { db } from "../../env/index.ts";
-import { fail } from "../../errors.ts";
-import { log } from "../../log.ts";
+import { fail } from "../../shared/errors.ts";
+import { log } from "../../shared/log.ts";
 import { moderates, type Standing } from "../communities/index.ts";
 import { notice } from "../jobs/index.ts";
 import {

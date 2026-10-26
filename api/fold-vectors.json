@@ -1,5 +1,5 @@
 {
-  "about": "A name as a search compares it (decisions 0036, 0038): lower case, with the Icelandic letters folded to plain ones. Read by backend/test/directory.test.ts (nameKey and the name_key column) and core/client/tests/fold.rs (fold_name), so the folds cannot drift apart.",
+  "about": "A name as a search compares it (decisions 0036, 0038): lower case, with the Icelandic letters folded to plain ones. Read by backend/test/modules/profiles/directory.test.ts (nameKey and the name_key column) and core/client/tests/fold.rs (fold_name), so the folds cannot drift apart.",
   "vectors": [
     { "input": "ÁÐÉÍÓÚÝÞÆÖ áðéíóúýþæö", "folded": "adeiouythaeo adeiouythaeo" },
     { "input": "Þórdís Ýr Ævarsdóttir", "folded": "thordis yr aevarsdottir" },

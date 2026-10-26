@@ -38,7 +38,7 @@ describe("rule-drill", () => {
       "tooling/pii-guard.mjs",
     ]);
     initRepo(root);
-    writeFileSync(join(root, "backend/src/log.ts"), "// rewritten\n");
+    writeFileSync(join(root, "backend/src/shared/log.ts"), "// rewritten\n");
     expect(checkDrills(root).join()).toContain("log-redaction.patch no longer applies");
     editJson(root, "tooling/critical-rules.json", (registry) => {
       registry.rules = registry.rules.filter(

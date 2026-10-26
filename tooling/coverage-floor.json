@@ -16,7 +16,7 @@
         "lines": 99,
         "branches": 99
       },
-      "backend/src/client-version.ts": {
+      "backend/src/shared/client-version.ts": {
         "lines": 99,
         "branches": 84
       },
@@ -44,7 +44,7 @@
         "lines": 97,
         "branches": 86
       },
-      "backend/src/log.ts": {
+      "backend/src/shared/log.ts": {
         "lines": 99,
         "branches": 91
       },

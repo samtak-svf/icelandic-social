@@ -11,7 +11,7 @@ import { framingFits } from "../../api/image-frames.ts";
 import type { AppEnv } from "../../http.ts";
 import { setPhotoVersion, UNBLOCKED } from "../../identity/index.ts";
 import { db, withinLimit } from "../../env/index.ts";
-import { fail } from "../../errors.ts";
+import { fail } from "../../shared/errors.ts";
 import {
   deleteImage,
   getFrame,
@@ -20,8 +20,8 @@ import {
   renderFrames,
   storeImage,
   takeUpload,
-} from "../../images.ts";
-import { log } from "../../log.ts";
+} from "../../shared/images.ts";
+import { log } from "../../shared/log.ts";
 
 // The profile photo (decision 0039): one per account, shown to every signed-in
 // account but those a block stands between, and not end-to-end encrypted. The

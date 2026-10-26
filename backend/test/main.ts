@@ -1,5 +1,5 @@
 import { env, exports } from "cloudflare:workers";
-import { CLIENT_HEADER } from "../src/client-version.ts";
+import { CLIENT_HEADER } from "../src/shared/client-version.ts";
 
 // The Worker under test, through its own loopback. `cf workers types` types
 // the main module only when cloudflare.config.ts holds the module itself; it

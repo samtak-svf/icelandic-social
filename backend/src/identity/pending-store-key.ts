@@ -2,7 +2,7 @@
 // for the phone (decision 0096). The share is made with the request
 // (`createLinkRequest`) and becomes the device's when the link completes.
 
-import { toBase64 } from "../bytes.ts";
+import { toBase64 } from "../shared/bytes.ts";
 import { db } from "../env/index.ts";
 import type { Session } from "./sessions.ts";
 

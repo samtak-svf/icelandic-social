@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { fromBase64, toBase64 } from "../src/bytes.ts";
+import { fromBase64, toBase64 } from "../src/shared/bytes.ts";
 import { device } from "./support.ts";
 
 // Push providers for the tests (decision 0025): FCM and APNs credentials with

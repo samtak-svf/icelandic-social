@@ -8,11 +8,11 @@
       "rule": "The server's roster moves only by the commit that wins its epoch.",
       "tests": [
         {
-          "file": "backend/test/conversation.test.ts",
+          "file": "backend/test/modules/messaging/conversation.test.ts",
           "name": "sets the roster to the claim of the commit that wins its epoch"
         },
         {
-          "file": "backend/test/conversation.test.ts",
+          "file": "backend/test/modules/messaging/conversation.test.ts",
           "name": "stores one commit per epoch, and older application messages too"
         },
         {
@@ -28,7 +28,7 @@
       "rule": "A commit whose claim leaves out its sender or does not match its Welcome is refused.",
       "tests": [
         {
-          "file": "backend/test/messages.test.ts",
+          "file": "backend/test/modules/messaging/messages.test.ts",
           "name": "refuses a commit whose claim leaves out its sender or does not match its Welcome"
         },
         {
@@ -44,11 +44,11 @@
       "rule": "An account a commit removes cannot read past that commit, nor fetch earlier media.",
       "tests": [
         {
-          "file": "backend/test/conversation.test.ts",
+          "file": "backend/test/modules/messaging/conversation.test.ts",
           "name": "lets an account a commit left out read up to that commit"
         },
         {
-          "file": "backend/test/media.test.ts",
+          "file": "backend/test/modules/messaging/media.test.ts",
           "name": "stops a removed member fetching what was sent before"
         },
         {
@@ -96,11 +96,11 @@
           "name": "a_blob_changed_cut_or_reordered_does_not_open"
         },
         {
-          "file": "backend/test/media.test.ts",
+          "file": "backend/test/modules/messaging/media.test.ts",
           "name": "binds an object to its conversation"
         },
         {
-          "file": "backend/test/media.test.ts",
+          "file": "backend/test/modules/messaging/media.test.ts",
           "name": "refuses a stranger both ways and a used id"
         }
       ]
@@ -140,7 +140,7 @@
       "rule": "A revoked device's token stops working at once and it leaves every group.",
       "tests": [
         {
-          "file": "backend/test/revoke.test.ts",
+          "file": "backend/test/identity/revoke.test.ts",
           "name": "kills its token at once, deletes its KeyPackages and closes its socket"
         },
         {
@@ -156,15 +156,15 @@
       "rule": "Sign-in refuses the wrong PKCE verifier, a reused code and a foreign redirect.",
       "tests": [
         {
-          "file": "backend/test/sign-in.test.ts",
+          "file": "backend/test/identity/sign-in.test.ts",
           "name": "refuses the wrong PKCE verifier"
         },
         {
-          "file": "backend/test/sign-in.test.ts",
+          "file": "backend/test/identity/sign-in.test.ts",
           "name": "refuses a code used twice"
         },
         {
-          "file": "backend/test/sign-in.test.ts",
+          "file": "backend/test/identity/sign-in.test.ts",
           "name": "refuses a redirect that is not the app's"
         }
       ]
@@ -176,15 +176,15 @@
       "rule": "An identity belongs to one account; linking one another account holds is refused.",
       "tests": [
         {
-          "file": "backend/test/google-sign-in.test.ts",
+          "file": "backend/test/identity/google-sign-in.test.ts",
           "name": "refuses an identity another account holds"
         },
         {
-          "file": "backend/test/google-sign-in.test.ts",
+          "file": "backend/test/identity/google-sign-in.test.ts",
           "name": "does not take a Google subject for a kennitala that happens to be equal"
         },
         {
-          "file": "backend/test/google-sign-in.test.ts",
+          "file": "backend/test/identity/google-sign-in.test.ts",
           "name": "refuses an ID token that does not verify, and changes nothing"
         }
       ]
@@ -196,15 +196,15 @@
       "rule": "Joining a Google account into the Kenni account moves its device and data, revokes its other devices, and deletes only the account left without an identity.",
       "tests": [
         {
-          "file": "backend/test/google-sign-in.test.ts",
+          "file": "backend/test/identity/google-sign-in.test.ts",
           "name": "joins a Google account into the Kenni account: the device, its token and Google move"
         },
         {
-          "file": "backend/test/google-sign-in.test.ts",
+          "file": "backend/test/identity/google-sign-in.test.ts",
           "name": "revokes the joined account's other devices"
         },
         {
-          "file": "backend/test/google-sign-in.test.ts",
+          "file": "backend/test/identity/google-sign-in.test.ts",
           "name": "deletes an account left without an identity, and no other"
         }
       ]
@@ -216,7 +216,7 @@
       "rule": "A build below its platform's floor gets 426 before its token is looked at.",
       "tests": [
         {
-          "file": "backend/test/client-version.test.ts",
+          "file": "backend/test/shared/client-version.test.ts",
           "name": "answers 426 on a /v1 route, before the token is looked at, and leaves /health open"
         },
         {
@@ -232,11 +232,11 @@
       "rule": "The server keeps a kennitala only as an HMAC, and a Google subject or address not at all.",
       "tests": [
         {
-          "file": "backend/test/sign-in.test.ts",
+          "file": "backend/test/identity/sign-in.test.ts",
           "name": "keeps the kennitala only as an HMAC"
         },
         {
-          "file": "backend/test/google-sign-in.test.ts",
+          "file": "backend/test/identity/google-sign-in.test.ts",
           "name": "keeps neither the subject nor the address, not even in the HMAC's place"
         }
       ]
@@ -248,19 +248,19 @@
       "rule": "A log line carries only allow-listed fields, and redacts anything that could be a name, kennitala or phone number.",
       "tests": [
         {
-          "file": "backend/test/log.test.ts",
+          "file": "backend/test/shared/log.test.ts",
           "name": "drops a field that is not on the allow list"
         },
         {
-          "file": "backend/test/log.test.ts",
+          "file": "backend/test/shared/log.test.ts",
           "name": "redacts a string that is not an opaque id"
         },
         {
-          "file": "backend/test/log.test.ts",
+          "file": "backend/test/shared/log.test.ts",
           "name": "redacts a run of digits that could be a phone number or a kennitala"
         },
         {
-          "file": "backend/test/sign-in.test.ts",
+          "file": "backend/test/identity/sign-in.test.ts",
           "name": "carry neither the kennitala nor the name, nor the token"
         }
       ]
@@ -288,11 +288,11 @@
       "rule": "Every Durable Object stub is pinned to the EU jurisdiction, through the seam only.",
       "tests": [
         {
-          "file": "backend/test/env.test.ts",
+          "file": "backend/test/shared/env.test.ts",
           "name": "refuses a jurisdiction other than the EU"
         },
         {
-          "file": "backend/test/env.test.ts",
+          "file": "backend/test/shared/env.test.ts",
           "name": "fails when a stub skips the jurisdiction"
         },
         {
@@ -332,11 +332,11 @@
       "rule": "The server deletes messages, Welcomes and media 30 days after they were stored.",
       "tests": [
         {
-          "file": "backend/test/conversation.test.ts",
+          "file": "backend/test/modules/messaging/conversation.test.ts",
           "name": "deletes messages and Welcomes 30 days after they were stored, not the GroupInfo"
         },
         {
-          "file": "backend/test/media.test.ts",
+          "file": "backend/test/modules/messaging/media.test.ts",
           "name": "expires objects after 30 days"
         }
       ]
@@ -348,7 +348,7 @@
       "rule": "Messages are numbered in order, a resend gets the first seq, and a lost answer loses and doubles nothing.",
       "tests": [
         {
-          "file": "backend/test/conversation.test.ts",
+          "file": "backend/test/modules/messaging/conversation.test.ts",
           "name": "numbers messages in order and answers a resend with the first seq"
         },
         {
@@ -364,15 +364,15 @@
       "rule": "A muted conversation sends no push and shows no notice until its mute ends or is turned off, and a mute is the account's and goes when the account leaves.",
       "tests": [
         {
-          "file": "backend/test/push.test.ts",
+          "file": "backend/test/modules/messaging/push.test.ts",
           "name": "owes no push for a muted conversation, and drops what it owed"
         },
         {
-          "file": "backend/test/push.test.ts",
+          "file": "backend/test/modules/messaging/push.test.ts",
           "name": "owes a push again once a mute has ended, and deletes the ended mute"
         },
         {
-          "file": "backend/test/push.test.ts",
+          "file": "backend/test/modules/messaging/push.test.ts",
           "name": "is cleared when the account leaves the conversation, or is deleted"
         },
         {
@@ -392,15 +392,15 @@
       "rule": "Only a member reads or writes a conversation, its roster and its devices.",
       "tests": [
         {
-          "file": "backend/test/conversation.test.ts",
+          "file": "backend/test/modules/messaging/conversation.test.ts",
           "name": "refuses an account that is not a member"
         },
         {
-          "file": "backend/test/conversation.test.ts",
+          "file": "backend/test/modules/messaging/conversation.test.ts",
           "name": "answers its roster to members only"
         },
         {
-          "file": "backend/test/conversation-devices.test.ts",
+          "file": "backend/test/modules/messaging/conversation-devices.test.ts",
           "name": "answers 403 to an account outside the conversation and 404 to none"
         }
       ]
@@ -412,15 +412,15 @@
       "rule": "A blocked account cannot claim the blocker's KeyPackages or be brought into a conversation, and cannot reach the blocker again.",
       "tests": [
         {
-          "file": "backend/test/accounts.test.ts",
+          "file": "backend/test/identity/accounts.test.ts",
           "name": "stops the blocked account claiming the blocker's KeyPackages, until lifted"
         },
         {
-          "file": "backend/test/accounts.test.ts",
+          "file": "backend/test/identity/accounts.test.ts",
           "name": "refuses a commit that brings in an account that has blocked its sender"
         },
         {
-          "file": "backend/test/accounts.test.ts",
+          "file": "backend/test/identity/accounts.test.ts",
           "name": "keeps a blocker that is a member already, and refuses only bringing one in"
         },
         {
@@ -436,15 +436,15 @@
       "rule": "Deleting an account revokes every token, leaves the rosters, wipes the inbox and deletes its uploads.",
       "tests": [
         {
-          "file": "backend/test/revoke.test.ts",
+          "file": "backend/test/identity/revoke.test.ts",
           "name": "revokes every token, leaves the rosters, wipes the inbox and deletes the rows"
         },
         {
-          "file": "backend/test/media.test.ts",
+          "file": "backend/test/modules/messaging/media.test.ts",
           "name": "deletes an account's uploads with the account"
         },
         {
-          "file": "backend/test/conversation.test.ts",
+          "file": "backend/test/modules/messaging/conversation.test.ts",
           "name": "keeps a deleted account out of every later claim (0028)"
         }
       ]
@@ -456,11 +456,11 @@
       "rule": "A push goes to the other accounts only, for an urgent message, and carries nothing but a wake-up.",
       "tests": [
         {
-          "file": "backend/test/push.test.ts",
+          "file": "backend/test/modules/messaging/push.test.ts",
           "name": "pushes a message to the other accounts only, and a commit or an urgent: false to no one"
         },
         {
-          "file": "backend/test/push.test.ts",
+          "file": "backend/test/modules/messaging/push.test.ts",
           "name": "never sends what another round already sent, when two rounds overlap"
         }
       ]
@@ -504,11 +504,11 @@
       "rule": "A profile photo is stored only as the server's re-encoded WebP, without the upload's metadata, and is withheld both ways across a block with the answer an account without a photo gets.",
       "tests": [
         {
-          "file": "backend/test/photos.test.ts",
+          "file": "backend/test/modules/profiles/photos.test.ts",
           "name": "re-encodes an upload to a 512 px WebP without its GPS tag, for any signed-in account"
         },
         {
-          "file": "backend/test/photos.test.ts",
+          "file": "backend/test/modules/profiles/photos.test.ts",
           "name": "is withheld both ways across a block, as if there were none, but the name is not"
         },
         {

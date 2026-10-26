@@ -3,8 +3,8 @@ import { deleteCookie } from "hono/cookie";
 import type { AppEnv } from "../http.ts";
 import { endOtherSessionsRoute, endSessionRoute, listSessionsRoute } from "../api/sessions.ts";
 import { inbox } from "../env/index.ts";
-import { fail } from "../errors.ts";
-import { log } from "../log.ts";
+import { fail } from "../shared/errors.ts";
+import { log } from "../shared/log.ts";
 import {
   endSessions,
   SESSION_COOKIE,

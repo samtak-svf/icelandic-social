@@ -1,5 +1,5 @@
 import type { Device } from "./accounts.ts";
-import { fromBase64 } from "../bytes.ts";
+import { fromBase64 } from "../shared/bytes.ts";
 import { db } from "../env/index.ts";
 import { FramingError, type Leaf, readFraming } from "../mls/framing.ts";
 

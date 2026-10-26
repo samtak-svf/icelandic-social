@@ -10,11 +10,11 @@ import {
   signInConfigRoute,
 } from "../api/devices.ts";
 import { claimKeyPackagesRoute, uploadKeyPackagesRoute } from "../api/key-packages.ts";
-import { fromBase64, toBase64 } from "../bytes.ts";
+import { fromBase64, toBase64 } from "../shared/bytes.ts";
 import { identityProvider, inbox, withinLimit } from "../env/index.ts";
-import { fail } from "../errors.ts";
+import { fail } from "../shared/errors.ts";
 import type { AppEnv } from "../http.ts";
-import { log } from "../log.ts";
+import { log } from "../shared/log.ts";
 import { clearPushToken, me, registerDevice, revokeDevice, setPushToken } from "./accounts.ts";
 import { blockedByAny } from "./blocks.ts";
 import { claim, upload } from "./key-packages.ts";

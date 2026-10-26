@@ -1,5 +1,5 @@
 import { type IdentityProvider, identityProvider, type ProviderName } from "../env/index.ts";
-import { log } from "../log.ts";
+import { log } from "../shared/log.ts";
 
 // The identity providers, Kenni (decision 0019) and Google (decision 0033).
 // The app runs the authorization; the Worker redeems the code and checks the
