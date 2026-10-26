@@ -19,6 +19,7 @@ fn codes_are_stable_names() {
         "link-not-approved"
     );
     assert_eq!(code(ClientError::Link(LinkError::Gone)), "link-expired");
+    assert_eq!(code(ClientError::NotAGroup), "not-a-group");
     assert_eq!(
         code(ClientError::Transport(ApiError::Unreachable(Unreachable(
             "offline".into()

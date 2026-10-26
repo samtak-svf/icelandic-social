@@ -3905,6 +3905,59 @@ fn a_group_photo_reaches_every_member_and_is_cleared_the_same_way() {
     }
 }
 
+/// The web has no file path (0094): the bytes go in and come out, and what
+/// the server holds is ciphertext, not the picture.
+#[test]
+fn a_group_photo_from_bytes_is_stored_sealed_and_read_back_as_bytes() {
+    let relay = Relay::new();
+    let (mut a1, mut b1, _c1, conversation) = group(&relay);
+    assert_eq!(b1.client.group_photo_bytes(&conversation).unwrap(), None);
+
+    let source = std::fs::read(picture(&a1.dir, 10)).unwrap();
+    a1.client
+        .set_group_photo_bytes(&conversation, &source)
+        .unwrap();
+    a1.sync();
+    b1.deliver();
+
+    let seen = b1
+        .client
+        .group_photo_bytes(&conversation)
+        .unwrap()
+        .expect("the member has the photo");
+    assert_eq!(&seen[..2], &[0xFF, 0xD8], "a JPEG");
+    assert_eq!(
+        a1.client.group_photo_bytes(&conversation).unwrap(),
+        Some(seen.clone())
+    );
+    let kept = std::fs::read(photo_of(&mut a1).unwrap()).unwrap();
+    assert_eq!(kept, seen);
+
+    // The server holds ciphertext (0023): not a JPEG, not the sender's copy.
+    let stored = relay.group_photo_object(&conversation).expect("stored");
+    assert!(!stored.starts_with(&[0xFF, 0xD8, 0xFF]));
+    assert_ne!(stored, kept);
+
+    // No source is left on the sender's device.
+    let out = a1.dir.path().join("media").join("out");
+    assert!(
+        !out.exists() || std::fs::read_dir(&out).unwrap().next().is_none(),
+        "nothing of the upload is left in out/"
+    );
+
+    a1.client.clear_group_photo(&conversation).unwrap();
+    a1.sync();
+    b1.deliver();
+    assert_eq!(b1.client.group_photo_bytes(&conversation).unwrap(), None);
+    assert_eq!(a1.client.group_photo_bytes(&conversation).unwrap(), None);
+
+    assert!(matches!(
+        a1.client
+            .set_group_photo_bytes(&conversation, b"not an image"),
+        Err(ClientError::GroupPhoto(_))
+    ));
+}
+
 /// Two people are not a group (0094): the core will not set a photo, and
 /// drops one that arrives.
 #[test]
