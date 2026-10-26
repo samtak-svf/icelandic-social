@@ -23,6 +23,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -160,6 +162,9 @@ private fun Devices(
     }
 }
 
+/** The icon of a device in the list: a browser is a globe, a phone is a phone. */
+internal fun deviceIcon(kind: DeviceKind): ImageVector = if (kind == DeviceKind.WEB) AppIcons.Globe else AppIcons.Phone
+
 @Composable
 private fun DeviceRow(
     device: AccountDevice,
@@ -175,7 +180,13 @@ private fun DeviceRow(
             modifier = Modifier.size(WELL.dp).background(Palette.muted, RoundedCornerShape(WELL_RADIUS.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(AppIcons.Phone, contentDescription = null, tint = Palette.fg, modifier = Modifier.size(ICON_SMALL.dp))
+            val icon = deviceIcon(device.kind)
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = Palette.fg,
+                modifier = Modifier.size(ICON_SMALL.dp).testTag("device-icon-${icon.name}"),
+            )
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(

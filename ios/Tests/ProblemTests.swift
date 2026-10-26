@@ -48,4 +48,12 @@ final class ProblemTests: XCTestCase {
         let phone = AccountDevice(deviceId: "p", platform: .ios, kind: .phone, createdAt: 1, current: true)
         XCTAssertEqual(deviceTitle(phone), "iPhone")
     }
+
+    /// A browser shows a globe and a phone a phone, whatever platform the browser reports.
+    func testTheDeviceListDrawsAGlobeForAWebDevice() {
+        let web = AccountDevice(deviceId: "w", platform: .ios, kind: .web, createdAt: 1, current: false)
+        XCTAssertEqual(deviceSymbol(web), "globe")
+        let phone = AccountDevice(deviceId: "p", platform: .android, kind: .phone, createdAt: 1, current: false)
+        XCTAssertEqual(deviceSymbol(phone), "iphone")
+    }
 }

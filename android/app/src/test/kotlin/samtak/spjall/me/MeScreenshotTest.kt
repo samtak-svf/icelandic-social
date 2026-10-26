@@ -95,6 +95,7 @@ class MeScreenshotTest {
                     listOf(
                         AccountDevice("d1", Platform.ANDROID, DeviceKind.PHONE, 1_700_000_000_000u, current = true),
                         AccountDevice("d2", Platform.IOS, DeviceKind.PHONE, 1_700_000_100_000u, current = false),
+                        AccountDevice("d3", Platform.ANDROID, DeviceKind.WEB, 1_700_000_200_000u, current = false),
                     ),
                     "v1",
                 ),
