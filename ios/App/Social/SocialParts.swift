@@ -1025,10 +1025,11 @@ struct ReportSheet: View {
 struct EmojiSheet: View {
     let onPick: (String) -> Void
 
-    private static let all: [String] = (
+    private static let faces =
         "😀😃😄😁😆😅🤣😂🙂😉😊😇🥰😍🤩😘😋😛😜🤪🤗🤭🤔🤨😐😑😶🙄😏😮😯😪😴😌😎🤓😕😟🙁😲😳🥺😦😧😨😰😢😭😱😖😞😓😩😠😡🤯😷🤒🤕"
-        + "👍👎👏🙌🤝🙏💪👌✌️🤞🤟🤘👋🤙👀🔥✨🎉🎊💯💔❤️🧡💛💚💙💜🖤🤍💖💕✅❌⭐🌈☀️🌹🌱🍀🎶🏆🚀🇮🇸"
-    ).map { String($0) }
+    private static let symbols =
+        "👍👎👏🙌🤝🙏💪👌✌️🤞🤟🤘👋🤙👀🔥✨🎉🎊💯💔❤️🧡💛💚💙💜🖤🤍💖💕✅❌⭐🌈☀️🌹🌱🍀🎶🏆🚀🇮🇸"
+    private static let all: [String] = (faces + symbols).map { String($0) }
 
     var body: some View {
         ScrollView {
