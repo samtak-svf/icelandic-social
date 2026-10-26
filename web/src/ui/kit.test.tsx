@@ -23,5 +23,7 @@ describe("Status", () => {
     const html = renderToStaticMarkup(<Status inline />);
     expect(html).toContain('role="status"');
     expect(html).not.toContain("min-h-6");
+    // Its space comes with a message, so an empty one adds nothing to a flex column.
+    expect(html).toContain("not-empty:mt-1");
   });
 });

@@ -60,9 +60,9 @@ export function Status({
   children,
   inline = false,
 }: Readonly<{ children?: ReactNode; inline?: boolean }>) {
-  // `inline` keeps the live region but takes no height while it is empty.
+  // `inline` keeps the live region but takes no height, and no margin, while it is empty.
   return (
-    <p role="status" className={inline ? "text-sm" : "min-h-6 text-sm"}>
+    <p role="status" className={inline ? "text-sm not-empty:mt-1" : "min-h-6 text-sm"}>
       {children}
     </p>
   );
