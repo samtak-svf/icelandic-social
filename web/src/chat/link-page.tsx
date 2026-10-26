@@ -3,7 +3,7 @@ import { strings } from "../generated/brand/strings.ts";
 import type { LinkOffer } from "./protocol.ts";
 import { Button, Status } from "../ui/kit.tsx";
 import { useChat } from "./chat.tsx";
-import { qrRects } from "./qr.ts";
+import { qrFrame, qrRects } from "./qr.ts";
 
 // Linking this browser to the account's phone (decisions 0064, 0081): the
 // browser shows a code and its QR, the phone approves, and this page then
@@ -82,17 +82,18 @@ export function LinkPage() {
 }
 
 function Offer({ offer }: Readonly<{ offer: LinkOffer }>) {
-  const { size } = offer.qr;
+  const { origin, side } = qrFrame(offer.qr);
   return (
     <div className="mt-4 flex flex-col items-start gap-4">
       <p className="text-sm text-muted-fg">{strings.device_link_web_hint}</p>
       <svg
         role="img"
         aria-label={offer.code}
-        viewBox={`-2 -2 ${size + 4} ${size + 4}`}
+        viewBox={`${origin} ${origin} ${side} ${side}`}
         shapeRendering="crispEdges"
-        className="size-64 rounded-md bg-white"
+        className="size-64 rounded-md"
       >
+        <rect x={origin} y={origin} width={side} height={side} fill="white" />
         {qrRects(offer.qr).map(({ x, y }) => (
           <rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" fill="black" />
         ))}
