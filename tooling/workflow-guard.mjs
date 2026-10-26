@@ -31,6 +31,11 @@
 //    one $HOME, and rust-cache's post step cleans the registry and cargo/bin,
 //    so with one ~/.cargo it deleted the sources and tools of the job running
 //    beside it.
+// 9. Each runner variable has ONE `runs-on` expression, byte for byte
+//    (`RUNNER_EXPRESSIONS`): twelve hand-copied variants of the fork fallback
+//    were a policy change away from drifting (#281).
+// 10. The composite actions in .github/actions are walked too: their remote
+//    actions are pinned like the workflows' (rule 1) and they run no nohup.
 //
 // Line-based on purpose: the rules are about single lines, and the guard stays
 // dependency-free like the others (tooling/lib/repo.mjs).
@@ -40,6 +45,7 @@ import { join } from "node:path";
 import { ROOT, visibleFiles } from "./lib/repo.mjs";
 
 const WORKFLOW = /^\.github\/workflows\/[^/]+\.ya?ml$/;
+const ACTION = /^\.github\/actions\/[^/]+\/action\.ya?ml$/;
 const USES = /^\s*(?:-\s+)?uses:\s*(\S+)(.*)$/;
 const PINNED = /^[^@\s]+@[0-9a-f]{40}$/;
 const TAG_COMMENT = /^\s+#\s*v\d\S*\s*$/;
@@ -49,13 +55,15 @@ const TARGET = /^\s*pull_request_target\s*:|\bpull_request_target\b\s*[\],]/;
 const JOB = /^ {2}[\w-]+:\s*$/;
 const NOHUP = /(?:^|[\s;&|(])nohup\s/;
 const TOOLCHAIN_INSTALL = /\brustup\s+toolchain\s+install\b/;
-const TOOLCHAIN_ACTION = /^\s*(?:-\s+)?uses:\s*\.\/\.github\/actions\/rust-toolchain\s*$/;
+// core-artifact runs the toolchain action first, so it counts as one.
+const TOOLCHAIN_ACTION =
+  /^\s*(?:-\s+)?uses:\s*\.\/\.github\/actions\/(?:rust-toolchain|core-artifact)\s*$/;
 const CARGO_HOME_WRITER =
   /^\s*(?:-\s+)?uses:\s*(?:Swatinem\/rust-cache|taiki-e\/install-action)@|\bcargo\s+install\b/;
 const SECRET = /\bsecrets\.(?!GITHUB_TOKEN\b)\w+/;
 
 /**
- * @typedef {{ file: string, line: number, rule: "pin" | "fork-runner" | "trigger" | "secret-runner" | "nohup" | "rust-toolchain" | "fixed-port" | "exclusive-lane" | "cargo-home", message: string }} Problem
+ * @typedef {{ file: string, line: number, rule: "pin" | "fork-runner" | "trigger" | "secret-runner" | "nohup" | "rust-toolchain" | "fixed-port" | "exclusive-lane" | "cargo-home" | "runner-expr", message: string }} Problem
  */
 
 /**
@@ -96,6 +104,23 @@ const BANNED = [
   },
 ];
 
+/**
+ * The one `runs-on` expression allowed for each runner variable: the fork
+ * fallback names the hosted runner of the lane (macOS for the Mac lane).
+ * @param {string} variable
+ * @param {string} hosted
+ */
+const runnerExpression = (variable, hosted) =>
+  `\${{ fromJSON(github.event.pull_request.head.repo.fork && '["${hosted}"]' || vars.${variable} || '["${hosted}"]') }}`;
+
+/** @type {Record<string, string>} */
+export const RUNNER_EXPRESSIONS = {
+  RUNNER_LABELS: runnerExpression("RUNNER_LABELS", "ubuntu-latest"),
+  GUARD_RUNNER_LABELS: runnerExpression("GUARD_RUNNER_LABELS", "ubuntu-latest"),
+  EXCLUSIVE_RUNNER_LABELS: runnerExpression("EXCLUSIVE_RUNNER_LABELS", "ubuntu-latest"),
+  MAC_RUNNER_LABELS: runnerExpression("MAC_RUNNER_LABELS", "macos-26"),
+};
+
 const EXCLUSIVE_LANE = /\bEXCLUSIVE_RUNNER_LABELS\b/;
 const EXCLUSIVE_FILE = ".github/workflows/android.yml";
 
@@ -120,6 +145,22 @@ function lineProblems(code) {
       rule: "fork-runner",
       message: "a runner variable needs the hosted fallback for fork PRs",
     });
+  }
+  if (runsOn?.includes("vars.") && FORK_FALLBACK.test(runsOn)) {
+    for (const [, variable = ""] of runsOn.matchAll(/\bvars\.(\w+)/g)) {
+      const canonical = RUNNER_EXPRESSIONS[variable];
+      if (canonical === undefined) {
+        found.push({
+          rule: "runner-expr",
+          message: `vars.${variable} has no canonical runs-on expression`,
+        });
+      } else if (runsOn.trim() !== canonical) {
+        found.push({
+          rule: "runner-expr",
+          message: `runs-on for ${variable} must be exactly: ${canonical}`,
+        });
+      }
+    }
   }
   for (const { rule, pattern, message } of BANNED)
     if (pattern.test(code)) found.push({ rule, message });
@@ -199,13 +240,26 @@ export function findInWorkflow(file, text) {
 }
 
 /**
+ * A composite action: pinned remote actions, no nohup.
+ * @param {string} file repo-relative path
+ * @param {string} text
+ * @returns {Problem[]}
+ */
+export function findInAction(file, text) {
+  return findInWorkflow(file, text).filter((p) => p.rule === "pin" || p.rule === "nohup");
+}
+
+/**
  * @param {string} [root]
  * @returns {Problem[]}
  */
 export function findProblems(root = ROOT) {
-  return visibleFiles(root)
-    .filter((file) => WORKFLOW.test(file))
-    .flatMap((file) => findInWorkflow(file, readFileSync(join(root, file), "utf8")));
+  const files = visibleFiles(root);
+  const read = (/** @type {string} */ file) => readFileSync(join(root, file), "utf8");
+  return [
+    ...files.filter((f) => WORKFLOW.test(f)).flatMap((f) => findInWorkflow(f, read(f))),
+    ...files.filter((f) => ACTION.test(f)).flatMap((f) => findInAction(f, read(f))),
+  ];
 }
 
 function main() {
@@ -213,7 +267,7 @@ function main() {
   for (const p of problems) console.error(`::error file=${p.file},line=${p.line}::${p.message}`);
   if (problems.length > 0) process.exit(1);
   console.log(
-    "✓ workflows pin every action by SHA, keep fork PRs and secrets off the org runners, use no nohup, install Rust only through the action, no fixed dev port, the exclusive lane only for Android and the toolchain action before CARGO_HOME is written",
+    "✓ workflows pin every action by SHA, keep fork PRs and secrets off the org runners, use no nohup, install Rust only through the action, no fixed dev port, the exclusive lane only for Android and the toolchain action before CARGO_HOME is written, one runs-on expression per runner variable, composite actions pinned too",
   );
 }
 
