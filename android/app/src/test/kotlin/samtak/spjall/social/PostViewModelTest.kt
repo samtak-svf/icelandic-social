@@ -24,7 +24,6 @@ import samtak.spjall.conversation.Picked
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.Poll
 import samtak.spjall.core.PollOption
-import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
@@ -229,24 +228,24 @@ class PostViewModelTest {
     fun theReactionChanges() =
         runTest(dispatcher) {
             val model = model()
-            model.react(ReactionKind.LOVE)
+            model.react("\u2764\uFE0F")
             advanceUntilIdle()
             assertEquals(
-                ReactionKind.LOVE,
+                "\u2764\uFE0F",
                 model.state.value.post
-                    ?.myReaction,
+                    ?.myEmoji,
             )
-            model.react(ReactionKind.SAD)
+            model.react("\uD83C\uDDEE\uD83C\uDDF8")
             advanceUntilIdle()
             assertEquals(
-                ReactionKind.SAD,
+                "\uD83C\uDDEE\uD83C\uDDF8",
                 model.state.value.post
-                    ?.myReaction,
+                    ?.myEmoji,
             )
             assertEquals(
                 1uL,
                 model.state.value.post
-                    ?.reactions
+                    ?.emojis
                     ?.single()
                     ?.count,
             )

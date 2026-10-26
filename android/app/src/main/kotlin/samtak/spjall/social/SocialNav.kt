@@ -20,7 +20,6 @@ import samtak.spjall.account.Account
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.CoreException
-import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.SocialNotification
@@ -92,8 +91,8 @@ private fun Communities(
 
             override fun react(
                 postId: String,
-                kind: ReactionKind,
-            ) = model.react(postId, kind)
+                emoji: String,
+            ) = model.react(postId, emoji)
 
             override fun vote(
                 postId: String,
@@ -332,8 +331,8 @@ private fun CommunityEntry(
 
                 override fun react(
                     postId: String,
-                    kind: ReactionKind,
-                ) = model.react(postId, kind)
+                    emoji: String,
+                ) = model.react(postId, emoji)
 
                 override fun report(
                     target: ReportTarget,
@@ -432,7 +431,7 @@ private fun PostEntry(
 
                 override fun onReplyTo(comment: samtak.spjall.core.Comment?) = model.onReplyTo(comment)
 
-                override fun react(kind: ReactionKind) = model.react(kind)
+                override fun react(emoji: String) = model.react(emoji)
 
                 override fun likeComment(commentId: String) = model.likeComment(commentId)
 

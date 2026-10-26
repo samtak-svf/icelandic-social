@@ -25,10 +25,9 @@ import samtak.spjall.core.CardKind
 import samtak.spjall.core.CardRef
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityRole
+import samtak.spjall.core.EmojiCount
 import samtak.spjall.core.JoinRequest
 import samtak.spjall.core.PostImage
-import samtak.spjall.core.ReactionCount
-import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportTargetKind
 import samtak.spjall.core.SocialNotificationKind
 import samtak.spjall.frames.FakeFrameRules
@@ -56,8 +55,8 @@ class SocialScreenshotTest {
         post(
             "p1",
             body = "Myndir frá tónleikunum í gær",
-            reactions = listOf(ReactionCount(ReactionKind.LOVE, 3uL)),
-            mine = ReactionKind.LOVE,
+            emojis = listOf(EmojiCount("\u2764\uFE0F", 3uL)),
+            mine = "\u2764\uFE0F",
             comments = 2uL,
         ).copy(images = listOf(PostImage("m1", 800u, 600u), PostImage("m2", 600u, 800u)))
 

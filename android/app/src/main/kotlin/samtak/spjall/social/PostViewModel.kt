@@ -19,7 +19,6 @@ import samtak.spjall.conversation.Picked
 import samtak.spjall.core.Comment
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.Post
-import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
 import java.io.File
@@ -203,14 +202,14 @@ class PostViewModel(
         uploaded?.takeIf { it.first == path }?.second
             ?: social.uploadPostImage(communityId, path).mediaId.also { uploaded = path to it }
 
-    fun react(kind: ReactionKind) {
+    fun react(emoji: String) {
         val state = _state.value
         val post = state.post ?: return
         if (state.reacting) return
         _state.update { it.copy(reacting = true, problem = null) }
         viewModelScope.launch {
             try {
-                val changed = withContext(io) { social.toggle(post, kind) }
+                val changed = withContext(io) { social.toggle(post, emoji) }
                 _state.update { it.copy(post = changed, reacting = false) }
             } catch (e: CoreException) {
                 _state.update { it.copy(reacting = false, problem = e.problem()) }

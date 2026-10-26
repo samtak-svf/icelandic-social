@@ -23,6 +23,7 @@ import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.EmojiCount
 import samtak.spjall.core.Focus
 import samtak.spjall.core.FrameKind
 import samtak.spjall.core.Framing
@@ -30,8 +31,6 @@ import samtak.spjall.core.LogTarget
 import samtak.spjall.core.LogTargetKind
 import samtak.spjall.core.ModerationLogAction
 import samtak.spjall.core.ModerationLogEntry
-import samtak.spjall.core.ReactionCount
-import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
@@ -145,23 +144,23 @@ class CommunityViewModelTest {
     fun aReactionIsSetThenTakenBack() =
         runTest(dispatcher) {
             social.communities["k1"] = community("k1", role = CommunityRole.MEMBER)
-            social.posts["k1"] = mutableListOf(post("p1", reactions = listOf(ReactionCount(ReactionKind.LIKE, 2uL))))
+            social.posts["k1"] = mutableListOf(post("p1", emojis = listOf(EmojiCount("\uD83D\uDC4D", 2uL))))
             val model = model()
-            model.react("p1", ReactionKind.LIKE)
+            model.react("p1", "\uD83D\uDC4D")
             advanceUntilIdle()
             val liked =
                 model.state.value.posts
                     .single()
-            assertEquals(ReactionKind.LIKE, liked.myReaction)
-            assertEquals(3uL, liked.reactions.single().count)
-            model.react("p1", ReactionKind.LIKE)
+            assertEquals("\uD83D\uDC4D", liked.myEmoji)
+            assertEquals(3uL, liked.emojis.single().count)
+            model.react("p1", "\uD83D\uDC4D")
             advanceUntilIdle()
             assertNull(
                 model.state.value.posts
                     .single()
-                    .myReaction,
+                    .myEmoji,
             )
-            assertEquals(listOf("react p1 LIKE", "unreact p1"), social.calls.filter { it.contains("react") })
+            assertEquals(listOf("react p1 \uD83D\uDC4D", "unreact p1"), social.calls.filter { it.contains("react") })
         }
 
     @Test
