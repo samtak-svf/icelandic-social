@@ -82,6 +82,26 @@ export function freezeProblems(released, current, known = KNOWN) {
 }
 
 /**
+ * Whether the checkout contains the tag's commit. Exit 1 means it does not;
+ * any other failure is a real error.
+ * @param {string} tag
+ * @param {string} root
+ */
+function headContains(tag, root) {
+  try {
+    git(["merge-base", "--is-ancestor", tag, "HEAD"], root);
+    return true;
+  } catch (error) {
+    if (/** @type {{ status?: number }} */ (error).status === 1) return false;
+    throw error;
+  }
+}
+
+/**
+ * The migrations of every `core-v*` release the checkout contains. A tag on a
+ * commit HEAD lacks (a local main behind the tagged merge) is not judged
+ * against a tree that cannot hold its migrations (#294); a branch that does
+ * contain the tag still fails when it drops one.
  * @param {string} [root]
  * @returns {Map<string, Map<number, string>>}
  */
@@ -90,6 +110,7 @@ export function releasedMigrations(root = ROOT) {
   /** @type {Map<string, Map<number, string>>} */
   const released = new Map();
   for (const tag of tags) {
+    if (!headContains(tag, root)) continue;
     let source;
     try {
       source = git(["show", `${tag}:${STORE}`], root);
