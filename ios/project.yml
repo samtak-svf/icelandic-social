@@ -139,6 +139,9 @@ targets:
     platform: iOS
     sources:
       - path: Tests
+      # The cases every platform shares (#275).
+      - path: ../api/presentation.vectors.json
+        buildPhase: resources
     dependencies:
       - target: Spjall
       - package: SpjallCore

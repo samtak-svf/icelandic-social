@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { call } from "../api/call.ts";
-import { strings } from "../generated/brand/strings.ts";
 import { useSizeClass, type SizeClass } from "../ui/size-class.ts";
 
 // The one avatar for people and for communities (decision 0080): the photo
@@ -8,11 +7,20 @@ import { useSizeClass, type SizeClass } from "../ui/size-class.ts";
 // It sits beside a name that already says who it is, so it is hidden from the
 // screen reader either way.
 
-/** The first letter of a name, or of the anonymous stand-in. */
+/**
+ * Up to two letters: the first of the first word and of the last, upper-cased
+ * (api/presentation.vectors.json, the same rule as the apps). Words are split
+ * on spaces only, so a hyphenated name is one word; no name is "?".
+ */
 export function initials(name: string | null): string {
-  const text = name === null || name.trim() === "" ? strings.person_unnamed : name.trim();
-  const first = Array.from(text)[0];
-  return first === undefined ? "" : first.toUpperCase();
+  const words = (name ?? "").split(" ").filter((word) => word.trim() !== "");
+  const first = words[0];
+  if (first === undefined) return "?";
+  const letters = [first, words.length > 1 ? words.at(-1) : undefined];
+  return letters
+    .map((word) => (word === undefined ? "" : (Array.from(word)[0] ?? "")))
+    .join("")
+    .toUpperCase();
 }
 
 function Initials({ name, className }: Readonly<{ name: string | null; className: string }>) {

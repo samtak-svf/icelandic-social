@@ -88,6 +88,12 @@ android {
         }
     }
 
+    bundle {
+        // The emoji picker is built from an Icelandic configuration whatever the device language
+        // (#295), so the library's Icelandic strings must ship to every device, not only those set to it.
+        language { enableSplit = false }
+    }
+
     buildTypes {
         debug {
             debugApiBaseUrl?.let { buildConfigField("String", "API_BASE_URL", "\"$it\"") }
@@ -99,6 +105,9 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+
+    // The shared presentation vectors (api/presentation.vectors.json, #275) are read from the classpath.
+    sourceSets.getByName("test").resources.srcDir("../../api")
 
     // The screenshot tests (Roborazzi on Robolectric) render the real
     // resources: the brand's fonts, strings and icons.
