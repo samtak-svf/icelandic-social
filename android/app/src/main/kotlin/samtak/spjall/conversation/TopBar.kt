@@ -45,7 +45,10 @@ import samtak.spjall.ui.avatarKind
 import samtak.spjall.ui.photoOf
 import samtak.spjall.ui.title
 
-/** The cream band: back, who this is with, whether Kenni vouched for them, and the menu. */
+/**
+ * The cream band: back, who this is with, and whether Kenni vouched for them. The title is the one way
+ * to the information (0095).
+ */
 @Composable
 internal fun TopBar(
     state: ConversationViewModel.State,
@@ -66,18 +69,6 @@ internal fun TopBar(
             }
             state.conversation?.let {
                 Title(it, Modifier.weight(1f), actions::info)
-                // The information is a tap on the title too; a group's name and members deserve a
-                // mark of their own (0078).
-                if (it.hasMenu()) {
-                    IconButton(onClick = actions::info) {
-                        Icon(
-                            AppIcons.Info,
-                            contentDescription = stringResource(R.string.conversation_info),
-                            tint = Palette.fg,
-                        )
-                    }
-                }
-                ConversationMenu(it, actions)
             }
         }
         HorizontalDivider(color = Palette.border)
@@ -99,7 +90,7 @@ private fun Title(
             modifier
                 .heightIn(min = TARGET.dp)
                 .clickable(
-                    enabled = conversation.hasMenu(),
+                    enabled = conversation.opensInfo(),
                     onClickLabel = stringResource(R.string.conversation_info),
                     role = Role.Button,
                     onClick = onInfo,

@@ -1,8 +1,10 @@
 # 0055. A conversation's information is a screen
 
-- Status: accepted; implemented in the core (973e65c, core 0.24.0) and the apps, released as 0.8.4
+- Status: accepted; implemented in the core (973e65c, core 0.24.0) and the apps, released as 0.8.4; amended by [0095](0095-the-conversation-header-has-one-door-to-its-information.md)
 - Date: 2026-10-15
 - Decided by: the maintainer, choosing from the UX round on 0.7.3
+- Amended by: [0095](0095-the-conversation-header-has-one-door-to-its-information.md) (the header's
+  menu button goes; the title is the one way to the information)
 - Builds on: [0043](0043-first-launch-and-the-ui-pass.md) (tapping the title opens the
   information), [0042](0042-mute-a-conversation.md) (mute), [0039](0039-profile-photo.md)
   (the photo), [0022](0022-the-conversation-surfaces.md) (what each screen shows)

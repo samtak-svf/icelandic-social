@@ -22,6 +22,9 @@ function fakeCore(over: Partial<CoreLike> = {}): CoreLike {
     conversations: () => [],
     timeline: () => [],
     send: () => "env-1",
+    groupPhoto: () => null,
+    setGroupPhoto: () => "env-2",
+    clearGroupPhoto: () => "env-3",
     me: () => ({ accountId: "acc-1", name: null, verified: false, photo: null, devices: [] }),
     wipe: async () => undefined,
     ...over,
@@ -151,6 +154,19 @@ describe("the chat worker's key flow (decisions 0064, 0081)", () => {
     expect(wipe).toHaveBeenCalled();
     expect(b.d.revoke).toHaveBeenCalledWith("dev-1");
     await expect(host.conversations()).rejects.toMatchObject({ code: "closed" });
+  });
+
+  it("passes a group's photo through, and null when it has none", async () => {
+    const setGroupPhoto = vi.fn(() => "env-7");
+    const { record, share } = await linked();
+    const core = fakeCore({ setGroupPhoto, groupPhoto: () => undefined });
+    const host = chatHost(deps({ record, share: { deviceId: "dev-1", share }, core }).d);
+    await host.start();
+    const bytes = new Uint8Array([1, 2, 3]);
+    expect(await host.setGroupPhoto("c-1", bytes)).toBe("env-7");
+    expect(setGroupPhoto).toHaveBeenCalledWith("c-1", bytes);
+    expect(await host.groupPhoto("c-1")).toBeNull();
+    expect(await host.clearGroupPhoto("c-1")).toBe("env-3");
   });
 
   it("zeroes the share it was given", async () => {
