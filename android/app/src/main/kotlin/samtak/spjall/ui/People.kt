@@ -171,8 +171,8 @@ fun NameWithMark(
     verified: Boolean,
     style: TextStyle,
     color: Color,
-    markSize: Dp = MARK.dp,
     modifier: Modifier = Modifier,
+    markSize: Dp = MARK.dp,
 ) {
     val mark = with(LocalDensity.current) { markSize.toSp() }
     val description = stringResource(R.string.verified_with_kennitala)
