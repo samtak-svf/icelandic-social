@@ -7,6 +7,10 @@ charset = utf-8
 indent_style = space
 indent_size = 4
 
+# Generated code (tooling/brand-gen.mjs, uniffi) is checked by its generator, not by a style rule.
+[**/generated/**]
+ktlint = disabled
+
 [*.{kt,kts}]
 ktlint_code_style = ktlint_official
 ktlint_function_naming_ignore_when_annotated_with = Composable

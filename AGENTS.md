@@ -37,7 +37,7 @@ Consequences, all enforced by `tooling/brand-leak-guard.mjs`:
 - **Contrast is computed, not eyeballed.** Every pair in `brand/contrast-pairs.json` must
   reach its WCAG level for every brand; a brand that fails does not pass `check:brand`.
 - **Apps read generated files, never `brand/`.** `pnpm brand:gen` (`tooling/brand-gen.mjs`)
-  writes Android resources and `BrandTokens.kt` in `android/core/brand/`, `ios/Generated/`,
+  writes Android resources and `BrandTokens.kt` in `android/core/brand/src/generated/`, `ios/Generated/`,
   `backend/src/brand.gen.ts` and `web/src/generated/brand/` (strings, Tailwind theme, fonts), icons
   included; all are committed and `check:brand-gen`
   fails when they differ by a byte. Never edit them by hand. The brand is `BRAND=<name>`, by

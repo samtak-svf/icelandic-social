@@ -10,14 +10,14 @@ import { brandNames, ROOT } from "../repo.mjs";
 
 /** Directories brand-gen writes in full. */
 export const OWNED_DIRS = [
-  "android/core/brand/src/main/res",
+  "android/core/brand/src/generated/res",
   "ios/Generated",
   "web/src/generated/brand",
 ];
 
 /** Single files brand-gen writes inside directories it does not own. */
 const OWNED_FILES = [
-  "android/core/brand/src/main/kotlin/samtak/spjall/brand/BrandTokens.kt",
+  "android/core/brand/src/generated/kotlin/samtak/spjall/brand/BrandTokens.kt",
   "backend/src/brand.gen.ts",
 ];
 
