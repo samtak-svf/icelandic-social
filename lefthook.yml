@@ -1,6 +1,7 @@
 # Local gates. Which guard runs at which stage is tooling/guards.json, checked
-# by tooling/tests/guards.test.mjs. Every one of them also runs in CI, because a
-# local hook is absent on a machine that never ran `pnpm install`.
+# by tooling/tests/guards.test.mjs. Each also runs in CI, because a local hook
+# is absent on a machine that never ran `pnpm install`; the one exception is
+# push-guard, which reads the refs of the push itself.
 # Never bypass with --no-verify (AGENTS.md § Git).
 
 pre-commit:
