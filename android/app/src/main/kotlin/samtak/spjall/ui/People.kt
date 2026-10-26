@@ -171,7 +171,7 @@ fun NameWithMark(
     verified: Boolean,
     style: TextStyle,
     color: Color,
-    markSize: Dp,
+    markSize: Dp = MARK.dp,
     modifier: Modifier = Modifier,
 ) {
     val mark = with(LocalDensity.current) { markSize.toSp() }

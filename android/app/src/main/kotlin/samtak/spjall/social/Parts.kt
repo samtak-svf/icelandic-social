@@ -46,8 +46,8 @@ import samtak.spjall.core.ModerationState
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
+import samtak.spjall.ui.NameWithMark
 import samtak.spjall.ui.Palette
-import samtak.spjall.ui.VerifiedMark
 import samtak.spjall.ui.listStamp
 
 // What the community screens share. Their content is hosted, not end-to-end encrypted (decision 0060), so
@@ -166,10 +166,12 @@ fun Byline(
             size = 34.dp,
         )
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(text = author.shownName(), style = MaterialTheme.typography.titleSmall)
-                if (author.verified) VerifiedMark()
-            }
+            NameWithMark(
+                name = author.shownName(),
+                verified = author.verified,
+                style = MaterialTheme.typography.titleSmall,
+                color = Palette.fg,
+            )
             Text(
                 text = listStamp(createdAt),
                 style = MaterialTheme.typography.bodySmall,
