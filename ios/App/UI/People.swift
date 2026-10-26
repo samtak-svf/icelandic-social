@@ -76,6 +76,61 @@ extension Avatar {
     }
 }
 
+/// The verified mark as a bitmap, so it can sit inside a `Text` and wrap with the name.
+/// Drawn from `VerifiedMark`, so the shield path stays in one place; one image per size and scale.
+@MainActor
+enum VerifiedMarkImage {
+    private struct Key: Hashable {
+        let size: CGFloat
+        let scale: CGFloat
+    }
+
+    private static var cache: [Key: UIImage] = [:]
+
+    static func image(size: CGFloat, scale: CGFloat) -> UIImage {
+        let key = Key(size: size, scale: scale)
+        if let cached = cache[key] { return cached }
+        let renderer = ImageRenderer(content: VerifiedMark(size: size))
+        renderer.scale = scale
+        let image = renderer.uiImage ?? UIImage()
+        cache[key] = image
+        return image
+    }
+}
+
+/// A name that wraps in full, with the verified mark kept to its last word: one `Text`, the mark
+/// as inline content after a word joiner (U+2060), as on Android and the web.
+struct NameWithMark: View {
+    let name: String
+    let verified: Bool
+    var markSize: CGFloat = 12
+    var font: Font
+    var color: Color = BrandTokens.Colors.fg
+    @Environment(\.displayScale) private var scale
+
+    var body: some View {
+        text
+            .font(font)
+            .foregroundStyle(color)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(label)
+    }
+
+    private var label: Text {
+        let name = Text(verbatim: name)
+        guard verified else { return name }
+        return name + Text(verbatim: ", ") + Text("verified_with_kennitala")
+    }
+
+    private var text: Text {
+        guard verified else { return Text(verbatim: name) }
+        let mark = Text(Image(uiImage: VerifiedMarkImage.image(size: markSize, scale: scale)))
+            .baselineOffset(-markSize * 0.1)
+        return Text(verbatim: name) + Text(verbatim: "\u{2060}") + mark
+    }
+}
+
 /// The mark of a name Kenni verified: a gold shield with a white tick.
 struct VerifiedMark: View {
     var size: CGFloat = 14

@@ -271,19 +271,23 @@ struct Byline<Menu: View>: View {
         self.menu = menu()
     }
 
+    /// The name and the badge, which goes below the name when both do not fit on a line.
+    @ViewBuilder private var byline: some View {
+        NameWithMark(
+            name: anonymousName ?? authorName(author), verified: author?.verified == true, markSize: 12,
+            font: .sans(14, black: true))
+        RoleBadge(role: author?.role)
+    }
+
     var body: some View {
         HStack(spacing: 10) {
             Avatar(
                 name: author?.name, kind: author?.verified == true ? .verified : .unverified, size: 34,
                 photo: author?.photoOf)
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    Text(verbatim: anonymousName ?? authorName(author))
-                        .font(.sans(14, black: true))
-                        .foregroundStyle(BrandTokens.Colors.fg)
-                        .lineLimit(1)
-                    if author?.verified == true { VerifiedMark(size: 12) }
-                    RoleBadge(role: author?.role)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 4) { byline }
+                    VStack(alignment: .leading, spacing: 2) { byline }
                 }
                 Text(verbatim: short ? relativeTime(createdAt) : postedAt(createdAt))
                     .font(TypeStyle.meta)
@@ -751,15 +755,19 @@ struct CommentCard: View {
         }
     }
 
+    /// The name and the badge, which goes below the name when both do not fit on a line.
+    @ViewBuilder private var commentByline: some View {
+        NameWithMark(
+            name: authorName(comment.author), verified: comment.author.verified == true, markSize: 11,
+            font: .sans(13, black: true))
+        RoleBadge(role: comment.author.role)
+    }
+
     private var bubble: some View {
         VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 4) {
-                Text(verbatim: authorName(comment.author))
-                    .font(.sans(13, black: true))
-                    .foregroundStyle(BrandTokens.Colors.fg)
-                    .lineLimit(1)
-                if comment.author.verified == true { VerifiedMark(size: 11) }
-                RoleBadge(role: comment.author.role)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 4) { commentByline }
+                VStack(alignment: .leading, spacing: 2) { commentByline }
             }
             if !comment.body.isEmpty {
                 Text(verbatim: comment.body)
