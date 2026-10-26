@@ -6,7 +6,6 @@ agp = "9.4.1"
 kotlin = "2.4.20"
 ktlint = "14.2.0"
 detekt = "2.0.0-alpha.6"
-openapiGenerator = "7.25.0"
 coreKtx = "1.19.1"
 exifinterface = "1.4.2"
 lifecycle = "2.10.0"
@@ -78,8 +77,6 @@ detekt-gradlePlugin = { group = "dev.detekt", name = "detekt-gradle-plugin", ver
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 detekt = { id = "dev.detekt", version.ref = "detekt" }
-openapi-generator = { id = "org.openapi.generator", version.ref = "openapiGenerator" }
 roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }

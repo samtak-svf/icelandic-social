@@ -7,4 +7,4 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-xcrun swift-format lint --strict --recursive App NotificationService Shared Tests Packages/SpjallAPI
+xcrun swift-format lint --strict --recursive App NotificationService Shared Tests

@@ -6,7 +6,7 @@
 //
 // openapi-typescript prints through the TypeScript 5 compiler API, which
 // TypeScript 7 no longer has, and the spec uses a small part of OpenAPI. So
-// the web gets this emitter instead, like the Kotlin frames (ws-kotlin.mjs).
+// the web gets this emitter instead.
 //
 // `node tooling/web-api.mjs`          write the TypeScript file
 // `node tooling/web-api.mjs --check`  fail when it is stale (CI, pre-push)

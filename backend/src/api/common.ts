@@ -10,7 +10,7 @@ export const OpaqueId = z
 
 /**
  * Binary data as standard base64 text. A plain string with a pattern, not
- * `format: byte`, so both generated clients and tooling/ws-kotlin.mjs take it.
+ * `format: byte`, so the generated web client takes it.
  */
 export const base64 = (maxBytes: number) =>
   z

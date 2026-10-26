@@ -117,7 +117,7 @@ pre-push:
 
     # The contract: spec matches zod, the Kotlin frames and the web client match spec.
     contract:
-      run: node backend/scripts/openapi.ts --check && node tooling/ws-kotlin.mjs --check && node tooling/web-api.mjs --check
+      run: node backend/scripts/openapi.ts --check && node tooling/web-api.mjs --check
 
     typecheck:
       run: pnpm run typecheck

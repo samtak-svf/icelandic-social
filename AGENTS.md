@@ -57,7 +57,7 @@ Consequences, all enforced by `tooling/brand-leak-guard.mjs`:
 ```bash
 pnpm install           # also installs the lefthook hooks
 pnpm check             # lint, types, format, ids, critical rules, drills, quarantine, brand, brand-gen, brand-leak,
-                       # þankastrik, PII, peer names, seams, modules, jurisdiction, migrations, core lock, ws-kotlin, web-api,
+                       # þankastrik, PII, peer names, seams, modules, jurisdiction, migrations, core lock, web-api,
                        # frames, workflows, knip
 pnpm brand:gen         # regenerate the platform files from brand/$BRAND
 pnpm test              # guard tests (vitest); each guard is proven to fail when it should
@@ -74,8 +74,7 @@ pnpm --filter spjall-backend build     # cf build: the Worker and the web app, i
 pnpm --filter spjall-backend check     # cf workers types, tsc, api/openapi.json drift
 pnpm --filter spjall-backend test      # vitest inside workerd (@cloudflare/vitest-plugin)
 pnpm --filter spjall-backend openapi   # regenerate api/openapi.json after a zod change ...
-node tooling/ws-kotlin.mjs   # ... then the Kotlin WS frames from it
-node tooling/web-api.mjs     # ... and the web client
+node tooling/web-api.mjs     # ... then the web client from it
 cd backend && node scripts/ops.ts jobs   # way back, rollback, restores and jobs: docs/operations.md (0068)
 
 # The web (web/ is a package of the root workspace; the Worker builds and serves it)
@@ -107,9 +106,9 @@ git worktree builds its own `core/target` of several GB, so a worktree under a s
 tmpfs runs out of space: point `CARGO_TARGET_DIR` at one shared directory outside `/tmp`
 (e.g. `~/.cache/spjall-target`) for every worktree.
 
-**The contract (decision 0005).** zod in `backend/src/api/` is the source. `api/openapi.json`,
-`api/kotlin/…/WsFrame.kt` and the web client `web/src/generated/api.ts` are generated and
-committed; `contract.yml` fails when any is stale, and `oasdiff breaking` against the base fails unless the PR has the label
+**The contract (decisions 0005, 0097).** zod in `backend/src/api/` is the source. `api/openapi.json`
+and the web client `web/src/generated/api.ts` are generated and committed; the apps have no
+generated client, they reach the server through the Rust core. `contract.yml` fails when either is stale, and `oasdiff breaking` against the base fails unless the PR has the label
 `api: breaking`.
 
 Tooling is plain `.mjs` with `// @ts-check` and JSDoc, type-checked by `tsc --noEmit`
