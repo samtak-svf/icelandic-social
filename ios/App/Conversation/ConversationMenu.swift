@@ -1,59 +1,8 @@
 import SpjallCore
 import SwiftUI
 
-/// The conversation's menu: its information, mute or notifications back on, the disappearing timer, and
-/// block in a 1:1 (decisions 0043, 0042, 0022, 0024), behind the circled ellipsis, the system's own "more"
-/// mark (decision 0047). The information screen offers the same choices, each with its state (decision 0055).
-/// `info` is whether it is open; the conversation pushes it, not this menu.
-struct ConversationMenu: View {
-    let conversation: Conversation
-    let model: ConversationModel
-    @Binding var info: Bool
-
-    @State private var timing = false
-    @State private var blocking = false
-
-    private var other: Person? {
-        conversation.name == nil && conversation.members.count == 1 ? conversation.members[0] : nil
-    }
-
-    var body: some View {
-        Menu {
-            Button("conversation_info", systemImage: "info.circle") { info = true }
-            MuteChoices(
-                muted: conversation.mute != .off,
-                onMute: { duration in Task { await model.mute(duration) } },
-                onUnmute: { Task { await model.unmute() } })
-            Button("disappearing_messages", systemImage: "timer") { timing = true }
-            if other != nil {
-                Button("block", systemImage: "hand.raised", role: .destructive) { blocking = true }
-            }
-        } label: {
-            Image(systemName: "ellipsis.circle")
-                .font(.system(size: 20, weight: .regular))
-                .foregroundStyle(BrandTokens.Colors.fg)
-                .frame(minWidth: 44, minHeight: 44)
-        }
-        .accessibilityLabel(Text("more_options"))
-        .sheet(isPresented: $timing) {
-            TimerSheet(current: conversation.timer) { seconds in
-                timing = false
-                if seconds != conversation.timer { Task { await model.timer(seconds) } }
-            }
-            .presentationDetents([.medium])
-        }
-        .alert(
-            Text(verbatim: other.map { localized("block_confirm", shownName($0)) } ?? ""),
-            isPresented: $blocking
-        ) {
-            Button("block", role: .destructive) { Task { await model.block() } }
-            Button("cancel", role: .cancel) {}
-        }
-    }
-}
-
-/// Mute with its three durations, or notifications back on (decision 0042): in the conversation's menu and
-/// in the list row's long-press menu (decision 0043), the same choices in both.
+/// Mute with its three durations, or notifications back on (decision 0042), in the list row's
+/// long-press menu (decision 0043).
 struct MuteChoices: View {
     let muted: Bool
     let onMute: (MuteFor) -> Void
@@ -72,12 +21,12 @@ struct MuteChoices: View {
     }
 }
 
-/// What the timer is set to, as its choices name it.
+/// What the timer is set to, as its choices name it (the information screen's row, decision 0055).
 func timerLine(_ seconds: UInt32?) -> String {
     seconds.map { localized("disappearing_option", duration($0)) } ?? localized("disappearing_off")
 }
 
-/// Off, or one of the timers decision 0022 lists.
+/// Off, or one of the timers decision 0022 lists; the information screen opens it (decision 0055).
 struct TimerSheet: View {
     let current: UInt32?
     let onPick: (UInt32?) -> Void

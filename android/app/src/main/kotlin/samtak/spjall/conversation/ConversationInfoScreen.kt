@@ -81,7 +81,7 @@ fun ConversationInfoScreen(
     actions: ConversationInfoActions,
 ) {
     val conversation = state.conversation
-    LaunchedEffect(conversation?.hasMenu()) { if (conversation?.hasMenu() == false) actions.back() }
+    LaunchedEffect(conversation?.opensInfo()) { if (conversation?.opensInfo() == false) actions.back() }
     val grid = rememberLazyGridState()
     val shared = state.shared
     val nearEnd by remember {

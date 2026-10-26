@@ -12,8 +12,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.ConversationState
-import samtak.spjall.core.Mute
 import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
 import samtak.spjall.ui.AppIcons
@@ -40,101 +37,8 @@ import samtak.spjall.ui.RoundButton
 import samtak.spjall.ui.duration
 import samtak.spjall.ui.shownName
 
-/** The menu and the information screen are offered while the conversation is open. */
-internal fun Conversation.hasMenu() = state == ConversationState.ACTIVE || state == ConversationState.NEW
-
-/**
- * The conversation's menu: its information, the disappearing timer, mute
- * (0042), and block in a 1:1 (0022, 0024). The information screen (0055)
- * offers the same choices with their state.
- */
-@Composable
-internal fun ConversationMenu(
-    conversation: Conversation,
-    actions: ConversationActions,
-) {
-    if (!conversation.hasMenu()) return
-    var timing by rememberSaveable { mutableStateOf(false) }
-    var blocking by rememberSaveable { mutableStateOf(false) }
-    var muting by rememberSaveable { mutableStateOf(false) }
-    // Block is for a 1:1; a named group is a group whatever its size (0078).
-    val other = if (conversation.name == null) conversation.members.singleOrNull() else null
-    val pick = { choice: Choice ->
-        when (choice) {
-            Choice.INFO -> actions.info()
-            Choice.TIMER -> timing = true
-            Choice.MUTE -> muting = true
-            Choice.UNMUTE -> actions.unmute()
-            Choice.BLOCK -> blocking = true
-        }
-    }
-    val muted = conversation.mute != Mute.Off
-    MenuButton(muted = muted, canBlock = other != null, onPick = pick)
-    if (timing) {
-        TimerDialog(
-            current = conversation.timer,
-            onPick = {
-                timing = false
-                if (it != conversation.timer) actions.timer(it)
-            },
-            onDismiss = { timing = false },
-        )
-    }
-    if (muting) {
-        MuteDialog(
-            onPick = {
-                muting = false
-                actions.mute(it)
-            },
-            onDismiss = { muting = false },
-        )
-    }
-    if (blocking && other != null) {
-        BlockDialog(
-            other,
-            onConfirm = {
-                blocking = false
-                actions.block()
-            },
-            onDismiss = { blocking = false },
-        )
-    }
-}
-
-private enum class Choice { INFO, TIMER, MUTE, UNMUTE, BLOCK }
-
-/** The menu itself; muted, the mute item turns notifications back on instead. */
-@Composable
-private fun MenuButton(
-    muted: Boolean,
-    canBlock: Boolean,
-    onPick: (Choice) -> Unit,
-) {
-    var open by rememberSaveable { mutableStateOf(false) }
-    val items =
-        listOfNotNull(
-            Choice.INFO to R.string.conversation_info,
-            Choice.TIMER to R.string.disappearing_messages,
-            if (muted) Choice.UNMUTE to R.string.unmute else Choice.MUTE to R.string.mute,
-            if (canBlock) Choice.BLOCK to R.string.block else null,
-        )
-    Box {
-        IconButton(onClick = { open = true }) {
-            Icon(AppIcons.More, contentDescription = stringResource(R.string.more_options), tint = Palette.fg)
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            items.forEach { (choice, label) ->
-                DropdownMenuItem(
-                    text = { Text(stringResource(label)) },
-                    onClick = {
-                        open = false
-                        onPick(choice)
-                    },
-                )
-            }
-        }
-    }
-}
+/** The title opens the information screen (0055, 0095) while the conversation is open. */
+internal fun Conversation.opensInfo() = state == ConversationState.ACTIVE || state == ConversationState.NEW
 
 /** Asks before blocking `other` (0024). */
 @Composable
@@ -194,8 +98,8 @@ internal fun TimerDialog(
 }
 
 /**
- * The three durations 0042 offers, from this menu and from a long press on the list's row (0043); the
- * server sets the end by its own clock.
+ * The three durations 0042 offers, from the information screen (0055) and from a long press on the list's row
+ * (0043); the server sets the end by its own clock.
  */
 @Composable
 internal fun MuteDialog(
