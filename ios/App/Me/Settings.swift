@@ -115,6 +115,9 @@ func deviceTitle(_ device: AccountDevice) -> String {
     }
 }
 
+/// The SF Symbol of a device in the list: a browser is a globe, a phone is a phone.
+func deviceSymbol(_ device: AccountDevice) -> String { device.kind == .web ? "globe" : "iphone" }
+
 private struct DeviceRow: View {
     let device: AccountDevice
     let enabled: Bool
@@ -123,7 +126,7 @@ private struct DeviceRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: device.kind == .web ? "globe" : "iphone")
+            Image(systemName: deviceSymbol(device))
                 .font(.system(size: 16))
                 .foregroundStyle(BrandTokens.Colors.fg)
                 .frame(width: 30, height: 30)
