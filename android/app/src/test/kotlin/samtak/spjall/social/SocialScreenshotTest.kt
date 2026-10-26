@@ -18,6 +18,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import samtak.spjall.conversations.SCREENSHOT_DEVICE
 import samtak.spjall.conversations.SCREENSHOT_SDK
+import samtak.spjall.core.AuthorRole
 import samtak.spjall.core.Card
 import samtak.spjall.core.CardCommunity
 import samtak.spjall.core.CardKind
@@ -72,6 +73,14 @@ class SocialScreenshotTest {
             loaded = true,
         )
 
+    // A name too long for one line: the mark must stay on its last word and the badge go to the next line.
+    private val longName =
+        post(
+            "p3",
+            body = "Næsta æfing fellur niður",
+            author = anna.copy(name = "Anna Margrét Sigurbjörnsdóttir Kristjánsdóttir", role = AuthorRole.OWNER),
+        )
+
     private val communityState =
         CommunityViewModel.State(
             community = choir,
@@ -80,6 +89,8 @@ class SocialScreenshotTest {
             me = OwnAccount(self.accountId, self.name, null),
             writes = true,
         )
+
+    private val longNameState = communityState.copy(posts = listOf(longName))
 
     private val postState =
         PostViewModel.State(
@@ -164,6 +175,7 @@ class SocialScreenshotTest {
 
     private val communitiesScreen = @Composable { CommunitiesScreen(communitiesState, none<CommunitiesActions>()) }
     private val communityScreen = @Composable { CommunityScreen(communityState, none<CommunityActions>()) }
+    private val longNameScreen = @Composable { CommunityScreen(longNameState, none<CommunityActions>()) }
     private val postScreen = @Composable { PostScreen(postState, none<PostActions>()) }
     private val requestsScreen = @Composable { JoinRequestsScreen(requestsState, none<JoinRequestsActions>()) }
     private val declinedScreen = @Composable { CommunityScreen(declinedState, none<CommunityActions>()) }
@@ -200,6 +212,9 @@ class SocialScreenshotTest {
     @Test
     @Config(fontScale = 2f)
     fun communityCutsNoWord() = noWordCut(communityScreen)
+
+    @Test
+    fun longNameKeepsTheMarkOnItsLastWord() = shoot(longNameScreen)
 
     @Test
     fun post() = shoot(postScreen)

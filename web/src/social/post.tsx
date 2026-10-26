@@ -36,13 +36,22 @@ export function authorName(author: Author | null): string {
   return author.name ?? strings.person_unnamed;
 }
 
+/** No line break may fall here (U+2060). */
+export const WORD_JOINER = "\u2060";
+
 /** The author's name, with the verified mark when Kenni vouches for them (#358). */
 export function AuthorName({ author }: Readonly<{ author: Author | null }>) {
   return (
-    // The mark stays beside the name; only the byline row around it wraps.
-    <span className="inline-flex min-w-0 flex-nowrap items-baseline gap-x-2 font-semibold">
-      <span className="min-w-0 break-words">{authorName(author)}</span>
-      {author?.verified === true && <VerifiedMark className="text-sm" />}
+    // The mark is part of the name's own line, held to its last word by a word joiner, so a
+    // name that wraps keeps the mark after it instead of at the far edge of the row.
+    <span className="min-w-0 break-words font-semibold">
+      {authorName(author)}
+      {author?.verified === true && (
+        <>
+          {WORD_JOINER}
+          <VerifiedMark className="ml-2 text-sm" />
+        </>
+      )}
     </span>
   );
 }

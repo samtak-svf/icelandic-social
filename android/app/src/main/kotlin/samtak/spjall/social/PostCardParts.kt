@@ -7,6 +7,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -48,8 +50,8 @@ import samtak.spjall.core.ReactionKind
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
+import samtak.spjall.ui.NameWithMark
 import samtak.spjall.ui.Palette
-import samtak.spjall.ui.VerifiedMark
 import samtak.spjall.ui.photoOf
 
 /** The role badge text of an author in a community, or null for a plain member. */
@@ -76,6 +78,7 @@ internal fun RoleBadge(role: AuthorRole?) {
 }
 
 /** Who wrote it: picture, name with the role badge, how long ago; [trailing] sits on the right. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun AuthorRow(
     author: Author?,
@@ -91,13 +94,18 @@ internal fun AuthorRow(
             photo = author?.photoOf(),
         )
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = anonymousRes?.let { stringResource(it) } ?: author?.shownName().orEmpty(),
+            // The mark rides on the name's last word; a name that wraps sends the badge to the next line.
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
+                NameWithMark(
+                    name = anonymousRes?.let { stringResource(it) } ?: author?.shownName().orEmpty(),
+                    verified = author?.verified == true,
                     style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.weight(1f, fill = false),
+                    color = Palette.fg,
                 )
-                if (author?.verified == true) VerifiedMark()
                 author?.let { RoleBadge(it.role) }
             }
             Text(text = agoText(createdAt), style = MaterialTheme.typography.bodySmall, color = Palette.mutedFg)
