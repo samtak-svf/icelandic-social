@@ -167,6 +167,35 @@ export interface Me {
   }>;
 }
 
+export interface PushToken {
+  /** The FCM registration token, or the APNs device token in hex */
+  token: string;
+  /** An APNs token from a development build; ignored on Android */
+  sandbox?: boolean;
+}
+
+export interface KeyPackageStock {
+  /** This device's unclaimed packages valid for at least 14 more days */
+  available: number;
+  /** When the last resort expires, in Unix milliseconds; null if none */
+  lastResortNotAfter: number | null;
+}
+
+export interface UploadKeyPackages {
+  keyPackages: Array<string>;
+  /** Replaces this device's last-resort package; never consumed */
+  lastResort?: string;
+}
+
+export interface ClaimedKeyPackages {
+  /** One per active device of the account, except the caller's */
+  keyPackages: Array<{
+    deviceId: string;
+    /** Base64, at most 16384 bytes decoded */
+    keyPackage: string;
+  }>;
+}
+
 export interface NewInvite {
   token: string;
   /** The link to share; shown once, since the server keeps only its hash */
@@ -277,13 +306,6 @@ export interface CreateHistoryTransfer {
   size: number;
 }
 
-export interface PushToken {
-  /** The FCM registration token, or the APNs device token in hex */
-  token: string;
-  /** An APNs token from a development build; ignored on Android */
-  sandbox?: boolean;
-}
-
 export interface Sent {
   seq: number;
 }
@@ -371,28 +393,6 @@ export type MuteFor = "1h" | "8h" | "always";
 export interface Mutes {
   /** Only mutes still in force */
   mutes: Array<Mute>;
-}
-
-export interface KeyPackageStock {
-  /** This device's unclaimed packages valid for at least 14 more days */
-  available: number;
-  /** When the last resort expires, in Unix milliseconds; null if none */
-  lastResortNotAfter: number | null;
-}
-
-export interface UploadKeyPackages {
-  keyPackages: Array<string>;
-  /** Replaces this device's last-resort package; never consumed */
-  lastResort?: string;
-}
-
-export interface ClaimedKeyPackages {
-  /** One per active device of the account, except the caller's */
-  keyPackages: Array<{
-    deviceId: string;
-    /** Base64, at most 16384 bytes decoded */
-    keyPackage: string;
-  }>;
 }
 
 export interface Profile {
@@ -836,6 +836,25 @@ export function deleteAccount(init?: CallInit): Promise<
   return call("DELETE", "/v1/me", undefined, init);
 }
 
+/**
+ * Revoke a device of this account and its token
+ *
+ * The token fails at once, the device's KeyPackages are deleted, and its socket closes with 4401. A device may revoke itself; that is signing out (decision 0019). Revoking a device already revoked does it again, so a revoke that failed part way can be retried.
+ */
+export function revokeDevice(args: {
+  path: {
+    deviceId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/devices/{deviceId}", args, init);
+}
+
 /** Make this account's invite link, revoking the one before */
 export function rotateInvite(init?: CallInit): Promise<
   | { status: 200; data: NewInvite }
@@ -982,25 +1001,6 @@ export function getLinkedStoreKey(init?: CallInit): Promise<
   | { status: 426; data: ApiError }
 > {
   return call("GET", "/v1/devices/me/store-key", undefined, init);
-}
-
-/**
- * Revoke a device of this account and its token
- *
- * The token fails at once, the device's KeyPackages are deleted, and its socket closes with 4401. A device may revoke itself; that is signing out (decision 0019). Revoking a device already revoked does it again, so a revoke that failed part way can be retried.
- */
-export function revokeDevice(args: {
-  path: {
-    deviceId: string;
-  };
-}, init?: CallInit): Promise<
-  | { status: 204; data: undefined }
-  | { status: 400; data: ApiError }
-  | { status: 401; data: ApiError }
-  | { status: 404; data: ApiError }
-  | { status: 426; data: ApiError }
-> {
-  return call("DELETE", "/v1/devices/{deviceId}", args, init);
 }
 
 /** The name, mark and photo version of any account (decisions 0034, 0039) */

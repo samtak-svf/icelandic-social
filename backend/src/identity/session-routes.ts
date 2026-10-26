@@ -1,6 +1,6 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { deleteCookie } from "hono/cookie";
-import type { AppEnv } from "../app.ts";
+import type { AppEnv } from "../http.ts";
 import { endOtherSessionsRoute, endSessionRoute, listSessionsRoute } from "../api/sessions.ts";
 import { inbox } from "../env/index.ts";
 import { fail } from "../errors.ts";

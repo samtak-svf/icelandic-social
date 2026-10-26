@@ -18,6 +18,9 @@
 // 6. A table with a view of its live rows (RAW) is read bare only in the
 //    files RAW names; everything else reads the view, so a deleted row
 //    cannot leak through a query that forgot the filter (decision 0070).
+// 7. Only the entries that compose the app (`worker.ts`, `index.ts`) import
+//    `app.ts`. Everything else takes the Hono env from `http.ts`, so a module
+//    never depends on the composition root that mounts it (#268).
 //
 // SQL is found in string literals, imports in code with comments blanked
 // (tooling/lib/source.mjs). Tests are not scanned: they set up rows directly.
@@ -30,6 +33,8 @@ import { lineOf, stringsOf, stripCommentsAndStrings } from "./lib/source.mjs";
 const SRC = "backend/src/";
 const MIGRATIONS = "backend/migrations";
 const ENTRIES = ["index.ts", "objects.ts"];
+/** The files allowed to import the composition root, `app.ts`. */
+const COMPOSERS = [`${SRC}worker.ts`, `${SRC}index.ts`];
 
 /** Each D1 table and the one module that writes it. */
 export const OWNERS = {
@@ -203,6 +208,9 @@ function checkImports(file, module, source, add) {
     // The keyword must be code, not a comment or a string that mentions it.
     if (code[match.index] !== source[match.index]) continue;
     const target = posix.normalize(posix.join(posix.dirname(file), match[2] ?? match[4] ?? ""));
+    if (target === `${SRC}app.ts` && !COMPOSERS.includes(file)) {
+      add(match.index, "app-import", "imports the composition root; import AppEnv from http.ts");
+    }
     const into = moduleOf(target);
     if (!into || into === module) continue;
     if (!ENTRIES.some((entry) => target === `${rootOf(into)}${entry}`)) {

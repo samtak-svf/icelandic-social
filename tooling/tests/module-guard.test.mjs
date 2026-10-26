@@ -53,6 +53,20 @@ describe("module-guard", () => {
     ]);
   });
 
+  it("fails on an import of the composition root, except from the entries that compose it", () => {
+    const app = 'import type { AppEnv } from "../../app.ts";';
+    expect(rules(PROFILES, app)).toEqual(["app-import:1"]);
+    expect(rules("backend/src/errors.ts", 'import type { AppEnv } from "./app.ts";')).toEqual([
+      "app-import:1",
+    ]);
+    expect(rules("backend/src/api/health.ts", 'export type { AppEnv } from "../app.ts";')).toEqual([
+      "app-import:1",
+    ]);
+    expect(rules(PROFILES, 'import type { AppEnv } from "../../http.ts";')).toEqual([]);
+    expect(rules("backend/src/worker.ts", 'import { createApp } from "./app.ts";')).toEqual([]);
+    expect(rules("backend/src/index.ts", 'import { createApp } from "./app.ts";')).toEqual([]);
+  });
+
   it("passes an import through an entry, and any import inside a module", () => {
     expect(rules(PROFILES, 'import { block } from "../../identity/index.ts";')).toEqual([]);
     expect(

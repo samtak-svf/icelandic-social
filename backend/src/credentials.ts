@@ -3,7 +3,7 @@ import type { OpenAPIHono } from "@hono/zod-openapi";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
 import ids from "../../identifiers/ids.json" with { type: "json" };
-import type { AppEnv } from "./app.ts";
+import type { AppEnv } from "./http.ts";
 import { withinLimit } from "./env/index.ts";
 import { fail } from "./errors.ts";
 import {

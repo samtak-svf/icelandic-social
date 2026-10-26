@@ -1,7 +1,7 @@
 import { z } from "@hono/zod-openapi";
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { createMiddleware } from "hono/factory";
-import type { AppEnv } from "../app.ts";
+import type { AppEnv } from "../http.ts";
 import { fail } from "../errors.ts";
 import { opsToken } from "../env/index.ts";
 import { jobHandlers } from "../job-handlers.ts";

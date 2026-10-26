@@ -5,30 +5,18 @@
 export {
   activeDevices,
   activeDevicesOf,
-  clearPushToken,
   type Device,
   dropAccount,
   dropDeadPushToken,
-  me,
   orphans,
   type PushTarget,
   pushTarget,
-  registerDevice,
   revokeAllDevices,
-  revokeDevice,
   setPhotoVersion,
-  setPushToken,
 } from "./accounts.ts";
-export {
-  block,
-  blockedByAny,
-  blockedEither,
-  blockersAmong,
-  blockList,
-  UNBLOCKED,
-  unblock,
-} from "./blocks.ts";
+export { block, blockedEither, blockersAmong, blockList, UNBLOCKED, unblock } from "./blocks.ts";
 export { inviteRoutes } from "./invites.ts";
+export { identityRoutes } from "./routes.ts";
 export { type ApprovedLink, approvedLink, linkedDeviceRoutes } from "./linked-devices.ts";
 export {
   expireLinkedDevices,
@@ -37,7 +25,7 @@ export {
 } from "./linked-device-lifecycle.ts";
 export { type Caller, linkIdentity } from "./linking.ts";
 export { sessionRoutes } from "./session-routes.ts";
-export { claim, expireKeyPackages, ownsLeaf, upload } from "./key-packages.ts";
+export { expireKeyPackages, ownsLeaf } from "./key-packages.ts";
 export { linkHost } from "./link.ts";
 export {
   deviceForToken,
@@ -49,5 +37,5 @@ export {
   sessionForSecret,
   wipeBrowserStorage,
 } from "./sessions.ts";
-export { authorized, type Person, signInConfig, unavailable } from "./providers.ts";
+export { type Person } from "./providers.ts";
 export { webSignInRoutes } from "./web-sign-in.ts";

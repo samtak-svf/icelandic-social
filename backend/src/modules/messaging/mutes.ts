@@ -4,7 +4,7 @@ import {
   muteConversationRoute,
   unmuteConversationRoute,
 } from "../../api/conversations.ts";
-import type { AppEnv } from "../../app.ts";
+import type { AppEnv } from "../../http.ts";
 import { conversation, inbox } from "../../env/index.ts";
 import { fail } from "../../errors.ts";
 import { log } from "../../log.ts";

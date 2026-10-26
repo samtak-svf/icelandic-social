@@ -8,7 +8,7 @@ import {
   putPhotoRoute,
 } from "../../api/accounts.ts";
 import { framingFits } from "../../api/image-frames.ts";
-import type { AppEnv } from "../../app.ts";
+import type { AppEnv } from "../../http.ts";
 import { setPhotoVersion, UNBLOCKED } from "../../identity/index.ts";
 import { db, withinLimit } from "../../env/index.ts";
 import { fail } from "../../errors.ts";

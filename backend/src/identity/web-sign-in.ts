@@ -1,7 +1,7 @@
 import { type Context, Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import ids from "../../../identifiers/ids.json" with { type: "json" };
-import type { AppEnv } from "../app.ts";
+import type { AppEnv } from "../http.ts";
 import { base64url } from "../bytes.ts";
 import {
   kennitalaKeys,

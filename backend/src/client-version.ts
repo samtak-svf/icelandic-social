@@ -1,6 +1,6 @@
 import type { HonoRequest } from "hono";
 import { createMiddleware } from "hono/factory";
-import type { AppEnv } from "./app.ts";
+import type { AppEnv } from "./http.ts";
 import { minClientVersions, updateUrls } from "./env/index.ts";
 import { fail } from "./errors.ts";
 

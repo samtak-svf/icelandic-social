@@ -1,7 +1,7 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import ids from "../../../identifiers/ids.json" with { type: "json" };
 import { resolveInviteRoute, revokeInviteRoute, rotateInviteRoute } from "../api/invites.ts";
-import type { AppEnv } from "../app.ts";
+import type { AppEnv } from "../http.ts";
 import { db } from "../env/index.ts";
 import { fail } from "../errors.ts";
 import { log } from "../log.ts";
