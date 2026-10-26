@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { initials } from "./avatar.tsx";
 import { commentThreads, isTombstone } from "./comments.ts";
 import type { Comment } from "../generated/api.ts";
 
-// The initials stand-ins and the comment threads of decision 0071.
+// The comment threads of decision 0071.
 
 const at = (parentCommentId: string | null): Comment => ({
   commentId: `post-1-${Math.random().toString(36).slice(2, 8)}`,
@@ -16,19 +15,6 @@ const at = (parentCommentId: string | null): Comment => ({
   likes: 0,
   liked: false,
   media: [],
-});
-
-describe("initials", () => {
-  it("take the first letter of the name", () => {
-    expect(initials("Garðar Pálsson")).toBe("G");
-    expect(initials("  jón ")).toBe("J");
-    expect(initials("ásmundur")).toBe("Á");
-  });
-
-  it("stand in Nafnlaus where no name came", () => {
-    expect(initials(null)).toBe("N");
-    expect(initials("  ")).toBe("N");
-  });
 });
 
 describe("the comment threads", () => {

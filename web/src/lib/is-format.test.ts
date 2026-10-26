@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { formatIsDate, formatIsDateTime, listStamp } from "./is-format.ts";
+import { formatIsDate, formatIsDateShort, formatIsDateTime, listStamp } from "./is-format.ts";
 
 // Node ships full ICU, so its Intl is what CLDR says; the browsers that lack
 // Icelandic are why the web does not use it (#357).
@@ -30,8 +30,10 @@ describe("Icelandic dates", () => {
         timeStyle: "short",
         timeZone,
       });
+      const short = new Intl.DateTimeFormat("is", { dateStyle: "medium", timeZone });
       for (const ms of moments) {
         expect(formatIsDate(ms)).toBe(long.format(ms));
+        expect(formatIsDateShort(ms)).toBe(short.format(ms));
         expect(formatIsDateTime(ms)).toBe(medium.format(ms));
       }
     });

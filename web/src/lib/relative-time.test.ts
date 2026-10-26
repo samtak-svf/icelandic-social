@@ -40,6 +40,6 @@ describe("relativeTime", () => {
   });
 
   it("writes the date once it is old", () => {
-    expect(relativeTime(Date.UTC(2026, 6, 4, 12), NOW)).toMatch(/^\d+\. júlí 2026$/);
+    expect(relativeTime(Date.UTC(2026, 6, 4, 12), NOW)).toBe("4. júl. 2026");
   });
 });

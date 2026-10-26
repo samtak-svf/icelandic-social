@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "prepare": "lefthook install",
-    "check": "pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run check:ids && pnpm run check:critical-rules && pnpm run check:drills && pnpm run check:quarantine && pnpm run check:brand && pnpm run check:brand-gen && pnpm run check:brand-leak && pnpm run check:thankastrik && pnpm run check:pii && pnpm run check:peer-names && pnpm run check:seams && pnpm run check:modules && pnpm run check:jurisdiction && pnpm run check:migrations && pnpm run check:core && pnpm run check:core-dto && pnpm run check:web-api && pnpm run check:frames && pnpm run check:workflows && pnpm run check:lines && pnpm run knip",
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run check:ids && pnpm run check:critical-rules && pnpm run check:drills && pnpm run check:quarantine && pnpm run check:brand && pnpm run check:brand-gen && pnpm run check:brand-leak && pnpm run check:thankastrik && pnpm run check:pii && pnpm run check:peer-names && pnpm run check:seams && pnpm run check:modules && pnpm run check:jurisdiction && pnpm run check:migrations && pnpm run check:core && pnpm run check:core-dto && pnpm run check:web-api && pnpm run check:frames && pnpm run check:presentation && pnpm run check:workflows && pnpm run check:lines && pnpm run knip",
     "lint": "oxlint && oxlint --type-aware web",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p web/tsconfig.json && tsc --noEmit -p web/e2e/tsconfig.json",
     "format": "oxfmt --write .",
@@ -30,6 +30,7 @@
     "check:core-dto": "node tooling/core-dto-guard.mjs",
     "check:web-api": "node tooling/web-api.mjs --check",
     "check:frames": "node tooling/frames-check.mjs",
+    "check:presentation": "node tooling/presentation-check.mjs",
     "check:workflows": "node tooling/workflow-guard.mjs",
     "check:lines": "node tooling/line-count.mjs",
     "knip": "knip",

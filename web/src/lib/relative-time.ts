@@ -1,5 +1,5 @@
 import { strings } from "../generated/brand/strings.ts";
-import { formatIsDate } from "./is-format.ts";
+import { formatIsDateShort } from "./is-format.ts";
 
 // The short age a post card carries ("6 klst."), decision 0080. The step is
 // pure so it is tested without a clock; the label puts the brand's words on it.
@@ -30,7 +30,7 @@ export function relative(at: number, now: number): Relative {
 export function relativeTime(at: number, now: number = Date.now()): string {
   const r = relative(at, now);
   if (r.unit === "now") return strings.time_now;
-  if (r.unit === "date") return formatIsDate(at);
+  if (r.unit === "date") return formatIsDateShort(at);
   const args = { count: r.count };
   if (r.unit === "minutes") return strings.time_minutes(args);
   if (r.unit === "hours") return strings.time_hours(args);
