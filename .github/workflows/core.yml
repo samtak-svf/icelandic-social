@@ -6,8 +6,8 @@ name: core
 # - wasm: the client engine still builds for a browser
 #   (wasm32-unknown-unknown), so nothing native-only creeps in unnoticed. A
 #   check, not a product: nothing ships for wasm32.
-# - android, ios: build the Android AAR (ubuntu, NDK from
-#   core/artifact.lock.json) and the iOS XCFramework (macOS), on a core PR and
+# - android, ios: build the Android AAR (NDK from core/artifact.lock.json)
+#   and the iOS XCFramework (macOS), on a core PR and
 #   on a `core-vX.Y.Z` tag. On the PR so a cross-compile break shows there,
 #   not after a tag that can never be published again. The PR's zips are
 #   kept under a name derived from the tree (tooling/core-reuse.mjs), and
@@ -20,6 +20,15 @@ name: core
 #   a GitHub release of that tag (decision 0013). A released version is never overwritten. Nothing here edits the
 #   lock: apps move to a new core through a PR that pins the printed checksums
 #   in core/artifact.lock.json.
+#
+# Where the jobs run (docs/testing.md, "Where CI runs"): every job but publish
+# reads no secret, so it runs on the lane a repository variable names
+# (RUNNER_LABELS, and MAC_RUNNER_LABELS for ios), which today is samtak-mac,
+# and falls back to a hosted runner when the variable is unset or the PR comes
+# from a fork. Each step therefore works on Linux x64 and macOS ARM64: binaries
+# are picked from RUNNER_OS and RUNNER_ARCH, checksums use `shasum -a 256`, and
+# the GitHub API is called with curl, since the Mac has no gh. publish stays on
+# ubuntu-latest: it writes the release with a contents: write token.
 
 permissions:
   contents: read
@@ -92,9 +101,10 @@ jobs:
 
   wasm:
     if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-    # sqlite-wasm-rs compiles SQLite with clang, which ubuntu-latest has and
-    # the GCP fallback image does not.
-    runs-on: ubuntu-latest
+    # sqlite-wasm-rs compiles SQLite with clang: ubuntu-latest has one with a
+    # wasm32 backend, and on macOS the rust-toolchain action points it at
+    # Homebrew's LLVM. A lane without either (the old GCP image) cannot run it.
+    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 20
     defaults:
       run:
@@ -123,7 +133,7 @@ jobs:
     # regression shows. Release on purpose: `sqlite-wasm-vfs` 0.2.0 asserts in
     # `xClose` on sqlite3mc's second open of the same file, and release is what
     # the browser runs (core/store/tests/opfs.rs says the same).
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 30
     defaults:
       run:
@@ -145,24 +155,35 @@ jobs:
         run: cargo install wasm-bindgen-cli --version 0.2.129 --locked
 
       # Chrome for Testing and its own driver, so the browser the tests drive is
-      # the one whose driver ships beside it. No third-party action to pin.
+      # the one whose driver ships beside it. No third-party action to pin. The
+      # build is the runner's platform; on macOS the binary sits inside the .app.
       - name: Chrome and chromedriver
         working-directory: .
         run: |
           set -euo pipefail
-          V=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json \
+          case "$RUNNER_OS/$RUNNER_ARCH" in
+            Linux/X64) P=linux64; BIN=chrome-linux64/chrome ;;
+            macOS/ARM64) P=mac-arm64 ;;
+            macOS/X64) P=mac-x64 ;;
+            *) echo "::error::no Chrome for Testing build for $RUNNER_OS/$RUNNER_ARCH"; exit 1 ;;
+          esac
+          if [ "$RUNNER_OS" = macOS ]; then
+            BIN="chrome-$P/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
+          fi
+          V=$(curl -fsS https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json \
             | jq -r '.channels.Stable.version')
-          B=https://storage.googleapis.com/chrome-for-testing-public/$V/linux64
-          curl -sO $B/chrome-linux64.zip
-          curl -sO $B/chromedriver-linux64.zip
-          unzip -q chrome-linux64.zip
-          unzip -q chromedriver-linux64.zip
-          echo "CHROMEDRIVER=$PWD/chromedriver-linux64/chromedriver" >> "$GITHUB_ENV"
+          B=https://storage.googleapis.com/chrome-for-testing-public/$V/$P
+          curl -fsSO "$B/chrome-$P.zip"
+          curl -fsSO "$B/chromedriver-$P.zip"
+          unzip -q "chrome-$P.zip"
+          unzip -q "chromedriver-$P.zip"
+          test -x "$BIN"
+          echo "CHROMEDRIVER=$PWD/chromedriver-$P/chromedriver" >> "$GITHUB_ENV"
           # The runner reads no CHROME variable: without a binary in the
           # capabilities the driver starts the image's own Chrome, whose
           # version is not the driver's. The runner adds its headless flags
           # to these options.
-          jq -n --arg bin "$PWD/chrome-linux64/chrome" \
+          jq -n --arg bin "$PWD/$BIN" \
             '{"goog:chromeOptions": {binary: $bin}}' > webdriver.json
           echo "WASM_BINDGEN_TEST_WEBDRIVER_JSON=$PWD/webdriver.json" >> "$GITHUB_ENV"
 
@@ -183,7 +204,7 @@ jobs:
     # The browser's core (0081): spjall-wasm and its JS glue, zipped like the
     # app ones. Built on a core PR so a break shows there, and on the tag.
     if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/core-v')
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -231,7 +252,7 @@ jobs:
 
   android:
     if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/core-v')
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 45
     permissions:
       contents: read
@@ -263,7 +284,8 @@ jobs:
           NAME: ${{ steps.name.outputs.name }}
           REPO_ID: ${{ github.repository_id }}
         run: |
-          RUN=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$NAME&per_page=100" \
+          RUN=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts?name=$NAME&per_page=100" \
             | node tooling/core-reuse.mjs pick "$NAME" "$REPO_ID")
           echo "run=$RUN" >> "$GITHUB_OUTPUT"
           if [ -n "$RUN" ]; then echo "Reusing $NAME from run $RUN"; else echo "No usable $NAME; building"; fi
@@ -279,16 +301,22 @@ jobs:
       - name: Verify the reused zip
         if: steps.reuse.outputs.run != ''
         working-directory: core/target/artifacts
-        run: sha256sum -c spjall-core-android.zip.sha256
+        run: shasum -a 256 -c spjall-core-android.zip.sha256
 
       - uses: ./.github/actions/rust-toolchain
         if: steps.reuse.outputs.run == ''
 
+      # ANDROID_HOME is the hosted image's SDK, or on samtak-mac the Homebrew
+      # SDK the runner's .env names (tooling/mac-bootstrap.sh). That one is
+      # shared by both runners and keeps what it installs, so an NDK already
+      # there is not installed again.
       - name: NDK from the lock, and cargo-ndk
         if: steps.reuse.outputs.run == ''
         run: |
           NDK=$(jq -r .androidNdk core/artifact.lock.json)
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK" > /dev/null
+          if [ ! -d "$ANDROID_HOME/ndk/$NDK" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK" > /dev/null
+          fi
           cargo install cargo-ndk --version 4.1.2 --locked
 
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
@@ -312,7 +340,9 @@ jobs:
 
   ios:
     if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/core-v')
-    runs-on: macos-26
+    # MAC_RUNNER_LABELS names samtak-mac; unset, or for a fork's PR, the job
+    # runs on GitHub's hosted macOS.
+    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["macos-26"]' || vars.MAC_RUNNER_LABELS || '["macos-26"]') }}
     timeout-minutes: 45
     permissions:
       contents: read
@@ -332,7 +362,8 @@ jobs:
           NAME: ${{ steps.name.outputs.name }}
           REPO_ID: ${{ github.repository_id }}
         run: |
-          RUN=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$NAME&per_page=100" \
+          RUN=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts?name=$NAME&per_page=100" \
             | node tooling/core-reuse.mjs pick "$NAME" "$REPO_ID")
           echo "run=$RUN" >> "$GITHUB_OUTPUT"
           if [ -n "$RUN" ]; then echo "Reusing $NAME from run $RUN"; else echo "No usable $NAME; building"; fi

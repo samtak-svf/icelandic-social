@@ -157,7 +157,7 @@ minutes, and macOS bills ten times Linux. So the PR checks run on Samtak's own M
 | `RUNNER_LABELS`           | the build and test jobs                             | `["self-hosted","macOS","ARM64","samtak-mac"]`       |
 | `GUARD_RUNNER_LABELS`     | the short guards (authorship, peer names, gitleaks) | the same                                             |
 | `EXCLUSIVE_RUNNER_LABELS` | the Android device job only                         | the same plus `spjall-exclusive`, held by one runner |
-| `MAC_RUNNER_LABELS`       | the iOS tests                                       | the same as `RUNNER_LABELS`                          |
+| `MAC_RUNNER_LABELS`       | the iOS tests and the core's iOS build              | the same as `RUNNER_LABELS`                          |
 
 - **Unset means hosted.** Every lane falls back to `ubuntu-latest`, so deleting a variable moves its
   jobs back to GitHub with no workflow change. A PR from a fork always runs hosted.
@@ -186,4 +186,6 @@ minutes, and macOS bills ten times Linux. So the PR checks run on Samtak's own M
   action before every rust-cache, `taiki-e/install-action` and `cargo install`. A server started
   in the background uses `(trap '' HUP; exec …) &`, because macOS `nohup` exits under the launchd
   runner ("can't detach from console"). The browser core builds its C with Homebrew's LLVM, since
-  Apple's clang has no wasm32 target.
+  Apple's clang has no wasm32 target: `.github/actions/rust-toolchain` sets the compiler when a job
+  asks for the wasm32 target on macOS. The core's Android job installs the NDK into the Mac's
+  shared SDK once and reuses it.
