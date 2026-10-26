@@ -1,7 +1,6 @@
 {
   "android/app/src/androidTest/kotlin/samtak/spjall/conversation/ConversationScreenTest.kt": 669,
   "android/app/src/androidTest/kotlin/samtak/spjall/conversations/ConversationsScreenTest.kt": 511,
-  "android/app/src/main/kotlin/samtak/spjall/MainActivity.kt": 869,
   "android/app/src/main/kotlin/samtak/spjall/account/Account.kt": 519,
   "android/app/src/main/kotlin/samtak/spjall/conversation/ConversationInfoScreen.kt": 545,
   "android/app/src/main/kotlin/samtak/spjall/conversation/ConversationViewModel.kt": 703,
