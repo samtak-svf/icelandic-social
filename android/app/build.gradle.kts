@@ -106,6 +106,9 @@ android {
         }
     }
 
+    // The shared presentation vectors (api/presentation.vectors.json, #275) are read from the classpath.
+    sourceSets.getByName("test").resources.srcDir("../../api")
+
     // The screenshot tests (Roborazzi on Robolectric) render the real
     // resources: the brand's fonts, strings and icons.
     testOptions.unitTests.isIncludeAndroidResources = true

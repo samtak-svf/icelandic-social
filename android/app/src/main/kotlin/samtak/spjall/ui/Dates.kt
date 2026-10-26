@@ -51,6 +51,19 @@ object Dates {
         }
     }
 
+    /** [stamp] for instants in epoch milliseconds, read in [zone]. */
+    fun stamp(
+        millis: Long,
+        now: Long,
+        yesterday: String,
+        zone: ZoneId = ZoneId.systemDefault(),
+    ): String =
+        stamp(
+            Instant.ofEpochMilli(millis).atZone(zone),
+            Instant.ofEpochMilli(now).atZone(zone),
+            yesterday,
+        )
+
     /**
      * The line where a new day starts in a conversation: [today], [yesterday],
      * the weekday within the week ("mánudagur"), else the date ("30. ágúst").
@@ -98,12 +111,12 @@ object Dates {
     private const val WEEK = 7L
 }
 
-/** A conversation row's stamp for [millis]. */
+/** A conversation row's stamp for [millis], seen from [now] (the clock unless a test says otherwise). */
 @Composable
-fun listStamp(millis: ULong): String {
-    val at = Dates.at(millis)
-    return Dates.stamp(at, ZonedDateTime.now(at.zone), stringResource(R.string.day_yesterday))
-}
+fun listStamp(
+    millis: ULong,
+    now: Long = System.currentTimeMillis(),
+): String = Dates.stamp(millis.toLong(), now, stringResource(R.string.day_yesterday))
 
 /** The clock time of [millis]. */
 fun clockTime(millis: ULong): String = Dates.time(Dates.at(millis))

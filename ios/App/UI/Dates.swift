@@ -97,8 +97,8 @@ enum Dates {
 }
 
 /// A conversation row's stamp for `millis`.
-func listStamp(_ millis: UInt64) -> String {
-    Dates.stamp(Dates.at(millis), now: Date(), yesterday: localized("day_yesterday"))
+func listStamp(_ millis: UInt64, now: Date = Date(), calendar: Calendar = .current) -> String {
+    Dates.stamp(Dates.at(millis), now: now, yesterday: localized("day_yesterday"), calendar: calendar)
 }
 
 /// The clock time of `millis`.
