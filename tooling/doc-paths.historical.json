@@ -1,0 +1,52 @@
+[
+  {
+    "path": "docs/nafnabreyting.md",
+    "file": "docs/decisions/0004-frozen-identifiers-vs-brand.md",
+    "reason": "a file of another repository, cited as the source of the rename"
+  },
+  {
+    "path": "backend/dev/kenni.ts",
+    "file": "docs/decisions/0019-sign-in-and-invites.md",
+    "reason": "the fake Kenni lives in backend/dev/oidc.ts now; the record is as decided"
+  },
+  {
+    "path": "android/0.2.0",
+    "file": "docs/decisions/0030-client-version-floor.md",
+    "reason": "a client version string, not a path"
+  },
+  {
+    "path": "backend/src/media.ts",
+    "file": "docs/decisions/0039-profile-photo.md",
+    "reason": "moved when the Worker was split; the record is as decided"
+  },
+  {
+    "path": "backend/src/link.ts",
+    "file": "docs/decisions/0039-profile-photo.md",
+    "reason": "moved when the Worker was split; the record is as decided"
+  },
+  {
+    "path": "backend/src/accounts.ts",
+    "file": "docs/decisions/0039-profile-photo.md",
+    "reason": "moved when the Worker was split; the record is as decided"
+  },
+  {
+    "path": "backend/src/do/inbox.ts",
+    "file": "docs/decisions/0042-mute-a-conversation.md",
+    "reason": "moved when the Worker was split; the record is as decided"
+  },
+  {
+    "path": "core/client/src/feed.rs",
+    "file": "docs/decisions/0044-no-fljotid-in-v1.md",
+    "reason": "removed with the feed by this very record"
+  },
+  {
+    "path": "core/web-spike",
+    "file": "docs/decisions/0081-the-browser-runs-the-blocking-core-in-a-worker.md",
+    "reason": "the spike crate this record replaced"
+  },
+  {
+    "path": "tooling/ws-kotlin.mjs",
+    "file": "docs/decisions/0097-generated-clients-stay-only-where-consumed.md",
+    "reason": "the emitter this record removed"
+  }
+]

@@ -192,7 +192,7 @@ on `B4724Z74TM`, `APNS_TOPIC` is `is.samtak.spjall.beta`, and the key is in the 
 the names below. When Samtak svf.'s Apple team exists, after step 3 of Apple above:
 
 1. Set `APNS_TEAM_ID` to the team id and `APNS_TOPIC` to `is.samtak.spjall` in
-   `backend/wrangler.jsonc`. `App/Spjall.entitlements` already carries `aps-environment`.
+   `backend/cloudflare.config.ts`. `App/Spjall.entitlements` already carries `aps-environment`.
 2. Store the new key and its id as new versions of `samtak-spjall-apns-key` and
    `samtak-spjall-apns-key-id`, run `tooling/worker-secrets.mjs`, then revoke the interim key.
 
