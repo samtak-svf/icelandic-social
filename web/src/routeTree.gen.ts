@@ -29,6 +29,7 @@ import { Route as CommunitiesCommunityIdManageRouteImport } from './routes/commu
 import { Route as CommunitiesCommunityIdMembersRouteImport } from './routes/communities.$communityId.members'
 import { Route as CommunitiesCommunityIdReportsRouteImport } from './routes/communities.$communityId.reports'
 import { Route as CommunitiesCommunityIdRequestsRouteImport } from './routes/communities.$communityId.requests'
+import { Route as ConversationsConversationIdInfoRouteImport } from './routes/conversations.$conversationId_.info'
 import { Route as CommunitiesCommunityIdTabsIndexRouteImport } from './routes/communities.$communityId._tabs.index'
 import { Route as CommunitiesCommunityIdTabsAboutRouteImport } from './routes/communities.$communityId._tabs.about'
 import { Route as CommunitiesCommunityIdTabsFeaturedRouteImport } from './routes/communities.$communityId._tabs.featured'
@@ -143,6 +144,12 @@ const CommunitiesCommunityIdRequestsRoute =
     path: '/communities/$communityId/requests',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ConversationsConversationIdInfoRoute =
+  ConversationsConversationIdInfoRouteImport.update({
+    id: '/$conversationId_/info',
+    path: '/$conversationId/info',
+    getParentRoute: () => ConversationsRoute,
+  } as any)
 const CommunitiesCommunityIdTabsIndexRoute =
   CommunitiesCommunityIdTabsIndexRouteImport.update({
     id: '/',
@@ -195,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/communities/$communityId/members': typeof CommunitiesCommunityIdMembersRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
   '/communities/$communityId/requests': typeof CommunitiesCommunityIdRequestsRoute
+  '/conversations/$conversationId/info': typeof ConversationsConversationIdInfoRoute
   '/communities/$communityId/about': typeof CommunitiesCommunityIdTabsAboutRoute
   '/communities/$communityId/featured': typeof CommunitiesCommunityIdTabsFeaturedRoute
   '/communities/$communityId/images': typeof CommunitiesCommunityIdTabsImagesRoute
@@ -220,6 +228,7 @@ export interface FileRoutesByTo {
   '/communities/$communityId/members': typeof CommunitiesCommunityIdMembersRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
   '/communities/$communityId/requests': typeof CommunitiesCommunityIdRequestsRoute
+  '/conversations/$conversationId/info': typeof ConversationsConversationIdInfoRoute
   '/communities/$communityId/about': typeof CommunitiesCommunityIdTabsAboutRoute
   '/communities/$communityId/featured': typeof CommunitiesCommunityIdTabsFeaturedRoute
   '/communities/$communityId/images': typeof CommunitiesCommunityIdTabsImagesRoute
@@ -248,6 +257,7 @@ export interface FileRoutesById {
   '/communities/$communityId/members': typeof CommunitiesCommunityIdMembersRoute
   '/communities/$communityId/reports': typeof CommunitiesCommunityIdReportsRoute
   '/communities/$communityId/requests': typeof CommunitiesCommunityIdRequestsRoute
+  '/conversations/$conversationId_/info': typeof ConversationsConversationIdInfoRoute
   '/communities/$communityId/_tabs/about': typeof CommunitiesCommunityIdTabsAboutRoute
   '/communities/$communityId/_tabs/featured': typeof CommunitiesCommunityIdTabsFeaturedRoute
   '/communities/$communityId/_tabs/images': typeof CommunitiesCommunityIdTabsImagesRoute
@@ -277,6 +287,7 @@ export interface FileRouteTypes {
     | '/communities/$communityId/members'
     | '/communities/$communityId/reports'
     | '/communities/$communityId/requests'
+    | '/conversations/$conversationId/info'
     | '/communities/$communityId/about'
     | '/communities/$communityId/featured'
     | '/communities/$communityId/images'
@@ -302,6 +313,7 @@ export interface FileRouteTypes {
     | '/communities/$communityId/members'
     | '/communities/$communityId/reports'
     | '/communities/$communityId/requests'
+    | '/conversations/$conversationId/info'
     | '/communities/$communityId/about'
     | '/communities/$communityId/featured'
     | '/communities/$communityId/images'
@@ -329,6 +341,7 @@ export interface FileRouteTypes {
     | '/communities/$communityId/members'
     | '/communities/$communityId/reports'
     | '/communities/$communityId/requests'
+    | '/conversations/$conversationId_/info'
     | '/communities/$communityId/_tabs/about'
     | '/communities/$communityId/_tabs/featured'
     | '/communities/$communityId/_tabs/images'
@@ -498,6 +511,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CommunitiesCommunityIdRequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/conversations/$conversationId_/info': {
+      id: '/conversations/$conversationId_/info'
+      path: '/$conversationId/info'
+      fullPath: '/conversations/$conversationId/info'
+      preLoaderRoute: typeof ConversationsConversationIdInfoRouteImport
+      parentRoute: typeof ConversationsRoute
+    }
     '/communities/$communityId/_tabs/': {
       id: '/communities/$communityId/_tabs/'
       path: '/'
@@ -540,12 +560,14 @@ interface ConversationsRouteChildren {
   ConversationsConversationIdRoute: typeof ConversationsConversationIdRoute
   ConversationsLinkRoute: typeof ConversationsLinkRoute
   ConversationsIndexRoute: typeof ConversationsIndexRoute
+  ConversationsConversationIdInfoRoute: typeof ConversationsConversationIdInfoRoute
 }
 
 const ConversationsRouteChildren: ConversationsRouteChildren = {
   ConversationsConversationIdRoute: ConversationsConversationIdRoute,
   ConversationsLinkRoute: ConversationsLinkRoute,
   ConversationsIndexRoute: ConversationsIndexRoute,
+  ConversationsConversationIdInfoRoute: ConversationsConversationIdInfoRoute,
 }
 
 const ConversationsRouteWithChildren = ConversationsRoute._addFileChildren(

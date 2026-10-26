@@ -1,9 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { strings } from "../generated/brand/strings.ts";
-import type { Conversation, Item, Person } from "../generated/core.d.ts";
+import type { Conversation, Item } from "../generated/core.d.ts";
 import { listStamp } from "../lib/is-format.ts";
-import { Avatar } from "../social/avatar.tsx";
 import { VerifiedMark } from "../ui/kit.tsx";
+import { ConversationAvatar, personFace } from "./conversation-avatar.tsx";
 import { conversationTitle, isGroup, previewLine, readLine } from "./people.ts";
 
 /**
@@ -21,7 +21,7 @@ export function ConversationRow({
   const group = isGroup(conversation);
   const title = conversationTitle(conversation);
   const muted = conversation.mute.kind !== "off";
-  const face = rowFace(conversation, group);
+  const face = personFace(conversation);
   return (
     <Link
       to="/conversations/$conversationId"
@@ -32,13 +32,7 @@ export function ConversationRow({
       // The open one, beside its thread on an expanded window (0093).
       activeProps={{ className: "bg-muted" }}
     >
-      <Avatar
-        kind="person"
-        id={face?.account ?? conversation.id}
-        name={face === null ? title : face.name}
-        photo={face?.photo ?? null}
-        className="size-11 rounded-full text-base"
-      />
+      <ConversationAvatar conversation={conversation} className="size-11 rounded-full text-base" />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <RowTitle title={title} bold={unread > 0} verified={face?.verified === true} />
         {typing ? (
@@ -50,12 +44,6 @@ export function ConversationRow({
       <RowSide last={last} unread={unread} muted={muted} now={now} />
     </Link>
   );
-}
-
-/** A group's circle carries the group's title, a 1:1's the other person. */
-function rowFace(conversation: Conversation, group: boolean): Person | null {
-  const [only] = conversation.members;
-  return group || only === undefined ? null : only;
 }
 
 /** The title, black while unread, with the verified mark for a 1:1. */

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type SubmitEvent } from "react";
 import { useChat } from "../chat/chat.tsx";
+import { ConversationAvatar } from "../chat/conversation-avatar.tsx";
 import {
   canSend,
   conversationBanner,
@@ -140,10 +141,7 @@ function Thread() {
           {strings.back}
         </Link>
       )}
-      {/* The title's line is held while it loads, so nothing below it moves. */}
-      <h1 className="mt-2 min-h-8 truncate font-headline text-2xl">
-        {conversation !== null && conversationTitle(conversation)}
-      </h1>
+      <ThreadHeader conversation={conversation} group={group} />
       {banner !== null && (
         <p role="status" className="mt-2 rounded-md bg-secondary-subtle px-3 py-3 text-sm">
           {banner}
@@ -201,6 +199,36 @@ function Thread() {
           {strings.send}
         </Button>
       </form>
+    </div>
+  );
+}
+
+/** The picture and title, held in place while they load; a group's open its info (0094). */
+function ThreadHeader({
+  conversation,
+  group,
+}: Readonly<{ conversation: Conversation | null; group: boolean }>) {
+  // The title's line is held while it loads, so nothing below it moves.
+  const shown = conversation !== null && (
+    <>
+      <ConversationAvatar conversation={conversation} className="size-10 rounded-full" />
+      <h1 className="min-w-0 truncate font-headline text-2xl">{conversationTitle(conversation)}</h1>
+    </>
+  );
+  return (
+    <div className="mt-2 flex min-h-11 items-center gap-3">
+      {conversation !== null && group ? (
+        <Link
+          to="/conversations/$conversationId/info"
+          params={{ conversationId: conversation.id }}
+          aria-label={strings.conversation_info}
+          className="flex min-w-0 items-center gap-3"
+        >
+          {shown}
+        </Link>
+      ) : (
+        shown
+      )}
     </div>
   );
 }
