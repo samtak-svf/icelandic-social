@@ -98,7 +98,7 @@ export function CommentComposer({
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-1">
+    <form onSubmit={(event) => void submit(event)} className="flex flex-col">
       {file !== null && (
         <div className="flex items-center gap-2">
           <Preview file={file} />
@@ -178,7 +178,8 @@ export function CommentComposer({
           </svg>
         </button>
       </div>
-      <Status>
+      {/* Inline: the one-row box takes no height for a problem it does not have. */}
+      <Status inline>
         {typeof problem === "string"
           ? REFUSED[problem]
           : problem !== null && <ProblemText problem={problem} />}

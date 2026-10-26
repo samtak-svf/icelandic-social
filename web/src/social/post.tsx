@@ -36,22 +36,29 @@ export function authorName(author: Author | null): string {
   return author.name ?? strings.person_unnamed;
 }
 
-/** No line break may fall here (U+2060). */
-export const WORD_JOINER = "\u2060";
+/** The name split before its last word, which the mark is held to. */
+export function lastWord(name: string): readonly [string, string] {
+  const cut = name.trimEnd().lastIndexOf(" ") + 1;
+  return [name.slice(0, cut), name.slice(cut)];
+}
 
 /** The author's name, with the verified mark when Kenni vouches for them (#358). */
 export function AuthorName({ author }: Readonly<{ author: Author | null }>) {
+  const name = authorName(author);
+  if (author?.verified !== true) {
+    return <span className="min-w-0 break-words font-semibold">{name}</span>;
+  }
+  const [head, last] = lastWord(name);
   return (
-    // The mark is part of the name's own line, held to its last word by a word joiner, so a
-    // name that wraps keeps the mark after it instead of at the far edge of the row.
+    // The mark is part of the name's own line: its last word and the mark never break apart,
+    // so a name that wraps keeps the mark after it instead of at the far edge of the row. A
+    // word joiner does not do this: Chrome breaks before an inline-flex box regardless.
     <span className="min-w-0 break-words font-semibold">
-      {authorName(author)}
-      {author?.verified === true && (
-        <>
-          {WORD_JOINER}
-          <VerifiedMark className="ml-2 text-sm" />
-        </>
-      )}
+      {head}
+      <span className="whitespace-nowrap">
+        {last}
+        <VerifiedMark className="ml-2 text-sm" />
+      </span>
     </span>
   );
 }

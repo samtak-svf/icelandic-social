@@ -72,7 +72,8 @@ function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () 
   return (
     <>
       <h1 className="sr-only">{strings.post_title}</h1>
-      <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-bg">
+      {/* -mt-6 takes back the page's top padding: the bar sits right under the header. */}
+      <div className="sticky top-0 z-10 -mt-6 flex items-center gap-2 border-b border-border bg-bg">
         <Link
           to="/communities/$communityId"
           params={{ communityId }}
@@ -100,7 +101,7 @@ function PostScreen({ post, reloadPost }: Readonly<{ post: Post; reloadPost: () 
         moderates={community?.ok === true && moderatesAs(community.data.role)}
         deleted={() => void navigate({ to: "/communities/$communityId", params: { communityId } })}
       />
-      <section className="mt-6 flex flex-col gap-4">
+      <section className="mt-3 flex flex-col gap-4">
         {comments?.ok && comments.data.comments.length === 0 && (
           <p className="text-muted-fg">{strings.comments_empty}</p>
         )}
