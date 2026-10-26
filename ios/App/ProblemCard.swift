@@ -43,6 +43,11 @@ struct ProblemCard: View {
     }
 
     private var message: LocalizedStringKey {
+        LocalizedStringKey(Self.messageKey(problem))
+    }
+
+    /// The brand strings key that words `problem`.
+    nonisolated static func messageKey(_ problem: Problem) -> String {
         switch problem {
         case .unreachable: "error_unreachable"
         case .identityTaken: "identity_taken"
