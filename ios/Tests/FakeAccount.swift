@@ -279,6 +279,11 @@ final class FakeAccount: Account, @unchecked Sendable {
         }
     }
 
+    func syncConversation(_ conversation: String) throws -> Outcome {
+        try call("syncConversation \(conversation)")
+        return lock.withLock { outcome }
+    }
+
     func onFrame(_ frame: String) throws -> Outcome {
         try call("onFrame \(frame)")
         return lock.withLock { outcome }

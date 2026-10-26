@@ -224,17 +224,17 @@ final class PostModel {
 
     /// Sets this account's reaction to `kind`, or takes it off when it is `kind` already, shown at once and
     /// put back if the server refuses.
-    func react(_ kind: ReactionKind) async {
+    func react(_ emoji: String) async {
         guard writes, !reacting, let before = post else { return }
-        let off = before.myReaction == kind
-        post = reacted(before, off ? nil : kind)
+        let off = before.myEmoji == emoji
+        post = reacted(before, off ? nil : emoji)
         reacting = true
         let social = social
         let id = postId
         problem = nil
         do {
             try await offMain {
-                if off { try social.unreact(id) } else { try social.react(id, kind: kind) }
+                if off { try social.unreact(id) } else { try social.react(id, emoji: emoji) }
             }
             failed = nil
         } catch {

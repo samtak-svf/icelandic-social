@@ -92,6 +92,12 @@ interface Account {
     fun sync(): Outcome
 
     /**
+     * [sync] for one conversation alone: sends its queue and fetches what is new there, with no request
+     * for any other (decision 0099). What a send is followed by.
+     */
+    fun syncConversation(conversation: String): Outcome
+
+    /**
      * Keeps the platform's push token; the next [sync] sends it if the server
      * does not have it yet (decision 0025). An unchanged token sends nothing.
      * True while the server lacks it: only then is a [sync] due (0056).
@@ -357,6 +363,8 @@ class CoreAccount(
     override fun deviceToken() = client.deviceToken()
 
     override fun sync() = client.sync()
+
+    override fun syncConversation(conversation: String) = client.syncConversation(conversation)
 
     override fun setPushToken(
         token: String,

@@ -2,7 +2,6 @@ package samtak.spjall.social
 
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityRole
-import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
 
@@ -120,7 +119,7 @@ interface CommunityActions : PollActions {
 
     fun react(
         postId: String,
-        kind: ReactionKind,
+        emoji: String,
     )
 
     fun report(

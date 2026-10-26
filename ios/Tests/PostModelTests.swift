@@ -52,7 +52,7 @@ final class PostModelTests: XCTestCase {
         XCTAssertFalse(model.writes)
         model.draft = "Halló"
         XCTAssertFalse(model.sendable)
-        await model.react(.like)
+        await model.react("👍")
         XCTAssertFalse(social.calls.contains { $0.hasPrefix("react") })
     }
 
@@ -63,11 +63,11 @@ final class PostModelTests: XCTestCase {
 
     func testAReactionTogglesOnThePost() async {
         let model = await model()
-        await model.react(.wow)
-        XCTAssertEqual(model.post?.myReaction, .wow)
-        await model.react(.wow)
-        XCTAssertNil(model.post?.myReaction)
-        XCTAssertEqual(social.calls.suffix(2), ["react p1 wow", "unreact p1"])
+        await model.react("😮")
+        XCTAssertEqual(model.post?.myEmoji, "😮")
+        await model.react("😮")
+        XCTAssertNil(model.post?.myEmoji)
+        XCTAssertEqual(social.calls.suffix(2), ["react p1 😮", "unreact p1"])
     }
 
     func testAPostThatIsGoneIsAProblem() async {

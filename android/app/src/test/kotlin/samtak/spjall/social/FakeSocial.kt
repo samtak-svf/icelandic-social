@@ -16,6 +16,7 @@ import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.CommunityPage
 import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.EmojiCount
 import samtak.spjall.core.Frame
 import samtak.spjall.core.Framing
 import samtak.spjall.core.JoinRequest
@@ -29,7 +30,6 @@ import samtak.spjall.core.PollOption
 import samtak.spjall.core.Post
 import samtak.spjall.core.PostImage
 import samtak.spjall.core.PostPage
-import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.Report
 import samtak.spjall.core.ReportDecision
 import samtak.spjall.core.ReportPage
@@ -442,8 +442,8 @@ class FakeSocial : Social {
 
     override fun react(
         postId: String,
-        kind: ReactionKind,
-    ) = call("react $postId $kind")
+        emoji: String,
+    ) = call("react $postId $emoji")
 
     override fun unreact(postId: String) = call("unreact $postId")
 
@@ -758,8 +758,8 @@ fun post(
     id: String,
     communityId: String = "k1",
     body: String = "Halló",
-    reactions: List<samtak.spjall.core.ReactionCount> = emptyList(),
-    mine: ReactionKind? = null,
+    emojis: List<EmojiCount> = emptyList(),
+    mine: String? = null,
     comments: ULong = 0uL,
     author: Author? = anna,
     anonymous: Boolean = false,
@@ -776,8 +776,8 @@ fun post(
     body = body,
     images = emptyList(),
     createdAt = 1_700_000_000_000uL,
-    reactions = reactions,
-    myReaction = mine,
+    emojis = emojis,
+    myEmoji = mine,
     commentCount = comments,
     state = state,
     poll = poll,
@@ -813,6 +813,7 @@ fun notification(
     postId = postId,
     commentId = null,
     action = null,
+    emoji = null,
     createdAt = createdAt,
     read = false,
 )

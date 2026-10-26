@@ -16,7 +16,6 @@ import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.ModerationState
 import samtak.spjall.core.Post
-import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 import samtak.spjall.ui.SpjallTheme
 
@@ -38,7 +37,7 @@ class CommunitiesScreenTest {
 
             override fun react(
                 postId: String,
-                kind: ReactionKind,
+                emoji: String,
             ) = Unit
 
             override fun report(
@@ -103,8 +102,8 @@ class CommunitiesScreenTest {
             body = "Æfing á fimmtudag",
             images = emptyList(),
             createdAt = 1_700_000_000_000uL,
-            reactions = emptyList(),
-            myReaction = null,
+            emojis = emptyList(),
+            myEmoji = null,
             commentCount = 0uL,
             state = ModerationState.VISIBLE,
             latestComment = null,

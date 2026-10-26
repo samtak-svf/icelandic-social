@@ -371,54 +371,6 @@ struct StateMark: View {
     }
 }
 
-/// The five reactions; this account's is pressed, and pressing it again takes it back. Read-only for whoever
-/// may not write here.
-struct ReactionBar: View {
-    let post: Post
-    let enabled: Bool
-    let onReact: (ReactionKind) -> Void
-
-    var body: some View {
-        // Side by side, wrapping under a large font.
-        ViewThatFits {
-            HStack(spacing: 6) { buttons }
-            VStack(alignment: .leading, spacing: 6) { buttons }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text("reactions_title"))
-    }
-
-    @ViewBuilder private var buttons: some View {
-        ForEach(reactionKinds, id: \.self) { kind in
-            let mine = post.myReaction == kind
-            let count = reactionCount(post, kind)
-            Button {
-                onReact(kind)
-            } label: {
-                HStack(spacing: 4) {
-                    Text(verbatim: reactionEmoji(kind)).accessibilityHidden(true)
-                    if count > 0 {
-                        Text(verbatim: "\(count)").font(.sans(12.5, black: true))
-                    }
-                }
-                .foregroundStyle(BrandTokens.Colors.fg)
-                .padding(.horizontal, 10)
-                .frame(minWidth: 44, minHeight: 36)
-                .background(mine ? BrandTokens.Colors.primarySubtle : BrandTokens.Colors.surface, in: Capsule())
-                .overlay {
-                    Capsule().strokeBorder(mine ? BrandTokens.Colors.primary : BrandTokens.Colors.border, lineWidth: 1)
-                }
-                .frame(minHeight: 44)
-                .contentShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .disabled(!enabled)
-            .accessibilityLabel(Text(verbatim: count > 0 ? "\(reactionLabel(kind)), \(count)" : reactionLabel(kind)))
-            .accessibilityAddTraits(mine ? [.isButton, .isSelected] : .isButton)
-        }
-    }
-}
-
 /// A post as a community's list, the hub's feed and its own screen show it, top to bottom as the groups readers know
 /// lay it out (decision 0080): who wrote it with a badge and the age, a pin marker, the text cut at five lines with
 /// `Sjá meira`, the images, a summary of the reactions, one row of `Líkar`, `Athugasemd` and `Deila`, the newest
@@ -430,7 +382,7 @@ struct PostCard: View {
     let writes: Bool
     /// The community, when the card is shown outside it, as the hub's feed shows it: its name and picture.
     var community: Community?
-    let onReact: (ReactionKind) -> Void
+    let onReact: (String) -> Void
     /// The report sheet, where the screen showing the card has one.
     var onReport: (() -> Void)?
     var onDelete: (() -> Void)?
@@ -443,6 +395,8 @@ struct PostCard: View {
     var onVote: ((String) -> Void)?
     var onWithdrawVote: (() -> Void)?
     var onClosePoll: (() -> Void)?
+    /// Whether the sheet with every emoji is open.
+    @State private var allEmoji = false
 
     var body: some View {
         Panel {
@@ -528,13 +482,12 @@ struct PostCard: View {
     /// The reactions used, the most given first, and how many there are, beside the comment count, which opens the
     /// post. Nothing when there is neither.
     @ViewBuilder private var summary: some View {
-        let used = post.reactions.filter { $0.count > 0 }.sorted { $0.count > $1.count }
-        let total = used.reduce(UInt64(0)) { $0 + $1.count }
+        let total = post.emojis.reduce(UInt64(0)) { $0 + $1.count }
         if total > 0 || post.commentCount > 0 {
             HStack(spacing: 8) {
                 if total > 0 {
                     HStack(spacing: 4) {
-                        Text(verbatim: used.prefix(3).map { reactionEmoji($0.kind) }.joined())
+                        Text(verbatim: summaryEmojis(post))
                             .accessibilityHidden(true)
                         Text(verbatim: "\(total)")
                             .font(.sans(13))
@@ -562,7 +515,7 @@ struct PostCard: View {
     }
 
     /// `Líkar`, `Athugasemd` and `Deila` as three equal columns. `Líkar` gives 👍 on a tap, or takes back what
-    /// this account gave; a long press offers the five reactions.
+    /// this account gave; a long press offers the quick bar and a plus that opens every emoji.
     private var actions: some View {
         HStack(spacing: 0) {
             like
@@ -583,26 +536,37 @@ struct PostCard: View {
 
     private var like: some View {
         Menu {
-            ForEach(reactionKinds, id: \.self) { kind in
+            ForEach(quickReactions, id: \.self) { reaction in
                 Button {
-                    onReact(kind)
+                    onReact(reaction.emoji)
                 } label: {
-                    Text(verbatim: "\(reactionEmoji(kind)) \(reactionLabel(kind))")
+                    Text(verbatim: "\(reaction.emoji) \(localized(reaction.label))")
                 }
+            }
+            Button {
+                allEmoji = true
+            } label: {
+                Text("post_reactions_all")
             }
         } label: {
             ActionLabel(
-                systemImage: post.myReaction == nil ? "hand.thumbsup" : "hand.thumbsup.fill", text: "post_like",
-                active: post.myReaction != nil)
+                systemImage: post.myEmoji == nil ? "hand.thumbsup" : "hand.thumbsup.fill", text: "post_like",
+                active: post.myEmoji != nil)
         } primaryAction: {
             // A tap gives 👍, or takes back whichever reaction is this account's.
-            onReact(post.myReaction ?? .like)
+            onReact(post.myEmoji ?? likeEmoji)
         }
         .buttonStyle(.plain)
         .disabled(!writes)
         .accessibilityLabel(Text("post_like"))
         .accessibilityHint(Text("post_reactions_more"))
-        .accessibilityAddTraits(post.myReaction != nil ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAddTraits(post.myEmoji != nil ? [.isButton, .isSelected] : .isButton)
+        .sheet(isPresented: $allEmoji) {
+            EmojiSheet { emoji in
+                allEmoji = false
+                onReact(emoji)
+            }
+        }
     }
 
     /// The newest comment, and the pill that opens the post to write one.
@@ -788,7 +752,7 @@ struct CommentCard: View {
         .overlay(alignment: .bottomTrailing) {
             if comment.likes > 0 {
                 HStack(spacing: 3) {
-                    Text(verbatim: reactionEmoji(.like)).font(.system(size: 11))
+                    Text(verbatim: likeEmoji).font(.system(size: 11))
                     Text(verbatim: "\(comment.likes)").font(.sans(11.5, black: true))
                 }
                 .foregroundStyle(BrandTokens.Colors.fg)
@@ -1054,5 +1018,35 @@ struct ReportSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+}
+
+/// Every emoji a reaction can be, to pick one from; the server takes any single emoji (decision 0100).
+struct EmojiSheet: View {
+    let onPick: (String) -> Void
+
+    private static let faces =
+        "😀😃😄😁😆😅🤣😂🙂😉😊😇🥰😍🤩😘😋😛😜🤪🤗🤭🤔🤨😐😑😶🙄😏😮😯😪😴😌😎🤓😕😟🙁😲😳🥺😦😧😨😰😢😭😱😖😞😓😩😠😡🤯😷🤒🤕"
+    private static let symbols =
+        "👍👎👏🙌🤝🙏💪👌✌️🤞🤟🤘👋🤙👀🔥✨🎉🎊💯💔❤️🧡💛💚💙💜🖤🤍💖💕✅❌⭐🌈☀️🌹🌱🍀🎶🏆🚀🇮🇸"
+    private static let all: [String] = (faces + symbols).map { String($0) }
+
+    var body: some View {
+        ScrollView {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 4) {
+                ForEach(Self.all, id: \.self) { emoji in
+                    Button {
+                        onPick(emoji)
+                    } label: {
+                        Text(verbatim: emoji).font(.system(size: 28)).frame(minWidth: 44, minHeight: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text(verbatim: reactionLabel(emoji)))
+                }
+            }
+            .padding(16)
+        }
+        .presentationDetents([.medium, .large])
+        .accessibilityLabel(Text("post_reactions_all"))
     }
 }

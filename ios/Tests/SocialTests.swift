@@ -6,24 +6,42 @@ import XCTest
 /// The pure helpers the hosted screens share.
 final class SocialTests: XCTestCase {
     func testAReactionMovesTheCountsToMatch() {
-        let counted = makePost("p1", "k1", reactions: [ReactionCount(kind: .like, count: 2)])
-        let liked = reacted(counted, .like)
-        XCTAssertEqual(liked.myReaction, .like)
-        XCTAssertEqual(reactionCount(liked, .like), 3)
+        let counted = makePost("p1", "k1", emojis: [EmojiCount(emoji: "👍", count: 2)])
+        let liked = reacted(counted, "👍")
+        XCTAssertEqual(liked.myEmoji, "👍")
+        XCTAssertEqual(reactionCount(liked, "👍"), 3)
 
-        let loved = reacted(liked, .love)
-        XCTAssertEqual(loved.myReaction, .love)
-        XCTAssertEqual(reactionCount(loved, .like), 2)
-        XCTAssertEqual(reactionCount(loved, .love), 1)
+        let loved = reacted(liked, "❤️")
+        XCTAssertEqual(loved.myEmoji, "❤️")
+        XCTAssertEqual(reactionCount(loved, "👍"), 2)
+        XCTAssertEqual(reactionCount(loved, "❤️"), 1)
 
         let off = reacted(loved, nil)
-        XCTAssertNil(off.myReaction)
-        XCTAssertEqual(off.reactions, [ReactionCount(kind: .like, count: 2)])
+        XCTAssertNil(off.myEmoji)
+        XCTAssertEqual(off.emojis, [EmojiCount(emoji: "👍", count: 2)])
     }
 
     func testTakingTheOnlyReactionOffLeavesNoCountAtZero() {
-        let mine = makePost("p1", "k1", reactions: [ReactionCount(kind: .sad, count: 1)], mine: .sad)
-        XCTAssertEqual(reacted(mine, nil).reactions, [])
+        let mine = makePost("p1", "k1", emojis: [EmojiCount(emoji: "😢", count: 1)], mine: "😢")
+        XCTAssertEqual(reacted(mine, nil).emojis, [])
+    }
+
+    func testAnyEmojiIsGroupedAndOrderedByCount() {
+        let family = "👨‍👩‍👧"
+        let flag = "🇮🇸"
+        let post = makePost("p1", "k1", emojis: [EmojiCount(emoji: flag, count: 1), EmojiCount(emoji: "👍", count: 1)])
+        let changed = reacted(post, family)
+        XCTAssertEqual(changed.emojis.map(\.emoji), [flag, "👍", family])
+        XCTAssertEqual(summaryEmojis(changed, limit: 2), flag + "👍")
+        let moved = reacted(changed, flag)
+        XCTAssertEqual(moved.emojis.first, EmojiCount(emoji: flag, count: 2))
+    }
+
+    func testAReactionNoticeLeadsWithItsEmoji() {
+        let notice = makeNotice("n1", .reaction, actor: anna, post: "p1", emoji: "🙏")
+        XCTAssertEqual(noticeLine(notice), "🙏 " + localized("notice_reaction", "Anna"))
+        let bare = makeNotice("n2", .reaction, actor: anna, post: "p1")
+        XCTAssertEqual(noticeLine(bare), localized("notice_reaction", "Anna"))
     }
 
     func testAnAuthorIsTheirNameOrAWordForNoneOrForDeleted() {
@@ -95,8 +113,8 @@ final class SocialTests: XCTestCase {
 
     func testEachReasonAndReactionHasItsOwnWords() {
         XCTAssertEqual(Set(reportReasons.map(reasonLabel)).count, reportReasons.count)
-        XCTAssertEqual(Set(reactionKinds.map(reactionLabel)).count, reactionKinds.count)
-        XCTAssertEqual(Set(reactionKinds.map(reactionEmoji)).count, reactionKinds.count)
+        XCTAssertEqual(Set(quickReactions.map { reactionLabel($0.emoji) }).count, quickReactions.count)
+        XCTAssertEqual(Set(quickReactions.map(\.emoji)).count, quickReactions.count)
     }
 
     func testEachRoleHasItsOwnWords() {

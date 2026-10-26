@@ -19,14 +19,13 @@ import samtak.spjall.core.AuthorRole
 import samtak.spjall.core.Comment
 import samtak.spjall.core.ModerationState
 import samtak.spjall.core.Post
-import samtak.spjall.core.ReactionKind
 import samtak.spjall.ui.SpjallTheme
 
 @RunWith(AndroidJUnit4::class)
 class PostCardTest {
     @get:Rule val compose = createComposeRule()
 
-    private val reacted = mutableListOf<ReactionKind>()
+    private val reacted = mutableListOf<String>()
 
     private fun text(id: Int) = InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
 
@@ -40,8 +39,8 @@ class PostCardTest {
             body = body,
             images = emptyList(),
             createdAt = 1_700_000_000_000uL,
-            reactions = emptyList(),
-            myReaction = null,
+            emojis = emptyList(),
+            myEmoji = null,
             commentCount = 1uL,
             state = ModerationState.VISIBLE,
             latestComment =
@@ -92,7 +91,7 @@ class PostCardTest {
     }
 
     @Test
-    fun aLongPressOnLikeOffersTheFiveReactionsAndOneIsSent() {
+    fun aLongPressOnLikeOffersTheQuickBarAndOneIsSent() {
         show(post())
         compose.onNodeWithText(text(R.string.post_like)).performTouchInput { longClick() }
         listOf(
@@ -101,8 +100,9 @@ class PostCardTest {
             R.string.reaction_laugh,
             R.string.reaction_wow,
             R.string.reaction_sad,
+            R.string.reaction_pray,
         ).forEach { compose.onNodeWithContentDescription(text(it)).assertIsDisplayed() }
         compose.onNodeWithContentDescription(text(R.string.reaction_love)).performClick()
-        assertEquals(listOf(ReactionKind.LOVE), reacted)
+        assertEquals(listOf("\u2764\uFE0F"), reacted)
     }
 }

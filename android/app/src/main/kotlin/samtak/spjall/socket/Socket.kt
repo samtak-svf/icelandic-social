@@ -75,6 +75,12 @@ interface Live {
     /** Syncs now, as after a change the server has to hear of. */
     fun sync() = perform { it.sync() }
 
+    /**
+     * Syncs one conversation and waits for it (decision 0099). A failed call changed nothing: what was
+     * queued stays queued and the next sync sends it.
+     */
+    suspend fun syncConversation(conversation: String)
+
     /** Runs a core call that returns an [Outcome], in turn with the socket's own, and delivers it. */
     fun perform(call: (Account) -> Outcome)
 
@@ -130,6 +136,8 @@ class Socket(
     override fun perform(call: (Account) -> Outcome) {
         scope.launch { deliver { call(account) } }
     }
+
+    override suspend fun syncConversation(conversation: String) = deliver { account.syncConversation(conversation) }
 
     override suspend fun performAndWait(call: (Account) -> Outcome) {
         calls.withLock { emit(withContext(io) { call(account) }) }

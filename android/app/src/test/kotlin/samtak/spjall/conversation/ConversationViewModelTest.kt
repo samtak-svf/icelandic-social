@@ -49,7 +49,7 @@ class ConversationViewModelTest {
 
     private fun TestScope.model(): ConversationViewModel {
         account.conversations = listOf(conversation("c1", person("a2", "Anna")))
-        return ConversationViewModel("c1", account, live, dispatcher) {
+        return ConversationViewModel("c1", account, live, dispatcher, { _, _ -> }) {
             FakeAccount.NOW.toLong() + testScheduler.currentTime
         }.also { runCurrent() }
     }
@@ -190,6 +190,39 @@ class ConversationViewModelTest {
                 ),
                 sends(),
             )
+        }
+
+    @Test
+    fun aQueuedChangeIsShownAtOnceThenSyncedForThisConversationAlone() =
+        runTest(dispatcher) {
+            account.timelines["c1"] = mutableListOf(item(4u))
+            val timings = mutableListOf<Pair<Long, Long>>()
+            val model =
+                ConversationViewModel("c1", account, live, dispatcher, { queued, sync -> timings += queued to sync }) {
+                    FakeAccount.NOW.toLong() + testScheduler.currentTime
+                }
+            runCurrent()
+            val syncs = live.syncs
+            account.calls.clear()
+
+            model.react(item(4u), "👍")
+            runCurrent()
+
+            val steps =
+                account.calls.filter {
+                    it.startsWith("send ") || it.startsWith("timeline ") || it.startsWith("syncConversation")
+                }
+            assertEquals(
+                listOf(
+                    "send c1 ${Body.Reaction("e4", "👍", false)}",
+                    "timeline c1 -",
+                    "syncConversation c1",
+                    "timeline c1 -",
+                ),
+                steps,
+            )
+            assertEquals("the full sync is the socket's", syncs, live.syncs)
+            assertEquals(1, timings.size)
         }
 
     @Test

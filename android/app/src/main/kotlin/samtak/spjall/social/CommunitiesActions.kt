@@ -1,6 +1,5 @@
 package samtak.spjall.social
 
-import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 
 /** What [CommunitiesScreen] can ask for. */
@@ -18,7 +17,7 @@ interface CommunitiesActions : PollActions {
 
     fun react(
         postId: String,
-        kind: ReactionKind,
+        emoji: String,
     )
 
     fun report(

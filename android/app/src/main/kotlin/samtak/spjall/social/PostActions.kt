@@ -1,7 +1,6 @@
 package samtak.spjall.social
 
 import samtak.spjall.core.Comment
-import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
 
@@ -23,7 +22,7 @@ interface PostActions {
 
     fun onReplyTo(comment: Comment?)
 
-    fun react(kind: ReactionKind)
+    fun react(emoji: String)
 
     /** Likes the comment, or takes the like back. */
     fun likeComment(commentId: String)

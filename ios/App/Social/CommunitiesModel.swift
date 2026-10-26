@@ -150,19 +150,19 @@ final class CommunitiesModel {
     }
 
     /// Sets this account's reaction on a feed post, shown at once and put back if the server refuses.
-    func react(_ postId: String, _ kind: ReactionKind) async {
+    func react(_ postId: String, _ emoji: String) async {
         guard !reacting.contains(postId), let index = feedPosts.firstIndex(where: { $0.postId == postId }),
             writes(feedPosts[index])
         else { return }
         let before = feedPosts[index]
-        let off = before.myReaction == kind
-        feedPosts[index] = reacted(before, off ? nil : kind)
+        let off = before.myEmoji == emoji
+        feedPosts[index] = reacted(before, off ? nil : emoji)
         reacting.insert(postId)
         let social = social
         problem = nil
         do {
             try await offMain {
-                if off { try social.unreact(postId) } else { try social.react(postId, kind: kind) }
+                if off { try social.unreact(postId) } else { try social.react(postId, emoji: emoji) }
             }
             failed = nil
         } catch {

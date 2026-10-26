@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import SpjallCore
+import os
 
 /// One conversation (decision 0022): its timeline as the core folds it, the
 /// composer, and the long-press actions. It reads the newest page again on
@@ -508,19 +509,32 @@ final class ConversationModel {
         stopTyping()
     }
 
+    /// Queues `body`, shows it from the core's own store at once (the reader overlays what this device
+    /// queued, decision 0099), then syncs this conversation alone and reads again. A sync that fails
+    /// leaves it queued for the next one.
     private func queue(_ body: Body) async {
         problem = nil
         let (account, id) = (account, id)
         do {
+            let clock = ContinuousClock()
+            let start = clock.now
             _ = try await offMain { try account.send(id, body: body) }
             failed = nil
-            live.sync()
             await load()
+            let queued = clock.now
+            await live.syncConversation(id)
+            await load()
+            // Durations only, never an id, a text or an emoji (decision 0008).
+            let queuedMs = Int((queued - start) / .milliseconds(1))
+            let syncMs = Int((clock.now - queued) / .milliseconds(1))
+            Self.timing.info("queued=\(queuedMs, privacy: .public)ms sync=\(syncMs, privacy: .public)ms")
         } catch {
             failed = { await self.queue(body) }
             problem = Problem(error)
         }
     }
+
+    private static let timing = Logger(subsystem: Bundle.main.bundleIdentifier ?? "app", category: "send")
 
     private func read() async {
         let size = max(Self.page, UInt32(items.count))

@@ -36,13 +36,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
 import samtak.spjall.core.Post
-import samtak.spjall.core.ReactionKind
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Palette
 
 /** What a post card can do; a callback that is null is an action the card does not offer. */
 class PostCardCallbacks(
-    val onReact: (ReactionKind) -> Unit,
+    val onReact: (String) -> Unit,
     val onReport: () -> Unit,
     /** Opens the post; null on the post's own screen. */
     val onOpen: (() -> Unit)?,
@@ -235,19 +234,30 @@ private fun SheetRow(
 }
 
 internal data class Reaction(
-    val kind: ReactionKind,
     val emoji: String,
     val label: Int,
 )
 
+/** The quick bar of the Líkar action, in order; any other emoji comes from the full picker (0100). */
 internal val REACTIONS =
     listOf(
-        Reaction(ReactionKind.LIKE, "\uD83D\uDC4D", R.string.reaction_like),
-        Reaction(ReactionKind.LOVE, "\u2764\uFE0F", R.string.reaction_love),
-        Reaction(ReactionKind.LAUGH, "\uD83D\uDE02", R.string.reaction_laugh),
-        Reaction(ReactionKind.WOW, "\uD83D\uDE2E", R.string.reaction_wow),
-        Reaction(ReactionKind.SAD, "\uD83D\uDE22", R.string.reaction_sad),
+        Reaction("\uD83D\uDC4D", R.string.reaction_like),
+        Reaction("\u2764\uFE0F", R.string.reaction_love),
+        Reaction("\uD83D\uDE02", R.string.reaction_laugh),
+        Reaction("\uD83D\uDE2E", R.string.reaction_wow),
+        Reaction("\uD83D\uDE22", R.string.reaction_sad),
+        Reaction("\uD83D\uDE4F", R.string.reaction_pray),
     )
+
+/** The emoji of the Líkar action when this account has not reacted. */
+internal val LIKE_EMOJI = REACTIONS.first().emoji
+
+/** What the reaction line under a post shows: its commonest emoji, most given first, and the total (0100). */
+internal fun Post.summaryEmojis(limit: Int): String =
+    emojis
+        .sortedByDescending { it.count }
+        .take(limit)
+        .joinToString("") { it.emoji }
 
 /** How many lines of a post the feed shows before "Sjá meira". */
 internal const val BODY_LINES = 5

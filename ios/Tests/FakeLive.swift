@@ -37,6 +37,10 @@ final class FakeLive: Live {
         outcome.events.forEach(emit)
     }
 
+    func syncConversation(_ conversation: String) async {
+        perform { try $0.syncConversation(conversation) }
+    }
+
     func send(_ frame: String) {
         sent.append(frame)
     }

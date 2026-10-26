@@ -140,3 +140,13 @@ commit-msg:
 
     peer-names:
       run: node tooling/peer-name-guard.mjs --message {1}
+
+# A new git worktree has no node_modules, so the format and lint hooks above
+# would fail on its first commit; `git worktree add` runs post-checkout in it.
+post-checkout:
+  commands:
+    install:
+      run: |
+        if [ ! -d node_modules ]; then
+          pnpm install --frozen-lockfile
+        fi

@@ -42,11 +42,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import samtak.spjall.brand.R
+import samtak.spjall.conversation.EmojiPickerSheet
 import samtak.spjall.core.Author
 import samtak.spjall.core.AuthorRole
 import samtak.spjall.core.Comment
 import samtak.spjall.core.Post
-import samtak.spjall.core.ReactionKind
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
@@ -133,15 +133,10 @@ internal fun ReactionSummary(
     post: Post,
     onOpen: (() -> Unit)?,
 ) {
-    val total = post.reactions.sumOf { it.count.toLong() }
+    val total = post.emojis.sumOf { it.count.toLong() }
     val comments = post.commentCount.toLong()
     if (total == 0L && comments == 0L) return
-    val emojis =
-        post.reactions
-            .sortedByDescending { it.count }
-            .take(SUMMARY_KINDS)
-            .mapNotNull { r -> REACTIONS.firstOrNull { it.kind == r.kind }?.emoji }
-            .joinToString("")
+    val emojis = post.summaryEmojis(SUMMARY_KINDS)
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (total > 0L) {
             Text(text = "$emojis $total", style = MaterialTheme.typography.bodyMedium, color = Palette.mutedFg)
@@ -161,13 +156,13 @@ internal fun ReactionSummary(
 
 /**
  * Líkar / Athugasemd / Deila, three equal actions. A tap on Líkar is the thumb on or off (or takes back whatever
- * this account reacted with); a long press offers the five reactions (0063).
+ * this account reacted with); a long press offers the quick bar (0063).
  */
 @Composable
 internal fun PostActions(
     post: Post,
     busy: Boolean,
-    onReact: (ReactionKind) -> Unit,
+    onReact: (String) -> Unit,
     onComment: () -> Unit,
     onShare: () -> Unit,
 ) {
@@ -199,29 +194,30 @@ internal fun PostActions(
     }
 }
 
-/** Líkar: a tap is the thumb on or off, a long press offers the five reactions. */
+/** Líkar: a tap is the thumb on or off, a long press offers the quick bar. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun LikeAction(
     post: Post,
     busy: Boolean,
-    onReact: (ReactionKind) -> Unit,
+    onReact: (String) -> Unit,
     modifier: Modifier,
 ) {
     var picker by remember { mutableStateOf(false) }
+    var all by remember { mutableStateOf(false) }
     val title = stringResource(R.string.reactions_title)
-    val mine = REACTIONS.firstOrNull { it.kind == post.myReaction }
+    val mine = post.myEmoji
     Box(modifier = modifier) {
         ActionLabel(
             text = stringResource(R.string.post_like),
-            emoji = mine?.emoji ?: REACTIONS.first().emoji,
+            emoji = mine ?: LIKE_EMOJI,
             active = mine != null,
             modifier =
                 Modifier
                     .combinedClickable(
                         enabled = !busy,
                         role = Role.Button,
-                        onClick = { onReact(post.myReaction ?: ReactionKind.LIKE) },
+                        onClick = { onReact(post.myEmoji ?: LIKE_EMOJI) },
                         onLongClick = { picker = true },
                     ).semantics {
                         customActions =
@@ -233,7 +229,8 @@ private fun LikeAction(
                             )
                     },
         )
-        ReactionPicker(picker, { picker = false }, onReact)
+        ReactionPicker(picker, { picker = false }, { all = true }, onReact)
+        if (all) EmojiPickerSheet(onPick = onReact, onDismiss = { all = false })
     }
 }
 
@@ -309,12 +306,13 @@ private const val SUMMARY_KINDS = 3
 private const val STACK_FONT_SCALE = 1.3f
 private const val PREVIEW_LINES = 2
 
-/** The five reactions in a row, over the Líkar action (0063). */
+/** The quick bar in a row over the Líkar action, and a plus that opens every emoji (0063, 0100). */
 @Composable
 private fun ReactionPicker(
     open: Boolean,
     onDismiss: () -> Unit,
-    onReact: (ReactionKind) -> Unit,
+    onMore: () -> Unit,
+    onReact: (String) -> Unit,
 ) {
     val title = stringResource(R.string.reactions_title)
     DropdownMenu(expanded = open, onDismissRequest = onDismiss) {
@@ -333,11 +331,25 @@ private fun ReactionPicker(
                             .widthIn(min = TOUCH.dp)
                             .clickable(role = Role.Button) {
                                 onDismiss()
-                                onReact(reaction.kind)
+                                onReact(reaction.emoji)
                             }.clearAndSetSemantics { contentDescription = name }
                             .padding(8.dp),
                 )
             }
+            val more = stringResource(R.string.react_any)
+            Text(
+                text = "+",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier =
+                    Modifier
+                        .heightIn(min = TOUCH.dp)
+                        .widthIn(min = TOUCH.dp)
+                        .clickable(role = Role.Button) {
+                            onDismiss()
+                            onMore()
+                        }.clearAndSetSemantics { contentDescription = more }
+                        .padding(8.dp),
+            )
         }
     }
 }

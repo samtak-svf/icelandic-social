@@ -2,6 +2,7 @@ package samtak.spjall.socket
 
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.yield
 import samtak.spjall.account.Account
 import samtak.spjall.account.FakeAccount
 import samtak.spjall.core.Content
@@ -30,6 +31,13 @@ class FakeLive(
 
     override fun sync() {
         syncs += 1
+    }
+
+    override suspend fun syncConversation(conversation: String) {
+        // The real call waits its turn on the socket and runs off the main thread, so the screen reads
+        // in the meantime; a few turns let the test dispatcher do the same.
+        repeat(5) { yield() }
+        perform { it.syncConversation(conversation) }
     }
 
     override fun perform(call: (Account) -> Outcome) {

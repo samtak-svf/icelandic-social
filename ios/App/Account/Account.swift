@@ -32,6 +32,9 @@ protocol Account: Sendable {
     func deviceToken() throws -> String?
     /// Sends what is queued and reads what is new (decision 0022).
     func sync() throws -> Outcome
+    /// `sync` for one conversation alone: its queue goes out and what is new there comes in, with no
+    /// request for any other (decision 0099).
+    func syncConversation(_ conversation: String) throws -> Outcome
     /// A frame the socket received.
     func onFrame(_ frame: String) throws -> Outcome
     /// The list, newest first, as the core orders it.
@@ -209,6 +212,10 @@ final class CoreAccount: Account, @unchecked Sendable {
     func deviceToken() throws -> String? { try core().deviceToken() }
 
     func sync() throws -> Outcome { try core().sync() }
+
+    func syncConversation(_ conversation: String) throws -> Outcome {
+        try core().syncConversation(conversation: conversation)
+    }
 
     func onFrame(_ frame: String) throws -> Outcome { try core().onFrame(frame: frame) }
 

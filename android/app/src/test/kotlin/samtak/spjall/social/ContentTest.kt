@@ -12,8 +12,7 @@ import samtak.spjall.core.CardKind
 import samtak.spjall.core.CardRef
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityRole
-import samtak.spjall.core.ReactionCount
-import samtak.spjall.core.ReactionKind
+import samtak.spjall.core.EmojiCount
 
 class ContentTest {
     @Test
@@ -21,15 +20,29 @@ class ContentTest {
         val post =
             post(
                 "p1",
-                reactions = listOf(ReactionCount(ReactionKind.LIKE, 1uL), ReactionCount(ReactionKind.SAD, 2uL)),
-                mine = ReactionKind.LIKE,
+                emojis = listOf(EmojiCount("\uD83D\uDC4D", 1uL), EmojiCount("\uD83D\uDE22", 2uL)),
+                mine = "\uD83D\uDC4D",
             )
-        val changed = post.reacted(ReactionKind.SAD)
-        assertEquals(ReactionKind.SAD, changed.myReaction)
-        assertEquals(listOf(ReactionCount(ReactionKind.SAD, 3uL)), changed.reactions)
+        val changed = post.reacted("\uD83D\uDE22")
+        assertEquals("\uD83D\uDE22", changed.myEmoji)
+        assertEquals(listOf(EmojiCount("\uD83D\uDE22", 3uL)), changed.emojis)
         val taken = changed.reacted(null)
-        assertNull(taken.myReaction)
-        assertEquals(listOf(ReactionCount(ReactionKind.SAD, 2uL)), taken.reactions)
+        assertNull(taken.myEmoji)
+        assertEquals(listOf(EmojiCount("\uD83D\uDE22", 2uL)), taken.emojis)
+    }
+
+    @Test
+    fun anyEmojiIsGroupedAndOrderedByCount() {
+        val family = "\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67"
+        val flag = "\uD83C\uDDEE\uD83C\uDDF8"
+        val post = post("p1", emojis = listOf(EmojiCount(flag, 1uL), EmojiCount("\uD83D\uDC4D", 1uL)))
+        val changed = post.reacted(family)
+        assertEquals(family, changed.myEmoji)
+        assertEquals(listOf(flag, "\uD83D\uDC4D", family), changed.emojis.map { it.emoji })
+        assertEquals(flag + "\uD83D\uDC4D", changed.summaryEmojis(2))
+        val moved = changed.reacted(flag)
+        assertEquals(EmojiCount(flag, 2uL), moved.emojis.first())
+        assertEquals(listOf(flag, "\uD83D\uDC4D"), moved.emojis.map { it.emoji })
     }
 
     @Test

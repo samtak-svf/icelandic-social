@@ -20,7 +20,6 @@ import samtak.spjall.core.ModerationLogPage
 import samtak.spjall.core.Post
 import samtak.spjall.core.PostImage
 import samtak.spjall.core.PostPage
-import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportPage
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportState
@@ -194,7 +193,7 @@ interface Social {
     /** This account's one reaction on a post, in place of any other. */
     fun react(
         postId: String,
-        kind: ReactionKind,
+        emoji: String,
     )
 
     /** Takes this account's reaction off a post. */
@@ -498,8 +497,8 @@ class CoreSocial(
 
     override fun react(
         postId: String,
-        kind: ReactionKind,
-    ) = client.react(postId, kind)
+        emoji: String,
+    ) = client.react(postId, emoji)
 
     override fun unreact(postId: String) = client.unreact(postId)
 

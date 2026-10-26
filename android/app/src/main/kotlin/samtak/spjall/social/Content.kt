@@ -5,24 +5,25 @@ import samtak.spjall.core.Card
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityRole
+import samtak.spjall.core.EmojiCount
 import samtak.spjall.core.Post
-import samtak.spjall.core.ReactionCount
-import samtak.spjall.core.ReactionKind
 
 /**
  * [Post] with this account's reaction set to [next], none taking it back: the counts as the server gave them,
  * moved by what changed, as the web's post does until it loads the post again.
  */
-fun Post.reacted(next: ReactionKind?): Post {
-    val counts = reactions.associate { it.kind to it.count }.toMutableMap()
-    myReaction?.let { old -> counts[old] = (counts[old] ?: 0uL).let { if (it > 0uL) it - 1uL else 0uL } }
+fun Post.reacted(next: String?): Post {
+    val counts = LinkedHashMap(emojis.associate { it.emoji to it.count })
+    myEmoji?.let { old -> counts[old] = (counts[old] ?: 0uL).let { if (it > 0uL) it - 1uL else 0uL } }
     next?.let { counts[it] = (counts[it] ?: 0uL) + 1uL }
+    // Most used first; equal counts keep the order they had, the new emoji last among its equals.
     return copy(
-        myReaction = next,
-        reactions =
-            ReactionKind.entries.mapNotNull { kind ->
-                counts[kind]?.takeIf { it > 0uL }?.let { ReactionCount(kind, it) }
-            },
+        myEmoji = next,
+        emojis =
+            counts.entries
+                .filter { it.value > 0uL }
+                .sortedByDescending { it.value }
+                .map { EmojiCount(it.key, it.value) },
     )
 }
 
@@ -76,14 +77,14 @@ const val NAME_LIMIT = 80
 const val DESCRIPTION_LIMIT = 500
 
 /**
- * Presses [kind] on [post]: it becomes this account's reaction, or, pressed again, is taken back. Blocks on the
+ * Presses [emoji] on [post]: it becomes this account's reaction, or, pressed again, is taken back. Blocks on the
  * network; returns the post as it now stands.
  */
 fun Social.toggle(
     post: Post,
-    kind: ReactionKind,
+    emoji: String,
 ): Post {
-    val next = if (post.myReaction == kind) null else kind
+    val next = if (post.myEmoji == emoji) null else emoji
     if (next == null) unreact(post.postId) else react(post.postId, next)
     return post.reacted(next)
 }

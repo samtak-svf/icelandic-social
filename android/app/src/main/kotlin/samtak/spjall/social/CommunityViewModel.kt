@@ -25,7 +25,6 @@ import samtak.spjall.core.CoreException
 import samtak.spjall.core.FrameKind
 import samtak.spjall.core.ModerationLogEntry
 import samtak.spjall.core.Post
-import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.frames.FrameRequest
@@ -415,17 +414,17 @@ class CommunityViewModel(
         }
     }
 
-    /** Presses [kind] on the post: it becomes this account's reaction, or pressed again is taken back. */
+    /** Presses [emoji] on the post: it becomes this account's reaction, or pressed again is taken back. */
     fun react(
         postId: String,
-        kind: ReactionKind,
+        emoji: String,
     ) {
         val post = _state.value.posts.firstOrNull { it.postId == postId } ?: return
         if (postId in _state.value.reacting) return
         _state.update { it.copy(reacting = it.reacting + postId, problem = null) }
         viewModelScope.launch {
             try {
-                val changed = withContext(io) { social.toggle(post, kind) }
+                val changed = withContext(io) { social.toggle(post, emoji) }
                 _state.update { s ->
                     s.copy(
                         posts =

@@ -303,7 +303,7 @@ struct CommunityView: View {
         ForEach(model.feedPosts(aside: layout.featured == .aside), id: \.postId) { post in
             PostCard(
                 post: post, linked: true, writes: model.writes,
-                onReact: { kind in Task { await model.react(post.postId, kind) } },
+                onReact: { emoji in Task { await model.react(post.postId, emoji) } },
                 onReport: { reporting = Reporting(target: ReportTarget(kind: .post, id: post.postId)) },
                 onDelete: post.mine ? { deleting = post.postId } : nil,
                 onPin: model.moderates ? { Task<Void, Never> { await model.pin(post.postId, !post.pinned) } } : nil,

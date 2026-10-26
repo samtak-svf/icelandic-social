@@ -140,7 +140,7 @@ struct CommunitiesView: View {
             PostCard(
                 post: post, linked: true, writes: model.writes(post),
                 community: model.community(post.communityId),
-                onReact: { kind in Task { await model.react(post.postId, kind) } },
+                onReact: { emoji in Task { await model.react(post.postId, emoji) } },
                 onShare: { sharing = post.postId },
                 onVote: { option in Task { await model.vote(post.postId, option: option) } },
                 onWithdrawVote: { Task { await model.withdrawVote(post.postId) } },

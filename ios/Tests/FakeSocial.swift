@@ -490,8 +490,8 @@ final class FakeSocial: Social, @unchecked Sendable {
         return found
     }
 
-    func react(_ post: String, kind: ReactionKind) throws {
-        try call("react \(post) \(kind)")
+    func react(_ post: String, emoji: String) throws {
+        try call("react \(post) \(emoji)")
     }
 
     func unreact(_ post: String) throws {
@@ -731,7 +731,7 @@ func makeCommunity(
 
 func makePost(
     _ id: String, _ community: String, body: String = "Halló", author: Author? = anna,
-    anonymous: Bool = false, own: Bool? = nil, reactions: [ReactionCount] = [], mine: ReactionKind? = nil,
+    anonymous: Bool = false, own: Bool? = nil, emojis: [EmojiCount] = [], mine: String? = nil,
     comments: UInt64 = 0,
     state: ModerationState = .visible, createdAt: UInt64 = FakeAccount.now, pinned: Bool = false,
     latestComment: Comment? = nil, poll: Poll? = nil
@@ -739,7 +739,7 @@ func makePost(
     Post(
         postId: id, communityId: community, author: author, anonymous: anonymous,
         mine: own ?? (author?.accountId == jon.accountId), body: body, images: [], createdAt: createdAt,
-        reactions: reactions, myReaction: mine, commentCount: comments, latestComment: latestComment, state: state,
+        emojis: emojis, myEmoji: mine, commentCount: comments, latestComment: latestComment, state: state,
         pinned: pinned, poll: poll)
 }
 
@@ -790,9 +790,9 @@ func makeReport(
 
 func makeNotice(
     _ id: String, _ kind: SocialNotificationKind, actor: Author? = nil, community: String = "k1",
-    post: String? = nil, read: Bool = false, createdAt: UInt64 = FakeAccount.now
+    post: String? = nil, emoji: String? = nil, read: Bool = false, createdAt: UInt64 = FakeAccount.now
 ) -> SocialNotification {
     SocialNotification(
         notificationId: id, kind: kind, actor: actor, communityId: community, postId: post, commentId: nil,
-        action: nil, createdAt: createdAt, read: read)
+        action: nil, emoji: emoji, createdAt: createdAt, read: read)
 }

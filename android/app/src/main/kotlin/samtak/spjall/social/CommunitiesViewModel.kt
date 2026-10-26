@@ -18,7 +18,6 @@ import samtak.spjall.account.problem
 import samtak.spjall.core.Community
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.Post
-import samtak.spjall.core.ReactionKind
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
@@ -148,14 +147,14 @@ class CommunitiesViewModel(
 
     fun react(
         postId: String,
-        kind: ReactionKind,
+        emoji: String,
     ) {
         val post = _state.value.feed.firstOrNull { it.postId == postId } ?: return
         if (postId in _state.value.reacting) return
         _state.update { it.copy(reacting = it.reacting + postId) }
         viewModelScope.launch {
             try {
-                val changed = withContext(io) { social.toggle(post, kind) }
+                val changed = withContext(io) { social.toggle(post, emoji) }
                 _state.update { s ->
                     s.copy(
                         feed = s.feed.map { if (it.postId == postId) changed else it },
