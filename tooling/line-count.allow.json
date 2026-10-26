@@ -30,7 +30,6 @@
   "core/client/tests/sign_in.rs": 524,
   "core/client/tests/social.rs": 1956,
   "core/client/tests/support/relay.rs": 1866,
-  "core/client/tests/sync.rs": 4193,
   "core/envelope/src/lib.rs": 740,
   "core/ffi/src/client.rs": 1739,
   "core/ffi/src/lib.rs": 707,
