@@ -12,6 +12,8 @@ struct PhotoOf: Hashable, Sendable {
         case account
         case communityPicture
         case communityCover
+        /// A group's photo: the core's own file on this device, not something fetched (decision 0094).
+        case groupFile
     }
 
     /// The account id, or for the community kinds the community id.
@@ -20,6 +22,20 @@ struct PhotoOf: Hashable, Sendable {
     var kind = Kind.account
     /// The frame to fetch (decision 0086): a cover's follows the window's size class, everything else is square.
     var frame = Frame.square
+
+    /// A group's photo at `path`. A replace rewrites the same path, so `stamp` (see `fileStamp`) is the version: a
+    /// new photo is a new key and is not served from the old picture in memory.
+    static func groupFile(path: String, stamp: String) -> PhotoOf {
+        PhotoOf(owner: path, version: stamp, kind: .groupFile)
+    }
+}
+
+/// What tells one write of the file at `path` from the next: its modification time and size.
+func fileStamp(_ path: String) -> String {
+    let attributes = try? FileManager.default.attributesOfItem(atPath: path)
+    let modified = (attributes?[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0
+    let size = (attributes?[.size] as? NSNumber)?.int64Value ?? 0
+    return "\(modified)-\(size)"
 }
 
 extension Person {
@@ -57,9 +73,11 @@ extension Me {
     var photoOf: PhotoOf? { photo.map { PhotoOf(owner: accountId, version: $0) } }
 }
 
-/// A 1:1's photo is the other person's; a group's avatar stays initials (decision 0039).
+/// A 1:1's photo is the other person's (decision 0039); a group's is its own picture when it has one, else its
+/// avatar stays initials (decision 0094).
 func photoOf(_ conversation: Conversation) -> PhotoOf? {
-    conversation.name == nil && conversation.members.count == 1 ? conversation.members.first?.photoOf : nil
+    if conversation.name == nil && conversation.members.count == 1 { return conversation.members.first?.photoOf }
+    return conversation.photo.map { PhotoOf.groupFile(path: $0, stamp: fileStamp($0)) }
 }
 
 /// Decoded pictures by owner, kind and version, the last `capacity` in memory only.
@@ -110,6 +128,8 @@ final class PhotoCache<Image: Sendable>: @unchecked Sendable {
                     path = try social.communityPictureFramed(photo.owner, version: photo.version, frame: photo.frame)
                 case .communityCover:
                     path = try social.communityCoverFramed(photo.owner, version: photo.version, frame: photo.frame)
+                case .groupFile:
+                    path = photo.owner
                 }
                 return path.flatMap { decode(photo.kind, $0) }
             })

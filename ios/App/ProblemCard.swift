@@ -54,6 +54,8 @@ struct ProblemCard: View {
         case .pinFull: "post_pin_full"
         case .anonymousOff: "problem_anonymous_off"
         case .pollClosed: "poll_closed_problem"
+        case .groupPhotoUnsupported: "group_photo_unsupported"
+        case .groupPhotoFailed: "group_photo_failed"
         case .generic: "error_generic"
         }
     }

@@ -301,8 +301,9 @@ final class ConversationModelTests: XCTestCase {
 
         await model.clearGroupPhoto()
         XCTAssertNil(model.conversation?.photo)
-        XCTAssertTrue(account.calls.contains("clearGroupPhoto c1"))
-        XCTAssertEqual(account.calls.last, "sync")
+        let clear = try XCTUnwrap(account.calls.lastIndex(of: "clearGroupPhoto c1"))
+        XCTAssertTrue(account.calls[clear...].contains("sync"), "the clear is synced")
+        XCTAssertTrue(account.calls[clear...].contains("conversations"), "and read again")
     }
 
     func testAnUnsupportedImageSaysSoAndAnyOtherFailureIsGeneric() async throws {
