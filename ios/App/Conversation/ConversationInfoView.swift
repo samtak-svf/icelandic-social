@@ -1,3 +1,4 @@
+import PhotosUI
 import SpjallCore
 import SwiftUI
 
@@ -13,6 +14,8 @@ struct ConversationInfoView: View {
     @State private var renaming = false
     @State private var draftName = ""
     @State private var removing: Person?
+    @State private var pickedPhoto: PhotosPickerItem?
+    @State private var removingPhoto = false
     @State private var adding: PeopleModel?
     @State private var preview: URL?
     @Environment(\.dismiss) private var dismiss
@@ -93,6 +96,16 @@ struct ConversationInfoView: View {
             }
             Button("cancel", role: .cancel) { removing = nil }
         }
+        .onChange(of: pickedPhoto) { _, item in
+            guard let item else { return }
+            pickedPhoto = nil
+            let pick = Picked(photo: item)
+            Task { await model.setGroupPhoto { try await masterFile(pick) } }
+        }
+        .confirmationDialog("group_photo_remove_confirm", isPresented: $removingPhoto, titleVisibility: .visible) {
+            Button("group_photo_remove", role: .destructive) { Task { await model.clearGroupPhoto() } }
+            Button("cancel", role: .cancel) {}
+        }
         .alert(Text("group_name_title"), isPresented: $renaming) {
             TextField(localized("group_name_hint"), text: $draftName)
             Button("save") {
@@ -126,7 +139,11 @@ struct ConversationInfoView: View {
         return VStack(spacing: 12) {
             Avatar(
                 name: one?.name ?? title(conversation), kind: avatarKind(conversation), size: 96,
-                photo: photoOf(conversation))
+                photo: photoOf(conversation)
+            )
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text("group_photo_alt"))
+            .accessibilityHidden(conversation.photo == nil || one != nil)
             HStack(spacing: 6) {
                 Text(verbatim: one.map(shownName) ?? title(conversation))
                     .font(.title2.weight(.bold))
@@ -159,11 +176,39 @@ struct ConversationInfoView: View {
                     .buttonStyle(.bordered)
                 }
                 .padding(.top, 4)
+                groupPhotoControls(conversation)
                 members(conversation)
             }
         }
         .padding(.top, 24)
         .padding(.bottom, 8)
+    }
+
+    /// Choose or change the group's photo, remove it, and who sees it (decision 0094). Only for a group.
+    private func groupPhotoControls(_ conversation: Conversation) -> some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 16) {
+                PhotosPicker(selection: $pickedPhoto, matching: .images) {
+                    Label(
+                        conversation.photo == nil ? "group_photo_choose" : "group_photo_change",
+                        systemImage: "photo")
+                }
+                .buttonStyle(.bordered)
+                if conversation.photo != nil {
+                    Button(role: .destructive) {
+                        removingPhoto = true
+                    } label: {
+                        Label("group_photo_remove", systemImage: "trash")
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+            Text("group_photo_seen_by_members")
+                .font(.footnote)
+                .foregroundStyle(BrandTokens.Colors.fg)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 16)
+        }
     }
 
     private func members(_ conversation: Conversation) -> some View {

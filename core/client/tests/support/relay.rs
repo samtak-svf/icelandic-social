@@ -396,6 +396,14 @@ impl Relay {
         self.state().group_photos.contains_key(conversation)
     }
 
+    /// The object the server holds as the group photo of `conversation`.
+    pub fn group_photo_object(&self, conversation: &str) -> Option<Vec<u8>> {
+        self.state()
+            .group_photos
+            .get(conversation)
+            .map(|(_, blob)| blob.clone())
+    }
+
     pub fn tamper_media(&self) {
         for blob in self.state().media.values_mut() {
             let middle = blob.len() / 2;

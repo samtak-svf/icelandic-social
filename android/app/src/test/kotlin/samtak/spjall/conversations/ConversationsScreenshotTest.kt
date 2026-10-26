@@ -1,6 +1,7 @@
 package samtak.spjall.conversations
 
 import android.content.Context
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
@@ -8,6 +9,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -22,8 +24,12 @@ import samtak.spjall.core.Mute
 import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
 import samtak.spjall.socket.Connection
+import samtak.spjall.ui.FilePhotos
 import samtak.spjall.ui.IcelandZone
+import samtak.spjall.ui.LocalPhotos
 import samtak.spjall.ui.SpjallTheme
+import samtak.spjall.ui.squarePhoto
+import android.graphics.Color as AndroidColor
 
 /**
  * What the conversation list looks like, compared pixel by pixel with the images in
@@ -36,6 +42,8 @@ import samtak.spjall.ui.SpjallTheme
 @Config(sdk = [SCREENSHOT_SDK], qualifiers = SCREENSHOT_DEVICE, fontScale = 1f)
 class ConversationsScreenshotTest {
     @get:Rule val compose = createComposeRule()
+
+    @get:Rule val folder = TemporaryFolder()
 
     @get:Rule val zone = IcelandZone()
 
@@ -121,6 +129,45 @@ class ConversationsScreenshotTest {
                 connection = Connection.Online,
             ),
         )
+
+    /** A group with its own photo (0094) beside one that shows initials. */
+    @Test
+    fun aGroupWithAPhoto() {
+        val green = AndroidColor.rgb(0x6B, 0x8F, 0x71)
+        val sand = AndroidColor.rgb(0xD9, 0xB3, 0x8C)
+        val photo = squarePhoto(folder.newFile("group.jpg"), green, sand)
+
+        fun group(
+            id: String,
+            name: String,
+            photo: String?,
+        ) = Conversation(
+            id,
+            ConversationState.ACTIVE,
+            name,
+            photo,
+            listOf(anna, bjarni),
+            last(anna, "Sæl"),
+            1u,
+            null,
+            Mute.Off,
+        )
+        compose.setContent {
+            SpjallTheme {
+                CompositionLocalProvider(LocalPhotos provides FilePhotos) {
+                    ConversationsScreen(
+                        ConversationsViewModel.State(
+                            conversations = listOf(group("c1", "Bókaklúbbur", photo), group("c2", "Gönguhópur", null)),
+                            loaded = true,
+                            connection = Connection.Online,
+                        ),
+                        actions,
+                    )
+                }
+            }
+        }
+        compose.onRoot().captureRoboImage()
+    }
 
     @Test
     fun muted() =

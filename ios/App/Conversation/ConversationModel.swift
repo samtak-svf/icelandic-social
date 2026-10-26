@@ -426,6 +426,40 @@ final class ConversationModel {
         }
     }
 
+    /// Sets the group's photo from the file `make` produces, which is deleted after (decision 0094).
+    func setGroupPhoto(_ make: @escaping @Sendable () async throws -> URL) async {
+        let account = account
+        let id = id
+        do {
+            let file = try await make()
+            defer { try? FileManager.default.removeItem(at: file) }
+            _ = try await offMain { try account.setGroupPhoto(conversationId: id, path: file.path) }
+            failed = nil
+            problem = nil
+            live.sync()
+            await load()
+        } catch {
+            failed = { await self.setGroupPhoto(make) }
+            problem = Problem.groupPhoto(error)
+        }
+    }
+
+    /// Removes the group's photo (decision 0094).
+    func clearGroupPhoto() async {
+        let account = account
+        let id = id
+        do {
+            _ = try await offMain { try account.clearGroupPhoto(conversationId: id) }
+            failed = nil
+            problem = nil
+            live.sync()
+            await load()
+        } catch {
+            failed = { await self.clearGroupPhoto() }
+            problem = Problem.groupPhoto(error)
+        }
+    }
+
     /// Removes `member` from the group (decision 0078).
     func remove(_ member: String) async {
         let account = account

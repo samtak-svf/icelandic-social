@@ -67,6 +67,11 @@ export const strings = {
     args.name + " er ekki lengur í samtalinu.",
   /** Explains that a new device sees only messages sent after it joined (docs/decisions/0006). */
   history_device_local_notice: "Ný tæki sjá aðeins skilaboð sem berast eftir að þau tengjast. Eldri skilaboð eru áfram á tækjunum sem tóku við þeim.",
+  /** Members in a group. */
+  group_member_count: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " meðlimur"
+      : String(args.count) + " meðlimir",
   /** A location message (docs/decisions/0059): the attach menu's choice, the card's heading, the conversation list's last line, a quote of one and a notification. Never the place itself. */
   location: "Staðsetning",
   /** Stands in for an account whose name the server has not given, in titles and rows (docs/decisions/0022). */
@@ -184,6 +189,8 @@ export const strings = {
   residency_claim: "Gögnin eru geymd varanlega innan ESB; unnin á netkerfi Cloudflare.",
   /** Replaces a conversation row's preview while someone in it is typing; names no one (0022, 0043). */
   typing_in_row: "er að skrifa…",
+  /** Screen-reader label of the conversation title, which opens its members, mute and timer (0043). */
+  conversation_info: "Um samtalið",
   /** Screen-reader text of the placeholder rows shown on a first load (0043). */
   loading: "Hleður…",
   /** Heading of the web's sign-in page (decision 0062). */
@@ -594,6 +601,22 @@ export const strings = {
   /** System card when a member removes the group's photo (docs/decisions/0094). */
   photo_cleared_card: (args: { who: string }): string =>
     args.who + " fjarlægði mynd hópsins.",
+  /** On a group's information screen when the group has no photo: opens the photo picker to set one (docs/decisions/0094). */
+  group_photo_choose: "Setja inn mynd hópsins",
+  /** On a group's information screen when the group has a photo: opens the photo picker to put another in its place (docs/decisions/0094). */
+  group_photo_change: "Skipta um mynd hópsins",
+  /** On a group's information screen: removes the group's photo, after a confirmation; also that confirmation's button (docs/decisions/0094). */
+  group_photo_remove: "Fjarlægja mynd hópsins",
+  /** Asks before the group's photo is removed: it goes for every member (docs/decisions/0094). */
+  group_photo_remove_confirm: "Fjarlægja mynd hópsins? Hún hverfur hjá öllum í hópnum.",
+  /** The one line beside the group photo buttons: only the group's members see it, and it is end-to-end encrypted, unlike a profile photo (docs/decisions/0094). */
+  group_photo_seen_by_members: "Aðeins fólk í hópnum sér myndina. Hún er dulkóðuð enda á milli.",
+  /** The chosen picture could not be read as an image the group photo accepts (docs/decisions/0094). */
+  group_photo_unsupported: "Ekki tókst að lesa myndina. Veldu aðra mynd.",
+  /** Setting, replacing or removing the group's photo failed for another reason, such as the network (docs/decisions/0094). */
+  group_photo_failed: "Ekki tókst að breyta mynd hópsins. Reyndu aftur.",
+  /** Alternative text of a group's photo, in the conversation list, the header and the information screen (docs/decisions/0094). */
+  group_photo_alt: "Mynd hópsins",
   /** Banner shown in a conversation the user has left (docs/decisions/0078). */
   left_banner: "Þú hefur yfirgefið þennan hóp.",
   /** Label of the file picker for a community's square picture, on the create screen and in Breyta samfélagi (decision 0080). */

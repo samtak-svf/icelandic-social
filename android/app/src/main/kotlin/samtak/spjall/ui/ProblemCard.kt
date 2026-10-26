@@ -69,11 +69,13 @@ private val FINAL =
         Problem.PollClosed,
         Problem.AnonymousOff,
         Problem.PinFull,
+        Problem.GroupPhotoUnsupported,
     )
 
 /** Whether the same call may work if asked again: not a refusal the server will repeat. */
 private fun Problem.canRetry() = this !is Problem.IdentityTaken && this !in FINAL
 
+@Suppress("CyclomaticComplexMethod") // One branch per problem, each a sentence of its own.
 private fun Problem.message(): Int =
     when (this) {
         Problem.Unreachable -> R.string.error_unreachable
@@ -87,5 +89,7 @@ private fun Problem.message(): Int =
         Problem.PollClosed -> R.string.poll_closed_problem
         Problem.AnonymousOff -> R.string.problem_anonymous_off
         Problem.PinFull -> R.string.post_pin_full
+        Problem.GroupPhotoUnsupported -> R.string.group_photo_unsupported
+        Problem.GroupPhotoFailed -> R.string.group_photo_failed
         is Problem.Generic -> R.string.error_generic
     }

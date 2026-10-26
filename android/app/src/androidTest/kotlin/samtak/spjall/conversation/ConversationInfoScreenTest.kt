@@ -63,6 +63,14 @@ class ConversationInfoScreenTest {
                 calls += "rename $name"
             }
 
+            override fun setPhoto() {
+                calls += "setPhoto"
+            }
+
+            override fun clearPhoto() {
+                calls += "clearPhoto"
+            }
+
             override fun remove(account: String) {
                 calls += "remove $account"
             }
@@ -88,6 +96,7 @@ class ConversationInfoScreenTest {
     private fun show(
         name: String? = null,
         members: List<Person> = listOf(anna, bjorn),
+        photo: String? = null,
         timer: UInt? = null,
         mute: Mute = Mute.Off,
     ) {
@@ -100,6 +109,7 @@ class ConversationInfoScreenTest {
                                 id = "c1",
                                 state = ConversationState.ACTIVE,
                                 name = name,
+                                photo = photo,
                                 members = members,
                                 last = null,
                                 unread = 0u,
@@ -112,6 +122,31 @@ class ConversationInfoScreenTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun aGroupWithoutAPhotoChoosesOne() {
+        show()
+        compose.onNodeWithText(text(R.string.group_photo_choose)).performClick()
+        assertEquals(listOf("setPhoto"), calls)
+    }
+
+    @Test
+    fun aGroupWithAPhotoChangesItAndRemovesItAfterAsking() {
+        show(photo = "/data/group.jpg")
+        compose.onNodeWithText(text(R.string.group_photo_change)).performClick()
+        compose.onNodeWithText(text(R.string.group_photo_remove)).performClick()
+        compose.onNodeWithText(text(R.string.group_photo_remove_confirm)).assertIsDisplayed()
+        assertEquals(listOf("setPhoto"), calls)
+        compose.onAllNodesWithText(text(R.string.group_photo_remove)).onLast().performClick()
+        assertEquals(listOf("setPhoto", "clearPhoto"), calls)
+    }
+
+    @Test
+    fun aOneToOneShowsNoPhotoControl() {
+        show(members = listOf(anna))
+        compose.onNodeWithText(text(R.string.group_photo_choose)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.group_photo_change)).assertDoesNotExist()
     }
 
     @Test

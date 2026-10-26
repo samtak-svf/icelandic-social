@@ -265,7 +265,7 @@
       "description": "Action that starts a new group."
     },
     "group_member_count": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Members in a group.",
       "plural": true,
       "placeholders": {
@@ -864,7 +864,7 @@
       "description": "Replaces a conversation row's preview while someone in it is typing; names no one (0022, 0043)."
     },
     "conversation_info": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Screen-reader label of the conversation title, which opens its members, mute and timer (0043)."
     },
     "pick_search": {
@@ -1760,6 +1760,38 @@
       "placeholders": {
         "who": "string"
       }
+    },
+    "group_photo_choose": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "On a group's information screen when the group has no photo: opens the photo picker to set one (docs/decisions/0094)."
+    },
+    "group_photo_change": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "On a group's information screen when the group has a photo: opens the photo picker to put another in its place (docs/decisions/0094)."
+    },
+    "group_photo_remove": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "On a group's information screen: removes the group's photo, after a confirmation; also that confirmation's button (docs/decisions/0094)."
+    },
+    "group_photo_remove_confirm": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Asks before the group's photo is removed: it goes for every member (docs/decisions/0094)."
+    },
+    "group_photo_seen_by_members": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The one line beside the group photo buttons: only the group's members see it, and it is end-to-end encrypted, unlike a profile photo (docs/decisions/0094)."
+    },
+    "group_photo_unsupported": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The chosen picture could not be read as an image the group photo accepts (docs/decisions/0094)."
+    },
+    "group_photo_failed": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Setting, replacing or removing the group's photo failed for another reason, such as the network (docs/decisions/0094)."
+    },
+    "group_photo_alt": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Alternative text of a group's photo, in the conversation list, the header and the information screen (docs/decisions/0094)."
     },
     "remove_member": {
       "surfaces": ["android", "ios"],

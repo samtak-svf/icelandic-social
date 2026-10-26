@@ -23,6 +23,7 @@ import samtak.spjall.account.Problem
 import samtak.spjall.account.unreachable
 import samtak.spjall.core.Body
 import samtak.spjall.core.ConversationState
+import samtak.spjall.core.CoreException
 import samtak.spjall.core.Event
 import samtak.spjall.core.Mute
 import samtak.spjall.core.MuteFor
@@ -33,6 +34,8 @@ import samtak.spjall.socket.FakeLive
 import samtak.spjall.socket.conversation
 import samtak.spjall.socket.item
 import samtak.spjall.socket.person
+import java.io.File
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ConversationViewModelTest {
@@ -301,6 +304,58 @@ class ConversationViewModelTest {
             )
             // Each one is a commit the others must hear of (0078).
             assertEquals(3, live.syncs)
+        }
+
+    @Test
+    fun setsReplacesAndClearsTheGroupPhotoAndDeletesTheFileItWasMadeFrom() =
+        runTest(dispatcher) {
+            val model = model()
+            val file = File.createTempFile("group", ".jpg")
+            model.setGroupPhoto { file }
+            advanceUntilIdle()
+            assertEquals(
+                file.path,
+                model.state.value.conversation
+                    ?.photo,
+            )
+            assertFalse("the master is deleted once the core has it", file.exists())
+
+            model.clearGroupPhoto()
+            advanceUntilIdle()
+            assertNull(
+                model.state.value.conversation
+                    ?.photo,
+            )
+            assertEquals(
+                listOf("setGroupPhoto c1", "clearGroupPhoto c1"),
+                account.calls.filter { it.contains("GroupPhoto") },
+            )
+            // Each one is a commit the others must hear of (0094).
+            assertEquals(2, live.syncs)
+        }
+
+    @Test
+    fun anUnreadableImageALostConnectionAndAnyOtherFailureAreThreeProblems() =
+        runTest(dispatcher) {
+            val model = model()
+            account.failNext = CoreException.UnsupportedImage()
+            model.setGroupPhoto { File.createTempFile("group", ".jpg") }
+            advanceUntilIdle()
+            assertEquals(Problem.GroupPhotoUnsupported, model.state.value.problem)
+
+            account.failNext = unreachable()
+            model.clearGroupPhoto()
+            advanceUntilIdle()
+            assertEquals(Problem.Unreachable, model.state.value.problem)
+
+            account.failNext = CoreException.Refused(403u, "blocked", null)
+            model.clearGroupPhoto()
+            advanceUntilIdle()
+            assertEquals(Problem.GroupPhotoFailed, model.state.value.problem)
+
+            model.setGroupPhoto { throw IOException("not an image") }
+            advanceUntilIdle()
+            assertEquals(Problem.GroupPhotoUnsupported, model.state.value.problem)
         }
 
     @Test

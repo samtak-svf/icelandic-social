@@ -25,6 +25,10 @@ enum Problem: Equatable, Sendable {
     case anonymousOff
     /// The poll was closed before the vote arrived (decision 0090).
     case pollClosed
+    /// The group photo is not an image the core can read (decision 0094).
+    case groupPhotoUnsupported
+    /// The group photo could not be set or removed.
+    case groupPhotoFailed
     /// Anything else.
     case generic(requestId: String? = nil, code: String? = nil)
 
@@ -45,12 +49,22 @@ enum Problem: Equatable, Sendable {
         }
     }
 
+    /// What a failed group photo change says (decision 0094): an unreadable image, a lost connection as it is,
+    /// anything else as the photo's own failure.
+    static func groupPhoto(_ error: Error) -> Problem {
+        switch error {
+        case CoreError.UnsupportedImage: .groupPhotoUnsupported
+        case CoreError.Unreachable: .unreachable
+        default: .groupPhotoFailed
+        }
+    }
+
     /// The server's id for the refused request; nil when no server refused it.
     var requestId: String? {
         switch self {
         case let .identityTaken(requestId), let .generic(requestId, _): requestId
         case .unreachable, .tooLarge, .notPermitted, .notFound, .joinDeclined, .noMaster, .pinFull, .anonymousOff,
-            .pollClosed:
+            .pollClosed, .groupPhotoUnsupported, .groupPhotoFailed:
             nil
         }
     }
@@ -65,9 +79,9 @@ enum Problem: Equatable, Sendable {
     var canRetry: Bool {
         switch self {
         case .identityTaken, .tooLarge, .notPermitted, .notFound, .joinDeclined, .noMaster, .pinFull, .anonymousOff,
-            .pollClosed:
+            .pollClosed, .groupPhotoUnsupported:
             false
-        case .unreachable, .generic: true
+        case .unreachable, .generic, .groupPhotoFailed: true
         }
     }
 }

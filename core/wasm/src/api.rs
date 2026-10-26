@@ -198,6 +198,33 @@ impl Core {
         ))
     }
 
+    /// Gives a group a photo (0094) from the bytes of a JPEG, PNG or WebP
+    /// file; the core makes the square JPEG. The envelope id.
+    #[wasm_bindgen(js_name = setGroupPhoto, unchecked_return_type = "string")]
+    pub fn set_group_photo(
+        &mut self,
+        conversation_id: &str,
+        bytes: Vec<u8>,
+    ) -> Result<JsValue, JsValue> {
+        answer(self.client.set_group_photo_bytes(conversation_id, &bytes))
+    }
+
+    /// Takes a group's photo away (0094); the envelope id.
+    #[wasm_bindgen(js_name = clearGroupPhoto, unchecked_return_type = "string")]
+    pub fn clear_group_photo(&mut self, conversation_id: &str) -> Result<JsValue, JsValue> {
+        answer(self.client.clear_group_photo(conversation_id))
+    }
+
+    /// The JPEG of this device's copy of a group's photo, `null` when it has
+    /// none (0094).
+    #[wasm_bindgen(js_name = groupPhoto, unchecked_return_type = "Uint8Array | null")]
+    pub fn group_photo(&mut self, conversation_id: &str) -> Result<JsValue, JsValue> {
+        self.client
+            .group_photo_bytes(conversation_id)
+            .map(|bytes| bytes.map_or(JsValue::NULL, |b| Uint8Array::from(b.as_slice()).into()))
+            .map_err(|error| fail(Failure::from(&error)))
+    }
+
     #[wasm_bindgen(unchecked_return_type = "Me")]
     pub fn me(&mut self) -> Result<JsValue, JsValue> {
         answer(self.client.me().map(dto::Me::from))

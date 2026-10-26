@@ -381,6 +381,26 @@ final class FakeAccount: Account, @unchecked Sendable {
         return "e-name\(calls.count)"
     }
 
+    @discardableResult func setGroupPhoto(conversationId: String, path: String) throws -> String {
+        try call("setGroupPhoto \(conversationId) \(path)")
+        list = list.map {
+            var changed = $0
+            if changed.id == conversationId { changed.photo = path }
+            return changed
+        }
+        return "e-photo\(calls.count)"
+    }
+
+    @discardableResult func clearGroupPhoto(conversationId: String) throws -> String {
+        try call("clearGroupPhoto \(conversationId)")
+        list = list.map {
+            var changed = $0
+            if changed.id == conversationId { changed.photo = nil }
+            return changed
+        }
+        return "e-photo\(calls.count)"
+    }
+
     func leave(_ conversation: String) throws {
         try call("leave \(conversation)")
         list = list.map {
@@ -565,9 +585,12 @@ func conversation(
     members: [Person],
     name: String? = nil,
     state: ConversationState = .active,
-    unread: UInt32 = 0
+    unread: UInt32 = 0,
+    photo: String? = nil
 ) -> Conversation {
-    Conversation(id: id, state: state, name: name, members: members, last: nil, unread: unread, timer: nil, mute: .off)
+    Conversation(
+        id: id, state: state, name: name, photo: photo, members: members, last: nil, unread: unread, timer: nil,
+        mute: .off)
 }
 
 func person(_ account: String, _ name: String? = nil) -> Person {
