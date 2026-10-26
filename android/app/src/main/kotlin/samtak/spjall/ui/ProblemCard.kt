@@ -76,7 +76,7 @@ private val FINAL =
 private fun Problem.canRetry() = this !is Problem.IdentityTaken && this !in FINAL
 
 @Suppress("CyclomaticComplexMethod") // One branch per problem, each a sentence of its own.
-private fun Problem.message(): Int =
+internal fun Problem.message(): Int =
     when (this) {
         Problem.Unreachable -> R.string.error_unreachable
         is Problem.IdentityTaken -> R.string.identity_taken
