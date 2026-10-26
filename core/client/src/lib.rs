@@ -1321,6 +1321,24 @@ impl<T: Transport> Client<T> {
         self.unless_dead(synced)
     }
 
+    /// Sends what the outbox holds for one conversation and fetches what came
+    /// there, and nothing else: no other conversation, key packages,
+    /// profiles, blocks or mutes (0099). What an app calls after a send, so
+    /// the chat on screen does not wait behind every other chat; the full
+    /// `sync` stays for the socket and for a refresh. Like `sync`, a token
+    /// the server no longer answers signs this device out (0057).
+    pub fn sync_conversation(&mut self, conversation: &str) -> Result<Outcome, ClientError> {
+        let group = group_id(conversation).ok_or(ClientError::UnknownConversation)?;
+        let synced = self.sync_conversation_inner(&group);
+        self.unless_dead(synced)
+    }
+
+    fn sync_conversation_inner(&mut self, group: &[u8]) -> Result<Outcome, ClientError> {
+        its_own(self.sync_one(group))?;
+        self.purge()?;
+        Ok(std::mem::take(&mut self.outcome))
+    }
+
     /// A token the server no longer answers signs this device out: the
     /// store forgets everything, as `revoke_device` does for this device,
     /// and the call says it is not registered (0057).

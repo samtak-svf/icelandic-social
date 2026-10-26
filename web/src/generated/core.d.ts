@@ -107,6 +107,10 @@ export class Core {
      * file; the core makes the square JPEG. The envelope id.
      */
     setGroupPhoto(conversation_id: string, bytes: Uint8Array): string;
+    /**
+     * `sync` for one conversation alone, as the apps call it after a send (0099).
+     */
+    syncConversation(conversation: string): Outcome;
     sync(): Outcome;
     /**
      * Up to `limit` items before the item `before` (a seq), oldest first:
@@ -146,6 +150,7 @@ export interface InitOutput {
     readonly core_send: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly core_setGroupPhoto: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly core_sync: (a: number, b: number) => void;
+    readonly core_syncConversation: (a: number, b: number, c: number, d: number) => void;
     readonly core_timeline: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly core_wipe: (a: number) => number;
     readonly core_wipeStore: () => number;
@@ -159,8 +164,8 @@ export interface InitOutput {
     readonly rust_sqlite_wasm_realloc: (a: number, b: number) => number;
     readonly sqlite3_os_end: () => number;
     readonly sqlite3_os_init: () => number;
-    readonly __wasm_bindgen_func_elem_6728: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_6743: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6742: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6757: (a: number, b: number, c: number, d: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

@@ -1685,6 +1685,13 @@ impl CoreClient {
         Ok(self.client()?.sync()?.into())
     }
 
+    /// `sync` for one conversation alone: sends its queue and fetches what
+    /// is new there, with no request for any other (0099). The apps call it
+    /// after a send. Signs out as `sync` does.
+    pub fn sync_conversation(&self, conversation: String) -> Result<Outcome, CoreError> {
+        Ok(self.client()?.sync_conversation(&conversation)?.into())
+    }
+
     /// One text frame from the socket. Signs out as `sync` does.
     pub fn on_frame(&self, frame: String) -> Result<Outcome, CoreError> {
         Ok(self.client()?.on_frame(&frame)?.into())

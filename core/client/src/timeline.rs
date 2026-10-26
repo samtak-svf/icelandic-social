@@ -775,14 +775,120 @@ pub(crate) fn items(
     limit: u32,
 ) -> Result<Vec<Item>, ClientError> {
     let mut items = stored(tx, group, me, before, limit, false)?;
+    let mut people = People {
+        tx,
+        known: HashMap::new(),
+    };
     if before.is_none() {
-        let mut people = People {
-            tx,
-            known: HashMap::new(),
-        };
         items.extend(pending(tx, group, me, &mut people)?);
     }
+    overlay(tx, group, me, &mut people, &mut items)?;
     Ok(items)
+}
+
+/// What this device has queued and the server has not yet sent back, laid
+/// over the items read: an own reaction added or taken back, an edit's text,
+/// a delete (0099). Each is applied as the fold would, in outbox order, and
+/// idempotently, so an echo folded while the row is still queued, or after it
+/// is gone, leaves the same item.
+fn overlay(
+    tx: &Transaction,
+    group: &[u8],
+    me: &str,
+    people: &mut People,
+    items: &mut [Item],
+) -> Result<(), ClientError> {
+    let mut statement = tx.prepare(
+        "SELECT intent FROM outbox WHERE group_id = ?1 AND kind = 'message' ORDER BY id",
+    )?;
+    let rows: Vec<Vec<u8>> = statement
+        .query_map([group], |r| r.get(0))?
+        .collect::<rusqlite::Result<_>>()?;
+    for intent in rows {
+        // A row that does not decode is shown by `pending`.
+        let Ok(envelope) = Envelope::decode(&intent) else {
+            continue;
+        };
+        let (target, change) = match envelope.body {
+            Body::Reaction {
+                target,
+                emoji,
+                remove,
+            } if !emoji.is_empty() => (target, Queued::Reaction { emoji, remove }),
+            Body::Edit { target, text } => (target, Queued::Edit(text)),
+            Body::Delete { target } => (target, Queued::Delete),
+            _ => continue,
+        };
+        let Some(item) = items
+            .iter_mut()
+            .find(|i| i.envelope_id.as_deref() == Some(target.as_str()))
+        else {
+            continue;
+        };
+        if item.content == Content::Deleted {
+            continue;
+        }
+        match change {
+            Queued::Reaction { emoji, remove } => {
+                let mine = people.get(me)?;
+                let at = item.reactions.iter().position(|r| r.emoji == emoji);
+                if remove {
+                    if let Some(at) = at {
+                        let reaction = &mut item.reactions[at];
+                        reaction.people.retain(|p| p.account != me);
+                        reaction.own = false;
+                        if reaction.people.is_empty() {
+                            item.reactions.remove(at);
+                        }
+                    }
+                } else {
+                    let at = at.unwrap_or_else(|| {
+                        item.reactions.push(Reaction {
+                            emoji,
+                            own: false,
+                            people: Vec::new(),
+                        });
+                        item.reactions.len() - 1
+                    });
+                    let reaction = &mut item.reactions[at];
+                    if !reaction.people.iter().any(|p| p.account == me) {
+                        reaction.people.push(mine);
+                        reaction.people.sort_by(|a, b| a.account.cmp(&b.account));
+                    }
+                    reaction.own = true;
+                }
+                // The order `reactions` reads in: most used first, ties by emoji.
+                item.reactions.sort_by(|a, b| a.emoji.cmp(&b.emoji));
+                item.reactions
+                    .sort_by_key(|r| std::cmp::Reverse(r.people.len()));
+            }
+            Queued::Edit(text) if item.own => match &mut item.content {
+                Content::Text { text: shown, .. } => {
+                    *shown = text;
+                    item.edited = true;
+                }
+                Content::Media { caption, .. } => {
+                    *caption = Some(text);
+                    item.edited = true;
+                }
+                _ => {}
+            },
+            Queued::Delete if item.own => {
+                item.content = Content::Deleted;
+                item.reactions.clear();
+                item.forwarded = false;
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+/// A queued envelope that changes an item already there.
+enum Queued {
+    Reaction { emoji: String, remove: bool },
+    Edit(String),
+    Delete,
 }
 
 /// The photos and files of a conversation (0055), up to `limit` before
@@ -1314,6 +1420,26 @@ mod tests {
                 .try_write(|tx| items(tx, GROUP, "a", None, 100))
                 .unwrap()
         }
+
+        /// Queues `body` in the outbox as `send` does, under the envelope id `id`.
+        fn queue(&mut self, id: &str, body: Body) {
+            let bytes = Envelope {
+                id: id.into(),
+                ts: 99,
+                body,
+            }
+            .encode()
+            .unwrap();
+            self.store
+                .write(|tx| {
+                    tx.execute(
+                        "INSERT INTO outbox (group_id, kind, intent, created_at)
+                         VALUES (?1, 'message', ?2, 0)",
+                        params![GROUP, bytes],
+                    )
+                })
+                .unwrap();
+        }
     }
 
     /// One row this core cannot decode keeps its place as an unreadable
@@ -1492,6 +1618,134 @@ mod tests {
         assert_eq!(reactions[0].people[0].account, "c");
         // A reaction to nothing here is dropped.
         assert_eq!(fold.apply(("c", "c1"), "r6", react("x", false)), None);
+    }
+
+    /// What this device queued shows on the items it returns with no
+    /// request (0099): a reaction, its removal, an edit, a delete.
+    #[test]
+    fn a_queued_reaction_shows_before_any_sync() {
+        let mut fold = Fold::new();
+        fold.apply(("b", "b1"), "m", text("eitt"));
+        fold.apply(("c", "c1"), "r0", react("m", false));
+        fold.queue("r1", react("m", false));
+        let items = fold.items();
+        // The reaction itself is no item of its own.
+        assert_eq!(items.len(), 1);
+        let reactions = &items[0].reactions;
+        assert_eq!(reactions.len(), 1);
+        assert!(reactions[0].own);
+        let people: Vec<_> = reactions[0].people.iter().map(|p| &*p.account).collect();
+        assert_eq!(people, ["a", "c"]);
+    }
+
+    #[test]
+    fn a_queued_removal_hides_an_own_reaction() {
+        let mut fold = Fold::new();
+        fold.apply(("b", "b1"), "m", text("eitt"));
+        fold.apply(("a", "a1"), "r0", react("m", false));
+        fold.apply(("c", "c1"), "r1", react("m", false));
+        fold.queue("r2", react("m", true));
+        let reactions = &fold.items()[0].reactions;
+        assert_eq!(reactions.len(), 1);
+        assert!(!reactions[0].own);
+        assert_eq!(reactions[0].people.len(), 1);
+        // The last own reaction taken back leaves no chip.
+        fold.apply(("c", "c1"), "r3", react("m", true));
+        assert!(fold.items()[0].reactions.is_empty());
+    }
+
+    #[test]
+    fn a_queued_reaction_and_its_echo_count_once() {
+        let mut fold = Fold::new();
+        fold.apply(("b", "b1"), "m", text("eitt"));
+        fold.queue("r1", react("m", false));
+        // The echo folds while the row is still in the outbox.
+        fold.apply(("a", "a1"), "r1", react("m", false));
+        let reactions = &fold.items()[0].reactions;
+        assert_eq!(reactions.len(), 1);
+        assert_eq!(reactions[0].people.len(), 1);
+        // And once the row is gone the result is the same.
+        let before = fold.items();
+        fold.store
+            .write(|tx| tx.execute("DELETE FROM outbox", []))
+            .unwrap();
+        assert_eq!(fold.items(), before);
+    }
+
+    #[test]
+    fn queued_reactions_apply_in_order() {
+        let mut fold = Fold::new();
+        fold.apply(("b", "b1"), "m", text("eitt"));
+        fold.queue("r1", react("m", false));
+        fold.queue("r2", react("m", true));
+        assert!(fold.items()[0].reactions.is_empty());
+        fold.queue("r3", react("m", false));
+        assert_eq!(fold.items()[0].reactions.len(), 1);
+    }
+
+    #[test]
+    fn a_queued_reaction_to_a_deleted_or_unknown_message_shows_nothing() {
+        let mut fold = Fold::new();
+        fold.apply(("b", "b1"), "m", text("eitt"));
+        fold.apply(("b", "b1"), "d", Body::Delete { target: "m".into() });
+        fold.queue("r1", react("m", false));
+        fold.queue("r2", react("x", false));
+        let items = fold.items();
+        assert_eq!(items.len(), 1);
+        assert!(items[0].reactions.is_empty());
+    }
+
+    #[test]
+    fn a_queued_edit_shows_its_text() {
+        let mut fold = Fold::new();
+        fold.apply(("a", "a1"), "m", text("eitt"));
+        fold.apply(("b", "b1"), "n", text("annað"));
+        let edit = |target: &str| Body::Edit {
+            target: target.into(),
+            text: "tvö".into(),
+        };
+        fold.queue("e1", edit("m"));
+        // Never another account's message.
+        fold.queue("e2", edit("n"));
+        let items = fold.items();
+        assert_eq!(
+            items[0].content,
+            Content::Text {
+                text: "tvö".into(),
+                reply_to: None
+            }
+        );
+        assert!(items[0].edited);
+        assert!(!items[1].edited);
+        assert_eq!(
+            items[1].content,
+            Content::Text {
+                text: "annað".into(),
+                reply_to: None
+            }
+        );
+    }
+
+    #[test]
+    fn a_queued_delete_shows_the_tombstone() {
+        let mut fold = Fold::new();
+        fold.apply(("a", "a1"), "m", text("eitt"));
+        fold.apply(("b", "b1"), "n", text("annað"));
+        fold.apply(("b", "b1"), "r", react("m", false));
+        fold.queue("d1", Body::Delete { target: "m".into() });
+        fold.queue("d2", Body::Delete { target: "n".into() });
+        let items = fold.items();
+        assert_eq!(items[0].content, Content::Deleted);
+        assert!(items[0].reactions.is_empty());
+        assert_ne!(items[1].content, Content::Deleted);
+        // The echo gives the same item.
+        let before = fold.items();
+        fold.apply(("a", "a1"), "d1", Body::Delete { target: "m".into() });
+        fold.store
+            .write(|tx| tx.execute("DELETE FROM outbox", []))
+            .unwrap();
+        let after = fold.items();
+        assert_eq!(after[0], before[0]);
     }
 
     #[test]

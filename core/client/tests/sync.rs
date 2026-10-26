@@ -337,6 +337,46 @@ fn own_messages_are_known_by_their_seq() {
     assert_eq!(a1.history(&conversation).len(), 1);
 }
 
+/// After a send the app syncs the chat on screen alone (0099): its outbox
+/// goes out and nothing is asked of any other conversation.
+#[test]
+fn syncing_one_conversation_touches_only_that_one() {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let mut c1 = Phone::new(&relay, "c", "c1");
+    let with_b = conversation(&mut a1, &mut b1);
+    let with_c = conversation(&mut a1, &mut c1);
+
+    a1.send(&with_b, "til b");
+    a1.send(&with_c, "til c");
+    let asked = relay.requests("a1").len();
+    let outcome = a1.client.sync_conversation(&with_b).unwrap();
+    assert_eq!(texts(&outcome.events), strings(&["til b"]));
+    assert_eq!(relay.stored(&with_b), 2);
+    assert_eq!(relay.stored(&with_c), 1, "the other chat's outbox waits");
+
+    let paths: Vec<String> = relay.requests("a1")[asked..]
+        .iter()
+        .map(|r| r.path.clone())
+        .collect();
+    assert!(!paths.is_empty());
+    for path in &paths {
+        assert!(
+            path.starts_with(&format!("/v1/conversations/{with_b}/")),
+            "{path}"
+        );
+    }
+
+    // The full sync still sends the rest.
+    a1.sync();
+    assert_eq!(relay.stored(&with_c), 2);
+    assert!(matches!(
+        a1.client.sync_conversation("nope"),
+        Err(ClientError::UnknownConversation)
+    ));
+}
+
 #[test]
 fn typing_is_relayed_and_never_stored() {
     let relay = Relay::new();

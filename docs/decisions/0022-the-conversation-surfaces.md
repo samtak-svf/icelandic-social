@@ -1,7 +1,7 @@
 # 0022. The core folds every conversation into a timeline; the apps only draw it
 
 - Status: accepted; implemented in the backend (ccccd11), the core (8854d2a, 0094e67, 590d20f) and both apps
-  (166ace8 to afb3ba6)
+  (166ace8 to afb3ba6); amended by 0099
 - Date: 2026-10-07
 - Decided by: the maintainer, approving the plan for the conversation UI after a review of it
 - Builds on: [0006](0006-device-local-history.md) (single writer),
@@ -11,7 +11,8 @@
   [0021](0021-group-info-and-external-join.md) (rejoining)
 - Amended by: [0034](0034-fljotid-and-the-wall.md) (every signed-in account sees a name; `open_direct`),
   [0045](0045-times-between-messages-and-one-reaction-pill.md) (times between messages, one
-  reaction pill), [0078](0078-a-group-name-leaving-and-who-changes-members.md) (a group's name is its title when it has one)
+  reaction pill), [0078](0078-a-group-name-leaving-and-who-changes-members.md) (a group's name is its title when it has one),
+  [0099](0099-what-this-device-did-shows-at-once.md) (what this device queued shows at once)
 - Media is [0023](0023-media-as-encrypted-blobs.md); block is [0024](0024-block.md); push is
   [0025](0025-push-without-ids.md).
 
