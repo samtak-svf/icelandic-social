@@ -38,7 +38,7 @@ class ConversationSharedTest {
 
     private fun TestScope.model(): ConversationViewModel {
         account.conversations = listOf(conversation("c1", person("a2", "Anna")))
-        return ConversationViewModel("c1", account, live, dispatcher) {
+        return ConversationViewModel("c1", account, live, dispatcher, { _, _ -> }) {
             FakeAccount.NOW.toLong() + testScheduler.currentTime
         }.also { runCurrent() }
     }

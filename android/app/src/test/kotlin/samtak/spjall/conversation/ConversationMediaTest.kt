@@ -45,7 +45,7 @@ class ConversationMediaTest {
 
     private fun TestScope.model(): ConversationViewModel {
         account.conversations = listOf(conversation("c1", person("a2", "Anna")))
-        return ConversationViewModel("c1", account, live, dispatcher) {
+        return ConversationViewModel("c1", account, live, dispatcher, { _, _ -> }) {
             FakeAccount.NOW.toLong() + testScheduler.currentTime
         }.also { runCurrent() }
     }
@@ -249,7 +249,7 @@ class ConversationMediaTest {
     fun aGroupHasNoOneToBlock() =
         runTest(dispatcher) {
             account.conversations = listOf(conversation("c1", person("a2", "Anna"), person("a3", "Bjarni")))
-            val model = ConversationViewModel("c1", account, live, dispatcher) { 0L }
+            val model = ConversationViewModel("c1", account, live, dispatcher, { _, _ -> }) { 0L }
             advanceUntilIdle()
             model.block()
             assertTrue(account.calls.none { it.startsWith("block") })
