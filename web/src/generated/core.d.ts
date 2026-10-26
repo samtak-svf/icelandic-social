@@ -66,10 +66,19 @@ export class Core {
     [Symbol.dispose](): void;
     beginLink(): DeviceLink;
     /**
+     * Takes a group's photo away (0094); the envelope id.
+     */
+    clearGroupPhoto(conversation_id: string): string;
+    /**
      * `{ accountId, deviceId, historyExpected, storeKeyShare: Uint8Array }`.
      */
     completeLink(): Enrolled;
     conversations(): Conversation[];
+    /**
+     * The JPEG of this device's copy of a group's photo, `null` when it has
+     * none (0094).
+     */
+    groupPhoto(conversation_id: string): Uint8Array | null;
     /**
      * `{ size, modules: Uint8Array }` for the page to draw.
      */
@@ -93,6 +102,11 @@ export class Core {
      * Queues a text message; the envelope id.
      */
     send(conversation_id: string, text: string): string;
+    /**
+     * Gives a group a photo (0094) from the bytes of a JPEG, PNG or WebP
+     * file; the core makes the square JPEG. The envelope id.
+     */
+    setGroupPhoto(conversation_id: string, bytes: Uint8Array): string;
     sync(): Outcome;
     /**
      * Up to `limit` items before the item `before` (a seq), oldest first:
@@ -119,8 +133,10 @@ export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_core_free: (a: number, b: number) => void;
     readonly core_beginLink: (a: number, b: number) => void;
+    readonly core_clearGroupPhoto: (a: number, b: number, c: number, d: number) => void;
     readonly core_completeLink: (a: number, b: number) => void;
     readonly core_conversations: (a: number, b: number) => void;
+    readonly core_groupPhoto: (a: number, b: number, c: number, d: number) => void;
     readonly core_linkQr: (a: number, b: number, c: number) => void;
     readonly core_linkState: (a: number, b: number) => void;
     readonly core_me: (a: number, b: number) => void;
@@ -128,6 +144,7 @@ export interface InitOutput {
     readonly core_open: (a: number, b: number) => number;
     readonly core_receiveHistory: (a: number, b: number) => void;
     readonly core_send: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+    readonly core_setGroupPhoto: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly core_sync: (a: number, b: number) => void;
     readonly core_timeline: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly core_wipe: (a: number) => number;
@@ -142,8 +159,8 @@ export interface InitOutput {
     readonly rust_sqlite_wasm_realloc: (a: number, b: number) => number;
     readonly sqlite3_os_end: () => number;
     readonly sqlite3_os_init: () => number;
-    readonly __wasm_bindgen_func_elem_6169: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_6184: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6728: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6743: (a: number, b: number, c: number, d: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;
