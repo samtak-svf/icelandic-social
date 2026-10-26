@@ -51,6 +51,10 @@ protocol Account: Sendable {
     func addAccounts(_ conversation: String, accounts: [String]) throws
     func removeAccounts(_ conversation: String, accounts: [String]) throws
     @discardableResult func rename(_ conversation: String, name: String?) throws -> String
+    /// Sets the group's photo from the image file at `path` (decision 0094); queued like a message.
+    @discardableResult func setGroupPhoto(conversationId: String, path: String) throws -> String
+    /// Removes the group's photo (decision 0094); queued like a message.
+    @discardableResult func clearGroupPhoto(conversationId: String) throws -> String
     func leave(_ conversation: String) throws
     /// The 1:1 with whoever made this invite, made if there is none; its id.
     func openInvite(token: String) throws -> String
@@ -238,6 +242,14 @@ final class CoreAccount: Account, @unchecked Sendable {
 
     @discardableResult func rename(_ conversation: String, name: String?) throws -> String {
         try core().rename(conversation: conversation, name: name)
+    }
+
+    @discardableResult func setGroupPhoto(conversationId: String, path: String) throws -> String {
+        try core().setGroupPhoto(conversation: conversationId, path: path)
+    }
+
+    @discardableResult func clearGroupPhoto(conversationId: String) throws -> String {
+        try core().clearGroupPhoto(conversation: conversationId)
     }
 
     func leave(_ conversation: String) throws {
