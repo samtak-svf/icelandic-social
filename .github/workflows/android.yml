@@ -127,11 +127,57 @@ jobs:
           working-directory: android
           script: ./gradlew --console=plain connectedDebugAndroidTest
 
+      # One AVD per Mac, shared with agent runs (scripts/mac-remote.mjs in agent-config takes the
+      # same lock, docs/samtak-mac-workloads.md there). The owner is this job's Runner.Worker,
+      # so a killed job's lock is stale at once. Until ~/remote/bin/mac-lock.sh exists on the
+      # runner (mac-remote installs it) the step warns and goes on unlocked.
+      - name: Take the AVD lock
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          LOCK_WHO: ci ${{ github.repository }} run ${{ github.run_id }}
+        run: |
+          lock="$HOME/remote/bin/mac-lock.sh"
+          if [ ! -x "$lock" ]; then
+            echo "::warning::$lock is missing, so the AVD is not locked against agent runs"
+            exit 0
+          fi
+          pid=$$
+          while [ "${pid:-0}" -gt 1 ]; do
+            read -r ppid comm <<< "$(ps -o ppid= -o comm= -p "$pid")"
+            case "$comm" in *Runner.Worker*) break ;; esac
+            pid=$ppid
+          done
+          case "$comm" in
+            *Runner.Worker*) ;;
+            *) echo "::error::no Runner.Worker process above this step, so there is no pid to own the AVD lock"; exit 1 ;;
+          esac
+          "$lock" acquire android-avd --wait 1800 --owner-pid "$pid" --who "$LOCK_WHO"
+
       - name: Instrumented tests (the Mac's AVD)
         if: runner.os == 'macOS'
         run: android/scripts/test.sh --connected
         env:
           GITHUB_TOKEN: ${{ github.token }} # the script fetches the core again on a fresh checkout
+
+      - name: Release the AVD lock
+        if: always() && runner.os == 'macOS'
+        shell: bash
+        run: |
+          lock="$HOME/remote/bin/mac-lock.sh"
+          [ -x "$lock" ] || exit 0
+          pid=$$
+          while [ "${pid:-0}" -gt 1 ]; do
+            read -r ppid comm <<< "$(ps -o ppid= -o comm= -p "$pid")"
+            case "$comm" in *Runner.Worker*) break ;; esac
+            pid=$ppid
+          done
+          case "$comm" in
+            *Runner.Worker*) ;;
+            *) echo "::error::no Runner.Worker process above this step, so there is no pid to own the AVD lock"; exit 1 ;;
+          esac
+          # Exit 4 means the lock is someone else's (this job never got it): leave it alone.
+          "$lock" release android-avd --owner-pid "$pid" || [ $? -eq 4 ]
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
