@@ -21,7 +21,7 @@ class BrandConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) =
         with(target) {
             val idsFile = repoRoot.resolve("identifiers/ids.json")
-            val strings = repoRoot.resolve("android/core/brand/src/main/res/values/strings.xml")
+            val strings = repoRoot.resolve("android/core/brand/src/generated/res/values/strings.xml")
             if (!strings.exists()) {
                 throw GradleException("android/core/brand has no generated resources: run pnpm brand:gen")
             }

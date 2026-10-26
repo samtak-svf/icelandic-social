@@ -18,8 +18,8 @@ import { copyRepo, editJson } from "./helpers.mjs";
 
 const BRAND = brandNames()[0] ?? "";
 const STRINGS = `brand/${BRAND}/strings.is.json`;
-const RES = "android/core/brand/src/main/res";
-const KOTLIN = "android/core/brand/src/main/kotlin/samtak/spjall/brand/BrandTokens.kt";
+const RES = "android/core/brand/src/generated/res";
+const KOTLIN = "android/core/brand/src/generated/kotlin/samtak/spjall/brand/BrandTokens.kt";
 const XCSTRINGS = "ios/Generated/Localizable.xcstrings";
 const WEB = "web/src/generated/brand";
 const IOS_ICON = "ios/Generated/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png";
@@ -53,6 +53,25 @@ function generated(root) {
 describe("brand-gen", () => {
   it("matches the committed outputs", () => {
     expect(run({ name: BRAND, check: true }).stale).toEqual([]);
+  });
+
+  it("writes only into generated directories, bar the named exceptions", () => {
+    /** Outputs a tool or platform names, so they cannot sit in a directory called `generated`. */
+    const exceptions = new Map([
+      [
+        "backend/src/brand.gen.ts",
+        "the `.gen.ts` suffix is the generated-file marker for TypeScript files",
+      ],
+      [
+        "ios/Generated/",
+        "XcodeGen's project.yml and the Swift sources read the capitalised directory",
+      ],
+    ]);
+    const outside = generate(BRAND)
+      .files.map((f) => f.path)
+      .filter((path) => !path.split("/").includes("generated"))
+      .filter((path) => ![...exceptions.keys()].some((key) => path.startsWith(key)));
+    expect(outside).toEqual([]);
   });
 
   it("writes only paths it owns", () => {

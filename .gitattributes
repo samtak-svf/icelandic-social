@@ -1,0 +1,8 @@
+# Generated output: collapsed in diffs and left out of language statistics. The directory
+# convention (docs/decisions/0004 and AGENTS.md "Apps read generated files") is `generated/`;
+# the rest are the names a tool dictates.
+**/generated/** linguist-generated=true
+ios/Generated/** linguist-generated=true
+backend/src/brand.gen.ts linguist-generated=true
+**/*.gen.ts linguist-generated=true
+api/openapi.json linguist-generated=true

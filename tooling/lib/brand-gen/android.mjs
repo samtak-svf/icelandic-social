@@ -12,8 +12,8 @@ import { keysFor, positional } from "./strings.mjs";
  * @typedef {import("./strings.mjs").OutputFile} OutputFile
  */
 
-const RES = "android/core/brand/src/main/res";
-const KOTLIN = "android/core/brand/src/main/kotlin/samtak/spjall/brand/BrandTokens.kt";
+const RES = "android/core/brand/src/generated/res";
+const KOTLIN = "android/core/brand/src/generated/kotlin/samtak/spjall/brand/BrandTokens.kt";
 
 /** Launcher foreground per density: the 108 dp adaptive-icon canvas. */
 const DENSITIES = /** @type {const} */ ([
