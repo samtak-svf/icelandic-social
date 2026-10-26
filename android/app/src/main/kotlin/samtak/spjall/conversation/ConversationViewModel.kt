@@ -405,6 +405,32 @@ class ConversationViewModel(
         }
     }
 
+    /**
+     * Gives the group the photo [read] makes (0094), or replaces its photo: a file of the picked image, which is
+     * deleted once the core has read it. The core makes the square and seals it; everyone in the group hears of it.
+     */
+    fun setGroupPhoto(read: () -> File) {
+        perform({ setGroupPhoto(read) }, ::groupPhotoProblem) {
+            val file = read()
+            try {
+                account.setGroupPhoto(id, file.path)
+            } finally {
+                file.delete()
+            }
+            live.sync()
+            load()
+        }
+    }
+
+    /** Removes the group's photo, for everyone in it (0094). */
+    fun clearGroupPhoto() {
+        perform(::clearGroupPhoto, ::groupPhotoProblem) {
+            account.clearGroupPhoto(id)
+            live.sync()
+            load()
+        }
+    }
+
     /** Removes [member] from the group, for everyone (0078). */
     fun remove(member: String) {
         perform({ remove(member) }) {
@@ -597,6 +623,7 @@ class ConversationViewModel(
 
     private fun perform(
         again: () -> Unit,
+        problem: (Throwable) -> Problem = Throwable::problem,
         action: suspend () -> Unit,
     ) {
         _state.update { it.copy(problem = null) }
@@ -606,14 +633,25 @@ class ConversationViewModel(
                 failed = null
             } catch (e: CoreException) {
                 failed = again
-                _state.update { it.copy(problem = e.problem()) }
-            } catch (_: IOException) {
+                _state.update { it.copy(problem = problem(e)) }
+            } catch (e: IOException) {
                 // The picked file could not be read.
                 failed = again
-                _state.update { it.copy(problem = Problem.Generic()) }
+                _state.update { it.copy(problem = problem(e)) }
             }
         }
     }
+
+    /**
+     * A file the core or the device cannot read is the picture's fault, a lost connection says so as everywhere
+     * else, and anything else is the call's (0094).
+     */
+    private fun groupPhotoProblem(e: Throwable): Problem =
+        when (e) {
+            is CoreException.UnsupportedImage, is IOException -> Problem.GroupPhotoUnsupported
+            is CoreException.Unreachable -> Problem.Unreachable
+            else -> Problem.GroupPhotoFailed
+        }
 
     private companion object {
         const val PAGE = 50u

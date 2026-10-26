@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Shader
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasText
@@ -12,6 +13,7 @@ import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -36,8 +38,11 @@ import samtak.spjall.core.Mute
 import samtak.spjall.core.MuteFor
 import samtak.spjall.core.Person
 import samtak.spjall.socket.item
+import samtak.spjall.ui.FilePhotos
 import samtak.spjall.ui.IcelandZone
+import samtak.spjall.ui.LocalPhotos
 import samtak.spjall.ui.clockTime
+import samtak.spjall.ui.squarePhoto
 import android.graphics.Color as AndroidColor
 
 /**
@@ -88,6 +93,14 @@ class ConversationInfoScreenshotTest {
                 calls += "rename $name"
             }
 
+            override fun setPhoto() {
+                calls += "setPhoto"
+            }
+
+            override fun clearPhoto() {
+                calls += "clearPhoto"
+            }
+
             override fun remove(account: String) {
                 calls += "remove $account"
             }
@@ -125,21 +138,24 @@ class ConversationInfoScreenshotTest {
         shared: List<Item> = emptyList(),
         state: ConversationState = ConversationState.ACTIVE,
         name: String? = null,
+        photo: String? = null,
     ) {
         val path = landscape()
-        val conversation = Conversation("c1", state, name, null, members, null, 0u, timer, mute)
+        val conversation = Conversation("c1", state, name, photo, members, null, 0u, timer, mute)
         val ready = shared.filter { it.isPhoto() }.associate { it.seq!! to ConversationViewModel.Media.Ready(path) }
         compose.setContent {
             DecodingTheme {
-                ConversationInfoScreen(
-                    ConversationViewModel.State(
-                        conversation = conversation,
-                        loaded = true,
-                        shared = ConversationViewModel.Shared(shared, loaded = true, more = false),
-                        media = ready,
-                    ),
-                    actions,
-                )
+                CompositionLocalProvider(LocalPhotos provides FilePhotos) {
+                    ConversationInfoScreen(
+                        ConversationViewModel.State(
+                            conversation = conversation,
+                            loaded = true,
+                            shared = ConversationViewModel.Shared(shared, loaded = true, more = false),
+                            media = ready,
+                        ),
+                        actions,
+                    )
+                }
             }
         }
         compose.waitForIdle()
@@ -178,6 +194,52 @@ class ConversationInfoScreenshotTest {
     fun aGroupWithNothingSharedAtNight() {
         show(members = listOf(anna, bjorn), mute = Mute.Always)
         compose.onRoot().captureRoboImage()
+    }
+
+    /** A group's own photo (0094), drawn here, with the way to change or remove it and who sees it. */
+    @Test
+    fun aGroupWithAPhoto() {
+        show(members = listOf(anna, bjorn), name = "Bókaklúbbur", photo = groupPhoto())
+        compose.onNodeWithContentDescription(context.getString(R.string.group_photo_alt)).assertExists()
+        compose.onRoot().captureRoboImage()
+    }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun aGroupWithAPhotoAtNight() {
+        show(members = listOf(anna, bjorn), name = "Bókaklúbbur", photo = groupPhoto())
+        compose.onRoot().captureRoboImage()
+    }
+
+    @Test
+    fun aGroupWithoutAPhotoOffersToChooseOne() {
+        show(members = listOf(anna, bjorn))
+        compose.onNodeWithText(context.getString(R.string.group_photo_seen_by_members)).assertExists()
+        compose.onNodeWithText(context.getString(R.string.group_photo_change)).assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.group_photo_remove)).assertDoesNotExist()
+        compose.onNodeWithContentDescription(context.getString(R.string.group_photo_alt)).assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.group_photo_choose)).performClick()
+        assertEquals(listOf("setPhoto"), calls)
+    }
+
+    @Test
+    fun aGroupWithAPhotoChangesItAndRemovesItAfterAsking() {
+        show(members = listOf(anna, bjorn), photo = groupPhoto())
+        compose.onNodeWithText(context.getString(R.string.group_photo_choose)).assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.group_photo_change)).performClick()
+        compose.onNodeWithText(context.getString(R.string.group_photo_remove)).performClick()
+        assertEquals("nothing is removed before the person agrees", listOf("setPhoto"), calls)
+        inDialog(context.getString(R.string.group_photo_remove_confirm)).assertExists()
+        inDialog(context.getString(R.string.group_photo_remove)).performClick()
+        assertEquals(listOf("setPhoto", "clearPhoto"), calls)
+    }
+
+    @Test
+    fun aOneToOneOffersNoPhotoControl() {
+        show()
+        compose.onNodeWithText(context.getString(R.string.group_photo_choose)).assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.group_photo_change)).assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.group_photo_seen_by_members)).assertDoesNotExist()
     }
 
     @Test
@@ -322,6 +384,10 @@ class ConversationInfoScreenshotTest {
 
     /** The one node with [text] that is inside the dialog, which may say the same words as the row that opened it. */
     private fun inDialog(text: String) = compose.onNode(hasText(text) and hasAnyAncestor(isDialog()))
+
+    /** A group's photo as the core keeps it, drawn here (0094). */
+    private fun groupPhoto(): String =
+        squarePhoto(folder.newFile("group.jpg"), AndroidColor.rgb(0x6B, 0x8F, 0x71), AndroidColor.rgb(0xD9, 0xB3, 0x8C))
 
     /** A small landscape photo, drawn here so the file holds no real one. */
     private fun landscape(): String {

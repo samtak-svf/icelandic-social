@@ -4,6 +4,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
@@ -53,6 +55,14 @@ class ConversationInfoScreenTest {
                 calls += "rename $name"
             }
 
+            override fun setPhoto() {
+                calls += "setPhoto"
+            }
+
+            override fun clearPhoto() {
+                calls += "clearPhoto"
+            }
+
             override fun remove(account: String) {
                 calls += "remove $account"
             }
@@ -75,7 +85,11 @@ class ConversationInfoScreenTest {
     private val anna = Person("a2", "Anna Jónsdóttir", true)
     private val bjorn = Person("a3", "Björn Sigurðsson", false)
 
-    private fun show(name: String? = null) {
+    private fun show(
+        name: String? = null,
+        members: List<Person> = listOf(anna, bjorn),
+        photo: String? = null,
+    ) {
         compose.setContent {
             SpjallTheme {
                 ConversationInfoScreen(
@@ -85,7 +99,8 @@ class ConversationInfoScreenTest {
                                 id = "c1",
                                 state = ConversationState.ACTIVE,
                                 name = name,
-                                members = listOf(anna, bjorn),
+                                photo = photo,
+                                members = members,
                                 last = null,
                                 unread = 0u,
                                 timer = null,
@@ -97,6 +112,31 @@ class ConversationInfoScreenTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun aGroupWithoutAPhotoChoosesOne() {
+        show()
+        compose.onNodeWithText(text(R.string.group_photo_choose)).performClick()
+        assertEquals(listOf("setPhoto"), calls)
+    }
+
+    @Test
+    fun aGroupWithAPhotoChangesItAndRemovesItAfterAsking() {
+        show(photo = "/data/group.jpg")
+        compose.onNodeWithText(text(R.string.group_photo_change)).performClick()
+        compose.onNodeWithText(text(R.string.group_photo_remove)).performClick()
+        compose.onNodeWithText(text(R.string.group_photo_remove_confirm)).assertIsDisplayed()
+        assertEquals(listOf("setPhoto"), calls)
+        compose.onAllNodesWithText(text(R.string.group_photo_remove)).onLast().performClick()
+        assertEquals(listOf("setPhoto", "clearPhoto"), calls)
+    }
+
+    @Test
+    fun aOneToOneShowsNoPhotoControl() {
+        show(members = listOf(anna))
+        compose.onNodeWithText(text(R.string.group_photo_choose)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.group_photo_change)).assertDoesNotExist()
     }
 
     @Test

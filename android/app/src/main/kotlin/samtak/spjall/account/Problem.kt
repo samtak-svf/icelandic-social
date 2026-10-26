@@ -49,6 +49,12 @@ sealed interface Problem {
     /** The community stopped allowing anonymous posts meanwhile (`anonymous_off`, 0091). */
     data object AnonymousOff : Problem
 
+    /** The picked image could not be read for a group photo (0094): trying the same file again cannot help. */
+    data object GroupPhotoUnsupported : Problem
+
+    /** A group photo could not be set or removed (0094). */
+    data object GroupPhotoFailed : Problem
+
     /** Anything else. */
     data class Generic(
         override val requestId: String? = null,

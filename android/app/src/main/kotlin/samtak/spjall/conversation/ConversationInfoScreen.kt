@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -61,6 +62,7 @@ import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.CancelButton
 import samtak.spjall.ui.NameWithMark
 import samtak.spjall.ui.Palette
+import samtak.spjall.ui.PhotoKind
 import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.SectionLabel
 import samtak.spjall.ui.avatarKind
@@ -178,12 +180,19 @@ private fun Who(
         modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        val photo = conversation.photoOf()
+        val alt = stringResource(R.string.group_photo_alt)
         Avatar(
             name = one?.name ?: conversation.title(),
             kind = conversation.avatarKind(),
             size = LARGE_AVATAR.dp,
-            photo = conversation.photoOf(),
+            photo = photo,
+            modifier =
+                if (photo?.kind == PhotoKind.GroupFile) Modifier.semantics { contentDescription = alt } else Modifier,
         )
+        if (one == null) {
+            GroupPhotoControls(hasPhoto = conversation.photo != null, actions::setPhoto, actions::clearPhoto)
+        }
         NameWithMark(
             name = one?.shownName() ?: conversation.title(),
             verified = one?.verified == true,
@@ -196,6 +205,57 @@ private fun Who(
             GroupActions(actions::add, onRename)
             Members(conversation) { actions.remove(it.account) }
         }
+    }
+}
+
+/**
+ * Under a group's avatar (0094): choose a photo when it has none, else change or remove it; removing asks first,
+ * as it takes the photo from everyone. The line says who sees it.
+ */
+@Composable
+private fun GroupPhotoControls(
+    hasPhoto: Boolean,
+    onSet: () -> Unit,
+    onClear: () -> Unit,
+) {
+    var removing by rememberSaveable { mutableStateOf(false) }
+    Column(
+        modifier = Modifier.padding(top = 12.dp, start = 16.dp, end = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        OutlinedButton(onClick = onSet, modifier = Modifier.heightIn(min = ACTION.dp)) {
+            Text(stringResource(if (hasPhoto) R.string.group_photo_change else R.string.group_photo_choose))
+        }
+        if (hasPhoto) {
+            TextButton(
+                onClick = { removing = true },
+                modifier = Modifier.heightIn(min = ACTION.dp),
+                colors = ButtonDefaults.textButtonColors(contentColor = Palette.danger),
+            ) { Text(stringResource(R.string.group_photo_remove)) }
+        }
+    }
+    Text(
+        text = stringResource(R.string.group_photo_seen_by_members),
+        style = MaterialTheme.typography.bodySmall,
+        color = Palette.mutedFg,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+    )
+    if (removing) {
+        AlertDialog(
+            onDismissRequest = { removing = false },
+            text = { Text(stringResource(R.string.group_photo_remove_confirm)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        removing = false
+                        onClear()
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Palette.danger),
+                ) { Text(stringResource(R.string.group_photo_remove)) }
+            },
+            dismissButton = { CancelButton(onClick = { removing = false }) },
+        )
     }
 }
 
