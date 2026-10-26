@@ -645,6 +645,28 @@ const MIGRATIONS: &[(u32, &str)] = &[
              SELECT group_id, seq, account, emoji FROM reactions_0094;
          DROP TABLE reactions_0094;",
     ),
+    (
+        19,
+        // Decision 0101: one reaction per person on a message.
+        "-- `reactions` again, keyed by account alone: a message takes one
+         -- reaction from each person, and a new emoji replaces the old one.
+         -- A store that holds several from one account keeps the smallest
+         -- emoji; the order they were added in is not stored, so no other
+         -- choice is better founded.
+         CREATE TABLE reactions_0101 (
+             group_id BLOB NOT NULL,
+             seq      INTEGER NOT NULL,
+             account  TEXT NOT NULL,
+             emoji    TEXT NOT NULL,
+             PRIMARY KEY (group_id, seq, account),
+             FOREIGN KEY (group_id, seq) REFERENCES timeline (group_id, seq) ON DELETE CASCADE
+         ) STRICT, WITHOUT ROWID;
+         INSERT INTO reactions_0101 (group_id, seq, account, emoji)
+             SELECT group_id, seq, account, MIN(emoji)
+             FROM reactions GROUP BY group_id, seq, account;
+         DROP TABLE reactions;
+         ALTER TABLE reactions_0101 RENAME TO reactions;",
+    ),
 ];
 
 /// The migrations every store has run before `REPAIRS` apply: from 15 on,
@@ -1123,6 +1145,57 @@ mod tests {
             .unwrap();
         }
         tx.commit().unwrap();
+    }
+
+    /// Migration 19 (0101) keys `reactions` by account: a store that holds
+    /// several emoji from one account on one message keeps the smallest by
+    /// bytes, and the table refuses a second one afterwards.
+    #[test]
+    fn one_reaction_per_account_survives_the_migration() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(FILE_NAME);
+        let mut old = connect(&path, &KEY).unwrap();
+        migrate(&mut old, &MIGRATIONS[..18]).unwrap();
+        old.execute_batch(
+            "INSERT INTO conversations (group_id, cursor, created_at) VALUES (x'01', 2, 0);
+             INSERT INTO timeline (group_id, seq, kind, sender_account, sender_device,
+                                   envelope_id, ts, stored_at, text)
+                 VALUES (x'01', 1, 'text', 'a', 'a1', 'm1', 1, 1, 'hæ');
+             INSERT INTO reactions VALUES (x'01', 1, 'b', '👍');
+             INSERT INTO reactions VALUES (x'01', 1, 'b', '❤️');
+             INSERT INTO reactions VALUES (x'01', 1, 'c', '😂');",
+        )
+        .unwrap();
+        drop(old);
+
+        let mut store = Store::open(dir.path(), &KEY).unwrap();
+        let mut statement = store
+            .connection
+            .prepare("SELECT account, emoji FROM reactions ORDER BY account")
+            .unwrap();
+        let kept: Vec<(String, String)> = statement
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+            .unwrap()
+            .collect::<rusqlite::Result<_>>()
+            .unwrap();
+        drop(statement);
+        assert_eq!(
+            kept,
+            vec![("b".into(), "❤️".into()), ("c".into(), "😂".into())]
+        );
+        assert!(refused(
+            &mut store,
+            "INSERT INTO reactions VALUES (x'01', 1, 'c', '🎉')"
+        ));
+        // The cascade still holds.
+        store
+            .write(|tx| tx.execute("DELETE FROM timeline WHERE seq = 1", []))
+            .unwrap();
+        let left: u32 = store
+            .connection
+            .query_row("SELECT COUNT(*) FROM reactions", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(left, 0);
     }
 
     /// Migration 12 rebuilds the timeline (0040); the rows and the

@@ -1168,6 +1168,127 @@ fn the_timeline_shows_each_message_as_it_now_is() {
     }
 }
 
+/// Reacts as `phone` to the message `target`.
+fn react(phone: &mut Phone, conversation: &str, target: &str, emoji: &str, remove: bool) {
+    phone
+        .client
+        .send(
+            conversation,
+            Body::Reaction {
+                target: target.into(),
+                emoji: emoji.into(),
+                remove,
+            },
+        )
+        .unwrap();
+}
+
+/// What each reaction on the newest item reads as: emoji and who.
+fn reactions_of(phone: &mut Phone, conversation: &str) -> Vec<(String, Vec<String>, bool)> {
+    items(phone, conversation)
+        .pop()
+        .unwrap()
+        .reactions
+        .into_iter()
+        .map(|r| {
+            (
+                r.emoji,
+                r.people.into_iter().map(|p| p.account).collect(),
+                r.own,
+            )
+        })
+        .collect()
+}
+
+/// One message from `b`, delivered to `a1`, with its envelope id.
+fn one_message() -> (Arc<Relay>, Phone, Phone, String, String) {
+    let relay = Relay::new();
+    let mut a1 = Phone::new(&relay, "a", "a1");
+    let mut b1 = Phone::new(&relay, "b", "b1");
+    let chat = conversation(&mut a1, &mut b1);
+    b1.send(&chat, "hæ");
+    b1.sync();
+    a1.deliver();
+    let id = items(&mut a1, &chat).pop().unwrap().envelope_id.unwrap();
+    (relay, a1, b1, chat, id)
+}
+
+#[test]
+fn a_new_reaction_replaces_the_earlier_one_on_every_device() {
+    let relay = Relay::new();
+    let (mut a1, mut a2, mut b1, chat) = with_a_sibling(&relay);
+    b1.send(&chat, "hæ");
+    b1.sync();
+    a1.deliver();
+    a2.deliver();
+    let id = items(&mut a1, &chat).pop().unwrap().envelope_id.unwrap();
+    react(&mut a1, &chat, &id, "👍", false);
+    a1.sync();
+    react(&mut a1, &chat, &id, "❤️", false);
+    a1.sync();
+    b1.deliver();
+    a2.deliver();
+    for phone in [&mut a1, &mut b1, &mut a2] {
+        let own = phone.account == "a";
+        assert_eq!(
+            reactions_of(phone, &chat),
+            vec![("❤️".to_string(), vec!["a".to_string()], own)]
+        );
+    }
+}
+
+#[test]
+fn a_replacing_reaction_shows_at_once_before_any_sync() {
+    let (_relay, mut a1, _b1, chat, id) = one_message();
+    react(&mut a1, &chat, &id, "👍", false);
+    react(&mut a1, &chat, &id, "❤️", false);
+    assert_eq!(
+        reactions_of(&mut a1, &chat),
+        vec![("❤️".to_string(), vec!["a".to_string()], true)]
+    );
+    // Another person's reaction on the same message is left alone.
+    a1.sync();
+    assert_eq!(reactions_of(&mut a1, &chat).len(), 1);
+}
+
+#[test]
+fn a_replacing_reaction_queues_the_old_one_taken_back_first() {
+    let (relay, mut a1, _b1, chat, id) = one_message();
+    let stored = relay.stored(&chat);
+    // Nothing shown yet: the add goes alone.
+    react(&mut a1, &chat, &id, "👍", false);
+    a1.sync();
+    assert_eq!(relay.stored(&chat), stored + 1);
+    // Shown from the fold: a take-back and the add.
+    react(&mut a1, &chat, &id, "❤️", false);
+    a1.sync();
+    assert_eq!(relay.stored(&chat), stored + 3);
+    // Still queued, not folded: the queued add is replaced too.
+    react(&mut a1, &chat, &id, "😂", false);
+    react(&mut a1, &chat, &id, "🎉", false);
+    a1.sync();
+    assert_eq!(relay.stored(&chat), stored + 3 + 2 + 2);
+    // The same emoji again adds only itself.
+    react(&mut a1, &chat, &id, "🎉", false);
+    a1.sync();
+    assert_eq!(relay.stored(&chat), stored + 3 + 2 + 2 + 1);
+}
+
+#[test]
+fn taking_back_the_current_reaction_leaves_none() {
+    let (_relay, mut a1, mut b1, chat, id) = one_message();
+    react(&mut a1, &chat, &id, "👍", false);
+    react(&mut a1, &chat, &id, "❤️", false);
+    a1.sync();
+    b1.deliver();
+    react(&mut a1, &chat, &id, "❤️", true);
+    assert!(reactions_of(&mut a1, &chat).is_empty());
+    a1.sync();
+    b1.deliver();
+    assert!(reactions_of(&mut a1, &chat).is_empty());
+    assert!(reactions_of(&mut b1, &chat).is_empty());
+}
+
 #[test]
 fn unread_counts_and_read_markers_follow_the_toggle() {
     let relay = Relay::new();
