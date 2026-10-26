@@ -144,10 +144,9 @@ describe("jurisdiction-check, live", () => {
     expect(result.ok).toHaveLength(1 + bound.length);
   });
 
-  it("does not ask for a frozen bucket that nothing binds", async () => {
-    // spjall-artifacts is a frozen id that decision 0013 retired; no config
-    // binds it, so its absence is not a residency problem.
-    expect(Object.values(cloudflare.r2)).toContain("spjall-artifacts");
+  it("asks only for the buckets the Worker binds, and every frozen bucket is bound", async () => {
+    // Decision 0102 retired the one frozen bucket nothing bound.
+    expect([...Object.values(cloudflare.r2)].sort()).toEqual([...bound].sort());
     const api = fakeApi({ d1: "eu", r2: bound });
     const result = await checkLive({
       accountId: "acct",
@@ -157,7 +156,7 @@ describe("jurisdiction-check, live", () => {
       fetch: api.fetch,
     });
     expect(result.problems).toEqual([]);
-    expect(api.seen.some((s) => s.includes("spjall-artifacts"))).toBe(false);
+    expect(api.seen.filter((s) => s.includes("/r2/buckets/"))).toHaveLength(bound.length);
   });
 
   it("fails on a D1 created without --jurisdiction eu", async () => {

@@ -122,8 +122,8 @@ pre-push:
         cd core && cargo fmt --all --check && cargo clippy --quiet --workspace --all-targets -- -D warnings
 
     # Plain file checks, each well under a second: skipped tests, D1 migrations
-    # (and the released ones frozen), file line caps, and the shared vectors
-    # and frame sizes the clients read.
+    # (and the released ones frozen), file line caps, the shared vectors and
+    # frame sizes the clients read, and the INDEX.md ranges into AGENTS.md.
     quarantine:
       run: node tooling/quarantine.mjs
 
@@ -138,6 +138,9 @@ pre-push:
 
     frames:
       run: node tooling/frames-check.mjs
+
+    index:
+      run: node tooling/index-check.mjs
 
     # The contract: spec matches zod, the Kotlin frames and the web client match spec.
     contract:

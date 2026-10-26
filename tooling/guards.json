@@ -17,13 +17,13 @@
       "stages": ["push", "ci"]
     },
     {
-      "name": "core-dto",
-      "script": "core-dto-guard",
+      "name": "core",
+      "script": "core-guard",
       "stages": ["push", "ci"]
     },
     {
-      "name": "core",
-      "script": "core-guard",
+      "name": "core-dto",
+      "script": "core-dto-guard",
       "stages": ["push", "ci"]
     },
     {
@@ -45,6 +45,11 @@
     {
       "name": "ids-freeze",
       "script": "ids-freeze",
+      "stages": ["push", "ci"]
+    },
+    {
+      "name": "index",
+      "script": "index-check",
       "stages": ["push", "ci"]
     },
     {

@@ -1,6 +1,7 @@
 # 0013. The published core is a GitHub release, not an R2 object
 
-- Status: accepted; amended by 0075 (the repo is now samtak-svf/icelandic-social)
+- Status: accepted; amended by 0075 (the repo is now samtak-svf/icelandic-social) and
+  0102 (the R2 id below is retired)
 - Date: 2026-10-05
 - Decided by: Guðröður, approving the plan that acted on the phase-0 review (2026-10-06)
 
@@ -18,7 +19,7 @@
 - **The checksum pin is unchanged.** The lock still pins each zip's SHA-256, moves only by
   PR, and `fetch` writes nothing until the download matches.
 - **R2 `spjall-artifacts` stays a frozen name** in `identifiers/ids.json`, unused for now.
-  Nothing needs to create it before the apps can fetch a core.
+  Nothing needs to create it before the apps can fetch a core. (Retired by 0102.)
 
 ## Why
 

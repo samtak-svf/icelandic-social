@@ -1,6 +1,12 @@
 // @ts-check
 import { describe, expect, it } from "vitest";
-import { findInWorkflow, findProblems } from "../workflow-guard.mjs";
+import {
+  actionPathProblems,
+  findInAction,
+  findInWorkflow,
+  findProblems,
+  RUNNER_EXPRESSIONS,
+} from "../workflow-guard.mjs";
 
 const SHA = "a".repeat(40);
 const job = (/** @type {string} */ body) => `on: push\njobs:\n  x:\n${body}`;
@@ -128,5 +134,60 @@ describe("workflow-guard", () => {
     // The action in one job does not cover the next one.
     const two = job(`    steps:\n${action}  y:\n    steps:\n${cache}`);
     expect(findInWorkflow("w.yml", two).map((p) => [p.line, p.rule])).toEqual([[8, "cargo-home"]]);
+  });
+
+  it("wants each runner variable's runs-on expression byte for byte", () => {
+    for (const [variable, expression] of Object.entries(RUNNER_EXPRESSIONS)) {
+      expect(findInWorkflow("w.yml", job(`    runs-on: ${expression}\n`))).toEqual(
+        variable === "EXCLUSIVE_RUNNER_LABELS"
+          ? [expect.objectContaining({ rule: "exclusive-lane" })]
+          : [],
+      );
+    }
+    // Still fork-safe, yet not the canonical text: an extra space, another hosted image.
+    const spaced = RUNNER_EXPRESSIONS.RUNNER_LABELS?.replace("fromJSON(", "fromJSON( ") ?? "";
+    const other =
+      RUNNER_EXPRESSIONS.RUNNER_LABELS?.replaceAll("ubuntu-latest", "ubuntu-24.04") ?? "";
+    for (const runsOn of [spaced, other]) {
+      expect(findInWorkflow("w.yml", job(`    runs-on: ${runsOn}\n`)).map((p) => p.rule)).toEqual([
+        "runner-expr",
+      ]);
+    }
+    // A variable the guard does not know has no canonical form.
+    const unknown =
+      RUNNER_EXPRESSIONS.RUNNER_LABELS?.replaceAll("RUNNER_LABELS", "NEW_LABELS") ?? "";
+    expect(findInWorkflow("w.yml", job(`    runs-on: ${unknown}\n`)).map((p) => p.rule)).toEqual([
+      "runner-expr",
+    ]);
+  });
+
+  it("counts core-artifact as the toolchain action, and walks the composite actions", () => {
+    const cache = `      - uses: Swatinem/rust-cache@${SHA} # v2.9.2\n`;
+    const artifact = "      - uses: ./.github/actions/core-artifact\n";
+    expect(findInWorkflow("w.yml", job(`    steps:\n${artifact}${cache}`))).toEqual([]);
+    const action = "runs:\n  using: composite\n  steps:\n    - uses: pnpm/action-setup@v6\n";
+    expect(findInAction(".github/actions/x/action.yml", action).map((p) => p.rule)).toEqual([
+      "pin",
+    ]);
+  });
+
+  it("puts every local action a path-filtered workflow uses, through its actions too, in each path filter", () => {
+    const uses = new Map([
+      ["core-artifact", new Set(["rust-toolchain"])],
+      ["rust-toolchain", new Set()],
+    ]);
+    const steps = "jobs:\n  x:\n    steps:\n      - uses: ./.github/actions/core-artifact\n";
+    const filter = (/** @type {string[]} */ extra) =>
+      ["    paths:", '      - "android/**"', ...extra.map((e) => `      - "${e}"`)].join("\n");
+    const both = [".github/actions/core-artifact/**", ".github/actions/rust-toolchain/**"];
+    const text = (/** @type {string[]} */ pr, /** @type {string[]} */ push) =>
+      `on:\n  pull_request:\n${filter(pr)}\n  push:\n${filter(push)}\n${steps}`;
+    expect(actionPathProblems("w.yml", text(both, both), uses)).toEqual([]);
+    // The push filter misses the action core-artifact itself runs.
+    expect(
+      actionPathProblems("w.yml", text(both, [both[0] ?? ""]), uses).map((p) => [p.line, p.rule]),
+    ).toEqual([[8, "action-paths"]]);
+    // A workflow with no path filter runs on every change already.
+    expect(actionPathProblems("w.yml", `on: push\n${steps}`, uses)).toEqual([]);
   });
 });
