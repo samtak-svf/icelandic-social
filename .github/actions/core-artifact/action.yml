@@ -1,0 +1,27 @@
+name: Core artifact
+description: >
+  The pinned, checksum-verified core (core/artifact.lock.json, decision 0013):
+  the Rust toolchain, then `cargo xtask fetch` for each target. Run it after
+  actions/checkout. The repo is private, so its releases need a token.
+
+inputs:
+  target:
+    description: Space-separated fetch targets, e.g. android, ios, web or "android web".
+    required: true
+  token:
+    description: A token that can read this repo's releases, normally github.token.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/rust-toolchain
+
+    - name: Fetch the pinned core
+      shell: bash
+      working-directory: core
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        TARGETS: ${{ inputs.target }}
+      run: |
+        for target in $TARGETS; do cargo xtask fetch "$target"; done

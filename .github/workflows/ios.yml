@@ -57,13 +57,10 @@ jobs:
       - name: Format
         run: ios/scripts/lint.sh
 
-      - uses: ./.github/actions/rust-toolchain
-
-      - name: Core (pinned, checksum-verified)
-        working-directory: core
-        run: cargo xtask fetch ios
-        env:
-          GITHUB_TOKEN: ${{ github.token }} # the repo is private: its releases need a token
+      - uses: ./.github/actions/core-artifact
+        with:
+          target: ios
+          token: ${{ github.token }}
 
       - name: Generate the Xcode project
         working-directory: ios
