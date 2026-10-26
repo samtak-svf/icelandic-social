@@ -36,6 +36,7 @@ type Notification = {
   postId: string | null;
   commentId: string | null;
   action: string | null;
+  emoji: string | null;
   read: boolean;
 };
 const inbox = async (one: Person) =>
@@ -92,14 +93,16 @@ describe("jobs", () => {
 
   it("tell of a reaction once, and nothing across a block or to oneself", async () => {
     const { author, reader, postId } = await scene();
-    for (const kind of ["like", "love", "like"]) {
-      await reader.call("PUT", `/v1/posts/${postId}/reaction`, { kind });
+    for (const body of [{ kind: "like" }, { emoji: "🙏" }, { kind: "like" }]) {
+      await reader.call("PUT", `/v1/posts/${postId}/reaction`, body);
     }
     await author.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "like" });
     await author.call("POST", `/v1/posts/${postId}/comments`, { body: "Takk" });
     const push = recorder();
     await run(push);
     expect((await inbox(author)).notifications.map((n) => n.kind)).toEqual(["reaction"]);
+    // The notification carries the emoji the account first reacted with (decision 0100).
+    expect((await inbox(author)).notifications[0]?.emoji).toBe("👍");
 
     // A comment from an account the author then blocks is not told.
     const { commentId } = await ok<{ commentId: string }>(

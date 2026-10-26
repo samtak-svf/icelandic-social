@@ -1,5 +1,6 @@
 import { createRoute, z } from "@hono/zod-openapi";
 import { ACCOUNT, AUTHED, INVALID, OpaqueId } from "./common.ts";
+import { Emoji } from "./emoji.ts";
 import { Author } from "./social.ts";
 
 // Notifications (decisions 0063, 0067): something addressed to the caller, a
@@ -18,6 +19,9 @@ const Notification = z
     commentId: z.string().nullable(),
     action: z.string().nullable().openapi({
       description: "For `moderated`, the moderator's action (`hide_post`, `remove_comment`, ...)",
+    }),
+    emoji: Emoji.nullable().openapi({
+      description: "For `reaction`, the emoji the account first reacted with (decision 0100)",
     }),
     createdAt: z.int().openapi({ description: "Unix milliseconds" }),
     read: z.boolean(),

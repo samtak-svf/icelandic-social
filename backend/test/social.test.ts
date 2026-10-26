@@ -25,6 +25,8 @@ type Post = {
   media: { mediaId: string; width: number; height: number }[];
   reactions: { kind: string; count: number }[];
   myReaction: string | null;
+  emojis: { emoji: string; count: number }[];
+  myEmoji: string | null;
   commentCount: number;
 };
 type Comment = {
@@ -211,6 +213,59 @@ describe("comments and reactions", () => {
     });
     const odd = await a.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "angry" });
     expect(odd.status).toBe(400);
+  });
+
+  it("take any one emoji, counted most used first, and refuse what is not one", async () => {
+    const [owner, a, b, c] = [
+      await person("Eigandi"),
+      await person("Anna"),
+      await person("Bjarni"),
+      await person("Cecilía"),
+    ];
+    const id = await community(owner, "open", a, b, c);
+    const { postId } = await posted(owner, id, "Hver er með?");
+    const react = (by: Person, body: object) =>
+      by.call("PUT", `/v1/posts/${postId}/reaction`, body);
+    expect((await react(a, { emoji: "🙏" })).status).toBe(204);
+    expect((await react(b, { emoji: "🙏" })).status).toBe(204);
+    expect((await react(c, { emoji: "🇮🇸" })).status).toBe(204);
+    expect((await react(owner, { emoji: "👍🏽" })).status).toBe(204);
+    const seen = await ok<Post>(await getPost(a, postId));
+    // Most used first; equal counts in code point order.
+    expect(seen.emojis).toEqual([
+      { emoji: "🙏", count: 2 },
+      { emoji: "🇮🇸", count: 1 },
+      { emoji: "👍🏽", count: 1 },
+    ]);
+    expect(seen.myEmoji).toBe("🙏");
+    // An emoji with no old kind is absent from the old fields.
+    expect(seen).toMatchObject({ reactions: [], myReaction: null });
+    expect((await react(a, { emoji: "😮" })).status).toBe(204);
+    expect(await ok<Post>(await getPost(a, postId))).toMatchObject({
+      myEmoji: "😮",
+      myReaction: "wow",
+      reactions: [{ kind: "wow", count: 1 }],
+    });
+    for (const bad of ["a", "👍👍", "like!", "", "👍a"]) {
+      expect((await react(a, { emoji: bad })).status, bad).toBe(400);
+    }
+    expect((await react(a, {})).status).toBe(400);
+    expect((await react(a, { kind: "like", emoji: "👍" })).status).toBe(400);
+    expect(await ok<Post>(await getPost(a, postId))).toMatchObject({ myEmoji: "😮" });
+  });
+
+  it("keep an old build working: its kind is stored as the emoji and read back as both", async () => {
+    const [owner, a, b] = [await person("Eigandi"), await person("Anna"), await person("Bjarni")];
+    const id = await community(owner, "open", a, b);
+    const { postId } = await posted(owner, id, "Gamla appið");
+    await a.call("PUT", `/v1/posts/${postId}/reaction`, { kind: "love" });
+    await b.call("PUT", `/v1/posts/${postId}/reaction`, { emoji: "❤️" });
+    expect(await ok<Post>(await getPost(a, postId))).toMatchObject({
+      reactions: [{ kind: "love", count: 2 }],
+      myReaction: "love",
+      emojis: [{ emoji: "❤️", count: 2 }],
+      myEmoji: "❤️",
+    });
   });
 });
 

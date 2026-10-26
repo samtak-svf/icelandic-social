@@ -8,6 +8,7 @@ import {
   PhotoVersion,
   RATE_LIMITED,
 } from "./common.ts";
+import { ReactionBody, ReactionFields } from "./reaction-kinds.ts";
 import { Poll, POLL_OPTIONS } from "./poll-schema.ts";
 
 // A community's content (decisions 0060, 0063): posts, comments on them and
@@ -22,8 +23,7 @@ export const MAX_SOCIAL_UPLOAD = 10 * 1024 * 1024;
 /** How many images a post holds. */
 const MAX_POST_MEDIA = 4;
 
-/** The reactions there are: one per account on a post, from this fixed set. */
-export const REACTIONS = ["like", "love", "laugh", "wow", "sad"] as const;
+export { emojiOfKind, kindOfEmoji, REACTIONS, type ReactionKind } from "./reaction-kinds.ts";
 
 const CommunityId = OpaqueId;
 export const PostId = OpaqueId.openapi({ example: "p_3f9a1b2c3d4e5f60718293a4b5c6d7e8" });
@@ -32,8 +32,6 @@ export const CommentId = OpaqueId.openapi({
   description: "The post's id, a hyphen, and the comment's own part",
 });
 export const MediaId = OpaqueId.openapi({ example: "sm_3f9a1b2c3d4e5f60718293a4b5c6d7e8" });
-
-const Reaction = z.enum(REACTIONS);
 
 const State = z.enum(["visible", "hidden", "removed"]).openapi({
   description: "Only a moderator sees what is not visible: hidden or removed by a moderator",
@@ -100,10 +98,7 @@ export const Post = z
     body: z.string(),
     media: z.array(Media),
     createdAt: z.int().openapi({ description: "Unix milliseconds" }),
-    reactions: z
-      .array(z.object({ kind: Reaction, count: z.int() }))
-      .openapi({ description: "Each reaction the caller can see, with its count" }),
-    myReaction: Reaction.nullable(),
+    ...ReactionFields,
     commentCount: z.int(),
     // The newest comment the caller may read, as the comment list would show it;
     // null when there is none (decision 0080). A union, not `.nullable()`
@@ -410,13 +405,13 @@ export const reactRoute = createRoute({
   path: "/v1/posts/{postId}/reaction",
   operationId: "react",
   tags,
-  summary: "Set the caller's reaction to a post, replacing any it had",
+  summary: "Set the caller's emoji on a post, replacing any it had",
   security: ACCOUNT,
   request: {
     params: post,
     body: {
       required: true,
-      content: { "application/json": { schema: z.object({ kind: Reaction }) } },
+      content: { "application/json": { schema: ReactionBody } },
     },
   },
   responses: {

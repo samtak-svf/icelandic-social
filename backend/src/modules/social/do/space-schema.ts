@@ -9,6 +9,8 @@ export const MAX_FEATURED = 3;
 
 /**
  * The Space DO's tables (decisions 0060, 0063, 0080): one community's content.
+ * `reactions` holds a post's one emoji per account (decision 0100; before it,
+ * a column `kind`, which `ensureEmojiReactions` migrates);
  * `comment_reactions` holds a comment's one 👍 per account (decision 0080);
  * `pinned_posts` holds the featured posts, at most three (decision 0088), each
  * with the time it was pinned. A poll (decision 0090) is a post with rows in
@@ -42,7 +44,7 @@ export const SCHEMA = `
   CREATE TABLE IF NOT EXISTS reactions (
     post_id TEXT NOT NULL,
     account TEXT NOT NULL,
-    kind TEXT NOT NULL,
+    emoji TEXT NOT NULL,
     created_at INTEGER NOT NULL,
     PRIMARY KEY (post_id, account)
   );
