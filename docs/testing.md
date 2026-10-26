@@ -59,6 +59,27 @@ timestamp comes from a past year so the row stamp never moves.
   empty state adds a test method in that screen's `ScreenshotTest`, with fake data built the
   way its instrumented test builds it.
 
+## Checking by hand on a phone
+
+Some defects show only on a real screen: a long name that wraps, an icon that is the same for
+every row. Each release's hand checks are a list in the gitignored `private/e2e/`, with the
+screenshots of the run beside it. The checks run only on phones set aside for testing, and
+messages go only between test accounts.
+
+- **Android over wireless debugging.** `adb mdns services` lists the phone as an
+  `_adb-tls-connect._tcp` service, and `adb connect <ip:port>` joins it. The port changes each
+  time wireless debugging restarts on the phone, and the phone can drop it while it sleeps. A
+  `Connection refused` on the listed port therefore means wireless debugging has to be switched
+  on again on the phone. It is not a defect in the app. Downscale a screenshot before reading it
+  (`magick in.png -resize 600x out.png`).
+- **The iOS simulator cannot be walked through yet.** `xcrun simctl` boots, installs and takes
+  screenshots, but it cannot tap, and sign-in goes through `ASWebAuthenticationSession`, a
+  system sheet. There is no UI-test target, so walking through the app in the simulator needs an
+  XCUITest target first. Until then, a SwiftUI view is checked by eye in a one-off test. The
+  test renders the view with `ImageRenderer` at a phone's width and writes the PNG to
+  `private/`, as was done for the wrapping verified name. The rest waits for a TestFlight build
+  on a real iPhone.
+
 ## Known sources of noise, and what to do
 
 1. **Durable Object timing.** Fake the clock and wait on alarm state, never on a sleep. Fix a
