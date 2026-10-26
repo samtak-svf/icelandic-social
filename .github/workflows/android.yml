@@ -133,6 +133,8 @@ jobs:
       # exists on the runner (mac-remote installs it) the step warns and goes on unlocked. So does
       # exit 2: a runner whose installed mac-lock.sh predates --owner-ancestor fails on the unknown
       # argument, and that must not fail the job.
+      # --wait 1500 leaves the connected tests (10-15 min) inside the job's 45 min timeout, so a
+      # long agent hold ends in a clean exit 3, not a job timeout.
       - name: Take the AVD lock
         if: runner.os == 'macOS'
         shell: bash
@@ -145,7 +147,7 @@ jobs:
             exit 0
           fi
           rc=0
-          "$lock" acquire android-avd --wait 1800 --owner-ancestor Runner.Worker --who "$LOCK_WHO" || rc=$?
+          "$lock" acquire android-avd --wait 1500 --owner-ancestor Runner.Worker --who "$LOCK_WHO" || rc=$?
           if [ "$rc" -eq 2 ]; then
             echo "::warning::$lock refused its arguments (an older copy, or no Runner.Worker above this step), so the AVD is not locked against agent runs"
             exit 0
