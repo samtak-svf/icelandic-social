@@ -736,6 +736,22 @@
     <string name="photo_set_card">%1$s breytti mynd hópsins.</string>
     <!-- System card when a member removes the group's photo (docs/decisions/0094). -->
     <string name="photo_cleared_card">%1$s fjarlægði mynd hópsins.</string>
+    <!-- On a group's information screen when the group has no photo: opens the photo picker to set one (docs/decisions/0094). -->
+    <string name="group_photo_choose">Setja inn mynd hópsins</string>
+    <!-- On a group's information screen when the group has a photo: opens the photo picker to put another in its place (docs/decisions/0094). -->
+    <string name="group_photo_change">Skipta um mynd hópsins</string>
+    <!-- On a group's information screen: removes the group's photo, after a confirmation; also that confirmation's button (docs/decisions/0094). -->
+    <string name="group_photo_remove">Fjarlægja mynd hópsins</string>
+    <!-- Asks before the group's photo is removed: it goes for every member (docs/decisions/0094). -->
+    <string name="group_photo_remove_confirm">Fjarlægja mynd hópsins? Hún hverfur hjá öllum í hópnum.</string>
+    <!-- The one line beside the group photo buttons: only the group's members see it, and it is end-to-end encrypted, unlike a profile photo (docs/decisions/0094). -->
+    <string name="group_photo_seen_by_members">Aðeins fólk í hópnum sér myndina. Hún er dulkóðuð enda á milli.</string>
+    <!-- The chosen picture could not be read as an image the group photo accepts (docs/decisions/0094). -->
+    <string name="group_photo_unsupported">Ekki tókst að lesa myndina. Veldu aðra mynd.</string>
+    <!-- Setting, replacing or removing the group's photo failed for another reason, such as the network (docs/decisions/0094). -->
+    <string name="group_photo_failed">Ekki tókst að breyta mynd hópsins. Reyndu aftur.</string>
+    <!-- Alternative text of a group's photo, in the conversation list, the header and the information screen (docs/decisions/0094). -->
+    <string name="group_photo_alt">Mynd hópsins</string>
     <!-- Action on a member row in a group's info screen: remove the member from the group (docs/decisions/0078). -->
     <string name="remove_member">Fjarlægja úr hópnum</string>
     <!-- Confirmation prompt before removing {name} from the group (docs/decisions/0078). -->
