@@ -49,6 +49,8 @@ Consequences, all enforced by `tooling/brand-leak-guard.mjs`:
   published version pinned with SHA-256 in `core/artifact.lock.json`). App CI only fetches, so
   the lock always pins a release. No Gradle or Xcode file calls cargo (`check:core`). A new core is published by tagging `core-vX.Y.Z`; the lock
   moves only by PR, with the checksums `core.yml` prints.
+  A change to the wasm exports commits the regenerated `web/src/generated/core.d.ts` (the
+  `web/core/spjall_wasm.d.ts` that `cargo xtask core web` builds) in the same PR; `core.yml` fails otherwise.
 
 ## Commands
 

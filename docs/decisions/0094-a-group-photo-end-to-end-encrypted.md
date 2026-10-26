@@ -1,6 +1,6 @@
 # 0094. A group may have a photo, end-to-end encrypted like its name
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the core, the backend, the apps and the web
 - Date: 2026-10-25
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0009](0009-v1-scope.md) (a group photo joins v1),
