@@ -9,7 +9,7 @@
 // attribute: the dev server's modules, which change under it.
 //
 // HTMLRewriter is the Workers runtime's; the test runs in workerd
-// (backend/test/web-integrity.test.ts).
+// (backend/test/api/web-integrity.test.ts).
 
 // The part of the Workers runtime's HTMLRewriter used here; the web's types
 // are the browser's, which have none.

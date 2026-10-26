@@ -181,7 +181,7 @@ than a phone, on both counts, and require a strict CSP and no third-party script
 - **Platform `web`.** `android` and `ios` were written out in the zod schemas, the version
   header and its comparison, and the env types. Since
   [a8dec7e](https://github.com/samtak-svf/icelandic-social/commit/a8dec7e) they all read one list
-  (`backend/src/shared/platforms.ts:8`), and `backend/test/platforms.test.ts` shows a third platform
+  (`backend/src/shared/platforms.ts:8`), and `backend/test/shared/platforms.test.ts` shows a third platform
   is one entry. The D1 CHECK constraint (`backend/migrations/0001_accounts.sql:17`) and the
   core's enum (`core/client/src/api.rs:284-287`) still name the two, and `web` joins them
   only after the session record ([0030](decisions/0030-client-version-floor.md)).

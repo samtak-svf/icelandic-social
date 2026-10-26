@@ -92,7 +92,7 @@ export const PhotoVersion = OpaqueId.nullable().openapi({
 });
 
 // Every route declares the credentials it takes (decision 0061), and the
-// Worker accepts no other: test/sessions.test.ts fails on a route without one.
+// Worker accepts no other: test/identity/sessions.test.ts fails on a route without one.
 
 type Security = Record<string, string[]>[];
 

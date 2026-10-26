@@ -1,0 +1,262 @@
+import { env } from "cloudflare:workers";
+import { evictDurableObject, runInDurableObject } from "cloudflare:test";
+import { describe, expect, it } from "vitest";
+import { conversation, inbox } from "../../../src/env/index.ts";
+import { connect } from "../../socket.ts";
+import { device, euEnv, linkedBrowser, revoke } from "../../support.ts";
+import { bareWorker, worker } from "../../main.ts";
+
+// The socket of decision 0015 against the real Inbox and Conversation DOs:
+// hello and catch-up, ack, typing, push for a device with no socket, and
+// hibernation.
+
+const testEnv = euEnv(env);
+const TYPING = "dHlwaW5n";
+
+async function outbox(accountId: string) {
+  return runInDurableObject(inbox(testEnv, accountId), (_, state) =>
+    state.storage.sql
+      .exec("SELECT device_id, conversation_id, seq, pushed FROM push_outbox ORDER BY device_id")
+      .toArray(),
+  );
+}
+
+describe("the socket", () => {
+  it("says hello, then notifies what this device has missed", async () => {
+    const me = await device();
+    await inbox(testEnv, me.accountId).notify(me.accountId, "conv_seen", 3, 3);
+    const socket = await connect(me.auth);
+    const hello = await socket.next();
+    expect(hello).toMatchObject({ type: "hello", protocol: 1 });
+    expect(await socket.next()).toEqual({ type: "notify", conversationId: "conv_seen", seq: 3 });
+
+    socket.send({ type: "ack", conversationId: "conv_seen", seq: 3 });
+    socket.ws.close();
+    const again = await connect(me.auth);
+    expect((await again.next()).type).toBe("hello");
+    expect(await again.settle("n1")).toEqual({ type: "pong", nonce: "n1" });
+  });
+
+  it("notifies an open socket, and owes a push to a device without one until it acks", async () => {
+    const online = await device();
+    const offline = await device({ accountId: online.accountId });
+    const socket = await connect(online.auth);
+    await socket.next();
+
+    const box = inbox(testEnv, online.accountId);
+    await box.notify(online.accountId, "conv_push", 1, 1);
+    expect(await socket.next()).toEqual({ type: "notify", conversationId: "conv_push", seq: 1 });
+    expect(await outbox(online.accountId)).toEqual([
+      { device_id: offline.deviceId, conversation_id: "conv_push", seq: 1, pushed: 1 },
+    ]);
+
+    // Still one row: a newer urgent message re-arms it, and it is pushed again.
+    await box.notify(online.accountId, "conv_push", 2, 2);
+    expect(await outbox(online.accountId)).toEqual([
+      { device_id: offline.deviceId, conversation_id: "conv_push", seq: 2, pushed: 1 },
+    ]);
+
+    const late = await connect(offline.auth);
+    expect((await late.next()).type).toBe("hello");
+    expect(await late.next()).toEqual({ type: "notify", conversationId: "conv_push", seq: 2 });
+    late.send({ type: "ack", conversationId: "conv_push", seq: 2 });
+    await late.settle("n2");
+    expect(await outbox(online.accountId)).toEqual([]);
+  });
+
+  it("does not notify a device of what it has acked", async () => {
+    const me = await device();
+    const socket = await connect(me.auth);
+    await socket.next();
+    socket.send({ type: "ack", conversationId: "conv_ack", seq: 5 });
+    await socket.settle("n3");
+    await inbox(testEnv, me.accountId).notify(me.accountId, "conv_ack", 5, 5);
+    expect(await socket.settle("n4")).toEqual({ type: "pong", nonce: "n4" });
+    expect(await outbox(me.accountId)).toEqual([]);
+  });
+
+  it("relays typing to the other members' sockets and stores nothing", async () => {
+    const a = await device();
+    const b = await device();
+    const outsider = await device();
+    const id = "conv_typing";
+    const stub = conversation(testEnv, id);
+    await stub.create(a.accountId, id);
+    await stub.send({
+      account: a.accountId,
+      clientMsgId: "add",
+      ciphertext: Uint8Array.of(1),
+      urgent: false,
+      commitEpoch: 0,
+      roster: [a.accountId, b.accountId],
+    });
+
+    const [sa, sb, so] = [
+      await connect(a.auth),
+      await connect(b.auth),
+      await connect(outsider.auth),
+    ];
+    for (const s of [sa, sb, so]) await s.next();
+    sa.send({ type: "typing", conversationId: id, ciphertext: TYPING });
+    expect(await sb.nextOf("typing")).toEqual({
+      type: "typing",
+      conversationId: id,
+      ciphertext: TYPING,
+    });
+    expect(await sa.settle("n5")).toEqual({ type: "pong", nonce: "n5" });
+
+    // An outsider's typing reaches nobody.
+    so.send({ type: "typing", conversationId: id, ciphertext: TYPING });
+    await so.settle("n6");
+    expect(await sb.settle("n7")).toEqual({ type: "pong", nonce: "n7" });
+
+    const page = await stub.list(a.accountId, 0, 10);
+    expect("ok" in page && page.ok.messages.map((m) => m.seq)).toEqual([1]);
+  });
+
+  it("relays one typing frame per device and conversation in two seconds", async () => {
+    const a = await device();
+    const b = await device();
+    const id = "conv_typing_burst";
+    const stub = conversation(testEnv, id);
+    await stub.create(a.accountId, id);
+    await stub.send({
+      account: a.accountId,
+      clientMsgId: "add",
+      ciphertext: Uint8Array.of(1),
+      urgent: false,
+      commitEpoch: 0,
+      roster: [a.accountId, b.accountId],
+    });
+
+    const [sa, sb] = [await connect(a.auth), await connect(b.auth)];
+    for (const s of [sa, sb]) await s.next();
+    for (let i = 0; i < 5; i++) sa.send({ type: "typing", conversationId: id, ciphertext: TYPING });
+    await sa.settle("b1");
+    expect(await sb.nextOf("typing")).toMatchObject({ type: "typing", conversationId: id });
+    expect(await sb.settle("b2")).toEqual({ type: "pong", nonce: "b2" });
+  });
+
+  it.each([
+    ["not JSON", "{"],
+    ["a frame that does not parse", JSON.stringify({ type: "ack", seq: -1 })],
+    [
+      "a frame only the server sends",
+      JSON.stringify({ type: "notify", conversationId: "c", seq: 1 }),
+    ],
+  ])("closes with 1008 on %s", async (_, raw) => {
+    const me = await device();
+    const socket = await connect(me.auth);
+    await socket.next();
+    socket.ws.send(raw);
+    expect((await socket.closed).code).toBe(1008);
+  });
+
+  it("answers a close the client starts, and then owes that device a push", async () => {
+    const me = await device();
+    const socket = await connect(me.auth);
+    await socket.next();
+    socket.ws.close(1000, "bye");
+    expect((await socket.closed).code).toBe(1000);
+
+    await inbox(testEnv, me.accountId).notify(me.accountId, "conv_closed", 1, 1);
+    expect(await outbox(me.accountId)).toEqual([
+      { device_id: me.deviceId, conversation_id: "conv_closed", seq: 1, pushed: 1 },
+    ]);
+  });
+
+  it("acts as the device the token names, whatever the client claims", async () => {
+    const me = await device();
+    const socket = await connect(me.auth, { "x-spjall-device": "d_other" });
+    await socket.next();
+    socket.send({ type: "ack", conversationId: "conv_claim", seq: 1 });
+    await socket.settle("n8");
+    const cursors = await runInDurableObject(inbox(testEnv, me.accountId), (_, state) =>
+      state.storage.sql.exec("SELECT device_id FROM cursors").toArray(),
+    );
+    expect(cursors).toEqual([{ device_id: me.deviceId }]);
+  });
+
+  it("keeps a socket's device across hibernation", async () => {
+    const me = await device();
+    const socket = await connect(me.auth);
+    await socket.next();
+    await evictDurableObject(inbox(testEnv, me.accountId));
+    socket.send({ type: "ack", conversationId: "conv_sleep", seq: 4 });
+    expect(await socket.settle("n9")).toEqual({ type: "pong", nonce: "n9" });
+    const cursors = await runInDurableObject(inbox(testEnv, me.accountId), (_, state) =>
+      state.storage.sql.exec("SELECT device_id, seq FROM cursors").toArray(),
+    );
+    expect(cursors).toEqual([{ device_id: me.deviceId, seq: 4 }]);
+  });
+
+  describe("with a browser's session cookie (decision 0081)", () => {
+    const WEB = "https://spjall.samtak.is";
+    const open = (headers: Record<string, string>) =>
+      worker.fetch("https://spjall.test/v1/ws", { headers: { upgrade: "websocket", ...headers } });
+
+    it("opens the socket of the session's linked device from the web host", async () => {
+      const { browser, enrolled } = await linkedBrowser();
+      const socket = await connect(browser.web);
+      expect(await socket.next()).toMatchObject({ type: "hello" });
+      socket.send({ type: "ack", conversationId: "conv_web", seq: 2 });
+      await socket.settle("n10");
+      const cursors = await runInDurableObject(inbox(testEnv, browser.accountId), (_, state) =>
+        state.storage.sql.exec("SELECT device_id FROM cursors").toArray(),
+      );
+      expect(cursors).toEqual([{ device_id: enrolled!.deviceId }]);
+    });
+
+    it("names the browser's build in the query, since a browser socket carries no header", async () => {
+      const { browser } = await linkedBrowser();
+      const upgrade = (query: string) =>
+        bareWorker.fetch(`https://spjall.test/v1/ws${query}`, {
+          headers: { upgrade: "websocket", ...browser.web },
+        });
+      const unnamed = await upgrade("");
+      expect(unnamed.status).toBe(426);
+      expect(await unnamed.json()).toMatchObject({ error: "client_too_old" });
+      const named = await upgrade(`?client=web/${env.MIN_CLIENT_VERSION_WEB}`);
+      expect(named.status).toBe(101);
+      named.webSocket?.accept();
+      named.webSocket?.close();
+    });
+
+    it("refuses another origin, and none", async () => {
+      const { browser } = await linkedBrowser();
+      const other = await open({ cookie: browser.cookie, origin: "https://elsewhere.example" });
+      expect(other.status).toBe(403);
+      expect(await other.json()).toMatchObject({ error: "forbidden_origin" });
+      const none = await open({ cookie: browser.cookie });
+      expect(none.status).toBe(403);
+      expect(await none.json()).toMatchObject({ error: "forbidden_origin" });
+    });
+
+    it("refuses a session with no linked device, or a revoked one", async () => {
+      const { browser } = await linkedBrowser({ complete: false });
+      const unlinked = await open(browser.web);
+      expect(unlinked.status).toBe(403);
+      expect(await unlinked.json()).toMatchObject({ error: "no_linked_device" });
+
+      const linked = await linkedBrowser();
+      await revoke(linked.enrolled!.deviceId);
+      const revoked = await open(linked.browser.web);
+      expect(revoked.status).toBe(403);
+      expect(await revoked.json()).toMatchObject({ error: "no_linked_device" });
+    });
+
+    it("refuses a linked device idle past its window", async () => {
+      const { browser, enrolled } = await linkedBrowser();
+      await env.DB.prepare("UPDATE devices SET last_seen_at = ? WHERE device_id = ?")
+        .bind(Date.now() - 46 * 24 * 60 * 60 * 1000, enrolled!.deviceId)
+        .run();
+      const idle = await open(browser.web);
+      expect(idle.status).toBe(403);
+      expect(await idle.json()).toMatchObject({ error: "no_linked_device" });
+    });
+
+    it("is refused with no valid session, whatever the origin", async () => {
+      expect((await open({ origin: WEB })).status).toBe(401);
+    });
+  });
+});

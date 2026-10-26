@@ -40,6 +40,25 @@ Rules for a new test:
 - No test of layout or shape. A rule about shape becomes a guard or a lint rule. The
   one exception is the screenshot tests below, which hold how a screen looks.
 
+### Where a test file goes
+
+A test lives where the code it tests lives, so finding one means knowing the code, not the
+history of the suite.
+
+| Language                    | Test file                                     | Lives in                                                                                                                                                                                                                                                                                                                                                                                            |
+| --------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend (Worker)            | `*.test.ts`, run in workerd                   | `backend/test/modules/<module>/` for a module, `backend/test/identity/` for identity, `backend/test/api/` for the app, contract, routes and middleware, `backend/test/shared/` for `src/shared/`, the env seam and the schema. Helpers and setup (`support.ts`, `main.ts`, `people.ts`, `images.ts`, `mls.ts`, `oidc.ts`, `push.ts`, `socket.ts`, `setup.ts`, `worker.ts`) stay at `backend/test/`. |
+| Web unit                    | `*.test.ts(x)`, vitest                        | Next to the source file it tests, in `web/src/`                                                                                                                                                                                                                                                                                                                                                     |
+| Web end to end              | `*.spec.ts`, Playwright                       | `web/e2e/`                                                                                                                                                                                                                                                                                                                                                                                          |
+| Android unit and screenshot | `*Test.kt`                                    | `android/app/src/test/kotlin/samtak/spjall/<feature>/`; images in `android/app/src/test/screenshots/`                                                                                                                                                                                                                                                                                               |
+| Android instrumented        | `*Test.kt`                                    | `android/app/src/androidTest/kotlin/samtak/spjall/` (and the same in `android/core/crypto/src/`)                                                                                                                                                                                                                                                                                                    |
+| iOS                         | `*Tests.swift`                                | `ios/Tests/`, one flat directory                                                                                                                                                                                                                                                                                                                                                                    |
+| Core (Rust)                 | `#[cfg(test)]` module, or an integration file | A unit test in the `src/` file it tests; an integration test in `core/<crate>/tests/<topic>.rs`, with helpers in `tests/support/`                                                                                                                                                                                                                                                                   |
+
+A backend test goes with the code whose rule it holds, not the route it happens to call:
+the test of a reaction rule is in `modules/social/` although it goes through `/v1`. A test
+that spans modules goes with the module that starts the flow.
+
 ## Screenshot tests (Android)
 
 Roborazzi renders Compose screens on the JVM (Robolectric, native graphics) and compares

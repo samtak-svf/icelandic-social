@@ -20,7 +20,7 @@ import { ROOT } from "../lib/repo.mjs";
 const OUTPUTS = [
   {
     output: "api/openapi.json",
-    consumerDirs: ["tooling/web-api.mjs", "backend/test/contract.test.ts"],
+    consumerDirs: ["tooling/web-api.mjs", "backend/test/api/contract.test.ts"],
     reference: /openapi\.json/,
   },
   {
