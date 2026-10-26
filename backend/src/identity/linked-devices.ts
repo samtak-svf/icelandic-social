@@ -6,6 +6,7 @@ import {
   createDeviceLinkRoute,
   getDeviceLinkRoute,
   getLinkedStoreKeyRoute,
+  getPendingStoreKeyRoute,
 } from "../api/linked-devices.ts";
 import { fromBase64, toBase64 } from "../bytes.ts";
 import { db } from "../env/index.ts";
@@ -15,6 +16,7 @@ import type { Platform } from "../platforms.ts";
 import { type Device, randomToken, tokenHash } from "./accounts.ts";
 import { approvalMessage } from "./link-approval.ts";
 import { LINKED_IDLE_MS } from "./linked-device-lifecycle.ts";
+import { pendingStoreKeyShare } from "./pending-store-key.ts";
 import { type Session, wipeBrowserStorage } from "./sessions.ts";
 
 // Enrolling a linked non-phone device from a browser session (decision 0064,
@@ -22,8 +24,11 @@ import { type Session, wipeBrowserStorage } from "./sessions.ts";
 // one-time X25519 history key; an active phone of the same account approves it
 // once, signing the link id and the new device's key (decision 0077); the
 // browser completes enrolment and receives its device token and the server's
-// 32-byte half of its two-part store key. A linked device expires after 45 days without
-// use, and revoking it leaves its browser session signed in.
+// 32-byte half of its two-part store key. That half is made with the request and
+// handed to the requesting session while it waits (decision 0096), so the browser
+// seals its store in two parts before the phone approves. A linked device
+// expires after 45 days without use, and revoking it leaves its browser session
+// signed in.
 
 /** A pending QR link request expires after 10 minutes. */
 const LINK_REQUEST_MS = 10 * 60 * 1000;
@@ -53,6 +58,7 @@ async function createLinkRequest(
 
   const linkId = randomToken("dl_");
   const expiresAt = now + LINK_REQUEST_MS;
+  const share = crypto.getRandomValues(new Uint8Array(32));
   await db(env).batch([
     db(env)
       .prepare("DELETE FROM device_link_requests WHERE session_id = ?")
@@ -60,8 +66,9 @@ async function createLinkRequest(
     db(env)
       .prepare(
         `INSERT INTO device_link_requests
-           (link_id, session_id, account_id, device_key, history_key, created_at, expires_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+           (link_id, session_id, account_id, device_key, history_key, created_at, expires_at,
+            store_key_share)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         linkId,
@@ -71,6 +78,7 @@ async function createLinkRequest(
         keys.historyKey,
         now,
         expiresAt,
+        share,
       ),
   ]);
   return { ok: { linkId, expiresAt } };
@@ -194,7 +202,8 @@ async function completeLinkRequest(
   const row = await db(env)
     .prepare(
       `SELECT r.device_key AS deviceKey, r.approved_by_device_id AS approvedBy,
-              r.history_expected AS historyExpected, p.platform AS phonePlatform, p.revoked_at AS phoneRevokedAt
+              r.history_expected AS historyExpected, r.store_key_share AS storeKeyShare,
+              p.platform AS phonePlatform, p.revoked_at AS phoneRevokedAt
          FROM device_link_requests r
          LEFT JOIN devices p ON p.device_id = r.approved_by_device_id
                 AND p.account_id = r.account_id AND p.kind = 'phone'
@@ -205,6 +214,7 @@ async function completeLinkRequest(
       deviceKey: ArrayBuffer;
       approvedBy: string | null;
       historyExpected: number;
+      storeKeyShare: ArrayBuffer | null;
       phonePlatform: Platform | null;
       phoneRevokedAt: number | null;
     }>();
@@ -222,7 +232,10 @@ async function completeLinkRequest(
   const deviceId = randomToken("d_");
   const token = randomToken("dt_");
   const hash = await tokenHash(token);
-  const share = crypto.getRandomValues(new Uint8Array(32));
+  // The share the browser sealed its store with while it waited (0096).
+  const share = row.storeKeyShare
+    ? new Uint8Array(row.storeKeyShare)
+    : crypto.getRandomValues(new Uint8Array(32));
   await db(env).batch([
     db(env)
       .prepare(
@@ -389,6 +402,13 @@ export function linkedDeviceRoutes(app: OpenAPIHono<AppEnv>): void {
       sessionId: completed.ok.sessionId,
     });
     return c.json(completed.ok, 200);
+  });
+
+  app.openapi(getPendingStoreKeyRoute, async (c) => {
+    const { linkId } = c.req.valid("param");
+    const found = await pendingStoreKeyShare(c.env, c.var.session, linkId);
+    if (!found) return fail(c, 404, "not_found");
+    return c.json(found, 200);
   });
 
   app.openapi(getLinkedStoreKeyRoute, async (c) => {

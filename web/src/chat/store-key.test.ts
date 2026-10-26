@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { newStoreKey, seal, StoreKeyLost, unseal } from "./store-key";
+import { newStoreKey, seal, sealPending, StoreKeyLost, unseal, unsealPending } from "./store-key";
 
 const share = () => crypto.getRandomValues(new Uint8Array(32));
 
@@ -62,5 +62,44 @@ describe("the two-part store key (decision 0064)", () => {
     const last = sealed.length - 1;
     sealed[last] = (sealed[last] ?? 0) ^ 1;
     await expect(unseal({ ...record, sealed }, s, "dev-1")).rejects.toBeInstanceOf(StoreKeyLost);
+  });
+});
+
+describe("a waiting link's store (decision 0096)", () => {
+  const link = { code: "CODE-1", linkId: "link-1", expiresAt: 1 };
+
+  it("opens with the request's share and keeps the code", async () => {
+    const key = newStoreKey();
+    const s = share();
+    const record = await sealPending(key, s, link);
+    expect(record).toMatchObject(link);
+    expect(await unsealPending(record, s)).toEqual(key);
+  });
+
+  it("does not open without the request's share", async () => {
+    const record = await sealPending(newStoreKey(), share(), link);
+    await expect(unsealPending(record, share())).rejects.toBeInstanceOf(StoreKeyLost);
+  });
+
+  it("does not open for another request", async () => {
+    const s = share();
+    const record = await sealPending(newStoreKey(), s, link);
+    await expect(unsealPending({ ...record, linkId: "link-2" }, s)).rejects.toBeInstanceOf(
+      StoreKeyLost,
+    );
+  });
+
+  it("is not a device's record", async () => {
+    // The same share and an id that reads like a device's still do not open it.
+    const s = share();
+    const record = await sealPending(newStoreKey(), s, link);
+    await expect(
+      unseal({ v: 1, deviceId: "link-1", local: record.local, sealed: record.sealed }, s, "link-1"),
+    ).rejects.toBeInstanceOf(StoreKeyLost);
+  });
+
+  it("keeps a local key that script cannot export", async () => {
+    const record = await sealPending(newStoreKey(), share(), link);
+    expect(record.local.extractable).toBe(false);
   });
 });

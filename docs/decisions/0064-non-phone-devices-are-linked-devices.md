@@ -13,7 +13,8 @@
   [0062](0062-the-web-host-and-its-sign-in-callbacks.md) (the web host)
 - Amended by: [0074](0074-history-transfer-format-and-upload.md),
   [0077](0077-the-link-code-and-what-the-phone-signs.md),
-  [0081](0081-the-browser-runs-the-blocking-core-in-a-worker.md) (the browser client)
+  [0081](0081-the-browser-runs-the-blocking-core-in-a-worker.md) (the browser client),
+  [0096](0096-a-browser-link-that-waits-survives-a-reload.md) (the key while a link waits)
 - Amends: 0006 (a linked device may receive history from the phone that approved it), 0016
   (the store in a browser)
 

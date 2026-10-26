@@ -82,6 +82,7 @@ describe("the delivery contract", () => {
       "get /v1/conversations/{conversationId}/welcome getWelcome",
       "get /v1/devices/link-requests/{linkId} getDeviceLinkRequest",
       "get /v1/devices/link-requests/{linkId}/history getHistory",
+      "get /v1/devices/link-requests/{linkId}/store-key getPendingStoreKey",
       "get /v1/devices/me/store-key getLinkedStoreKey",
       "get /v1/feed getFeed",
       "get /v1/invites/{token} resolveInvite",

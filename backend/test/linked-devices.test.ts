@@ -194,6 +194,71 @@ describe("enrolling a linked device from a session (decision 0064, #299)", () =>
     expect(await again.json()).toMatchObject({ error: "already_approved" });
   });
 
+  it("hands a waiting request's store-key share to its own session only, and makes it the device's (decision 0096)", async () => {
+    const { phone, browser, linkId } = await linkedBrowser({ complete: false });
+    const other = await webSession({ accountId: phone.accountId });
+
+    const pending = await fetch(`/v1/devices/link-requests/${linkId}/store-key`, {
+      headers: browser.web,
+    });
+    expect(pending.status).toBe(200);
+    const waiting = (await pending.json()) as {
+      linkId: string;
+      storeKeyShare: string;
+      expiresAt: number;
+    };
+    expect(waiting.linkId).toBe(linkId);
+    expect(fromBase64(waiting.storeKeyShare)).toHaveLength(32);
+    expect(waiting.expiresAt).toBeGreaterThan(Date.now());
+
+    // Another session of the same account, a phone, and no credential at all get nothing.
+    const asOther = await fetch(`/v1/devices/link-requests/${linkId}/store-key`, {
+      headers: other.web,
+    });
+    expect(asOther.status).toBe(404);
+    const asPhone = await fetch(`/v1/devices/link-requests/${linkId}/store-key`, {
+      headers: phone.auth,
+    });
+    expect(asPhone.status).toBe(401);
+    expect((await fetch(`/v1/devices/link-requests/${linkId}/store-key`)).status).toBe(401);
+
+    const completed = await fetch(`/v1/devices/link-requests/${linkId}/complete`, {
+      method: "POST",
+      headers: browser.web,
+    });
+    expect(completed.status).toBe(200);
+    const enrolled = (await completed.json()) as { storeKeyShare: string };
+    expect(enrolled.storeKeyShare).toBe(waiting.storeKeyShare);
+
+    // Once completed, the request's share is the device's, and the request has none.
+    const after = await fetch(`/v1/devices/link-requests/${linkId}/store-key`, {
+      headers: browser.web,
+    });
+    expect(after.status).toBe(404);
+    const linked = await fetch("/v1/devices/me/store-key", { headers: browser.web });
+    expect(((await linked.json()) as { storeKeyShare: string }).storeKeyShare).toBe(
+      waiting.storeKeyShare,
+    );
+  });
+
+  it("makes a fresh share when a request from before 0096 has none", async () => {
+    const { browser, linkId } = await linkedBrowser({ complete: false });
+    await env.DB.prepare("UPDATE device_link_requests SET store_key_share = NULL WHERE link_id = ?")
+      .bind(linkId)
+      .run();
+    expect(
+      (await fetch(`/v1/devices/link-requests/${linkId}/store-key`, { headers: browser.web }))
+        .status,
+    ).toBe(404);
+    const completed = await fetch(`/v1/devices/link-requests/${linkId}/complete`, {
+      method: "POST",
+      headers: browser.web,
+    });
+    expect(completed.status).toBe(200);
+    const enrolled = (await completed.json()) as { storeKeyShare: string };
+    expect(fromBase64(enrolled.storeKeyShare)).toHaveLength(32);
+  });
+
   it("tells the browser whether a history follows, as the approving phone said (decision 0081)", async () => {
     const none = await linkedBrowser({ history: "none" });
     expect(none.enrolled?.historyExpected).toBe(false);

@@ -1,14 +1,26 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { Enrolled, Failure } from "../generated/core.d.ts";
-import { type CoreLike, chatHost, DEVICE_LOST, type HostDeps, type Share } from "./host";
-import type { SealedStoreKey } from "./store-key";
+import {
+  type CoreLike,
+  chatHost,
+  DEVICE_LOST,
+  type HostDeps,
+  type PendingShare,
+  type Share,
+} from "./host";
+import type { PendingLink, SealedStoreKey } from "./store-key";
+
+const NOW = 1_000_000;
+const LATER = NOW + 600_000;
+/** What the server makes with the request and hands over again at completion (0096). */
+const REQUEST_SHARE = () => new Uint8Array(32).fill(7);
 
 const notRegistered: Failure = { code: "not-registered", message: "not registered" };
 
 function fakeCore(over: Partial<CoreLike> = {}): CoreLike {
   return {
-    beginLink: () => ({ code: "CODE-1", linkId: "link-1", expiresAt: 1 }),
+    beginLink: () => ({ code: "CODE-1", linkId: "link-1", expiresAt: LATER }),
     linkState: () => "pending",
     completeLink: (): Enrolled => ({
       accountId: "acc-1",
@@ -31,8 +43,18 @@ function fakeCore(over: Partial<CoreLike> = {}): CoreLike {
   };
 }
 
-function deps(over: { share?: Share; core?: CoreLike; record?: SealedStoreKey } = {}) {
+function deps(
+  over: {
+    share?: Share;
+    pendingShare?: PendingShare;
+    core?: CoreLike;
+    record?: SealedStoreKey;
+    pending?: PendingLink;
+    now?: number;
+  } = {},
+) {
   let record = over.record;
+  let pending = over.pending;
   const opened: Uint8Array[] = [];
   const wipe = vi.fn(async () => undefined);
   const core = over.core ?? fakeCore({ wipe });
@@ -50,6 +72,14 @@ function deps(over: { share?: Share; core?: CoreLike; record?: SealedStoreKey } 
       }),
       delete: vi.fn(async () => {
         record = undefined;
+        pending = undefined;
+      }),
+      loadPending: async () => pending,
+      savePending: vi.fn(async (r: PendingLink) => {
+        pending = r;
+      }),
+      deletePending: vi.fn(async () => {
+        pending = undefined;
       }),
     },
     // A fresh copy per call, as each fetch of the share is.
@@ -57,9 +87,14 @@ function deps(over: { share?: Share; core?: CoreLike; record?: SealedStoreKey } 
       const s = over.share ?? "none";
       return typeof s === "string" ? s : { ...s, share: s.share.slice() };
     }),
+    pendingShare: vi.fn(async (): Promise<PendingShare> => {
+      const s = over.pendingShare ?? { share: REQUEST_SHARE() };
+      return typeof s === "string" ? s : { share: s.share.slice() };
+    }),
+    now: () => over.now ?? NOW,
     revoke: vi.fn(async () => undefined),
   } satisfies HostDeps;
-  return { d, core, wipe, opened, record: () => record };
+  return { d, core, wipe, opened, record: () => record, pending: () => pending };
 }
 
 /** Links a browser through the host and returns what it stored. */
@@ -207,5 +242,123 @@ describe("the chat worker's key flow (decisions 0064, 0081)", () => {
     expect(b.wipe).toHaveBeenCalled();
     expect(b.record()).toBeUndefined();
     expect(await host.start()).toEqual({ state: "unlinked" });
+  });
+});
+
+/** Begins a link through the host and returns what it kept for a reload. */
+async function waiting() {
+  const a = deps();
+  const offer = await chatHost(a.d).beginLink();
+  const pending = a.pending();
+  if (pending === undefined) throw new Error("not kept");
+  return { pending, offer, key: a.opened[0]! };
+}
+
+describe("a link that waits for the phone survives a reload (decision 0096)", () => {
+  it("keeps the link sealed under the request's share, never the key itself", async () => {
+    const { pending, key } = await waiting();
+    expect(pending).toMatchObject({ v: 1, linkId: "link-1", code: "CODE-1", expiresAt: LATER });
+    const hex = (b: Uint8Array) => Buffer.from(b).toString("hex");
+    expect(hex(pending.sealed)).not.toContain(hex(key));
+  });
+
+  it("opens the same store after a reload and shows the same code", async () => {
+    const { pending, offer, key } = await waiting();
+    const b = deps({ pending });
+    const host = chatHost(b.d);
+    expect(await host.start()).toEqual({ state: "unlinked" });
+    expect(b.d.wipeFiles).not.toHaveBeenCalled();
+    expect(b.d.pendingShare).toHaveBeenCalledWith("link-1");
+    expect(b.opened).toEqual([key]);
+    expect(await host.pendingLink()).toEqual(offer);
+  });
+
+  it("completes after a reload, and the device's record replaces the waiting one", async () => {
+    const { pending, key } = await waiting();
+    const b = deps({ pending });
+    const host = chatHost(b.d);
+    await host.start();
+    expect(await host.completeLink()).toEqual({ deviceId: "dev-1", historyExpected: true });
+    expect(b.pending()).toBeUndefined();
+    expect(await host.pendingLink()).toBeNull();
+    const record = b.record();
+    if (record === undefined) throw new Error("not saved");
+    const c = deps({ record, share: { deviceId: "dev-1", share: REQUEST_SHARE() } });
+    expect(await chatHost(c.d).start()).toEqual({ state: "ready", deviceId: "dev-1" });
+    expect(c.opened).toEqual([key]);
+  });
+
+  it("starts again when the request is gone", async () => {
+    const { pending } = await waiting();
+    const b = deps({ pending, pendingShare: "none" });
+    const host = chatHost(b.d);
+    expect(await host.start()).toEqual({ state: "unlinked" });
+    expect(b.d.open).not.toHaveBeenCalled();
+    expect(b.d.wipeFiles).toHaveBeenCalled();
+    expect(b.pending()).toBeUndefined();
+    expect(await host.pendingLink()).toBeNull();
+  });
+
+  it("starts again without asking the server once the link has expired", async () => {
+    const { pending } = await waiting();
+    const b = deps({ pending, now: LATER });
+    expect(await chatHost(b.d).start()).toEqual({ state: "unlinked" });
+    expect(b.d.pendingShare).not.toHaveBeenCalled();
+    expect(b.d.wipeFiles).toHaveBeenCalled();
+    expect(b.pending()).toBeUndefined();
+  });
+
+  it("starts again when the share does not open the store", async () => {
+    const { pending } = await waiting();
+    const b = deps({ pending, pendingShare: { share: new Uint8Array(32).fill(9) } });
+    expect(await chatHost(b.d).start()).toEqual({ state: "unlinked" });
+    expect(b.d.open).not.toHaveBeenCalled();
+    expect(b.d.wipeFiles).toHaveBeenCalled();
+  });
+
+  it("keeps the waiting link when the session is gone", async () => {
+    const { pending } = await waiting();
+    const b = deps({ pending, pendingShare: "signed-out" });
+    expect(await chatHost(b.d).start()).toEqual({ state: "signed-out" });
+    expect(b.d.wipeFiles).not.toHaveBeenCalled();
+    expect(b.pending()).toBe(pending);
+  });
+
+  it("does not wipe a store being linked when started again", async () => {
+    const a = deps();
+    const host = chatHost(a.d);
+    await host.beginLink();
+    expect(await host.start()).toEqual({ state: "unlinked" });
+    expect(a.d.wipeFiles).toHaveBeenCalledTimes(1);
+    expect(await host.pendingLink()).toMatchObject({ code: "CODE-1" });
+  });
+
+  it("links without keeping it when the request's share cannot be had", async () => {
+    const a = deps({ pendingShare: "none" });
+    const host = chatHost(a.d);
+    expect(await host.beginLink()).toMatchObject({ code: "CODE-1" });
+    expect(a.pending()).toBeUndefined();
+    a.d.pendingShare.mockRejectedValueOnce(new Error("offline"));
+    expect(await host.beginLink()).toMatchObject({ code: "CODE-1" });
+    expect(await host.completeLink()).toEqual({ deviceId: "dev-1", historyExpected: true });
+  });
+
+  it("zeroes the request's share it was given", async () => {
+    const { pending } = await waiting();
+    const b = deps({ pending });
+    await chatHost(b.d).start();
+    const given: PendingShare = await b.d.pendingShare.mock.results[0]!.value;
+    if (typeof given === "string") throw new Error("no share was given");
+    expect(given.share.every((byte) => byte === 0)).toBe(true);
+  });
+
+  it("forgets the waiting link with the rest when the store is wiped", async () => {
+    const { pending } = await waiting();
+    const b = deps({ pending });
+    const host = chatHost(b.d);
+    await host.start();
+    await host.wipe();
+    expect(b.pending()).toBeUndefined();
+    expect(await host.pendingLink()).toBeNull();
   });
 });

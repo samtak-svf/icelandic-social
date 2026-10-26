@@ -249,6 +249,14 @@ export interface LinkedDeviceEnrolled {
   historyExpected: boolean;
 }
 
+export interface PendingStoreKey {
+  linkId: string;
+  /** The server's 32-byte half of the store key, made with the request; completing it makes this the device's share (decision 0096) */
+  storeKeyShare: string;
+  /** Milliseconds since the epoch */
+  expiresAt: number;
+}
+
 export interface LinkedStoreKey {
   deviceId: string;
   /** Base64, at most 32 bytes decoded */
@@ -949,6 +957,21 @@ export function completeDeviceLinkRequest(args: {
   | { status: 426; data: ApiError }
 > {
   return call("POST", "/v1/devices/link-requests/{linkId}/complete", args, init);
+}
+
+/** Fetch the server's half of the browser store key while this session's link request waits (decision 0096) */
+export function getPendingStoreKey(args: {
+  path: {
+    linkId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: PendingStoreKey }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/devices/link-requests/{linkId}/store-key", args, init);
 }
 
 /** Fetch the server's half of the browser store key for this session's linked device (decision 0064) */

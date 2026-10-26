@@ -28,6 +28,7 @@ function handlers(over: Partial<Handlers>): Handlers {
   return {
     start: unused,
     beginLink: unused,
+    pendingLink: unused,
     linkState: unused,
     completeLink: unused,
     receiveHistory: unused,

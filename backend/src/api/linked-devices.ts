@@ -192,3 +192,36 @@ export const getLinkedStoreKeyRoute = createRoute({
     404: errorResponse("not_found: this session has no active linked device"),
   },
 });
+
+const PendingStoreKey = z
+  .object({
+    linkId: OpaqueId,
+    storeKeyShare: base64(32).openapi({
+      description:
+        "The server's 32-byte half of the store key, made with the request; completing it makes this the device's share (decision 0096)",
+    }),
+    expiresAt: z.int().openapi({ description: "Milliseconds since the epoch" }),
+  })
+  .openapi("PendingStoreKey");
+
+export const getPendingStoreKeyRoute = createRoute({
+  method: "get",
+  path: "/v1/devices/link-requests/{linkId}/store-key",
+  operationId: "getPendingStoreKey",
+  tags: ["devices"],
+  summary:
+    "Fetch the server's half of the browser store key while this session's link request waits (decision 0096)",
+  security: SESSION_ONLY,
+  request: { params: z.object({ linkId: OpaqueId }) },
+  responses: {
+    200: {
+      description: "The store-key share of this session's pending link request",
+      content: { "application/json": { schema: PendingStoreKey } },
+    },
+    ...INVALID,
+    ...AUTHED,
+    404: errorResponse(
+      "not_found: no such pending link request for this session, or one that has expired",
+    ),
+  },
+});
