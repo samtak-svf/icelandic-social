@@ -599,6 +599,11 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(model) { model.loadShared() }
         LaunchedEffect(model) { model.opened.collect { open(it) } }
         val pop = rememberBack(nav)
+        // Made a master off the main thread, in the view model; the core then makes the group's square (0094).
+        val groupPhoto =
+            rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+                uri?.let { model.setGroupPhoto { graph.files.master(it) } }
+            }
         ConversationInfoScreen(
             state,
             object : ConversationInfoActions {
@@ -615,6 +620,11 @@ class MainActivity : ComponentActivity() {
                 override fun add() = nav.navigate("$PEOPLE/$id")
 
                 override fun rename(name: String?) = model.rename(name)
+
+                override fun setPhoto() =
+                    groupPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+
+                override fun clearPhoto() = model.clearGroupPhoto()
 
                 override fun remove(account: String) = model.remove(account)
 

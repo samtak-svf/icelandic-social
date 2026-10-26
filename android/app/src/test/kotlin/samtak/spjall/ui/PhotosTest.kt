@@ -3,6 +3,7 @@ package samtak.spjall.ui
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import samtak.spjall.account.FakeAccount
@@ -89,6 +90,62 @@ class PhotosTest {
         assertEquals(PhotoOf("a2", "v3"), of(withPhoto))
         assertNull(of(without))
         assertNull("a group's avatar stays initials (decision 0039)", of(withPhoto, without))
+    }
+
+    private fun group(
+        photo: String?,
+        vararg members: Person,
+        name: String? = null,
+    ) = Conversation("c1", ConversationState.ACTIVE, name, photo, members.toList(), null, 0u, null, Mute.Off)
+
+    @Test
+    fun aGroupWithAPhotoShowsItsFileAndAGroupWithoutOneItsInitials() {
+        val anna = Person("a2", "Anna", true, "v3")
+        val siggi = Person("a3", "Siggi", false)
+        val stamp = { _: String -> 7L }
+        assertEquals(
+            PhotoOf("/media/g1.jpg", "7", PhotoKind.GroupFile),
+            group("/media/g1.jpg", anna, siggi).photoOf(stamp),
+        )
+        assertEquals(
+            "a group of one other person is a group once it has a name",
+            PhotoOf("/media/g1.jpg", "7", PhotoKind.GroupFile),
+            group("/media/g1.jpg", anna, name = "Bókaklúbbur").photoOf(stamp),
+        )
+        assertNull(group(null, anna, siggi).photoOf(stamp))
+        assertEquals("a 1:1 keeps the person's photo (0094)", PhotoOf("a2", "v3"), group(null, anna).photoOf(stamp))
+        assertEquals("the core gives a 1:1 no file", PhotoOf("a2", "v3"), group("/media/x.jpg", anna).photoOf(stamp))
+    }
+
+    @Test
+    fun aGroupFileIsReadFromDiskAndAReplacedOneIsAnotherKey() =
+        runTest(dispatcher) {
+            val cache = PhotoCache(account, social, dispatcher) { path -> "image of $path".also { decoded += it } }
+            val first = PhotoOf("/media/g1.jpg", "1", PhotoKind.GroupFile)
+            val replaced = PhotoOf("/media/g1.jpg", "2", PhotoKind.GroupFile)
+            assertEquals("image of /media/g1.jpg", cache.load(first))
+            assertNull("the replaced file is not served from the old key", cache.kept(replaced))
+            cache.load(replaced)
+            assertEquals(2, decoded.size)
+            assertEquals(emptyList<String>(), account.calls.filter { it.startsWith("photoFramed") })
+        }
+
+    @Test
+    fun theStampChangesWhenTheCoreRewritesTheFile() {
+        val file = java.io.File.createTempFile("group", ".jpg")
+        try {
+            file.writeBytes(ByteArray(10))
+            file.setLastModified(1_000_000L)
+            val before = fileStamp(file.path)
+            file.writeBytes(ByteArray(11))
+            assertNotEquals(before, fileStamp(file.path))
+            file.setLastModified(2_000_000L)
+            val second = fileStamp(file.path)
+            file.setLastModified(3_000_000L)
+            assertNotEquals(second, fileStamp(file.path))
+        } finally {
+            file.delete()
+        }
     }
 
     @Test

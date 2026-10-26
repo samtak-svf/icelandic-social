@@ -7,13 +7,14 @@ import samtak.spjall.core.CommunityMember
 import samtak.spjall.core.Conversation
 import samtak.spjall.core.Frame
 import samtak.spjall.core.Person
+import java.io.File
 
-/** Whose image a [PhotoOf] is, and so which core call fetches it (decisions 0039, 0080). */
-enum class PhotoKind { Account, CommunityPicture, CommunityCover }
+/** Whose image a [PhotoOf] is, and so which call fetches it (0039, 0080); a [GroupFile] is read from disk (0094). */
+enum class PhotoKind { Account, CommunityPicture, CommunityCover, GroupFile }
 
 /** An image at the version the server named: an account's photo (0039), or a community's picture or cover (0080). */
 data class PhotoOf(
-    /** The account id, or for the community kinds the community id. */
+    /** The account id, or for the community kinds the community id, or for a [PhotoKind.GroupFile] its path. */
     val owner: String,
     val version: String,
     val kind: PhotoKind = PhotoKind.Account,
@@ -39,5 +40,21 @@ fun Community.coverOf(): PhotoOf? = cover?.let { PhotoOf(communityId, it, PhotoK
 /** The picture of the community a card is in, or null when it has none. */
 fun CardCommunity.pictureOf(): PhotoOf? = photo?.let { PhotoOf(communityId, it, PhotoKind.CommunityPicture) }
 
-/** A 1:1's photo is the other person's; a group's avatar stays initials (decision 0039). */
-fun Conversation.photoOf(): PhotoOf? = members.singleOrNull()?.photoOf()
+/** Whether this is a group (0078): it has a name, or it is not exactly one other person. */
+fun Conversation.isGroup(): Boolean = name != null || members.size != 1
+
+/**
+ * What changes when the core rewrites a photo file in place (0094): its modification time and its size, so a
+ * replaced photo is another cache key. Zero for a file that is not there.
+ */
+fun fileStamp(path: String): Long = File(path).let { it.lastModified() * STAMP_MIX + it.length() }
+
+private const val STAMP_MIX = 31L
+
+/**
+ * A group's own photo when it has one (0094), else a 1:1's is the other person's; a group without one stays
+ * initials (decision 0039). [stamp] reads the file's version, so a test can name one.
+ */
+fun Conversation.photoOf(stamp: (String) -> Long = ::fileStamp): PhotoOf? =
+    photo?.takeIf { isGroup() }?.let { PhotoOf(it, "${stamp(it)}", PhotoKind.GroupFile) }
+        ?: members.singleOrNull()?.photoOf()

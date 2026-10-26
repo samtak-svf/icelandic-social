@@ -138,6 +138,8 @@ class PhotoCache<T : Any>(
                     PhotoKind.Account -> account.photoFramed(photo.owner, photo.version, photo.frame)
                     PhotoKind.CommunityPicture -> social.communityPictureFramed(photo.owner, photo.version, photo.frame)
                     PhotoKind.CommunityCover -> social.communityCoverFramed(photo.owner, photo.version, photo.frame)
+                    // The core's own copy of a group's photo is already on disk (0094).
+                    PhotoKind.GroupFile -> photo.owner
                 }
             } catch (_: CoreException) {
                 // Offline, or refused: the initials stand in, and the next draw asks again.

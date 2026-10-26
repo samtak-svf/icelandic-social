@@ -435,6 +435,21 @@ class FakeAccount(
             }
     }
 
+    override fun setGroupPhoto(
+        conversation: String,
+        path: String,
+    ): String {
+        call("setGroupPhoto $conversation")
+        conversations = conversations.map { if (it.id == conversation) it.copy(photo = path) else it }
+        return "e-photo${calls.size}"
+    }
+
+    override fun clearGroupPhoto(conversation: String): String {
+        call("clearGroupPhoto $conversation")
+        conversations = conversations.map { if (it.id == conversation) it.copy(photo = null) else it }
+        return "e-photo${calls.size}"
+    }
+
     override fun rename(
         conversation: String,
         name: String?,

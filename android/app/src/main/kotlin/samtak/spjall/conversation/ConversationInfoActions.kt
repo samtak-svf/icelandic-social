@@ -26,6 +26,12 @@ interface ConversationInfoActions {
     /** Names the group, or clears its name with null (0078). */
     fun rename(name: String?) = Unit
 
+    /** Opens the picker for the group's photo (0094); the choice goes to the group as a set or a replace. */
+    fun setPhoto() = Unit
+
+    /** Removes the group's photo, for everyone in it (0094). */
+    fun clearPhoto() = Unit
+
     /** Removes [account] from the group, for everyone (0078). */
     fun remove(account: String) = Unit
 

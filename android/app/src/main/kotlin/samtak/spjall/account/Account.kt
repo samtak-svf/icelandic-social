@@ -251,6 +251,18 @@ interface Account {
         name: String?,
     ): String
 
+    /**
+     * Gives a group the photo at [path] (0094), or replaces it; the core makes the square JPEG and seals it.
+     * Returns the envelope id. A conversation of two is refused, an unreadable file is `UnsupportedImage`.
+     */
+    fun setGroupPhoto(
+        conversation: String,
+        path: String,
+    ): String
+
+    /** Removes a group's photo for everyone in it (0094). Returns the envelope id. */
+    fun clearGroupPhoto(conversation: String): String
+
     /** Leaves a group (0078): this account is removed, and its copy of the conversation says so. */
     fun leave(conversation: String)
 
@@ -453,6 +465,13 @@ class CoreAccount(
         conversation: String,
         name: String?,
     ) = client.rename(conversation, name)
+
+    override fun setGroupPhoto(
+        conversation: String,
+        path: String,
+    ) = client.setGroupPhoto(conversation, path)
+
+    override fun clearGroupPhoto(conversation: String) = client.clearGroupPhoto(conversation)
 
     override fun leave(conversation: String) = client.leave(conversation)
 
