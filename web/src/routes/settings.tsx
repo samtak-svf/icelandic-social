@@ -5,6 +5,7 @@ import { refused, type Problem } from "../problem.ts";
 import { endOtherSessions, endSession, listSessions, type SessionInfo } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { formatIsDate } from "../lib/is-format.ts";
+import { deviceIcon } from "../ui/device-icon.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 import { VerifyCta } from "../ui/verify.tsx";
 
@@ -95,11 +96,16 @@ function Settings() {
                 key={session.sessionId}
                 className="flex flex-wrap items-center justify-between gap-3 p-4"
               >
-                <div>
-                  <p className="font-medium">{name(session)}</p>
-                  <p className="text-sm text-muted-fg">
-                    {session.current ? strings.session_this : when(session)}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <span className="flex size-[30px] items-center justify-center rounded-lg bg-muted">
+                    {deviceIcon(session.kind)}
+                  </span>
+                  <div>
+                    <p className="font-medium">{name(session)}</p>
+                    <p className="text-sm text-muted-fg">
+                      {session.current ? strings.session_this : when(session)}
+                    </p>
+                  </div>
                 </div>
                 {!session.current && (
                   <Button
