@@ -152,6 +152,16 @@ impl Core {
         answer(self.client.sync().map(dto::Outcome::from))
     }
 
+    /// `sync` for one conversation alone, as the apps call it after a send (0099).
+    #[wasm_bindgen(js_name = syncConversation, unchecked_return_type = "Outcome")]
+    pub fn sync_conversation(&mut self, conversation: &str) -> Result<JsValue, JsValue> {
+        answer(
+            self.client
+                .sync_conversation(conversation)
+                .map(dto::Outcome::from),
+        )
+    }
+
     /// A frame the realtime socket delivered.
     #[wasm_bindgen(js_name = onFrame, unchecked_return_type = "Outcome")]
     pub fn on_frame(&mut self, text: &str) -> Result<JsValue, JsValue> {
