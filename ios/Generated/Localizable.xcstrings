@@ -4285,6 +4285,102 @@
         }
       }
     },
+    "group_photo_choose": {
+      "comment": "On a group's information screen when the group has no photo: opens the photo picker to set one (docs/decisions/0094).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Setja inn mynd hópsins"
+          }
+        }
+      }
+    },
+    "group_photo_change": {
+      "comment": "On a group's information screen when the group has a photo: opens the photo picker to put another in its place (docs/decisions/0094).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skipta um mynd hópsins"
+          }
+        }
+      }
+    },
+    "group_photo_remove": {
+      "comment": "On a group's information screen: removes the group's photo, after a confirmation; also that confirmation's button (docs/decisions/0094).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjarlægja mynd hópsins"
+          }
+        }
+      }
+    },
+    "group_photo_remove_confirm": {
+      "comment": "Asks before the group's photo is removed: it goes for every member (docs/decisions/0094).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjarlægja mynd hópsins? Hún hverfur hjá öllum í hópnum."
+          }
+        }
+      }
+    },
+    "group_photo_seen_by_members": {
+      "comment": "The one line beside the group photo buttons: only the group's members see it, and it is end-to-end encrypted, unlike a profile photo (docs/decisions/0094).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aðeins fólk í hópnum sér myndina. Hún er dulkóðuð enda á milli."
+          }
+        }
+      }
+    },
+    "group_photo_unsupported": {
+      "comment": "The chosen picture could not be read as an image the group photo accepts (docs/decisions/0094).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekki tókst að lesa myndina. Veldu aðra mynd."
+          }
+        }
+      }
+    },
+    "group_photo_failed": {
+      "comment": "Setting, replacing or removing the group's photo failed for another reason, such as the network (docs/decisions/0094).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekki tókst að breyta mynd hópsins. Reyndu aftur."
+          }
+        }
+      }
+    },
+    "group_photo_alt": {
+      "comment": "Alternative text of a group's photo, in the conversation list, the header and the information screen (docs/decisions/0094).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mynd hópsins"
+          }
+        }
+      }
+    },
     "remove_member": {
       "comment": "Action on a member row in a group's info screen: remove the member from the group (docs/decisions/0078).",
       "extractionState": "manual",
