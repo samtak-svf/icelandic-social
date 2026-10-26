@@ -3,6 +3,8 @@ package samtak.spjall.conversation
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -37,13 +39,21 @@ class ConversationInfoScreenTest {
         object : ConversationInfoActions {
             override fun back() = Unit
 
-            override fun timer(seconds: UInt?) = Unit
+            override fun timer(seconds: UInt?) {
+                calls += "timer $seconds"
+            }
 
-            override fun mute(duration: MuteFor) = Unit
+            override fun mute(duration: MuteFor) {
+                calls += "mute $duration"
+            }
 
-            override fun unmute() = Unit
+            override fun unmute() {
+                calls += "unmute"
+            }
 
-            override fun block() = Unit
+            override fun block() {
+                calls += "block"
+            }
 
             override fun add() {
                 calls += "add"
@@ -75,7 +85,12 @@ class ConversationInfoScreenTest {
     private val anna = Person("a2", "Anna Jónsdóttir", true)
     private val bjorn = Person("a3", "Björn Sigurðsson", false)
 
-    private fun show(name: String? = null) {
+    private fun show(
+        name: String? = null,
+        members: List<Person> = listOf(anna, bjorn),
+        timer: UInt? = null,
+        mute: Mute = Mute.Off,
+    ) {
         compose.setContent {
             SpjallTheme {
                 ConversationInfoScreen(
@@ -85,11 +100,11 @@ class ConversationInfoScreenTest {
                                 id = "c1",
                                 state = ConversationState.ACTIVE,
                                 name = name,
-                                members = listOf(anna, bjorn),
+                                members = members,
                                 last = null,
                                 unread = 0u,
-                                timer = null,
-                                mute = Mute.Off,
+                                timer = timer,
+                                mute = mute,
                             ),
                         loaded = true,
                     ),
@@ -145,5 +160,57 @@ class ConversationInfoScreenTest {
         compose.onNode(hasSetTextAction()).performTextReplacement("Annað")
         compose.onNodeWithText(text(R.string.cancel)).performClick()
         assertEquals(emptyList<String>(), calls)
+    }
+
+    private fun dialogOption(label: String) = compose.onAllNodesWithText(label).onLast()
+
+    @Test
+    fun theTimerRowPicksTheTimerAndTheOneAlreadySetChangesNothing() {
+        show(members = listOf(anna), timer = 3_600u)
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val hour = context.resources.getQuantityString(R.plurals.duration_hours, 1, 1)
+        compose.onNodeWithText(text(R.string.disappearing_messages)).performClick()
+        dialogOption(context.getString(R.string.disappearing_option, hour)).performClick()
+        assertEquals(emptyList<String>(), calls)
+        compose.onNodeWithText(text(R.string.disappearing_messages)).performClick()
+        dialogOption(text(R.string.disappearing_off)).performClick()
+        assertEquals(listOf("timer null"), calls)
+    }
+
+    @Test
+    fun blockAsksFirstAndIsOnlyOfferedInAOneToOne() {
+        show(members = listOf(anna))
+        compose.onNodeWithText(text(R.string.block)).performClick()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.onNodeWithText(context.getString(R.string.block_confirm, "Anna Jónsdóttir")).assertIsDisplayed()
+        assertEquals(emptyList<String>(), calls)
+        dialogOption(text(R.string.block)).performClick()
+        assertEquals(listOf("block"), calls)
+    }
+
+    @Test
+    fun theMuteRowMutesForEachDuration() {
+        show(members = listOf(anna))
+        compose.onNodeWithText(text(R.string.unmute)).assertDoesNotExist()
+        listOf(R.string.mute_hour, R.string.mute_eight_hours, R.string.mute_always).forEach { duration ->
+            compose.onNodeWithText(text(R.string.mute)).performClick()
+            compose.onNodeWithText(text(duration)).performClick()
+        }
+        assertEquals(listOf("mute HOUR", "mute EIGHT_HOURS", "mute ALWAYS"), calls)
+    }
+
+    @Test
+    fun aMutedConversationOffersNotificationsBackInstead() {
+        show(members = listOf(anna), mute = Mute.Until(1_700_003_600_000uL))
+        compose.onNodeWithText(text(R.string.mute)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.unmute)).performClick()
+        assertEquals(listOf("unmute"), calls)
+    }
+
+    @Test
+    fun aGroupHasNoBlockRow() {
+        show(members = listOf(anna, bjorn))
+        compose.onNodeWithText(text(R.string.disappearing_messages)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.block)).assertDoesNotExist()
     }
 }
