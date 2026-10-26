@@ -444,12 +444,12 @@ class ConversationScreenTest {
     }
 
     @Test
-    fun theMenuOpensTheSameInformation() {
+    fun theTitleIsTheHeadersOnlyWayToTheInformation() {
         val bjorn = Person("a3", "Björn", false)
         show(item(1u, Content.Text("Sæl", null)), members = listOf(anna, bjorn))
-        compose.onNodeWithContentDescription(text(R.string.more_options)).performClick()
-        compose.onNodeWithText(text(R.string.conversation_info)).performClick()
-        assertEquals(listOf("info"), calls)
+        compose.onAllNodesWithContentDescription(text(R.string.more_options)).assertCountEquals(0)
+        compose.onAllNodes(hasClickLabel(text(R.string.conversation_info))).assertCountEquals(1)
+        compose.onAllNodesWithContentDescription(text(R.string.conversation_info)).assertCountEquals(0)
     }
 
     @Test
@@ -466,61 +466,6 @@ class ConversationScreenTest {
         compose.onNodeWithText(text(R.string.composer_placeholder)).assertDoesNotExist()
         compose.onNodeWithContentDescription(text(R.string.back)).performClick()
         assertEquals(listOf("back"), calls)
-    }
-
-    @Test
-    fun theTimerIsPickedFromTheMenu() {
-        show(item(1u, Content.Text("Sæl", null)), timer = 3_600u)
-        compose.onNodeWithContentDescription(text(R.string.more_options)).performClick()
-        compose.onNodeWithText(text(R.string.disappearing_messages)).performClick()
-        val hour = context.resources.getQuantityString(R.plurals.duration_hours, 1, 1)
-        // Picking the timer already set changes nothing.
-        compose.onNodeWithText(context.getString(R.string.disappearing_option, hour)).performClick()
-        assertEquals(emptyList<String>(), calls)
-        compose.onNodeWithContentDescription(text(R.string.more_options)).performClick()
-        compose.onNodeWithText(text(R.string.disappearing_messages)).performClick()
-        compose.onNodeWithText(text(R.string.disappearing_off)).performClick()
-        assertEquals(listOf("timer null"), calls)
-    }
-
-    @Test
-    fun blockAsksFirstAndIsOnlyOfferedInAOneToOne() {
-        show(item(1u, Content.Text("Sæl", null)))
-        compose.onNodeWithContentDescription(text(R.string.more_options)).performClick()
-        compose.onNodeWithText(text(R.string.block)).performClick()
-        compose.onNodeWithText(context.getString(R.string.block_confirm, "Anna Jónsdóttir")).assertIsDisplayed()
-        compose.onNodeWithText(text(R.string.block)).performClick()
-        assertEquals(listOf("block"), calls)
-    }
-
-    @Test
-    fun theMenuMutesForEachDuration() {
-        show(item(1u, Content.Text("Sæl", null)))
-        compose.onNodeWithContentDescription(text(R.string.more_options)).performClick()
-        compose.onNodeWithText(text(R.string.unmute)).assertDoesNotExist()
-        listOf(R.string.mute_hour, R.string.mute_eight_hours, R.string.mute_always).forEachIndexed { i, duration ->
-            if (i > 0) compose.onNodeWithContentDescription(text(R.string.more_options)).performClick()
-            compose.onNodeWithText(text(R.string.mute)).performClick()
-            compose.onNodeWithText(text(duration)).performClick()
-        }
-        assertEquals(listOf("mute HOUR", "mute EIGHT_HOURS", "mute ALWAYS"), calls)
-    }
-
-    @Test
-    fun aMutedConversationOffersNotificationsBackInstead() {
-        show(item(1u, Content.Text("Sæl", null)), mute = Mute.Until(1_700_003_600_000uL))
-        compose.onNodeWithContentDescription(text(R.string.more_options)).performClick()
-        compose.onNodeWithText(text(R.string.mute)).assertDoesNotExist()
-        compose.onNodeWithText(text(R.string.unmute)).performClick()
-        assertEquals(listOf("unmute"), calls)
-    }
-
-    @Test
-    fun aGroupMenuHasNoBlock() {
-        show(item(1u, Content.Text("Sæl", null)), members = listOf(anna, Person("a3", "Björn", false)))
-        compose.onNodeWithContentDescription(text(R.string.more_options)).performClick()
-        compose.onNodeWithText(text(R.string.disappearing_messages)).assertIsDisplayed()
-        compose.onNodeWithText(text(R.string.block)).assertDoesNotExist()
     }
 
     @Test

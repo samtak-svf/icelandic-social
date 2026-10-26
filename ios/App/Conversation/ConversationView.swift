@@ -225,20 +225,6 @@ private struct TopBar: View {
                 .accessibilityHint(writable ? Text("conversation_info") : Text(verbatim: ""))
             }
             Spacer(minLength: 0)
-            if writable, let conversation {
-                Button {
-                    info = true
-                } label: {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 18))
-                        .foregroundStyle(BrandTokens.Colors.fg)
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("conversation_info"))
-                ConversationMenu(conversation: conversation, model: model, info: $info)
-            }
         }
         .padding(.leading, 4)
         .padding(.trailing, 8)
