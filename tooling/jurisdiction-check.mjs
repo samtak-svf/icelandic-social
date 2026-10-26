@@ -228,8 +228,7 @@ export async function checkLive({ accountId, token, config, cloudflare, fetch })
     }
   }
 
-  // The buckets the Worker binds. A frozen name nothing binds (spjall-artifacts,
-  // retired by decision 0013) is not storage this Worker writes to.
+  // The buckets the Worker binds.
   for (const { bucket } of config.r2) {
     // Without this header an EU bucket is invisible, so a 404 means the bucket
     // is missing or was created outside the EU.

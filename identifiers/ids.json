@@ -22,7 +22,6 @@
     "d1": "spjall-db",
     "r2": {
       "media": "spjall-media",
-      "artifacts": "spjall-artifacts",
       "profiles": "spjall-profiles"
     },
     "durableObjects": {
