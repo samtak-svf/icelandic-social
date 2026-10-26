@@ -108,6 +108,64 @@ function closeOf(code, open) {
 }
 
 /**
+ * The violations inside one conversion body, as offsets into it.
+ *
+ * @param {string} body
+ * @param {string} param name of the `from` parameter
+ * @returns {{ at: number, rule: string, message: string }[]}
+ */
+function inBody(body, param) {
+  /** @type {{ at: number, rule: string, message: string }[]} */
+  const found = [];
+
+  // A field read: `value.field` or `value.0`, not a method call. The closure
+  // parameters of the body count too: `.map(|d| Out { x: d.x })` is the same
+  // copy one level down.
+  const names = new Set([param]);
+  for (const c of body.matchAll(/\|\s*(\(?[\w\s,&]+\)?)\s*\|/g)) {
+    for (const id of (c[1] ?? "").match(/[a-z_]\w*/g) ?? []) names.add(id);
+  }
+  for (const name of names) {
+    const read = new RegExp(`(?<![\\w.])${name}\\s*\\.(\\w+)(?!\\w|\\s*\\(|\\s*::)`, "g");
+    for (let r = read.exec(body); r; r = read.exec(body)) {
+      found.push({
+        at: r.index,
+        rule: "field-read",
+        message: `reads \`${name}.${r[1]}\`; destructure the source by name`,
+      });
+    }
+  }
+
+  // A rest pattern in a destructuring of the parameter.
+  const rest = new RegExp(
+    `let\\s+[\\w:]+\\s*(?:\\{[^;]*?\\.\\.\\s*\\}|\\([^;]*?\\.\\.\\s*\\))\\s*=\\s*&?${param}\\b`,
+    "g",
+  );
+  for (let r = rest.exec(body); r; r = rest.exec(body)) {
+    found.push({
+      at: r.index,
+      rule: "rest-pattern",
+      message: "destructures with `..`; list every field, `x: _` for a dropped one",
+    });
+  }
+
+  // A wildcard arm in a match on the parameter.
+  const scrutinee = new RegExp(`match\\s+&?${param}\\b[^{]*\\{`, "g");
+  for (let r = scrutinee.exec(body); r; r = scrutinee.exec(body)) {
+    const armsOpen = r.index + r[0].length - 1;
+    const arms = body.slice(armsOpen, closeOf(body, armsOpen));
+    for (const w of arms.matchAll(/(?<!\w)_\s*(?:if\s[^=]*)?=>/g)) {
+      found.push({
+        at: armsOpen + (w.index ?? 0),
+        rule: "wildcard-arm",
+        message: "a `_ =>` arm hides a new variant; name each one",
+      });
+    }
+  }
+  return found;
+}
+
+/**
  * Every violation in one Rust source.
  *
  * @param {string} file path shown in the report
@@ -121,59 +179,19 @@ export function findInSource(file, source, exempt = EXEMPT) {
   const found = [];
   const header = /impl\s+From<([^{]*?)>\s+for\s+([\w:]+)\s*\{/g;
   for (let m = header.exec(code); m; m = header.exec(code)) {
-    const key = `${file}::From<${m[1].replace(/\s+/g, " ")}> for ${m[2]}`;
+    const key = `${file}::From<${(m[1] ?? "").replace(/\s+/g, " ")}> for ${m[2]}`;
     if (key in exempt) continue;
     const open = m.index + m[0].length - 1;
     const body = code.slice(open, closeOf(code, open));
     const param = /fn\s+from\s*\(\s*(?:mut\s+)?(\w+)\s*:/.exec(body)?.[1];
     if (!param) continue;
-    /**
-     * @param {number} at
-     * @param {string} rule
-     * @param {string} message
-     */
-    const add = (at, rule, message) =>
-      found.push({ file, line: lineAt(code, open + at), rule, message: `${key}: ${message}` });
-
-    // A field read: `value.field` or `value.0`, not a method call. The
-    // closure parameters of the body count too: `.map(|d| Out { x: d.x })`
-    // is the same copy one level down.
-    const names = new Set([param]);
-    for (const c of body.matchAll(/\|\s*(\(?[\w\s,&]+\)?)\s*\|/g)) {
-      for (const id of c[1].match(/[a-z_]\w*/g) ?? []) names.add(id);
-    }
-    for (const name of names) {
-      const read = new RegExp(`(?<![\\w.])${name}\\s*\\.(\\w+)(?!\\w|\\s*\\(|\\s*::)`, "g");
-      for (let r = read.exec(body); r; r = read.exec(body)) {
-        add(r.index, "field-read", `reads \`${name}.${r[1]}\`; destructure the source by name`);
-      }
-    }
-
-    // A rest pattern in a destructuring of the parameter.
-    const rest = new RegExp(
-      `let\\s+[\\w:]+\\s*(?:\\{[^;]*?\\.\\.\\s*\\}|\\([^;]*?\\.\\.\\s*\\))\\s*=\\s*&?${param}\\b`,
-      "g",
-    );
-    for (let r = rest.exec(body); r; r = rest.exec(body)) {
-      add(
-        r.index,
-        "rest-pattern",
-        "destructures with `..`; list every field, `x: _` for a dropped one",
-      );
-    }
-
-    // A wildcard arm in a match on the parameter.
-    const scrutinee = new RegExp(`match\\s+&?${param}\\b[^{]*\\{`, "g");
-    for (let r = scrutinee.exec(body); r; r = scrutinee.exec(body)) {
-      const armsOpen = r.index + r[0].length - 1;
-      const arms = body.slice(armsOpen, closeOf(body, armsOpen));
-      for (const w of arms.matchAll(/(?<!\w)_\s*(?:if\s[^=]*)?=>/g)) {
-        add(
-          armsOpen + (w.index ?? 0),
-          "wildcard-arm",
-          "a `_ =>` arm hides a new variant; name each one",
-        );
-      }
+    for (const v of inBody(body, param)) {
+      found.push({
+        file,
+        line: lineAt(code, open + v.at),
+        rule: v.rule,
+        message: `${key}: ${v.message}`,
+      });
     }
   }
   return found;

@@ -7,14 +7,28 @@
 use std::path::Path;
 
 use spjall_client::api;
+pub use spjall_client::api::{JoinRequest, JoinState};
 
 use crate::CoreError;
 use crate::client::{CoreClient, path_string};
 use crate::frames::{Frame, Framing};
+pub use spjall_client::api::Author;
+pub use spjall_client::api::AuthorRole;
+pub use spjall_client::api::CardCommunity;
+pub use spjall_client::api::CommunityImage;
+pub use spjall_client::api::ModerationAction;
+pub use spjall_client::api::ModerationLogAction;
+pub use spjall_client::api::ModerationState;
+pub use spjall_client::api::ReactionKind;
+pub use spjall_client::api::ReportDecision;
+pub use spjall_client::api::ReportReason;
+pub use spjall_client::api::ReportState;
+pub use spjall_client::api::TargetStanding;
+pub use spjall_client::api::TargetState;
 
 /// Who wrote a post or a comment, did what a notification tells, or is
 /// reported. Its photo is not named here; `profile` gives it.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+#[uniffi::remote(Record)]
 pub struct Author {
     pub account_id: String,
     /// None for an account that never gave one.
@@ -29,41 +43,11 @@ pub struct Author {
 }
 
 /// A role worth a badge. `Unknown` is a role a newer server added.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[uniffi::remote(Enum)]
 pub enum AuthorRole {
     Owner,
     Moderator,
     Unknown,
-}
-
-impl From<api::AuthorRole> for AuthorRole {
-    fn from(role: api::AuthorRole) -> Self {
-        match role {
-            api::AuthorRole::Owner => Self::Owner,
-            api::AuthorRole::Moderator => Self::Moderator,
-            api::AuthorRole::Unknown => Self::Unknown,
-        }
-    }
-}
-
-impl From<api::Author> for Author {
-    fn from(author: api::Author) -> Self {
-        let api::Author {
-            account_id,
-            name,
-            verified,
-            photo,
-            role,
-        } = author;
-
-        Self {
-            account_id,
-            name,
-            verified,
-            photo,
-            role: role.map(Into::into),
-        }
-    }
 }
 
 /// Who reads a community and how one joins it.
@@ -194,7 +178,7 @@ pub struct Community {
 }
 
 /// An account asking to join a private community.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+#[uniffi::remote(Record)]
 pub struct JoinRequest {
     pub account_id: String,
     /// None for an account that never gave one.
@@ -202,24 +186,6 @@ pub struct JoinRequest {
     pub verified: bool,
     /// Unix milliseconds.
     pub requested_at: u64,
-}
-
-impl From<api::JoinRequest> for JoinRequest {
-    fn from(request: api::JoinRequest) -> Self {
-        let api::JoinRequest {
-            account_id,
-            name,
-            verified,
-            requested_at,
-        } = request;
-
-        Self {
-            account_id,
-            name,
-            verified,
-            requested_at,
-        }
-    }
 }
 
 impl From<api::Community> for Community {
@@ -330,21 +296,12 @@ pub struct CommunityPage {
 }
 
 /// What joining did.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[uniffi::remote(Enum)]
 pub enum JoinState {
     /// This account is a member now.
     Member,
     /// The request waits for a moderator of a private community.
     Requested,
-}
-
-impl From<api::JoinState> for JoinState {
-    fn from(state: api::JoinState) -> Self {
-        match state {
-            api::JoinState::Member => Self::Member,
-            api::JoinState::Requested => Self::Requested,
-        }
-    }
 }
 
 /// An image of a post: a WebP the server re-encoded.
@@ -373,7 +330,7 @@ impl From<api::SocialMedia> for PostImage {
 
 /// An image in a community's posts or comments (0089); fetch it with the
 /// post's media under `post_id`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+#[uniffi::remote(Record)]
 pub struct CommunityImage {
     pub media_id: String,
     pub post_id: String,
@@ -383,28 +340,6 @@ pub struct CommunityImage {
     pub height: u32,
     /// Unix milliseconds.
     pub created_at: u64,
-}
-
-impl From<api::CommunityImage> for CommunityImage {
-    fn from(image: api::CommunityImage) -> Self {
-        let api::CommunityImage {
-            media_id,
-            post_id,
-            comment_id,
-            width,
-            height,
-            created_at,
-        } = image;
-
-        Self {
-            media_id,
-            post_id,
-            comment_id,
-            width,
-            height,
-            created_at,
-        }
-    }
 }
 
 /// A page of a community's images, newest first. A page may be short, or
@@ -417,38 +352,13 @@ pub struct CommunityImagePage {
 }
 
 /// The reactions a post takes; an account has at most one on each.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[uniffi::remote(Enum)]
 pub enum ReactionKind {
     Like,
     Love,
     Laugh,
     Wow,
     Sad,
-}
-
-impl From<api::ReactionKind> for ReactionKind {
-    fn from(kind: api::ReactionKind) -> Self {
-        use api::ReactionKind as K;
-        match kind {
-            K::Like => Self::Like,
-            K::Love => Self::Love,
-            K::Laugh => Self::Laugh,
-            K::Wow => Self::Wow,
-            K::Sad => Self::Sad,
-        }
-    }
-}
-
-impl From<ReactionKind> for api::ReactionKind {
-    fn from(kind: ReactionKind) -> Self {
-        match kind {
-            ReactionKind::Like => Self::Like,
-            ReactionKind::Love => Self::Love,
-            ReactionKind::Laugh => Self::Laugh,
-            ReactionKind::Wow => Self::Wow,
-            ReactionKind::Sad => Self::Sad,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
@@ -459,24 +369,13 @@ pub struct ReactionCount {
 
 /// Whether a moderator hid or removed a post or a comment. Only a
 /// moderator is shown one that is not `Visible`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[uniffi::remote(Enum)]
 pub enum ModerationState {
     Visible,
     /// An anonymous post waiting for a moderator's approval (0091).
     Pending,
     Hidden,
     Removed,
-}
-
-impl From<api::ModerationState> for ModerationState {
-    fn from(state: api::ModerationState) -> Self {
-        match state {
-            api::ModerationState::Visible => Self::Visible,
-            api::ModerationState::Pending => Self::Pending,
-            api::ModerationState::Hidden => Self::Hidden,
-            api::ModerationState::Removed => Self::Removed,
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -585,7 +484,7 @@ impl From<api::Post> for Post {
         Self {
             post_id,
             community_id,
-            author: author.map(Into::into),
+            author,
             anonymous,
             mine,
             body,
@@ -593,15 +492,12 @@ impl From<api::Post> for Post {
             created_at,
             reactions: reactions
                 .into_iter()
-                .map(|api::ReactionCount { kind, count }| ReactionCount {
-                    kind: kind.into(),
-                    count,
-                })
+                .map(|api::ReactionCount { kind, count }| ReactionCount { kind, count })
                 .collect(),
-            my_reaction: my_reaction.map(Into::into),
+            my_reaction,
             comment_count,
             latest_comment: latest_comment.map(Into::into),
-            state: state.into(),
+            state,
             pinned,
             poll: poll.map(Into::into),
         }
@@ -660,10 +556,10 @@ impl From<api::Comment> for Comment {
             comment_id,
             post_id,
             parent_comment_id,
-            author: author.into(),
+            author,
             body,
             created_at,
-            state: state.into(),
+            state,
             likes,
             liked,
             images: media.into_iter().map(Into::into).collect(),
@@ -728,7 +624,7 @@ impl From<ReportTarget> for api::Target {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[uniffi::remote(Enum)]
 pub enum ReportReason {
     Unlawful,
     Harassment,
@@ -736,55 +632,14 @@ pub enum ReportReason {
     Other,
 }
 
-impl From<api::ReportReason> for ReportReason {
-    fn from(reason: api::ReportReason) -> Self {
-        use api::ReportReason as R;
-        match reason {
-            R::Unlawful => Self::Unlawful,
-            R::Harassment => Self::Harassment,
-            R::Spam => Self::Spam,
-            R::Other => Self::Other,
-        }
-    }
-}
-
-impl From<ReportReason> for api::ReportReason {
-    fn from(reason: ReportReason) -> Self {
-        match reason {
-            ReportReason::Unlawful => Self::Unlawful,
-            ReportReason::Harassment => Self::Harassment,
-            ReportReason::Spam => Self::Spam,
-            ReportReason::Other => Self::Other,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[uniffi::remote(Enum)]
 pub enum ReportState {
     Open,
     Closed,
 }
 
-impl From<api::ReportState> for ReportState {
-    fn from(state: api::ReportState) -> Self {
-        match state {
-            api::ReportState::Open => Self::Open,
-            api::ReportState::Closed => Self::Closed,
-        }
-    }
-}
-
-impl From<ReportState> for api::ReportState {
-    fn from(state: ReportState) -> Self {
-        match state {
-            ReportState::Open => Self::Open,
-            ReportState::Closed => Self::Closed,
-        }
-    }
-}
-
 /// What closed a report; `Unknown` for a value a later server adds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[uniffi::remote(Enum)]
 pub enum ReportDecision {
     HidePost,
     RemovePost,
@@ -802,31 +657,9 @@ pub enum ReportDecision {
     Unknown,
 }
 
-impl From<api::ReportDecision> for ReportDecision {
-    fn from(decision: api::ReportDecision) -> Self {
-        use api::ReportDecision as D;
-        match decision {
-            D::HidePost => Self::HidePost,
-            D::RemovePost => Self::RemovePost,
-            D::RestorePost => Self::RestorePost,
-            D::HideComment => Self::HideComment,
-            D::RemoveComment => Self::RemoveComment,
-            D::RestoreComment => Self::RestoreComment,
-            D::MuteMember => Self::MuteMember,
-            D::UnmuteMember => Self::UnmuteMember,
-            D::RemoveMember => Self::RemoveMember,
-            D::BanMember => Self::BanMember,
-            D::UnbanMember => Self::UnbanMember,
-            D::Dismissed => Self::Dismissed,
-            D::CommunityDeleted => Self::CommunityDeleted,
-            D::Unknown => Self::Unknown,
-        }
-    }
-}
-
 /// The reported account's standing in the community now; `Unknown` for a
 /// value a later server adds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[uniffi::remote(Enum)]
 pub enum TargetStanding {
     Owner,
     Moderator,
@@ -838,43 +671,15 @@ pub enum TargetStanding {
     Unknown,
 }
 
-impl From<api::TargetStanding> for TargetStanding {
-    fn from(standing: api::TargetStanding) -> Self {
-        use api::TargetStanding as S;
-        match standing {
-            S::Owner => Self::Owner,
-            S::Moderator => Self::Moderator,
-            S::Member => Self::Member,
-            S::Muted => Self::Muted,
-            S::Banned => Self::Banned,
-            S::NotMember => Self::NotMember,
-            S::Gone => Self::Gone,
-            S::Unknown => Self::Unknown,
-        }
-    }
-}
-
 /// The reported content's state now; `Unknown` for a value a later server
 /// adds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[uniffi::remote(Enum)]
 pub enum TargetState {
     Visible,
     Hidden,
     Removed,
     Gone,
     Unknown,
-}
-
-impl From<api::TargetState> for TargetState {
-    fn from(state: api::TargetState) -> Self {
-        match state {
-            api::TargetState::Visible => Self::Visible,
-            api::TargetState::Hidden => Self::Hidden,
-            api::TargetState::Removed => Self::Removed,
-            api::TargetState::Gone => Self::Gone,
-            api::TargetState::Unknown => Self::Unknown,
-        }
-    }
 }
 
 /// A report in a moderator's queue. The account that made it is never
@@ -934,18 +739,18 @@ impl From<api::Report> for Report {
             report_id,
             community_id,
             target: target.into(),
-            target_account: target_account.map(Into::into),
-            reason: reason.into(),
+            target_account,
+            reason,
             note,
-            state: state.into(),
+            state,
             created_at,
             closed_at,
-            decision: decision.map(Into::into),
+            decision,
             resolution,
-            closed_by: closed_by.map(Into::into),
+            closed_by,
             target_anonymous,
-            target_standing: target_standing.map(Into::into),
-            target_state: target_state.map(Into::into),
+            target_standing,
+            target_state,
         }
     }
 }
@@ -959,7 +764,7 @@ pub struct ReportPage {
 
 /// What a moderator can do in a community. The post, comment or account it
 /// acts on is the `target_id` of `moderate`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[uniffi::remote(Enum)]
 pub enum ModerationAction {
     HidePost,
     RemovePost,
@@ -975,47 +780,9 @@ pub enum ModerationAction {
     UnbanMember,
 }
 
-impl From<ModerationAction> for api::ModerationAction {
-    fn from(action: ModerationAction) -> Self {
-        use ModerationAction as M;
-        match action {
-            M::HidePost => Self::HidePost,
-            M::RemovePost => Self::RemovePost,
-            M::RestorePost => Self::RestorePost,
-            M::HideComment => Self::HideComment,
-            M::RemoveComment => Self::RemoveComment,
-            M::RestoreComment => Self::RestoreComment,
-            M::MuteMember => Self::MuteMember,
-            M::UnmuteMember => Self::UnmuteMember,
-            M::RemoveMember => Self::RemoveMember,
-            M::BanMember => Self::BanMember,
-            M::UnbanMember => Self::UnbanMember,
-        }
-    }
-}
-
-impl From<api::ModerationAction> for ModerationAction {
-    fn from(action: api::ModerationAction) -> Self {
-        use api::ModerationAction as M;
-        match action {
-            M::HidePost => Self::HidePost,
-            M::RemovePost => Self::RemovePost,
-            M::RestorePost => Self::RestorePost,
-            M::HideComment => Self::HideComment,
-            M::RemoveComment => Self::RemoveComment,
-            M::RestoreComment => Self::RestoreComment,
-            M::MuteMember => Self::MuteMember,
-            M::UnmuteMember => Self::UnmuteMember,
-            M::RemoveMember => Self::RemoveMember,
-            M::BanMember => Self::BanMember,
-            M::UnbanMember => Self::UnbanMember,
-        }
-    }
-}
-
 /// What a moderation log entry records; `Unknown` for a value a later
 /// server adds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[uniffi::remote(Enum)]
 pub enum ModerationLogAction {
     HidePost,
     RemovePost,
@@ -1043,39 +810,6 @@ pub enum ModerationLogAction {
     AnonymousPostsOff,
     RevealAuthor,
     Unknown,
-}
-
-impl From<api::ModerationLogAction> for ModerationLogAction {
-    fn from(action: api::ModerationLogAction) -> Self {
-        use api::ModerationLogAction as A;
-        match action {
-            A::HidePost => Self::HidePost,
-            A::RemovePost => Self::RemovePost,
-            A::RestorePost => Self::RestorePost,
-            A::HideComment => Self::HideComment,
-            A::RemoveComment => Self::RemoveComment,
-            A::RestoreComment => Self::RestoreComment,
-            A::MuteMember => Self::MuteMember,
-            A::UnmuteMember => Self::UnmuteMember,
-            A::RemoveMember => Self::RemoveMember,
-            A::BanMember => Self::BanMember,
-            A::UnbanMember => Self::UnbanMember,
-            A::CloseReport => Self::CloseReport,
-            A::DeleteCommunity => Self::DeleteCommunity,
-            A::RestoreCommunity => Self::RestoreCommunity,
-            A::SetCommunityPicture => Self::SetCommunityPicture,
-            A::RemoveCommunityPicture => Self::RemoveCommunityPicture,
-            A::SetCommunityCover => Self::SetCommunityCover,
-            A::RemoveCommunityCover => Self::RemoveCommunityCover,
-            A::PinPost => Self::PinPost,
-            A::UnpinPost => Self::UnpinPost,
-            A::ClosePoll => Self::ClosePoll,
-            A::AnonymousPostsOn => Self::AnonymousPostsOn,
-            A::AnonymousPostsOff => Self::AnonymousPostsOff,
-            A::RevealAuthor => Self::RevealAuthor,
-            A::Unknown => Self::Unknown,
-        }
-    }
 }
 
 /// What a moderation log entry acted on; `Unknown` for a value a later
@@ -1160,11 +894,11 @@ impl From<api::ModerationLogEntry> for ModerationLogEntry {
         Self {
             entry_id,
             community_id,
-            actor: actor.map(Into::into),
+            actor,
             as_platform,
-            action: action.into(),
+            action,
             target: target.into(),
-            target_account: target_account.map(Into::into),
+            target_account,
             reason,
             created_at,
         }
@@ -1225,29 +959,13 @@ impl From<CardRef> for api::Ref {
 }
 
 /// The community a card's post or comment is in, or the card's community.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+#[uniffi::remote(Record)]
 pub struct CardCommunity {
     pub community_id: String,
     pub name: String,
     /// The picture's version (0080); none when it has no picture.
     #[uniffi(default = None)]
     pub photo: Option<String>,
-}
-
-impl From<api::CardCommunity> for CardCommunity {
-    fn from(community: api::CardCommunity) -> Self {
-        let api::CardCommunity {
-            community_id,
-            name,
-            photo,
-        } = community;
-
-        Self {
-            community_id,
-            name,
-            photo,
-        }
-    }
 }
 
 /// What a reference shows, as a report in the queue or a shared link
@@ -1301,8 +1019,8 @@ impl From<api::Card> for Card {
                 created_at,
             } => Self::Post {
                 reference: reference.into(),
-                community: community.into(),
-                author: author.map(Into::into),
+                community,
+                author,
                 excerpt,
                 image: image.map(Into::into),
                 created_at,
@@ -1316,9 +1034,9 @@ impl From<api::Card> for Card {
                 created_at,
             } => Self::Comment {
                 reference: reference.into(),
-                community: community.into(),
+                community,
                 post_id,
-                author: author.into(),
+                author,
                 excerpt,
                 created_at,
             },
@@ -1330,7 +1048,7 @@ impl From<api::Card> for Card {
                 member_count,
             } => Self::Community {
                 reference: reference.into(),
-                community: community.into(),
+                community,
                 description,
                 audience: audience.into(),
                 member_count,
@@ -1395,11 +1113,11 @@ impl From<api::Notification> for SocialNotification {
                 K::JoinApproved => SocialNotificationKind::JoinApproved,
                 K::Moderated => SocialNotificationKind::Moderated,
             },
-            actor: actor.map(Into::into),
+            actor,
             community_id,
             post_id,
             comment_id,
-            action: action.map(Into::into),
+            action,
             created_at,
             read,
         }
@@ -1588,7 +1306,7 @@ impl CoreClient {
     ) -> Result<Option<String>, CoreError> {
         Ok(self
             .client()?
-            .community_picture_framed(&community_id, &version, frame.into())?
+            .community_picture_framed(&community_id, &version, frame)?
             .as_deref()
             .map(path_string))
     }
@@ -1605,7 +1323,7 @@ impl CoreClient {
     ) -> Result<Option<String>, CoreError> {
         Ok(self
             .client()?
-            .community_cover_framed(&community_id, &version, frame.into())?
+            .community_cover_framed(&community_id, &version, frame)?
             .as_deref()
             .map(path_string))
     }
@@ -1659,7 +1377,7 @@ impl CoreClient {
 
     /// Joins an open community at once, or asks a private one's moderators.
     pub fn join_community(&self, community_id: String) -> Result<JoinState, CoreError> {
-        Ok(self.client()?.join_community(&community_id)?.into())
+        Ok(self.client()?.join_community(&community_id)?)
     }
 
     /// Takes back a join request that waits; no error when none does.
@@ -1670,7 +1388,7 @@ impl CoreClient {
     /// The join requests that wait; for a moderator of the community.
     pub fn join_requests(&self, community_id: String) -> Result<Vec<JoinRequest>, CoreError> {
         let requests = self.client()?.join_requests(&community_id)?;
-        Ok(requests.into_iter().map(Into::into).collect())
+        Ok(requests.into_iter().collect())
     }
 
     /// Takes the requesting account in as a member.
@@ -1752,7 +1470,7 @@ impl CoreClient {
             .client()?
             .community_images(&community_id, cursor.as_deref(), limit)?;
         Ok(CommunityImagePage {
-            images: page.images.into_iter().map(Into::into).collect(),
+            images: page.images.into_iter().collect(),
             next: page.next,
         })
     }
@@ -1862,7 +1580,7 @@ impl CoreClient {
     /// Who wrote an anonymous post; a moderator's. The moderation log
     /// records who asked, never whom (0091).
     pub fn reveal_author(&self, post_id: String) -> Result<Author, CoreError> {
-        Ok(self.client()?.reveal_author(&post_id)?.into())
+        Ok(self.client()?.reveal_author(&post_id)?)
     }
 
     /// Uploads the image at `path` for a post in the community (0065): a
@@ -1897,7 +1615,7 @@ impl CoreClient {
 
     /// Sets this account's one reaction on a post, in place of any other.
     pub fn react(&self, post_id: String, kind: ReactionKind) -> Result<(), CoreError> {
-        Ok(self.client()?.react(&post_id, kind.into())?)
+        Ok(self.client()?.react(&post_id, kind)?)
     }
 
     /// Takes this account's reaction off a post; no error when it had none.
@@ -1989,7 +1707,7 @@ impl CoreClient {
     ) -> Result<(), CoreError> {
         Ok(self.client()?.report(&api::NewReport {
             target: target.into(),
-            reason: reason.into(),
+            reason,
             note,
             to_platform,
         })?)
@@ -2004,12 +1722,9 @@ impl CoreClient {
         after: Option<String>,
         limit: u32,
     ) -> Result<ReportPage, CoreError> {
-        let page = self.client()?.community_reports(
-            &community_id,
-            state.into(),
-            after.as_deref(),
-            limit,
-        )?;
+        let page =
+            self.client()?
+                .community_reports(&community_id, state, after.as_deref(), limit)?;
         Ok(ReportPage {
             reports: page.reports.into_iter().map(Into::into).collect(),
             next: page.next,
@@ -2031,7 +1746,7 @@ impl CoreClient {
         until: Option<u64>,
     ) -> Result<(), CoreError> {
         let moderation = api::Moderation {
-            action: action.into(),
+            action,
             target_id,
             reason,
             report_id,

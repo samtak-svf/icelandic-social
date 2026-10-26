@@ -9,6 +9,10 @@ use spjall_client::{self as core, ClientError, HistoryError, LinkError, MediaErr
 
 use crate::frames::{Frame, Framing};
 use crate::{Body, CoreError, Envelope, store_code};
+pub use spjall_client::LinkRequest;
+pub use spjall_client::Person;
+pub use spjall_client::api::DeviceKind;
+pub use spjall_client::api::Platform;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum HttpMethod {
@@ -204,9 +208,7 @@ impl From<ClientError> for CoreError {
             ClientError::History(HistoryError::File(error)) => Self::File {
                 detail: format!("{:?}", error.kind()),
             },
-            ClientError::CannotForward(reason) => Self::CannotForward {
-                reason: reason.into(),
-            },
+            ClientError::CannotForward(reason) => Self::CannotForward { reason },
             // NotApproved is only raised by a browser completing its own link;
             // the apps never call that, so it shares the code's error.
             ClientError::Link(LinkError::InvalidCode | LinkError::NotApproved) => {
@@ -224,28 +226,10 @@ impl From<ClientError> for CoreError {
 }
 
 /// Which app is signing in; registerDevice records it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[uniffi::remote(Enum)]
 pub enum Platform {
     Android,
     Ios,
-}
-
-impl From<Platform> for api::Platform {
-    fn from(platform: Platform) -> Self {
-        match platform {
-            Platform::Android => Self::Android,
-            Platform::Ios => Self::Ios,
-        }
-    }
-}
-
-impl From<api::Platform> for Platform {
-    fn from(platform: api::Platform) -> Self {
-        match platform {
-            api::Platform::Android => Self::Android,
-            api::Platform::Ios => Self::Ios,
-        }
-    }
 }
 
 /// Who a person signs in with (0033): Google first, Kenni for the mark.
@@ -284,19 +268,10 @@ impl From<core::SignedIn> for SignedIn {
 
 /// What kind of device an account holds (0064): a phone, or a browser
 /// linked from its session.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[uniffi::remote(Enum)]
 pub enum DeviceKind {
     Phone,
     Web,
-}
-
-impl From<api::DeviceKind> for DeviceKind {
-    fn from(kind: api::DeviceKind) -> Self {
-        match kind {
-            api::DeviceKind::Phone => Self::Phone,
-            api::DeviceKind::Web => Self::Web,
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -350,8 +325,8 @@ impl From<api::Me> for Me {
                          current,
                      }| AccountDevice {
                         device_id,
-                        platform: platform.into(),
-                        kind: kind.into(),
+                        platform,
+                        kind,
                         created_at,
                         current,
                     },
@@ -430,30 +405,12 @@ pub fn is_link_code(text: String) -> bool {
 /// A browser's pending request to be linked to this account (0064), as the
 /// phone shows it before approving: `browser` and `os` as the server read
 /// them, and when it expires, in milliseconds.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+#[uniffi::remote(Record)]
 pub struct LinkRequest {
     pub browser: Option<String>,
     pub os: Option<String>,
     pub expires_at: i64,
     pub approved: bool,
-}
-
-impl From<core::LinkRequest> for LinkRequest {
-    fn from(request: core::LinkRequest) -> Self {
-        let core::LinkRequest {
-            browser,
-            os,
-            expires_at,
-            approved,
-        } = request;
-
-        Self {
-            browser,
-            os,
-            expires_at,
-            approved,
-        }
-    }
 }
 
 #[uniffi::export]
@@ -494,7 +451,7 @@ impl From<core::State> for ConversationState {
 
 /// An account as the screens show it: the name and mark the server gave,
 /// none until the core has fetched them.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+#[uniffi::remote(Record)]
 pub struct Person {
     pub account: String,
     pub name: Option<String>,
@@ -503,24 +460,6 @@ pub struct Person {
     /// a block stands between the two, or the core has not fetched it.
     #[uniffi(default = None)]
     pub photo: Option<String>,
-}
-
-impl From<core::Person> for Person {
-    fn from(person: core::Person) -> Self {
-        let core::Person {
-            account,
-            name,
-            verified,
-            photo,
-        } = person;
-
-        Self {
-            account,
-            name,
-            verified,
-            photo,
-        }
-    }
 }
 
 /// A page of the directory (0036), verified first, then by name.
@@ -568,7 +507,7 @@ impl From<core::ListSearch> for ListSearch {
 }
 
 fn people(people: Vec<core::Person>) -> Vec<Person> {
-    people.into_iter().map(Into::into).collect()
+    people.into_iter().collect()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -626,7 +565,7 @@ impl From<core::Notices> for Notices {
                         conversation,
                         members: people(members),
                         seq,
-                        sender: sender.into(),
+                        sender,
                         kind: match kind {
                             core::NoticeKind::Text => NoticeKind::Text,
                             core::NoticeKind::Photo => NoticeKind::Photo,
@@ -833,7 +772,7 @@ impl From<core::Content> for Content {
                          location,
                      }| Quote {
                         envelope_id,
-                        sender: sender.map(Into::into),
+                        sender,
                         text,
                         post_id,
                         location,
@@ -942,7 +881,7 @@ impl From<core::Item> for Item {
         Self {
             seq,
             envelope_id,
-            sender: sender.into(),
+            sender,
             own,
             ts,
             status: status.into(),
@@ -1173,7 +1112,7 @@ impl CoreClient {
             detail: format!("key-length/{}", key.len()),
         })?;
         let mut client = core::Client::open(Path::new(&dir), &key, Foreign(transport))?;
-        client.set_client_version(platform.into(), &version)?;
+        client.set_client_version(platform, &version)?;
         let view = client.view()?;
         let header = client.client_header().unwrap_or_default().to_owned();
         Ok(Arc::new(Self {
@@ -1216,7 +1155,7 @@ impl CoreClient {
     ) -> Result<SignedIn, CoreError> {
         Ok(self
             .client()?
-            .complete_sign_in(&callback, invite_token.as_deref(), platform.into())?
+            .complete_sign_in(&callback, invite_token.as_deref(), platform)?
             .into())
     }
 
@@ -1284,7 +1223,7 @@ impl CoreClient {
     /// The pending link request the code `code` names, once its keys are
     /// checked against the code's (0077).
     pub fn inspect_link(&self, code: String) -> Result<LinkRequest, CoreError> {
-        Ok(self.client()?.inspect_link(&code)?.into())
+        Ok(self.client()?.inspect_link(&code)?)
     }
 
     /// Approves the link request the code `code` names with this phone's
@@ -1549,7 +1488,7 @@ impl CoreClient {
     /// An account's name and mark, fetched now; the stored one when there
     /// is no answer.
     pub fn profile(&self, account: String) -> Result<Person, CoreError> {
-        Ok(self.client()?.profile(&account)?.into())
+        Ok(self.client()?.profile(&account)?)
     }
 
     /// Sets this account's photo from the image at `path` (0039), in place
@@ -1593,7 +1532,7 @@ impl CoreClient {
     ) -> Result<Option<String>, CoreError> {
         Ok(self
             .client()?
-            .photo_framed(&account, &version, frame.into())?
+            .photo_framed(&account, &version, frame)?
             .as_deref()
             .map(path_string))
     }

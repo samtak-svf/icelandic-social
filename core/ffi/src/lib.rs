@@ -9,6 +9,7 @@
 use std::path::Path;
 use std::sync::{Arc, Mutex, PoisonError};
 
+pub use spjall_client::Unforwardable;
 use spjall_envelope as envelope;
 
 pub mod client;
@@ -109,7 +110,7 @@ pub enum CoreError {
 }
 
 /// Why a message cannot be forwarded (0041).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[uniffi::remote(Enum)]
 pub enum Unforwardable {
     /// It is under a disappearing timer.
     Disappearing,
@@ -118,17 +119,6 @@ pub enum Unforwardable {
     /// Not a text or a file this device has: a shared post (0044), a
     /// card, or nothing.
     NotAMessage,
-}
-
-impl From<spjall_client::Unforwardable> for Unforwardable {
-    fn from(reason: spjall_client::Unforwardable) -> Self {
-        use spjall_client::Unforwardable as U;
-        match reason {
-            U::Disappearing => Self::Disappearing,
-            U::Deleted => Self::Deleted,
-            U::NotAMessage => Self::NotAMessage,
-        }
-    }
 }
 
 impl From<envelope::EnvelopeError> for CoreError {
