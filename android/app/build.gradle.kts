@@ -88,6 +88,12 @@ android {
         }
     }
 
+    bundle {
+        // The emoji picker is built from an Icelandic configuration whatever the device language
+        // (#295), so the library's Icelandic strings must ship to every device, not only those set to it.
+        language { enableSplit = false }
+    }
+
     buildTypes {
         debug {
             debugApiBaseUrl?.let { buildConfigField("String", "API_BASE_URL", "\"$it\"") }
