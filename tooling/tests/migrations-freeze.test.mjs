@@ -98,6 +98,21 @@ describe("migrations-freeze", () => {
       expect(repo.problems()).toEqual([]);
     });
 
+    it("skips a tag from before the store existed and reads the ones after it", () => {
+      const repo = fixture();
+      writeFileSync(join(repo.dir, "README"), "x");
+      git(["add", "README"], repo.dir);
+      git(["commit", "-q", "-m", "no store yet"], repo.dir);
+      repo.tag("core-v0.0.1");
+      repo.commit(one, "one");
+      repo.tag("core-v0.1.0");
+      repo.commit(two, "two");
+      repo.tag("core-v0.2.0");
+      const released = releasedMigrations(repo.dir);
+      expect([...released.keys()].sort()).toEqual(["core-v0.1.0", "core-v0.2.0"]);
+      expect([...(released.get("core-v0.2.0")?.keys() ?? [])]).toEqual([1, 2]);
+    });
+
     it("still fails when the checkout contains the tag and drops a migration", () => {
       const repo = fixture();
       repo.commit(two, "two");
