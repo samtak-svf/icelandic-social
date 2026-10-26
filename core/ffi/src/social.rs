@@ -48,12 +48,20 @@ impl From<api::AuthorRole> for AuthorRole {
 
 impl From<api::Author> for Author {
     fn from(author: api::Author) -> Self {
+        let api::Author {
+            account_id,
+            name,
+            verified,
+            photo,
+            role,
+        } = author;
+
         Self {
-            account_id: author.account_id,
-            name: author.name,
-            verified: author.verified,
-            photo: author.photo,
-            role: author.role.map(Into::into),
+            account_id,
+            name,
+            verified,
+            photo,
+            role: role.map(Into::into),
         }
     }
 }
@@ -198,43 +206,78 @@ pub struct JoinRequest {
 
 impl From<api::JoinRequest> for JoinRequest {
     fn from(request: api::JoinRequest) -> Self {
+        let api::JoinRequest {
+            account_id,
+            name,
+            verified,
+            requested_at,
+        } = request;
+
         Self {
-            account_id: request.account_id,
-            name: request.name,
-            verified: request.verified,
-            requested_at: request.requested_at,
+            account_id,
+            name,
+            verified,
+            requested_at,
         }
     }
 }
 
 impl From<api::Community> for Community {
     fn from(community: api::Community) -> Self {
+        let api::Community {
+            community_id,
+            name,
+            description,
+            audience,
+            created_at,
+            member_count,
+            role,
+            join_requested,
+            invited,
+            muted_until,
+            read_only,
+            deleted_at,
+            join_declined_until,
+            pending_join_requests,
+            open_reports,
+            photo,
+            cover,
+            photo_frames,
+            cover_frames,
+            unread,
+            last_post_at,
+            pinned,
+            anonymous_posts,
+            pending_anonymous,
+            featured,
+        } = community;
+
         Self {
-            community_id: community.community_id,
-            name: community.name,
-            description: community.description,
-            audience: community.audience.into(),
-            created_at: community.created_at,
-            member_count: community.member_count,
-            role: community.role.map(Into::into),
-            join_requested: community.join_requested,
-            invited: community.invited,
-            muted_until: community.muted_until,
-            read_only: community.read_only,
-            deleted_at: community.deleted_at,
-            join_declined_until: community.join_declined_until,
-            pending_join_requests: community.pending_join_requests,
-            open_reports: community.open_reports,
-            photo: community.photo,
-            cover: community.cover,
-            photo_frames: community.photo_frames.map(Into::into),
-            cover_frames: community.cover_frames.map(Into::into),
-            unread: community.unread,
-            last_post_at: community.last_post_at,
-            pinned: community.pinned,
-            anonymous_posts: community.anonymous_posts,
-            pending_anonymous: community.pending_anonymous,
-            featured: community.featured.into_iter().map(Into::into).collect(),
+            community_id,
+            name,
+            description,
+            audience: audience.into(),
+            created_at,
+            member_count,
+            role: role.map(Into::into),
+            join_requested,
+            invited,
+            muted_until,
+            read_only,
+            deleted_at,
+            join_declined_until,
+            pending_join_requests,
+            open_reports,
+            photo,
+            cover,
+            photo_frames: photo_frames.map(Into::into),
+            cover_frames: cover_frames.map(Into::into),
+            unread,
+            last_post_at,
+            pinned,
+            anonymous_posts,
+            pending_anonymous,
+            featured: featured.into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -259,13 +302,22 @@ pub struct CommunityMember {
 
 impl From<api::CommunityMember> for CommunityMember {
     fn from(member: api::CommunityMember) -> Self {
+        let api::CommunityMember {
+            account_id,
+            name,
+            verified,
+            role,
+            joined_at,
+            photo,
+        } = member;
+
         Self {
-            account_id: member.account_id,
-            name: member.name,
-            verified: member.verified,
-            role: member.role.into(),
-            joined_at: member.joined_at,
-            photo: member.photo,
+            account_id,
+            name,
+            verified,
+            role: role.into(),
+            joined_at,
+            photo,
         }
     }
 }
@@ -305,10 +357,16 @@ pub struct PostImage {
 
 impl From<api::SocialMedia> for PostImage {
     fn from(media: api::SocialMedia) -> Self {
+        let api::SocialMedia {
+            media_id,
+            width,
+            height,
+        } = media;
+
         Self {
-            media_id: media.media_id,
-            width: media.width,
-            height: media.height,
+            media_id,
+            width,
+            height,
         }
     }
 }
@@ -329,13 +387,22 @@ pub struct CommunityImage {
 
 impl From<api::CommunityImage> for CommunityImage {
     fn from(image: api::CommunityImage) -> Self {
+        let api::CommunityImage {
+            media_id,
+            post_id,
+            comment_id,
+            width,
+            height,
+            created_at,
+        } = image;
+
         Self {
-            media_id: image.media_id,
-            post_id: image.post_id,
-            comment_id: image.comment_id,
-            width: image.width,
-            height: image.height,
-            created_at: image.created_at,
+            media_id,
+            post_id,
+            comment_id,
+            width,
+            height,
+            created_at,
         }
     }
 }
@@ -466,48 +533,77 @@ pub struct PollOption {
 
 impl From<api::Poll> for Poll {
     fn from(poll: api::Poll) -> Self {
+        let api::Poll {
+            total,
+            mine,
+            closed,
+            options,
+        } = poll;
+
         Self {
-            options: poll
-                .options
+            options: options
                 .into_iter()
-                .map(|o| PollOption {
-                    option_id: o.option_id,
-                    text: o.text,
-                    votes: o.votes,
-                })
+                .map(
+                    |api::PollOption {
+                         option_id,
+                         text,
+                         votes,
+                     }| PollOption {
+                        option_id,
+                        text,
+                        votes,
+                    },
+                )
                 .collect(),
-            total: poll.total,
-            mine: poll.mine,
-            closed: poll.closed,
+            total,
+            mine,
+            closed,
         }
     }
 }
 
 impl From<api::Post> for Post {
     fn from(post: api::Post) -> Self {
+        let api::Post {
+            post_id,
+            community_id,
+            author,
+            anonymous,
+            mine,
+            body,
+            media,
+            created_at,
+            my_reaction,
+            comment_count,
+            latest_comment,
+            state,
+            pinned,
+            poll,
+            reactions,
+        } = post;
+
         Self {
-            post_id: post.post_id,
-            community_id: post.community_id,
-            author: post.author.map(Into::into),
-            anonymous: post.anonymous,
-            mine: post.mine,
-            body: post.body,
-            images: post.media.into_iter().map(Into::into).collect(),
-            created_at: post.created_at,
-            reactions: post
-                .reactions
+            post_id,
+            community_id,
+            author: author.map(Into::into),
+            anonymous,
+            mine,
+            body,
+            images: media.into_iter().map(Into::into).collect(),
+            created_at,
+            reactions: reactions
                 .into_iter()
-                .map(|r| ReactionCount {
-                    kind: r.kind.into(),
-                    count: r.count,
+                .map(|api::ReactionCount { kind, count }| ReactionCount {
+                    kind: kind.into(),
+                    count,
                 })
                 .collect(),
-            my_reaction: post.my_reaction.map(Into::into),
-            comment_count: post.comment_count,
-            latest_comment: post.latest_comment.map(Into::into),
-            state: post.state.into(),
-            pinned: post.pinned,
-            poll: post.poll.map(Into::into),
+            my_reaction: my_reaction.map(Into::into),
+            comment_count,
+            latest_comment: latest_comment.map(Into::into),
+            state: state.into(),
+            pinned,
+            poll: poll.map(Into::into),
         }
     }
 }
@@ -547,17 +643,30 @@ pub struct Comment {
 
 impl From<api::Comment> for Comment {
     fn from(comment: api::Comment) -> Self {
+        let api::Comment {
+            comment_id,
+            post_id,
+            parent_comment_id,
+            author,
+            body,
+            created_at,
+            state,
+            likes,
+            liked,
+            media,
+        } = comment;
+
         Self {
-            comment_id: comment.comment_id,
-            post_id: comment.post_id,
-            parent_comment_id: comment.parent_comment_id,
-            author: comment.author.into(),
-            body: comment.body,
-            created_at: comment.created_at,
-            state: comment.state.into(),
-            likes: comment.likes,
-            liked: comment.liked,
-            images: comment.media.into_iter().map(Into::into).collect(),
+            comment_id,
+            post_id,
+            parent_comment_id,
+            author: author.into(),
+            body,
+            created_at,
+            state: state.into(),
+            likes,
+            liked,
+            images: media.into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -587,30 +696,34 @@ pub struct ReportTarget {
 
 impl From<api::Target> for ReportTarget {
     fn from(target: api::Target) -> Self {
+        let api::Target { kind, id } = target;
+
         use api::TargetKind as K;
         Self {
-            kind: match target.kind {
+            kind: match kind {
                 K::Post => ReportTargetKind::Post,
                 K::Comment => ReportTargetKind::Comment,
                 K::Community => ReportTargetKind::Community,
                 K::Account => ReportTargetKind::Account,
             },
-            id: target.id,
+            id,
         }
     }
 }
 
 impl From<ReportTarget> for api::Target {
     fn from(target: ReportTarget) -> Self {
+        let ReportTarget { kind, id } = target;
+
         use api::TargetKind as K;
         Self {
-            kind: match target.kind {
+            kind: match kind {
                 ReportTargetKind::Post => K::Post,
                 ReportTargetKind::Comment => K::Comment,
                 ReportTargetKind::Community => K::Community,
                 ReportTargetKind::Account => K::Account,
             },
-            id: target.id,
+            id,
         }
     }
 }
@@ -799,22 +912,40 @@ pub struct Report {
 
 impl From<api::Report> for Report {
     fn from(report: api::Report) -> Self {
+        let api::Report {
+            report_id,
+            community_id,
+            target,
+            target_account,
+            reason,
+            note,
+            state,
+            created_at,
+            closed_at,
+            decision,
+            resolution,
+            closed_by,
+            target_anonymous,
+            target_standing,
+            target_state,
+        } = report;
+
         Self {
-            report_id: report.report_id,
-            community_id: report.community_id,
-            target: report.target.into(),
-            target_account: report.target_account.map(Into::into),
-            reason: report.reason.into(),
-            note: report.note,
-            state: report.state.into(),
-            created_at: report.created_at,
-            closed_at: report.closed_at,
-            decision: report.decision.map(Into::into),
-            resolution: report.resolution,
-            closed_by: report.closed_by.map(Into::into),
-            target_anonymous: report.target_anonymous,
-            target_standing: report.target_standing.map(Into::into),
-            target_state: report.target_state.map(Into::into),
+            report_id,
+            community_id,
+            target: target.into(),
+            target_account: target_account.map(Into::into),
+            reason: reason.into(),
+            note,
+            state: state.into(),
+            created_at,
+            closed_at,
+            decision: decision.map(Into::into),
+            resolution,
+            closed_by: closed_by.map(Into::into),
+            target_anonymous,
+            target_standing: target_standing.map(Into::into),
+            target_state: target_state.map(Into::into),
         }
     }
 }
@@ -982,9 +1113,11 @@ pub struct LogTarget {
 
 impl From<api::LogTarget> for LogTarget {
     fn from(target: api::LogTarget) -> Self {
+        let api::LogTarget { kind, id } = target;
+
         Self {
-            kind: target.kind.into(),
-            id: target.id,
+            kind: kind.into(),
+            id,
         }
     }
 }
@@ -1012,16 +1145,28 @@ pub struct ModerationLogEntry {
 
 impl From<api::ModerationLogEntry> for ModerationLogEntry {
     fn from(entry: api::ModerationLogEntry) -> Self {
+        let api::ModerationLogEntry {
+            entry_id,
+            community_id,
+            actor,
+            as_platform,
+            action,
+            target,
+            target_account,
+            reason,
+            created_at,
+        } = entry;
+
         Self {
-            entry_id: entry.entry_id,
-            community_id: entry.community_id,
-            actor: entry.actor.map(Into::into),
-            as_platform: entry.as_platform,
-            action: entry.action.into(),
-            target: entry.target.into(),
-            target_account: entry.target_account.map(Into::into),
-            reason: entry.reason,
-            created_at: entry.created_at,
+            entry_id,
+            community_id,
+            actor: actor.map(Into::into),
+            as_platform,
+            action: action.into(),
+            target: target.into(),
+            target_account: target_account.map(Into::into),
+            reason,
+            created_at,
         }
     }
 }
@@ -1051,26 +1196,30 @@ pub struct CardRef {
 
 impl From<api::Ref> for CardRef {
     fn from(reference: api::Ref) -> Self {
+        let api::Ref { kind, id } = reference;
+
         Self {
-            kind: match reference.kind {
+            kind: match kind {
                 api::RefKind::Post => CardKind::Post,
                 api::RefKind::Comment => CardKind::Comment,
                 api::RefKind::Community => CardKind::Community,
             },
-            id: reference.id,
+            id,
         }
     }
 }
 
 impl From<CardRef> for api::Ref {
     fn from(reference: CardRef) -> Self {
+        let CardRef { kind, id } = reference;
+
         Self {
-            kind: match reference.kind {
+            kind: match kind {
                 CardKind::Post => api::RefKind::Post,
                 CardKind::Comment => api::RefKind::Comment,
                 CardKind::Community => api::RefKind::Community,
             },
-            id: reference.id,
+            id,
         }
     }
 }
@@ -1087,10 +1236,16 @@ pub struct CardCommunity {
 
 impl From<api::CardCommunity> for CardCommunity {
     fn from(community: api::CardCommunity) -> Self {
+        let api::CardCommunity {
+            community_id,
+            name,
+            photo,
+        } = community;
+
         Self {
-            community_id: community.community_id,
-            name: community.name,
-            photo: community.photo,
+            community_id,
+            name,
+            photo,
         }
     }
 }
@@ -1219,22 +1374,34 @@ pub struct SocialNotification {
 
 impl From<api::Notification> for SocialNotification {
     fn from(notification: api::Notification) -> Self {
+        let api::Notification {
+            notification_id,
+            kind,
+            actor,
+            community_id,
+            post_id,
+            comment_id,
+            action,
+            created_at,
+            read,
+        } = notification;
+
         use api::NotificationKind as K;
         Self {
-            notification_id: notification.notification_id,
-            kind: match notification.kind {
+            notification_id,
+            kind: match kind {
                 K::Comment => SocialNotificationKind::Comment,
                 K::Reaction => SocialNotificationKind::Reaction,
                 K::JoinApproved => SocialNotificationKind::JoinApproved,
                 K::Moderated => SocialNotificationKind::Moderated,
             },
-            actor: notification.actor.map(Into::into),
-            community_id: notification.community_id,
-            post_id: notification.post_id,
-            comment_id: notification.comment_id,
-            action: notification.action.map(Into::into),
-            created_at: notification.created_at,
-            read: notification.read,
+            actor: actor.map(Into::into),
+            community_id,
+            post_id,
+            comment_id,
+            action: action.map(Into::into),
+            created_at,
+            read,
         }
     }
 }

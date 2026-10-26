@@ -123,64 +123,54 @@ impl From<core::Frame> for Frame {
 
 impl From<Focus> for core::Focus {
     fn from(focus: Focus) -> Self {
-        Self {
-            x: focus.x,
-            y: focus.y,
-        }
+        let Focus { x, y } = focus;
+
+        Self { x, y }
     }
 }
 
 impl From<core::Focus> for Focus {
     fn from(focus: core::Focus) -> Self {
-        Self {
-            x: focus.x,
-            y: focus.y,
-        }
+        let core::Focus { x, y } = focus;
+
+        Self { x, y }
     }
 }
 
 impl From<FrameRect> for core::FrameRect {
     fn from(r: FrameRect) -> Self {
-        Self {
-            x: r.x,
-            y: r.y,
-            w: r.w,
-            h: r.h,
-        }
+        let FrameRect { x, y, w, h } = r;
+
+        Self { x, y, w, h }
     }
 }
 
 impl From<core::FrameRect> for FrameRect {
     fn from(r: core::FrameRect) -> Self {
-        Self {
-            x: r.x,
-            y: r.y,
-            w: r.w,
-            h: r.h,
-        }
+        let core::FrameRect { x, y, w, h } = r;
+
+        Self { x, y, w, h }
     }
 }
 
 impl From<core::PixelRect> for PixelRect {
     fn from(r: core::PixelRect) -> Self {
-        Self {
-            x: r.x,
-            y: r.y,
-            w: r.w,
-            h: r.h,
-        }
+        let core::PixelRect { x, y, w, h } = r;
+
+        Self { x, y, w, h }
     }
 }
 
 impl From<Framing> for core::Framing {
     /// A frame named twice keeps the last rectangle.
     fn from(framing: Framing) -> Self {
+        let Framing { focus, overrides } = framing;
+
         Self {
-            focus: framing.focus.into(),
-            overrides: framing
-                .overrides
+            focus: focus.into(),
+            overrides: overrides
                 .into_iter()
-                .map(|o| (o.frame.into(), o.rect.into()))
+                .map(|FrameOverride { frame, rect }| (frame.into(), rect.into()))
                 .collect(),
         }
     }
@@ -188,10 +178,11 @@ impl From<Framing> for core::Framing {
 
 impl From<core::Framing> for Framing {
     fn from(framing: core::Framing) -> Self {
+        let core::Framing { focus, overrides } = framing;
+
         Self {
-            focus: framing.focus.into(),
-            overrides: framing
-                .overrides
+            focus: focus.into(),
+            overrides: overrides
                 .into_iter()
                 .map(|(frame, rect)| FrameOverride {
                     frame: frame.into(),
