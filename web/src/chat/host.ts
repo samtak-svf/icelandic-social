@@ -14,8 +14,17 @@ import type {
   Item,
   Outcome,
 } from "../generated/core.d.ts";
-import { type Handlers, isFailure, type Start } from "./protocol.ts";
-import { newStoreKey, seal, type SealedStoreKey, StoreKeyLost, unseal } from "./store-key.ts";
+import { type Handlers, isFailure, type LinkOffer, type Start } from "./protocol.ts";
+import {
+  newStoreKey,
+  type PendingLink,
+  seal,
+  sealPending,
+  type SealedStoreKey,
+  StoreKeyLost,
+  unseal,
+  unsealPending,
+} from "./store-key.ts";
 
 /** The part of the core's `Core` the host calls. */
 export interface CoreLike {
@@ -42,6 +51,13 @@ export type Share =
   | "none"
   | "signed-out";
 
+/** The server's half of a waiting link's key (0096), or why there is none. */
+export type PendingShare =
+  | { share: Uint8Array<ArrayBuffer> }
+  /** The request is gone: expired, replaced, or completed. */
+  | "none"
+  | "signed-out";
+
 export interface HostDeps {
   open(key: Uint8Array<ArrayBuffer>): Promise<CoreLike>;
   linkQr(code: string): LinkQr;
@@ -50,9 +66,16 @@ export interface HostDeps {
   keys: {
     load(): Promise<SealedStoreKey | undefined>;
     save(record: SealedStoreKey): Promise<void>;
+    /** Deletes the device's record and the waiting link's. */
     delete(): Promise<void>;
+    loadPending(): Promise<PendingLink | undefined>;
+    savePending(record: PendingLink): Promise<void>;
+    deletePending(): Promise<void>;
   };
   share(): Promise<Share>;
+  pendingShare(linkId: string): Promise<PendingShare>;
+  /** Milliseconds since the epoch. */
+  now(): number;
   /** Revokes a device of this account; it may already be revoked. */
   revoke(deviceId: string): Promise<void>;
 }
@@ -70,10 +93,43 @@ export function chatHost(deps: HostDeps): Handlers {
   let deviceId: string | undefined;
   /** The key a store being linked was opened with, kept until the link completes. */
   let linkingKey: Uint8Array<ArrayBuffer> | undefined;
+  /** The code of the link that waits for the phone, shown again after a reload. */
+  let offer: LinkOffer | undefined;
 
   function forgetLinkingKey() {
     linkingKey?.fill(0);
     linkingKey = undefined;
+    offer = undefined;
+  }
+
+  /**
+   * Opens the store of the link this browser waits on (0096), when its request
+   * still holds the server's half of the key. False when there is none to go on with.
+   */
+  async function resume(pending: PendingLink): Promise<boolean | "signed-out"> {
+    if (pending.expiresAt <= deps.now()) return false;
+    const share = await deps.pendingShare(pending.linkId);
+    if (share === "signed-out") return "signed-out";
+    if (share === "none") return false;
+    let key: Uint8Array<ArrayBuffer>;
+    try {
+      key = await unsealPending(pending, share.share);
+    } catch (error) {
+      if (!(error instanceof StoreKeyLost)) throw error;
+      return false;
+    } finally {
+      share.share.fill(0);
+    }
+    try {
+      core = await deps.open(key);
+    } catch (error) {
+      key.fill(0);
+      throw error;
+    }
+    linkingKey = key;
+    const { code, linkId, expiresAt } = pending;
+    offer = { code, linkId, expiresAt, qr: deps.linkQr(code) };
+    return true;
   }
 
   /** Deletes both parts of the key and the files, and revokes the device if it is known. */
@@ -86,6 +142,30 @@ export function chatHost(deps: HostDeps): Handlers {
     if (open !== undefined) await open.wipe();
     else await deps.wipeFiles();
     if (lostDevice !== undefined) await deps.revoke(lostDevice).catch(() => undefined);
+  }
+
+  /**
+   * Seals the store of the link just begun under its request's share, so a
+   * reload goes on with it. The link works without: a failure here only means
+   * a reload starts again.
+   */
+  async function keep(link: { code: string; linkId: string; expiresAt: number }) {
+    const key = linkingKey;
+    if (key === undefined) return;
+    try {
+      const share = await deps.pendingShare(link.linkId);
+      if (typeof share === "string") {
+        await deps.keys.deletePending();
+        return;
+      }
+      try {
+        await deps.keys.savePending(await sealPending(key, share.share, link));
+      } finally {
+        share.share.fill(0);
+      }
+    } catch {
+      await deps.keys.deletePending().catch(() => undefined);
+    }
   }
 
   function opened(): CoreLike {
@@ -111,10 +191,18 @@ export function chatHost(deps: HostDeps): Handlers {
   return {
     async start(): Promise<Start> {
       if (core !== undefined && deviceId !== undefined) return { state: "ready", deviceId };
+      if (core !== undefined) return { state: "unlinked" };
       const record = await deps.keys.load();
       if (record === undefined) {
-        // A link that never completed leaves files no key opens.
+        const pending = await deps.keys.loadPending();
+        if (pending !== undefined) {
+          const resumed = await resume(pending);
+          if (resumed === "signed-out") return { state: "signed-out" };
+          if (resumed) return { state: "unlinked" };
+        }
+        // A link that never completed, and cannot go on, leaves files no key opens.
         await deps.wipeFiles();
+        if (pending !== undefined) await deps.keys.deletePending();
         return { state: "unlinked" };
       }
       const share = await deps.share();
@@ -156,7 +244,14 @@ export function chatHost(deps: HostDeps): Handlers {
         linkingKey = key;
       }
       const link = core.beginLink();
-      return { ...link, qr: deps.linkQr(link.code) };
+      offer = { ...link, qr: deps.linkQr(link.code) };
+      await keep(link);
+      return offer;
+    },
+
+    pendingLink() {
+      if (deviceId !== undefined || offer === undefined) return null;
+      return offer.expiresAt > deps.now() ? offer : null;
     },
 
     linkState: () => opened().linkState(),
@@ -179,6 +274,8 @@ export function chatHost(deps: HostDeps): Handlers {
       }
       forgetLinkingKey();
       deviceId = enrolled.deviceId;
+      // The device's record now opens the store; one left behind is ignored by `start`.
+      await deps.keys.deletePending().catch(() => undefined);
       return { deviceId: enrolled.deviceId, historyExpected: enrolled.historyExpected };
     },
 

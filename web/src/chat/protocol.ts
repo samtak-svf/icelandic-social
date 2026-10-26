@@ -33,6 +33,8 @@ export interface LinkOffer extends DeviceLink {
 export interface Ops {
   start: { args: []; result: Start };
   beginLink: { args: []; result: LinkOffer };
+  /** The link this browser still waits on, after a reload too (0096), or null. */
+  pendingLink: { args: []; result: LinkOffer | null };
   linkState: { args: []; result: LinkState };
   completeLink: { args: []; result: { deviceId: string; historyExpected: boolean } };
   receiveHistory: { args: []; result: number };

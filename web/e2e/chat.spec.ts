@@ -112,6 +112,10 @@ test("a phone links this browser, which shows the phone's message and replies", 
   await page.getByRole("button", { name: strings.device_link_web_start }).click();
   const code = (await page.locator("code").textContent()) ?? "";
   expect(code).not.toBe("");
+  // A phone browser loses the page while the person approves in the app; the
+  // link it began goes on after a reload (0096).
+  await page.reload();
+  await expect(page.locator("code")).toHaveText(code);
   await writeFile(join(dir, "code"), code);
 
   // The phone approves with its history, and the conversation arrives.

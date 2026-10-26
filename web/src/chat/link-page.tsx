@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { strings } from "../generated/brand/strings.ts";
-import type { LinkOffer } from "./protocol.ts";
+import { useAccount } from "../account.tsx";
+import { ChatFailure, type LinkOffer } from "./protocol.ts";
 import { Button, Status } from "../ui/kit.tsx";
 import { useChat } from "./chat.tsx";
 import { qrFrame, qrRects } from "./qr.ts";
@@ -9,24 +10,73 @@ import { qrFrame, qrRects } from "./qr.ts";
 // browser shows a code and its QR, the phone approves, and this page then
 // completes the link and takes the older messages the phone sends.
 
+type Failed = "no-phone" | "unreachable" | "other";
+
 type Step =
   | { step: "idle" }
   | { step: "working" }
   | { step: "offer"; offer: LinkOffer }
   | { step: "receiving" }
-  | { step: "failed" };
+  | { step: "failed"; why: Failed };
+
+const POLL_MS = 2_000;
+
+const failureCode = (error: unknown) => (error instanceof ChatFailure ? error.code : undefined);
+
+/** Why beginning a link failed, as the person can act on it; undefined when the session is gone. */
+export function whyBeginFailed(error: unknown): Failed | undefined {
+  if (!(error instanceof ChatFailure)) return "other";
+  if (error.code === "unreachable") return "unreachable";
+  if (error.code !== "refused") return "other";
+  if (error.message === "unauthorized") return undefined;
+  return error.message === "no_phone_device" ? "no-phone" : "other";
+}
+
+const FAILED: Record<Failed, string> = {
+  "no-phone": strings.device_link_web_no_phone,
+  unreachable: strings.error_unreachable,
+  other: strings.error_generic,
+};
+
+/** Whether a failed check ends the wait: only the code's own end does, never a call that failed on the way. */
+export function pollEnds(
+  error: unknown,
+  offer: Pick<LinkOffer, "expiresAt">,
+  now: number,
+): boolean {
+  return failureCode(error) === "link-expired" || offer.expiresAt <= now;
+}
 
 export function LinkPage() {
   const { call, restart } = useChat();
+  const { signedOut } = useAccount();
   const [state, setState] = useState<Step>({ step: "idle" });
+
+  // A link begun before a reload goes on (0096): the worker still has its code.
+  useEffect(() => {
+    if (call === undefined) return undefined;
+    let live = true;
+    void call("pendingLink")
+      .then((offer) => {
+        if (live && offer !== null) {
+          setState((now) => (now.step === "idle" ? { step: "offer", offer } : now));
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [call]);
 
   async function begin() {
     if (call === undefined) return;
     setState({ step: "working" });
     try {
       setState({ step: "offer", offer: await call("beginLink") });
-    } catch {
-      setState({ step: "failed" });
+    } catch (error) {
+      const why = whyBeginFailed(error);
+      if (why === undefined) signedOut();
+      else setState({ step: "failed", why });
     }
   }
 
@@ -34,38 +84,65 @@ export function LinkPage() {
   useEffect(() => {
     if (offer === undefined || call === undefined) return undefined;
     let live = true;
-    const timer = setInterval(() => {
-      void (async () => {
-        try {
-          const linkState = await call("linkState");
-          if (!live || linkState === "pending") return;
-          live = false;
-          clearInterval(timer);
-          if (linkState === "expired") {
-            setState({ step: "idle" });
-            return;
-          }
-          const { historyExpected } = await call("completeLink");
-          if (historyExpected) {
-            setState({ step: "receiving" });
-            await call("receiveHistory");
-          }
-          restart();
-        } catch {
-          setState({ step: "failed" });
+    // One check at a time: a page that comes back from the background fires
+    // the timer and the visibility change together, and the worker answers in order.
+    let busy = false;
+
+    async function finish() {
+      const { historyExpected } = await call!("completeLink");
+      if (historyExpected) {
+        if (live) setState({ step: "receiving" });
+        // The link is made; history that does not arrive does not undo it.
+        await call!("receiveHistory").catch(() => undefined);
+      }
+      restart();
+    }
+
+    async function check() {
+      if (!live || busy) return;
+      busy = true;
+      try {
+        const linkState = await call!("linkState");
+        if (!live || linkState === "pending") return;
+        if (linkState === "expired") {
+          setState({ step: "idle" });
+          return;
         }
-      })();
-    }, 2_000);
+        await finish();
+      } catch (error) {
+        // A call that fails while the page wakes, or the network comes back,
+        // is asked again on the next tick; only the code's own end stops it.
+        if (!live) return;
+        if (pollEnds(error, offer!, Date.now())) setState({ step: "idle" });
+      } finally {
+        busy = false;
+      }
+    }
+
+    const timer = setInterval(() => void check(), POLL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void check();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       live = false;
       clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [offer, call, restart]);
 
+  const failed = state.step === "failed" ? state.why : undefined;
   return (
     <>
       <h1 className="font-headline text-3xl">{strings.device_link_web_title}</h1>
-      <p className="mt-4 text-muted-fg">{strings.device_link_web_no_phone}</p>
+      {failed !== "no-phone" && (
+        <p className="mt-4 text-muted-fg">{strings.device_link_web_no_phone}</p>
+      )}
+      {failed !== undefined && (
+        <p role="alert" className="mt-4">
+          {FAILED[failed]}
+        </p>
+      )}
       {(state.step === "idle" || state.step === "failed") && (
         <Button tone="primary" className="mt-4" onClick={() => void begin()}>
           {strings.device_link_web_start}
@@ -75,7 +152,6 @@ export function LinkPage() {
       <Status>
         {state.step === "offer" && strings.device_link_web_waiting}
         {state.step === "receiving" && strings.device_link_web_receiving}
-        {state.step === "failed" && strings.try_again}
       </Status>
     </>
   );

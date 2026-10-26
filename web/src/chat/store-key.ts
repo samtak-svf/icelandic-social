@@ -6,12 +6,27 @@
 // without the profile's local key. Both layers bind the device id, so a record
 // cannot be moved to another device.
 //
+// While a link waits for the phone, the store is sealed the same way under the
+// share the server made with the link request, bound to the request's id
+// rather than a device's (decision 0096), so a reload goes on with the link.
+//
 // It runs in the chat worker: the raw key never reaches the page.
 
 /** What IndexedDB keeps for one device. `local` cannot be exported. */
 export interface SealedStoreKey {
   v: 1;
   deviceId: string;
+  local: CryptoKey;
+  sealed: Uint8Array<ArrayBuffer>;
+}
+
+/** A link that waits for the phone: its code, and the store sealed under the request's share. */
+export interface PendingLink {
+  v: 1;
+  linkId: string;
+  code: string;
+  /** Milliseconds since the epoch. */
+  expiresAt: number;
   local: CryptoKey;
   sealed: Uint8Array<ArrayBuffer>;
 }
@@ -32,9 +47,12 @@ export function newStoreKey(): Uint8Array<ArrayBuffer> {
   return crypto.getRandomValues(new Uint8Array(KEY_BYTES));
 }
 
-function aad(deviceId: string, layer: "local" | "share"): Uint8Array<ArrayBuffer> {
-  return new TextEncoder().encode(`spjall-store-key/v1/${layer}/${deviceId}`);
+/** What a record is bound to: a device's id, or `pending/` and a link request's id. */
+function aad(binding: string, layer: "local" | "share"): Uint8Array<ArrayBuffer> {
+  return new TextEncoder().encode(`spjall-store-key/v1/${layer}/${binding}`);
 }
+
+const pendingBinding = (linkId: string) => `pending/${linkId}`;
 
 function importShare(share: Uint8Array<ArrayBuffer>, use: KeyUsage): Promise<CryptoKey> {
   if (share.length !== KEY_BYTES) throw new RangeError("the store-key share is 32 bytes");
@@ -68,21 +86,46 @@ async function decrypt(
   );
 }
 
+async function sealBound(
+  storeKey: Uint8Array<ArrayBuffer>,
+  share: Uint8Array<ArrayBuffer>,
+  binding: string,
+): Promise<{ local: CryptoKey; sealed: Uint8Array<ArrayBuffer> }> {
+  const outer = await importShare(share, "encrypt");
+  const local = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, [
+    "encrypt",
+    "decrypt",
+  ]);
+  const inner = await encrypt(local, storeKey, aad(binding, "local"));
+  const sealed = await encrypt(outer, inner, aad(binding, "share"));
+  inner.fill(0);
+  return { local, sealed };
+}
+
+async function unsealBound(
+  record: { local: CryptoKey; sealed: Uint8Array<ArrayBuffer> },
+  share: Uint8Array<ArrayBuffer>,
+  binding: string,
+): Promise<Uint8Array<ArrayBuffer>> {
+  const outer = await importShare(share, "decrypt");
+  let inner: Uint8Array<ArrayBuffer> | undefined;
+  try {
+    inner = await decrypt(outer, record.sealed, aad(binding, "share"));
+    return await decrypt(record.local, inner, aad(binding, "local"));
+  } catch {
+    throw new StoreKeyLost();
+  } finally {
+    inner?.fill(0);
+  }
+}
+
 /** Seals `storeKey` under a new local key and then under the server's `share`. */
 export async function seal(
   storeKey: Uint8Array<ArrayBuffer>,
   share: Uint8Array<ArrayBuffer>,
   deviceId: string,
 ): Promise<SealedStoreKey> {
-  const outer = await importShare(share, "encrypt");
-  const local = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, [
-    "encrypt",
-    "decrypt",
-  ]);
-  const inner = await encrypt(local, storeKey, aad(deviceId, "local"));
-  const sealed = await encrypt(outer, inner, aad(deviceId, "share"));
-  inner.fill(0);
-  return { v: 1, deviceId, local, sealed };
+  return { v: 1, deviceId, ...(await sealBound(storeKey, share, deviceId)) };
 }
 
 /** The store key, or `StoreKeyLost` when either part does not open it. */
@@ -92,21 +135,38 @@ export async function unseal(
   deviceId: string,
 ): Promise<Uint8Array<ArrayBuffer>> {
   if (record.v !== 1 || record.deviceId !== deviceId) throw new StoreKeyLost();
-  const outer = await importShare(share, "decrypt");
-  let inner: Uint8Array<ArrayBuffer> | undefined;
-  try {
-    inner = await decrypt(outer, record.sealed, aad(deviceId, "share"));
-    return await decrypt(record.local, inner, aad(deviceId, "local"));
-  } catch {
-    throw new StoreKeyLost();
-  } finally {
-    inner?.fill(0);
-  }
+  return unsealBound(record, share, deviceId);
+}
+
+/** Seals the store of a link that waits for the phone under its request's `share` (0096). */
+export async function sealPending(
+  storeKey: Uint8Array<ArrayBuffer>,
+  share: Uint8Array<ArrayBuffer>,
+  link: { code: string; linkId: string; expiresAt: number },
+): Promise<PendingLink> {
+  const { code, linkId, expiresAt } = link;
+  return {
+    v: 1,
+    linkId,
+    code,
+    expiresAt,
+    ...(await sealBound(storeKey, share, pendingBinding(linkId))),
+  };
+}
+
+/** The store key of a waiting link, or `StoreKeyLost` when either part does not open it. */
+export async function unsealPending(
+  record: PendingLink,
+  share: Uint8Array<ArrayBuffer>,
+): Promise<Uint8Array<ArrayBuffer>> {
+  if (record.v !== 1) throw new StoreKeyLost();
+  return unsealBound(record, share, pendingBinding(record.linkId));
 }
 
 const DB = "spjall-store-key";
 const STORE = "keys";
 const RECORD = "current";
+const PENDING = "pending";
 
 function open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -145,7 +205,22 @@ export async function saveSealed(record: SealedStoreKey): Promise<void> {
   await run("readwrite", (s) => s.put(record, RECORD));
 }
 
-/** Deletes the key database: the local part is gone, so the store cannot open again. */
+/** The link this browser waits on, if any. */
+export function loadPending(): Promise<PendingLink | undefined> {
+  return run<PendingLink | undefined>("readonly", (s) => s.get(PENDING));
+}
+
+/** Keeps the waiting link, replacing the one before. */
+export async function savePending(record: PendingLink): Promise<void> {
+  await run("readwrite", (s) => s.put(record, PENDING));
+}
+
+/** Forgets the waiting link; the device record, if any, stays. */
+export async function deletePending(): Promise<void> {
+  await run("readwrite", (s) => s.delete(PENDING));
+}
+
+/** Deletes the key database, the waiting link's record with it: the local part is gone, so the store cannot open again. */
 export function deleteSealed(): Promise<void> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DB);

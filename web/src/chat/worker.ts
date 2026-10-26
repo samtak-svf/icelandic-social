@@ -6,12 +6,19 @@
 // worker's own script cannot carry one; it is served only from this host and
 // listed in the published hashes.
 
-import { getLinkedStoreKey, revokeDevice } from "../generated/api.ts";
+import { getLinkedStoreKey, getPendingStoreKey, revokeDevice } from "../generated/api.ts";
 import type { Failure } from "../generated/core.d.ts";
 import { Core, init, wasm } from "virtual:spjall-core";
-import { chatHost, type Share } from "./host.ts";
+import { chatHost, type PendingShare, type Share } from "./host.ts";
 import { serve } from "./protocol.ts";
-import { deleteSealed, loadSealed, saveSealed } from "./store-key.ts";
+import {
+  deletePending,
+  deleteSealed,
+  loadPending,
+  loadSealed,
+  savePending,
+  saveSealed,
+} from "./store-key.ts";
 
 const OUTDATED: Failure = { code: "outdated", message: "this web app is too old for the server" };
 
@@ -25,6 +32,21 @@ async function share(): Promise<Share> {
   switch (response.status) {
     case 200:
       return { deviceId: response.data.deviceId, share: bytes(response.data.storeKeyShare) };
+    case 401:
+      return "signed-out";
+    case 404:
+      return "none";
+    default:
+      throw OUTDATED;
+  }
+}
+
+/** The server's half of the key while this session's link request `linkId` waits (0096). */
+async function pendingShare(linkId: string): Promise<PendingShare> {
+  const response = await getPendingStoreKey({ path: { linkId } });
+  switch (response.status) {
+    case 200:
+      return { share: bytes(response.data.storeKeyShare) };
     case 401:
       return "signed-out";
     case 404:
@@ -53,8 +75,17 @@ const handlers = chatHost({
     await ready;
     await Core.wipeStore();
   },
-  keys: { load: loadSealed, save: saveSealed, delete: deleteSealed },
+  keys: {
+    load: loadSealed,
+    save: saveSealed,
+    delete: deleteSealed,
+    loadPending,
+    savePending,
+    deletePending,
+  },
   share,
+  pendingShare,
+  now: () => Date.now(),
   revoke,
 });
 
