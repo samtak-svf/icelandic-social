@@ -41,6 +41,7 @@ on:
       - "identifiers/**"
       - "tooling/coverage-floor.*"
       - ".github/workflows/core.yml"
+      - ".github/actions/rust-toolchain/**"
   push:
     branches: [main]
     paths:
@@ -49,6 +50,7 @@ on:
       - "identifiers/**"
       - "tooling/coverage-floor.*"
       - ".github/workflows/core.yml"
+      - ".github/actions/rust-toolchain/**"
     tags: ["core-v*"]
 
 concurrency:
