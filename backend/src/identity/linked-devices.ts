@@ -8,11 +8,11 @@ import {
   getLinkedStoreKeyRoute,
   getPendingStoreKeyRoute,
 } from "../api/linked-devices.ts";
-import { fromBase64, toBase64 } from "../bytes.ts";
+import { fromBase64, toBase64 } from "../shared/bytes.ts";
 import { db } from "../env/index.ts";
-import { fail } from "../errors.ts";
-import { log } from "../log.ts";
-import type { Platform } from "../platforms.ts";
+import { fail } from "../shared/errors.ts";
+import { log } from "../shared/log.ts";
+import type { Platform } from "../shared/platforms.ts";
 import { type Device, randomToken, tokenHash } from "./accounts.ts";
 import { approvalMessage } from "./link-approval.ts";
 import { LINKED_IDLE_MS } from "./linked-device-lifecycle.ts";

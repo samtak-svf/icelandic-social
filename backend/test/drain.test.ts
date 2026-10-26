@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/app.ts";
-import { CLIENT_HEADER } from "../src/client-version.ts";
+import { CLIENT_HEADER } from "../src/shared/client-version.ts";
 import { device, euEnv } from "./support.ts";
 
 // workerd resets a keep-alive connection whose request body was left unread,

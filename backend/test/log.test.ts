@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { log, timed } from "../src/log";
+import { log, timed } from "../src/shared/log.ts";
 
 const lines = () => {
   const spy = vi.spyOn(console, "log").mockImplementation(() => {});

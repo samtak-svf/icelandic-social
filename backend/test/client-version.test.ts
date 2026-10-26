@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
-import { belowFloor } from "../src/client-version.ts";
+import { belowFloor } from "../src/shared/client-version.ts";
 import { updateUrls } from "../src/env/index.ts";
 import { brandStrings } from "../src/brand.gen.ts";
 import { device } from "./support.ts";

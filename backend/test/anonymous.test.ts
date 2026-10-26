@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
-import { deleteAccount } from "../src/account-deletion.ts";
+import { deleteAccount } from "../src/compose/account-deletion.ts";
 import { runJobs } from "../src/modules/jobs/index.ts";
 import { jobHandlers } from "../src/modules/notifications/index.ts";
 import { png } from "./images.ts";

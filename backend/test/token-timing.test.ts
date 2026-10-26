@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";
-import { CLIENT_HEADER } from "../src/client-version.ts";
+import { CLIENT_HEADER } from "../src/shared/client-version.ts";
 import { device } from "./support.ts";
 
 // Decision 0056: the device-token lookup is the D1 round trip every

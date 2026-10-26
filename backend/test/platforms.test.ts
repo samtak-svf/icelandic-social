@@ -3,11 +3,11 @@ import { env } from "cloudflare:workers";
 import { z } from "@hono/zod-openapi";
 import { describe, expect, it } from "vitest";
 import { versionPerPlatform } from "../src/api/health.ts";
-import { belowFloorOf } from "../src/client-version.ts";
+import { belowFloorOf } from "../src/shared/client-version.ts";
 import { minClientVersions } from "../src/env/index.ts";
-import { CLIENTS, PLATFORMS } from "../src/platforms.ts";
+import { CLIENTS, PLATFORMS } from "../src/shared/platforms.ts";
 
-// Platforms come from one list (src/platforms.ts): a third one is one line
+// Platforms come from one list (src/shared/platforms.ts): a third one is one line
 // there, a var in cloudflare.config.ts and a migration that widens the CHECK.
 // The web is a client of the floor and not a platform: it is never a device.
 

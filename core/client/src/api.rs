@@ -2987,7 +2987,7 @@ mod tests {
     }
 
     /// Every platform the contract names, `api/openapi.json` being generated
-    /// from the backend's one list (backend/src/platforms.ts). The core keeps
+    /// from the backend's one list (backend/src/shared/platforms.ts). The core keeps
     /// its own enum because the apps pass it over the FFI.
     #[test]
     fn the_platforms_are_the_contracts() {

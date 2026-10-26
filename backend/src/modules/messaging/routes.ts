@@ -9,10 +9,10 @@ import {
 import { getMediaRoute, putMediaRoute } from "../../api/media.ts";
 import { listMessagesRoute, sendMessageRoute } from "../../api/messages.ts";
 import { SOCKET_ACCOUNT, SOCKET_DEVICE, socketRoute } from "../../api/socket.ts";
-import { toBase64 } from "../../bytes.ts";
-import { webSocketDevice } from "../../credentials.ts";
+import { toBase64 } from "../../shared/bytes.ts";
+import { webSocketDevice } from "../../shared/credentials.ts";
 import { conversation, inbox } from "../../env/index.ts";
-import { fail } from "../../errors.ts";
+import { fail } from "../../shared/errors.ts";
 import type { AppEnv } from "../../http.ts";
 import { activeDevicesOf, blockersAmong, ownsLeaf } from "../../identity/index.ts";
 import { checkSend } from "./conversations.ts";

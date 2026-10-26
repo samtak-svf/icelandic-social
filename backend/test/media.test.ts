@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../src/api/common.ts";
 import { conversation } from "../src/env/index.ts";
-import { deleteAccount } from "../src/account-deletion.ts";
+import { deleteAccount } from "../src/compose/account-deletion.ts";
 import { expireMedia, MAX_CIPHERTEXT, MEDIA_RETENTION_MS } from "../src/modules/messaging/media.ts";
 import { device, euEnv } from "./support.ts";
 import { worker } from "./main.ts";

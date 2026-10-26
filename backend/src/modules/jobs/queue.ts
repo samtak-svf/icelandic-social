@@ -1,5 +1,5 @@
 import { db } from "../../env/index.ts";
-import { log } from "../../log.ts";
+import { log } from "../../shared/log.ts";
 
 // The jobs table (decision 0067): retryable work written in the same D1
 // batch as the change that causes it, since there are no Cloudflare Queues

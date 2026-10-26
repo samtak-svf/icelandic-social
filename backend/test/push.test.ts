@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
 import { ApiError } from "../src/api/common.ts";
-import { base64url } from "../src/bytes.ts";
+import { base64url } from "../src/shared/bytes.ts";
 import { conversation, inbox } from "../src/env/index.ts";
 import { hexBytes, mls } from "./mls.ts";
 import { connect } from "./socket.ts";

@@ -1,13 +1,13 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
-import { deleteAccount } from "./account-deletion.ts";
-import { linkOrJoin } from "./account-linking.ts";
-import { communityLifecycle } from "./community-lifecycle.ts";
+import { deleteAccount } from "./compose/account-deletion.ts";
+import { linkOrJoin } from "./compose/account-linking.ts";
+import { communityLifecycle } from "./compose/community-lifecycle.ts";
 import { WsFrame } from "./api/frames.ts";
 import { FRAME_SPECS, SIZE_CLASSES } from "./api/image-frames.ts";
 import { healthRoute } from "./api/health.ts";
-import { clientFloor } from "./client-version.ts";
-import { guards, registerSchemes } from "./credentials.ts";
-import { drainBody, fail, failed, requestId } from "./errors.ts";
+import { clientFloor } from "./shared/client-version.ts";
+import { guards, registerSchemes } from "./shared/credentials.ts";
+import { drainBody, fail, failed, requestId } from "./shared/errors.ts";
 import { minClientVersions, updateUrls } from "./env/index.ts";
 import type { AppEnv } from "./http.ts";
 import {

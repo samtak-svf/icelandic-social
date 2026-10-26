@@ -1,6 +1,6 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { deleteAccount } from "../src/account-deletion.ts";
+import { deleteAccount } from "../src/compose/account-deletion.ts";
 import { space } from "../src/env/index.ts";
 import { community, errorOf, ok, person, type Person } from "./people.ts";
 import { euEnv } from "./support.ts";

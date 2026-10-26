@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 import { createRoute, z } from "@hono/zod-openapi";
 import { describe, expect, it } from "vitest";
 import { createApp, DOCUMENT_INFO } from "../src/app.ts";
-import { CLIENT_HEADER } from "../src/client-version.ts";
+import { CLIENT_HEADER } from "../src/shared/client-version.ts";
 import { signIn } from "./oidc.ts";
 import { device, webSession } from "./support.ts";
 import { worker } from "./main.ts";

@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { base64url, toBase64 } from "../src/bytes.ts";
+import { base64url, toBase64 } from "../src/shared/bytes.ts";
 import { tokenHash } from "../src/identity/accounts.ts";
 import { worker } from "./main.ts";
 import { mls } from "./mls.ts";

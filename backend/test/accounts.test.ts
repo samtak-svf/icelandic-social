@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { runDurableObjectAlarm } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../src/api/common.ts";
-import { base64url } from "../src/bytes.ts";
+import { base64url } from "../src/shared/bytes.ts";
 import { conversation } from "../src/env/index.ts";
 import { copyRoster } from "../src/modules/messaging/rosters.ts";
 import { hexBytes, mls } from "./mls.ts";

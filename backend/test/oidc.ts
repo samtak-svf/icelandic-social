@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { randomToken, tokenHash } from "../src/identity/accounts.ts";
-import { base64url, toBase64 } from "../src/bytes.ts";
+import { base64url, toBase64 } from "../src/shared/bytes.ts";
 import { worker } from "./main.ts";
 
 // Signing in as an app does (decisions 0019, 0033): the authorize URL from

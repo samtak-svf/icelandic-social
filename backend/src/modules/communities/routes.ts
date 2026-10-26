@@ -23,8 +23,8 @@ import {
   transferOwnershipRoute,
 } from "../../api/community-members.ts";
 import type { AppEnv } from "../../http.ts";
-import { fail } from "../../errors.ts";
-import { log } from "../../log.ts";
+import { fail } from "../../shared/errors.ts";
+import { log } from "../../shared/log.ts";
 import { canRead, moderates } from "./access.ts";
 import {
   communitiesOf,

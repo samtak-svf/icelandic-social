@@ -2,9 +2,9 @@ import type { Context } from "hono";
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
-import ids from "../../identifiers/ids.json" with { type: "json" };
-import type { AppEnv } from "./http.ts";
-import { withinLimit } from "./env/index.ts";
+import ids from "../../../identifiers/ids.json" with { type: "json" };
+import type { AppEnv } from "../http.ts";
+import { withinLimit } from "../env/index.ts";
 import { fail } from "./errors.ts";
 import {
   deviceForToken,
@@ -15,7 +15,7 @@ import {
   sessionCookie,
   sessionForSecret,
   wipeBrowserStorage,
-} from "./identity/index.ts";
+} from "../identity/index.ts";
 import { log, timed } from "./log.ts";
 
 // The credentials a request presents (decision 0061). Every route declares

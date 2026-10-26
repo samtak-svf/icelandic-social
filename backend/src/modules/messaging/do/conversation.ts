@@ -1,7 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { inbox } from "../../../env/index.ts";
-import { log } from "../../../log.ts";
-import { within } from "../../../within.ts";
+import { log } from "../../../shared/log.ts";
+import { within } from "../within.ts";
 import { deleteGroupPhoto } from "../group-photos.ts";
 import { copyRoster, dropRoster } from "../rosters.ts";
 import { SCHEMA } from "./conversation-schema.ts";

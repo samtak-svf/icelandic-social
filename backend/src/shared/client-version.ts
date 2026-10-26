@@ -1,7 +1,7 @@
 import type { HonoRequest } from "hono";
 import { createMiddleware } from "hono/factory";
-import type { AppEnv } from "./http.ts";
-import { minClientVersions, updateUrls } from "./env/index.ts";
+import type { AppEnv } from "../http.ts";
+import { minClientVersions, updateUrls } from "../env/index.ts";
 import { fail } from "./errors.ts";
 
 // The client version floor (decision 0030): every request names its build in

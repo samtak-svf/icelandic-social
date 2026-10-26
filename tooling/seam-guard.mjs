@@ -10,9 +10,9 @@
 //    A namespace has no jurisdiction of its own; a bare `idFromName` creates
 //    the object wherever Cloudflare chooses, and it can never be moved.
 // 3. No `jurisdiction(…)` other than "eu", anywhere.
-// 4. No `console.*` outside `backend/src/log.ts`, the one helper that writes
+// 4. No `console.*` outside `backend/src/shared/log.ts`, the one helper that writes
 //    allow-listed fields only (decision 0008).
-// 5. No error body (`.json({ error …`) outside `backend/src/errors.ts`, whose
+// 5. No error body (`.json({ error …`) outside `backend/src/shared/errors.ts`, whose
 //    `fail` adds the request id every error names (decision 0037).
 //
 // Matching runs on source with comments and strings blanked, so a comment or
@@ -28,8 +28,8 @@ import { SECRETS } from "./worker-secrets.mjs";
 
 const SRC = "backend/src/";
 const SEAM = "backend/src/env/";
-const LOG_HELPER = "backend/src/log.ts";
-const ERROR_HELPER = "backend/src/errors.ts";
+const LOG_HELPER = "backend/src/shared/log.ts";
+const ERROR_HELPER = "backend/src/shared/errors.ts";
 const ERROR_BODY = /\.\s*json\s*\(\s*\{\s*error\b/g;
 const CONSOLE = /\bconsole\s*\.\s*[A-Za-z_$]/g;
 const ID_METHODS = /\b(idFromName|idFromString|newUniqueId|getByName)\s*\(/g;

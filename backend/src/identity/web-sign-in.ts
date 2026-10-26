@@ -2,15 +2,15 @@ import { type Context, Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import ids from "../../../identifiers/ids.json" with { type: "json" };
 import type { AppEnv } from "../http.ts";
-import { base64url } from "../bytes.ts";
+import { base64url } from "../shared/bytes.ts";
 import {
   kennitalaKeys,
   type ProviderName,
   webIdentityProvider,
   withinLimit,
 } from "../env/index.ts";
-import { fail } from "../errors.ts";
-import { log } from "../log.ts";
+import { fail } from "../shared/errors.ts";
+import { log } from "../shared/log.ts";
 import { enrol, randomToken } from "./accounts.ts";
 import type { Caller, Linked } from "./linking.ts";
 import { authorizationUrl, type Person, unavailable, webAuthorized } from "./providers.ts";

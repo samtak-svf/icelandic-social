@@ -1,7 +1,7 @@
 import type { Context } from "hono";
-import type { AppEnv } from "./http.ts";
+import type { AppEnv } from "../http.ts";
 import { base64url } from "./bytes.ts";
-import { images, profilesBucket, withinLimit } from "./env/index.ts";
+import { images, profilesBucket, withinLimit } from "../env/index.ts";
 import {
   CENTRE,
   FRAME_SPECS,
@@ -10,7 +10,7 @@ import {
   type FrameKind,
   type Framing,
   type PixelRect,
-} from "./api/image-frames.ts";
+} from "../api/image-frames.ts";
 import { log } from "./log.ts";
 
 // One path for every picture the Worker keeps in spjall-profiles: an account's

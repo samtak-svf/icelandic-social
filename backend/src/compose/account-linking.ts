@@ -1,6 +1,6 @@
 import { deleteAccount } from "./account-deletion.ts";
-import { type Caller, linkIdentity, type Person } from "./identity/index.ts";
-import { log } from "./log.ts";
+import { type Caller, linkIdentity, type Person } from "../identity/index.ts";
+import { log } from "../shared/log.ts";
 
 // Linking reaches above the identity module: a join deletes the account it
 // leaves, which every module takes part in, as account-deletion.ts does.

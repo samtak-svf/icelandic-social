@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
-import { fromBase64, toBase64 } from "../src/bytes.ts";
+import { fromBase64, toBase64 } from "../src/shared/bytes.ts";
 import { expireLinkedDevices, LINKED_IDLE_MS } from "../src/identity/index.ts";
 import { euEnv, linkedBrowser, phoneWithKey, webSession } from "./support.ts";
 import { worker } from "./main.ts";

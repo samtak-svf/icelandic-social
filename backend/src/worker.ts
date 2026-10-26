@@ -1,8 +1,8 @@
-import { deleteOrphans } from "./account-deletion.ts";
+import { deleteOrphans } from "./compose/account-deletion.ts";
 import { createApp } from "./app.ts";
-import { communityLifecycle } from "./community-lifecycle.ts";
-import { jobHandlers } from "./job-handlers.ts";
-import { log } from "./log.ts";
+import { communityLifecycle } from "./compose/community-lifecycle.ts";
+import { jobHandlers } from "./compose/job-handlers.ts";
+import { log } from "./shared/log.ts";
 import { expireKeyPackages, expireLinkedDevices, expireSessions } from "./identity/index.ts";
 import { expireCommunities } from "./modules/communities/index.ts";
 import { expireHistory } from "./modules/history/index.ts";

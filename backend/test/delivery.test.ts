@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { base64url } from "../src/bytes.ts";
+import { base64url } from "../src/shared/bytes.ts";
 import { inbox } from "../src/env/index.ts";
 import { hexBytes, mls } from "./mls.ts";
 import { connect } from "./socket.ts";

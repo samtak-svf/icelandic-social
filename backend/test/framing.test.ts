@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { base64url } from "../src/bytes.ts";
+import { base64url } from "../src/shared/bytes.ts";
 import { readClaim } from "../src/modules/messaging/conversations.ts";
 import { FramingError, readFraming } from "../src/mls/framing.ts";
 import { hexBytes, mls } from "./mls.ts";

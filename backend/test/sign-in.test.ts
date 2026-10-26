@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { registerDevice } from "../src/identity/accounts.ts";
 import { ApiError } from "../src/api/common.ts";
-import { fromBase64, toBase64 } from "../src/bytes.ts";
+import { fromBase64, toBase64 } from "../src/shared/bytes.ts";
 import { authorize, invite, newKennitala, registerWith, signIn } from "./oidc.ts";
 import { device } from "./support.ts";
 import { worker } from "./main.ts";

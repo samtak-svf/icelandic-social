@@ -2,7 +2,7 @@ import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import type { AppEnv } from "./http.ts";
+import type { AppEnv } from "../http.ts";
 import { log } from "./log.ts";
 
 // The request id and every error answer (decision 0037). Each request gets an

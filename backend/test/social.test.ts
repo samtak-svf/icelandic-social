@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
-import { deleteAccount } from "../src/account-deletion.ts";
-import { communityLifecycle } from "../src/community-lifecycle.ts";
+import { deleteAccount } from "../src/compose/account-deletion.ts";
+import { communityLifecycle } from "../src/compose/community-lifecycle.ts";
 import { expireCommunities } from "../src/modules/communities/index.ts";
 import { deleteUnattached } from "../src/modules/social/index.ts";
 import { feed } from "../src/modules/social/posts.ts";

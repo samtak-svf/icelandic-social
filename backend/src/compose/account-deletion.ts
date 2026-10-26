@@ -1,9 +1,9 @@
-import { dropAccount, orphans, revokeAllDevices } from "./identity/index.ts";
-import { handOverCommunities } from "./modules/communities/index.ts";
-import { deleteAccountHistory } from "./modules/history/index.ts";
-import { leaveConversations } from "./modules/messaging/index.ts";
-import { deleteAccountPhoto } from "./modules/profiles/index.ts";
-import { forgetAccount } from "./modules/social/index.ts";
+import { dropAccount, orphans, revokeAllDevices } from "../identity/index.ts";
+import { handOverCommunities } from "../modules/communities/index.ts";
+import { deleteAccountHistory } from "../modules/history/index.ts";
+import { leaveConversations } from "../modules/messaging/index.ts";
+import { deleteAccountPhoto } from "../modules/profiles/index.ts";
+import { forgetAccount } from "../modules/social/index.ts";
 
 // Deleting an account reaches every part of the Worker that keeps something
 // of it, so it lives above them all and each part removes its own.

@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { type Framing, framesFor } from "../src/api/image-frames.ts";
-import { MASTER_EDGE, renderFrames, storeImage } from "../src/images.ts";
+import { MASTER_EDGE, renderFrames, storeImage } from "../src/shared/images.ts";
 import { png } from "./images.ts";
 
 // Where each frame is cut from (decision 0086). LOCAL LIMITATION, measured

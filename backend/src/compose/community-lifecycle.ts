@@ -1,7 +1,7 @@
-import type { LifecycleHooks } from "./modules/communities/index.ts";
-import { anonymousRecord, imageRecord, lifecycleRecord } from "./modules/moderation/index.ts";
-import { forgetCommunity } from "./modules/notifications/index.ts";
-import { dropSpace, featuredFor } from "./modules/social/index.ts";
+import type { LifecycleHooks } from "../modules/communities/index.ts";
+import { anonymousRecord, imageRecord, lifecycleRecord } from "../modules/moderation/index.ts";
+import { forgetCommunity } from "../modules/notifications/index.ts";
+import { dropSpace, featuredFor } from "../modules/social/index.ts";
 
 // A community's deletion (decision 0070) reaches the modules that keep
 // something of it, so the communities module is handed what each does: the

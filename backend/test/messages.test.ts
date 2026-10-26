@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { ApiError } from "../src/api/common.ts";
-import { base64url } from "../src/bytes.ts";
+import { base64url } from "../src/shared/bytes.ts";
 import { device } from "./support.ts";
 import { hexBytes, mls } from "./mls.ts";
 import { worker } from "./main.ts";

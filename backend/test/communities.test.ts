@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../src/api/common.ts";
-import { communityLifecycle } from "../src/community-lifecycle.ts";
+import { communityLifecycle } from "../src/compose/community-lifecycle.ts";
 import { expireCommunities } from "../src/modules/communities/index.ts";
 import { device, euEnv } from "./support.ts";
 import { worker } from "./main.ts";

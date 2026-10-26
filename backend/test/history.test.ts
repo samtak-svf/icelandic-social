@@ -1,9 +1,9 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
-import { deleteAccount } from "../src/account-deletion.ts";
+import { deleteAccount } from "../src/compose/account-deletion.ts";
 import { ApiError } from "../src/api/common.ts";
 import { createApp, DOCUMENT_INFO } from "../src/app.ts";
-import { toBase64 } from "../src/bytes.ts";
+import { toBase64 } from "../src/shared/bytes.ts";
 import { deleteAccountHistory, expireHistory } from "../src/modules/history/index.ts";
 import {
   MAX_HISTORY_CIPHERTEXT,

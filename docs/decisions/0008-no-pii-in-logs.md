@@ -23,7 +23,7 @@ not kept. A log that carries no personal data also needs no retention policy of 
 ## Enforcement
 
 The pii-guard covers the repo. In the backend, logging goes through one helper,
-`backend/src/log.ts`. It takes an event name and a typed record of allowed fields, drops any
+`backend/src/shared/log.ts`. It takes an event name and a typed record of allowed fields, drops any
 other field and redacts a string that is not an opaque id. `tooling/seam-guard.mjs` refuses
 `console` anywhere else under `backend/src`.
 
