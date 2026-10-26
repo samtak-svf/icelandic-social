@@ -115,7 +115,48 @@ impl<T: Transport> Client<T> {
         let source = self.blobs.open_read(path).map_err(MediaError::from)?;
         let bytes = read_capped(source, MAX_SOURCE)
             .ok_or(ClientError::Invalid("the image is over 10 MB"))?;
-        let jpeg = process(&bytes)?;
+        self.send_group_photo(conversation, &bytes)
+    }
+
+    /// As [`Self::set_group_photo`], from the bytes of the file, for a
+    /// platform that has no path to give (the browser, 0094). Nothing of the
+    /// source is written anywhere.
+    pub fn set_group_photo_bytes(
+        &mut self,
+        conversation: &str,
+        bytes: &[u8],
+    ) -> Result<String, ClientError> {
+        let group = group_id(conversation).ok_or(ClientError::UnknownConversation)?;
+        self.require_group(&group)?;
+        if bytes.len() as u64 > MAX_SOURCE {
+            return Err(ClientError::Invalid("the image is over 10 MB"));
+        }
+        self.send_group_photo(conversation, bytes)
+    }
+
+    /// The bytes of this device's copy of a group's photo, `None` when it
+    /// has none (0094): for a platform that cannot open `path_of`.
+    pub fn group_photo_bytes(
+        &mut self,
+        conversation: &str,
+    ) -> Result<Option<Vec<u8>>, ClientError> {
+        group_id(conversation).ok_or(ClientError::UnknownConversation)?;
+        let kept = path_of(&self.media, conversation);
+        if !self.blobs.exists(&kept) {
+            return Ok(None);
+        }
+        let source = self.blobs.open_read(&kept).map_err(MediaError::from)?;
+        Ok(Some(
+            read_capped(source, MAX_BYTES).ok_or(MediaError::Tampered)?,
+        ))
+    }
+
+    fn send_group_photo(
+        &mut self,
+        conversation: &str,
+        bytes: &[u8],
+    ) -> Result<String, ClientError> {
+        let jpeg = process(bytes)?;
         let outgoing = self.media.join("out");
         self.blobs
             .create_dir_all(&outgoing)
