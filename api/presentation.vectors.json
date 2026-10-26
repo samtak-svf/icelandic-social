@@ -1,0 +1,412 @@
+{
+  "$comment": "Shared by the web (web/src/lib/presentation.vectors.test.ts), Android (PresentationVectorsTest) and iOS (PresentationVectorsTests): each must reproduce every expected value exactly (#275). All instants are UTC ISO-8601; zone is the time zone a stamp is read in (Atlantic/Reykjavik, UTC all year). relativeTime: the whole units the age of at seen from now rounds down to, key is the strings key (brand/strings.contract.json) and count the {count} it is given; key null means the age is over four weeks and the platform shows the date, expected, in the short form with the year. An instant after now reads as now. initials: the first letter of the first word and of the last word (one letter for one word), upper-cased; words are split on spaces only, so a hyphenated name is one word; none gives ?. stamp and listStamp: a conversation row's stamp in zone, with the word for yesterday lower-cased; stamp is the pure function of an instant, now and the zone, and listStamp is the entry point the lists call, which reads now from an argument instead of the clock. problem: the strings key for a failed call: outcome unreachable (no answer) or refused (status and the server's error code, null when the body had none), with codes no platform names mapping to error_generic. A store key has no vectors: every platform draws it at random and only wraps it (#275).",
+  "zone": "Atlantic/Reykjavik",
+  "relativeTime": [
+    {
+      "at": "2026-10-25T15:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "key": "time_now"
+    },
+    {
+      "at": "2026-10-25T14:59:01Z",
+      "now": "2026-10-25T15:00:00Z",
+      "key": "time_now"
+    },
+    {
+      "at": "2026-10-25T14:59:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "key": "time_minutes",
+      "count": 1
+    },
+    {
+      "at": "2026-10-25T14:30:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "key": "time_minutes",
+      "count": 30
+    },
+    {
+      "at": "2026-10-25T14:00:01Z",
+      "now": "2026-10-25T15:00:00Z",
+      "key": "time_minutes",
+      "count": 59
+    },
+    {
+      "at": "2026-10-25T14:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "key": "time_hours",
+      "count": 1
+    },
+    {
+      "at": "2026-10-24T15:00:01Z",
+      "now": "2026-10-25T15:00:00Z",
+      "key": "time_hours",
+      "count": 23
+    },
+    {
+      "at": "2026-10-24T15:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "key": "time_days",
+      "count": 1
+    },
+    {
+      "at": "2026-10-18T15:00:01Z",
+      "now": "2026-10-25T15:00:00Z",
+      "key": "time_days",
+      "count": 6
+    },
+    {
+      "at": "2026-10-18T15:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "key": "time_weeks",
+      "count": 1
+    },
+    {
+      "at": "2026-10-11T15:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "key": "time_weeks",
+      "count": 2
+    },
+    {
+      "at": "2026-09-27T15:00:01Z",
+      "now": "2026-10-25T15:00:00Z",
+      "key": "time_weeks",
+      "count": 3
+    },
+    {
+      "at": "2026-09-27T15:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "key": null,
+      "expected": "27. sep. 2026"
+    },
+    {
+      "at": "2026-09-20T15:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "key": null,
+      "expected": "20. sep. 2026"
+    },
+    {
+      "at": "2025-07-04T12:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "key": null,
+      "expected": "4. júl. 2025"
+    },
+    {
+      "at": "2026-10-25T15:05:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "key": "time_now"
+    },
+    {
+      "at": "2026-10-27T15:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "key": "time_now"
+    }
+  ],
+  "initials": [
+    {
+      "name": "Garðar Pálsson",
+      "initials": "GP"
+    },
+    {
+      "name": "Jón",
+      "initials": "J"
+    },
+    {
+      "name": "jón páll",
+      "initials": "JP"
+    },
+    {
+      "name": "  jón   páll  ",
+      "initials": "JP"
+    },
+    {
+      "name": "Anna Maria Jónsdóttir Þórsdóttir",
+      "initials": "AÞ"
+    },
+    {
+      "name": "Þórdís Æsa Öskudóttir",
+      "initials": "ÞÖ"
+    },
+    {
+      "name": "Æsa",
+      "initials": "Æ"
+    },
+    {
+      "name": "ægir ólafsson",
+      "initials": "ÆÓ"
+    },
+    {
+      "name": "ðorri",
+      "initials": "Ð"
+    },
+    {
+      "name": "Ósk Ðóra",
+      "initials": "ÓÐ"
+    },
+    {
+      "name": "Anna-María Jónsdóttir",
+      "initials": "AJ"
+    },
+    {
+      "name": "Sigríður Anna-Lára",
+      "initials": "SA"
+    },
+    {
+      "name": "",
+      "initials": "?"
+    },
+    {
+      "name": "   ",
+      "initials": "?"
+    },
+    {
+      "name": null,
+      "initials": "?"
+    }
+  ],
+  "stamp": [
+    {
+      "at": "2026-10-25T09:07:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "09:07"
+    },
+    {
+      "at": "2026-10-25T00:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "00:00"
+    },
+    {
+      "at": "2026-10-24T23:59:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "í gær"
+    },
+    {
+      "at": "2026-10-24T00:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "í gær"
+    },
+    {
+      "at": "2026-10-23T12:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "fös"
+    },
+    {
+      "at": "2026-10-22T12:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "fim"
+    },
+    {
+      "at": "2026-10-21T12:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "mið"
+    },
+    {
+      "at": "2026-10-20T12:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "þri"
+    },
+    {
+      "at": "2026-10-19T12:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "mán"
+    },
+    {
+      "at": "2026-10-24T12:00:00Z",
+      "now": "2026-10-28T12:00:00Z",
+      "expected": "lau"
+    },
+    {
+      "at": "2026-10-25T12:00:00Z",
+      "now": "2026-10-28T12:00:00Z",
+      "expected": "sun"
+    },
+    {
+      "at": "2026-10-18T12:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "18. okt"
+    },
+    {
+      "at": "2026-05-03T12:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "3. maí"
+    },
+    {
+      "at": "2026-01-01T00:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "1. jan"
+    },
+    {
+      "at": "2026-08-30T12:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "30. ágú"
+    },
+    {
+      "at": "2025-08-30T12:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "30. ágú. 2025"
+    },
+    {
+      "at": "2025-12-31T23:59:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "31. des. 2025"
+    },
+    {
+      "at": "2026-10-25T15:01:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "15:01"
+    },
+    {
+      "at": "2026-10-27T12:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "12:00"
+    },
+    {
+      "at": "2024-01-05T09:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "5. jan. 2024"
+    },
+    {
+      "at": "2024-02-05T09:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "5. feb. 2024"
+    },
+    {
+      "at": "2024-03-05T09:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "5. mar. 2024"
+    },
+    {
+      "at": "2024-04-05T09:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "5. apr. 2024"
+    },
+    {
+      "at": "2024-05-05T09:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "5. maí 2024"
+    },
+    {
+      "at": "2024-06-05T09:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "5. jún. 2024"
+    },
+    {
+      "at": "2024-07-05T09:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "5. júl. 2024"
+    },
+    {
+      "at": "2024-08-05T09:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "5. ágú. 2024"
+    },
+    {
+      "at": "2024-09-05T09:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "5. sep. 2024"
+    },
+    {
+      "at": "2024-10-05T09:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "5. okt. 2024"
+    },
+    {
+      "at": "2024-11-05T09:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "5. nóv. 2024"
+    },
+    {
+      "at": "2024-12-05T09:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "5. des. 2024"
+    }
+  ],
+  "listStamp": [
+    {
+      "at": "2026-10-25T09:07:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "09:07"
+    },
+    {
+      "at": "2026-10-24T23:59:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "í gær"
+    },
+    {
+      "at": "2026-10-20T12:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "þri"
+    },
+    {
+      "at": "2026-08-30T12:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "30. ágú"
+    },
+    {
+      "at": "2025-08-30T12:00:00Z",
+      "now": "2026-10-25T15:00:00Z",
+      "expected": "30. ágú. 2025"
+    }
+  ],
+  "problem": [
+    {
+      "outcome": "unreachable",
+      "status": null,
+      "code": null,
+      "key": "error_unreachable"
+    },
+    {
+      "outcome": "refused",
+      "status": 403,
+      "code": "not_permitted",
+      "key": "problem_not_permitted"
+    },
+    {
+      "outcome": "refused",
+      "status": 404,
+      "code": "not_found",
+      "key": "problem_not_found"
+    },
+    {
+      "outcome": "refused",
+      "status": 403,
+      "code": "join_declined",
+      "key": "problem_join_declined"
+    },
+    {
+      "outcome": "refused",
+      "status": 409,
+      "code": "pin_limit",
+      "key": "post_pin_full"
+    },
+    {
+      "outcome": "refused",
+      "status": 409,
+      "code": "poll_closed",
+      "key": "poll_closed_problem"
+    },
+    {
+      "outcome": "refused",
+      "status": 403,
+      "code": "anonymous_off",
+      "key": "problem_anonymous_off"
+    },
+    {
+      "outcome": "refused",
+      "status": 500,
+      "code": "internal_error",
+      "key": "error_generic"
+    },
+    {
+      "outcome": "refused",
+      "status": 502,
+      "code": null,
+      "key": "error_generic"
+    },
+    {
+      "outcome": "refused",
+      "status": 400,
+      "code": "invalid_request",
+      "key": "error_generic"
+    }
+  ]
+}

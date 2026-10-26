@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useId, useState, type ChangeEvent } from "react";
 import { useAccount } from "../account.tsx";
+import { initials } from "../social/avatar.tsx";
 import { refused } from "../problem.ts";
 import { getAccount, getPhoto, removePhoto, type Me } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
@@ -75,13 +76,6 @@ function Avatar({ me }: Readonly<{ me: Me }>) {
       {initials(me.name)}
     </span>
   );
-}
-
-function initials(name: string | null): string {
-  const words = (name ?? "").split(/\s+/).filter(Boolean);
-  const first = words[0]?.[0] ?? "";
-  const last = words.length > 1 ? (words.at(-1)?.[0] ?? "") : "";
-  return (first + last).toLocaleUpperCase("is");
 }
 
 function PhotoControls({ me }: Readonly<{ me: Me }>) {

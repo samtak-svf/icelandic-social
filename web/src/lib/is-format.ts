@@ -45,6 +45,12 @@ export function formatIsDate(ms: number): string {
   return `${d.getDate()}. ${IS_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+/** "2. sep. 2026": the { dateStyle: "medium" } shape, the short date the apps show with a year. */
+export function formatIsDateShort(ms: number): string {
+  const d = new Date(ms);
+  return `${d.getDate()}. ${IS_MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+}
+
 /** "2. sep. 2026, 12:07": the { dateStyle: "medium", timeStyle: "short" } shape. */
 export function formatIsDateTime(ms: number): string {
   const d = new Date(ms);
