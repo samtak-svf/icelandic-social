@@ -13,7 +13,8 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { git, ROOT } from "./lib/repo.mjs";
+import { execFileSync } from "node:child_process";
+import { git, GIT_ENV, ROOT } from "./lib/repo.mjs";
 
 const STORE = "core/store/src/lib.rs";
 
@@ -82,41 +83,51 @@ export function freezeProblems(released, current, known = KNOWN) {
 }
 
 /**
- * Whether the checkout contains the tag's commit. Exit 1 means it does not;
- * any other failure is a real error.
- * @param {string} tag
+ * The source of `path` at each ref, read by one `git cat-file --batch`; a ref
+ * where the path does not exist is left out.
+ * @param {string[]} refs
+ * @param {string} path
  * @param {string} root
+ * @returns {Map<string, string>}
  */
-function headContains(tag, root) {
-  try {
-    git(["merge-base", "--is-ancestor", tag, "HEAD"], root);
-    return true;
-  } catch (error) {
-    if (/** @type {{ status?: number }} */ (error).status === 1) return false;
-    throw error;
+function sourcesAt(refs, path, root) {
+  /** @type {Map<string, string>} */
+  const sources = new Map();
+  if (refs.length === 0) return sources;
+  const out = execFileSync("git", ["cat-file", "--batch"], {
+    cwd: root,
+    env: GIT_ENV,
+    input: refs.map((ref) => `${ref}:${path}\n`).join(""),
+    maxBuffer: 256 * 1024 * 1024,
+  });
+  let at = 0;
+  for (const ref of refs) {
+    const eol = out.indexOf(10, at);
+    const header = out.subarray(at, eol).toString("utf8");
+    at = eol + 1;
+    const blob = /^[0-9a-f]+ blob (\d+)$/.exec(header);
+    if (!blob) continue; // "<ref>:<path> missing": before the store existed
+    const size = Number(blob[1]);
+    sources.set(ref, out.subarray(at, at + size).toString("utf8"));
+    at += size + 1;
   }
+  return sources;
 }
 
 /**
  * The migrations of every `core-v*` release the checkout contains. A tag on a
  * commit HEAD lacks (a local main behind the tagged merge) is not judged
  * against a tree that cannot hold its migrations (#294); a branch that does
- * contain the tag still fails when it drops one.
+ * contain the tag still fails when it drops one. Two git processes in all:
+ * one per tag took over 5 s on a busy CI runner.
  * @param {string} [root]
  * @returns {Map<string, Map<number, string>>}
  */
 export function releasedMigrations(root = ROOT) {
-  const tags = git(["tag", "-l", "core-v*"], root).split("\n").filter(Boolean);
+  const tags = git(["tag", "--merged", "HEAD", "-l", "core-v*"], root).split("\n").filter(Boolean);
   /** @type {Map<string, Map<number, string>>} */
   const released = new Map();
-  for (const tag of tags) {
-    if (!headContains(tag, root)) continue;
-    let source;
-    try {
-      source = git(["show", `${tag}:${STORE}`], root);
-    } catch {
-      continue; // before the store existed
-    }
+  for (const [tag, source] of sourcesAt(tags, STORE, root)) {
     released.set(tag, parseMigrations(source));
   }
   return released;
