@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -139,6 +140,15 @@ class SettingsTest {
     fun aWebDeviceIsNamedByItsKindNotByAPhonePlatform() {
         show(web = true)
         compose.onNodeWithText(text(R.string.device_kind_web)).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun aWebDeviceDrawsNoPhoneIcon() {
+        show(web = true)
+        compose.onNodeWithText(text(R.string.device_kind_web)).performScrollTo().assertIsDisplayed()
+        // Two phones and one browser: the web row's well holds the globe, so only two phone icons are drawn.
+        compose.onAllNodesWithTag("device-icon-phone", useUnmergedTree = true).assertCountEquals(2)
+        compose.onAllNodesWithTag("device-icon-globe", useUnmergedTree = true).assertCountEquals(1)
     }
 
     @Test
