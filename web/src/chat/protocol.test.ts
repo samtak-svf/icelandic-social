@@ -36,6 +36,9 @@ function handlers(over: Partial<Handlers>): Handlers {
     conversations: unused,
     timeline: unused,
     send: unused,
+    groupPhoto: unused,
+    setGroupPhoto: unused,
+    clearGroupPhoto: unused,
     me: unused,
     wipe: unused,
     ...over,
@@ -48,6 +51,14 @@ describe("the page's channel to the chat worker (0081)", () => {
     serve(worker, handlers({ send: (conversation, text) => `${conversation}:${text}` }));
     const call = chatClient(page);
     expect(await call("send", "c-1", "halló")).toBe("c-1:halló");
+  });
+
+  it("moves a photo's bytes to the worker rather than copying them", async () => {
+    const [page, worker] = ends();
+    serve(worker, handlers({ setGroupPhoto: (_, bytes) => String(bytes.length) }));
+    const bytes = new Uint8Array([1, 2, 3]);
+    expect(await chatClient(page)("setGroupPhoto", "c-1", bytes)).toBe("3");
+    expect(bytes.byteLength).toBe(0);
   });
 
   it("rejects with the handler's failure, and nothing else of the error", async () => {

@@ -44,6 +44,12 @@ export interface Ops {
     result: Item[];
   };
   send: { args: [conversation: string, text: string]; result: string };
+  /** The JPEG of this device's copy of a group's photo, or null (0094). */
+  groupPhoto: { args: [conversation: string]; result: Uint8Array | null };
+  /** Gives a group a photo from the bytes of a JPEG, PNG or WebP file (0094); the envelope id. */
+  setGroupPhoto: { args: [conversation: string, bytes: Uint8Array]; result: string };
+  /** Takes a group's photo away (0094); the envelope id. */
+  clearGroupPhoto: { args: [conversation: string]; result: string };
   me: { args: []; result: Me };
   wipe: { args: []; result: void };
 }
@@ -115,7 +121,7 @@ export class ChatFailure extends Error implements Failure {
 
 /** The end of a channel: a `Worker` on the page, the worker's own scope inside it. */
 export interface Port {
-  postMessage(message: unknown): void;
+  postMessage(message: unknown, options?: { transfer: Transferable[] }): void;
   addEventListener(type: "message", listener: (event: MessageEvent) => void): void;
 }
 
@@ -140,7 +146,9 @@ export function chatClient(port: Port) {
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- structured-clone boundary
         resolve(response.value as Ops[O]["result"]);
       });
-      port.postMessage({ id, op, args } satisfies Request<O>);
+      // A photo's bytes move to the worker rather than being copied.
+      const transfer = args.flatMap((a) => (a instanceof Uint8Array ? [a.buffer] : []));
+      port.postMessage({ id, op, args } satisfies Request<O>, { transfer });
     });
   };
 }

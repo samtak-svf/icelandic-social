@@ -11,7 +11,7 @@ export function conversationTitle(conversation: Conversation): string {
 }
 
 /** A person's name, or the word for someone without one. */
-function shownName(person: Person): string {
+export function shownName(person: Person): string {
   return person.name !== null && person.name !== "" ? person.name : strings.person_unnamed;
 }
 
