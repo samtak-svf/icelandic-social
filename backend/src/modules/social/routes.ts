@@ -5,6 +5,7 @@ import {
   createPostRoute,
   deleteCommentRoute,
   deletePostRoute,
+  emojiOfKind,
   feedRoute,
   getPostMediaRoute,
   getPostRoute,
@@ -273,6 +274,8 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
     const refused = replyRefusal(found.access, found.post);
     if (refused) return fail(c, 403, refused);
     const { communityId, authorId } = found.post;
+    const body = c.req.valid("json");
+    const emoji = body.emoji ?? emojiOfKind(body.kind!);
     // One notice for each account's reaction to a post, whatever it changes to.
     await noteAuthor(c.env, communityId, accountId, [
       notice(c.env, `${postId}:${accountId}`, {
@@ -281,13 +284,10 @@ export function socialRoutes(app: OpenAPIHono<AppEnv>): void {
         actorId: accountId,
         communityId,
         postId,
+        emoji,
       }),
     ]);
-    const set = await space(c.env, found.post.communityId).react(
-      postId,
-      accountId,
-      c.req.valid("json").kind,
-    );
+    const set = await space(c.env, found.post.communityId).react(postId, accountId, emoji);
     return set ? c.body(null, 204) : fail(c, 404, "not_found");
   });
 

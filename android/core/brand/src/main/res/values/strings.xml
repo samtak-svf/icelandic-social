@@ -551,6 +551,8 @@
     <string name="reaction_wow">Vá</string>
     <!-- The sad reaction. -->
     <string name="reaction_sad">Leitt</string>
+    <!-- The thanks reaction (folded hands), the sixth of the quick bar (decision 0100). -->
+    <string name="reaction_pray">Takk</string>
     <!-- Marks a post or comment a moderator hid; only moderators see it. -->
     <string name="content_hidden">Falið af stjórnanda</string>
     <!-- Marks a post or comment a moderator removed; only moderators see it. -->
@@ -816,8 +818,10 @@
     <string name="post_pin">Festa</string>
     <!-- Pill under a post card that opens its comments -->
     <string name="post_write_comment">Skrifaðu athugasemd…</string>
-    <!-- Name of the group of five reactions opened from the like action -->
+    <!-- Name of the quick bar of reactions opened from the like action -->
     <string name="post_reactions_more">Fleiri viðbrögð</string>
+    <!-- The plus of the quick bar, and the name of the full emoji picker it opens (decision 0100) -->
+    <string name="post_reactions_all">Öll viðbrögð</string>
     <!-- Menu item that releases a featured post -->
     <string name="post_unpin">Losa</string>
     <!-- Marker on the card of a featured post, in its place in the feed and on the strip (decision 0088) -->

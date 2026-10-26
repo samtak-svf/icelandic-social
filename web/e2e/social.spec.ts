@@ -81,10 +81,19 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
   const mine = post(member, "Tómatarnir");
   const like = mine.getByRole("button", { name: strings.post_like, exact: true });
   await like.click();
-  await expect(mine.getByRole("button", { name: strings.reaction_like })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(mine.getByText(strings.reaction_count({ count: 1 }))).toBeVisible();
+
+  // Liked, the button reads as the quick-bar reaction it holds. The pointer leaves it first,
+  // or resting there opens the quick bar, which has a button of the same name.
+  await member.mouse.move(0, 0);
+  const liked = mine.getByRole("button", { name: strings.reaction_like, exact: true });
+  // Any emoji is a reaction (decision 0100): the plus of the quick bar opens the full picker.
+  await liked.press("ArrowUp");
+  await mine.getByRole("button", { name: strings.post_reactions_all, exact: true }).click();
+  await mine.getByRole("button", { name: "🎉", exact: true }).click();
+  // An emoji outside the quick bar shows as its glyph on Líkar, which stays pressed.
+  await expect(like).toHaveAttribute("aria-pressed", "true");
+  await expect(like).toContainText("🎉");
   await expect(mine.getByText(strings.reaction_count({ count: 1 }))).toBeVisible();
 
   // The owner comments on it.

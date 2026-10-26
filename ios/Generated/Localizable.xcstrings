@@ -3181,6 +3181,18 @@
         }
       }
     },
+    "reaction_pray": {
+      "comment": "The thanks reaction (folded hands), the sixth of the quick bar (decision 0100).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Takk"
+          }
+        }
+      }
+    },
     "content_hidden": {
       "comment": "Marks a post or comment a moderator hid; only moderators see it.",
       "extractionState": "manual",
@@ -4730,13 +4742,25 @@
       }
     },
     "post_reactions_more": {
-      "comment": "Name of the group of five reactions opened from the like action",
+      "comment": "Name of the quick bar of reactions opened from the like action",
       "extractionState": "manual",
       "localizations": {
         "is": {
           "stringUnit": {
             "state": "translated",
             "value": "Fleiri viðbrögð"
+          }
+        }
+      }
+    },
+    "post_reactions_all": {
+      "comment": "The plus of the quick bar, and the name of the full emoji picker it opens (decision 0100)",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öll viðbrögð"
           }
         }
       }

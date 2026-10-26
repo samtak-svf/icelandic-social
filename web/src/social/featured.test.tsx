@@ -24,6 +24,8 @@ const post = (n: number): Post => ({
   createdAt: n,
   reactions: [],
   myReaction: null,
+  emojis: [],
+  myEmoji: "",
   commentCount: 0,
   latestComment: null,
   state: "visible",

@@ -517,12 +517,27 @@ export interface Post {
   media: Array<SocialMedia>;
   /** Unix milliseconds */
   createdAt: number;
-  /** Each reaction the caller can see, with its count */
+  /**
+   * Deprecated: use `emojis`. Counts of the five old kinds, derived from the emoji; any other emoji is absent. Removed once the client floor passes 0.16.0 (0100)
+   * @deprecated
+   */
   reactions: Array<{
     kind: "like" | "love" | "laugh" | "wow" | "sad";
     count: number;
   }>;
+  /**
+   * Deprecated: use `myEmoji`. Its old kind, null when it has none (0100)
+   * @deprecated
+   */
   myReaction: "like" | "love" | "laugh" | "wow" | "sad" | null;
+  /** Each emoji the caller can see on the post, with its count: most used first, equal counts in code point order (decision 0100) */
+  emojis: Array<{
+    /** Exactly one emoji: one grapheme cluster, a ZWJ sequence, skin tone or flag included */
+    emoji: string;
+    count: number;
+  }>;
+  /** The caller's own reaction, if any */
+  myEmoji: string;
   commentCount: number;
   latestComment: Comment | null;
   /** `pending`: an anonymous post waiting for a moderator's approval (decision 0091); only its author and the moderators see it. Otherwise only a moderator sees what is not visible: hidden or removed by a moderator */
@@ -783,6 +798,8 @@ export interface Notification {
   commentId: string | null;
   /** For `moderated`, the moderator's action (`hide_post`, `remove_comment`, ...) */
   action: string | null;
+  /** For `reaction`, the emoji the account first reacted with (decision 0100) */
+  emoji: string;
   /** Unix milliseconds */
   createdAt: number;
   read: boolean;
@@ -1997,13 +2014,19 @@ export function deleteComment(args: {
   return call("DELETE", "/v1/comments/{commentId}", args, init);
 }
 
-/** Set the caller's reaction to a post, replacing any it had */
+/** Set the caller's emoji on a post, replacing any it had */
 export function react(args: {
   path: {
     postId: string;
   };
   body: {
-    kind: "like" | "love" | "laugh" | "wow" | "sad";
+    /** Any one emoji (decision 0100) */
+    emoji?: string;
+    /**
+     * Deprecated: one of the five old kinds, stored as its emoji. For a build below 0.16.0; send `emoji`
+     * @deprecated
+     */
+    kind?: "like" | "love" | "laugh" | "wow" | "sad";
   };
 }, init?: CallInit): Promise<
   | { status: 204; data: undefined }

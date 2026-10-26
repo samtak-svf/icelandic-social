@@ -27,6 +27,8 @@ const post = (p: Poll): Post => ({
   createdAt: 1,
   reactions: [],
   myReaction: null,
+  emojis: [],
+  myEmoji: "",
   commentCount: 0,
   latestComment: null,
   state: "visible",

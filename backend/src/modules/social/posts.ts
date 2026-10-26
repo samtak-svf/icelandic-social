@@ -323,6 +323,8 @@ export async function createPost(
     anonymous,
     reactions: [],
     myReaction: null,
+    emojis: [],
+    myEmoji: null,
     commentCount: 0,
     latestComment: null,
     ...(poll ? { poll } : {}),

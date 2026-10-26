@@ -19,7 +19,6 @@ pub use spjall_client::api::CommunityImage;
 pub use spjall_client::api::ModerationAction;
 pub use spjall_client::api::ModerationLogAction;
 pub use spjall_client::api::ModerationState;
-pub use spjall_client::api::ReactionKind;
 pub use spjall_client::api::ReportDecision;
 pub use spjall_client::api::ReportReason;
 pub use spjall_client::api::ReportState;
@@ -351,19 +350,10 @@ pub struct CommunityImagePage {
     pub next: Option<String>,
 }
 
-/// The reactions a post takes; an account has at most one on each.
-#[uniffi::remote(Enum)]
-pub enum ReactionKind {
-    Like,
-    Love,
-    Laugh,
-    Wow,
-    Sad,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
-pub struct ReactionCount {
-    pub kind: ReactionKind,
+/// One emoji on a post with how many accounts reacted with it (0100).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct EmojiCount {
+    pub emoji: String,
     pub count: u64,
 }
 
@@ -394,9 +384,10 @@ pub struct Post {
     pub images: Vec<PostImage>,
     /// Unix milliseconds.
     pub created_at: u64,
-    /// Each reaction this account can see, with its count.
-    pub reactions: Vec<ReactionCount>,
-    pub my_reaction: Option<ReactionKind>,
+    /// Each emoji this account can see, most used first (0100).
+    pub emojis: Vec<EmojiCount>,
+    /// This account's own emoji, if any.
+    pub my_emoji: Option<String>,
     pub comment_count: u64,
     /// The newest comment this account may read, for a preview (0080).
     #[uniffi(default = None)]
@@ -472,13 +463,13 @@ impl From<api::Post> for Post {
             body,
             media,
             created_at,
-            my_reaction,
+            my_emoji,
             comment_count,
             latest_comment,
             state,
             pinned,
             poll,
-            reactions,
+            emojis,
         } = post;
 
         Self {
@@ -490,11 +481,11 @@ impl From<api::Post> for Post {
             body,
             images: media.into_iter().map(Into::into).collect(),
             created_at,
-            reactions: reactions
+            emojis: emojis
                 .into_iter()
-                .map(|api::ReactionCount { kind, count }| ReactionCount { kind, count })
+                .map(|api::EmojiCount { emoji, count }| EmojiCount { emoji, count })
                 .collect(),
-            my_reaction,
+            my_emoji,
             comment_count,
             latest_comment: latest_comment.map(Into::into),
             state,
@@ -1085,6 +1076,8 @@ pub struct SocialNotification {
     pub comment_id: Option<String>,
     /// For `Moderated`, the moderator's action.
     pub action: Option<ModerationAction>,
+    /// For `Reaction`, the emoji (0100).
+    pub emoji: Option<String>,
     /// Unix milliseconds: the `up_to` of `read_notifications`.
     pub created_at: u64,
     pub read: bool,
@@ -1100,6 +1093,7 @@ impl From<api::Notification> for SocialNotification {
             post_id,
             comment_id,
             action,
+            emoji,
             created_at,
             read,
         } = notification;
@@ -1118,6 +1112,7 @@ impl From<api::Notification> for SocialNotification {
             post_id,
             comment_id,
             action,
+            emoji,
             created_at,
             read,
         }
@@ -1614,8 +1609,8 @@ impl CoreClient {
     }
 
     /// Sets this account's one reaction on a post, in place of any other.
-    pub fn react(&self, post_id: String, kind: ReactionKind) -> Result<(), CoreError> {
-        Ok(self.client()?.react(&post_id, kind)?)
+    pub fn react(&self, post_id: String, emoji: String) -> Result<(), CoreError> {
+        Ok(self.client()?.react(&post_id, &emoji)?)
     }
 
     /// Takes this account's reaction off a post; no error when it had none.

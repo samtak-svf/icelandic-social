@@ -1292,6 +1292,10 @@
       "surfaces": ["android", "ios", "web"],
       "description": "The sad reaction."
     },
+    "reaction_pray": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The thanks reaction (folded hands), the sixth of the quick bar (decision 0100)."
+    },
     "content_hidden": {
       "surfaces": ["android", "ios", "web"],
       "description": "Marks a post or comment a moderator hid; only moderators see it."
@@ -1938,7 +1942,11 @@
     },
     "post_reactions_more": {
       "surfaces": ["android", "web", "ios"],
-      "description": "Name of the group of five reactions opened from the like action"
+      "description": "Name of the quick bar of reactions opened from the like action"
+    },
+    "post_reactions_all": {
+      "surfaces": ["android", "web", "ios"],
+      "description": "The plus of the quick bar, and the name of the full emoji picker it opens (decision 0100)"
     },
     "post_unpin": {
       "surfaces": ["android", "web", "ios"],

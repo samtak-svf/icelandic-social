@@ -9,8 +9,8 @@ use std::path::{Path, PathBuf};
 use crate::api::{
     Audience, Author, Card, Comment, CommentPage, Community, CommunityImagePage, CommunityMember,
     CommunityPage, JoinRequest, JoinState, Moderation, ModerationAction, ModerationLogPage,
-    NewReport, NotificationPage, Post, PostPage, ReactionKind, Ref, ReportPage, ReportState, Role,
-    SocialMedia, Transport,
+    NewReport, NotificationPage, Post, PostPage, Ref, ReportPage, ReportState, Role, SocialMedia,
+    Transport,
 };
 use crate::{Client, ClientError, MediaError, authed, is_id};
 
@@ -425,9 +425,9 @@ impl<T: Transport> Client<T> {
     }
 
     /// Sets this account's one reaction on a post, in place of any other.
-    pub fn react(&self, post: &str, kind: ReactionKind) -> Result<(), ClientError> {
+    pub fn react(&self, post: &str, emoji: &str) -> Result<(), ClientError> {
         id(post, "post id")?;
-        Ok(authed(&self.transport, &self.token, &self.client)?.react(post, kind)?)
+        Ok(authed(&self.transport, &self.token, &self.client)?.react(post, emoji)?)
     }
 
     pub fn unreact(&self, post: &str) -> Result<(), ClientError> {

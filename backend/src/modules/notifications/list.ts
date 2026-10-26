@@ -17,6 +17,7 @@ type Row = {
   post_id: string | null;
   comment_id: string | null;
   action: string | null;
+  emoji: string | null;
   created_at: number;
   read_at: number | null;
 };
@@ -32,7 +33,7 @@ export async function notificationPage(
     db(env)
       .prepare(
         `SELECT notification_id, kind, actor_id, community_id, post_id, comment_id, action,
-                created_at, read_at
+                emoji, created_at, read_at
            FROM notifications n WHERE account_id = ?1 AND (?2 IS NULL OR created_at < ?2)
             AND ${LIVE}
           ORDER BY created_at DESC LIMIT ?3`,
@@ -61,6 +62,7 @@ export async function notificationPage(
       postId: r.post_id,
       commentId: r.comment_id,
       action: r.action,
+      emoji: r.emoji,
       createdAt: r.created_at,
       read: r.read_at !== null,
     })),

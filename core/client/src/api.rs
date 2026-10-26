@@ -792,20 +792,10 @@ pub struct SocialMedia {
     pub height: u32,
 }
 
-/// The reactions a post takes; an account has at most one on each post.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ReactionKind {
-    Like,
-    Love,
-    Laugh,
-    Wow,
-    Sad,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-pub struct ReactionCount {
-    pub kind: ReactionKind,
+/// One emoji on a post with how many accounts reacted with it (0100).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct EmojiCount {
+    pub emoji: String,
     pub count: u64,
 }
 
@@ -839,9 +829,12 @@ pub struct Post {
     pub media: Vec<SocialMedia>,
     /// Unix milliseconds.
     pub created_at: u64,
-    /// Each reaction the caller can see, with its count.
-    pub reactions: Vec<ReactionCount>,
-    pub my_reaction: Option<ReactionKind>,
+    /// Each emoji the caller can see, most used first (0100). The server's
+    /// older `reactions` and `myReaction` are not read: they go once the
+    /// client floor passes 0.16.0.
+    pub emojis: Vec<EmojiCount>,
+    /// The caller's own emoji, if any (0100).
+    pub my_emoji: Option<String>,
     pub comment_count: u64,
     /// The newest comment the caller may read, for a preview (0080).
     #[serde(default)]
@@ -1314,6 +1307,8 @@ pub struct Notification {
     pub comment_id: Option<String>,
     /// For `Moderated`, the moderator's action.
     pub action: Option<ModerationAction>,
+    /// For `Reaction`, the emoji (0100); none on a notification made before.
+    pub emoji: Option<String>,
     /// Unix milliseconds.
     pub created_at: u64,
     pub read: bool,
@@ -1341,6 +1336,8 @@ struct SentNotification {
     post_id: Option<String>,
     comment_id: Option<String>,
     action: Option<serde_json::Value>,
+    #[serde(default)]
+    emoji: Option<String>,
     created_at: u64,
     read: bool,
 }
@@ -1355,6 +1352,7 @@ impl SentNotification {
             post_id: self.post_id,
             comment_id: self.comment_id,
             action: self.action.and_then(|a| serde_json::from_value(a).ok()),
+            emoji: self.emoji,
             created_at: self.created_at,
             read: self.read,
         })
@@ -2521,8 +2519,8 @@ impl<T: Transport + ?Sized> Api<'_, T> {
     }
 
     /// `react`: in place of any reaction this account had on the post.
-    pub fn react(&self, post: &str, kind: ReactionKind) -> Result<(), ApiError> {
-        let body = serde_json::json!({ "kind": kind });
+    pub fn react(&self, post: &str, emoji: &str) -> Result<(), ApiError> {
+        let body = serde_json::json!({ "emoji": emoji });
         let path = format!("/v1/posts/{post}/reaction");
         self.done(Method::Put, path, Self::json(&body))
     }
@@ -2843,13 +2841,6 @@ mod tests {
             M::BanMember,
             M::UnbanMember,
         ];
-        let reactions = [
-            ReactionKind::Like,
-            ReactionKind::Love,
-            ReactionKind::Laugh,
-            ReactionKind::Wow,
-            ReactionKind::Sad,
-        ];
         let notifications: Vec<_> = listed("/Notification/properties/kind/enum");
         let notification = |text: &serde_json::Value| {
             serde_json::from_value::<NotificationKind>(text.clone()).is_ok()
@@ -2859,10 +2850,6 @@ mod tests {
         assert_eq!(
             listed("/Community/properties/audience/enum"),
             names(&[Audience::Open, Audience::Private])
-        );
-        assert_eq!(
-            listed("/Post/properties/myReaction/enum"),
-            names(&reactions)
         );
         assert_eq!(
             listed("/Post/properties/state/enum"),

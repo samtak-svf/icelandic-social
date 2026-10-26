@@ -4,19 +4,14 @@ import { react, unreact, type Post } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { Menu, MenuItem } from "../ui/menu.tsx";
 import { Status } from "../ui/kit.tsx";
+import { EmojiPicker, QUICK } from "./emoji-picker.tsx";
+import { tally } from "./reaction-tally.ts";
 import { outcome } from "./outcome.ts";
 
 // What sits under a post's text (decision 0080): the reaction summary and the
 // Líkar, Athugasemd and Deila row.
 
-const REACTIONS = [
-  ["like", "👍", strings.reaction_like],
-  ["love", "❤️", strings.reaction_love],
-  ["laugh", "😂", strings.reaction_laugh],
-  ["wow", "😮", strings.reaction_wow],
-  ["sad", "😢", strings.reaction_sad],
-] as const;
-type Kind = (typeof REACTIONS)[number][0];
+const LIKE = "👍";
 
 /**
  * The reactions as a line: the commonest emoji and their count, and the comments. Like the apps,
@@ -28,16 +23,13 @@ export function Summary({
   linked,
 }: Readonly<{ post: Post; reactions: ReactionState; linked: boolean }>) {
   const comments = strings.post_comments({ count: post.commentCount });
-  const top = REACTIONS.map(([kind, emoji]) => [emoji, reactions.count(kind)] as const)
-    .filter(([, n]) => n > 0)
-    .sort((x, y) => y[1] - x[1])
-    .slice(0, 3);
+  const top = reactions.emojis.slice(0, 3);
   if (reactions.total === 0 && post.commentCount === 0) return null;
   return (
     <div className="flex items-center justify-between gap-2 text-sm text-muted-fg">
       {reactions.total > 0 ? (
         <span>
-          <span aria-hidden="true">{top.map(([emoji]) => emoji).join("")} </span>
+          <span aria-hidden="true">{top.map((r) => r.emoji).join("")} </span>
           {strings.reaction_count({ count: reactions.total })}
         </span>
       ) : (
@@ -134,7 +126,7 @@ const HOLD_MS = 450;
 
 /**
  * Líkar: one press likes or takes the reaction back. A long press, or the
- * pointer resting on it, opens the five reactions; so does the arrow-up key,
+ * pointer resting on it, opens the quick bar; so does the arrow-up key,
  * which a keyboard has instead of either.
  */
 function LikeButton({ reactions }: Readonly<{ reactions: ReactionState }>) {
@@ -142,7 +134,8 @@ function LikeButton({ reactions }: Readonly<{ reactions: ReactionState }>) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const held = useRef(false);
   const mine = reactions.mine;
-  const shown = mine === null ? null : REACTIONS.find(([kind]) => kind === mine);
+  const shown = mine === null ? null : QUICK.find((q) => q.emoji === mine);
+  const [all, setAll] = useState(false);
 
   const later = (fn: () => void, ms: number) => {
     if (timer.current !== null) clearTimeout(timer.current);
@@ -162,6 +155,7 @@ function LikeButton({ reactions }: Readonly<{ reactions: ReactionState }>) {
       onPointerLeave={() => {
         cancel();
         setOpen(false);
+        setAll(false);
       }}
     >
       <button
@@ -194,38 +188,59 @@ function LikeButton({ reactions }: Readonly<{ reactions: ReactionState }>) {
             held.current = false;
             return;
           }
-          void reactions.choose(mine ?? "like");
+          void reactions.choose(mine ?? LIKE);
         }}
       >
         <span aria-hidden="true" className={GLYPH}>
-          {shown ? shown[1] : "👍"}
+          {mine ?? LIKE}
         </span>
-        {shown ? shown[2] : strings.post_like}
+        {shown ? shown.label : strings.post_like}
       </button>
       {open && (
         <div
           role="group"
           aria-label={strings.post_reactions_more}
-          className="absolute bottom-full left-0 z-20 flex gap-1 rounded-full border border-border bg-surface p-1 shadow-lg"
+          className="absolute bottom-full left-0 z-20 flex flex-col gap-1 rounded-2xl border border-border bg-surface p-1 shadow-lg"
           onKeyDown={(event) => {
             if (event.key === "Escape") setOpen(false);
           }}
         >
-          {REACTIONS.map(([kind, emoji, label]) => (
+          <div className="flex gap-1">
+            {QUICK.map(({ emoji, label }) => (
+              <button
+                key={emoji}
+                type="button"
+                aria-label={label}
+                aria-pressed={reactions.mine === emoji}
+                onClick={() => {
+                  setOpen(false);
+                  void reactions.choose(emoji, true);
+                }}
+                className="inline-flex size-11 items-center justify-center rounded-full text-2xl hover:bg-muted aria-pressed:bg-muted"
+              >
+                {emoji}
+              </button>
+            ))}
             <button
-              key={kind}
               type="button"
-              aria-label={label}
-              aria-pressed={reactions.mine === kind}
-              onClick={() => {
-                setOpen(false);
-                void reactions.choose(kind, true);
-              }}
-              className="inline-flex size-11 items-center justify-center rounded-full text-2xl hover:bg-muted aria-pressed:bg-muted"
+              aria-label={strings.post_reactions_all}
+              aria-expanded={all}
+              onClick={() => setAll((v) => !v)}
+              className="inline-flex size-11 items-center justify-center rounded-full text-2xl hover:bg-muted"
             >
-              {emoji}
+              +
             </button>
-          ))}
+          </div>
+          {all && (
+            <EmojiPicker
+              chosen={reactions.mine}
+              onPick={(emoji) => {
+                setOpen(false);
+                setAll(false);
+                void reactions.choose(emoji, true);
+              }}
+            />
+          )}
         </div>
       )}
     </div>
@@ -270,23 +285,21 @@ export type ReactionState = ReturnType<typeof useReactions>;
 
 /** The caller's reaction and the counts as the server gave them, moved by what the caller changed since. */
 export function useReactions(post: Post) {
-  const [mine, setMine] = useState<Kind | null>(post.myReaction);
+  const first = post.myEmoji === "" ? null : post.myEmoji;
+  const [mine, setMine] = useState<string | null>(first);
   const [busy, setBusy] = useState(false);
-  const counts = new Map(post.reactions.map((r) => [r.kind, r.count]));
-  const count = (kind: Kind) =>
-    (counts.get(kind) ?? 0) - (post.myReaction === kind ? 1 : 0) + (mine === kind ? 1 : 0);
-  const total = REACTIONS.reduce((sum, [kind]) => sum + count(kind), 0);
+  const { emojis, total, count } = tally(post.emojis, first, mine);
 
-  /** Sets `kind`, or takes it back when it is already the caller's (`pick` sets it even then). */
-  async function choose(kind: Kind, pick = false) {
+  /** Sets `emoji`, or takes it back when it is already the caller's (`pick` sets it even then). */
+  async function choose(emoji: string, pick = false) {
     setBusy(true);
-    const next = mine === kind && !pick ? null : kind;
+    const next = mine === emoji && !pick ? null : emoji;
     const done =
       next === null
         ? await outcome(unreact({ path: { postId: post.postId } }), 204)
-        : await outcome(react({ path: { postId: post.postId }, body: { kind: next } }), 204);
+        : await outcome(react({ path: { postId: post.postId }, body: { emoji: next } }), 204);
     if (done.ok) setMine(next);
     setBusy(false);
   }
-  return { mine, busy, count, total, choose };
+  return { mine, busy, count, total, emojis, choose };
 }

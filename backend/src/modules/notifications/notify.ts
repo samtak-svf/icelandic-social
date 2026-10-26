@@ -43,8 +43,8 @@ export function noticeHandler(sender: PushSender) {
       await db(env)
         .prepare(
           `INSERT INTO notifications (notification_id, account_id, kind, actor_id, community_id,
-                                      post_id, comment_id, action, created_at)
-           SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?
+                                      post_id, comment_id, action, emoji, created_at)
+           SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             WHERE EXISTS (SELECT 1 FROM accounts WHERE account_id = ?2)
               AND EXISTS (SELECT 1 FROM live_communities WHERE community_id = ?5)
            ON CONFLICT DO NOTHING`,
@@ -58,6 +58,7 @@ export function noticeHandler(sender: PushSender) {
           n.postId ?? null,
           n.commentId ?? null,
           n.action ?? null,
+          n.emoji ?? null,
           Date.now(),
         )
         .run();

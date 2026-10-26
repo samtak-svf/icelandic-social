@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import type { REACTIONS } from "../../../api/social.ts";
+import type { ReactionKind } from "../../../api/social.ts";
 import {
   type CommentContent,
   type CommentRecord,
@@ -11,15 +11,13 @@ import {
   listComments,
 } from "./comment-reads.ts";
 import { ensureAnonymousColumn, publish } from "./anonymous.ts";
+import { ensureEmojiReactions, reactionViews, setReaction } from "./reactions.ts";
 import * as polls from "./polls.ts";
 import { featured, pinPost } from "./pins.ts";
 import { type PostRow, REMOVED_KEPT_MS, SCHEMA } from "./space-schema.ts";
 import { sweepRemoved } from "./removed.ts";
 
 export type { CommentContent, CommentRecord, ContentState, Viewer } from "./comment-reads.ts";
-
-export type Reaction = (typeof REACTIONS)[number];
-
 /** An image a post holds, re-encoded (decision 0065). */
 export type MediaRef = { mediaId: string; width: number; height: number };
 
@@ -30,8 +28,11 @@ export type PostContent = {
   body: string;
   media: MediaRef[];
   createdAt: number;
-  reactions: { kind: Reaction; count: number }[];
-  myReaction: Reaction | null;
+  /** The old kinds, derived from the emoji (0100). */
+  reactions: { kind: ReactionKind; count: number }[];
+  myReaction: ReactionKind | null;
+  emojis: { emoji: string; count: number }[];
+  myEmoji: string | null;
   commentCount: number;
   /** The newest comment the viewer may read, or null (decision 0080). */
   latestComment: CommentContent | null;
@@ -55,6 +56,7 @@ export class Space extends DurableObject<Env> {
     this.sql = ctx.storage.sql;
     this.sql.exec(SCHEMA);
     ensureAnonymousColumn(this.sql);
+    ensureEmojiReactions(this.sql);
     // The space made before decision 0071 lacks the replay column: it is
     // added in place, as a repair on open, whatever its history (0050).
     const columns = this.sql.exec<{ name: string }>("PRAGMA table_info(comments)").toArray();
@@ -114,25 +116,25 @@ export class Space extends DurableObject<Env> {
       )
       .toArray();
     const counts = this.sql
-      .exec<{ post_id: string; kind: Reaction; count: number }>(
-        `SELECT post_id, kind, COUNT(*) AS count FROM reactions
+      .exec<{ post_id: string; emoji: string; count: number }>(
+        `SELECT post_id, emoji, COUNT(*) AS count FROM reactions
           WHERE post_id IN (SELECT value FROM json_each(?1))
             AND account NOT IN (SELECT value FROM json_each(?2))
-          GROUP BY post_id, kind ORDER BY count DESC, kind`,
+          GROUP BY post_id, emoji ORDER BY count DESC, emoji`,
         wanted,
         hidden,
       )
       .toArray();
     const mine = new Map(
       this.sql
-        .exec<{ post_id: string; kind: Reaction }>(
-          `SELECT post_id, kind FROM reactions
+        .exec<{ post_id: string; emoji: string }>(
+          `SELECT post_id, emoji FROM reactions
             WHERE account = ? AND post_id IN (SELECT value FROM json_each(?))`,
           viewer.account,
           wanted,
         )
         .toArray()
-        .map((r) => [r.post_id, r.kind]),
+        .map((r) => [r.post_id, r.emoji]),
     );
     const comments = new Map(
       this.sql
@@ -167,10 +169,10 @@ export class Space extends DurableObject<Env> {
           body: row.body,
           media: JSON.parse(row.media) as MediaRef[],
           createdAt: row.created_at,
-          reactions: counts
-            .filter((c) => c.post_id === id)
-            .map(({ kind, count }) => ({ kind, count })),
-          myReaction: mine.get(id) ?? null,
+          ...reactionViews(
+            counts.filter((c) => c.post_id === id),
+            mine.get(id) ?? null,
+          ),
           commentCount: comments.get(id) ?? 0,
           latestComment: latest.get(id) ?? null,
           anonymous: row.anonymous === 1,
@@ -389,22 +391,8 @@ export class Space extends DurableObject<Env> {
   }
 
   /** Sets, replaces or (with null) removes `account`'s reaction; false when the post is not here. */
-  react(postId: string, account: string, kind: Reaction | null): boolean {
-    const exists = this.sql.exec("SELECT 1 FROM posts WHERE post_id = ?", postId).toArray().length;
-    if (!exists) return false;
-    if (kind === null) {
-      this.sql.exec("DELETE FROM reactions WHERE post_id = ? AND account = ?", postId, account);
-    } else {
-      this.sql.exec(
-        `INSERT INTO reactions (post_id, account, kind, created_at) VALUES (?, ?, ?, ?)
-         ON CONFLICT (post_id, account) DO UPDATE SET kind = excluded.kind`,
-        postId,
-        account,
-        kind,
-        Date.now(),
-      );
-    }
-    return true;
+  react(postId: string, account: string, emoji: string | null): boolean {
+    return setReaction(this.sql, postId, account, emoji);
   }
 
   /**

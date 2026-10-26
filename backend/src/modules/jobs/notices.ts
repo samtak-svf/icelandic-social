@@ -15,6 +15,8 @@ export type Notice = {
   postId?: string;
   commentId?: string;
   action?: string;
+  /** For `reaction`, the emoji (decision 0100). */
+  emoji?: string;
 };
 
 /** The job of `notice`, keyed by `key`: one notification however often it is written or run. */

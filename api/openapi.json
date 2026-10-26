@@ -1823,7 +1823,8 @@
                 "count"
               ]
             },
-            "description": "Each reaction the caller can see, with its count"
+            "deprecated": true,
+            "description": "Deprecated: use `emojis`. Counts of the five old kinds, derived from the emoji; any other emoji is absent. Removed once the client floor passes 0.16.0 (0100)"
           },
           "myReaction": {
             "type": [
@@ -1837,7 +1838,37 @@
               "wow",
               "sad",
               null
-            ]
+            ],
+            "deprecated": true,
+            "description": "Deprecated: use `myEmoji`. Its old kind, null when it has none (0100)"
+          },
+          "emojis": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "emoji": {
+                  "type": "string",
+                  "maxLength": 32,
+                  "description": "Exactly one emoji: one grapheme cluster, a ZWJ sequence, skin tone or flag included",
+                  "example": "🙏"
+                },
+                "count": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "emoji",
+                "count"
+              ]
+            },
+            "description": "Each emoji the caller can see on the post, with its count: most used first, equal counts in code point order (decision 0100)"
+          },
+          "myEmoji": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "The caller's own reaction, if any",
+            "example": "🙏"
           },
           "commentCount": {
             "type": "integer"
@@ -1881,6 +1912,8 @@
           "createdAt",
           "reactions",
           "myReaction",
+          "emojis",
+          "myEmoji",
           "commentCount",
           "latestComment",
           "state",
@@ -2996,6 +3029,12 @@
             ],
             "description": "For `moderated`, the moderator's action (`hide_post`, `remove_comment`, ...)"
           },
+          "emoji": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "For `reaction`, the emoji the account first reacted with (decision 0100)",
+            "example": "🙏"
+          },
           "createdAt": {
             "type": "integer",
             "description": "Unix milliseconds"
@@ -3012,6 +3051,7 @@
           "postId",
           "commentId",
           "action",
+          "emoji",
           "createdAt",
           "read"
         ]
@@ -11366,7 +11406,7 @@
         "tags": [
           "social"
         ],
-        "summary": "Set the caller's reaction to a post, replacing any it had",
+        "summary": "Set the caller's emoji on a post, replacing any it had",
         "security": [
           {
             "deviceToken": []
@@ -11394,6 +11434,12 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "emoji": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "description": "Any one emoji (decision 0100)",
+                    "example": "🙏"
+                  },
                   "kind": {
                     "type": "string",
                     "enum": [
@@ -11402,12 +11448,11 @@
                       "laugh",
                       "wow",
                       "sad"
-                    ]
+                    ],
+                    "deprecated": true,
+                    "description": "Deprecated: one of the five old kinds, stored as its emoji. For a build below 0.16.0; send `emoji`"
                   }
-                },
-                "required": [
-                  "kind"
-                ]
+                }
               }
             }
           }
