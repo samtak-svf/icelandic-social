@@ -31,7 +31,7 @@ if ! command -v brew >/dev/null && [ ! -x /opt/homebrew/bin/brew ]; then
 fi
 eval "$(/opt/homebrew/bin/brew shellenv)"
 
-# llvm: Apple's clang has no wasm32 target, which the browser core needs (interop.yml).
+# llvm: Apple's clang has no wasm32 target, which the browser core needs (.github/actions/rust-toolchain).
 say "xcodegen, jq, xcbeautify, llvm"
 brew install --quiet xcodegen jq xcbeautify llvm
 

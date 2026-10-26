@@ -59,7 +59,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
+      # The wasm32 target also gives macOS Homebrew's clang for the browser
+      # core's C (the action says why).
       - uses: ./.github/actions/rust-toolchain
+        with:
+          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: core
@@ -74,12 +78,6 @@ jobs:
       - name: Core for the browser
         working-directory: core
         run: |
-          # Apple's clang has no wasm32 target, so sqlite-wasm-rs builds its C
-          # with Homebrew's LLVM there (tooling/mac-bootstrap.sh installs it).
-          if [ "$RUNNER_OS" = macOS ]; then
-            export CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm/bin/clang
-            export AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm/bin/llvm-ar
-          fi
           cargo install wasm-bindgen-cli --version 0.2.129 --locked
           cargo xtask core web
 
