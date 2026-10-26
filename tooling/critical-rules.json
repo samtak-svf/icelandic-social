@@ -16,7 +16,7 @@
           "name": "stores one commit per epoch, and older application messages too"
         },
         {
-          "file": "core/client/tests/sync.rs",
+          "file": "core/client/tests/sync/joins.rs",
           "name": "a_claim_that_leaves_a_member_out_is_corrected"
         }
       ]
@@ -52,7 +52,7 @@
           "name": "stops a removed member fetching what was sent before"
         },
         {
-          "file": "core/client/tests/sync.rs",
+          "file": "core/client/tests/sync/revocation.rs",
           "name": "a_revoked_device_cannot_read_after_its_removal"
         }
       ]
@@ -112,7 +112,7 @@
       "rule": "A forward never reuses the original media object or key: the file is sealed under a fresh key and uploaded into the target conversation.",
       "tests": [
         {
-          "file": "core/client/tests/sync.rs",
+          "file": "core/client/tests/sync/forward.rs",
           "name": "a_forward_never_reuses_the_original_media_object_or_key"
         }
       ]
@@ -144,7 +144,7 @@
           "name": "kills its token at once, deletes its KeyPackages and closes its socket"
         },
         {
-          "file": "core/client/tests/sync.rs",
+          "file": "core/client/tests/sync/revocation.rs",
           "name": "revoking_a_device_removes_it_from_every_group"
         }
       ]
@@ -220,7 +220,7 @@
           "name": "answers 426 on a /v1 route, before the token is looked at, and leaves /health open"
         },
         {
-          "file": "core/client/tests/sync.rs",
+          "file": "core/client/tests/sync/revocation.rs",
           "name": "a_build_below_the_floor_is_told_to_update"
         }
       ]
@@ -352,7 +352,7 @@
           "name": "numbers messages in order and answers a resend with the first seq"
         },
         {
-          "file": "core/client/tests/sync.rs",
+          "file": "core/client/tests/sync/basics.rs",
           "name": "a_restart_between_sealing_and_the_answer_loses_and_doubles_nothing"
         }
       ]
@@ -376,11 +376,11 @@
           "name": "is cleared when the account leaves the conversation, or is deleted"
         },
         {
-          "file": "core/client/tests/sync.rs",
+          "file": "core/client/tests/sync/mute.rs",
           "name": "a_muted_conversation_shows_no_notice_then_or_after_it_is_unmuted"
         },
         {
-          "file": "core/client/tests/sync.rs",
+          "file": "core/client/tests/sync/mute.rs",
           "name": "a_mute_set_while_a_device_was_away_reaches_it_at_sync_and_ends_on_time"
         }
       ]
@@ -424,7 +424,7 @@
           "name": "keeps a blocker that is a member already, and refuses only bringing one in"
         },
         {
-          "file": "core/client/tests/sync.rs",
+          "file": "core/client/tests/sync/blocks.rs",
           "name": "a_blocked_account_cannot_reach_the_blocker_again"
         }
       ]
@@ -472,7 +472,7 @@
       "rule": "A message under a disappearing timer is never forwarded, so no copy outlives the timer its conversation agreed to.",
       "tests": [
         {
-          "file": "core/client/tests/sync.rs",
+          "file": "core/client/tests/sync/forward.rs",
           "name": "a_message_under_a_timer_deleted_or_not_a_message_is_not_forwarded"
         }
       ]
@@ -488,11 +488,11 @@
           "name": "a_shared_post_carries_only_its_id"
         },
         {
-          "file": "core/client/tests/sync.rs",
+          "file": "core/client/tests/sync/people.rs",
           "name": "a_shared_post_from_before_0044_reads_as_its_id_and_asks_the_server_nothing"
         },
         {
-          "file": "core/client/tests/sync.rs",
+          "file": "core/client/tests/sync/forward.rs",
           "name": "a_share_is_not_forwarded_and_a_reply_still_quotes_it"
         }
       ]
@@ -512,7 +512,7 @@
           "name": "is withheld both ways across a block, as if there were none, but the name is not"
         },
         {
-          "file": "core/client/tests/sync.rs",
+          "file": "core/client/tests/sync/photos.rs",
           "name": "a_block_withholds_the_photo_both_ways_and_the_kept_one_goes"
         }
       ]

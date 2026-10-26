@@ -1,20 +1,13 @@
 package samtak.spjall
 
-import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Color
-import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.runtime.Composable
@@ -22,12 +15,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -40,7 +29,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
-import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -50,66 +38,44 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import samtak.spjall.brand.R
-import samtak.spjall.conversation.ConversationActions
-import samtak.spjall.conversation.ConversationInfoActions
-import samtak.spjall.conversation.ConversationInfoScreen
-import samtak.spjall.conversation.ConversationScreen
-import samtak.spjall.conversation.ConversationViewModel
-import samtak.spjall.conversation.LocalPostCards
-import samtak.spjall.conversation.Locator
-import samtak.spjall.conversation.PostCards
-import samtak.spjall.conversations.ConversationsActions
-import samtak.spjall.conversations.ConversationsScreen
+import samtak.spjall.conversation.ConversationInfoRoute
+import samtak.spjall.conversation.ConversationWithPostsRoute
+import samtak.spjall.conversations.ConversationsRoute
 import samtak.spjall.conversations.ConversationsViewModel
-import samtak.spjall.conversations.Outgoing
-import samtak.spjall.conversations.PickActions
-import samtak.spjall.conversations.PickScreen
-import samtak.spjall.conversations.PickViewModel
-import samtak.spjall.conversations.forwarding
-import samtak.spjall.core.Body
-import samtak.spjall.core.Item
-import samtak.spjall.core.MuteFor
-import samtak.spjall.core.coreVersion
+import samtak.spjall.conversations.ForwardRoute
+import samtak.spjall.conversations.SharePostRoute
 import samtak.spjall.core.inviteToken
 import samtak.spjall.frames.FrameSession
 import samtak.spjall.frames.FrameSheet
 import samtak.spjall.frames.LocalFrameSession
-import samtak.spjall.me.MeActions
-import samtak.spjall.me.MeScreen
-import samtak.spjall.me.MeViewModel
-import samtak.spjall.me.link.LinkActions
-import samtak.spjall.me.link.LinkApproveScreen
-import samtak.spjall.me.link.LinkScanScreen
-import samtak.spjall.me.link.LinkViewModel
-import samtak.spjall.onboarding.OnboardingActions
-import samtak.spjall.onboarding.OnboardingScreen
+import samtak.spjall.me.MeRoute
+import samtak.spjall.me.link.LinkRoute
+import samtak.spjall.onboarding.OnboardingRoute
 import samtak.spjall.onboarding.OnboardingViewModel
 import samtak.spjall.onboarding.PrefsOnboardingStore
 import samtak.spjall.onboarding.notificationsNeeded
-import samtak.spjall.people.PeopleActions
-import samtak.spjall.people.PeopleScreen
-import samtak.spjall.people.PeopleViewModel
+import samtak.spjall.people.PeopleRoute
 import samtak.spjall.signin.SignInScreen
 import samtak.spjall.signin.SignInViewModel
 import samtak.spjall.signin.SignInViewModel.Session
 import samtak.spjall.signin.UpdateScreen
-import samtak.spjall.signin.VerifyScreen
+import samtak.spjall.signin.VerifyRoute
 import samtak.spjall.social.SocialRoutes
 import samtak.spjall.social.UnreadViewModel
-import samtak.spjall.social.WithPostImages
 import samtak.spjall.social.socialScreens
 import samtak.spjall.ui.AdaptiveNavigation
 import samtak.spjall.ui.AppIcons
+import samtak.spjall.ui.AppRoutes
 import samtak.spjall.ui.LocalPhotos
 import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.Tab
-import samtak.spjall.ui.rememberBack
+import samtak.spjall.ui.conversationRoute
+import samtak.spjall.ui.tab
 
 /**
- * The one activity: sign-in, the first launch, then the tabs. It has one composable per
- * destination, each tying a view model to its screen, which is why it is long.
+ * The one activity: sign-in, the first launch, then the tabs. It holds the navigation shell; each
+ * destination's route composable, tying a view model to its screen, lives in that screen's package.
  */
-@Suppress("TooManyFunctions")
 class MainActivity : ComponentActivity() {
     private val graph get() = (application as SpjallApplication).graph
 
@@ -161,11 +127,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun share(link: String) {
-        val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, link)
-        startActivity(Intent.createChooser(send, null))
-    }
-
     @Composable
     private fun App() {
         val state by signIn.state.collectAsStateWithLifecycle()
@@ -212,51 +173,11 @@ class MainActivity : ComponentActivity() {
             graph.socket.stop()
             signIn.signedOut()
         }
-        if (step == OnboardingViewModel.Step.Done) TabScreens(signIns) else Onboarding(signIns, onboarding, step)
-    }
-
-    /** A photo, then notifications; the photo is set as on Ég, by the same view model. */
-    @Composable
-    private fun Onboarding(
-        signIns: Int,
-        onboarding: OnboardingViewModel,
-        step: OnboardingViewModel.Step,
-    ) {
-        val me: MeViewModel =
-            viewModel(viewModelStoreOwner = this, key = "me-$signIns") { MeViewModel(graph.account) }
-        val state by me.state.collectAsStateWithLifecycle()
-        val frames = LocalFrameSession.current
-        val photo =
-            rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-                uri?.let { frames.open(me.photoRequest { graph.files.master(it) }) }
-            }
-        // Refused, the notice on the list and on Ég points at the system's settings (decision 0025).
-        val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { onboarding.asked() }
-        LaunchedEffect(onboarding) {
-            onboarding.ask.collect {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    ask.launch(Manifest.permission.POST_NOTIFICATIONS)
-                } else {
-                    onboarding.asked()
-                }
-            }
+        if (step == OnboardingViewModel.Step.Done) {
+            TabScreens(signIns)
+        } else {
+            OnboardingRoute(signIns, onboarding, step, owner = this, graph = graph)
         }
-        OnboardingScreen(
-            step,
-            state,
-            object : OnboardingActions {
-                override fun choosePhoto() =
-                    photo.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-
-                override fun photoDone() = onboarding.photoDone()
-
-                override fun enable() = onboarding.enable()
-
-                override fun notNow() = onboarding.notNow()
-
-                override fun retry() = me.retry()
-            },
-        )
     }
 
     /**
@@ -269,13 +190,13 @@ class MainActivity : ComponentActivity() {
         val list: ConversationsViewModel =
             viewModel(key = "list-$signIns") { ConversationsViewModel(graph.account, graph.socket) }
         LaunchedEffect(list) { signIn.invites.collect { list.openInvite(it.token, it.signedUp) } }
-        LaunchedEffect(list) { list.opened.collect { nav.navigate(conversation(it)) } }
+        LaunchedEffect(list) { list.opened.collect { nav.navigate(conversationRoute(it)) } }
         // Kenni is offered once after a sign-in, and "Seinna" goes on to the list (decision 0035).
-        LaunchedEffect(Unit) { signIn.offers.collect { nav.navigate(VERIFY) } }
+        LaunchedEffect(Unit) { signIn.offers.collect { nav.navigate(AppRoutes.VERIFY) } }
         LaunchedEffect(Unit) {
             opens.receiveAsFlow().collect {
-                nav.navigate(LIST) { tab() }
-                nav.navigate(conversation(it))
+                nav.navigate(AppRoutes.LIST) { tab() }
+                nav.navigate(conversationRoute(it))
             }
         }
         val route =
@@ -297,29 +218,29 @@ class MainActivity : ComponentActivity() {
         ) {
             NavHost(
                 navController = nav,
-                startDestination = LIST,
+                startDestination = AppRoutes.LIST,
             ) {
-                composable(LIST) { Conversations(list, nav) }
-                composable(ME) { Me(signIns, nav) }
+                composable(AppRoutes.LIST) { ConversationsRoute(list, nav) }
+                composable(AppRoutes.ME) { MeRoute(signIns, nav, graph, this@MainActivity, signIn::signedOut) }
                 socialScreens(
                     graph.social,
                     graph.account,
                     graph.files,
                     nav,
                     unread::refresh,
-                ) { post -> nav.navigate("$SHARE/$post") }
-                composable(VERIFY) { Verify(nav) }
-                composable(LINK) { LinkBrowser(nav) }
-                composable(PEOPLE) { People(nav) }
+                ) { post -> nav.navigate("${AppRoutes.SHARE}/$post") }
+                composable(AppRoutes.VERIFY) { VerifyRoute(nav, signIn) }
+                composable(AppRoutes.LINK) { LinkRoute(nav, graph) }
+                composable(AppRoutes.PEOPLE) { PeopleRoute(nav, graph) }
                 // Adding to a group that exists (0078): the picker, for that conversation's members.
-                composable("$PEOPLE/{id}") { entry ->
-                    entry.arguments?.getString("id")?.let { People(nav, targetConversation = it) }
+                composable("${AppRoutes.PEOPLE}/{id}") { entry ->
+                    entry.arguments?.getString("id")?.let { PeopleRoute(nav, graph, targetConversation = it) }
                 }
-                composable("$CONVERSATION/{id}") { entry ->
-                    entry.arguments?.getString("id")?.let { ConversationWithPosts(it, nav) }
+                composable("${AppRoutes.CONVERSATION}/{id}") { entry ->
+                    entry.arguments?.getString("id")?.let { ConversationWithPostsRoute(it, nav, graph) }
                 }
-                composable("$INFO/{id}") { entry ->
-                    entry.arguments?.getString("id")?.let { ConversationInfo(it, nav) }
+                composable("${AppRoutes.INFO}/{id}") { entry ->
+                    entry.arguments?.getString("id")?.let { ConversationInfoRoute(it, nav, graph) }
                 }
                 sendingRoutes(nav)
             }
@@ -328,20 +249,14 @@ class MainActivity : ComponentActivity() {
 
     /** The two pickers that copy something into the conversations picked: a message (0041) and a post (0080). */
     private fun NavGraphBuilder.sendingRoutes(nav: NavController) {
-        composable("$SHARE/{postId}") { entry ->
-            entry.arguments?.getString("postId")?.let { SharePost(it, nav) }
+        composable("${AppRoutes.SHARE}/{postId}") { entry ->
+            entry.arguments?.getString("postId")?.let { SharePostRoute(it, nav, graph) }
         }
-        composable("$FORWARD/{from}/{seq}") { entry ->
+        composable("${AppRoutes.FORWARD}/{from}/{seq}") { entry ->
             val from = entry.arguments?.getString("from")
             val seq = entry.arguments?.getString("seq")?.toULongOrNull()
-            if (from != null && seq != null) Forward(from, seq, nav)
+            if (from != null && seq != null) ForwardRoute(from, seq, nav, graph)
         }
-    }
-
-    private fun notificationSettings() {
-        startActivity(
-            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName),
-        )
     }
 
     /** The four tabs, the notifications one with its unread count. */
@@ -354,7 +269,9 @@ class MainActivity : ComponentActivity() {
         val communities = SocialRoutes.COMMUNITIES
         val notifications = SocialRoutes.NOTIFICATIONS
         return listOf(
-            Tab(AppIcons.Chat, stringResource(R.string.tab_conversations), route == LIST) { go(LIST) },
+            Tab(AppIcons.Chat, stringResource(R.string.tab_conversations), route == AppRoutes.LIST) {
+                go(AppRoutes.LIST)
+            },
             Tab(AppIcons.Communities, stringResource(R.string.tab_communities), route == communities) {
                 go(communities)
             },
@@ -373,472 +290,8 @@ class MainActivity : ComponentActivity() {
                         null
                     },
             ),
-            Tab(AppIcons.Person, stringResource(R.string.tab_me), route == ME) { go(ME) },
+            Tab(AppIcons.Person, stringResource(R.string.tab_me), route == AppRoutes.ME) { go(AppRoutes.ME) },
         )
-    }
-
-    @Composable
-    private fun Conversations(
-        list: ConversationsViewModel,
-        nav: NavController,
-    ) {
-        val state by list.state.collectAsStateWithLifecycle()
-        val notificationsOff = notificationsOff()
-        ConversationsScreen(
-            state,
-            object : ConversationsActions {
-                override fun open(conversation: String) = nav.navigate(conversation(conversation))
-
-                override fun newConversation() = nav.navigate(PEOPLE)
-
-                override fun search(text: String) = list.search(text)
-
-                override fun openPerson(account: String) = list.openPerson(account)
-
-                override fun invite() = nav.navigate(ME) { tab() }
-
-                override fun retry() = list.retry()
-
-                override fun mute(
-                    conversation: String,
-                    duration: MuteFor,
-                ) = list.mute(conversation, duration)
-
-                override fun unmute(conversation: String) = list.unmute(conversation)
-
-                override fun notificationSettings() = this@MainActivity.notificationSettings()
-            },
-            notificationsOff = notificationsOff,
-        )
-    }
-
-    /** Whether the system blocks the app's notifications, asked again each time the app comes back. */
-    @Composable
-    private fun notificationsOff(): Boolean {
-        val notifications = remember { NotificationManagerCompat.from(this) }
-        var off by remember { mutableStateOf(false) }
-        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { off = !notifications.areNotificationsEnabled() }
-        return off
-    }
-
-    @Composable
-    private fun People(
-        nav: NavController,
-        targetConversation: String? = null,
-    ) {
-        val people: PeopleViewModel =
-            viewModel(key = "people-${targetConversation ?: "new"}") {
-                PeopleViewModel(graph.account, graph.socket, targetConversation = targetConversation)
-            }
-        val state by people.state.collectAsStateWithLifecycle()
-        LaunchedEffect(people) {
-            people.opened.collect {
-                if (targetConversation == null) {
-                    nav.navigate(conversation(it)) { popUpTo(LIST) }
-                } else {
-                    // Back to the information, whose own read then shows the new members (0078).
-                    nav.popBackStack()
-                }
-            }
-        }
-        val pop = rememberBack(nav)
-        PeopleScreen(
-            state,
-            object : PeopleActions {
-                override fun open(account: String) = people.open(account)
-
-                override fun group() = people.group()
-
-                override fun single() = people.single()
-
-                override fun back() = pop()
-
-                override fun toggle(account: String) = people.toggle(account)
-
-                override fun start() = people.start()
-
-                override fun search(text: String) = people.search(text)
-
-                override fun more() = people.more()
-
-                override fun invite() = nav.navigate(ME) { tab() }
-
-                override fun retry() = people.retry()
-            },
-        )
-    }
-
-    @Composable
-    private fun Conversation(
-        id: String,
-        nav: NavController,
-    ) {
-        val model: ConversationViewModel =
-            viewModel(key = "conversation-$id") { ConversationViewModel(id, graph.account, graph.socket) }
-        val state by model.state.collectAsStateWithLifecycle()
-        LaunchedEffect(id) { graph.push.dismiss(id) }
-        val photo =
-            rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-                uri?.let { model.pick(graph.files.pickedPhoto(it)) }
-            }
-        val file =
-            rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-                uri?.let { model.pick(graph.files.picked(it)) }
-            }
-        val camera =
-            rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { taken ->
-                if (taken) graph.files.taken()?.let(model::pick)
-            }
-        val locator = remember { Locator(applicationContext) }
-        val where =
-            rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
-                if (granted.values.any { it }) model.locate(locator::current) else model.locationDenied()
-            }
-        LaunchedEffect(model) {
-            model.opened.collect { open(it) }
-        }
-        val pop = rememberBack(nav)
-        ConversationScreen(
-            state,
-            object : ConversationActions {
-                override fun back() = pop()
-
-                override fun draft(text: String) = model.draft(text)
-
-                override fun send() = model.send()
-
-                override fun reply(item: Item) = model.reply(item)
-
-                override fun forward(item: Item) {
-                    item.seq?.let { nav.navigate("$FORWARD/$id/$it") }
-                }
-
-                override fun edit(item: Item) = model.edit(item)
-
-                override fun cancelMode() = model.cancelMode()
-
-                override fun delete(item: Item) = model.delete(item)
-
-                override fun react(
-                    item: Item,
-                    emoji: String,
-                ) = model.react(item, emoji)
-
-                override fun resend() = model.resend()
-
-                override fun loadOlder() = model.loadOlder()
-
-                override fun attachPhoto() =
-                    photo.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-
-                override fun attachFile() = file.launch(arrayOf("*/*"))
-
-                override fun removeAttachment() = model.removeAttachment()
-
-                // Location is asked for only here, the first time a place is sent (0059).
-                override fun attachLocation() =
-                    if (locator.allowed()) model.locate(locator::current) else where.launch(Locator.PERMISSIONS)
-
-                override fun sendLocation() = model.sendLocation()
-
-                override fun cancelLocation() = model.cancelLocation()
-
-                override fun openPlace(uri: String) {
-                    // With no map app the card still offers map.is, which a browser opens.
-                    try {
-                        startActivity(Intent(Intent.ACTION_VIEW, uri.toUri()))
-                    } catch (_: ActivityNotFoundException) {
-                    }
-                }
-
-                override fun takePhoto() {
-                    // A phone with no camera app has nothing to open; the button then does nothing.
-                    try {
-                        camera.launch(graph.files.cameraTarget())
-                    } catch (_: ActivityNotFoundException) {
-                    }
-                }
-
-                override fun fetch(item: Item) = model.fetch(item)
-
-                override fun open(item: Item) = model.open(item)
-
-                override fun timer(seconds: UInt?) = model.timer(seconds)
-
-                override fun mute(duration: MuteFor) = model.mute(duration)
-
-                override fun unmute() = model.unmute()
-
-                override fun block() = model.block()
-
-                override fun info() = nav.navigate("$INFO/$id")
-
-                override fun retry() = model.retry()
-
-                override fun paused() = model.paused()
-            },
-        )
-    }
-
-    /**
-     * A conversation's information (decision 0055), on the conversation's own view model: it sits
-     * under this screen on the back stack, so both show the same state and a photo fetched in one is
-     * there in the other.
-     */
-    @Composable
-    private fun ConversationInfo(
-        id: String,
-        nav: NavController,
-    ) {
-        val owner = remember { nav.previousBackStackEntry } ?: return
-        val model: ConversationViewModel =
-            viewModel(viewModelStoreOwner = owner, key = "conversation-$id") {
-                ConversationViewModel(id, graph.account, graph.socket)
-            }
-        val state by model.state.collectAsStateWithLifecycle()
-        LaunchedEffect(model) { model.loadShared() }
-        LaunchedEffect(model) { model.opened.collect { open(it) } }
-        val pop = rememberBack(nav)
-        // Made a master off the main thread, in the view model; the core then makes the group's square (0094).
-        val groupPhoto =
-            rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-                uri?.let { model.setGroupPhoto { graph.files.master(it) } }
-            }
-        ConversationInfoScreen(
-            state,
-            object : ConversationInfoActions {
-                override fun back() = pop()
-
-                override fun timer(seconds: UInt?) = model.timer(seconds)
-
-                override fun mute(duration: MuteFor) = model.mute(duration)
-
-                override fun unmute() = model.unmute()
-
-                override fun block() = model.block()
-
-                override fun add() = nav.navigate("$PEOPLE/$id")
-
-                override fun rename(name: String?) = model.rename(name)
-
-                override fun setPhoto() =
-                    groupPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-
-                override fun clearPhoto() = model.clearGroupPhoto()
-
-                override fun remove(account: String) = model.remove(account)
-
-                override fun leave() = model.leave()
-
-                override fun fetch(item: Item) = model.fetch(item)
-
-                override fun open(item: Item) = model.open(item)
-
-                override fun more() = model.moreShared()
-
-                override fun retry() = model.retry()
-            },
-        )
-    }
-
-    /** Copies one message into the conversations picked (decision 0041), then back to where it came from. */
-    @Composable
-    private fun Forward(
-        from: String,
-        seq: ULong,
-        nav: NavController,
-    ) {
-        val model: PickViewModel =
-            viewModel(key = "forward-$from-$seq") {
-                PickViewModel(graph.account, graph.socket, except = from, preview = forwarding(from, seq)) { to ->
-                    forward(from, seq, to)
-                }
-            }
-        Pick(stringResource(R.string.forward), R.plurals.forward_done, model, nav)
-    }
-
-    /** A conversation whose shared posts are drawn from their cards and opened in the community screens (0080). */
-    @Composable
-    private fun ConversationWithPosts(
-        id: String,
-        nav: NavController,
-    ) {
-        val cards = remember { PostCards(graph.social) { post -> nav.navigate(SocialRoutes.post(post)) } }
-        CompositionLocalProvider(LocalPostCards provides cards) {
-            WithPostImages(graph.social) { Conversation(id, nav) }
-        }
-    }
-
-    /** Sends a community post into the conversations picked (0080), then back to where it was shared from. */
-    @Composable
-    private fun SharePost(
-        postId: String,
-        nav: NavController,
-    ) {
-        val model: PickViewModel =
-            viewModel(key = "share-$postId") {
-                PickViewModel(graph.account, graph.socket, preview = { Outgoing.Post(postId) }) { to ->
-                    send(to, Body.Post(postId))
-                }
-            }
-        Pick(stringResource(R.string.post_share_to_conversation), R.plurals.post_share_done, model, nav)
-    }
-
-    /** The conversation picker; once every picked conversation has its copy, says how many and goes back. */
-    @Composable
-    private fun Pick(
-        title: String,
-        done: Int,
-        model: PickViewModel,
-        nav: NavController,
-    ) {
-        val state by model.state.collectAsStateWithLifecycle()
-        val pop = rememberBack(nav)
-        LaunchedEffect(model) {
-            model.done.collect { count ->
-                Toast
-                    .makeText(
-                        this@MainActivity,
-                        resources.getQuantityString(done, count, count),
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                nav.popBackStack()
-            }
-        }
-        PickScreen(
-            title,
-            state,
-            object : PickActions {
-                override fun toggle(conversation: String) = model.toggle(conversation)
-
-                override fun send() = model.send()
-
-                override fun search(text: String) = model.search(text)
-
-                override fun back() = pop()
-
-                override fun retry() = model.retry()
-            },
-        )
-    }
-
-    /** Ég: the person, the invite link and the settings (decision 0044), in the view model the first launch uses. */
-    @Composable
-    private fun Me(
-        signIns: Int,
-        nav: NavController,
-    ) {
-        val me: MeViewModel =
-            viewModel(viewModelStoreOwner = this, key = "me-$signIns") { MeViewModel(graph.account) }
-        val state by me.state.collectAsStateWithLifecycle()
-        val notificationsOff = notificationsOff()
-        // Made small and square off the main thread, in the view model (decision 0039).
-        val frames = LocalFrameSession.current
-        val photo =
-            rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-                uri?.let { frames.open(me.photoRequest { graph.files.master(it) }) }
-            }
-        // A block from a conversation menu changes the list here, and the settings the row opens may change.
-        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { me.load() }
-        LaunchedEffect(state.signedOut) {
-            if (state.signedOut) {
-                graph.socket.stop()
-                signIn.signedOut()
-            }
-        }
-        val actions =
-            object : MeActions {
-                override fun newLink() = me.newLink()
-
-                override fun share(link: String) = this@MainActivity.share(link)
-
-                override fun readMarkers(on: Boolean) = me.readMarkers(on)
-
-                override fun typing(on: Boolean) = me.typing(on)
-
-                override fun unblock(account: String) = me.unblock(account)
-
-                override fun revoke(deviceId: String) = me.revoke(deviceId)
-
-                override fun deleteAccount() = me.deleteAccount()
-
-                override fun choosePhoto() =
-                    photo.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-
-                override fun reframePhoto() = frames.open(me.reframePhotoRequest(graph.files::temp))
-
-                override fun removePhoto() = me.removePhoto()
-
-                override fun retry() = me.retry()
-
-                override fun notificationSettings() = this@MainActivity.notificationSettings()
-
-                override fun verify() = nav.navigate(VERIFY)
-
-                override fun linkBrowser() = nav.navigate(LINK)
-            }
-        // Read here, not in the screen: the core's version needs the native library, which screenshot tests lack.
-        val version =
-            stringResource(
-                R.string.app_version,
-                BuildConfig.VERSION_NAME,
-                "${BuildConfig.VERSION_CODE}",
-                coreVersion(),
-            )
-        MeScreen(state, actions, notificationsOff = notificationsOff, version = version)
-    }
-
-    /** A browser's link code, scanned or pasted, then approved with a choice of history (decisions 0064, 0077). */
-    @Composable
-    private fun LinkBrowser(nav: NavController) {
-        val link: LinkViewModel = viewModel(key = "link") { LinkViewModel(graph.account) }
-        val state by link.state.collectAsStateWithLifecycle()
-        val pop = rememberBack(nav)
-        val actions =
-            object : LinkActions {
-                override fun back() = if (state == LinkViewModel.State.Pasting) link.scan() else pop()
-
-                override fun paste() = link.paste()
-
-                override fun submit(text: String) = link.submit(text)
-
-                override fun again() = link.again()
-
-                override fun retry() = link.retry()
-
-                override fun choose(history: LinkViewModel.History) = link.choose(history)
-
-                override fun approve() = link.approve()
-            }
-        when (state) {
-            is LinkViewModel.State.Approve, is LinkViewModel.State.Sending, LinkViewModel.State.Done ->
-                LinkApproveScreen(state, actions)
-            else -> LinkScanScreen(state, actions)
-        }
-    }
-
-    /** Kenni's link (decision 0033); once linked, back to where it was opened, which reloads `me`. */
-    @Composable
-    private fun Verify(nav: NavController) {
-        val state by signIn.state.collectAsStateWithLifecycle()
-        val pop = rememberBack(nav)
-        // Not [pop]: the link may finish before the screen is resumed again.
-        LaunchedEffect(Unit) { signIn.linked.collect { nav.popBackStack(VERIFY, inclusive = true) } }
-        VerifyScreen(
-            state,
-            onVerify = signIn::verify,
-            onLater = pop,
-            onRetry = signIn::retry,
-        )
-    }
-
-    /** Hands a fetched file to another app. */
-    private fun open(opened: ConversationViewModel.Opened) {
-        try {
-            startActivity(graph.files.opener(opened.path, opened.mime, opened.name))
-        } catch (_: ActivityNotFoundException) {
-            Toast.makeText(this, R.string.file_no_app, Toast.LENGTH_LONG).show()
-        }
     }
 
     companion object {
@@ -846,24 +299,7 @@ class MainActivity : ComponentActivity() {
         const val ACTION_OPEN_CONVERSATION = "samtak.spjall.OPEN_CONVERSATION"
         const val EXTRA_CONVERSATION = "conversation"
 
-        private const val LIST = "conversations"
-        private const val ME = "me"
-        private const val VERIFY = "verify"
-        private const val LINK = "link"
-        private const val PEOPLE = "people"
-        private const val CONVERSATION = "conversation"
-        private const val FORWARD = "forward"
-        private const val SHARE = "share"
-        private const val INFO = "info"
-        private val TABS = setOf(LIST, SocialRoutes.COMMUNITIES, SocialRoutes.NOTIFICATIONS, ME)
-
-        private fun conversation(id: String) = "$CONVERSATION/$id"
-
-        /** A tab keeps one copy of itself on the stack, above the list. */
-        private fun NavOptionsBuilder.tab() {
-            popUpTo(LIST) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
-        }
+        private val TABS =
+            setOf(AppRoutes.LIST, SocialRoutes.COMMUNITIES, SocialRoutes.NOTIFICATIONS, AppRoutes.ME)
     }
 }
