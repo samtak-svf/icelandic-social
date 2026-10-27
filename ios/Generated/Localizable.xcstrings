@@ -6120,6 +6120,18 @@
           }
         }
       }
+    },
+    "notice_anonymous_declined": {
+      "comment": "A notification: a moderator declined the reader's anonymous post (decision 0091).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stjórnandi hafnaði nafnlausri færslu frá þér."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
