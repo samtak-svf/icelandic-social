@@ -22,7 +22,6 @@ import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
-import samtak.spjall.core.SocialNotification
 import samtak.spjall.frames.LocalFrameSession
 import samtak.spjall.media.Files
 import samtak.spjall.ui.rememberBack
@@ -48,7 +47,7 @@ fun NavGraphBuilder.socialScreens(
     ) = composable(route) { entry -> WithPostImages(social) { content(entry) } }
 
     screen(SocialRoutes.COMMUNITIES) { Communities(social, account, nav, sharePost) }
-    screen(SocialRoutes.NOTIFICATIONS) { Notifications(social, nav, read, dismissNotice) }
+    screen(SocialRoutes.NOTIFICATIONS) { NotificationsRoute(social, nav, read, dismissNotice) }
     screen(SocialRoutes.NEW_COMMUNITY) { NewCommunity(social, files, nav) }
     screen("${SocialRoutes.COMMUNITY}/{id}") { entry ->
         entry.arguments?.getString("id")?.let { CommunityEntry(it, social, files, nav, sharePost) }
@@ -451,46 +450,5 @@ private fun PostEntry(
 
                 override fun retry() = model.retry()
             },
-    )
-}
-
-@Composable
-private fun Notifications(
-    social: Social,
-    nav: NavController,
-    read: () -> Unit,
-    dismiss: (String) -> Unit,
-) {
-    val model: NotificationsViewModel = viewModel { NotificationsViewModel(social, read, dismiss = dismiss) }
-    val state by model.state.collectAsStateWithLifecycle()
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { model.load() }
-    NotificationsScreen(
-        state,
-        object : NotificationsActions {
-            override fun open(notification: SocialNotification) {
-                model.opened(notification)
-                when (val opens = notification.opens()) {
-                    is Opens.Post -> nav.navigate(SocialRoutes.post(opens.postId))
-                    is Opens.Community -> nav.navigate(SocialRoutes.community(opens.communityId))
-                }
-            }
-
-            override fun more() = model.more()
-
-            override fun retry() = model.retry()
-
-            override fun markAllRead() = model.markAllRead()
-
-            override fun setRead(
-                notification: SocialNotification,
-                read: Boolean,
-            ) = model.setRead(notification, read)
-
-            override fun remove(notification: SocialNotification) = model.remove(notification)
-
-            override fun kindInApp(notification: SocialNotification) = model.kindInApp(notification)
-
-            override fun communityOff(notification: SocialNotification) = model.communityOff(notification)
-        },
     )
 }

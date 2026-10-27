@@ -18,16 +18,12 @@ import samtak.spjall.core.JoinState
 import samtak.spjall.core.ModerationAction
 import samtak.spjall.core.ModerationLogPage
 import samtak.spjall.core.Post
-import samtak.spjall.core.NotificationKindLevel
-import samtak.spjall.core.NotificationLevel
-import samtak.spjall.core.NotificationSettings
 import samtak.spjall.core.PostImage
 import samtak.spjall.core.PostPage
 import samtak.spjall.core.ReportPage
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportState
 import samtak.spjall.core.ReportTarget
-import samtak.spjall.core.SocialNotificationPage
 
 /**
  * What the community screens ask of the core (decisions 0060, 0063, 0066, 0067). This content is hosted, not
@@ -36,7 +32,7 @@ import samtak.spjall.core.SocialNotificationPage
  * rather than on [CoreClient], so their tests need no native library. One function per core call.
  */
 @Suppress("TooManyFunctions")
-interface Social {
+interface Social : SocialNotifications {
     /** A page of the communities this account may see, [query] matching their names; [after] is the `next` before. */
     fun communities(
         query: String?,
@@ -355,47 +351,17 @@ interface Social {
 
     /** What each reference shows, one card each in their order. */
     fun cards(refs: List<CardRef>): List<Card>
-
-    /** A page of this account's notifications, newest first, with how many are unread. */
-    fun notifications(
-        before: String?,
-        limit: UInt,
-    ): SocialNotificationPage
-
-    /** Every notification made at or before [upTo], the newest shown, is read. */
-    fun readNotifications(upTo: ULong)
-
-    /** The list was looked at up to [upTo], the newest shown: it clears the badge and reads no row (0104). */
-    fun seenNotifications(upTo: ULong)
-
-    /** One notification is read, or unread again. */
-    fun readNotification(
-        notificationId: String,
-        read: Boolean,
-    )
-
-    /** Removes one notification from the list. */
-    fun deleteNotification(notificationId: String)
-
-    /** The level of each kind and of each community that has one (0106). */
-    fun notificationSettings(): NotificationSettings
-
-    /** Sets the level of the given kinds and leaves the others. */
-    fun setNotificationSettings(kinds: List<NotificationKindLevel>)
-
-    /** Sets how loudly this account is told of one community. */
-    fun setCommunityNotificationLevel(
-        communityId: String,
-        level: NotificationLevel,
-    )
 }
 
 /** [Social] over the core's client, the one [samtak.spjall.account.CoreAccount] uses. */
 @Suppress("TooManyFunctions")
-class CoreSocial(
-    open: () -> CoreClient,
-) : Social {
-    private val client by lazy(open)
+class CoreSocial private constructor(
+    private val lazyClient: Lazy<CoreClient>,
+) : Social,
+    SocialNotifications by CoreNotifications(lazyClient) {
+    constructor(open: () -> CoreClient) : this(lazy(open))
+
+    private val client by lazyClient
 
     override fun communities(
         query: String?,
@@ -652,29 +618,4 @@ class CoreSocial(
     ) = client.communityModerationLog(communityId, before, limit)
 
     override fun cards(refs: List<CardRef>) = client.cards(refs)
-
-    override fun notifications(
-        before: String?,
-        limit: UInt,
-    ) = client.notifications(before, limit)
-
-    override fun readNotifications(upTo: ULong) = client.readNotifications(upTo)
-
-    override fun seenNotifications(upTo: ULong) = client.seenNotifications(upTo)
-
-    override fun readNotification(
-        notificationId: String,
-        read: Boolean,
-    ) = client.readNotification(notificationId, read)
-
-    override fun deleteNotification(notificationId: String) = client.deleteNotification(notificationId)
-
-    override fun notificationSettings() = client.notificationSettings()
-
-    override fun setNotificationSettings(kinds: List<NotificationKindLevel>) = client.setNotificationSettings(kinds)
-
-    override fun setCommunityNotificationLevel(
-        communityId: String,
-        level: NotificationLevel,
-    ) = client.setCommunityNotificationLevel(communityId, level)
 }
