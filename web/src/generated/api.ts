@@ -785,6 +785,10 @@ export interface NotificationPage {
   notifications: Array<Notification>;
   /** How many of the caller's notifications are unread */
   unread: number;
+  /** How many unread notifications are newer than `seenAt` (decision 0104) */
+  unseen: number;
+  /** Unix milliseconds the caller has seen its notifications up to; null if never */
+  seenAt: number | null;
   /** The cursor of the next, older page */
   next: string | null;
 }
@@ -2445,10 +2449,30 @@ export function notifications(args?: {
   return call("GET", "/v1/notifications", args, init);
 }
 
-/** Mark the caller's notifications read, up to a time */
+/** Mark notifications read: all up to a time, or one (decision 0104) */
 export function readNotifications(args: {
   body: {
     /** Every notification created at or before it */
+    upTo?: number;
+    /** One notification, with `read` */
+    notificationId?: string;
+    /** With `notificationId`: true marks it read, false unread again */
+    read?: boolean;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/notifications/read", args, init);
+}
+
+/** Record that the caller has seen its notifications, up to a time (decision 0104) */
+export function seenNotifications(args: {
+  body: {
+    /** Unix milliseconds; seen never moves back */
     upTo: number;
   };
 }, init?: CallInit): Promise<
@@ -2457,5 +2481,20 @@ export function readNotifications(args: {
   | { status: 401; data: ApiError }
   | { status: 426; data: ApiError }
 > {
-  return call("POST", "/v1/notifications/read", args, init);
+  return call("POST", "/v1/notifications/seen", args, init);
+}
+
+/** Delete one of the caller's notifications (decision 0104) */
+export function deleteNotification(args: {
+  path: {
+    notificationId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/notifications/{notificationId}", args, init);
 }

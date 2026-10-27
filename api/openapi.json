@@ -2964,6 +2964,17 @@
             "type": "integer",
             "description": "How many of the caller's notifications are unread"
           },
+          "unseen": {
+            "type": "integer",
+            "description": "How many unread notifications are newer than `seenAt` (decision 0104)"
+          },
+          "seenAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Unix milliseconds the caller has seen its notifications up to; null if never"
+          },
           "next": {
             "type": [
               "string",
@@ -2975,6 +2986,8 @@
         "required": [
           "notifications",
           "unread",
+          "unseen",
+          "seenAt",
           "next"
         ]
       },
@@ -13448,7 +13461,7 @@
         "tags": [
           "notifications"
         ],
-        "summary": "Mark the caller's notifications read, up to a time",
+        "summary": "Mark notifications read: all up to a time, or one (decision 0104)",
         "security": [
           {
             "deviceToken": []
@@ -13467,11 +13480,16 @@
                   "upTo": {
                     "type": "integer",
                     "description": "Every notification created at or before it"
+                  },
+                  "notificationId": {
+                    "type": "string",
+                    "description": "One notification, with `read`"
+                  },
+                  "read": {
+                    "type": "boolean",
+                    "description": "With `notificationId`: true marks it read, false unread again"
                   }
-                },
-                "required": [
-                  "upTo"
-                ]
+                }
               }
             }
           }
@@ -13492,6 +13510,161 @@
           },
           "401": {
             "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such notification of the caller's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notifications/seen": {
+      "post": {
+        "operationId": "seenNotifications",
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Record that the caller has seen its notifications, up to a time (decision 0104)",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "upTo": {
+                    "type": "integer",
+                    "description": "Unix milliseconds; seen never moves back"
+                  }
+                },
+                "required": [
+                  "upTo"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Recorded"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notifications/{notificationId}": {
+      "delete": {
+        "operationId": "deleteNotification",
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Delete one of the caller's notifications (decision 0104)",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "notificationId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such notification of the caller's",
             "content": {
               "application/json": {
                 "schema": {

@@ -1,5 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import { ACCOUNT, AUTHED, INVALID, OpaqueId } from "./common.ts";
+import { ACCOUNT, AUTHED, errorResponse, INVALID, OpaqueId } from "./common.ts";
 import { Emoji } from "./emoji.ts";
 import { Author } from "./social.ts";
 
@@ -39,6 +39,12 @@ const NotificationPage = z
   .object({
     notifications: z.array(Notification),
     unread: z.int().openapi({ description: "How many of the caller's notifications are unread" }),
+    unseen: z.int().openapi({
+      description: "How many unread notifications are newer than `seenAt` (decision 0104)",
+    }),
+    seenAt: z.int().nullable().openapi({
+      description: "Unix milliseconds the caller has seen its notifications up to; null if never",
+    }),
     next: z.string().nullable().openapi({ description: "The cursor of the next, older page" }),
   })
   .openapi("NotificationPage");
@@ -72,12 +78,44 @@ export const notificationsRoute = createRoute({
   },
 });
 
+const ReadBody = z
+  .object({
+    upTo: z.int().optional().openapi({ description: "Every notification created at or before it" }),
+    notificationId: z.string().optional().openapi({ description: "One notification, with `read`" }),
+    read: z
+      .boolean()
+      .optional()
+      .openapi({ description: "With `notificationId`: true marks it read, false unread again" }),
+  })
+  .refine(
+    (b) =>
+      (b.upTo !== undefined && b.notificationId === undefined && b.read === undefined) ||
+      (b.upTo === undefined && b.notificationId !== undefined && b.read !== undefined),
+    { message: "Give `upTo`, or `notificationId` with `read`, and nothing else" },
+  );
+
 export const readNotificationsRoute = createRoute({
   method: "post",
   path: "/v1/notifications/read",
   operationId: "readNotifications",
   tags,
-  summary: "Mark the caller's notifications read, up to a time",
+  summary: "Mark notifications read: all up to a time, or one (decision 0104)",
+  security: ACCOUNT,
+  request: { body: { required: true, content: { "application/json": { schema: ReadBody } } } },
+  responses: {
+    204: { description: "Marked" },
+    404: errorResponse("not_found: no such notification of the caller's"),
+    ...INVALID,
+    ...AUTHED,
+  },
+});
+
+export const seenNotificationsRoute = createRoute({
+  method: "post",
+  path: "/v1/notifications/seen",
+  operationId: "seenNotifications",
+  tags,
+  summary: "Record that the caller has seen its notifications, up to a time (decision 0104)",
   security: ACCOUNT,
   request: {
     body: {
@@ -85,11 +123,27 @@ export const readNotificationsRoute = createRoute({
       content: {
         "application/json": {
           schema: z.object({
-            upTo: z.int().openapi({ description: "Every notification created at or before it" }),
+            upTo: z.int().openapi({ description: "Unix milliseconds; seen never moves back" }),
           }),
         },
       },
     },
   },
-  responses: { 204: { description: "Marked" }, ...INVALID, ...AUTHED },
+  responses: { 204: { description: "Recorded" }, ...INVALID, ...AUTHED },
+});
+
+export const deleteNotificationRoute = createRoute({
+  method: "delete",
+  path: "/v1/notifications/{notificationId}",
+  operationId: "deleteNotification",
+  tags,
+  summary: "Delete one of the caller's notifications (decision 0104)",
+  security: ACCOUNT,
+  request: { params: z.object({ notificationId: z.string().min(1).max(200) }) },
+  responses: {
+    204: { description: "Deleted" },
+    404: errorResponse("not_found: no such notification of the caller's"),
+    ...INVALID,
+    ...AUTHED,
+  },
 });

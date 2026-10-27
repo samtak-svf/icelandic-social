@@ -1,7 +1,13 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
-import { notificationsRoute, readNotificationsRoute } from "../../api/notifications.ts";
+import {
+  deleteNotificationRoute,
+  notificationsRoute,
+  readNotificationsRoute,
+  seenNotificationsRoute,
+} from "../../api/notifications.ts";
 import type { AppEnv } from "../../http.ts";
-import { markRead, notificationPage } from "./list.ts";
+import { fail } from "../../shared/errors.ts";
+import { markRead, markSeen, notificationPage, removeNotification, setRead } from "./list.ts";
 
 export function notificationRoutes(app: OpenAPIHono<AppEnv>): void {
   app.openapi(notificationsRoute, async (c) => {
@@ -16,7 +22,26 @@ export function notificationRoutes(app: OpenAPIHono<AppEnv>): void {
   });
 
   app.openapi(readNotificationsRoute, async (c) => {
-    await markRead(c.env, c.var.session.accountId, c.req.valid("json").upTo);
+    const { accountId } = c.var.session;
+    const body = c.req.valid("json");
+    if (body.upTo !== undefined) {
+      await markRead(c.env, accountId, body.upTo);
+    } else if (!(await setRead(c.env, accountId, body.notificationId!, body.read!))) {
+      return fail(c, 404, "not_found");
+    }
+    return c.body(null, 204);
+  });
+
+  app.openapi(seenNotificationsRoute, async (c) => {
+    await markSeen(c.env, c.var.session.accountId, c.req.valid("json").upTo);
+    return c.body(null, 204);
+  });
+
+  app.openapi(deleteNotificationRoute, async (c) => {
+    const { notificationId } = c.req.valid("param");
+    if (!(await removeNotification(c.env, c.var.session.accountId, notificationId))) {
+      return fail(c, 404, "not_found");
+    }
     return c.body(null, 204);
   });
 }

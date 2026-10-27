@@ -84,6 +84,7 @@ export const OWNERS = {
   jobs: "jobs",
   notifications: "notifications",
   notification_actors: "notifications",
+  notification_seen: "notifications",
   history_transfers: "history",
   history_transfer_parts: "history",
 };
