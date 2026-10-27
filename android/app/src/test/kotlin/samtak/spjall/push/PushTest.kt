@@ -42,6 +42,8 @@ class PushTest {
             Notices(
                 listOf(notice("c1", 4u), notice("c2", 9u, text = "halló"), notice("c1", 5u, text = "ertu þarna?")),
                 cleared = listOf("c3"),
+                social = emptyList(),
+                socialCleared = emptyList(),
             )
 
         push.wake()
@@ -81,6 +83,8 @@ class PushTest {
                     notice("c1", 2u, kind = NoticeKind.POST, text = "leyndó"),
                 ),
                 cleared = emptyList(),
+                social = emptyList(),
+                socialCleared = emptyList(),
             )
 
         push.wake()
@@ -112,6 +116,8 @@ class PushTest {
                     notice("alone", 1u, members = emptyList()),
                 ),
                 cleared = emptyList(),
+                social = emptyList(),
+                socialCleared = emptyList(),
             )
 
         push.wake()
@@ -143,7 +149,13 @@ class PushTest {
     @Test
     fun inTheForegroundNothingIsAnnouncedButWhatWasReadIsTakenAway() {
         foreground = true
-        account.notices = Notices(listOf(notice("c1", 4u)), cleared = listOf("c2"))
+        account.notices =
+            Notices(
+                listOf(notice("c1", 4u)),
+                cleared = listOf("c2"),
+                social = emptyList(),
+                socialCleared = emptyList(),
+            )
 
         push.wake()
 
@@ -157,7 +169,13 @@ class PushTest {
 
     @Test
     fun quietCountsWhatIsOnScreenAsShownWithoutSyncing() {
-        account.notices = Notices(listOf(notice("c1", 4u)), cleared = listOf("c2"))
+        account.notices =
+            Notices(
+                listOf(notice("c1", 4u)),
+                cleared = listOf("c2"),
+                social = emptyList(),
+                socialCleared = emptyList(),
+            )
 
         push.quiet()
 

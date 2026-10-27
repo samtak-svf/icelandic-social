@@ -58,7 +58,7 @@ class FakeAccount(
     var typingOn = true
 
     /** What the next [notices] returns; it is emptied once returned, as the core's is. */
-    var notices = Notices(emptyList(), emptyList())
+    var notices = Notices(emptyList(), emptyList(), emptyList(), emptyList())
 
     /** The push token the server has, as the core tracks it: a sync that works sends the one kept. */
     var pushed: String? = null
@@ -196,7 +196,7 @@ class FakeAccount(
 
     override fun notices(): Notices {
         call("notices")
-        return notices.also { notices = Notices(emptyList(), emptyList()) }
+        return notices.also { notices = Notices(emptyList(), emptyList(), emptyList(), emptyList()) }
     }
 
     override fun onFrame(frame: String): Outcome {

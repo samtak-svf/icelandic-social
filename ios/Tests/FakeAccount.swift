@@ -45,7 +45,7 @@ final class FakeAccount: Account, @unchecked Sendable {
         get { lock.withLock { _notices } }
         set { lock.withLock { _notices = newValue } }
     }
-    private var _notices = Notices(shown: [], cleared: [])
+    private var _notices = Notices(shown: [], cleared: [], social: [], socialCleared: [])
     var token: String? = "device-token"
     /// Each conversation's items, oldest first; `send` adds a pending one.
     var timelines: [String: [Item]] {
@@ -571,7 +571,7 @@ final class FakeAccount: Account, @unchecked Sendable {
     func notices() throws -> Notices {
         try call("notices")
         return lock.withLock {
-            defer { _notices = Notices(shown: [], cleared: []) }
+            defer { _notices = Notices(shown: [], cleared: [], social: [], socialCleared: []) }
             return _notices
         }
     }

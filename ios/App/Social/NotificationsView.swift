@@ -88,6 +88,7 @@ private struct NoticeRow: View {
     private var icon: String {
         switch notification.kind {
         case .comment: "text.bubble"
+        case .reply: "text.bubble"
         case .reaction: "heart"
         case .joinApproved: "person.badge.plus"
         case .moderated: "shield"

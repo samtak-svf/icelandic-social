@@ -38,7 +38,6 @@ import samtak.spjall.core.ReportState
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
 import samtak.spjall.core.SocialNotification
-import samtak.spjall.core.SocialNotificationKind
 import samtak.spjall.core.SocialNotificationPage
 import samtak.spjall.core.TargetStanding
 import samtak.spjall.core.TargetState
@@ -705,7 +704,7 @@ class FakeSocial : Social {
         call("notifications ${before.orEmpty()} $limit".replace("  ", " "))
         val shown = notifications.map { it.copy(read = it.createdAt <= readUpTo) }
         val (items, next) = page(shown, before, limit)
-        return SocialNotificationPage(items, shown.count { !it.read }.toULong(), next)
+        return SocialNotificationPage(items, shown.count { !it.read }.toULong(), 0uL, null, next)
     }
 
     override fun readNotifications(upTo: ULong) {
@@ -798,24 +797,6 @@ fun comment(
     body = body,
     createdAt = 1_700_000_000_000uL,
     state = ModerationState.VISIBLE,
-)
-
-fun notification(
-    id: String,
-    kind: SocialNotificationKind,
-    createdAt: ULong,
-    postId: String? = "p1",
-) = SocialNotification(
-    notificationId = id,
-    kind = kind,
-    actor = anna,
-    communityId = "k1",
-    postId = postId,
-    commentId = null,
-    action = null,
-    emoji = null,
-    createdAt = createdAt,
-    read = false,
 )
 
 fun report(
