@@ -1,6 +1,6 @@
 # 0108. The socket says when it has caught up, and the web asks for the history until it comes
 
-- Status: accepted; implemented in the Worker and the web (#326)
+- Status: accepted; implemented in the Worker and the web (#326); amended by 0110
 - Date: 2026-10-27
 - Decided by: Guðröður Atli Jónsson, asking that a newly linked browser show progress (#326)
 - Amends: [0015](0015-delivery-protocol.md) (what an opened socket is sent),
