@@ -4,13 +4,14 @@
 //! it goes into the store beside the conversations. A post's images (0065)
 //! are the one exception, kept as files beside the photos.
 
+mod notifications;
+
 use std::path::{Path, PathBuf};
 
 use crate::api::{
     Audience, Author, Card, Comment, CommentPage, Community, CommunityImagePage, CommunityMember,
     CommunityPage, JoinRequest, JoinState, Moderation, ModerationAction, ModerationLogPage,
-    NewReport, NotificationPage, Post, PostPage, Ref, ReportPage, ReportState, Role, SocialMedia,
-    Transport,
+    NewReport, Post, PostPage, Ref, ReportPage, ReportState, Role, SocialMedia, Transport,
 };
 use crate::{Client, ClientError, MediaError, authed, is_id};
 
@@ -599,26 +600,6 @@ impl<T: Transport> Client<T> {
             id(&reference.id, "card id")?;
         }
         Ok(authed(&self.transport, &self.token, &self.client)?.resolve_cards(refs)?)
-    }
-}
-
-/// Notifications.
-impl<T: Transport> Client<T> {
-    /// A page of this account's notifications, newest first; `before` is
-    /// the `next` of the page before. At most 50 a page.
-    pub fn notifications(
-        &self,
-        before: Option<&str>,
-        size: u32,
-    ) -> Result<NotificationPage, ClientError> {
-        let api = authed(&self.transport, &self.token, &self.client)?;
-        Ok(api.notifications(before, size.clamp(1, 50))?)
-    }
-
-    /// Marks read every notification made at or before `up_to`, the
-    /// `created_at` of the newest one shown.
-    pub fn read_notifications(&self, up_to: u64) -> Result<(), ClientError> {
-        Ok(authed(&self.transport, &self.token, &self.client)?.read_notifications(up_to)?)
     }
 }
 

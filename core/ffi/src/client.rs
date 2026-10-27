@@ -9,6 +9,8 @@ use spjall_client::{self as core, ClientError, HistoryError, LinkError, MediaErr
 
 use crate::frames::{Frame, Framing};
 use crate::{Body, CoreError, Envelope, store_code};
+pub mod notices;
+pub use notices::{Notice, NoticeKind, Notices, SocialNotice};
 pub use spjall_client::LinkRequest;
 pub use spjall_client::Person;
 pub use spjall_client::api::DeviceKind;
@@ -506,81 +508,8 @@ impl From<core::ListSearch> for ListSearch {
     }
 }
 
-fn people(people: Vec<core::Person>) -> Vec<Person> {
+pub(crate) fn people(people: Vec<core::Person>) -> Vec<Person> {
     people.into_iter().collect()
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum NoticeKind {
-    Text,
-    Photo,
-    File,
-    /// A post shared under 0040: shown as a fixed sentence, with no text.
-    Post,
-    /// A location (0059): a fixed sentence, never the place.
-    Location,
-}
-
-/// A new message to show after a push (0025).
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct Notice {
-    pub conversation: String,
-    /// Everyone there but this account, named ones first: the title.
-    pub members: Vec<Person>,
-    pub seq: u64,
-    pub sender: Person,
-    pub kind: NoticeKind,
-    /// The text, or a file's caption; none for a shared post.
-    pub text: Option<String>,
-    /// When the server stored it (0048), or the sender's clock for a row
-    /// stored before the server gave it; in milliseconds.
-    pub ts: u64,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct Notices {
-    /// Oldest first.
-    pub shown: Vec<Notice>,
-    /// Conversations whose notifications to take away, before showing.
-    pub cleared: Vec<String>,
-}
-
-impl From<core::Notices> for Notices {
-    fn from(notices: core::Notices) -> Self {
-        let core::Notices { cleared, shown } = notices;
-
-        Self {
-            shown: shown
-                .into_iter()
-                .map(
-                    |core::Notice {
-                         conversation,
-                         members,
-                         seq,
-                         sender,
-                         kind,
-                         text,
-                         ts,
-                     }| Notice {
-                        conversation,
-                        members: people(members),
-                        seq,
-                        sender,
-                        kind: match kind {
-                            core::NoticeKind::Text => NoticeKind::Text,
-                            core::NoticeKind::Photo => NoticeKind::Photo,
-                            core::NoticeKind::File => NoticeKind::File,
-                            core::NoticeKind::Post => NoticeKind::Post,
-                            core::NoticeKind::Location => NoticeKind::Location,
-                        },
-                        text,
-                        ts,
-                    },
-                )
-                .collect(),
-            cleared,
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]

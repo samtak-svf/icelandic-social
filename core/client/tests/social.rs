@@ -5,156 +5,24 @@
 
 #![allow(clippy::disallowed_methods)] // tests use files
 
+#[path = "support/hosted.rs"]
+mod hosted;
 #[path = "support/relay.rs"]
 #[allow(dead_code)]
 mod relay;
 
-use std::collections::VecDeque;
-use std::path::Path;
-use std::sync::{Arc, Mutex};
-
-use relay::{Link, Relay};
+use hosted::{Hosted, IMAGE, KEY, Phone, author};
+use relay::Relay;
 use serde_json::{Value, json};
 use spjall_client::api::{
     ApiError, Audience, Author, AuthorRole, Card, CardCommunity, EmojiCount, JoinState,
     LogTargetKind, Method, Moderation, ModerationAction, ModerationLogAction, ModerationState,
-    NewReport, NotificationKind, Platform, Provider, Ref, RefKind, ReportDecision, ReportReason,
-    ReportState, Request, Response, Role, SocialMedia, Target, TargetKind, TargetStanding,
-    TargetState, Transport, Unreachable,
+    NewReport, Ref, RefKind, ReportDecision, ReportReason, ReportState, Role, SocialMedia, Target,
+    TargetKind, TargetStanding, TargetState,
 };
 use spjall_client::frames::{Focus, Frame, FrameRect, Framing};
 use spjall_client::{Client, ClientError};
-use tempfile::TempDir;
-
-const KEY: [u8; 32] = [7; 32];
-
-const SOCIAL: [&str; 8] = [
-    "/v1/communities",
-    "/v1/me/communities",
-    "/v1/feed",
-    "/v1/posts/",
-    "/v1/comments/",
-    "/v1/reports",
-    "/v1/cards",
-    "/v1/notifications",
-];
-
-#[derive(Default)]
-struct Canned {
-    answers: VecDeque<Response>,
-    seen: Vec<Request>,
-    uploaded: Vec<Vec<u8>>,
-}
-
-/// The bytes a canned image download writes.
-const IMAGE: &[u8] = b"RIFF\0\0\0\0WEBPVP8 ";
-
-/// The relay for sign-in, and the canned answers for the social calls.
-struct Hosted {
-    link: Link,
-    canned: Arc<Mutex<Canned>>,
-}
-
-impl Transport for Hosted {
-    fn request(&self, request: Request) -> Result<Response, Unreachable> {
-        if !SOCIAL.iter().any(|p| request.path.starts_with(p)) {
-            return self.link.request(request);
-        }
-        let mut canned = self.canned.lock().unwrap();
-        canned.seen.push(request);
-        Ok(canned.answers.pop_front().expect("an answer was queued"))
-    }
-
-    fn upload(&self, request: Request, file: &Path) -> Result<Response, Unreachable> {
-        if !SOCIAL.iter().any(|p| request.path.starts_with(p)) {
-            return self.link.upload(request, file);
-        }
-        let mut canned = self.canned.lock().unwrap();
-        canned.uploaded.push(std::fs::read(file).unwrap());
-        canned.seen.push(request);
-        Ok(canned.answers.pop_front().expect("an answer was queued"))
-    }
-
-    /// A social download gets the queued answer, and on 200 the bytes
-    /// `IMAGE` in the file.
-    fn download(&self, request: Request, to: &Path) -> Result<Response, Unreachable> {
-        if !SOCIAL.iter().any(|p| request.path.starts_with(p)) {
-            return self.link.download(request, to);
-        }
-        let mut canned = self.canned.lock().unwrap();
-        canned.seen.push(request);
-        let answer = canned.answers.pop_front().expect("an answer was queued");
-        if answer.status == 200 {
-            std::fs::write(to, IMAGE).unwrap();
-        }
-        Ok(answer)
-    }
-}
-
-struct Phone {
-    canned: Arc<Mutex<Canned>>,
-    client: Client<Hosted>,
-    _dir: TempDir,
-}
-
-impl Phone {
-    fn signed_in() -> Self {
-        let relay = Relay::new();
-        let canned = Arc::new(Mutex::new(Canned::default()));
-        let dir = tempfile::tempdir().unwrap();
-        let transport = Hosted {
-            link: relay.link("a", "a1"),
-            canned: canned.clone(),
-        };
-        let mut client = Client::open(dir.path(), &KEY, transport).unwrap();
-        let url = client.begin_sign_in(Provider::Kenni).unwrap();
-        client
-            .complete_sign_in(&relay::kenni(&url), None, Platform::Android)
-            .unwrap();
-        Self {
-            canned,
-            client,
-            _dir: dir,
-        }
-    }
-
-    fn answer(&self, status: u16, body: Value) {
-        let body = if body.is_null() {
-            String::new()
-        } else {
-            body.to_string()
-        };
-        let mut canned = self.canned.lock().unwrap();
-        canned.answers.push_back(Response { status, body });
-    }
-
-    fn ok(&self) {
-        self.answer(204, Value::Null);
-    }
-
-    /// The social requests made since the last call, as method, path and
-    /// the body parsed, each with the device's token.
-    fn sent(&self) -> Vec<(Method, String, Value)> {
-        let mut canned = self.canned.lock().unwrap();
-        assert!(canned.answers.is_empty(), "every answer was asked for");
-        canned
-            .seen
-            .drain(..)
-            .map(|r| {
-                assert_eq!(r.bearer.as_deref(), Some("token-a1"));
-                let body = r
-                    .body
-                    .as_deref()
-                    .map_or(Value::Null, |b| serde_json::from_str(b).unwrap());
-                (r.method, r.path, body)
-            })
-            .collect()
-    }
-}
-
-fn author(account: &str) -> Value {
-    json!({ "accountId": account, "name": "Sigrún Jónsdóttir", "verified": true })
-}
+use std::sync::Arc;
 
 fn community(id: &str, audience: &str) -> Value {
     json!({
@@ -622,88 +490,6 @@ fn a_card_for_an_anonymous_post_has_no_author() {
         matches!(&cards[0], Card::Post { author: None, excerpt, .. } if excerpt == "Nafnlaust")
     );
     assert!(matches!(&cards[1], Card::Post { author: Some(a), .. } if a.account_id == "acc_b"));
-}
-
-#[test]
-fn notifications_are_paged_and_read_and_an_unknown_kind_is_left_out() {
-    let phone = Phone::signed_in();
-    let c = &phone.client;
-
-    let notification = |id: &str, kind: &str, action: Value| {
-        json!({
-            "notificationId": id,
-            "kind": kind,
-            "actor": if kind == "moderated" { Value::Null } else { author("acc_b") },
-            "communityId": "cm_1",
-            "postId": "p_1",
-            "commentId": null,
-            "action": action,
-            "emoji": if kind == "reaction" { json!("🙏") } else { Value::Null },
-            "createdAt": 1_760_000_400_000u64,
-            "read": false,
-        })
-    };
-    phone.answer(
-        200,
-        json!({
-            "notifications": [
-                notification("n_3", "reaction", Value::Null),
-                notification("n_2", "mention", Value::Null),
-                notification("n_1", "moderated", json!("hide_post")),
-                notification("n_0", "moderated", json!("pin_post")),
-            ],
-            "unread": 4,
-            "next": "1760000400000",
-        }),
-    );
-    let page = c.notifications(Some("1760000500000"), 20).unwrap();
-    assert_eq!(page.unread, 4);
-    assert_eq!(page.next.as_deref(), Some("1760000400000"));
-    let kinds: Vec<_> = page
-        .notifications
-        .iter()
-        .map(|n| {
-            (
-                n.notification_id.as_str(),
-                n.kind,
-                n.action,
-                n.emoji.as_deref(),
-            )
-        })
-        .collect();
-    assert_eq!(
-        kinds,
-        [
-            ("n_3", NotificationKind::Reaction, None, Some("🙏")),
-            (
-                "n_1",
-                NotificationKind::Moderated,
-                Some(ModerationAction::HidePost),
-                None
-            ),
-            ("n_0", NotificationKind::Moderated, None, None),
-        ]
-    );
-    assert_eq!(page.notifications[1].actor, None);
-
-    phone.ok();
-    c.read_notifications(1_760_000_400_000).unwrap();
-
-    assert_eq!(
-        phone.sent(),
-        [
-            (
-                Method::Get,
-                "/v1/notifications?before=1760000500000&limit=20".into(),
-                Value::Null
-            ),
-            (
-                Method::Post,
-                "/v1/notifications/read".into(),
-                json!({ "upTo": 1_760_000_400_000u64 })
-            ),
-        ]
-    );
 }
 
 /// 0080: a byline carries its photo and role, and a post its newest comment;

@@ -8,6 +8,11 @@ use std::path::Path;
 
 use crate::frames::{Frame, Framing};
 
+mod notifications;
+pub use notifications::{
+    Notification, NotificationKind, NotificationLevel, NotificationPage, NotificationSettings,
+};
+
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1278,92 +1283,6 @@ pub enum Card {
 #[derive(Deserialize)]
 struct Cards {
     cards: Vec<Card>,
-}
-
-/// What a notification is about (0063).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum NotificationKind {
-    /// A comment on the caller's post.
-    Comment,
-    /// A reaction on the caller's post.
-    Reaction,
-    /// A moderator approved the caller's join request.
-    JoinApproved,
-    /// A moderator acted on the caller's content; `action` says how.
-    Moderated,
-}
-
-/// Something addressed to the caller. It carries ids, never the content:
-/// the post or comment is read through the same checks as any other.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Notification {
-    pub notification_id: String,
-    pub kind: NotificationKind,
-    /// Who did it; none once that account is deleted.
-    pub actor: Option<Author>,
-    pub community_id: String,
-    pub post_id: Option<String>,
-    pub comment_id: Option<String>,
-    /// For `Moderated`, the moderator's action.
-    pub action: Option<ModerationAction>,
-    /// For `Reaction`, the emoji (0100); none on a notification made before.
-    pub emoji: Option<String>,
-    /// Unix milliseconds.
-    pub created_at: u64,
-    pub read: bool,
-}
-
-/// A page of notifications, newest first; `unread` counts all of the
-/// caller's, not only this page's.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NotificationPage {
-    pub notifications: Vec<Notification>,
-    pub unread: u64,
-    pub next: Option<String>,
-}
-
-/// A notification as the server sends it: a kind or an action this build
-/// does not know is left out rather than failing the page, since the server
-/// adds kinds before the apps show them.
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SentNotification {
-    notification_id: String,
-    kind: serde_json::Value,
-    actor: Option<Author>,
-    community_id: String,
-    post_id: Option<String>,
-    comment_id: Option<String>,
-    action: Option<serde_json::Value>,
-    #[serde(default)]
-    emoji: Option<String>,
-    created_at: u64,
-    read: bool,
-}
-
-impl SentNotification {
-    fn known(self) -> Option<Notification> {
-        Some(Notification {
-            notification_id: self.notification_id,
-            kind: serde_json::from_value(self.kind).ok()?,
-            actor: self.actor,
-            community_id: self.community_id,
-            post_id: self.post_id,
-            comment_id: self.comment_id,
-            action: self.action.and_then(|a| serde_json::from_value(a).ok()),
-            emoji: self.emoji,
-            created_at: self.created_at,
-            read: self.read,
-        })
-    }
-}
-
-#[derive(Deserialize)]
-struct SentNotifications {
-    notifications: Vec<SentNotification>,
-    unread: u64,
-    next: Option<String>,
 }
 
 /// `path` with each present `(name, value)` as a query parameter, encoded.
@@ -2675,38 +2594,6 @@ impl<T: Transport + ?Sized> Api<'_, T> {
         )?;
         Ok(cards.cards)
     }
-
-    /// `notifications`: newest first, older than `before`.
-    pub fn notifications(
-        &self,
-        before: Option<&str>,
-        limit: u32,
-    ) -> Result<NotificationPage, ApiError> {
-        let limit = limit.to_string();
-        let params = [("before", before), ("limit", Some(limit.as_str()))];
-        let path = with_query("/v1/notifications", &params);
-        let page: SentNotifications = self.call(Method::Get, path, None, "notifications")?;
-        Ok(NotificationPage {
-            notifications: page
-                .notifications
-                .into_iter()
-                .filter_map(SentNotification::known)
-                .collect(),
-            unread: page.unread,
-            next: page.next,
-        })
-    }
-
-    /// `readNotifications`: every one made at or before `up_to`, in Unix
-    /// milliseconds.
-    pub fn read_notifications(&self, up_to: u64) -> Result<(), ApiError> {
-        let body = serde_json::json!({ "upTo": up_to });
-        self.done(
-            Method::Post,
-            "/v1/notifications/read".into(),
-            Self::json(&body),
-        )
-    }
 }
 
 #[cfg(test)]
@@ -2845,8 +2732,15 @@ mod tests {
         let notification = |text: &serde_json::Value| {
             serde_json::from_value::<NotificationKind>(text.clone()).is_ok()
         };
-        assert_eq!(notifications.len(), 4);
+        assert_eq!(notifications.len(), 5);
         assert!(notifications.iter().all(notification));
+        let levels: Vec<_> = listed("/NotificationLevel/enum");
+        assert_eq!(levels.len(), 3);
+        assert!(
+            levels
+                .iter()
+                .all(|l| { serde_json::from_value::<NotificationLevel>(l.clone()).is_ok() })
+        );
         assert_eq!(
             listed("/Community/properties/audience/enum"),
             names(&[Audience::Open, Audience::Private])

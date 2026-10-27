@@ -18,7 +18,9 @@ pub use rusqlite;
 mod opfs;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown", feature = "opfs"))]
 pub use opfs::{OpfsError, OpfsPool, install_opfs, wipe_opfs};
+mod schema;
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior};
+use schema::{REPAIRS, migrate, repair};
 
 /// `store.databaseFile` in `identifiers/ids.json`; a test holds them equal.
 pub const FILE_NAME: &str = "spjall.db";
@@ -667,6 +669,25 @@ const MIGRATIONS: &[(u32, &str)] = &[
          DROP TABLE reactions;
          ALTER TABLE reactions_0101 RENAME TO reactions;",
     ),
+    (
+        20,
+        // Decision 0107: what the device announced of the social
+        // notifications, so a row is announced once, and again only when it
+        // is newer.
+        "-- One row for each announced notification: its id and the
+         -- `created_at` it had when it was last announced.
+         CREATE TABLE social_notices (
+             id         TEXT PRIMARY KEY,
+             created_at INTEGER NOT NULL
+         ) STRICT, WITHOUT ROWID;
+
+         -- Present once the first run has recorded the rows already there,
+         -- which are not announced. An empty table cannot say so: a first
+         -- page with no rows seeds nothing.
+         CREATE TABLE social_notice_seed (
+             id INTEGER PRIMARY KEY CHECK (id = 1)
+         ) STRICT;",
+    ),
 ];
 
 /// The migrations every store has run before `REPAIRS` apply: from 15 on,
@@ -847,62 +868,6 @@ fn cipher(connection: &Connection, probes: &[&str]) -> rusqlite::Result<String> 
     ))
 }
 
-fn migrate(connection: &mut Connection, migrations: &[(u32, &str)]) -> rusqlite::Result<()> {
-    let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    tx.execute_batch(
-        "CREATE TABLE IF NOT EXISTS schema_migrations (
-             version    INTEGER PRIMARY KEY,
-             applied_at INTEGER NOT NULL
-         ) STRICT;",
-    )?;
-    let current: u32 = tx.query_row(
-        "SELECT COALESCE(MAX(version), 0) FROM schema_migrations",
-        [],
-        |row| row.get(0),
-    )?;
-    for (version, sql) in migrations.iter().filter(|(version, _)| *version > current) {
-        tx.execute_batch(sql)?;
-        tx.execute(
-            "INSERT INTO schema_migrations (version, applied_at) VALUES (?1, unixepoch())",
-            [version],
-        )?;
-    }
-    tx.commit()
-}
-
-/// Columns a store has whatever its history, added when missing (0050).
-/// Version 14 means two things on devices: core 0.18 stored the outbox's
-/// `refused` and the conversation's `join_refused_at` under it, a later
-/// change dropped that migration by mistake, and 0.20 stored the timeline's
-/// `received_at` under the same number. So neither history runs the
-/// other's 14, and no later migration can say which one a store has.
-const REPAIRS: &[(&str, &str, &str)] = &[
-    ("timeline", "received_at", "INTEGER"),
-    (
-        "outbox",
-        "refused",
-        "INTEGER NOT NULL DEFAULT 0 CHECK (refused IN (0, 1))",
-    ),
-    ("conversations", "join_refused_at", "INTEGER"),
-];
-
-fn repair(connection: &mut Connection, repairs: &[(&str, &str, &str)]) -> rusqlite::Result<()> {
-    let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    for (table, column, definition) in repairs {
-        let present: bool = tx.query_row(
-            "SELECT EXISTS (SELECT 1 FROM pragma_table_info(?1) WHERE name = ?2)",
-            [table, column],
-            |row| row.get(0),
-        )?;
-        if !present {
-            tx.execute_batch(&format!(
-                "ALTER TABLE {table} ADD COLUMN {column} {definition}"
-            ))?;
-        }
-    }
-    tx.commit()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -956,6 +921,20 @@ mod tests {
         assert_eq!(store.path(), dir.path().join("spjall.db"));
         assert!(store.path().exists());
         assert_eq!(store.schema_version().unwrap(), MIGRATIONS.len() as u32);
+    }
+
+    /// 0107: the announced notifications and the first-run marker.
+    #[test]
+    fn the_social_notice_tables_start_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::open(dir.path(), &KEY).unwrap();
+        for table in ["social_notices", "social_notice_seed"] {
+            let rows: u32 = store
+                .connection
+                .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r.get(0))
+                .unwrap();
+            assert_eq!(rows, 0);
+        }
     }
 
     #[test]

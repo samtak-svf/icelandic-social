@@ -6,7 +6,10 @@
 
 use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 
-use crate::api::{Transport, conversation_id};
+use crate::api::{
+    Author, ModerationAction, Notification, NotificationKind, NotificationPage, Transport,
+    conversation_id,
+};
 use crate::members::{Person, person};
 use crate::mute::{Mute, mute_of};
 use crate::read::mark;
@@ -50,6 +53,109 @@ pub struct Notices {
     /// Conversations whose shown notices are now read, here or on another
     /// device of this account. Cleared before the new ones are shown.
     pub cleared: Vec<String>,
+    /// Social notifications to show (0107), oldest first.
+    pub social: Vec<SocialNotice>,
+    /// Ids of social notifications whose notice is now read, deleted or
+    /// gone: take them away before showing the new ones.
+    pub social_cleared: Vec<String>,
+}
+
+/// A social notification to announce (0107): a row that is unread, has
+/// `announce`, and is newer than the last announcement of the same id. The
+/// apps write the sentence with the formatter of the list row. It carries no
+/// snippet: a notice is shown on a locked screen.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SocialNotice {
+    pub notification_id: String,
+    pub kind: NotificationKind,
+    /// The newest three accounts behind it, newest first.
+    pub actors: Vec<Author>,
+    pub actor_count: u64,
+    pub community_id: String,
+    pub post_id: Option<String>,
+    pub comment_id: Option<String>,
+    /// For `Moderated`, the moderator's action.
+    pub action: Option<ModerationAction>,
+    /// For `Reaction`, the emoji.
+    pub emoji: Option<String>,
+    /// Unix milliseconds.
+    pub created_at: u64,
+}
+
+/// How many notifications `notices()` reads: one short page.
+const SOCIAL_PAGE: u32 = 20;
+
+/// Compares the first page with what was announced before. On the first
+/// run it records the unread rows and announces none. Afterwards it
+/// announces each unread `announce` row not recorded or recorded older, and
+/// clears each recorded id whose row is now read or gone. A recorded row
+/// older than everything on a page that has a next page is not gone: it only
+/// fell off the page, and keeps its notice.
+fn fold_social(
+    tx: &Transaction,
+    page: NotificationPage,
+) -> rusqlite::Result<(Vec<SocialNotice>, Vec<String>)> {
+    let seeded = tx
+        .query_row("SELECT 1 FROM social_notice_seed", [], |_| Ok(()))
+        .optional()?
+        .is_some();
+    let oldest = page.notifications.iter().map(|n| n.created_at).min();
+    let record = |n: &Notification| {
+        tx.execute(
+            "INSERT INTO social_notices (id, created_at) VALUES (?1, ?2)
+             ON CONFLICT (id) DO UPDATE SET created_at = excluded.created_at",
+            params![n.notification_id, n.created_at as i64],
+        )
+        .map(drop)
+    };
+    if !seeded {
+        for n in page.notifications.iter().filter(|n| !n.read) {
+            record(n)?;
+        }
+        tx.execute("INSERT INTO social_notice_seed (id) VALUES (1)", [])?;
+        return Ok((Vec::new(), Vec::new()));
+    }
+    let stored: Vec<(String, i64)> = {
+        let mut statement =
+            tx.prepare("SELECT id, created_at FROM social_notices ORDER BY created_at, id")?;
+        let rows = statement.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?;
+        rows.collect::<rusqlite::Result<_>>()?
+    };
+    let mut cleared = Vec::new();
+    for (id, created) in &stored {
+        let row = page.notifications.iter().find(|n| &n.notification_id == id);
+        let off_page =
+            row.is_none() && page.next.is_some() && oldest.is_some_and(|o| (*created as u64) < o);
+        if !off_page && row.is_none_or(|n| n.read) {
+            tx.execute("DELETE FROM social_notices WHERE id = ?1", params![id])?;
+            cleared.push(id.clone());
+        }
+    }
+    let mut shown = Vec::new();
+    for n in page.notifications.iter().rev() {
+        let last = stored
+            .iter()
+            .find(|(id, _)| id == &n.notification_id)
+            .map(|(_, at)| *at);
+        if n.read || !n.announce || last.is_some_and(|at| n.created_at as i64 <= at) {
+            continue;
+        }
+        record(n)?;
+        shown.push(SocialNotice {
+            notification_id: n.notification_id.clone(),
+            kind: n.kind,
+            actors: n.actors.clone(),
+            actor_count: n.actor_count,
+            community_id: n.community_id.clone(),
+            post_id: n.post_id.clone(),
+            comment_id: n.comment_id.clone(),
+            action: n.action,
+            emoji: n.emoji.clone(),
+            created_at: n.created_at,
+        });
+    }
+    shown.sort_by_key(|n| n.created_at);
+    Ok((shown, cleared))
 }
 
 /// Everyone in the group but `me`, named ones first.
@@ -214,6 +320,26 @@ impl<T: Transport> Client<T> {
     /// and shows nothing, so what it had on screen is never shown later.
     pub fn notices(&mut self) -> Result<Notices, ClientError> {
         self.purge()?;
-        self.store.try_write(take_notices)
+        let mut notices = self.store.try_write(take_notices)?;
+        // The social part (0107) reads the server. Whatever goes wrong there
+        // leaves it empty: the chat notices above are already recorded as
+        // taken, and must not be lost with an error.
+        if let Some((social, cleared)) = self.social_notices() {
+            notices.social = social;
+            notices.social_cleared = cleared;
+        }
+        Ok(notices)
+    }
+
+    /// What `fold_social` finds on the first page, or none when this device
+    /// is not registered, the server cannot be reached or answers an error.
+    fn social_notices(&mut self) -> Option<(Vec<SocialNotice>, Vec<String>)> {
+        let page = authed(&self.transport, &self.token, &self.client)
+            .ok()?
+            .notifications(None, SOCIAL_PAGE)
+            .ok()?;
+        self.store
+            .try_write(|tx| fold_social(tx, page).map_err(ClientError::from))
+            .ok()
     }
 }

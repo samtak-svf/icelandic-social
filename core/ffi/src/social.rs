@@ -7,6 +7,8 @@
 use std::path::Path;
 
 use spjall_client::api;
+pub mod notifications;
+pub use notifications::*;
 pub use spjall_client::api::{JoinRequest, JoinState};
 
 use crate::CoreError;
@@ -1048,88 +1050,6 @@ impl From<api::Card> for Card {
     }
 }
 
-/// What a notification tells. Named apart from the platforms' own
-/// `Notification` types, which an app imports beside this one.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum SocialNotificationKind {
-    /// A comment on this account's post.
-    Comment,
-    /// A reaction on this account's post.
-    Reaction,
-    /// A moderator approved this account's join request.
-    JoinApproved,
-    /// A moderator acted on this account's post or comment; `action` says
-    /// how.
-    Moderated,
-}
-
-/// Something addressed to this account. It carries ids, never the
-/// content: the app reads the post or comment with `post` or `comments`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct SocialNotification {
-    pub notification_id: String,
-    pub kind: SocialNotificationKind,
-    /// Who did it; none for a moderator's action or a deleted account.
-    pub actor: Option<Author>,
-    pub community_id: String,
-    pub post_id: Option<String>,
-    pub comment_id: Option<String>,
-    /// For `Moderated`, the moderator's action.
-    pub action: Option<ModerationAction>,
-    /// For `Reaction`, the emoji (0100).
-    pub emoji: Option<String>,
-    /// Unix milliseconds: the `up_to` of `read_notifications`.
-    pub created_at: u64,
-    pub read: bool,
-}
-
-impl From<api::Notification> for SocialNotification {
-    fn from(notification: api::Notification) -> Self {
-        let api::Notification {
-            notification_id,
-            kind,
-            actor,
-            community_id,
-            post_id,
-            comment_id,
-            action,
-            emoji,
-            created_at,
-            read,
-        } = notification;
-
-        use api::NotificationKind as K;
-        Self {
-            notification_id,
-            kind: match kind {
-                K::Comment => SocialNotificationKind::Comment,
-                K::Reaction => SocialNotificationKind::Reaction,
-                K::JoinApproved => SocialNotificationKind::JoinApproved,
-                K::Moderated => SocialNotificationKind::Moderated,
-            },
-            actor,
-            community_id,
-            post_id,
-            comment_id,
-            action,
-            emoji,
-            created_at,
-            read,
-        }
-    }
-}
-
-/// A page of notifications, newest first. A kind this build does not know
-/// is left out.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct SocialNotificationPage {
-    pub notifications: Vec<SocialNotification>,
-    /// How many of this account's notifications are unread, on every page.
-    pub unread: u64,
-    /// The `before` of the next, older page; none on the last.
-    pub next: Option<String>,
-}
-
 /// Communities.
 #[uniffi::export]
 impl CoreClient {
@@ -1782,30 +1702,5 @@ impl CoreClient {
             .into_iter()
             .map(Into::into)
             .collect())
-    }
-}
-
-/// Notifications.
-#[uniffi::export]
-impl CoreClient {
-    /// A page of this account's notifications, newest first; `before` is
-    /// the `next` of the page before. At most 50 a page.
-    pub fn notifications(
-        &self,
-        before: Option<String>,
-        limit: u32,
-    ) -> Result<SocialNotificationPage, CoreError> {
-        let page = self.client()?.notifications(before.as_deref(), limit)?;
-        Ok(SocialNotificationPage {
-            notifications: page.notifications.into_iter().map(Into::into).collect(),
-            unread: page.unread,
-            next: page.next,
-        })
-    }
-
-    /// Marks read every notification made at or before `up_to`: the
-    /// `created_at` of the newest one shown.
-    pub fn read_notifications(&self, up_to: u64) -> Result<(), CoreError> {
-        Ok(self.client()?.read_notifications(up_to)?)
     }
 }
