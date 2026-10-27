@@ -2988,6 +2988,7 @@
             "type": "string",
             "enum": [
               "comment",
+              "reply",
               "reaction",
               "join_approved",
               "moderated"
@@ -3002,6 +3003,17 @@
                 "type": "null"
               }
             ]
+          },
+          "actors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Author"
+            },
+            "description": "The newest three distinct accounts that caused the notification, newest first (decision 0103)"
+          },
+          "actorCount": {
+            "type": "integer",
+            "description": "How many distinct accounts caused it; `actor` and `actors` are among them"
           },
           "communityId": {
             "type": "string",
@@ -3047,6 +3059,8 @@
           "notificationId",
           "kind",
           "actor",
+          "actors",
+          "actorCount",
           "communityId",
           "postId",
           "commentId",

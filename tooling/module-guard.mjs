@@ -83,6 +83,7 @@ export const OWNERS = {
   moderation_log: "moderation",
   jobs: "jobs",
   notifications: "notifications",
+  notification_actors: "notifications",
   history_transfers: "history",
   history_transfer_parts: "history",
 };

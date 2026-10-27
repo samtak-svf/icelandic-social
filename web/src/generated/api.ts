@@ -791,8 +791,12 @@ export interface NotificationPage {
 
 export interface Notification {
   notificationId: string;
-  kind: "comment" | "reaction" | "join_approved" | "moderated";
+  kind: "comment" | "reply" | "reaction" | "join_approved" | "moderated";
   actor: Author | null;
+  /** The newest three distinct accounts that caused the notification, newest first (decision 0103) */
+  actors: Array<Author>;
+  /** How many distinct accounts caused it; `actor` and `actors` are among them */
+  actorCount: number;
   communityId: string;
   postId: string | null;
   commentId: string | null;

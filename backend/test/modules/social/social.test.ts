@@ -373,7 +373,7 @@ describe("comment replies (decision 0071)", () => {
     expect(await job(`comment:${reply.commentId}`)).toMatchObject({
       payload: { accountId: author.accountId },
     });
-    expect(await job(`comment:${reply.commentId}:parent`)).toMatchObject({
+    expect(await job(`reply:${reply.commentId}:parent`)).toMatchObject({
       payload: { accountId: stranger.accountId },
     });
 
@@ -383,7 +383,7 @@ describe("comment replies (decision 0071)", () => {
     expect(await job(`comment:${own.commentId}`)).toMatchObject({
       payload: { accountId: author.accountId },
     });
-    expect(await job(`comment:${own.commentId}:parent`)).toBeNull();
+    expect(await job(`reply:${own.commentId}:parent`)).toBeNull();
   });
 
   it("keep a tombstone in place while the parent has a visible reply", async () => {

@@ -9,9 +9,12 @@ const KEPT_MS = 90 * 24 * 60 * 60 * 1000;
 /** A deleted community's notifications are not shown, and go when it is purged (0070). */
 const LIVE = "EXISTS (SELECT 1 FROM live_communities c WHERE c.community_id = n.community_id)";
 
+/** How many actors a row names. */
+const SHOWN = 3;
+
 type Row = {
   notification_id: string;
-  kind: "comment" | "reaction" | "join_approved" | "moderated";
+  kind: "comment" | "reply" | "reaction" | "join_approved" | "moderated";
   actor_id: string | null;
   community_id: string;
   post_id: string | null;
@@ -21,6 +24,22 @@ type Row = {
   created_at: number;
   read_at: number | null;
 };
+
+type Actors = { notification_id: string; actor_id: string; n: number };
+
+/** The newest `SHOWN` distinct actors of each of `ids`, and how many distinct actors each has. */
+const ACTORS = `
+  WITH latest AS (
+    SELECT notification_id, actor_id, MAX(created_at) AS at
+      FROM notification_actors WHERE notification_id IN (SELECT value FROM json_each(?1))
+     GROUP BY notification_id, actor_id
+  ), ranked AS (
+    SELECT notification_id, actor_id,
+           ROW_NUMBER() OVER (PARTITION BY notification_id ORDER BY at DESC, actor_id) AS rank,
+           COUNT(*) OVER (PARTITION BY notification_id) AS n
+      FROM latest
+  )
+  SELECT notification_id, actor_id, n FROM ranked WHERE rank <= ${SHOWN} ORDER BY notification_id, rank`;
 
 /** A page of `accountId`'s notifications created before `before`, with its unread count. */
 export async function notificationPage(
@@ -48,16 +67,28 @@ export async function notificationPage(
   ]);
   const rows = (page?.results ?? []) as Row[];
   const shown = rows.slice(0, limit);
-  const names = await authors(
-    env,
-    shown.flatMap((r) => (r.actor_id ? [r.actor_id] : [])),
-  );
+  const { results: actorRows } = await db(env)
+    .prepare(ACTORS)
+    .bind(JSON.stringify(shown.map((r) => r.notification_id)))
+    .all<Actors>();
+  const named = new Map<string, string[]>();
+  const counts = new Map<string, number>();
+  for (const a of actorRows) {
+    named.set(a.notification_id, [...(named.get(a.notification_id) ?? []), a.actor_id]);
+    counts.set(a.notification_id, a.n);
+  }
+  const names = await authors(env, [
+    ...shown.flatMap((r) => (r.actor_id ? [r.actor_id] : [])),
+    ...actorRows.map((a) => a.actor_id),
+  ]);
   const last = shown.at(-1);
   return {
     notifications: shown.map((r) => ({
       notificationId: r.notification_id,
       kind: r.kind,
       actor: (r.actor_id && names.get(r.actor_id)) || null,
+      actors: (named.get(r.notification_id) ?? []).flatMap((id) => names.get(id) ?? []),
+      actorCount: counts.get(r.notification_id) ?? 0,
       communityId: r.community_id,
       postId: r.post_id,
       commentId: r.comment_id,

@@ -58,6 +58,8 @@ function text(n: Notification): string {
   const name = authorName(n.actor);
   return {
     comment: () => strings.notice_comment({ name }),
+    // The web shows a reply as a comment until its own sentence is designed (decision 0103).
+    reply: () => strings.notice_comment({ name }),
     reaction: () => strings.notice_reaction({ name }),
     join_approved: () => strings.notice_join_approved,
     moderated: () =>

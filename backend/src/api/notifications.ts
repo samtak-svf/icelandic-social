@@ -11,9 +11,16 @@ import { Author } from "./social.ts";
 const Notification = z
   .object({
     notificationId: z.string(),
-    kind: z.enum(["comment", "reaction", "join_approved", "moderated"]),
-    // Who did it; null once deleted.
+    kind: z.enum(["comment", "reply", "reaction", "join_approved", "moderated"]),
+    // Who did it, the newest if several; null once deleted.
     actor: z.union([Author, z.null()]),
+    actors: z.array(Author).openapi({
+      description:
+        "The newest three distinct accounts that caused the notification, newest first (decision 0103)",
+    }),
+    actorCount: z.int().openapi({
+      description: "How many distinct accounts caused it; `actor` and `actors` are among them",
+    }),
     communityId: OpaqueId,
     postId: OpaqueId.nullable(),
     commentId: z.string().nullable(),
