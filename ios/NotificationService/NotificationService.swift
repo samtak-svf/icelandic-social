@@ -5,8 +5,9 @@ import SpjallCore
 /// Rewrites the push (decision 0025). It names no conversation, so this syncs
 /// the shared store, asks the core what to announce, and shows each
 /// conversation's new items in its own thread. The first conversation takes
-/// the push's alert; any others get alerts of their own. What was read since
-/// leaves the notification centre.
+/// the push's alert; any others get alerts of their own. When no conversation
+/// has anything new, the social notices are announced the same way (decision 0107).
+/// What was read since leaves the notification centre.
 ///
 /// Until it finishes, or if it cannot, the push's own text stays: the
 /// fallback "new messages" alert the Worker sent.
@@ -56,18 +57,14 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
             return nil
         }
         let center = UNUserNotificationCenter.current()
-        await center.removeDelivered(conversations: notices.cleared)
-        let all = announcements(notices.shown, labels: .brand)
+        await center.removeDelivered(threads: clearedThreads(notices))
+        let all = pushContents(notices, labels: .brand, sound: sound)
         // Nothing new, as when the app was opened meanwhile: iOS does not show empty content.
         guard let first = all.first else { return UNNotificationContent() }
         for other in all.dropFirst() {
-            let request = UNNotificationRequest(
-                identifier: UUID().uuidString,
-                content: other.content(sound: sound),
-                trigger: nil
-            )
+            let request = UNNotificationRequest(identifier: UUID().uuidString, content: other, trigger: nil)
             try? await center.add(request)
         }
-        return first.content(sound: sound)
+        return first
     }
 }

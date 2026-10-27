@@ -9,6 +9,8 @@ struct SettingsSection: View {
     let model: MeModel
     let me: Me
     let notificationsOff: Bool
+    let levels: NotificationLevelsModel
+    let communityNames: [String: String]
     let onLink: () -> Void
 
     @State private var revoking: String?
@@ -43,6 +45,7 @@ struct SettingsSection: View {
             if notificationsOff {
                 NotificationsOff()
             }
+            NotificationSettingsSection(levels: levels, names: communityNames)
             // The design leaves these out; decision 0009 keeps them, in the same cards.
             if let settings = model.settings {
                 Panel { PrivacySection(settings: settings, model: model) }

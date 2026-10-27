@@ -94,4 +94,55 @@ final class PresentationVectorsTests: XCTestCase {
             XCTAssertEqual(ProblemCard.messageKey(Problem(error)), vector["key"] as? String, "\(vector)")
         }
     }
+
+    /// The core cannot carry `decline_anonymous_post` as an action (its `ModerationAction` lacks it), so that one
+    /// vector is not reachable from the app yet.
+    func testANoticeReadsAsEveryVector() throws {
+        let all = try cases("notice")
+        XCTAssertFalse(all.isEmpty)
+        var checked = 0
+        for vector in all {
+            if vector["action"] as? String == "decline_anonymous_post" { continue }
+            let kind: SocialNotificationKind =
+                switch vector["kind"] as! String {
+                case "comment": .comment
+                case "reply": .reply
+                case "reaction": .reaction
+                case "join_approved": .joinApproved
+                default: .moderated
+                }
+            let names = (vector["actors"] as! [Any]).map { $0 as? String }
+            let wording = noticeWording(kind: kind, names: names, actorCount: UInt64(vector["actorCount"] as! Int))
+            let args = vector["args"] as! [String: Any]
+            let expected: NoticeArgs =
+                switch (args.keys.contains("count"), args.keys.contains("other"), args.keys.contains("name")) {
+                case (true, _, _): .many(name: args["name"] as? String, count: args["count"] as! Int)
+                case (_, true, _): .two(name: args["name"] as? String, other: args["other"] as? String)
+                case (_, _, true): .one(name: args["name"] as? String)
+                default: .none
+                }
+            XCTAssertEqual(wording.key, vector["key"] as? String, "\(vector)")
+            XCTAssertEqual(wording.args, expected, "\(vector)")
+            XCTAssertEqual(wording.badge.rawValue, vector["badge"] as? String, "\(vector)")
+            checked += 1
+        }
+        XCTAssertEqual(checked, all.count - 1)
+    }
+
+    func testTheSentenceFillsItsArguments() {
+        XCTAssertEqual(
+            noticeWording(kind: .comment, names: ["Anna"], actorCount: 1).sentence,
+            "Anna skrifaði athugasemd við póstinn þinn.")
+        XCTAssertEqual(
+            noticeWording(kind: .reply, names: ["Anna", "Bjarni"], actorCount: 2).sentence,
+            "Anna og Bjarni svöruðu athugasemdinni þinni.")
+        XCTAssertEqual(
+            noticeWording(kind: .reaction, names: ["Anna", "B", "C"], actorCount: 3).sentence,
+            "Anna og 2 aðrir brugðust við póstinum þínum.")
+        XCTAssertEqual(
+            noticeWording(kind: .comment, names: [nil], actorCount: 1).sentence,
+            localized("notice_comment", localized("person_deleted")))
+        XCTAssertEqual(
+            noticeWording(kind: .joinApproved, names: [], actorCount: 0).sentence, localized("notice_join_approved"))
+    }
 }

@@ -127,6 +127,16 @@ protocol Social: Sendable {
     func notifications(before: String?, limit: UInt32) throws -> SocialNotificationPage
     /// Marks read every notification made at or before `upTo`.
     func readNotifications(upTo: UInt64) throws
+    /// Records that the list was looked at up to `upTo`: it clears the tab's count and reads no row (0104).
+    func seenNotifications(upTo: UInt64) throws
+    /// Marks one notification read, or unread again.
+    func readNotification(_ id: String, read: Bool) throws
+    func deleteNotification(_ id: String) throws
+    /// The level for each kind and each community that has one (0106).
+    func notificationSettings() throws -> NotificationSettings
+    /// Sets the level of the given kinds and leaves the others.
+    func setNotificationSettings(kinds: [NotificationKindLevel]) throws
+    func setCommunityNotificationLevel(_ community: String, level: NotificationLevel) throws
 }
 
 extension Social {
@@ -343,12 +353,6 @@ extension CoreAccount: Social {
     func pinCommunity(_ community: String) throws { try core().pinCommunity(communityId: community) }
 
     func unpinCommunity(_ community: String) throws { try core().unpinCommunity(communityId: community) }
-
-    func notifications(before: String?, limit: UInt32) throws -> SocialNotificationPage {
-        try core().notifications(before: before, limit: limit)
-    }
-
-    func readNotifications(upTo: UInt64) throws { try core().readNotifications(upTo: upTo) }
 }
 
 /// Where a hosted screen leads: a community, a post, or a community's report queue.
@@ -443,25 +447,6 @@ func reasonLabel(_ reason: ReportReason) -> String {
     case .spam: localized("report_reason_spam")
     case .other: localized("report_reason_other")
     }
-}
-
-/// What a notification tells; a reaction's emoji leads its sentence (decision 0100), an old server sends none.
-func noticeLine(_ notification: SocialNotification) -> String {
-    switch notification.kind {
-    case .comment: localized("notice_comment", authorName(notification.actor))
-    case .reply: localized("notice_reply", authorName(notification.actor))
-    case .reaction:
-        [notification.emoji, localized("notice_reaction", authorName(notification.actor))]
-            .compactMap { $0 }.joined(separator: " ")
-    case .joinApproved: localized("notice_join_approved")
-    case .moderated: localized("notice_moderated")
-    }
-}
-
-/// Where a notification opens: its post, or its community when it has no post or the post was moderated away.
-func noticeRoute(_ notification: SocialNotification) -> SocialRoute {
-    if let post = notification.postId, notification.kind != .moderated { return .post(post) }
-    return .community(notification.communityId)
 }
 
 /// `post` with this account's reaction set to `emoji`, or taken off for nil, and the counts moved to match: most

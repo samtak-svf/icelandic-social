@@ -6,7 +6,7 @@ import SpjallCore
 /// The hosted social calls as the models see them, in memory. `failNext` makes the next call throw instead,
 /// `failOn` fails every call of one name, and `calls` records what was asked, in order.
 final class FakeSocial: Social, @unchecked Sendable {
-    private let lock = NSLock()
+    let lock = NSLock()
     private var _calls: [String] = []
     private var _failNext: Error?
     private var _failOn: String?
@@ -22,6 +22,8 @@ final class FakeSocial: Social, @unchecked Sendable {
     private var _log: [String: [ModerationLogEntry]] = [:]
     private var _cards: [String: Card] = [:]
     private var _notifications: [SocialNotification] = []
+    var _seenAt: UInt64?
+    var _settings = NotificationSettings(kinds: [], communities: [])
     private var _joins: [String: JoinState] = [:]
     private var _requests: [String: [JoinRequest]] = [:]
     private var _refuseImage: Error?
@@ -152,7 +154,7 @@ final class FakeSocial: Social, @unchecked Sendable {
     /// How long one page is here, so the tests see more than one without making dozens.
     var pageSize = 2
 
-    private func call(_ name: String) throws {
+    func call(_ name: String) throws {
         try lock.withLock {
             _calls.append(name)
             if let failure = _failNext {
@@ -164,7 +166,7 @@ final class FakeSocial: Social, @unchecked Sendable {
     }
 
     /// The page of `items` after the cursor `after` (an index, as text), and the cursor of the next.
-    private func page<T>(_ items: [T], after: String?) -> ([T], String?) {
+    func page<T>(_ items: [T], after: String?) -> ([T], String?) {
         let start = after.flatMap { Int($0) } ?? 0
         let end = min(start + pageSize, items.count)
         guard start < end else { return ([], nil) }
@@ -694,23 +696,6 @@ final class FakeSocial: Social, @unchecked Sendable {
     func unpinCommunity(_ community: String) throws {
         try call("unpinCommunity \(community)")
         communities[community]?.pinned = false
-    }
-
-    func notifications(before: String?, limit: UInt32) throws -> SocialNotificationPage {
-        try call("notifications \(before ?? "-")")
-        let all = notifications
-        let (found, next) = page(all, after: before)
-        return SocialNotificationPage(
-            notifications: found, unread: UInt64(all.filter { !$0.read }.count), unseen: 0, seenAt: nil, next: next)
-    }
-
-    func readNotifications(upTo: UInt64) throws {
-        try call("readNotifications \(upTo)")
-        notifications = notifications.map { notice in
-            var notice = notice
-            if notice.createdAt <= upTo { notice.read = true }
-            return notice
-        }
     }
 }
 

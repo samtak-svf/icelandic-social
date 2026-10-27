@@ -37,6 +37,7 @@ struct HomeView: View {
     @State private var mePath: [MeRoute] = []
     @State private var communities: CommunitiesModel
     @State private var notices: NotificationsModel
+    @State private var levels: NotificationLevelsModel
     @State private var communitiesPath: [SocialRoute] = []
     @State private var noticesPath: [SocialRoute] = []
     /// Kenni's offer after a sign-in, over the tabs (decision 0035).
@@ -70,7 +71,8 @@ struct HomeView: View {
         _list = State(initialValue: ConversationsModel(account: signIn.account, live: socket))
         _me = State(initialValue: MeModel(account: signIn.account))
         _communities = State(initialValue: CommunitiesModel(social: social))
-        _notices = State(initialValue: NotificationsModel(social: social))
+        _levels = State(initialValue: NotificationLevelsModel(social: social))
+        _notices = State(initialValue: NotificationsModel(social: social, cancel: push.notifier.cancel))
         _onboarding = State(initialValue: OnboardingModel(notifier: push.notifier))
         _photos = State(initialValue: PhotoCache(account: signIn.account, social: social, decode: displayPhoto))
     }
@@ -112,6 +114,7 @@ struct HomeView: View {
             socket.start()
             openInvite()
             openTapped()
+            openTappedSocial()
             await push.start()
         }
         // The count on the notifications tab, as the server has it.
@@ -134,6 +137,9 @@ struct HomeView: View {
         }
         .onChange(of: push.opened) { _, conversation in
             if conversation != nil { openTapped() }
+        }
+        .onChange(of: push.openedSocial) { _, tap in
+            if tap != nil { openTappedSocial() }
         }
         .onChange(of: signIn.offerVerify, initial: true) { offerVerify() }
         .onChange(of: onboarding.step) { _, step in
@@ -190,7 +196,7 @@ struct HomeView: View {
             .init(tab: .conversations, label: localized("tab_conversations"), systemImage: "bubble.left"),
             .init(tab: .communities, label: localized("tab_communities"), systemImage: "person.3"),
             .init(
-                tab: .notifications, label: localized("tab_notifications"), systemImage: "bell", badge: notices.unread),
+                tab: .notifications, label: localized("tab_notifications"), systemImage: "bell", badge: notices.unseen),
             .init(tab: .me, label: localized("tab_me"), systemImage: "person"),
         ]
     }
@@ -203,7 +209,7 @@ struct HomeView: View {
             socialStack($communitiesPath) {
                 CommunitiesView(model: communities) { communitiesPath.append(.community($0)) }
             }
-        case .notifications: socialStack($noticesPath) { NotificationsView(model: notices) }
+        case .notifications: socialStack($noticesPath) { NotificationsView(model: notices, communities: communities) }
         case .me: meStack
         }
     }
@@ -261,7 +267,9 @@ struct HomeView: View {
     private var meStack: some View {
         NavigationStack(path: $mePath) {
             MeView(
-                model: me, push: push, onVerify: { mePath.append(.verify) }, onLink: { mePath.append(.link) }
+                model: me, push: push, levels: levels,
+                communityNames: Dictionary(communities.mine.map { ($0.communityId, $0.name) }) { first, _ in first },
+                onVerify: { mePath.append(.verify) }, onLink: { mePath.append(.link) }
             )
             .navigationDestination(for: MeRoute.self) { route in
                 switch route {
@@ -327,6 +335,13 @@ struct HomeView: View {
         path = [.conversation(id)]
     }
 
+    /// A tapped social notification: into its post, or its community, on the notifications tab (decision 0107).
+    private func openTappedSocial() {
+        guard let tap = push.takeOpenedSocial() else { return }
+        tab = .notifications
+        noticesPath = [tap.post.map(SocialRoute.post) ?? .community(tap.community)]
+    }
+
     /// An invite link opened while signed in: into the 1:1 with whoever made it.
     private func openInvite() {
         guard let token = signIn.takeInvite() else { return }
@@ -337,27 +352,6 @@ struct HomeView: View {
     }
 }
 
-/// The picker, with a model of its own each time it opens.
-private struct PeopleRoute: View {
-    @State private var model: PeopleModel
-    let onInvite: () -> Void
-    let onOpened: (String) -> Void
-
-    init(account: Account, live: Live, onInvite: @escaping () -> Void, onOpened: @escaping (String) -> Void) {
-        _model = State(initialValue: PeopleModel(account: account, live: live))
-        self.onInvite = onInvite
-        self.onOpened = onOpened
-    }
-
-    var body: some View {
-        PeopleView(model: model, onInvite: onInvite)
-            .onChange(of: model.opened) { _, id in
-                if let id { onOpened(id) }
-            }
-    }
-}
-
-/// A conversation, with the model the root keeps for it.
 private struct ConversationRoute: View {
     let model: ConversationModel
 
