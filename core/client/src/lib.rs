@@ -27,6 +27,7 @@ mod forward;
 pub mod frames;
 pub mod group_photo;
 mod history;
+mod incoming;
 mod link;
 mod media;
 mod members;
@@ -48,6 +49,7 @@ use api::{Api, ApiError, Outgoing, Platform, Profile, Transport, conversation_id
 pub use blobs::{BlobStore, BlobWrite, FsBlobs, MemBlobs};
 pub use directory::{Directory, ListSearch, MAX_QUERY, blank, fold_name};
 pub use history::{HistoryError, HistoryKey, Imported, MAX_HISTORY, history_key};
+use incoming::Incoming;
 pub use link::{DeviceLink, Enrolled, LinkCode, LinkError, LinkRequest, LinkState};
 pub use media::{MAX_SIZE, MediaError};
 pub use members::Person;
@@ -55,7 +57,6 @@ pub use mute::{Mute, MuteFor};
 pub use notice::{Notice, NoticeKind, Notices, SocialNotice};
 pub use photo::MAX_PHOTO;
 pub use read::Settings;
-use serde::Deserialize;
 pub use social::{MAX_CARDS, MAX_COMMENT_MEDIA, MAX_POST_IMAGE, MAX_POST_MEDIA};
 use spjall_envelope::{Body, Envelope, EnvelopeError, is_place};
 use spjall_mls::group::{
@@ -257,6 +258,9 @@ pub enum Event {
         conversation: String,
         removed: Vec<u64>,
     },
+    /// The server has delivered everything that was waiting when the socket
+    /// connected (0108).
+    CaughtUp,
 }
 
 /// What a call produced: events to show and frames to send on the socket.
@@ -264,34 +268,6 @@ pub enum Event {
 pub struct Outcome {
     pub events: Vec<Event>,
     pub frames: Vec<String>,
-}
-
-#[derive(Deserialize)]
-#[serde(tag = "type", rename_all = "lowercase")]
-enum Incoming {
-    Hello {},
-    Notify {
-        #[serde(rename = "conversationId")]
-        conversation: String,
-        seq: u64,
-    },
-    Typing {
-        #[serde(rename = "conversationId")]
-        conversation: String,
-        ciphertext: String,
-    },
-    Ping {
-        nonce: Option<String>,
-    },
-    /// This account's mute changed on one of its devices (0042).
-    Mute {
-        #[serde(rename = "conversationId")]
-        conversation: String,
-        muted: bool,
-        until: Option<u64>,
-    },
-    #[serde(other)]
-    Other,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1552,6 +1528,7 @@ impl<T: Transport> Client<T> {
                 muted,
                 until,
             } => self.on_mute(&conversation, muted, until)?,
+            Incoming::CaughtUp {} => self.outcome.events.push(Event::CaughtUp),
             Incoming::Hello {} | Incoming::Other => {}
         }
         self.purge()?;

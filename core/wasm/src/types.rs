@@ -47,7 +47,8 @@ export type CoreEvent =
   | { kind: "typing"; conversation: string; active: boolean }
   | { kind: "timeline"; conversation: string; changed: number[] }
   | { kind: "profiles"; accounts: string[] }
-  | { kind: "expired"; conversation: string; removed: number[] };
+  | { kind: "expired"; conversation: string; removed: number[] }
+  | { kind: "caughtUp" };
 export interface Outcome { events: CoreEvent[]; frames: string[] }
 export interface Me {
   accountId: string; name: string | null; verified: boolean; photo: string | null;
