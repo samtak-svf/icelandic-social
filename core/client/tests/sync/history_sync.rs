@@ -254,3 +254,40 @@ fn an_imported_conversation_survives_a_refused_join_and_a_removal_stays() {
     b1.sync();
     assert_eq!(texts(&a2.deliver()), strings(&["aftur"]));
 }
+
+/// A group's name and photo are folded state, not timeline rows: the cards
+/// only say they changed (#327). A linked device has both from the
+/// history, before any other device is online to send it the settings
+/// snapshot.
+#[test]
+fn a_linked_device_has_its_groups_name_and_photo_from_the_history() {
+    let relay = Relay::new();
+    let (mut a1, mut b1, mut c1, talk) = crate::common::group(&relay);
+    a1.client.rename(&talk, Some("Hópurinn".into())).unwrap();
+    let picture = a1.dir.path().join("picture.png");
+    image::RgbImage::from_fn(240, 160, |x, _| image::Rgb([90, (x % 256) as u8, 40]))
+        .save(&picture)
+        .unwrap();
+    a1.client.set_group_photo(&talk, &picture).unwrap();
+    a1.sync();
+    b1.deliver();
+    c1.deliver();
+    let shown = |phone: &mut Phone| {
+        let listed = phone.client.conversations().unwrap().remove(0);
+        (listed.name, listed.photo.map(|p| std::fs::read(p).unwrap()))
+    };
+    let (name, photo) = shown(&mut a1);
+    assert_eq!(name.as_deref(), Some("Hópurinn"));
+    let photo = photo.expect("the phone shows the photo");
+
+    let mut a2 = Phone::new(&relay, "a", "a2");
+    let key = history_key().unwrap();
+    let blob = a1.dir.path().join("history");
+    a1.client.export_history(None, &key.public, &blob).unwrap();
+    a2.client.import_history(&blob, &key.private).unwrap();
+    assert_eq!(shown(&mut a2).0.as_deref(), Some("Hópurinn"));
+
+    // The photo is fetched by the next sync, with no other device online.
+    assert_eq!(joined(&a2.sync()), vec![talk.clone()]);
+    assert_eq!(shown(&mut a2), (Some("Hópurinn".into()), Some(photo)));
+}
