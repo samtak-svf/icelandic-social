@@ -6,7 +6,7 @@ import SpjallCore
 /// The hosted social calls as the models see them, in memory. `failNext` makes the next call throw instead,
 /// `failOn` fails every call of one name, and `calls` records what was asked, in order.
 final class FakeSocial: Social, @unchecked Sendable {
-    private let lock = NSLock()
+    let lock = NSLock()
     private var _calls: [String] = []
     private var _failNext: Error?
     private var _failOn: String?
@@ -22,8 +22,8 @@ final class FakeSocial: Social, @unchecked Sendable {
     private var _log: [String: [ModerationLogEntry]] = [:]
     private var _cards: [String: Card] = [:]
     private var _notifications: [SocialNotification] = []
-    private var _seenAt: UInt64?
-    private var _settings = NotificationSettings(kinds: [], communities: [])
+    var _seenAt: UInt64?
+    var _settings = NotificationSettings(kinds: [], communities: [])
     private var _joins: [String: JoinState] = [:]
     private var _requests: [String: [JoinRequest]] = [:]
     private var _refuseImage: Error?
@@ -154,7 +154,7 @@ final class FakeSocial: Social, @unchecked Sendable {
     /// How long one page is here, so the tests see more than one without making dozens.
     var pageSize = 2
 
-    private func call(_ name: String) throws {
+    func call(_ name: String) throws {
         try lock.withLock {
             _calls.append(name)
             if let failure = _failNext {
@@ -166,7 +166,7 @@ final class FakeSocial: Social, @unchecked Sendable {
     }
 
     /// The page of `items` after the cursor `after` (an index, as text), and the cursor of the next.
-    private func page<T>(_ items: [T], after: String?) -> ([T], String?) {
+    func page<T>(_ items: [T], after: String?) -> ([T], String?) {
         let start = after.flatMap { Int($0) } ?? 0
         let end = min(start + pageSize, items.count)
         guard start < end else { return ([], nil) }
@@ -696,78 +696,6 @@ final class FakeSocial: Social, @unchecked Sendable {
     func unpinCommunity(_ community: String) throws {
         try call("unpinCommunity \(community)")
         communities[community]?.pinned = false
-    }
-
-    func notifications(before: String?, limit: UInt32) throws -> SocialNotificationPage {
-        try call("notifications \(before ?? "-")")
-        let all = notifications
-        let (found, next) = page(all, after: before)
-        return SocialNotificationPage(
-            notifications: found, unread: UInt64(all.filter { !$0.read }.count),
-            unseen: UInt64(all.filter { $0.createdAt > (seenAt ?? 0) }.count), seenAt: seenAt, next: next)
-    }
-
-    /// When the list was last looked at, as the server holds it.
-    var seenAt: UInt64? {
-        get { lock.withLock { _seenAt } }
-        set { lock.withLock { _seenAt = newValue } }
-    }
-
-    /// The levels as the server holds them.
-    var settings: NotificationSettings {
-        get { lock.withLock { _settings } }
-        set { lock.withLock { _settings = newValue } }
-    }
-
-    func seenNotifications(upTo: UInt64) throws {
-        try call("seenNotifications \(upTo)")
-        seenAt = max(seenAt ?? 0, upTo)
-    }
-
-    func readNotification(_ id: String, read: Bool) throws {
-        try call("readNotification \(id) \(read)")
-        notifications = notifications.map { notice in
-            var notice = notice
-            if notice.notificationId == id { notice.read = read }
-            return notice
-        }
-    }
-
-    func deleteNotification(_ id: String) throws {
-        try call("deleteNotification \(id)")
-        notifications.removeAll { $0.notificationId == id }
-    }
-
-    func notificationSettings() throws -> NotificationSettings {
-        try call("notificationSettings")
-        return settings
-    }
-
-    func setNotificationSettings(kinds: [NotificationKindLevel]) throws {
-        try call("setNotificationSettings " + kinds.map { "\($0.kind):\($0.level)" }.joined(separator: ","))
-        var current = settings
-        for change in kinds {
-            current.kinds.removeAll { $0.kind == change.kind }
-            current.kinds.append(change)
-        }
-        settings = current
-    }
-
-    func setCommunityNotificationLevel(_ community: String, level: NotificationLevel) throws {
-        try call("setCommunityNotificationLevel \(community) \(level)")
-        var current = settings
-        current.communities.removeAll { $0.communityId == community }
-        current.communities.append(CommunityNotificationLevel(communityId: community, level: level))
-        settings = current
-    }
-
-    func readNotifications(upTo: UInt64) throws {
-        try call("readNotifications \(upTo)")
-        notifications = notifications.map { notice in
-            var notice = notice
-            if notice.createdAt <= upTo { notice.read = true }
-            return notice
-        }
     }
 }
 
