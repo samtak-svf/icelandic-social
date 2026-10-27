@@ -45,7 +45,10 @@ struct ConversationsView: View {
                             results(found)
                         }
                     } else {
-                        if model.loaded && model.conversations.isEmpty {
+                        if model.catchingUp {
+                            // The server has not yet sent what it owed this sign-in (decision 0110).
+                            EmptyState(systemImage: "bubble.left.and.bubble.right", text: "conversations_catching_up")
+                        } else if model.empty {
                             // Everyone signed in is in the picker (decisions 0036, 0043): found, not only invited.
                             EmptyState(
                                 systemImage: "bubble.left.and.bubble.right", text: "conversations_empty",

@@ -26,6 +26,22 @@ final class ConversationsModelTests: XCTestCase {
         XCTAssertFalse(model.placeholders)
     }
 
+    func testEmptyAndNotCaughtUpShowsCatchingUp() async {
+        let model = ConversationsModel(account: account, live: live)
+        XCTAssertFalse(model.catchingUp)
+        await model.load()
+        XCTAssertTrue(model.catchingUp)
+        XCTAssertFalse(model.empty)
+    }
+
+    func testAfterCaughtUpShowsEmpty() async {
+        let model = ConversationsModel(account: account, live: live)
+        await model.load()
+        live.caughtUp = true
+        XCTAssertFalse(model.catchingUp)
+        XCTAssertTrue(model.empty)
+    }
+
     func testAFailedFirstReadEndsThePlaceholdersAndASearchHasNone() async {
         let model = ConversationsModel(account: account, live: live)
         model.query = "an"

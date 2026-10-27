@@ -8,6 +8,7 @@ import SpjallCore
 @MainActor
 final class FakeLive: Live {
     var connection = Connection.connecting
+    var caughtUp = false
     private let account: Account
     private var listeners: [AsyncStream<Event>.Continuation] = []
     private(set) var sent: [String] = []

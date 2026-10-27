@@ -87,6 +87,28 @@ final class SocketTests: XCTestCase {
         XCTAssertEqual(wire.opened.count, 1)
     }
 
+    func testCaughtUpLatchesOnTheEventSurvivesAReconnectAndTheNextStartClearsIt() async {
+        let socket = socket()
+        var events = socket.events().makeAsyncIterator()
+        socket.start()
+        let first = await wire.link(1)
+        first.signal(.opened)
+        XCTAssertFalse(socket.caughtUp)
+
+        account.outcome = Outcome(events: [.caughtUp], frames: [])
+        first.signal(.frame("{\"type\":\"caught-up\"}"))
+        _ = await events.next()
+        XCTAssertTrue(socket.caughtUp)
+
+        first.signal(.closed)
+        _ = await wire.link(2)
+        XCTAssertTrue(socket.caughtUp)
+
+        socket.stop()
+        socket.start()
+        XCTAssertFalse(socket.caughtUp)
+    }
+
     func testNoTokenIsSignedOutAndTheNextStartClearsIt() async {
         account.token = nil
         let socket = socket()
