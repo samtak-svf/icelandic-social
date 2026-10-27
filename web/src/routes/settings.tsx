@@ -5,6 +5,7 @@ import { refused, type Problem } from "../problem.ts";
 import { endOtherSessions, endSession, listSessions, type SessionInfo } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { formatIsDate } from "../lib/is-format.ts";
+import { NotificationSettingsSection } from "../social/notification-settings.tsx";
 import { deviceIcon } from "../ui/device-icon.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 import { VerifyCta } from "../ui/verify.tsx";
@@ -140,6 +141,7 @@ function Settings() {
           </Button>
         )}
       </section>
+      <NotificationSettingsSection />
       <section className="mt-10">
         <Button
           tone="primary"
