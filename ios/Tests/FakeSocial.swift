@@ -701,7 +701,7 @@ final class FakeSocial: Social, @unchecked Sendable {
         let all = notifications
         let (found, next) = page(all, after: before)
         return SocialNotificationPage(
-            notifications: found, unread: UInt64(all.filter { !$0.read }.count), next: next)
+            notifications: found, unread: UInt64(all.filter { !$0.read }.count), unseen: 0, seenAt: nil, next: next)
     }
 
     func readNotifications(upTo: UInt64) throws {
@@ -786,13 +786,4 @@ func makeReport(
         reason: .spam, note: "", state: state, createdAt: FakeAccount.now,
         closedAt: state == .closed ? FakeAccount.now : nil, decision: nil, resolution: nil, closedBy: nil,
         targetAnonymous: anonymous, targetStanding: nil, targetState: nil)
-}
-
-func makeNotice(
-    _ id: String, _ kind: SocialNotificationKind, actor: Author? = nil, community: String = "k1",
-    post: String? = nil, emoji: String? = nil, read: Bool = false, createdAt: UInt64 = FakeAccount.now
-) -> SocialNotification {
-    SocialNotification(
-        notificationId: id, kind: kind, actor: actor, communityId: community, postId: post, commentId: nil,
-        action: nil, emoji: emoji, createdAt: createdAt, read: read)
 }

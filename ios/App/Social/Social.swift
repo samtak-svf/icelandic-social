@@ -445,12 +445,12 @@ func reasonLabel(_ reason: ReportReason) -> String {
     }
 }
 
-/// What a notification tells, in one line.
+/// What a notification tells; a reaction's emoji leads its sentence (decision 0100), an old server sends none.
 func noticeLine(_ notification: SocialNotification) -> String {
     switch notification.kind {
     case .comment: localized("notice_comment", authorName(notification.actor))
+    case .reply: localized("notice_reply", authorName(notification.actor))
     case .reaction:
-        // The emoji the account reacted with leads the sentence (decision 0100); an old server sends none.
         [notification.emoji, localized("notice_reaction", authorName(notification.actor))]
             .compactMap { $0 }.joined(separator: " ")
     case .joinApproved: localized("notice_join_approved")

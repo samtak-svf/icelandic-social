@@ -44,7 +44,9 @@ final class PushModelTests: XCTestCase {
                     ts: FakeAccount.now
                 )
             ],
-            cleared: ["c2"]
+            cleared: ["c2"],
+            social: [],
+            socialCleared: []
         )
 
         await model().quiet()

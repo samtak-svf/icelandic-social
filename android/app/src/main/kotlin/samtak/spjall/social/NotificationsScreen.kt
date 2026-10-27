@@ -101,6 +101,7 @@ private fun NotificationRow(
 private fun SocialNotification.sentence(): String =
     when (kind) {
         SocialNotificationKind.COMMENT -> stringResource(R.string.notice_comment, actor.shownName())
+        SocialNotificationKind.REPLY -> stringResource(R.string.notice_reply, actor.shownName())
         SocialNotificationKind.REACTION ->
             // The emoji the account reacted with leads the sentence (0100); an old server sends none.
             listOfNotNull(emoji, stringResource(R.string.notice_reaction, actor.shownName())).joinToString(" ")
