@@ -26,7 +26,11 @@ struct NoticeWording: Equatable, Sendable {
 }
 
 /// `names` are the newest actors' names, newest first (nil for a deleted account), `actorCount` every distinct one.
-func noticeWording(kind: SocialNotificationKind, names: [String?], actorCount: UInt64) -> NoticeWording {
+/// A moderated row reads `notice_anonymous_declined` when the `action` declined an anonymous post and
+/// `notice_moderated` for every other.
+func noticeWording(
+    kind: SocialNotificationKind, names: [String?], actorCount: UInt64, action: NotificationAction? = nil
+) -> NoticeWording {
     let base: String
     let badge: NoticeBadge
     switch kind {
@@ -34,7 +38,9 @@ func noticeWording(kind: SocialNotificationKind, names: [String?], actorCount: U
     case .reply: (base, badge) = ("notice_reply", .comment)
     case .reaction: (base, badge) = ("notice_reaction", .emoji)
     case .joinApproved: return NoticeWording(key: "notice_join_approved", args: .none, badge: .approved)
-    case .moderated: return NoticeWording(key: "notice_moderated", args: .none, badge: .moderator)
+    case .moderated:
+        let key = action == .declineAnonymousPost ? "notice_anonymous_declined" : "notice_moderated"
+        return NoticeWording(key: key, args: .none, badge: .moderator)
     }
     let name = names.first ?? nil
     switch actorCount {
@@ -72,11 +78,13 @@ func noticeName(_ author: Author) -> String {
 /// The sentence of a notification from the core: the row's and, from a `SocialNotice`, the push's.
 func noticeWording(_ notification: SocialNotification) -> NoticeWording {
     noticeWording(
-        kind: notification.kind, names: notification.actors.map(noticeName), actorCount: notification.actorCount)
+        kind: notification.kind, names: notification.actors.map(noticeName), actorCount: notification.actorCount,
+        action: notification.action)
 }
 
 func noticeWording(_ notice: SocialNotice) -> NoticeWording {
-    noticeWording(kind: notice.kind, names: notice.actors.map(noticeName), actorCount: notice.actorCount)
+    noticeWording(
+        kind: notice.kind, names: notice.actors.map(noticeName), actorCount: notice.actorCount, action: notice.action)
 }
 
 /// What a notification opens: its post, or its community when it has no post or the post was moderated away.

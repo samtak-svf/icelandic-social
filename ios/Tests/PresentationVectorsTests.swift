@@ -95,14 +95,11 @@ final class PresentationVectorsTests: XCTestCase {
         }
     }
 
-    /// The core cannot carry `decline_anonymous_post` as an action (its `ModerationAction` lacks it), so that one
-    /// vector is not reachable from the app yet.
     func testANoticeReadsAsEveryVector() throws {
         let all = try cases("notice")
         XCTAssertFalse(all.isEmpty)
         var checked = 0
         for vector in all {
-            if vector["action"] as? String == "decline_anonymous_post" { continue }
             let kind: SocialNotificationKind =
                 switch vector["kind"] as! String {
                 case "comment": .comment
@@ -112,7 +109,14 @@ final class PresentationVectorsTests: XCTestCase {
                 default: .moderated
                 }
             let names = (vector["actors"] as! [Any]).map { $0 as? String }
-            let wording = noticeWording(kind: kind, names: names, actorCount: UInt64(vector["actorCount"] as! Int))
+            let action: NotificationAction? =
+                switch vector["action"] as? String {
+                case "decline_anonymous_post": .declineAnonymousPost
+                case "hide_post": .hidePost
+                default: nil
+                }
+            let wording = noticeWording(
+                kind: kind, names: names, actorCount: UInt64(vector["actorCount"] as! Int), action: action)
             let args = vector["args"] as! [String: Any]
             let expected: NoticeArgs =
                 switch (args.keys.contains("count"), args.keys.contains("other"), args.keys.contains("name")) {
@@ -126,7 +130,7 @@ final class PresentationVectorsTests: XCTestCase {
             XCTAssertEqual(wording.badge.rawValue, vector["badge"] as? String, "\(vector)")
             checked += 1
         }
-        XCTAssertEqual(checked, all.count - 1)
+        XCTAssertEqual(checked, all.count)
     }
 
     func testTheSentenceFillsItsArguments() {
