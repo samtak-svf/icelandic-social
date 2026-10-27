@@ -811,6 +811,8 @@ export interface Notification {
   /** Unix milliseconds */
   createdAt: number;
   read: boolean;
+  /** For `comment` and `reply` the newest comment's text, for `reaction` the post's: whitespace collapsed, at most 100 characters, cut with an ellipsis. Read with the page, null when the caller may no longer read it (decision 0105) */
+  snippet: string | null;
   /** True when the row is unread and its effective level is `push` now: a client may announce it (decision 0106) */
   announce: boolean;
 }

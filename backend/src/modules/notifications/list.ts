@@ -1,6 +1,7 @@
 import { db } from "../../env/index.ts";
 import { authors } from "../social/index.ts";
 import { announcer } from "./settings.ts";
+import { snippetOf } from "./snippet.ts";
 
 // The caller's notifications, newest first, and marking them read.
 
@@ -101,9 +102,14 @@ export async function notificationPage(
     ...shown.flatMap((r) => (r.actor_id ? [r.actor_id] : [])),
     ...actors.ids,
   ]);
+  const snippets = await Promise.all(
+    shown.map((r) =>
+      snippetOf(env, accountId, { kind: r.kind, postId: r.post_id, commentId: r.comment_id }),
+    ),
+  );
   const last = shown.at(-1);
   return {
-    notifications: shown.map((r) => ({
+    notifications: shown.map((r, i) => ({
       notificationId: r.notification_id,
       kind: r.kind,
       actor: (r.actor_id && names.get(r.actor_id)) || null,
@@ -117,6 +123,7 @@ export async function notificationPage(
       createdAt: r.created_at,
       read: r.read_at !== null,
       announce: r.read_at === null && announces(r),
+      snippet: snippets[i] ?? null,
     })),
     ...count,
     next: results.length > limit && last ? String(last.created_at) : null,

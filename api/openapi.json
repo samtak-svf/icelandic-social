@@ -3067,6 +3067,13 @@
           "read": {
             "type": "boolean"
           },
+          "snippet": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "For `comment` and `reply` the newest comment's text, for `reaction` the post's: whitespace collapsed, at most 100 characters, cut with an ellipsis. Read with the page, null when the caller may no longer read it (decision 0105)"
+          },
           "announce": {
             "type": "boolean",
             "description": "True when the row is unread and its effective level is `push` now: a client may announce it (decision 0106)"
@@ -3085,6 +3092,7 @@
           "emoji",
           "createdAt",
           "read",
+          "snippet",
           "announce"
         ]
       },
