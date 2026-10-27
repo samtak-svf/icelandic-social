@@ -161,7 +161,7 @@ describe("the page's socket (decision 0081)", () => {
     expect(h.sockets[0]!.sent).toHaveLength(2);
   });
 
-  describe("the caught-up marker (decision 0109)", () => {
+  describe("the caught-up marker (decision 0108)", () => {
     it("is told only after the worker has handled the marker, and every frame before it", async () => {
       const answers: (() => void)[] = [];
       const h = harness(

@@ -83,7 +83,7 @@ export class Inbox extends DurableObject<Env> {
 
   /**
    * A WebSocket the Worker has authenticated: `hello`, then what this device
-   * has missed, then `caught-up` (decision 0109). Nothing is awaited between
+   * has missed, then `caught-up` (decision 0108). Nothing is awaited between
    * them, so no live frame comes before the marker.
    */
   override async fetch(request: Request): Promise<Response> {

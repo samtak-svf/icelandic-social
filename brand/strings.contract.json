@@ -24,7 +24,7 @@
     },
     "conversations_catching_up": {
       "surfaces": ["web"],
-      "description": "The conversation list of a browser that has not yet caught up with what the server owed it (docs/decisions/0109)."
+      "description": "The conversation list of a browser that has not yet caught up with what the server owed it (docs/decisions/0108)."
     },
     "conversations_search": {
       "surfaces": ["android", "ios"],

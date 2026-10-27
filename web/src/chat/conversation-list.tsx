@@ -6,7 +6,7 @@ import { useChat } from "./chat.tsx";
 import { ConversationRow } from "./conversation-row.tsx";
 import type { CatchUp } from "./session.ts";
 
-/** The rows, and whether they were read once the chat had caught up (0109). */
+/** The rows, and whether they were read once the chat had caught up (0108). */
 export interface Listed {
   rows: Conversation[];
   caughtUp: boolean;

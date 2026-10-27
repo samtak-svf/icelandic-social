@@ -1,4 +1,4 @@
-# 0109. The socket says when it has caught up, and the web asks for the history until it comes
+# 0108. The socket says when it has caught up, and the web asks for the history until it comes
 
 - Status: accepted; implemented in the Worker and the web (#326)
 - Date: 2026-10-27

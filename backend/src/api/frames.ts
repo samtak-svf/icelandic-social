@@ -30,7 +30,7 @@ const NotifyFrame = z
 
 const CaughtUpFrame = z.object({ type: z.literal("caught-up") }).openapi("CaughtUpFrame", {
   description:
-    "Server to client, once per socket: every `notify` this device was behind on when the socket opened has been sent before it. A client that has handled each frame before it has heard of every conversation it is in (decision 0109)",
+    "Server to client, once per socket: every `notify` this device was behind on when the socket opened has been sent before it. A client that has handled each frame before it has heard of every conversation it is in (decision 0108)",
 });
 
 const AckFrame = z

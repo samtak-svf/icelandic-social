@@ -9,7 +9,7 @@ import { qrFrame, qrRects } from "./qr.ts";
 // Linking this browser to the account's phone (decisions 0064, 0081): the
 // browser shows a code and its QR, the phone approves, and this page then
 // completes the link. The chat session then takes the older messages the
-// phone sends, asking until they come (0109).
+// phone sends, asking until they come (0108).
 
 type Failed = "no-phone" | "unreachable" | "other";
 

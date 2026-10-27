@@ -181,7 +181,7 @@ describe("chatSession", () => {
   });
 });
 
-describe("catching up (decision 0109)", () => {
+describe("catching up (decision 0108)", () => {
   /** A worker that answers `receiveHistory` from `answers`, in turn. */
   function history(...answers: (number | ChatFailure)[]) {
     const asked = vi.fn();

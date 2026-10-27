@@ -6,7 +6,7 @@
 - Decided by: Guðröður, approving the plan that acted on the phase-0 review
 - Amended by: [0017](0017-conversations-on-the-server.md) (the roster, Welcomes and KeyPackages),
   [0025](0025-push-without-ids.md) (what a push carries and when),
-  [0109](0109-the-socket-says-when-it-has-caught-up.md) (the caught-up marker)
+  [0108](0108-the-socket-says-when-it-has-caught-up.md) (the caught-up marker)
 
 ## Decision
 

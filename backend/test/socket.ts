@@ -31,7 +31,7 @@ export async function connect(auth: Record<string, string>, extra: Record<string
         ? Promise.resolve(queued.shift()!)
         : new Promise<Frame>((resolve) => waiting.push(resolve)),
     /**
-     * The frames a socket opens with (decision 0109): `hello`, the `notify`
+     * The frames a socket opens with (decision 0108): `hello`, the `notify`
      * of each conversation this device is behind on, then `caught-up`.
      * Answers those `notify` frames.
      */

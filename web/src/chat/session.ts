@@ -3,7 +3,7 @@
 // a plain object so the state transitions are tested without React; the
 // provider in chat.tsx only holds it.
 //
-// A ready chat is not yet a caught-up one (decision 0109): a newly linked
+// A ready chat is not yet a caught-up one (decision 0108): a newly linked
 // browser still waits on the phone's history and on the conversations the
 // server owed its socket. `CatchUp` says which, so the list never shows
 // "no conversations" for a chat that is still arriving.

@@ -5,7 +5,7 @@
 // syncs first, so nothing that arrived while it was closed is missed. The page
 // asks for a sync after it queues a send: the core sends only when it syncs.
 // The server ends what it owed an opened socket with a `caught-up` frame
-// (decision 0109); once the worker has handled it, every frame before it has
+// (decision 0108); once the worker has handled it, every frame before it has
 // been handled too, since the worker answers in order.
 
 import type { CoreEvent, Outcome } from "../generated/core.d.ts";
@@ -29,7 +29,7 @@ export interface SocketDeps {
   onEvents(events: CoreEvent[]): void;
   /** A call failed for good: the device is lost or the core failed (`ChatFailure`). */
   onFailure(failure: ChatFailure): void;
-  /** The core has handled everything the server owed this socket when it opened (0109). */
+  /** The core has handled everything the server owed this socket when it opened (0108). */
   onCaughtUp?(): void;
   wait?: (ms: number) => Promise<void>;
 }

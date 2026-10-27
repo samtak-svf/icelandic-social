@@ -5,7 +5,7 @@
 - Date: 2026-10-21
 - Decided by: Guðröður Atli Jónsson
 - Amended by: [0081](0081-the-browser-runs-the-blocking-core-in-a-worker.md) (a ranged
-  download), [0109](0109-the-socket-says-when-it-has-caught-up.md) (asked for until it comes)
+  download), [0108](0108-the-socket-says-when-it-has-caught-up.md) (asked for until it comes)
 - Builds on: [0064](0064-non-phone-devices-are-linked-devices.md) (history from the approving
   phone), [0023](0023-media-as-encrypted-blobs.md) (media and their segments)
 

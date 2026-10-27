@@ -27,7 +27,7 @@ import { chatSocket, socketUrl } from "./socket.ts";
 
 interface ChatValue {
   state: ChatState;
-  /** What a ready chat still waits on before its store shows everything (0109). */
+  /** What a ready chat still waits on before its store shows everything (0108). */
   catchUp: CatchUp;
   /** The worker's calls; defined once this tab owns the chat. */
   call: ChatCall | undefined;

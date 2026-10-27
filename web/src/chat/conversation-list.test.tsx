@@ -15,7 +15,7 @@ const row: Conversation = {
   mute: { kind: "off" },
 };
 
-describe("the conversation list's notice (decision 0109)", () => {
+describe("the conversation list's notice (decision 0108)", () => {
   it("never says there are no conversations before the chat has caught up", () => {
     expect(listNotice({ rows: [], caughtUp: false }, false, "backlog")).toEqual({
       text: strings.conversations_catching_up,
