@@ -15,6 +15,7 @@ import org.junit.Test
 import samtak.spjall.account.problem
 import samtak.spjall.brand.R
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.NotificationAction
 import samtak.spjall.core.SocialNotificationKind
 import samtak.spjall.social.NoticeBadge
 import samtak.spjall.social.ago
@@ -120,11 +121,6 @@ class PresentationVectorsTest {
             val key = case.text("key")
             val names = case.getValue("actors").jsonArray.map { nullable(it) }
             val where = "${case.text("kind")} $names ${case["actorCount"]}"
-            // Android has no such sentence (it is the web's surface) and the core no such action.
-            if (case["action"]?.jsonPrimitive?.content == "decline_anonymous_post") {
-                assertTrue(where, runCatching { stringId(key) }.isFailure)
-                continue
-            }
             val kind = SocialNotificationKind.valueOf(case.text("kind").uppercase())
             val line =
                 noticeLine(
@@ -134,6 +130,7 @@ class PresentationVectorsTest {
                         .getValue("actorCount")
                         .jsonPrimitive.int
                         .toLong(),
+                    case["action"]?.jsonPrimitive?.content?.let { NotificationAction.valueOf(it.uppercase()) },
                 )
             val id = if (key.endsWith("_many")) R.plurals::class.java.getField(key).getInt(null) else stringId(key)
             assertEquals(where, id, line.key)
