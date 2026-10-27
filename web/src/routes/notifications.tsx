@@ -58,6 +58,7 @@ function text(n: Notification): string {
   const name = authorName(n.actor);
   return {
     comment: () => strings.notice_comment({ name }),
+    reply: () => strings.notice_reply({ name }),
     reaction: () => strings.notice_reaction({ name }),
     join_approved: () => strings.notice_join_approved,
     moderated: () =>

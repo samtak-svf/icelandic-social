@@ -431,12 +431,13 @@ export async function writeComment(
     ...(parent && parent.author !== post.authorId
       ? [
           notice(env, `${commentId}:parent`, {
-            kind: "comment",
+            kind: "reply",
             accountId: parent.author,
             actorId: author,
             communityId: post.communityId,
             postId,
             commentId,
+            parentCommentId: parent.commentId,
           }),
         ]
       : []),

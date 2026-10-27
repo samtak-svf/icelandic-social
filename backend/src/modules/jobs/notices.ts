@@ -4,7 +4,7 @@ import { job } from "./queue.ts";
 // 0063, 0067). The module that makes the change writes it; the notifications
 // module runs it.
 
-type NoticeKind = "comment" | "reaction" | "join_approved" | "moderated";
+type NoticeKind = "comment" | "reply" | "reaction" | "join_approved" | "moderated";
 
 /** Who is told what, by whom, about which thing. Ids only, never content. */
 export type Notice = {
@@ -14,6 +14,8 @@ export type Notice = {
   communityId: string;
   postId?: string;
   commentId?: string;
+  /** For `reply`, the comment replied to: its author is told (decision 0103). */
+  parentCommentId?: string;
   action?: string;
   /** For `reaction`, the emoji (decision 0100). */
   emoji?: string;

@@ -785,14 +785,22 @@ export interface NotificationPage {
   notifications: Array<Notification>;
   /** How many of the caller's notifications are unread */
   unread: number;
+  /** How many unread notifications are newer than `seenAt` (decision 0104) */
+  unseen: number;
+  /** Unix milliseconds the caller has seen its notifications up to; null if never */
+  seenAt: number | null;
   /** The cursor of the next, older page */
   next: string | null;
 }
 
 export interface Notification {
   notificationId: string;
-  kind: "comment" | "reaction" | "join_approved" | "moderated";
+  kind: "comment" | "reply" | "reaction" | "join_approved" | "moderated";
   actor: Author | null;
+  /** The newest three distinct accounts that caused the notification, newest first (decision 0103) */
+  actors: Array<Author>;
+  /** How many distinct accounts caused it; `actor` and `actors` are among them */
+  actorCount: number;
   communityId: string;
   postId: string | null;
   commentId: string | null;
@@ -803,7 +811,30 @@ export interface Notification {
   /** Unix milliseconds */
   createdAt: number;
   read: boolean;
+  /** For `comment` and `reply` the newest comment's text, for `reaction` the post's: whitespace collapsed, at most 100 characters, cut with an ellipsis. Read with the page, null when the caller may no longer read it (decision 0105) */
+  snippet: string | null;
+  /** True when the row is unread and its effective level is `push` now: a client may announce it (decision 0106) */
+  announce: boolean;
 }
+
+export interface NotificationSettings {
+  /** A level for each kind; `push` if never set */
+  kinds: {
+    comment: NotificationLevel;
+    reply: NotificationLevel;
+    reaction: NotificationLevel;
+    join_approved: NotificationLevel;
+    moderated: NotificationLevel;
+  };
+  /** The communities with a level set; the others are `push` */
+  communities: Array<{
+    communityId: string;
+    level: NotificationLevel;
+  }>;
+}
+
+/** `off` writes nothing, `in_app` writes the notification and sends no push, `push` also pushes (decision 0106) */
+export type NotificationLevel = "off" | "in_app" | "push";
 
 // The operations a browser can call: those that take the session cookie,
 // or no credential and are not an app's alone.
@@ -2441,10 +2472,30 @@ export function notifications(args?: {
   return call("GET", "/v1/notifications", args, init);
 }
 
-/** Mark the caller's notifications read, up to a time */
+/** Mark notifications read: all up to a time, or one (decision 0104) */
 export function readNotifications(args: {
   body: {
     /** Every notification created at or before it */
+    upTo?: number;
+    /** One notification, with `read` */
+    notificationId?: string;
+    /** With `notificationId`: true marks it read, false unread again */
+    read?: boolean;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/notifications/read", args, init);
+}
+
+/** Record that the caller has seen its notifications, up to a time (decision 0104) */
+export function seenNotifications(args: {
+  body: {
+    /** Unix milliseconds; seen never moves back */
     upTo: number;
   };
 }, init?: CallInit): Promise<
@@ -2453,5 +2504,71 @@ export function readNotifications(args: {
   | { status: 401; data: ApiError }
   | { status: 426; data: ApiError }
 > {
-  return call("POST", "/v1/notifications/read", args, init);
+  return call("POST", "/v1/notifications/seen", args, init);
+}
+
+/** Delete one of the caller's notifications (decision 0104) */
+export function deleteNotification(args: {
+  path: {
+    notificationId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/notifications/{notificationId}", args, init);
+}
+
+/**
+ * How loudly the caller is told, for each kind and community (decision 0106)
+ *
+ * The effective level of a notification is the lower of its kind's and its community's. `moderated` is never below `in_app`.
+ */
+export function notificationSettings(init?: CallInit): Promise<
+  | { status: 200; data: NotificationSettings }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/notification-settings", undefined, init);
+}
+
+/** Set the level of some kinds; the kinds not given are left as they were */
+export function putNotificationSettings(args: {
+  body: {
+    kinds: {
+      comment?: NotificationLevel;
+      reply?: NotificationLevel;
+      reaction?: NotificationLevel;
+      join_approved?: NotificationLevel;
+      moderated?: NotificationLevel;
+    };
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("PUT", "/v1/notification-settings", args, init);
+}
+
+/** Set how loudly the caller is told of a community (decision 0106) */
+export function setCommunityNotificationLevel(args: {
+  path: {
+    communityId: string;
+  };
+  body: {
+    level: NotificationLevel;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("PUT", "/v1/communities/{communityId}/notification-level", args, init);
 }
