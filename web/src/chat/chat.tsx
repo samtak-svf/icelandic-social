@@ -11,7 +11,13 @@ import {
 import type { CoreEvent } from "../generated/core.d.ts";
 import { type ChatCall } from "./protocol.ts";
 import { ownChat, startChat } from "./owner.ts";
-import { type ChatSession, type ChatState, chatSession, type SessionDeps } from "./session.ts";
+import {
+  type CatchUp,
+  type ChatSession,
+  type ChatState,
+  chatSession,
+  type SessionDeps,
+} from "./session.ts";
 import { chatSocket, socketUrl } from "./socket.ts";
 
 // The chat for the pages under /conversations (decisions 0064, 0081). It is
@@ -21,6 +27,8 @@ import { chatSocket, socketUrl } from "./socket.ts";
 
 interface ChatValue {
   state: ChatState;
+  /** What a ready chat still waits on before its store shows everything (0108). */
+  catchUp: CatchUp;
   /** The worker's calls; defined once this tab owns the chat. */
   call: ChatCall | undefined;
   /** Takes the chat over from the tab that holds it. */
@@ -58,12 +66,18 @@ export function ChatProvider({
   children,
 }: Readonly<{ deps?: SessionDeps; children: ReactNode }>) {
   const [state, setState] = useState<ChatState>("starting");
+  const [catchUp, setCatchUp] = useState<CatchUp>("history");
   const session = useRef<ChatSession | null>(null);
   const listeners = useRef(new Set<(events: CoreEvent[]) => void>());
   useEffect(() => {
-    const own = chatSession(deps ?? browserDeps(), setState, (events) => {
-      for (const listener of listeners.current) listener(events);
-    });
+    const own = chatSession(
+      deps ?? browserDeps(),
+      setState,
+      (events) => {
+        for (const listener of listeners.current) listener(events);
+      },
+      setCatchUp,
+    );
     session.current = own;
     return () => {
       own.close();
@@ -79,8 +93,8 @@ export function ChatProvider({
   }, []);
   const call = state === "starting" ? undefined : session.current?.call();
   const value = useMemo(
-    () => ({ state, call, useHere, restart, sync, subscribe }),
-    [state, call, useHere, restart, sync, subscribe],
+    () => ({ state, catchUp, call, useHere, restart, sync, subscribe }),
+    [state, catchUp, call, useHere, restart, sync, subscribe],
   );
   return <ChatContext value={value}>{children}</ChatContext>;
 }

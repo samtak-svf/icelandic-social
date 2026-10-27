@@ -4,9 +4,13 @@
 // answers with (acks, pongs) go back on the socket. A socket that opens again
 // syncs first, so nothing that arrived while it was closed is missed. The page
 // asks for a sync after it queues a send: the core sends only when it syncs.
+// The server ends what it owed an opened socket with a `caught-up` frame
+// (decision 0108); once the worker has handled it, every frame before it has
+// been handled too, since the worker answers in order.
 
 import type { CoreEvent, Outcome } from "../generated/core.d.ts";
 import { CLIENT } from "../api/call.ts";
+import type { CaughtUpFrame } from "../generated/api.ts";
 import { type ChatCall, ChatFailure } from "./protocol.ts";
 
 /** The part of a `WebSocket` the page uses. */
@@ -25,6 +29,8 @@ export interface SocketDeps {
   onEvents(events: CoreEvent[]): void;
   /** A call failed for good: the device is lost or the core failed (`ChatFailure`). */
   onFailure(failure: ChatFailure): void;
+  /** The core has handled everything the server owed this socket when it opened (0108). */
+  onCaughtUp?(): void;
   wait?: (ms: number) => Promise<void>;
 }
 
@@ -43,6 +49,20 @@ const REVOKED = 4401;
 
 /** Waits before opening again, doubling up to half a minute. */
 const BACKOFF = [1_000, 2_000, 4_000, 8_000, 16_000, 30_000];
+
+const CAUGHT_UP: CaughtUpFrame["type"] = "caught-up";
+
+/** Whether `text` is the server's `caught-up` frame. */
+export function isCaughtUp(text: string): boolean {
+  try {
+    const frame: unknown = JSON.parse(text);
+    return (
+      typeof frame === "object" && frame !== null && "type" in frame && frame.type === CAUGHT_UP
+    );
+  } catch {
+    return false;
+  }
+}
 
 /** Failures after which the socket stays closed. */
 const FINAL = new Set(["device-lost", "closed", "client-too-old", "outdated"]);
@@ -66,8 +86,8 @@ export function chatSocket(url: string, deps: SocketDeps): ChatSocket {
     for (const frame of outcome.frames) live?.send(frame);
   }
 
-  function run(work: Promise<Outcome>) {
-    work.then(apply, (error: unknown) => {
+  function run(work: Promise<Outcome>): Promise<void> {
+    return work.then(apply, (error: unknown) => {
       if (!(error instanceof ChatFailure) || !FINAL.has(error.code)) return;
       stop();
       deps.onFailure(error);
@@ -81,10 +101,17 @@ export function chatSocket(url: string, deps: SocketDeps): ChatSocket {
     current.addEventListener("open", () => {
       attempt = 0;
       live = current;
-      run(deps.call("sync"));
+      void run(deps.call("sync"));
     });
     current.addEventListener("message", (event) => {
-      if (typeof event.data === "string") run(deps.call("frame", event.data));
+      if (typeof event.data !== "string") return;
+      const handled = run(deps.call("frame", event.data));
+      // Older cores ignore the frame; it still waits its turn behind the backlog.
+      if (isCaughtUp(event.data)) {
+        void handled.then(() => {
+          if (!stopped && socket === current) deps.onCaughtUp?.();
+        });
+      }
     });
     current.addEventListener("close", (event) => {
       if (live === current) live = undefined;
@@ -109,7 +136,7 @@ export function chatSocket(url: string, deps: SocketDeps): ChatSocket {
   open();
   return {
     sync() {
-      if (!stopped) run(deps.call("sync"));
+      if (!stopped) void run(deps.call("sync"));
     },
     close: stop,
   };

@@ -81,7 +81,11 @@ export class Inbox extends DurableObject<Env> {
     `);
   }
 
-  /** A WebSocket the Worker has authenticated: `hello`, then what this device has missed. */
+  /**
+   * A WebSocket the Worker has authenticated: `hello`, then what this device
+   * has missed, then `caught-up` (decision 0108). Nothing is awaited between
+   * them, so no live frame comes before the marker.
+   */
   override async fetch(request: Request): Promise<Response> {
     const accountId = request.headers.get(SOCKET_ACCOUNT);
     const deviceId = request.headers.get(SOCKET_DEVICE);
@@ -100,6 +104,7 @@ export class Inbox extends DurableObject<Env> {
       .toArray()) {
       send(server!, { type: "notify", conversationId: conversation_id, seq: latest_seq });
     }
+    send(server!, { type: "caught-up" });
     return new Response(null, { status: 101, webSocket: client });
   }
 

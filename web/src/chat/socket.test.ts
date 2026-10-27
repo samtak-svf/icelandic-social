@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { Outcome } from "../generated/core.d.ts";
 import { type ChatCall, ChatFailure } from "./protocol";
-import { chatSocket, type SocketLike, socketUrl } from "./socket";
+import { chatSocket, isCaughtUp, type SocketLike, socketUrl } from "./socket";
 
 class FakeSocket implements SocketLike {
   sent: string[] = [];
@@ -41,6 +41,7 @@ function harness(answer: (op: string, ...args: unknown[]) => Promise<Outcome>) {
     },
     onEvents: vi.fn(),
     onFailure: vi.fn(),
+    onCaughtUp: vi.fn(),
     wait: async (ms: number) => {
       waits.push(ms);
     },
@@ -158,5 +159,53 @@ describe("the page's socket (decision 0081)", () => {
     h.handle.sync();
     await settle();
     expect(h.sockets[0]!.sent).toHaveLength(2);
+  });
+
+  describe("the caught-up marker (decision 0108)", () => {
+    it("is told only after the worker has handled the marker, and every frame before it", async () => {
+      const answers: (() => void)[] = [];
+      const h = harness(
+        (op) =>
+          new Promise<Outcome>((resolve) => {
+            if (op === "sync") return resolve(nothing);
+            answers.push(() => resolve(nothing));
+          }),
+      );
+      const socket = h.sockets[0]!;
+      socket.emit("open");
+      socket.emit("message", '{"type":"notify","conversation":"c","seq":3}');
+      socket.emit("message", '{"type":"caught-up"}');
+      await settle();
+      expect(h.call).toHaveBeenCalledWith("frame", '{"type":"caught-up"}');
+      expect(h.deps.onCaughtUp).not.toHaveBeenCalled();
+      answers[0]!();
+      await settle();
+      expect(h.deps.onCaughtUp).not.toHaveBeenCalled();
+      answers[1]!();
+      await settle();
+      expect(h.deps.onCaughtUp).toHaveBeenCalledTimes(1);
+    });
+
+    it("is not told by a socket the page has closed", async () => {
+      let answer!: () => void;
+      const h = harness((op) =>
+        op === "frame"
+          ? new Promise<Outcome>((r) => (answer = () => r(nothing)))
+          : Promise.resolve(nothing),
+      );
+      h.sockets[0]!.emit("open");
+      h.sockets[0]!.emit("message", '{"type":"caught-up"}');
+      h.handle.close();
+      answer();
+      await settle();
+      expect(h.deps.onCaughtUp).not.toHaveBeenCalled();
+    });
+
+    it("is recognised by its type alone", () => {
+      expect(isCaughtUp('{"type":"caught-up"}')).toBe(true);
+      expect(isCaughtUp('{"type":"notify"}')).toBe(false);
+      expect(isCaughtUp("not json")).toBe(false);
+      expect(isCaughtUp("null")).toBe(false);
+    });
   });
 });

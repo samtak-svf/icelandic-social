@@ -12,6 +12,8 @@ export const strings = {
   tab_me: "Ég",
   /** The conversation list when there is none yet; points at the invite link (docs/decisions/0022). */
   conversations_empty: "Engin samtöl enn. Deildu hlekknum þínum til að hefja samtal.",
+  /** The conversation list of a browser that has not yet caught up with what the server owed it (docs/decisions/0108). */
+  conversations_catching_up: "Sæki samtölin þín…",
   /** The conversation pane beside the list on an expanded window while none is open (docs/decisions/0093). */
   conversations_pick: "Veldu samtal úr listanum.",
   /** Placeholder of the name search at the top of the new-conversation picker (docs/decisions/0036). */

@@ -6,7 +6,7 @@ import { call, type CallInit } from "../api/call.ts";
 // The schemas.
 
 /** Every frame on the WebSocket, tagged by `type` */
-export type WsFrame = HelloFrame | NotifyFrame | AckFrame | TypingFrame | PingFrame | PongFrame | MuteFrame;
+export type WsFrame = HelloFrame | NotifyFrame | CaughtUpFrame | AckFrame | TypingFrame | PingFrame | PongFrame | MuteFrame;
 
 /** Server to client, first frame on a new socket */
 export interface HelloFrame {
@@ -22,6 +22,11 @@ export interface NotifyFrame {
   conversationId: string;
   /** The newest sequence number in the conversation */
   seq: number;
+}
+
+/** Server to client, once per socket: every `notify` this device was behind on when the socket opened has been sent before it. A client that has handled each frame before it has heard of every conversation it is in (decision 0108) */
+export interface CaughtUpFrame {
+  type: "caught-up";
 }
 
 /** Client to server: moves this device's delivery cursor */

@@ -292,7 +292,7 @@ describe("the push outbox", () => {
     const tablet = await device({ accountId: phone.accountId });
     const { conversationId, path } = await joined(phone.auth);
     const socket = await connect(tablet.auth);
-    expect((await socket.nextOf("hello")).type).toBe("hello");
+    await socket.opened();
 
     const muted = (await (await call("PUT", path, phone.auth, { for: "8h" })).json()) as {
       until: number;
