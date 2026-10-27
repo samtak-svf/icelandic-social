@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use spjall_client::{self as core, ClientError, HistoryError, LinkError, MediaError, api};
 
 use crate::frames::{Frame, Framing};
+use crate::social::{Author, ModerationAction, SocialNotificationKind};
 use crate::{Body, CoreError, Envelope, store_code};
 pub use spjall_client::LinkRequest;
 pub use spjall_client::Person;
@@ -543,11 +544,74 @@ pub struct Notices {
     pub shown: Vec<Notice>,
     /// Conversations whose notifications to take away, before showing.
     pub cleared: Vec<String>,
+    /// Social notifications to announce (0107), oldest first. The app
+    /// writes the sentence with the list row's formatter.
+    pub social: Vec<SocialNotice>,
+    /// Ids of social notifications whose notice to take away, before
+    /// showing: the row was read, here or elsewhere, or deleted.
+    pub social_cleared: Vec<String>,
+}
+
+/// A social notification to announce on a locked screen (0107). It carries
+/// no snippet and nothing that is not in the list row.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct SocialNotice {
+    /// The `notification_id` of the row; `social_cleared` names it too.
+    pub notification_id: String,
+    pub kind: SocialNotificationKind,
+    /// The newest three accounts behind it, newest first.
+    pub actors: Vec<Author>,
+    /// How many distinct accounts caused it, `actors` among them.
+    pub actor_count: u64,
+    pub community_id: String,
+    /// The post to open on a tap; none opens the community.
+    pub post_id: Option<String>,
+    pub comment_id: Option<String>,
+    /// For `Moderated`, the moderator's action.
+    pub action: Option<ModerationAction>,
+    /// For `Reaction`, the emoji.
+    pub emoji: Option<String>,
+    /// Unix milliseconds.
+    pub created_at: u64,
+}
+
+impl From<core::SocialNotice> for SocialNotice {
+    fn from(notice: core::SocialNotice) -> Self {
+        let core::SocialNotice {
+            notification_id,
+            kind,
+            actors,
+            actor_count,
+            community_id,
+            post_id,
+            comment_id,
+            action,
+            emoji,
+            created_at,
+        } = notice;
+        Self {
+            notification_id,
+            kind: kind.into(),
+            actors,
+            actor_count,
+            community_id,
+            post_id,
+            comment_id,
+            action,
+            emoji,
+            created_at,
+        }
+    }
 }
 
 impl From<core::Notices> for Notices {
     fn from(notices: core::Notices) -> Self {
-        let core::Notices { cleared, shown } = notices;
+        let core::Notices {
+            cleared,
+            shown,
+            social,
+            social_cleared,
+        } = notices;
 
         Self {
             shown: shown
@@ -579,6 +643,8 @@ impl From<core::Notices> for Notices {
                 )
                 .collect(),
             cleared,
+            social: social.into_iter().map(Into::into).collect(),
+            social_cleared,
         }
     }
 }

@@ -52,7 +52,7 @@ pub use link::{DeviceLink, Enrolled, LinkCode, LinkError, LinkRequest, LinkState
 pub use media::{MAX_SIZE, MediaError};
 pub use members::Person;
 pub use mute::{Mute, MuteFor};
-pub use notice::{Notice, NoticeKind, Notices};
+pub use notice::{Notice, NoticeKind, Notices, SocialNotice};
 pub use photo::MAX_PHOTO;
 pub use read::Settings;
 use serde::Deserialize;

@@ -667,6 +667,25 @@ const MIGRATIONS: &[(u32, &str)] = &[
          DROP TABLE reactions;
          ALTER TABLE reactions_0101 RENAME TO reactions;",
     ),
+    (
+        20,
+        // Decision 0107: what the device announced of the social
+        // notifications, so a row is announced once, and again only when it
+        // is newer.
+        "-- One row for each announced notification: its id and the
+         -- `created_at` it had when it was last announced.
+         CREATE TABLE social_notices (
+             id         TEXT PRIMARY KEY,
+             created_at INTEGER NOT NULL
+         ) STRICT, WITHOUT ROWID;
+
+         -- Present once the first run has recorded the rows already there,
+         -- which are not announced. An empty table cannot say so: a first
+         -- page with no rows seeds nothing.
+         CREATE TABLE social_notice_seed (
+             id INTEGER PRIMARY KEY CHECK (id = 1)
+         ) STRICT;",
+    ),
 ];
 
 /// The migrations every store has run before `REPAIRS` apply: from 15 on,
@@ -956,6 +975,20 @@ mod tests {
         assert_eq!(store.path(), dir.path().join("spjall.db"));
         assert!(store.path().exists());
         assert_eq!(store.schema_version().unwrap(), MIGRATIONS.len() as u32);
+    }
+
+    /// 0107: the announced notifications and the first-run marker.
+    #[test]
+    fn the_social_notice_tables_start_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::open(dir.path(), &KEY).unwrap();
+        for table in ["social_notices", "social_notice_seed"] {
+            let rows: u32 = store
+                .connection
+                .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r.get(0))
+                .unwrap();
+            assert_eq!(rows, 0);
+        }
     }
 
     #[test]
