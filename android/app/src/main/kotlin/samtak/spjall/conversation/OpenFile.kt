@@ -10,7 +10,7 @@ import samtak.spjall.media.Files
 internal fun openFile(
     context: Context,
     files: Files,
-    opened: ConversationViewModel.Opened,
+    opened: Opened,
 ) {
     try {
         context.startActivity(files.opener(opened.path, opened.mime, opened.name))

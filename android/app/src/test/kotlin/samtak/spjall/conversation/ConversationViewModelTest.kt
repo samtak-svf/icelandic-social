@@ -49,7 +49,7 @@ class ConversationViewModelTest {
 
     private fun TestScope.model(): ConversationViewModel {
         account.conversations = listOf(conversation("c1", person("a2", "Anna")))
-        return ConversationViewModel("c1", account, live, dispatcher, { _, _ -> }) {
+        return ConversationViewModel("c1", account, live, Drafts(), dispatcher, { _, _ -> }) {
             FakeAccount.NOW.toLong() + testScheduler.currentTime
         }.also { runCurrent() }
     }
@@ -198,7 +198,7 @@ class ConversationViewModelTest {
             account.timelines["c1"] = mutableListOf(item(4u))
             val timings = mutableListOf<Pair<Long, Long>>()
             val model =
-                ConversationViewModel("c1", account, live, dispatcher, { queued, sync -> timings += queued to sync }) {
+                ConversationViewModel("c1", account, live, Drafts(), dispatcher, { q, s -> timings += q to s }) {
                     FakeAccount.NOW.toLong() + testScheduler.currentTime
                 }
             runCurrent()

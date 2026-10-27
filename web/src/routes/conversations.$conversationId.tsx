@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type SubmitEvent } from "react";
 import { useChat } from "../chat/chat.tsx";
 import { ConversationAvatar } from "../chat/conversation-avatar.tsx";
+import { useDraft } from "../chat/drafts.ts";
 import {
   canSend,
   conversationBanner,
@@ -34,7 +35,8 @@ function Thread() {
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [more, setMore] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [text, setText] = useState("");
+  // Per conversation, and kept while it is closed (#324).
+  const [text, setText] = useDraft(conversationId);
   const [sending, setSending] = useState(false);
   // Whether the newest page has come: before it, an empty thread is not news.
   const [loaded, setLoaded] = useState(false);

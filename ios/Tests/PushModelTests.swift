@@ -94,6 +94,23 @@ final class PushModelTests: XCTestCase {
         XCTAssertEqual(account.calls, ["setPushToken ab false"])
     }
 
+    /// The extension synced the message in its own process; the open conversation reads it again.
+    func testAPushInTheForegroundReachesTheOpenScreens() async {
+        let model = model()
+        let live = FakeLive(account: account)
+        model.live = live
+        var events = live.events().makeAsyncIterator()
+
+        model.arrived(thread: "c1")
+        model.arrived(thread: "")
+
+        let event = await events.next()
+        XCTAssertEqual(event, .timeline(conversation: "c1", changed: []))
+        XCTAssertTrue(event?.concerns("c1") ?? false)
+        XCTAssertEqual(live.performed, 1)
+        XCTAssertEqual(account.calls, [])
+    }
+
     func testATapOpensItsConversationOnce() {
         let model = model()
         model.tapped("c1")

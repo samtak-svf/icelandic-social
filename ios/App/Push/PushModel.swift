@@ -81,6 +81,15 @@ final class PushModel {
         await notifier.cancel(notices.cleared)
     }
 
+    /// A push arrived while the app was open. The notification service extension synced it into the
+    /// shared store before this, in its own process, so no event of the socket's says so: the open
+    /// screens hear of it from here and read again (#324). A thread that is no conversation (a social
+    /// notice's) concerns no conversation screen.
+    func arrived(thread: String) {
+        guard !thread.isEmpty else { return }
+        live?.perform { _ in Outcome(events: [.timeline(conversation: thread, changed: [])], frames: []) }
+    }
+
     /// The conversation is on screen: its notifications go.
     func dismiss(_ conversation: String) async {
         await notifier.cancel([conversation])

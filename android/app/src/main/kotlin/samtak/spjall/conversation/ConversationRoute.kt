@@ -44,7 +44,7 @@ private fun ConversationRoute(
 ) {
     val context = LocalContext.current
     val model: ConversationViewModel =
-        viewModel(key = "conversation-$id") { ConversationViewModel(id, graph.account, graph.socket) }
+        viewModel(key = "conversation-$id") { ConversationViewModel(id, graph.account, graph.socket, graph.drafts) }
     val state by model.state.collectAsStateWithLifecycle()
     LaunchedEffect(id) { graph.push.dismiss(id) }
     val photo =

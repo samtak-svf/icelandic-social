@@ -9,20 +9,6 @@ import os
 /// asks the core to expire items when the first of them is due.
 @MainActor @Observable
 final class ConversationModel {
-    /// What the composer's text does when sent.
-    enum Mode: Equatable {
-        case new
-        case reply(Item)
-        case edit(Item)
-    }
-
-    /// A photo or file of the timeline, by seq.
-    enum Media: Equatable {
-        case loading
-        case ready(String)
-        case failed
-    }
-
     /// A photo or file picked or taken, waiting above the field until it is sent (decision 0048).
     struct Pending: Equatable {
         let path: String
@@ -62,7 +48,13 @@ final class ConversationModel {
     private(set) var older = true
     /// The other side is typing.
     private(set) var typing = false
-    private(set) var draft = ""
+    /// The composer's text. Outside an edit it is also the conversation's draft, kept in `drafts` so it is
+    /// there again when the conversation is opened again (#324); an edit's text never replaces it.
+    private(set) var draft = "" {
+        didSet {
+            if !mode.isEdit { drafts[id] = draft }
+        }
+    }
     private(set) var mode = Mode.new
     /// The photo or file waiting to go with the field's text as its caption.
     private(set) var attachment: Pending?
@@ -117,6 +109,7 @@ final class ConversationModel {
 
     @ObservationIgnored let account: Account
     @ObservationIgnored let live: Live
+    @ObservationIgnored private let drafts: Drafts
     @ObservationIgnored private let sleep: @Sendable (Duration) async throws -> Void
     @ObservationIgnored private let now: @Sendable () -> UInt64
     @ObservationIgnored private var failed: (() async -> Void)?
@@ -134,14 +127,17 @@ final class ConversationModel {
         id: String,
         account: Account,
         live: Live,
+        drafts: Drafts = Drafts(),
         sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
         now: @escaping @Sendable () -> UInt64 = { UInt64(Date().timeIntervalSince1970 * 1_000) }
     ) {
         self.id = id
         self.account = account
         self.live = live
+        self.drafts = drafts
         self.sleep = sleep
         self.now = now
+        self.draft = drafts[id]
     }
 
     /// Reads the timeline, then again after each event for it, for as long as the screen shows.
@@ -217,10 +213,11 @@ final class ConversationModel {
         draft = text
     }
 
-    /// Back to a new message; an edit's text goes with it.
+    /// Back to a new message; an edit's text goes with it and the draft from before it comes back.
     func cancelMode() {
-        if case .edit = mode { draft = "" }
+        let editing = mode.isEdit
         mode = .new
+        if editing { draft = drafts[id] }
     }
 
     func send() async {
@@ -239,8 +236,10 @@ final class ConversationModel {
             case .edit(let item): item.envelopeId.map { .edit(target: $0, text: text) }
             }
         guard !text.isEmpty, let body else { return }
+        let editing = mode.isEdit
         draft = ""
         mode = .new
+        if editing { draft = drafts[id] }
         stopTyping()
         await queue(body)
     }

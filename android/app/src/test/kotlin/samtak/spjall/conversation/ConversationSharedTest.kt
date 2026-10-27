@@ -31,6 +31,7 @@ class ConversationSharedTest {
     private val dispatcher = StandardTestDispatcher()
     private val account = FakeAccount(signedIn = true)
     private val live = FakeLive(account)
+    private val drafts = Drafts()
 
     @Before fun main() = Dispatchers.setMain(dispatcher)
 
@@ -38,7 +39,7 @@ class ConversationSharedTest {
 
     private fun TestScope.model(): ConversationViewModel {
         account.conversations = listOf(conversation("c1", person("a2", "Anna")))
-        return ConversationViewModel("c1", account, live, dispatcher, { _, _ -> }) {
+        return ConversationViewModel("c1", account, live, drafts, dispatcher, { _, _ -> }) {
             FakeAccount.NOW.toLong() + testScheduler.currentTime
         }.also { runCurrent() }
     }
@@ -118,7 +119,7 @@ class ConversationSharedTest {
             val opened = async { model.opened.first() }
             model.open(shared(model)!!.items.single())
             runCurrent()
-            assertEquals(ConversationViewModel.Opened("/files/3", "application/pdf", "skýrsla.pdf"), opened.await())
+            assertEquals(Opened("/files/3", "application/pdf", "skýrsla.pdf"), opened.await())
             assertEquals(ConversationViewModel.Media.Ready("/files/3"), model.state.value.media[3uL])
         }
 }

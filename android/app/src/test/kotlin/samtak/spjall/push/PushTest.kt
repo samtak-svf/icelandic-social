@@ -1,17 +1,24 @@
 package samtak.spjall.push
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import samtak.spjall.account.FakeAccount
 import samtak.spjall.account.unreachable
 import samtak.spjall.core.Author
+import samtak.spjall.core.Event
 import samtak.spjall.core.Notice
 import samtak.spjall.core.NoticeKind
 import samtak.spjall.core.Notices
+import samtak.spjall.core.Outcome
 import samtak.spjall.core.Person
 import samtak.spjall.core.SocialNotice
 import samtak.spjall.core.SocialNotificationKind
+import samtak.spjall.socket.FakeLive
 
 class PushTest {
     private val anna = Person("a2", "Anna Sigurðardóttir", true)
@@ -29,7 +36,9 @@ class PushTest {
     private val account = FakeAccount(signedIn = true)
     private val notifier = ListNotifier()
     private var foreground = false
-    private val push = Push(account, notifier, { labels }, { "${it.kind} by ${it.actors.size}" }, { foreground })
+    private val live = FakeLive(account)
+    private val push =
+        Push(account, live, notifier, { labels }, { "${it.kind} by ${it.actors.size}" }, { foreground })
 
     private fun notice(
         conversation: String,
@@ -186,6 +195,26 @@ class PushTest {
         )
         assertEquals("Bara þú", alone.title)
     }
+
+    /**
+     * #324: a push while the app is open (its socket between two connections) syncs, and that sync is the
+     * only one that ever returns what it fetched. Its events go to the screens, so an open conversation
+     * reads the message; before, they were dropped and the screen stayed as it was until it was opened again.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun whatAPushSyncFetchesReachesTheScreens() =
+        runTest(UnconfinedTestDispatcher()) {
+            foreground = true
+            val events = mutableListOf<Event>()
+            backgroundScope.launch { live.events.collect(events::add) }
+            account.outcomes += Outcome(listOf(Event.Timeline("c1", listOf(5uL))), emptyList())
+
+            push.wake()
+
+            assertEquals(listOf<Event>(Event.Timeline("c1", listOf(5uL))), events)
+            assertEquals(listOf("sync", "notices"), account.calls)
+        }
 
     @Test
     fun aFailedSyncSaysOnlyThatSomethingArrived() {

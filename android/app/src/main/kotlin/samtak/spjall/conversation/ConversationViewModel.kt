@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import samtak.spjall.account.Account
@@ -43,6 +44,7 @@ class ConversationViewModel(
     private val id: String,
     private val account: Account,
     private val live: Live,
+    private val drafts: Drafts,
     private val io: CoroutineDispatcher = Dispatchers.IO,
     private val timing: (queuedMs: Long, syncMs: Long) -> Unit = ::logSendTiming,
     private val now: () -> Long = System::currentTimeMillis,
@@ -79,13 +81,6 @@ class ConversationViewModel(
     ) {
         val photo: Boolean get() = mime.startsWith("image/")
     }
-
-    /** A file to open in another app. */
-    data class Opened(
-        val path: String,
-        val mime: String,
-        val name: String?,
-    )
 
     /**
      * The photos and files sent in the conversation, for its information screen (0055), newest first;
@@ -145,7 +140,7 @@ class ConversationViewModel(
 
     enum class ComposerAction { ATTACH, SEND }
 
-    private val _state = MutableStateFlow(State())
+    private val _state = MutableStateFlow(State(draft = drafts[id]))
     val state: StateFlow<State> = _state.asStateFlow()
 
     private val _opened = MutableSharedFlow<Opened>(extraBufferCapacity = 1)
@@ -237,8 +232,12 @@ class ConversationViewModel(
         }
     }
 
+    /** Changes the composer; its text outside an edit is the draft that outlives this screen (#324). */
+    private fun compose(f: (State) -> State) =
+        _state.updateAndGet(f).let { if (it.mode !is Mode.Edit) drafts[id] = it.draft }
+
     fun draft(text: String) {
-        _state.update { it.copy(draft = text) }
+        compose { it.copy(draft = text) }
         if (text.isBlank()) stopTyping() else startTyping()
     }
 
@@ -254,16 +253,16 @@ class ConversationViewModel(
         _state.update { it.copy(mode = Mode.Edit(item), draft = text) }
     }
 
-    /** Back to a new message; an edit's text goes with it. */
+    /** Back to a new message; an edit's text goes with it, and the unsent message's comes back. */
     fun cancelMode() {
-        _state.update { it.copy(mode = Mode.New, draft = if (it.mode is Mode.Edit) "" else it.draft) }
+        _state.update { it.copy(mode = Mode.New, draft = if (it.mode is Mode.Edit) drafts[id] else it.draft) }
     }
 
     fun send() {
         val state = _state.value
         val text = state.draft.trim()
         if (state.mode == Mode.New && state.attachment != null) {
-            _state.update { it.copy(draft = "", attachment = null) }
+            compose { it.copy(draft = "", attachment = null) }
             stopTyping()
             sendAttachment(state.attachment, text.ifEmpty { null })
             return
@@ -275,7 +274,8 @@ class ConversationViewModel(
                 is Mode.Edit -> mode.item.envelopeId?.let { Body.Edit(it, text) }
             }
         if (text.isEmpty() || body == null) return
-        _state.update { it.copy(draft = "", mode = Mode.New) }
+        // An edit leaves the unsent message as it was; anything else was that message.
+        compose { it.copy(draft = if (it.mode is Mode.Edit) drafts[id] else "", mode = Mode.New) }
         stopTyping()
         queue(body)
     }
@@ -512,7 +512,7 @@ class ConversationViewModel(
             try {
                 account.sendMedia(id, pending.path, pending.mime, caption, pending.name)
             } catch (e: CoreException) {
-                _state.update {
+                compose {
                     it.copy(attachment = it.attachment ?: pending, draft = it.draft.ifEmpty { caption.orEmpty() })
                 }
                 throw e
