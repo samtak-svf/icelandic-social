@@ -85,6 +85,7 @@
   "location_finding": "Leita að staðsetningu",
   "location_not_found": "Ekki tókst að finna staðsetninguna. Athugaðu að kveikt sé á staðsetningu í símanum.",
   "location_denied": "Forritið hefur ekki leyfi til að lesa staðsetningu. Þú getur leyft það í stillingum símans.",
+  "camera_denied": "Forritið hefur ekki leyfi til að nota myndavélina. Þú getur leyft það í stillingum símans eða valið mynd með plúsnum.",
   "location_open_map_is": "Opna á map.is",
   "location_open_maps": "Opna í kortaappi",
   "location_usage": "Staðsetningin er aðeins lesin þegar þú velur að senda hana í samtali.",

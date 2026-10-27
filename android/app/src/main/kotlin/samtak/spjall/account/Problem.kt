@@ -31,6 +31,9 @@ sealed interface Problem {
     /** The person refused the app their location (0059): only the phone's settings can change it. */
     data object LocationDenied : Problem
 
+    /** The person refused the app the camera (#323): only the phone's settings can change it. */
+    data object CameraDenied : Problem
+
     /** Refused as not this account's to do (`not_permitted`, #362): trying again cannot help. */
     data object NotPermitted : Problem
 

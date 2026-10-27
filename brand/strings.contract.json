@@ -374,6 +374,10 @@
       "surfaces": ["android", "ios"],
       "description": "The person refused location to the app; it can be allowed in the phone's settings (docs/decisions/0059)."
     },
+    "camera_denied": {
+      "surfaces": ["android"],
+      "description": "The person refused the camera to the app; it can be allowed in the phone's settings, or a photo picked with the + menu instead (#323)."
+    },
     "location_open_map_is": {
       "surfaces": ["android", "ios"],
       "description": "Opens the place on map.is in the browser; offered only inside Iceland's area (docs/decisions/0059)."

@@ -1,7 +1,9 @@
 package samtak.spjall.conversation
 
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -11,11 +13,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import samtak.spjall.AppGraph
+import samtak.spjall.account.Problem
 import samtak.spjall.core.Item
 import samtak.spjall.core.MuteFor
 import samtak.spjall.social.SocialRoutes
@@ -59,10 +63,23 @@ private fun ConversationRoute(
         rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { taken ->
             if (taken) graph.files.taken()?.let(model::pick)
         }
+    lateinit var shutter: Shutter
+    val cameraAsked =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { shutter.answered(it) }
+    shutter =
+        Shutter(
+            allowed = {
+                ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                    PackageManager.PERMISSION_GRANTED
+            },
+            ask = { cameraAsked.launch(Manifest.permission.CAMERA) },
+            open = { camera.launch(graph.files.cameraTarget()) },
+            denied = { model.denied(Problem.CameraDenied) },
+        )
     val locator = remember { Locator(context.applicationContext) }
     val where =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
-            if (granted.values.any { it }) model.locate(locator::current) else model.locationDenied()
+            if (granted.values.any { it }) model.locate(locator::current) else model.denied(Problem.LocationDenied)
         }
     LaunchedEffect(model) {
         model.opened.collect { openFile(context, graph.files, it) }
@@ -121,13 +138,7 @@ private fun ConversationRoute(
                 }
             }
 
-            override fun takePhoto() {
-                // A phone with no camera app has nothing to open; the button then does nothing.
-                try {
-                    camera.launch(graph.files.cameraTarget())
-                } catch (_: ActivityNotFoundException) {
-                }
-            }
+            override fun takePhoto() = shutter.press()
 
             override fun fetch(item: Item) = model.fetch(item)
 

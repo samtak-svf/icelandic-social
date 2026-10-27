@@ -157,6 +157,8 @@
     <string name="location_not_found">Ekki tókst að finna staðsetninguna. Athugaðu að kveikt sé á staðsetningu í símanum.</string>
     <!-- The person refused location to the app; it can be allowed in the phone's settings (docs/decisions/0059). -->
     <string name="location_denied">Forritið hefur ekki leyfi til að lesa staðsetningu. Þú getur leyft það í stillingum símans.</string>
+    <!-- The person refused the camera to the app; it can be allowed in the phone's settings, or a photo picked with the + menu instead (#323). -->
+    <string name="camera_denied">Forritið hefur ekki leyfi til að nota myndavélina. Þú getur leyft það í stillingum símans eða valið mynd með plúsnum.</string>
     <!-- Opens the place on map.is in the browser; offered only inside Iceland's area (docs/decisions/0059). -->
     <string name="location_open_map_is">Opna á map.is</string>
     <!-- Opens the place in the phone's map app (docs/decisions/0059). -->
