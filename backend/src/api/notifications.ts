@@ -32,6 +32,10 @@ const Notification = z
     }),
     createdAt: z.int().openapi({ description: "Unix milliseconds" }),
     read: z.boolean(),
+    announce: z.boolean().openapi({
+      description:
+        "True when the row is unread and its effective level is `push` now: a client may announce it (decision 0106)",
+    }),
   })
   .openapi("Notification");
 
@@ -143,6 +147,98 @@ export const deleteNotificationRoute = createRoute({
   responses: {
     204: { description: "Deleted" },
     404: errorResponse("not_found: no such notification of the caller's"),
+    ...INVALID,
+    ...AUTHED,
+  },
+});
+
+const Level = z.enum(["off", "in_app", "push"]).openapi("NotificationLevel", {
+  description:
+    "`off` writes nothing, `in_app` writes the notification and sends no push, `push` also pushes (decision 0106)",
+});
+const KIND_LEVELS = {
+  comment: Level,
+  reply: Level,
+  reaction: Level,
+  join_approved: Level,
+  moderated: Level,
+};
+
+const NotificationSettings = z
+  .object({
+    kinds: z
+      .object(KIND_LEVELS)
+      .openapi({ description: "A level for each kind; `push` if never set" }),
+    communities: z
+      .array(z.object({ communityId: OpaqueId, level: Level }))
+      .openapi({ description: "The communities with a level set; the others are `push`" }),
+  })
+  .openapi("NotificationSettings");
+
+export const notificationSettingsRoute = createRoute({
+  method: "get",
+  path: "/v1/notification-settings",
+  operationId: "notificationSettings",
+  tags,
+  summary: "How loudly the caller is told, for each kind and community (decision 0106)",
+  description:
+    "The effective level of a notification is the lower of its kind's and its community's. `moderated` is never below `in_app`.",
+  security: ACCOUNT,
+  responses: {
+    200: {
+      description: "The settings",
+      content: { "application/json": { schema: NotificationSettings } },
+    },
+    ...AUTHED,
+  },
+});
+
+export const putNotificationSettingsRoute = createRoute({
+  method: "put",
+  path: "/v1/notification-settings",
+  operationId: "putNotificationSettings",
+  tags,
+  summary: "Set the level of some kinds; the kinds not given are left as they were",
+  security: ACCOUNT,
+  request: {
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: z
+            .object({
+              kinds: z
+                .object(KIND_LEVELS)
+                .partial()
+                .refine((k) => k.moderated !== "off", {
+                  message: "`moderated` cannot be off",
+                }),
+            })
+            .openapi({ description: "`moderated` cannot be `off` (400)" }),
+        },
+      },
+    },
+  },
+  responses: { 204: { description: "Stored" }, ...INVALID, ...AUTHED },
+});
+
+export const communityLevelRoute = createRoute({
+  method: "put",
+  path: "/v1/communities/{communityId}/notification-level",
+  operationId: "setCommunityNotificationLevel",
+  tags,
+  summary: "Set how loudly the caller is told of a community (decision 0106)",
+  security: ACCOUNT,
+  request: {
+    params: z.object({ communityId: OpaqueId }),
+    body: {
+      required: true,
+      content: { "application/json": { schema: z.object({ level: Level }) } },
+    },
+  },
+  responses: {
+    204: { description: "Stored" },
+    404: errorResponse("not_found: no such community the caller can see"),
     ...INVALID,
     ...AUTHED,
   },

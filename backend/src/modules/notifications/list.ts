@@ -1,5 +1,6 @@
 import { db } from "../../env/index.ts";
 import { authors } from "../social/index.ts";
+import { announcer } from "./settings.ts";
 
 // The caller's notifications, newest first, and marking them read.
 
@@ -77,7 +78,7 @@ export async function notificationPage(
   before: number | null,
   limit: number,
 ) {
-  const [{ results }, count] = await Promise.all([
+  const [{ results }, count, announces] = await Promise.all([
     db(env)
       .prepare(
         `SELECT notification_id, kind, actor_id, community_id, post_id, comment_id, action,
@@ -89,6 +90,7 @@ export async function notificationPage(
       .bind(accountId, before, limit + 1)
       .all<Row>(),
     counters(env, accountId),
+    announcer(env, accountId),
   ]);
   const shown = results.slice(0, limit);
   const actors = await actorsOf(
@@ -114,6 +116,7 @@ export async function notificationPage(
       emoji: r.emoji,
       createdAt: r.created_at,
       read: r.read_at !== null,
+      announce: r.read_at === null && announces(r),
     })),
     ...count,
     next: results.length > limit && last ? String(last.created_at) : null,

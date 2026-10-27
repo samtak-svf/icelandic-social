@@ -94,6 +94,7 @@ describe("the delivery contract", () => {
       "get /v1/moderation/log platformModerationLog",
       "get /v1/moderation/reports platformReports",
       "get /v1/mutes listMutes",
+      "get /v1/notification-settings notificationSettings",
       "get /v1/notifications notifications",
       "get /v1/people listPeople",
       "get /v1/posts/{postId} getPost",
@@ -143,6 +144,7 @@ describe("the delivery contract", () => {
       "put /v1/communities/{communityId}/cover setCommunityCover",
       "put /v1/communities/{communityId}/invitations/{accountId} inviteToCommunity",
       "put /v1/communities/{communityId}/members/{accountId}/role setCommunityRole",
+      "put /v1/communities/{communityId}/notification-level setCommunityNotificationLevel",
       "put /v1/communities/{communityId}/owner transferCommunity",
       "put /v1/communities/{communityId}/pin pinCommunity",
       "put /v1/communities/{communityId}/posts/{postId}/pin pinPost",
@@ -152,6 +154,7 @@ describe("the delivery contract", () => {
       "put /v1/devices/link-requests/{linkId}/history/parts/{part} putHistoryPart",
       "put /v1/devices/{deviceId}/push setPushToken",
       "put /v1/me/photo setPhoto",
+      "put /v1/notification-settings putNotificationSettings",
       "put /v1/posts/{postId}/reaction react",
       "put /v1/posts/{postId}/vote votePoll",
     ]);

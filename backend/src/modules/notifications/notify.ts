@@ -4,6 +4,7 @@ import type { Notice } from "../jobs/index.ts";
 import type { PushSender } from "../messaging/index.ts";
 import { standing } from "../communities/index.ts";
 import { commentContent, postAccess } from "../social/index.ts";
+import { levelFor } from "./settings.ts";
 
 // The notice job's handler (decisions 0063, 0067, 0103): a notification row for
 // the account told, and a push to its devices that names nothing, as for chat
@@ -109,13 +110,18 @@ export function noticeHandler(sender: PushSender) {
     const group = groupId(key, n);
     const pending = await written(env, key, group);
     if (pending?.pushed_at) return;
+    // What the account chose (decision 0106): off tells it nothing, in_app tells it unpushed.
+    const level = await levelFor(env, n.accountId, n.kind, n.communityId);
+    if (level === "off") return;
     if (!pending) {
       if (!(await stillSo(env, n))) return;
       await write(env, key, group, n, Date.now());
     }
     // An outage throws here, and the job is tried again without a second row.
-    for (const deviceId of await activeDevices(env, n.accountId)) {
-      await sender.send({ deviceId });
+    if (level === "push") {
+      for (const deviceId of await activeDevices(env, n.accountId)) {
+        await sender.send({ deviceId });
+      }
     }
     const now = Date.now();
     await db(env).batch([

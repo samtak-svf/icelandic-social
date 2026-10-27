@@ -3066,6 +3066,10 @@
           },
           "read": {
             "type": "boolean"
+          },
+          "announce": {
+            "type": "boolean",
+            "description": "True when the row is unread and its effective level is `push` now: a client may announce it (decision 0106)"
           }
         },
         "required": [
@@ -3080,8 +3084,76 @@
           "action",
           "emoji",
           "createdAt",
-          "read"
+          "read",
+          "announce"
         ]
+      },
+      "NotificationSettings": {
+        "type": "object",
+        "properties": {
+          "kinds": {
+            "type": "object",
+            "properties": {
+              "comment": {
+                "$ref": "#/components/schemas/NotificationLevel"
+              },
+              "reply": {
+                "$ref": "#/components/schemas/NotificationLevel"
+              },
+              "reaction": {
+                "$ref": "#/components/schemas/NotificationLevel"
+              },
+              "join_approved": {
+                "$ref": "#/components/schemas/NotificationLevel"
+              },
+              "moderated": {
+                "$ref": "#/components/schemas/NotificationLevel"
+              }
+            },
+            "required": [
+              "comment",
+              "reply",
+              "reaction",
+              "join_approved",
+              "moderated"
+            ],
+            "description": "A level for each kind; `push` if never set"
+          },
+          "communities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "communityId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                  "example": "c_9f3a1b"
+                },
+                "level": {
+                  "$ref": "#/components/schemas/NotificationLevel"
+                }
+              },
+              "required": [
+                "communityId",
+                "level"
+              ]
+            },
+            "description": "The communities with a level set; the others are `push`"
+          }
+        },
+        "required": [
+          "kinds",
+          "communities"
+        ]
+      },
+      "NotificationLevel": {
+        "type": "string",
+        "enum": [
+          "off",
+          "in_app",
+          "push"
+        ],
+        "description": "`off` writes nothing, `in_app` writes the notification and sends no push, `push` also pushes (decision 0106)"
       }
     },
     "parameters": {}
@@ -13665,6 +13737,234 @@
           },
           "404": {
             "description": "not_found: no such notification of the caller's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notification-settings": {
+      "get": {
+        "operationId": "notificationSettings",
+        "tags": [
+          "notifications"
+        ],
+        "summary": "How loudly the caller is told, for each kind and community (decision 0106)",
+        "description": "The effective level of a notification is the lower of its kind's and its community's. `moderated` is never below `in_app`.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettings"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putNotificationSettings",
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Set the level of some kinds; the kinds not given are left as they were",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kinds": {
+                    "type": "object",
+                    "properties": {
+                      "comment": {
+                        "$ref": "#/components/schemas/NotificationLevel"
+                      },
+                      "reply": {
+                        "$ref": "#/components/schemas/NotificationLevel"
+                      },
+                      "reaction": {
+                        "$ref": "#/components/schemas/NotificationLevel"
+                      },
+                      "join_approved": {
+                        "$ref": "#/components/schemas/NotificationLevel"
+                      },
+                      "moderated": {
+                        "$ref": "#/components/schemas/NotificationLevel"
+                      }
+                    }
+                  }
+                },
+                "required": [
+                  "kinds"
+                ],
+                "description": "`moderated` cannot be `off` (400)"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Stored"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/communities/{communityId}/notification-level": {
+      "put": {
+        "operationId": "setCommunityNotificationLevel",
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Set how loudly the caller is told of a community (decision 0106)",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "communityId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "level": {
+                    "$ref": "#/components/schemas/NotificationLevel"
+                  }
+                },
+                "required": [
+                  "level"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Stored"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such community the caller can see",
             "content": {
               "application/json": {
                 "schema": {

@@ -811,7 +811,28 @@ export interface Notification {
   /** Unix milliseconds */
   createdAt: number;
   read: boolean;
+  /** True when the row is unread and its effective level is `push` now: a client may announce it (decision 0106) */
+  announce: boolean;
 }
+
+export interface NotificationSettings {
+  /** A level for each kind; `push` if never set */
+  kinds: {
+    comment: NotificationLevel;
+    reply: NotificationLevel;
+    reaction: NotificationLevel;
+    join_approved: NotificationLevel;
+    moderated: NotificationLevel;
+  };
+  /** The communities with a level set; the others are `push` */
+  communities: Array<{
+    communityId: string;
+    level: NotificationLevel;
+  }>;
+}
+
+/** `off` writes nothing, `in_app` writes the notification and sends no push, `push` also pushes (decision 0106) */
+export type NotificationLevel = "off" | "in_app" | "push";
 
 // The operations a browser can call: those that take the session cookie,
 // or no credential and are not an app's alone.
@@ -2497,4 +2518,55 @@ export function deleteNotification(args: {
   | { status: 426; data: ApiError }
 > {
   return call("DELETE", "/v1/notifications/{notificationId}", args, init);
+}
+
+/**
+ * How loudly the caller is told, for each kind and community (decision 0106)
+ *
+ * The effective level of a notification is the lower of its kind's and its community's. `moderated` is never below `in_app`.
+ */
+export function notificationSettings(init?: CallInit): Promise<
+  | { status: 200; data: NotificationSettings }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/notification-settings", undefined, init);
+}
+
+/** Set the level of some kinds; the kinds not given are left as they were */
+export function putNotificationSettings(args: {
+  body: {
+    kinds: {
+      comment?: NotificationLevel;
+      reply?: NotificationLevel;
+      reaction?: NotificationLevel;
+      join_approved?: NotificationLevel;
+      moderated?: NotificationLevel;
+    };
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("PUT", "/v1/notification-settings", args, init);
+}
+
+/** Set how loudly the caller is told of a community (decision 0106) */
+export function setCommunityNotificationLevel(args: {
+  path: {
+    communityId: string;
+  };
+  body: {
+    level: NotificationLevel;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("PUT", "/v1/communities/{communityId}/notification-level", args, init);
 }
