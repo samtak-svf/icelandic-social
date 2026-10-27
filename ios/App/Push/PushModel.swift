@@ -92,6 +92,15 @@ final class PushModel {
         opened = conversation
     }
 
+    /// A notification was tapped. A social one carries its community; a conversation's thread is its id.
+    func tapped(thread: String, community: String?, post: String?) {
+        if let community {
+            tappedSocial(post: post, community: community)
+        } else {
+            tapped(thread)
+        }
+    }
+
     /// A social notification was tapped: its post, or its community when it has none.
     func tappedSocial(post: String?, community: String) {
         openedSocial = SocialTap(post: post, community: community)
