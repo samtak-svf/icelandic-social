@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -114,7 +115,15 @@ class ConversationsScreenshotTest {
     }
 
     @Test
-    fun empty() = shoot(ConversationsViewModel.State(loaded = true, connection = Connection.Online))
+    fun empty() = shoot(ConversationsViewModel.State(loaded = true, caughtUp = true, connection = Connection.Online))
+
+    /** Read and empty, before the server has sent what it owed this sign-in (decision 0110). */
+    @Test
+    fun catchingUp() {
+        shoot(ConversationsViewModel.State(loaded = true, connection = Connection.Online))
+        val text = ApplicationProvider.getApplicationContext<Context>().getString(R.string.conversations_catching_up)
+        compose.onNodeWithText(text).assertExists()
+    }
 
     @Test
     fun unread() =

@@ -70,6 +70,33 @@ class ConversationsViewModelTest {
         }
 
     @Test
+    fun emptyAndNotCaughtUpShowsCatchingUp() =
+        runTest(dispatcher) {
+            val model = model()
+            assertTrue(model.state.value.loaded)
+            assertTrue(model.state.value.catchingUp)
+            assertFalse(model.state.value.empty)
+        }
+
+    @Test
+    fun afterCaughtUpShowsEmpty() =
+        runTest(dispatcher) {
+            val model = model()
+            live.caughtUp.value = true
+            advanceUntilIdle()
+            assertFalse(model.state.value.catchingUp)
+            assertTrue(model.state.value.empty)
+        }
+
+    @Test
+    fun aListOpenedAfterTheMarkerPassedIsNotLeftWaiting() =
+        runTest(dispatcher) {
+            live.caughtUp.value = true
+            val model = model()
+            assertTrue(model.state.value.empty)
+        }
+
+    @Test
     fun aFailedFirstReadEndsThePlaceholdersAndASearchHasNone() =
         runTest(dispatcher) {
             account.failNext = unreachable()

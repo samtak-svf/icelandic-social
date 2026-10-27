@@ -72,6 +72,13 @@ interface Live {
      */
     val signedOut: StateFlow<Boolean>
 
+    /**
+     * True once the server said this sign-in has been sent everything it owed (decision 0108). Latched: it
+     * stays true across reconnects, so a list opened after the marker passed does not wait for another.
+     * Each start clears it (decision 0110).
+     */
+    val caughtUp: StateFlow<Boolean>
+
     /** Syncs now, as after a change the server has to hear of. */
     fun sync() = perform { it.sync() }
 
@@ -113,6 +120,9 @@ class Socket(
     private val _signedOut = MutableStateFlow(false)
     override val signedOut: StateFlow<Boolean> = _signedOut.asStateFlow()
 
+    private val _caughtUp = MutableStateFlow(false)
+    override val caughtUp: StateFlow<Boolean> = _caughtUp.asStateFlow()
+
     private var job: Job? = null
 
     @Volatile private var link: Link? = null
@@ -124,6 +134,7 @@ class Socket(
     fun start() {
         if (job?.isActive == true) return
         _signedOut.value = false
+        _caughtUp.value = false
         job = scope.launch { run() }
     }
 
@@ -215,7 +226,10 @@ class Socket(
 
     private suspend fun emit(outcome: Outcome) {
         outcome.frames.forEach { frame -> link?.send(frame) }
-        outcome.events.forEach { _events.emit(it) }
+        outcome.events.forEach {
+            if (it is Event.CaughtUp) _caughtUp.value = true
+            _events.emit(it)
+        }
     }
 
     /** Doubling from 1 s to 30 s, each wait drawn from its upper half so that devices spread out. */

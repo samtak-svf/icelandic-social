@@ -161,7 +161,7 @@ class ConversationsScreenTest {
 
     @Test
     fun anEmptyListPointsAtTheInviteAndSaysWhenOffline() {
-        show(ConversationsViewModel.State(loaded = true, connection = Connection.Offline))
+        show(ConversationsViewModel.State(loaded = true, caughtUp = true, connection = Connection.Offline))
         compose.onNodeWithText(text(R.string.conversations_empty)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.connection_offline)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.invite)).performClick()
@@ -171,7 +171,7 @@ class ConversationsScreenTest {
 
     @Test
     fun anEmptyListAlsoFindsPeopleInThePicker() {
-        show(ConversationsViewModel.State(loaded = true, connection = Connection.Online))
+        show(ConversationsViewModel.State(loaded = true, caughtUp = true, connection = Connection.Online))
         // Everyone signed in is in the picker (0036), so the empty list leads there too (0043).
         compose.onNodeWithText(text(R.string.find_people)).assertIsDisplayed().performClick()
         assertEquals(listOf("newConversation"), calls)
@@ -349,7 +349,7 @@ class ConversationsScreenTest {
         var state by mutableStateOf(ConversationsViewModel.State())
         compose.setContent { SpjallTheme { ConversationsScreen(state, actions) } }
         compose.onAllNodesWithContentDescription(text(R.string.loading)).assertCountEquals(1)
-        state = state.copy(loaded = true)
+        state = state.copy(loaded = true, caughtUp = true)
         compose.onNodeWithContentDescription(text(R.string.loading)).assertDoesNotExist()
         compose.onNodeWithText(text(R.string.conversations_empty)).assertIsDisplayed()
     }
