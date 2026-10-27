@@ -2,16 +2,16 @@ import Foundation
 import Observation
 import SpjallCore
 
-/// The notifications tab (decisions 0063, 0103, 0104): comments, replies and reactions to this account's posts and
+/// The notifications (decisions 0063, 0103, 0104, 0109): comments, replies and reactions to this account's posts and
 /// comments, an approved request to join, and a moderator's action on what it wrote, one row per thing, newest
-/// first. The tab bar shows how many are unseen: opening the tab marks them seen, and only opening a row (or
+/// first. The bell shows how many are unseen: opening the list marks them seen, and only opening a row (or
 /// "mark all read") reads it. Rows made since the last look are listed apart, as new.
 @MainActor @Observable
 final class NotificationsModel {
     private(set) var notifications: [SocialNotification] = []
     /// How many are unread, as the server counts them.
     private(set) var unread = 0
-    /// How many have not been seen, which the tab bar shows (0104).
+    /// How many have not been seen, which the bell shows (0104, 0109).
     private(set) var unseen = 0
     /// When the list was last looked at, as it was before this visit: rows made after it are new. Kept for the
     /// whole visit, so the rows do not slide into "earlier" the moment they are seen.
@@ -53,7 +53,7 @@ final class NotificationsModel {
         await perform(again: { await self.load() }) { try await self.first() }
     }
 
-    /// The newest page again, for the tab bar's count, when the app comes back to the front. Quiet: a failure
+    /// The newest page again, for the bell's count, when the app comes back to the front. Quiet: a failure
     /// leaves what is shown.
     func refresh() async {
         guard !busy else { return }
@@ -72,7 +72,7 @@ final class NotificationsModel {
         }
     }
 
-    /// Marks the list seen up to the newest shown, which clears the tab's count and reads no row. Quiet: a failure
+    /// Marks the list seen up to the newest shown, which clears the bell's count and reads no row. Quiet: a failure
     /// leaves the count, and the next visit marks it again.
     func markSeen() async {
         guard let newest = notifications.first?.createdAt else { return }

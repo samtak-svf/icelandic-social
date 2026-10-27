@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// The five places as a narrow rail down the leading edge (decision 0087), for the medium and expanded size classes:
-/// the same items, the same badges and the same selection as the `TabBar`, an icon over a small label. One view at
-/// both classes, so a window that grows from medium to expanded keeps its rail.
+/// The places as a narrow rail down the leading edge (decision 0087), for the medium and expanded size classes: the
+/// same items and the same selection as the `TabBar`, an icon over a small label; the notifications are the bell in
+/// each tab's header (decision 0109). One view at both classes, so a window that grows from medium to expanded keeps
+/// its rail.
 struct NavRail<Tab: Hashable>: View {
     @Binding var selection: Tab
     let items: [TabBar<Tab>.Item]
@@ -21,9 +22,6 @@ struct NavRail<Tab: Hashable>: View {
                         Image(systemName: item.systemImage)
                             .font(.system(size: 22))
                             .frame(height: 24)
-                            .overlay(alignment: .topTrailing) {
-                                if item.badge > 0 { Badge(count: item.badge) }
-                            }
                         Text(verbatim: item.label.capitals)
                             .font(.sans(9.5, black: true, relativeTo: .caption2))
                             .tracking(0.57)
@@ -40,7 +38,6 @@ struct NavRail<Tab: Hashable>: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text(verbatim: item.label))
-                .accessibilityValue(Text(verbatim: item.badge > 0 ? plural("notifications_unread", item.badge) : ""))
                 .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
             }
             Spacer(minLength: 0)

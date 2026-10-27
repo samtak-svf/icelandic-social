@@ -20,8 +20,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
 /**
- * A tab's cream band (0053): its name in capitals under the status bar, and an optional action at the end.
- * The list and Ég share it, so both tabs start the same way.
+ * A tab's cream band (0053): its name in capitals under the status bar, an optional action, and at the end the
+ * notifications bell with its count (0109) when the shell provides one. Every tab shares it, so every tab starts the
+ * same way and the bell sits in the same place on each.
  */
 @Composable
 fun ScreenHeader(
@@ -46,6 +47,7 @@ fun ScreenHeader(
             modifier = Modifier.weight(1f).semantics { heading() },
         )
         action?.invoke(this)
+        LocalBell.current?.let { BellButton(it) }
     }
 }
 

@@ -47,7 +47,7 @@ fun NotificationsScreen(
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
-            ScreenHeader(stringResource(R.string.tab_notifications)) {
+            ScreenHeader(stringResource(R.string.notifications_title)) {
                 if (state.notifications.any { !it.read }) {
                     IconButton(onClick = actions::markAllRead) {
                         Icon(AppIcons.Check, contentDescription = stringResource(R.string.notifications_mark_all_read))

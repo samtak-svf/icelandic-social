@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationRail
@@ -31,8 +29,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -44,15 +40,13 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
 /**
- * One tab: its icon, its name, and whether it is the one showing. A [badge] is a count drawn on the icon, read
- * out as [badgeDescription].
+ * One tab: its icon, its name, and whether it is the one showing. No tab carries a count: the notifications count
+ * is on the bell in the header (decision 0109).
  */
 class Tab(
     val icon: ImageVector,
     val label: String,
     val selected: Boolean,
-    val badge: Long = 0,
-    val badgeDescription: String? = null,
     val onClick: () -> Unit,
 )
 
@@ -83,7 +77,6 @@ fun TabBar(tabs: List<Tab>) {
                                 .weight(1f)
                                 .heightIn(min = HEIGHT.dp)
                                 .selectable(selected = tab.selected, role = Role.Tab, onClick = tab.onClick)
-                                .semantics { tab.badgeDescription?.let { stateDescription = it } }
                                 .padding(top = 10.dp, bottom = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(3.dp),
@@ -135,7 +128,7 @@ private fun fits(
 
 /**
  * The same tabs down the left edge (decision 0087), for a window of the medium size class and wider: the icon over
- * the name, the count on the icon, red when it is the one showing.
+ * the name, red when it is the one showing.
  */
 @Composable
 fun TabRail(tabs: List<Tab>) {
@@ -151,7 +144,6 @@ fun TabRail(tabs: List<Tab>) {
                 icon = { TabIcon(tab, if (tab.selected) Palette.primary else Palette.mutedFg) },
                 label = { Text(tab.label.capitals(), style = LABEL, maxLines = 1, softWrap = false) },
                 alwaysShowLabel = true,
-                modifier = Modifier.semantics { tab.badgeDescription?.let { stateDescription = it } },
                 colors =
                     NavigationRailItemDefaults.colors(
                         selectedTextColor = Palette.primary,
@@ -163,23 +155,13 @@ fun TabRail(tabs: List<Tab>) {
     }
 }
 
-/** A tab's icon with its count drawn on it. */
+/** A tab's icon. */
 @Composable
 private fun TabIcon(
     tab: Tab,
     tint: Color,
 ) {
-    BadgedBox(
-        badge = {
-            if (tab.badge > 0) {
-                Badge(containerColor = Palette.primary, contentColor = Palette.primaryFg) {
-                    Text(if (tab.badge > MAX) "$MAX+" else "${tab.badge}")
-                }
-            }
-        },
-    ) {
-        Icon(tab.icon, contentDescription = null, tint = tint, modifier = Modifier.size(ICON.dp))
-    }
+    Icon(tab.icon, contentDescription = null, tint = tint, modifier = Modifier.size(ICON.dp))
 }
 
 /** The test tags of the two forms of the tabs. */
@@ -188,7 +170,6 @@ const val NAVIGATION_RAIL = "navigation-rail"
 
 private const val HEIGHT = 56
 private const val ICON = 20
-private const val MAX = 99
 private const val LABEL_SIZE = 9.5f
 private const val STEP = 0.25f
 

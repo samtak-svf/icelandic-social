@@ -66,6 +66,7 @@ import samtak.spjall.social.socialScreens
 import samtak.spjall.ui.AdaptiveNavigation
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.AppRoutes
+import samtak.spjall.ui.Bell
 import samtak.spjall.ui.LocalPhotos
 import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.Tab
@@ -205,8 +206,8 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * The four tabs, the conversation list, the communities, the notifications and Ég (decisions 0044, 0063), and
-     * the screens they lead to.
+     * The three tabs, the conversation list, the communities and Ég (decisions 0044, 0063), the notifications behind
+     * the bell in every tab's band (0109), and the screens they lead to.
      */
     @Composable
     private fun TabScreens(signIns: Int) {
@@ -224,14 +225,16 @@ class MainActivity : ComponentActivity() {
                 .value
                 ?.destination
                 ?.route
-        // The notifications tab's count, asked for on every change of screen, as the web does (decision 0067).
+        // The bell's count, asked for on every change of screen, as the web does (decisions 0067, 0109).
         val unread: UnreadViewModel = viewModel(key = "unread-$signIns") { UnreadViewModel(graph.social) }
         val count by unread.count.collectAsStateWithLifecycle()
         LaunchedEffect(route) { unread.refresh() }
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { unread.refresh() }
+        val go: (String) -> Unit = { nav.navigate(it) { tab() } }
         // Each screen pads for the status bar itself, so its cream band can reach the top edge.
         AdaptiveNavigation(
-            tabs = tabs(route, count) { nav.navigate(it) { tab() } },
+            tabs = tabs(route, go),
+            bell = bell(route, count, go),
             shown = route in TABS,
             wide = route in SocialRoutes.WIDE,
         ) {
@@ -280,41 +283,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** The four tabs, the notifications one with its unread count. */
-    @Composable
-    private fun tabs(
-        route: String?,
-        unread: Long,
-        go: (String) -> Unit,
-    ): List<Tab> {
-        val communities = SocialRoutes.COMMUNITIES
-        val notifications = SocialRoutes.NOTIFICATIONS
-        return listOf(
-            Tab(AppIcons.Chat, stringResource(R.string.tab_conversations), route == AppRoutes.LIST) {
-                go(AppRoutes.LIST)
-            },
-            Tab(AppIcons.Communities, stringResource(R.string.tab_communities), route == communities) {
-                go(communities)
-            },
-            Tab(
-                AppIcons.Bell,
-                stringResource(R.string.tab_notifications),
-                route == notifications,
-                onClick = { go(notifications) },
-                badge = unread,
-                badgeDescription =
-                    if (unread >
-                        0
-                    ) {
-                        pluralStringResource(R.plurals.notifications_unread, unread.toInt(), unread)
-                    } else {
-                        null
-                    },
-            ),
-            Tab(AppIcons.Person, stringResource(R.string.tab_me), route == AppRoutes.ME) { go(AppRoutes.ME) },
-        )
-    }
-
     companion object {
         /** A notification's tap (push/SystemNotifier.kt), with [EXTRA_CONVERSATION] unless it is the fallback. */
         const val ACTION_OPEN_CONVERSATION = "samtak.spjall.OPEN_CONVERSATION"
@@ -324,7 +292,42 @@ class MainActivity : ComponentActivity() {
         const val ACTION_OPEN_SOCIAL = "samtak.spjall.OPEN_SOCIAL"
         const val EXTRA_ROUTE = "route"
 
+        // The notifications screen is no tab, but it is reached from every tab and keeps the tabs under it.
         private val TABS =
             setOf(AppRoutes.LIST, SocialRoutes.COMMUNITIES, SocialRoutes.NOTIFICATIONS, AppRoutes.ME)
     }
 }
+
+/** The three tabs; notifications are behind the bell (decision 0109). */
+@Composable
+private fun tabs(
+    route: String?,
+    go: (String) -> Unit,
+): List<Tab> {
+    val communities = SocialRoutes.COMMUNITIES
+    return listOf(
+        Tab(AppIcons.Chat, stringResource(R.string.tab_conversations), route == AppRoutes.LIST) {
+            go(AppRoutes.LIST)
+        },
+        Tab(AppIcons.Communities, stringResource(R.string.tab_communities), route == communities) {
+            go(communities)
+        },
+        Tab(AppIcons.Person, stringResource(R.string.tab_me), route == AppRoutes.ME) { go(AppRoutes.ME) },
+    )
+}
+
+/** The bell at the end of every tab's band, with the unread count, red on the notifications screen. */
+@Composable
+private fun bell(
+    route: String?,
+    unread: Long,
+    go: (String) -> Unit,
+): Bell =
+    Bell(
+        label = stringResource(R.string.notifications_title),
+        unread = unread,
+        unreadDescription =
+            if (unread > 0) pluralStringResource(R.plurals.notifications_unread, unread.toInt(), unread) else null,
+        selected = route == SocialRoutes.NOTIFICATIONS,
+        onClick = { go(SocialRoutes.NOTIFICATIONS) },
+    )

@@ -23,7 +23,7 @@ function Notifications() {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="font-headline text-3xl">{strings.tab_notifications}</h1>
+        <h1 className="font-headline text-3xl">{strings.notifications_title}</h1>
         {rows !== null && rows.some((n) => !n.read) && (
           <Button onClick={markAll}>{strings.notifications_mark_all_read}</Button>
         )}

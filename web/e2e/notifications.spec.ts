@@ -35,9 +35,9 @@ test("two reactions are one row; seen clears the badge, a click reads the row; a
 
   // One row, naming both, whichever reacted last.
   await a.reload();
-  const tab = a.getByRole("link", { name: new RegExp(strings.tab_notifications) });
-  await expect(tab).toContainText(strings.notifications_unread({ count: 1 }));
-  await tab.click();
+  const bell = a.getByRole("link", { name: new RegExp(strings.notifications_title) });
+  await expect(bell).toContainText(strings.notifications_unread({ count: 1 }));
+  await bell.click();
   const names = ["Björn Prófsson", "Cecilía Prófsdóttir"] as const;
   const sentence = (name: string, other: string) =>
     a.getByText(strings.notice_reaction_two({ name, other }), { exact: true });
@@ -46,13 +46,13 @@ test("two reactions are one row; seen clears the badge, a click reads the row; a
   const row = a.getByRole("listitem").filter({ has: both });
 
   // Opening the list cleared the badge, and the row is still unread.
-  await expect(tab).not.toContainText(strings.notifications_unread({ count: 1 }));
+  await expect(bell).not.toContainText(strings.notifications_unread({ count: 1 }));
   await expect(row.locator("> div")).toHaveClass(/bg-muted/);
 
   // Clicking the row reads it; back on the list it is plain.
   await row.getByRole("link").click();
   await expect(a.getByText("Fundur á morgun").first()).toBeVisible();
-  await tab.click();
+  await bell.click();
   await expect(a.getByRole("listitem").filter({ has: both }).locator("> div")).not.toHaveClass(
     /bg-muted/,
   );

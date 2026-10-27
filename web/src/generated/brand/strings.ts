@@ -246,9 +246,9 @@ export const strings = {
   communities_tab_mine: "Mín samfélög",
   /** Tab of the community hub: the search and the list of communities to join. */
   communities_tab_discover: "Finna",
-  /** Navigation: what was addressed to this account in communities (decision 0067). */
-  tab_notifications: "Tilkynningar",
-  /** Badge text on the notifications tab: how many are unread. */
+  /** The notifications screen's title, and the name the bell in the top bar is read out by: what was addressed to this account in communities (decisions 0067, 0109). */
+  notifications_title: "Tilkynningar",
+  /** The count on the bell in the top bar, read out with it: how many notifications are unread (decision 0109). */
   notifications_unread: (args: { count: number }): string =>
     plural.select(args.count) === "one"
       ? String(args.count) + " ólesin"

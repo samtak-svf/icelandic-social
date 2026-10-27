@@ -247,7 +247,7 @@
   "communities_tab_feed": "Nýjast",
   "communities_tab_mine": "Mín samfélög",
   "communities_tab_discover": "Finna",
-  "tab_notifications": "Tilkynningar",
+  "notifications_title": "Tilkynningar",
   "notifications_unread": {
     "one": "{count} ólesin",
     "other": "{count} ólesnar"
