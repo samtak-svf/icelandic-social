@@ -32,3 +32,5 @@ func noticeRoute(_ notification: SocialNotification) -> SocialRoute {
     let target = noticeTarget(
         kind: notification.kind, postId: notification.postId, communityId: notification.communityId)
     if let post = target.post { return .post(post) }
+    return .community(target.community)
+}
