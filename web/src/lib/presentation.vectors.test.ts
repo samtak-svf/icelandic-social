@@ -4,6 +4,7 @@ import { strings } from "../generated/brand/strings.ts";
 import { describe as describeProblem, refused } from "../problem.ts";
 import { initials } from "../social/avatar.tsx";
 import { listStamp } from "./is-format.ts";
+import { noticeText } from "./notice-text.ts";
 import { relativeTime } from "./relative-time.ts";
 
 // The shared presentation vectors (#275): Android and iOS read the same file,
@@ -63,6 +64,37 @@ describe("the shared problem text", () => {
           ? ({ kind: "unreachable" } as const)
           : refused(v.code === null ? "Bad Gateway" : { error: v.code, requestId: "r1" });
       expect(describeProblem(problem).message).toBe(say(v.key));
+    });
+  }
+});
+
+const KINDS = ["comment", "reply", "reaction", "join_approved", "moderated"] as const;
+function kindOf(kind: string): (typeof KINDS)[number] {
+  const found = KINDS.find((k) => k === kind);
+  if (found === undefined) throw new Error(`no notification kind ${kind}`);
+  return found;
+}
+
+describe("the shared notification sentences", () => {
+  for (const v of vectors.notice) {
+    it(`${v.kind} ${v.action ?? ""} ${v.actorCount} -> ${v.key}`, () => {
+      const got = noticeText({
+        kind: kindOf(v.kind),
+        action: v.action ?? null,
+        actors: v.actors.map((name) => (name === null ? null : { name })),
+        actorCount: v.actorCount,
+      });
+      expect(got.key).toBe(v.key);
+      expect(got.args).toEqual(v.args);
+      expect(got.badge).toBe(v.badge);
+      const name = (arg: string | null | undefined) => arg ?? strings.person_deleted;
+      const args: Record<string, string | number> = { name: name(v.args.name) };
+      if (v.args.other !== undefined) args.other = name(v.args.other);
+      if (v.args.count !== undefined) args.count = v.args.count;
+      const text: unknown = Reflect.get(strings, v.key);
+      expect(got.text).toBe(
+        typeof text === "function" ? String(Reflect.apply(text, undefined, [args])) : text,
+      );
     });
   }
 });

@@ -3,6 +3,7 @@ import { strings } from "../generated/brand/strings.ts";
 import { Avatar } from "./avatar.tsx";
 import type { Members } from "./members.ts";
 import { ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
+import { CommunityLevel } from "./notification-level.tsx";
 
 // Um samfélagið (decisions 0079, 0087): the whole description, who may read
 // and join, where it is hosted, and the members with their roles. The facts
@@ -37,6 +38,7 @@ export function About({ community }: Readonly<{ community: Community }>) {
       className="mt-4 flex flex-col gap-3 rounded-md border border-border p-3"
     >
       <AboutFacts community={community} />
+      {community.role !== null && <CommunityLevel communityId={community.communityId} />}
     </section>
   );
 }
