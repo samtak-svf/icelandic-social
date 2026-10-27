@@ -12,6 +12,12 @@
 # its ADCDownloadAuth cookie to the Mac over ssh stdin, fetch the .xip from
 # download.developer.apple.com with curl, delete the cookie, then xip -x.
 #
+# The runner job hook (tooling/mac-runner-hook.sh) has ONE copy, in the checkout.
+# This script runs from stdin and has no checkout, so the hook is sent first,
+# from the Linux checkout, and the step below only wires it (re-send it to update):
+#
+#   ssh samtak-mac 'mkdir -p ~/.local/libexec/spjall && cat > ~/.local/libexec/spjall/mac-runner-hook.sh && chmod +x ~/.local/libexec/spjall/mac-runner-hook.sh' < tooling/mac-runner-hook.sh
+#
 # Nothing that signs goes on this Mac: no certificate, no profile, no store
 # key. The release workflow stays on GitHub's hosted runners.
 set -euo pipefail
@@ -117,5 +123,51 @@ export ANDROID_HOME="$ANDROID_HOME"
 export JAVA_HOME="$JAVA_HOME"
 EOF
 fi
+
+# Runner job hook: reaps what a cancelled job left running under the runner's
+# _work (#318). One copy of it, sent over ssh (see the header); wired here into
+# each samtak-svf runner's .env, which a runner reads only when it starts.
+hook="$HOME/.local/libexec/spjall/mac-runner-hook.sh"
+if [ ! -x "$hook" ]; then
+  say "runner job hook missing: $hook (the header of this script says how to send it), then run this again"
+  exit 1
+fi
+for dir in "$HOME/actions-runner" "$HOME/actions-runner-2"; do
+  [ -f "$dir/.runner" ] || continue
+  # .runner is JSON with a BOM; only a runner of the samtak-svf org gets the hook.
+  bom=$'\xef\xbb\xbf'
+  runner=$(LC_ALL=C sed "1s/^$bom//" "$dir/.runner")
+  case "$(jq -r '.gitHubUrl // empty' <<<"$runner")" in
+    https://github.com/samtak-svf | https://github.com/samtak-svf/*) ;;
+    *) continue ;;
+  esac
+  name=$(jq -r '.agentName' <<<"$runner")
+  changed=0
+  for var in ACTIONS_RUNNER_HOOK_JOB_STARTED ACTIONS_RUNNER_HOOK_JOB_COMPLETED; do
+    line="$var=$hook"
+    if grep -qxF "$line" "$dir/.env" 2>/dev/null; then
+      continue
+    fi
+    changed=1
+    touch "$dir/.env"
+    if grep -q "^$var=" "$dir/.env"; then
+      grep -v "^$var=" "$dir/.env" >"$dir/.env.new" || true
+      printf '%s\n' "$line" >>"$dir/.env.new"
+      mv "$dir/.env.new" "$dir/.env"
+    else
+      # Keep the file's other lines; start a new line if the last has no newline.
+      [ -s "$dir/.env" ] && [ -n "$(tail -c1 "$dir/.env")" ] && printf '\n' >>"$dir/.env"
+      printf '%s\n' "$line" >>"$dir/.env"
+    fi
+  done
+  if [ "$changed" -eq 0 ]; then
+    say "runner $name: job hook already wired"
+  elif pgrep -f "$dir/.*Runner.Worker" >/dev/null; then
+    say "runner $name: job hook wired; a job is running, so it takes effect at the next restart"
+  else
+    say "runner $name: job hook wired, restarting the runner"
+    launchctl kickstart -k "gui/$(id -u)/actions.runner.samtak-svf.$name"
+  fi
+done
 
 say "ready: node tooling/mac-remote.mjs from the Linux checkout"
