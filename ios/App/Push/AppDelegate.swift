@@ -102,6 +102,6 @@ struct SystemNotifier: Notifier {
     }
 
     func cancel(_ conversations: [String]) async {
-        await UNUserNotificationCenter.current().removeDelivered(conversations: conversations)
+        await UNUserNotificationCenter.current().removeDelivered(threads: conversations)
     }
 }

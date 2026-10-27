@@ -70,7 +70,7 @@ struct HomeView: View {
         _list = State(initialValue: ConversationsModel(account: signIn.account, live: socket))
         _me = State(initialValue: MeModel(account: signIn.account))
         _communities = State(initialValue: CommunitiesModel(social: social))
-        _notices = State(initialValue: NotificationsModel(social: social))
+        _notices = State(initialValue: NotificationsModel(social: social, cancel: push.notifier.cancel))
         _onboarding = State(initialValue: OnboardingModel(notifier: push.notifier))
         _photos = State(initialValue: PhotoCache(account: signIn.account, social: social, decode: displayPhoto))
     }
@@ -190,7 +190,7 @@ struct HomeView: View {
             .init(tab: .conversations, label: localized("tab_conversations"), systemImage: "bubble.left"),
             .init(tab: .communities, label: localized("tab_communities"), systemImage: "person.3"),
             .init(
-                tab: .notifications, label: localized("tab_notifications"), systemImage: "bell", badge: notices.unread),
+                tab: .notifications, label: localized("tab_notifications"), systemImage: "bell", badge: notices.unseen),
             .init(tab: .me, label: localized("tab_me"), systemImage: "person"),
         ]
     }
@@ -203,7 +203,7 @@ struct HomeView: View {
             socialStack($communitiesPath) {
                 CommunitiesView(model: communities) { communitiesPath.append(.community($0)) }
             }
-        case .notifications: socialStack($noticesPath) { NotificationsView(model: notices) }
+        case .notifications: socialStack($noticesPath) { NotificationsView(model: notices, communities: communities) }
         case .me: meStack
         }
     }

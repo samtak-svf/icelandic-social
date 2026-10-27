@@ -56,7 +56,7 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
             return nil
         }
         let center = UNUserNotificationCenter.current()
-        await center.removeDelivered(conversations: notices.cleared)
+        await center.removeDelivered(threads: notices.cleared)
         let all = announcements(notices.shown, labels: .brand)
         // Nothing new, as when the app was opened meanwhile: iOS does not show empty content.
         guard let first = all.first else { return UNNotificationContent() }

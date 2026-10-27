@@ -28,10 +28,11 @@ extension Announcement {
 }
 
 extension UNUserNotificationCenter {
-    /// Takes away every delivered notification in these conversations' threads.
-    func removeDelivered(conversations: [String]) async {
-        guard !conversations.isEmpty else { return }
-        let threads = Set(conversations)
+    /// Takes away every delivered notification in these threads: a conversation's (decision 0025) or a social
+    /// notification's own, named by its id (decision 0107).
+    func removeDelivered(threads: [String]) async {
+        guard !threads.isEmpty else { return }
+        let threads = Set(threads)
         let ids = await deliveredNotifications()
             .filter { threads.contains($0.request.content.threadIdentifier) }
             .map(\.request.identifier)

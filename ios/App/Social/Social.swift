@@ -127,6 +127,16 @@ protocol Social: Sendable {
     func notifications(before: String?, limit: UInt32) throws -> SocialNotificationPage
     /// Marks read every notification made at or before `upTo`.
     func readNotifications(upTo: UInt64) throws
+    /// Records that the list was looked at up to `upTo`: it clears the tab's count and reads no row (0104).
+    func seenNotifications(upTo: UInt64) throws
+    /// Marks one notification read, or unread again.
+    func readNotification(_ id: String, read: Bool) throws
+    func deleteNotification(_ id: String) throws
+    /// The level for each kind and each community that has one (0106).
+    func notificationSettings() throws -> NotificationSettings
+    /// Sets the level of the given kinds and leaves the others.
+    func setNotificationSettings(kinds: [NotificationKindLevel]) throws
+    func setCommunityNotificationLevel(_ community: String, level: NotificationLevel) throws
 }
 
 extension Social {
@@ -349,6 +359,24 @@ extension CoreAccount: Social {
     }
 
     func readNotifications(upTo: UInt64) throws { try core().readNotifications(upTo: upTo) }
+
+    func seenNotifications(upTo: UInt64) throws { try core().seenNotifications(upTo: upTo) }
+
+    func readNotification(_ id: String, read: Bool) throws {
+        try core().readNotification(notificationId: id, read: read)
+    }
+
+    func deleteNotification(_ id: String) throws { try core().deleteNotification(notificationId: id) }
+
+    func notificationSettings() throws -> NotificationSettings { try core().notificationSettings() }
+
+    func setNotificationSettings(kinds: [NotificationKindLevel]) throws {
+        try core().setNotificationSettings(kinds: kinds)
+    }
+
+    func setCommunityNotificationLevel(_ community: String, level: NotificationLevel) throws {
+        try core().setCommunityNotificationLevel(communityId: community, level: level)
+    }
 }
 
 /// Where a hosted screen leads: a community, a post, or a community's report queue.
