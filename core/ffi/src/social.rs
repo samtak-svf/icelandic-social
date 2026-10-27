@@ -7,6 +7,8 @@
 use std::path::Path;
 
 use spjall_client::api;
+pub mod notifications;
+pub use notifications::*;
 pub use spjall_client::api::{JoinRequest, JoinState};
 
 use crate::CoreError;

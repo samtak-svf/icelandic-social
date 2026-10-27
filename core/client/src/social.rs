@@ -4,6 +4,8 @@
 //! it goes into the store beside the conversations. A post's images (0065)
 //! are the one exception, kept as files beside the photos.
 
+mod notifications;
+
 use std::path::{Path, PathBuf};
 
 use crate::api::{

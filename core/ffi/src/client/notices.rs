@@ -5,7 +5,7 @@ use spjall_client as core;
 
 use crate::client::Person;
 use crate::client::people;
-use crate::notifications::SocialNotificationKind;
+use crate::social::SocialNotificationKind;
 use crate::social::{Author, ModerationAction};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]

@@ -14,8 +14,6 @@ use spjall_envelope as envelope;
 
 pub mod client;
 pub mod frames;
-pub mod notices;
-pub mod notifications;
 pub mod social;
 
 uniffi::setup_scaffolding!();

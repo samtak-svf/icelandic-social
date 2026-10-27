@@ -8,8 +8,9 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use spjall_client::{self as core, ClientError, HistoryError, LinkError, MediaError, api};
 
 use crate::frames::{Frame, Framing};
-use crate::notices::Notices;
 use crate::{Body, CoreError, Envelope, store_code};
+pub mod notices;
+pub use notices::{Notice, NoticeKind, Notices, SocialNotice};
 pub use spjall_client::LinkRequest;
 pub use spjall_client::Person;
 pub use spjall_client::api::DeviceKind;
