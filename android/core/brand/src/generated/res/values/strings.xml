@@ -1056,4 +1056,6 @@
     <string name="moderation_log_anonymous_off">Nafnlausar færslur voru bannaðar.</string>
     <!-- Entry in the moderation log: a moderator revealed an anonymous post's author (decision 0091). -->
     <string name="moderation_log_author_revealed">Höfundur nafnlausrar færslu var sýndur.</string>
+    <!-- A notification: a moderator declined the reader's anonymous post (decision 0091). -->
+    <string name="notice_anonymous_declined">Stjórnandi hafnaði nafnlausri færslu frá þér.</string>
 </resources>

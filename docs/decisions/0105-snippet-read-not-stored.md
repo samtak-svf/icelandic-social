@@ -1,6 +1,6 @@
 # 0105. A notification's snippet is read with the list, never stored
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the Worker, the core, the web and both apps (#308)
 - Date: 2026-10-27
 - Decided by: Guðröður Atli Jónsson, approving the notifications v2 plan (#308)
 - Builds on: [0067](0067-jobs-and-notifications.md) (rows carry ids only),

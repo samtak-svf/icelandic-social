@@ -2486,7 +2486,7 @@
       "description": "Entry in the moderation log: a moderator revealed an anonymous post's author (decision 0091)."
     },
     "notice_anonymous_declined": {
-      "surfaces": ["web"],
+      "surfaces": ["android", "ios", "web"],
       "description": "A notification: a moderator declined the reader's anonymous post (decision 0091)."
     }
   }

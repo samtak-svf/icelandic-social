@@ -1,6 +1,6 @@
 # 0104. Seen is not read
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the Worker, the core, the web and both apps (#308)
 - Date: 2026-10-27
 - Decided by: Guðröður Atli Jónsson, approving the notifications v2 plan (#308)
 - Amends: [0067](0067-jobs-and-notifications.md) (marked read up to a time)

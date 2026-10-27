@@ -8,6 +8,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import samtak.spjall.core.Author
+import samtak.spjall.core.NotificationAction
 import samtak.spjall.core.SocialNotice
 import samtak.spjall.core.SocialNotificationKind
 
@@ -22,6 +23,16 @@ class NoticeTextTest {
         vararg names: String?,
         count: Int = names.size,
     ) = noticeLine(kind, names.toList(), count.toLong()).text(resources)
+
+    @Test
+    fun aDeclinedAnonymousPostHasItsOwnSentence() {
+        val declined =
+            noticeLine(SocialNotificationKind.MODERATED, emptyList(), 0, NotificationAction.DECLINE_ANONYMOUS_POST)
+        assertEquals("Stjórnandi hafnaði nafnlausri færslu frá þér.", declined.text(resources))
+        assertEquals(NoticeBadge.MODERATOR, declined.badge)
+        val other = noticeLine(SocialNotificationKind.MODERATED, emptyList(), 0, NotificationAction.HIDE_POST)
+        assertEquals(noticeLine(SocialNotificationKind.MODERATED, emptyList(), 0).key, other.key)
+    }
 
     @Test
     fun oneActorReadsPlain() {
