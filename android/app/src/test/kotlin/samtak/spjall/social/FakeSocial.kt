@@ -1,6 +1,5 @@
 package samtak.spjall.social
 
-import samtak.spjall.account.unreachable
 import samtak.spjall.core.Author
 import samtak.spjall.core.Card
 import samtak.spjall.core.CardCommunity
@@ -37,8 +36,6 @@ import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportState
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
-import samtak.spjall.core.SocialNotification
-import samtak.spjall.core.SocialNotificationPage
 import samtak.spjall.core.TargetStanding
 import samtak.spjall.core.TargetState
 
@@ -47,11 +44,9 @@ import samtak.spjall.core.TargetState
  * instead, [failOn] makes every call of that name throw, and [calls] records what was asked, in order.
  */
 @Suppress("TooManyFunctions")
-class FakeSocial : Social {
-    val calls = mutableListOf<String>()
-    var failNext: CoreException? = null
-    var failOn: String? = null
-
+class FakeSocial :
+    FakeSocialNotifications(),
+    Social {
     /** Every community, by id. */
     val communities = linkedMapOf<String, Community>()
 
@@ -60,12 +55,6 @@ class FakeSocial : Social {
 
     /** Each post's comments, oldest first. */
     val comments = mutableMapOf<String, MutableList<Comment>>()
-
-    /** Newest first. */
-    var notifications = listOf<SocialNotification>()
-
-    /** Up to which time the notifications are read. */
-    var readUpTo: ULong = 0uL
 
     /** Each community's reports, open and closed. */
     val reports = mutableMapOf<String, MutableList<Report>>()
@@ -86,8 +75,6 @@ class FakeSocial : Social {
     /** The server's refusal of the next image uploaded, none taking it. */
     var refuseImage: CoreException? = null
 
-    /** The size of a page when a call asks for more than this; small, to test paging. */
-    var pageSize = Int.MAX_VALUE
     private var made = 0
 
     /** The featured posts of each community, newest pin first, at most three (0088). */
@@ -101,26 +88,6 @@ class FakeSocial : Social {
 
     /** The author [revealAuthor] gives. */
     var revealedAuthor: Author = anna
-
-    private fun call(name: String) {
-        calls += name
-        if (name == failOn) throw unreachable()
-        failNext?.let {
-            failNext = null
-            throw it
-        }
-    }
-
-    private fun <T> page(
-        items: List<T>,
-        after: String?,
-        limit: UInt,
-    ): Pair<List<T>, String?> {
-        val start = after?.toInt() ?: 0
-        val size = minOf(limit.toInt(), pageSize)
-        val end = minOf(items.size, start + size)
-        return items.subList(start, end).toList() to (if (end < items.size) "$end" else null)
-    }
 
     override fun communities(
         query: String?,
@@ -695,21 +662,6 @@ class FakeSocial : Social {
                 CardKind.COMMUNITY -> null
             } ?: Card.Unavailable(ref)
         }
-    }
-
-    override fun notifications(
-        before: String?,
-        limit: UInt,
-    ): SocialNotificationPage {
-        call("notifications ${before.orEmpty()} $limit".replace("  ", " "))
-        val shown = notifications.map { it.copy(read = it.createdAt <= readUpTo) }
-        val (items, next) = page(shown, before, limit)
-        return SocialNotificationPage(items, shown.count { !it.read }.toULong(), 0uL, null, next)
-    }
-
-    override fun readNotifications(upTo: ULong) {
-        call("readNotifications $upTo")
-        readUpTo = maxOf(readUpTo, upTo)
     }
 }
 

@@ -86,6 +86,9 @@ class MainActivity : ComponentActivity() {
     /** A conversation a notification asked to open, held until the signed-in screens can. */
     private val opens = Channel<String>(Channel.CONFLATED)
 
+    /** A route a social notification asked to open (decision 0107), held the same way. */
+    private val socialOpens = Channel<String>(Channel.CONFLATED)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // The bars' icons follow the system's mode, as the theme does (decision 0052).
@@ -106,10 +109,14 @@ class MainActivity : ComponentActivity() {
 
     /** A tapped notification, an invite link, or a provider's redirect back to the app's scheme. */
     private fun handle(intent: Intent) {
-        if (intent.action == ACTION_OPEN_CONVERSATION) {
-            intent.getStringExtra(EXTRA_CONVERSATION)?.let { opens.trySend(it) }
-            return
+        when (intent.action) {
+            ACTION_OPEN_CONVERSATION -> intent.getStringExtra(EXTRA_CONVERSATION)?.let { opens.trySend(it) }
+            ACTION_OPEN_SOCIAL -> intent.getStringExtra(EXTRA_ROUTE)?.let { socialOpens.trySend(it) }
+            else -> openLink(intent)
         }
+    }
+
+    private fun openLink(intent: Intent) {
         val uri = intent.data?.takeIf { intent.action == Intent.ACTION_VIEW } ?: return
         val token = inviteToken(uri.toString())
         when {
@@ -180,6 +187,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** A tapped notification opens its conversation, or its post, over the tab it belongs to. */
+    @Composable
+    private fun OpenedFromNotifications(nav: NavController) {
+        LaunchedEffect(Unit) {
+            opens.receiveAsFlow().collect {
+                nav.navigate(AppRoutes.LIST) { tab() }
+                nav.navigate(conversationRoute(it))
+            }
+        }
+        LaunchedEffect(Unit) {
+            socialOpens.receiveAsFlow().collect {
+                nav.navigate(SocialRoutes.NOTIFICATIONS) { tab() }
+                nav.navigate(it)
+            }
+        }
+    }
+
     /**
      * The four tabs, the conversation list, the communities, the notifications and Ég (decisions 0044, 0063), and
      * the screens they lead to.
@@ -193,12 +217,7 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(list) { list.opened.collect { nav.navigate(conversationRoute(it)) } }
         // Kenni is offered once after a sign-in, and "Seinna" goes on to the list (decision 0035).
         LaunchedEffect(Unit) { signIn.offers.collect { nav.navigate(AppRoutes.VERIFY) } }
-        LaunchedEffect(Unit) {
-            opens.receiveAsFlow().collect {
-                nav.navigate(AppRoutes.LIST) { tab() }
-                nav.navigate(conversationRoute(it))
-            }
-        }
+        OpenedFromNotifications(nav)
         val route =
             nav
                 .currentBackStackEntryAsState()
@@ -228,7 +247,9 @@ class MainActivity : ComponentActivity() {
                     graph.files,
                     nav,
                     unread::refresh,
-                ) { post -> nav.navigate("${AppRoutes.SHARE}/$post") }
+                    sharePost = { post -> nav.navigate("${AppRoutes.SHARE}/$post") },
+                    dismissNotice = graph.push::dismissNotice,
+                )
                 composable(AppRoutes.VERIFY) { VerifyRoute(nav, signIn) }
                 composable(AppRoutes.LINK) { LinkRoute(nav, graph) }
                 composable(AppRoutes.PEOPLE) { PeopleRoute(nav, graph) }
@@ -298,6 +319,10 @@ class MainActivity : ComponentActivity() {
         /** A notification's tap (push/SystemNotifier.kt), with [EXTRA_CONVERSATION] unless it is the fallback. */
         const val ACTION_OPEN_CONVERSATION = "samtak.spjall.OPEN_CONVERSATION"
         const val EXTRA_CONVERSATION = "conversation"
+
+        /** A social notification's tap (push/SystemNotifier.kt), with the route to open in [EXTRA_ROUTE]. */
+        const val ACTION_OPEN_SOCIAL = "samtak.spjall.OPEN_SOCIAL"
+        const val EXTRA_ROUTE = "route"
 
         private val TABS =
             setOf(AppRoutes.LIST, SocialRoutes.COMMUNITIES, SocialRoutes.NOTIFICATIONS, AppRoutes.ME)

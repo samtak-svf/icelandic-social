@@ -24,7 +24,6 @@ import samtak.spjall.core.ReportPage
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportState
 import samtak.spjall.core.ReportTarget
-import samtak.spjall.core.SocialNotificationPage
 
 /**
  * What the community screens ask of the core (decisions 0060, 0063, 0066, 0067). This content is hosted, not
@@ -33,7 +32,7 @@ import samtak.spjall.core.SocialNotificationPage
  * rather than on [CoreClient], so their tests need no native library. One function per core call.
  */
 @Suppress("TooManyFunctions")
-interface Social {
+interface Social : SocialNotifications {
     /** A page of the communities this account may see, [query] matching their names; [after] is the `next` before. */
     fun communities(
         query: String?,
@@ -352,23 +351,17 @@ interface Social {
 
     /** What each reference shows, one card each in their order. */
     fun cards(refs: List<CardRef>): List<Card>
-
-    /** A page of this account's notifications, newest first, with how many are unread. */
-    fun notifications(
-        before: String?,
-        limit: UInt,
-    ): SocialNotificationPage
-
-    /** Every notification made at or before [upTo], the newest shown, is read. */
-    fun readNotifications(upTo: ULong)
 }
 
 /** [Social] over the core's client, the one [samtak.spjall.account.CoreAccount] uses. */
 @Suppress("TooManyFunctions")
-class CoreSocial(
-    open: () -> CoreClient,
-) : Social {
-    private val client by lazy(open)
+class CoreSocial private constructor(
+    private val lazyClient: Lazy<CoreClient>,
+) : Social,
+    SocialNotifications by CoreNotifications(lazyClient) {
+    constructor(open: () -> CoreClient) : this(lazy(open))
+
+    private val client by lazyClient
 
     override fun communities(
         query: String?,
@@ -625,11 +618,4 @@ class CoreSocial(
     ) = client.communityModerationLog(communityId, before, limit)
 
     override fun cards(refs: List<CardRef>) = client.cards(refs)
-
-    override fun notifications(
-        before: String?,
-        limit: UInt,
-    ) = client.notifications(before, limit)
-
-    override fun readNotifications(upTo: ULong) = client.readNotifications(upTo)
 }

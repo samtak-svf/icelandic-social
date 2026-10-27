@@ -1,13 +1,17 @@
 package samtak.spjall.push
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import samtak.spjall.account.FakeAccount
 import samtak.spjall.account.unreachable
+import samtak.spjall.core.Author
 import samtak.spjall.core.Notice
 import samtak.spjall.core.NoticeKind
 import samtak.spjall.core.Notices
 import samtak.spjall.core.Person
+import samtak.spjall.core.SocialNotice
+import samtak.spjall.core.SocialNotificationKind
 
 class PushTest {
     private val anna = Person("a2", "Anna Sigurðardóttir", true)
@@ -25,7 +29,7 @@ class PushTest {
     private val account = FakeAccount(signedIn = true)
     private val notifier = ListNotifier()
     private var foreground = false
-    private val push = Push(account, notifier, { labels }, { foreground })
+    private val push = Push(account, notifier, { labels }, { "${it.kind} by ${it.actors.size}" }, { foreground })
 
     private fun notice(
         conversation: String,
@@ -71,6 +75,57 @@ class PushTest {
             ),
             notifier.shown,
         )
+    }
+
+    private fun social(
+        id: String,
+        postId: String? = "p1",
+    ) = SocialNotice(
+        id,
+        SocialNotificationKind.COMMENT,
+        listOf(Author("a2", "Anna", verified = false), Author("a3", "Bjarni", verified = false)),
+        2uL,
+        "c1",
+        postId,
+        null,
+        null,
+        null,
+        1_700_000_000_000uL,
+    )
+
+    @Test
+    fun aSocialNoticeIsAnnouncedInTheBackgroundWithTheSentenceAndWhereItOpens() {
+        account.notices =
+            Notices(emptyList(), emptyList(), listOf(social("n1"), social("n2", postId = null)), listOf("n0"))
+
+        push.wake()
+
+        assertEquals(
+            listOf(
+                SocialAnnouncement("n1", "COMMENT by 2", "c1", "p1"),
+                SocialAnnouncement("n2", "COMMENT by 2", "c1", null),
+            ),
+            notifier.socialShown,
+        )
+        assertEquals(listOf("n0"), notifier.socialCancelled.single())
+    }
+
+    @Test
+    fun aSocialNoticeIsNotAnnouncedWhileTheAppIsOpenButItsClearedOnesAreCancelled() {
+        foreground = true
+        account.notices = Notices(emptyList(), emptyList(), listOf(social("n1")), listOf("n0"))
+
+        push.wake()
+
+        assertTrue(notifier.socialShown.isEmpty())
+        assertEquals(listOf("n0"), notifier.socialCancelled.single())
+    }
+
+    @Test
+    fun readingARowTakesItsNotificationAway() {
+        push.dismissNotice("n1")
+
+        assertEquals(listOf("n1"), notifier.socialCancelled.single())
     }
 
     @Test
@@ -217,6 +272,8 @@ class PushTest {
     private class ListNotifier : Notifier {
         val calls = mutableListOf<String>()
         val shown = mutableListOf<Announcement>()
+        val socialShown = mutableListOf<SocialAnnouncement>()
+        val socialCancelled = mutableListOf<List<String>>()
 
         override fun show(announcements: List<Announcement>) {
             shown += announcements
@@ -224,6 +281,14 @@ class PushTest {
 
         override fun cancel(conversations: List<String>) {
             calls += "cancel $conversations"
+        }
+
+        override fun showSocial(announcements: List<SocialAnnouncement>) {
+            socialShown += announcements
+        }
+
+        override fun cancelSocial(notificationIds: List<String>) {
+            socialCancelled += listOf(notificationIds)
         }
 
         override fun fallback(shown: Boolean) {

@@ -3,6 +3,7 @@ package samtak.spjall.push
 import samtak.spjall.core.Notice
 import samtak.spjall.core.NoticeKind
 import samtak.spjall.core.Person
+import samtak.spjall.core.SocialNotice
 
 /** The brand's words a notification needs, read from resources once per push. */
 data class Labels(
@@ -59,4 +60,25 @@ private fun Notice.words(labels: Labels) =
         NoticeKind.FILE -> text ?: labels.file
         NoticeKind.POST -> labels.post
         NoticeKind.LOCATION -> labels.location
+    }
+
+/**
+ * One social notification (decision 0107): [text] is the sentence the list row says, written by the caller from the
+ * same rule, and never carries a snippet, since a notification shows on a locked screen. A tap opens the post, or
+ * the community when there is none.
+ */
+data class SocialAnnouncement(
+    val notificationId: String,
+    val text: String,
+    val communityId: String,
+    val postId: String?,
+)
+
+/** The notices the core asks this device to announce, in its order, each with [sentence] for its words. */
+fun socialAnnouncements(
+    shown: List<SocialNotice>,
+    sentence: (SocialNotice) -> String,
+): List<SocialAnnouncement> =
+    shown.map {
+        SocialAnnouncement(it.notificationId, sentence(it), it.communityId, it.postId)
     }

@@ -39,6 +39,11 @@ class BrandConventionPlugin : Plugin<Project> {
                             "CHANNEL_MESSAGES",
                             quoted(ids.string("store", "androidNotificationChannels", "messages")),
                         )
+                        buildConfigField(
+                            "String",
+                            "CHANNEL_ALERTS",
+                            quoted(ids.string("store", "androidNotificationChannels", "alerts")),
+                        )
                         buildConfigField("String", "DATABASE_FILE", quoted(ids.string("store", "databaseFile")))
                         buildConfigField("String", "URL_SCHEME", quoted(ids.string("store", "urlScheme")))
                         // The manifest's intent filters use these as placeholders.

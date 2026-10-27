@@ -25,7 +25,7 @@ class UnreadViewModelTest {
     @After fun reset() = Dispatchers.resetMain()
 
     @Test
-    fun countsTheUnreadAndKeepsTheCountWhenAskingFails() =
+    fun countsTheUnseenAndKeepsTheCountWhenAskingFails() =
         runTest(dispatcher) {
             social.notifications =
                 listOf(
@@ -41,9 +41,11 @@ class UnreadViewModelTest {
             model.refresh()
             advanceUntilIdle()
             assertEquals(2L, model.count.value)
-            social.readUpTo = 20uL
+            // Reading nothing but seeing the list clears the badge (0104); the rows stay unread.
+            social.seenUpTo = 20uL
             model.refresh()
             advanceUntilIdle()
             assertEquals(0L, model.count.value)
+            assertTrue(social.notifications.isNotEmpty())
         }
 }

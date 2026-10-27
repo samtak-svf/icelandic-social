@@ -2,12 +2,18 @@ package samtak.spjall.push
 
 import samtak.spjall.account.Account
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.SocialNotice
 
 /** Posts and takes away notifications: the system's in the app, a list in tests. */
 interface Notifier {
     fun show(announcements: List<Announcement>)
 
     fun cancel(conversations: List<String>)
+
+    /** Posts the social notifications, one per notification id, so a group that grew replaces its own. */
+    fun showSocial(announcements: List<SocialAnnouncement>)
+
+    fun cancelSocial(notificationIds: List<String>)
 
     /** Shows or takes away the one notification that says only that something arrived. */
     fun fallback(shown: Boolean)
@@ -23,6 +29,8 @@ class Push(
     private val account: Account,
     private val notifier: Notifier,
     private val labels: () -> Labels,
+    /** The words of a social notice: the list row's sentence, from the same rule (decision 0107). */
+    private val sentence: (SocialNotice) -> String,
     private val foreground: () -> Boolean,
 ) {
     private val lock = Any()
@@ -59,6 +67,9 @@ class Push(
     /** A conversation was opened: its notification has been seen. */
     fun dismiss(conversation: String) = notifier.cancel(listOf(conversation))
 
+    /** A notification in the list was opened, read or removed: its system notification has been seen. */
+    fun dismissNotice(notificationId: String) = notifier.cancelSocial(listOf(notificationId))
+
     private fun settle(show: Boolean) {
         val notices =
             try {
@@ -69,6 +80,10 @@ class Push(
             }
         notifier.fallback(false)
         notifier.cancel(notices.cleared)
-        if (show) notifier.show(announcements(notices.shown, labels()))
+        notifier.cancelSocial(notices.socialCleared)
+        if (show) {
+            notifier.show(announcements(notices.shown, labels()))
+            notifier.showSocial(socialAnnouncements(notices.social, sentence))
+        }
     }
 }

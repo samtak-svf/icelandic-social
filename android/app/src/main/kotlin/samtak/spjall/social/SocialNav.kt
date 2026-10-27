@@ -22,14 +22,14 @@ import samtak.spjall.core.CommunityRole
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
-import samtak.spjall.core.SocialNotification
 import samtak.spjall.frames.LocalFrameSession
 import samtak.spjall.media.Files
 import samtak.spjall.ui.rememberBack
 
 /**
  * The community screens, kept out of the conversations' graph code: hosted content, its own seam [Social]
- * (decision 0060). [read] is told when the notifications list marks what it shows read.
+ * (decision 0060). [read] is told when the notifications list marks what it shows seen or read; [dismissNotice]
+ * takes the system notification of a row away once the row is read or removed.
  */
 fun NavGraphBuilder.socialScreens(
     social: Social,
@@ -38,15 +38,16 @@ fun NavGraphBuilder.socialScreens(
     nav: NavController,
     read: () -> Unit,
     sharePost: (String) -> Unit = {},
+    dismissNotice: (String) -> Unit = {},
 ) {
     // Any of these screens can draw a post card, so each is given where the images come from.
     fun screen(
         route: String,
         content: @Composable (NavBackStackEntry) -> Unit,
-    ) = composable(route) { entry -> WithPostImages(social) { content(entry) } }
+    ) = composable(route) { entry -> WithNotificationLevels(social) { WithPostImages(social) { content(entry) } } }
 
     screen(SocialRoutes.COMMUNITIES) { Communities(social, account, nav, sharePost) }
-    screen(SocialRoutes.NOTIFICATIONS) { Notifications(social, nav, read) }
+    screen(SocialRoutes.NOTIFICATIONS) { NotificationsRoute(social, nav, read, dismissNotice) }
     screen(SocialRoutes.NEW_COMMUNITY) { NewCommunity(social, files, nav) }
     screen("${SocialRoutes.COMMUNITY}/{id}") { entry ->
         entry.arguments?.getString("id")?.let { CommunityEntry(it, social, files, nav, sharePost) }
@@ -449,30 +450,5 @@ private fun PostEntry(
 
                 override fun retry() = model.retry()
             },
-    )
-}
-
-@Composable
-private fun Notifications(
-    social: Social,
-    nav: NavController,
-    read: () -> Unit,
-) {
-    val model: NotificationsViewModel = viewModel { NotificationsViewModel(social, read) }
-    val state by model.state.collectAsStateWithLifecycle()
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { model.load() }
-    NotificationsScreen(
-        state,
-        object : NotificationsActions {
-            override fun open(notification: SocialNotification) =
-                when (val opens = notification.opens()) {
-                    is Opens.Post -> nav.navigate(SocialRoutes.post(opens.postId))
-                    is Opens.Community -> nav.navigate(SocialRoutes.community(opens.communityId))
-                }
-
-            override fun more() = model.more()
-
-            override fun retry() = model.retry()
-        },
     )
 }

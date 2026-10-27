@@ -74,7 +74,7 @@ class AppGraph(
     private val notifier = SystemNotifier(context)
 
     val push =
-        Push(account, notifier, notifier::labels) {
+        Push(account, notifier, notifier::labels, notifier::sentence) {
             ProcessLifecycleOwner
                 .get()
                 .lifecycle.currentState

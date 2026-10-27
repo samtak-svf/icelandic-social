@@ -13,17 +13,22 @@ import androidx.core.app.Person
 import samtak.spjall.BuildConfig
 import samtak.spjall.MainActivity
 import samtak.spjall.brand.R
+import samtak.spjall.core.SocialNotice
+import samtak.spjall.social.line
+import samtak.spjall.social.text
 import samtak.spjall.R as AppR
 
 /**
  * One `MessagingStyle` notification per conversation on the messages channel,
  * tagged with the conversation: a second push adds its messages to the one
- * already showing. A tap opens the conversation.
+ * already showing. A tap opens the conversation. A social notification (0107) is one per notification id on the
+ * alerts channel, and a tap opens its post.
  */
 class SystemNotifier(
     private val context: Context,
 ) : Notifier {
     private val manager = NotificationManagerCompat.from(context)
+    private val social = SocialPoster(context, manager)
 
     fun labels() =
         Labels(
@@ -35,6 +40,9 @@ class SystemNotifier(
             location = context.getString(R.string.location),
         )
 
+    /** The words of a social notice: the list row's sentence, from the same rule (decision 0107). */
+    fun sentence(notice: SocialNotice) = notice.line().text(context.resources)
+
     // Posting without the permission does nothing; areNotificationsEnabled says whether it would.
     @SuppressLint("MissingPermission")
     override fun show(announcements: List<Announcement>) {
@@ -43,6 +51,10 @@ class SystemNotifier(
     }
 
     override fun cancel(conversations: List<String>) = conversations.forEach { manager.cancel(it, ID) }
+
+    override fun showSocial(announcements: List<SocialAnnouncement>) = social.show(announcements)
+
+    override fun cancelSocial(notificationIds: List<String>) = social.cancel(notificationIds)
 
     @SuppressLint("MissingPermission")
     override fun fallback(shown: Boolean) {
