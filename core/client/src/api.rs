@@ -9,9 +9,7 @@ use std::path::Path;
 use crate::frames::{Frame, Framing};
 
 mod notifications;
-pub use notifications::{
-    Notification, NotificationKind, NotificationLevel, NotificationPage, NotificationSettings,
-};
+pub use notifications::*;
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
