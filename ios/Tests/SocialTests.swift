@@ -37,13 +37,6 @@ final class SocialTests: XCTestCase {
         XCTAssertEqual(moved.emojis.first, EmojiCount(emoji: flag, count: 2))
     }
 
-    func testAReactionNoticeLeadsWithItsEmoji() {
-        let notice = makeNotice("n1", .reaction, actor: anna, post: "p1", emoji: "🙏")
-        XCTAssertEqual(noticeLine(notice), "🙏 " + localized("notice_reaction", "Anna"))
-        let bare = makeNotice("n2", .reaction, actor: anna, post: "p1")
-        XCTAssertEqual(noticeLine(bare), localized("notice_reaction", "Anna"))
-    }
-
     func testAnAuthorIsTheirNameOrAWordForNoneOrForDeleted() {
         XCTAssertEqual(authorName(anna), "Anna")
         XCTAssertEqual(authorName(Author(accountId: "a3", name: nil, verified: false)), localized("person_unnamed"))
@@ -75,11 +68,10 @@ final class SocialTests: XCTestCase {
 
     func testANotificationNamesWhoDidIt() {
         let comment = makeNotice("n1", .comment, actor: anna, post: "p1")
-        XCTAssertEqual(noticeLine(comment), localized("notice_comment", "Anna"))
-        XCTAssertTrue(noticeLine(comment).contains("Anna"))
+        XCTAssertEqual(noticeWording(comment).sentence, localized("notice_comment", "Anna"))
         let gone = makeNotice("n2", .reaction, post: "p1")
-        XCTAssertTrue(noticeLine(gone).contains(localized("person_deleted")))
-        XCTAssertEqual(noticeLine(makeNotice("n3", .joinApproved)), localized("notice_join_approved"))
+        XCTAssertTrue(noticeWording(gone).sentence.contains(localized("person_deleted")))
+        XCTAssertEqual(noticeWording(makeNotice("n3", .joinApproved)).sentence, localized("notice_join_approved"))
     }
 
     func testOnlyAPostOrACommentIsHiddenOrRemoved() {

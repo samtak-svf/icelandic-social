@@ -445,19 +445,6 @@ func reasonLabel(_ reason: ReportReason) -> String {
     }
 }
 
-/// What a notification tells; a reaction's emoji leads its sentence (decision 0100), an old server sends none.
-func noticeLine(_ notification: SocialNotification) -> String {
-    switch notification.kind {
-    case .comment: localized("notice_comment", authorName(notification.actor))
-    case .reply: localized("notice_reply", authorName(notification.actor))
-    case .reaction:
-        [notification.emoji, localized("notice_reaction", authorName(notification.actor))]
-            .compactMap { $0 }.joined(separator: " ")
-    case .joinApproved: localized("notice_join_approved")
-    case .moderated: localized("notice_moderated")
-    }
-}
-
 /// Where a notification opens: its post, or its community when it has no post or the post was moderated away.
 func noticeRoute(_ notification: SocialNotification) -> SocialRoute {
     if let post = notification.postId, notification.kind != .moderated { return .post(post) }

@@ -62,7 +62,7 @@ private struct NoticeRow: View {
                     .background(BrandTokens.Colors.secondarySubtle, in: Circle())
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(verbatim: noticeLine(notification))
+                    Text(verbatim: noticeWording(notification).sentence)
                         .font(.sans(14, black: !notification.read))
                         .foregroundStyle(BrandTokens.Colors.fg)
                         .fixedSize(horizontal: false, vertical: true)
