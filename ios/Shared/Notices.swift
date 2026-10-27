@@ -59,3 +59,24 @@ private func line(_ notice: Notice, labels: NoticeLabels) -> String {
     case .location: labels.location
     }
 }
+
+/// One social notification as a lock-screen alert (decision 0107): the sentence the list's row shows, with no
+/// snippet, since a lock screen is seen by others. It sits in a thread of its own, named by the notification's id,
+/// so reading the row takes it away.
+struct SocialAnnouncement: Equatable, Sendable {
+    let id: String
+    let sentence: String
+    /// What a tap opens: the post, or the community when there is no post.
+    let post: String?
+    let community: String
+}
+
+/// The core's social notices as announcements, in their order.
+func socialAnnouncements(_ social: [SocialNotice]) -> [SocialAnnouncement] {
+    social.map { notice in
+        let target = noticeTarget(kind: notice.kind, postId: notice.postId, communityId: notice.communityId)
+        return SocialAnnouncement(
+            id: notice.notificationId, sentence: noticeWording(notice).sentence, post: target.post,
+            community: target.community)
+    }
+}

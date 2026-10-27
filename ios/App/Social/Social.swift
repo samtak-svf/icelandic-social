@@ -475,8 +475,10 @@ func reasonLabel(_ reason: ReportReason) -> String {
 
 /// Where a notification opens: its post, or its community when it has no post or the post was moderated away.
 func noticeRoute(_ notification: SocialNotification) -> SocialRoute {
-    if let post = notification.postId, notification.kind != .moderated { return .post(post) }
-    return .community(notification.communityId)
+    let target = noticeTarget(
+        kind: notification.kind, postId: notification.postId, communityId: notification.communityId)
+    if let post = target.post { return .post(post) }
+    return .community(target.community)
 }
 
 /// `post` with this account's reaction set to `emoji`, or taken off for nil, and the counts moved to match: most

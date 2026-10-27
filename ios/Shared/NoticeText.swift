@@ -78,3 +78,11 @@ func noticeWording(_ notification: SocialNotification) -> NoticeWording {
 func noticeWording(_ notice: SocialNotice) -> NoticeWording {
     noticeWording(kind: notice.kind, names: notice.actors.map(noticeName), actorCount: notice.actorCount)
 }
+
+/// What a notification opens: its post, or its community when it has no post or the post was moderated away.
+/// One rule for the list's rows and for a tapped push.
+func noticeTarget(
+    kind: SocialNotificationKind, postId: String?, communityId: String
+) -> (post: String?, community: String) {
+    (kind == .moderated ? nil : postId, communityId)
+}

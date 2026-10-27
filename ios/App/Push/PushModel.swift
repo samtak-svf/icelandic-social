@@ -17,6 +17,12 @@ protocol Notifier: Sendable {
     func cancel(_ conversations: [String]) async
 }
 
+/// What a tapped social notification opens.
+struct SocialTap: Equatable, Sendable {
+    let post: String?
+    let community: String
+}
+
 /// Push in the app (decision 0025). The notification service announces what a
 /// push brought; the app hands the core the device's token, counts what
 /// arrives while it is open as seen, so a later push never repeats it, and
@@ -25,6 +31,8 @@ protocol Notifier: Sendable {
 final class PushModel {
     /// The conversation a tapped notification opens, until the screens take it.
     private(set) var opened: String?
+    /// The post, or the community, a tapped social notification opens, until the screens take it (decision 0107).
+    private(set) var openedSocial: SocialTap?
     /// The person turned notifications off; the conversation list and the settings say where to turn them on.
     private(set) var off = false
 
@@ -82,6 +90,17 @@ final class PushModel {
     func tapped(_ conversation: String) {
         guard !conversation.isEmpty else { return }
         opened = conversation
+    }
+
+    /// A social notification was tapped: its post, or its community when it has none.
+    func tappedSocial(post: String?, community: String) {
+        openedSocial = SocialTap(post: post, community: community)
+    }
+
+    /// The social target a tap asked for, once.
+    func takeOpenedSocial() -> SocialTap? {
+        defer { openedSocial = nil }
+        return openedSocial
     }
 
     /// The conversation a tap asked for, once.

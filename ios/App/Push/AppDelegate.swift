@@ -78,8 +78,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
-        let conversation = response.notification.request.content.threadIdentifier
-        await MainActor.run { push.tapped(conversation) }
+        let content = response.notification.request.content
+        // A social notification carries where it leads; a conversation's thread is its id.
+        if let community = content.userInfo[SocialTapKey.community] as? String {
+            let post = content.userInfo[SocialTapKey.post] as? String
+            await MainActor.run { push.tappedSocial(post: post, community: community) }
+        } else {
+            let conversation = content.threadIdentifier
+            await MainActor.run { push.tapped(conversation) }
+        }
     }
 }
 

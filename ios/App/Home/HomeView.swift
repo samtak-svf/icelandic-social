@@ -114,6 +114,7 @@ struct HomeView: View {
             socket.start()
             openInvite()
             openTapped()
+            openTappedSocial()
             await push.start()
         }
         // The count on the notifications tab, as the server has it.
@@ -136,6 +137,9 @@ struct HomeView: View {
         }
         .onChange(of: push.opened) { _, conversation in
             if conversation != nil { openTapped() }
+        }
+        .onChange(of: push.openedSocial) { _, tap in
+            if tap != nil { openTappedSocial() }
         }
         .onChange(of: signIn.offerVerify, initial: true) { offerVerify() }
         .onChange(of: onboarding.step) { _, step in
@@ -329,6 +333,13 @@ struct HomeView: View {
         guard let id = push.takeOpened() else { return }
         tab = .conversations
         path = [.conversation(id)]
+    }
+
+    /// A tapped social notification: into its post, or its community, on the notifications tab (decision 0107).
+    private func openTappedSocial() {
+        guard let tap = push.takeOpenedSocial() else { return }
+        tab = .notifications
+        noticesPath = [tap.post.map(SocialRoute.post) ?? .community(tap.community)]
     }
 
     /// An invite link opened while signed in: into the 1:1 with whoever made it.
