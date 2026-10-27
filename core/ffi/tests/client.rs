@@ -14,13 +14,15 @@ use relay::{Link, Relay};
 use spjall_client::api::{self, Transport as _};
 use spjall_core::client::{
     Content, ConversationState, CoreClient, Event, HttpMethod, HttpRequest, HttpResponse,
-    ItemStatus, Notice, NoticeKind, Platform, Settings, SignInProvider, SignedIn, Transport,
-    TransportError, invite_token,
+    ItemStatus, Platform, Settings, SignInProvider, SignedIn, Transport, TransportError,
+    invite_token,
 };
+use spjall_core::notices::{Notice, NoticeKind};
+use spjall_core::notifications::SocialNotificationKind;
 use spjall_core::social::{
     Author, Card, CardCommunity, CardKind, CardRef, CommunityAudience, CommunityRole, EmojiCount,
     LogTargetKind, ModerationAction, ModerationLogAction, ModerationState, ReportReason,
-    ReportTarget, ReportTargetKind, SocialNotificationKind,
+    ReportTarget, ReportTargetKind,
 };
 use spjall_core::{Body, CoreError};
 

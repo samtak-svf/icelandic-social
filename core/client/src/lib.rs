@@ -32,6 +32,7 @@ mod media;
 mod members;
 mod mute;
 mod notice;
+mod notifications;
 mod photo;
 pub mod place;
 mod read;
