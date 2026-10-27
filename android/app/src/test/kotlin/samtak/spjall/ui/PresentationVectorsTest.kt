@@ -16,7 +16,10 @@ import samtak.spjall.account.problem
 import samtak.spjall.brand.R
 import samtak.spjall.core.CoreException
 import samtak.spjall.social.ago
+import samtak.spjall.social.NoticeBadge
 import samtak.spjall.social.label
+import samtak.spjall.social.noticeLine
+import samtak.spjall.core.SocialNotificationKind
 import java.time.Instant
 
 /**
@@ -105,6 +108,33 @@ class PresentationVectorsTest {
                 }
             val shown = error.problem().message()
             assertEquals("${case.text("outcome")} $code", stringId(case.text("key")), shown)
+        }
+    }
+
+    private fun nullable(element: kotlinx.serialization.json.JsonElement) =
+        if (element is JsonNull) null else element.jsonPrimitive.content
+
+    @Test
+    fun aNoticeReadsAsEveryVector() {
+        for (case in cases("notice").map { it.jsonObject }) {
+            val key = case.text("key")
+            val names = case.getValue("actors").jsonArray.map { nullable(it) }
+            val where = "${case.text("kind")} $names ${case["actorCount"]}"
+            // Android has no such sentence (it is the web's surface) and the core no such action.
+            if (case["action"]?.jsonPrimitive?.content == "decline_anonymous_post") {
+                assertTrue(where, runCatching { stringId(key) }.isFailure)
+                continue
+            }
+            val kind = SocialNotificationKind.valueOf(case.text("kind").uppercase())
+            val line = noticeLine(kind, names, case.getValue("actorCount").jsonPrimitive.int.toLong())
+            val id = if (key.endsWith("_many")) R.plurals::class.java.getField(key).getInt(null) else stringId(key)
+            assertEquals(where, id, line.key)
+            assertEquals(where, key.endsWith("_many"), line.plural)
+            val args = case.getValue("args").jsonObject
+            if (args.containsKey("name")) assertEquals(where, nullable(args.getValue("name")), line.name)
+            if (args.containsKey("other")) assertEquals(where, nullable(args.getValue("other")), line.other)
+            if (args.containsKey("count")) assertEquals(where, args.getValue("count").jsonPrimitive.int, line.count)
+            assertEquals(where, NoticeBadge.valueOf(case.text("badge").uppercase()), line.badge)
         }
     }
 }
