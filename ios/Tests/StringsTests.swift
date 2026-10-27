@@ -94,3 +94,22 @@ final class StringsTests: XCTestCase {
         XCTAssertEqual(previewLine(row, group: false), localized("item_unreadable"))
     }
 }
+
+/// The `_many` notification keys are a plural on the count of the OTHER actors, with the newest actor's name
+/// as a first argument (`%1$@ og %2$lld …`): the catalogue must pick the form by the count, not the name.
+final class ManyPluralTests: XCTestCase {
+    private func many(_ key: String, _ name: String, _ count: Int) -> String {
+        String.localizedStringWithFormat(NSLocalizedString(key, comment: ""), name, count)
+    }
+
+    func testTheOtherActorsCountPicksTheFormAndBothArgumentsLand() {
+        XCTAssertEqual(
+            many("notice_comment_many", "Anna", 1), "Anna og 1 annar skrifuðu athugasemdir við póstinn þinn.")
+        XCTAssertEqual(
+            many("notice_comment_many", "Anna", 2), "Anna og 2 aðrir skrifuðu athugasemdir við póstinn þinn.")
+        XCTAssertEqual(
+            many("notice_comment_many", "Anna", 21), "Anna og 21 annar skrifuðu athugasemdir við póstinn þinn.")
+        XCTAssertEqual(many("notice_reaction_many", "Anna", 18), "Anna og 18 aðrir brugðust við póstinum þínum.")
+        XCTAssertEqual(many("notice_reply_many", "Anna", 21), "Anna og 21 annar svöruðu athugasemdinni þinni.")
+    }
+}
