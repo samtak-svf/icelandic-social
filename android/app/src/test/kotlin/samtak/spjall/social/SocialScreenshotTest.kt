@@ -152,9 +152,13 @@ class SocialScreenshotTest {
         NotificationsViewModel.State(
             notifications =
                 listOf(
-                    notification("n1", SocialNotificationKind.COMMENT, 1_700_000_000_000uL),
-                    notification("n2", SocialNotificationKind.JOIN_APPROVED, 1_700_000_000_000uL).copy(read = true),
+                    notification("n1", SocialNotificationKind.COMMENT, 1_700_000_200_000uL)
+                        .copy(actors = listOf(anna, self), actorCount = 3uL, snippet = "Takk fyrir pistilinn"),
+                    notification("n3", SocialNotificationKind.REACTION, 1_700_000_100_000uL).copy(emoji = "\u2764\uFE0F"),
+                    notification("n2", SocialNotificationKind.JOIN_APPROVED, 1_700_000_000_000uL)
+                        .copy(actor = null, read = true),
                 ),
+            seenAt = 1_700_000_050_000uL,
             loaded = true,
         )
 

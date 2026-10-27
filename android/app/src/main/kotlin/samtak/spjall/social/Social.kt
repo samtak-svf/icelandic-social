@@ -18,6 +18,9 @@ import samtak.spjall.core.JoinState
 import samtak.spjall.core.ModerationAction
 import samtak.spjall.core.ModerationLogPage
 import samtak.spjall.core.Post
+import samtak.spjall.core.NotificationKindLevel
+import samtak.spjall.core.NotificationLevel
+import samtak.spjall.core.NotificationSettings
 import samtak.spjall.core.PostImage
 import samtak.spjall.core.PostPage
 import samtak.spjall.core.ReportPage
@@ -361,6 +364,30 @@ interface Social {
 
     /** Every notification made at or before [upTo], the newest shown, is read. */
     fun readNotifications(upTo: ULong)
+
+    /** The list was looked at up to [upTo], the newest shown: it clears the badge and reads no row (0104). */
+    fun seenNotifications(upTo: ULong)
+
+    /** One notification is read, or unread again. */
+    fun readNotification(
+        notificationId: String,
+        read: Boolean,
+    )
+
+    /** Removes one notification from the list. */
+    fun deleteNotification(notificationId: String)
+
+    /** The level of each kind and of each community that has one (0106). */
+    fun notificationSettings(): NotificationSettings
+
+    /** Sets the level of the given kinds and leaves the others. */
+    fun setNotificationSettings(kinds: List<NotificationKindLevel>)
+
+    /** Sets how loudly this account is told of one community. */
+    fun setCommunityNotificationLevel(
+        communityId: String,
+        level: NotificationLevel,
+    )
 }
 
 /** [Social] over the core's client, the one [samtak.spjall.account.CoreAccount] uses. */
@@ -632,4 +659,22 @@ class CoreSocial(
     ) = client.notifications(before, limit)
 
     override fun readNotifications(upTo: ULong) = client.readNotifications(upTo)
+
+    override fun seenNotifications(upTo: ULong) = client.seenNotifications(upTo)
+
+    override fun readNotification(
+        notificationId: String,
+        read: Boolean,
+    ) = client.readNotification(notificationId, read)
+
+    override fun deleteNotification(notificationId: String) = client.deleteNotification(notificationId)
+
+    override fun notificationSettings() = client.notificationSettings()
+
+    override fun setNotificationSettings(kinds: List<NotificationKindLevel>) = client.setNotificationSettings(kinds)
+
+    override fun setCommunityNotificationLevel(
+        communityId: String,
+        level: NotificationLevel,
+    ) = client.setCommunityNotificationLevel(communityId, level)
 }
