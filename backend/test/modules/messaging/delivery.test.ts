@@ -58,8 +58,8 @@ describe("delivery", () => {
 
     const socketA = await connect(a.auth);
     const socketB = await connect(b.auth);
-    expect((await socketA.next()).type).toBe("hello");
-    expect((await socketB.next()).type).toBe("hello");
+    expect(await socketA.opened()).toEqual([]);
+    expect(await socketB.opened()).toEqual([]);
 
     // A creates the group's conversation and claims B's package.
     expect((await post("/v1/conversations", { conversationId: CONVERSATION }, a.auth)).status).toBe(
@@ -130,7 +130,6 @@ describe("delivery", () => {
 
     // Back online, B is told what it missed.
     const again = await connect(b.auth);
-    expect((await again.next()).type).toBe("hello");
-    expect(await again.next()).toEqual(notify(5));
+    expect(await again.opened()).toEqual([notify(5)]);
   });
 });

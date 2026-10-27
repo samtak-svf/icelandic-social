@@ -54,6 +54,9 @@
             "$ref": "#/components/schemas/NotifyFrame"
           },
           {
+            "$ref": "#/components/schemas/CaughtUpFrame"
+          },
+          {
             "$ref": "#/components/schemas/AckFrame"
           },
           {
@@ -74,6 +77,7 @@
           "mapping": {
             "hello": "#/components/schemas/HelloFrame",
             "notify": "#/components/schemas/NotifyFrame",
+            "caught-up": "#/components/schemas/CaughtUpFrame",
             "ack": "#/components/schemas/AckFrame",
             "typing": "#/components/schemas/TypingFrame",
             "ping": "#/components/schemas/PingFrame",
@@ -135,6 +139,21 @@
           "seq"
         ],
         "description": "Server to client: a conversation has messages up to `seq`; fetch them"
+      },
+      "CaughtUpFrame": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "caught-up"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "description": "Server to client, once per socket: every `notify` this device was behind on when the socket opened has been sent before it. A client that has handled each frame before it has heard of every conversation it is in (decision 0109)"
       },
       "AckFrame": {
         "type": "object",

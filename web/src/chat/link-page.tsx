@@ -8,7 +8,8 @@ import { qrFrame, qrRects } from "./qr.ts";
 
 // Linking this browser to the account's phone (decisions 0064, 0081): the
 // browser shows a code and its QR, the phone approves, and this page then
-// completes the link and takes the older messages the phone sends.
+// completes the link. The chat session then takes the older messages the
+// phone sends, asking until they come (0109).
 
 type Failed = "no-phone" | "unreachable" | "other";
 
@@ -16,7 +17,6 @@ type Step =
   | { step: "idle" }
   | { step: "working" }
   | { step: "offer"; offer: LinkOffer }
-  | { step: "receiving" }
   | { step: "failed"; why: Failed };
 
 const POLL_MS = 2_000;
@@ -89,12 +89,7 @@ export function LinkPage() {
     let busy = false;
 
     async function finish() {
-      const { historyExpected } = await call!("completeLink");
-      if (historyExpected) {
-        if (live) setState({ step: "receiving" });
-        // The link is made; history that does not arrive does not undo it.
-        await call!("receiveHistory").catch(() => undefined);
-      }
+      await call!("completeLink");
       restart();
     }
 
@@ -149,10 +144,7 @@ export function LinkPage() {
         </Button>
       )}
       {state.step === "offer" && <Offer offer={state.offer} />}
-      <Status>
-        {state.step === "offer" && strings.device_link_web_waiting}
-        {state.step === "receiving" && strings.device_link_web_receiving}
-      </Status>
+      <Status>{state.step === "offer" && strings.device_link_web_waiting}</Status>
     </>
   );
 }

@@ -30,6 +30,21 @@ export async function connect(auth: Record<string, string>, extra: Record<string
       queued.length
         ? Promise.resolve(queued.shift()!)
         : new Promise<Frame>((resolve) => waiting.push(resolve)),
+    /**
+     * The frames a socket opens with (decision 0109): `hello`, the `notify`
+     * of each conversation this device is behind on, then `caught-up`.
+     * Answers those `notify` frames.
+     */
+    async opened(): Promise<Frame[]> {
+      expect(await this.next()).toMatchObject({ type: "hello" });
+      const backlog: Frame[] = [];
+      for (;;) {
+        const frame = await this.next();
+        if (frame.type === "caught-up") return backlog;
+        expect(frame.type).toBe("notify");
+        backlog.push(frame);
+      }
+    },
     /** The next frame of a type, skipping the `notify` frames a send causes. */
     async nextOf(type: string): Promise<Frame> {
       for (;;) {

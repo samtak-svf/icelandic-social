@@ -2,15 +2,29 @@ import { describe, expect, test, vi } from "vitest";
 import type { CoreEvent } from "../generated/core.d.ts";
 import type { Owned, OwnOptions } from "./owner.ts";
 import { ChatFailure, type ChatCall, type Start } from "./protocol.ts";
-import { chatSession, type ChatState, type SessionDeps } from "./session.ts";
+import {
+  type CatchUp,
+  chatSession,
+  type ChatState,
+  historyMayCome,
+  type SessionDeps,
+} from "./session.ts";
 import type { SocketDeps } from "./socket.ts";
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
-function setup(opts: { owns?: (options: OwnOptions) => Promise<Owned>; start?: Start } = {}) {
+function setup(
+  opts: {
+    owns?: (options: OwnOptions) => Promise<Owned>;
+    start?: Start;
+    call?: ChatCall;
+  } = {},
+) {
   const states: ChatState[] = [];
   const events: CoreEvent[][] = [];
-  const call = stubCall();
+  const catchUps: CatchUp[] = [];
+  const waits: number[] = [];
+  const call = opts.call ?? stubCall();
   let take!: () => void;
   const release = vi.fn();
   const owned: Owned = { call, taken: new Promise((r) => (take = r)), release };
@@ -36,13 +50,27 @@ function setup(opts: { owns?: (options: OwnOptions) => Promise<Owned>; start?: S
     connect: () => {
       throw new Error("unused");
     },
+    wait: async (ms) => {
+      waits.push(ms);
+    },
   };
   const session = chatSession(
     deps,
     (s) => states.push(s),
     (e) => events.push(e),
+    (c) => catchUps.push(c),
   );
-  return { session, states, events, sockets, own, release, take: () => take() };
+  return {
+    session,
+    states,
+    events,
+    catchUps,
+    waits,
+    sockets,
+    own,
+    release,
+    take: () => take(),
+  };
 }
 
 describe("chatSession", () => {
@@ -150,6 +178,96 @@ describe("chatSession", () => {
     t.take();
     await tick();
     expect(t.states.length).toBe(seen);
+  });
+});
+
+describe("catching up (decision 0109)", () => {
+  /** A worker that answers `receiveHistory` from `answers`, in turn. */
+  function history(...answers: (number | ChatFailure)[]) {
+    const asked = vi.fn();
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double for a generic call
+    const call = (async (op: string) => {
+      if (op !== "receiveHistory") throw new Error(`unexpected ${op}`);
+      asked();
+      const next = answers.shift() ?? 0;
+      if (next instanceof ChatFailure) throw next;
+      return next;
+    }) as unknown as ChatCall;
+    return { call, asked };
+  }
+  const uploading = () => new ChatFailure({ code: "refused", message: "not_found" });
+
+  test("history, then the backlog, then done; the empty list waits for done", async () => {
+    let resolve!: (n: number) => void;
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double for a generic call
+    const call = (() => new Promise<number>((r) => (resolve = r))) as unknown as ChatCall;
+    const t = setup({ call });
+    await tick();
+    expect(t.catchUps).toEqual(["history"]);
+    resolve(2);
+    await tick();
+    expect(t.catchUps).toEqual(["history", "backlog"]);
+    t.sockets[0]!.deps.onCaughtUp!();
+    expect(t.catchUps.at(-1)).toBe("done");
+  });
+
+  test("the backlog arriving first still waits for the history", async () => {
+    let resolve!: (n: number) => void;
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double for a generic call
+    const call = (() => new Promise<number>((r) => (resolve = r))) as unknown as ChatCall;
+    const t = setup({ call });
+    await tick();
+    t.sockets[0]!.deps.onCaughtUp!();
+    expect(t.catchUps.at(-1)).toBe("history");
+    resolve(0);
+    await tick();
+    expect(t.catchUps.at(-1)).toBe("done");
+  });
+
+  test("a history the phone is still uploading is asked for again until it comes", async () => {
+    const h = history(uploading(), uploading(), 3);
+    const t = setup({ call: h.call });
+    await tick();
+    await tick();
+    expect(h.asked).toHaveBeenCalledTimes(3);
+    expect(t.waits).toEqual([2_000, 4_000]);
+    t.sockets[0]!.deps.onCaughtUp!();
+    expect(t.catchUps.at(-1)).toBe("done");
+  });
+
+  test("a history that cannot come is given up, and the chat still catches up", async () => {
+    const h = history(new ChatFailure({ code: "refused", message: "forbidden" }));
+    const t = setup({ call: h.call });
+    await tick();
+    expect(h.asked).toHaveBeenCalledTimes(1);
+    t.sockets[0]!.deps.onCaughtUp!();
+    expect(t.catchUps.at(-1)).toBe("done");
+  });
+
+  test("the asking stops after about ten minutes", async () => {
+    const h = history(...Array.from({ length: 40 }, uploading));
+    const t = setup({ call: h.call });
+    for (let i = 0; i < 30; i++) await tick();
+    expect(h.asked).toHaveBeenCalledTimes(25);
+    expect(t.waits.reduce((a, b) => a + b, 0)).toBe(630_000);
+    expect(t.catchUps.at(-1)).toBe("backlog");
+  });
+
+  test("a closed session stops asking and reports nothing more", async () => {
+    const h = history(uploading(), uploading(), 1);
+    const t = setup({ call: h.call });
+    t.session.close();
+    await tick();
+    await tick();
+    expect(h.asked.mock.calls.length).toBeLessThanOrEqual(1);
+    expect(t.catchUps).toEqual([]);
+  });
+
+  test("only an upload in progress or a lost network may be asked again", () => {
+    expect(historyMayCome(uploading())).toBe(true);
+    expect(historyMayCome(new ChatFailure({ code: "unreachable", message: "m" }))).toBe(true);
+    expect(historyMayCome(new ChatFailure({ code: "refused", message: "expired" }))).toBe(false);
+    expect(historyMayCome(new Error("x"))).toBe(false);
   });
 });
 

@@ -29,11 +29,12 @@ describe("the socket", () => {
     const hello = await socket.next();
     expect(hello).toMatchObject({ type: "hello", protocol: 1 });
     expect(await socket.next()).toEqual({ type: "notify", conversationId: "conv_seen", seq: 3 });
+    expect(await socket.next()).toEqual({ type: "caught-up" });
 
     socket.send({ type: "ack", conversationId: "conv_seen", seq: 3 });
     socket.ws.close();
     const again = await connect(me.auth);
-    expect((await again.next()).type).toBe("hello");
+    expect(await again.opened()).toEqual([]);
     expect(await again.settle("n1")).toEqual({ type: "pong", nonce: "n1" });
   });
 
@@ -41,7 +42,7 @@ describe("the socket", () => {
     const online = await device();
     const offline = await device({ accountId: online.accountId });
     const socket = await connect(online.auth);
-    await socket.next();
+    await socket.opened();
 
     const box = inbox(testEnv, online.accountId);
     await box.notify(online.accountId, "conv_push", 1, 1);
@@ -57,8 +58,7 @@ describe("the socket", () => {
     ]);
 
     const late = await connect(offline.auth);
-    expect((await late.next()).type).toBe("hello");
-    expect(await late.next()).toEqual({ type: "notify", conversationId: "conv_push", seq: 2 });
+    expect(await late.opened()).toEqual([{ type: "notify", conversationId: "conv_push", seq: 2 }]);
     late.send({ type: "ack", conversationId: "conv_push", seq: 2 });
     await late.settle("n2");
     expect(await outbox(online.accountId)).toEqual([]);
@@ -67,7 +67,7 @@ describe("the socket", () => {
   it("does not notify a device of what it has acked", async () => {
     const me = await device();
     const socket = await connect(me.auth);
-    await socket.next();
+    await socket.opened();
     socket.send({ type: "ack", conversationId: "conv_ack", seq: 5 });
     await socket.settle("n3");
     await inbox(testEnv, me.accountId).notify(me.accountId, "conv_ack", 5, 5);
@@ -96,7 +96,7 @@ describe("the socket", () => {
       await connect(b.auth),
       await connect(outsider.auth),
     ];
-    for (const s of [sa, sb, so]) await s.next();
+    for (const s of [sa, sb, so]) await s.opened();
     sa.send({ type: "typing", conversationId: id, ciphertext: TYPING });
     expect(await sb.nextOf("typing")).toEqual({
       type: "typing",
@@ -130,7 +130,7 @@ describe("the socket", () => {
     });
 
     const [sa, sb] = [await connect(a.auth), await connect(b.auth)];
-    for (const s of [sa, sb]) await s.next();
+    for (const s of [sa, sb]) await s.opened();
     for (let i = 0; i < 5; i++) sa.send({ type: "typing", conversationId: id, ciphertext: TYPING });
     await sa.settle("b1");
     expect(await sb.nextOf("typing")).toMatchObject({ type: "typing", conversationId: id });
@@ -147,7 +147,7 @@ describe("the socket", () => {
   ])("closes with 1008 on %s", async (_, raw) => {
     const me = await device();
     const socket = await connect(me.auth);
-    await socket.next();
+    await socket.opened();
     socket.ws.send(raw);
     expect((await socket.closed).code).toBe(1008);
   });
@@ -155,7 +155,7 @@ describe("the socket", () => {
   it("answers a close the client starts, and then owes that device a push", async () => {
     const me = await device();
     const socket = await connect(me.auth);
-    await socket.next();
+    await socket.opened();
     socket.ws.close(1000, "bye");
     expect((await socket.closed).code).toBe(1000);
 
@@ -168,7 +168,7 @@ describe("the socket", () => {
   it("acts as the device the token names, whatever the client claims", async () => {
     const me = await device();
     const socket = await connect(me.auth, { "x-spjall-device": "d_other" });
-    await socket.next();
+    await socket.opened();
     socket.send({ type: "ack", conversationId: "conv_claim", seq: 1 });
     await socket.settle("n8");
     const cursors = await runInDurableObject(inbox(testEnv, me.accountId), (_, state) =>
@@ -180,7 +180,7 @@ describe("the socket", () => {
   it("keeps a socket's device across hibernation", async () => {
     const me = await device();
     const socket = await connect(me.auth);
-    await socket.next();
+    await socket.opened();
     await evictDurableObject(inbox(testEnv, me.accountId));
     socket.send({ type: "ack", conversationId: "conv_sleep", seq: 4 });
     expect(await socket.settle("n9")).toEqual({ type: "pong", nonce: "n9" });
@@ -198,7 +198,7 @@ describe("the socket", () => {
     it("opens the socket of the session's linked device from the web host", async () => {
       const { browser, enrolled } = await linkedBrowser();
       const socket = await connect(browser.web);
-      expect(await socket.next()).toMatchObject({ type: "hello" });
+      expect(await socket.opened()).toEqual([]);
       socket.send({ type: "ack", conversationId: "conv_web", seq: 2 });
       await socket.settle("n10");
       const cursors = await runInDurableObject(inbox(testEnv, browser.accountId), (_, state) =>
