@@ -6,7 +6,7 @@ use spjall_client as core;
 use crate::client::Person;
 use crate::client::people;
 use crate::social::SocialNotificationKind;
-use crate::social::{Author, ModerationAction};
+use crate::social::{Author, NotificationAction};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum NoticeKind {
@@ -64,8 +64,9 @@ pub struct SocialNotice {
     /// The post to open on a tap; none opens the community.
     pub post_id: Option<String>,
     pub comment_id: Option<String>,
-    /// For `Moderated`, the moderator's action.
-    pub action: Option<ModerationAction>,
+    /// For `Moderated`, what was done; `Unknown` for an action a later server
+    /// adds, none when the row has none.
+    pub action: Option<NotificationAction>,
     /// For `Reaction`, the emoji.
     pub emoji: Option<String>,
     /// Unix milliseconds.

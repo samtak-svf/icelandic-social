@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{Api, ApiError, Author, Method, ModerationAction, Transport, with_query};
+use super::{Api, ApiError, Author, Method, Transport, with_query};
 
 /// What a notification is about (0063).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -66,6 +66,30 @@ struct SentCommunityLevel {
     level: serde_json::Value,
 }
 
+/// What a `Moderated` notification says was done. Not `ModerationAction`,
+/// which is what a moderator may send: this is only read, and carries the
+/// server's own notices too. A value a later server adds reads as `Unknown`,
+/// as `ModerationLogAction` does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NotificationAction {
+    HidePost,
+    RemovePost,
+    RestorePost,
+    HideComment,
+    RemoveComment,
+    RestoreComment,
+    MuteMember,
+    UnmuteMember,
+    RemoveMember,
+    BanMember,
+    UnbanMember,
+    /// A moderator declined the caller's anonymous post (no post id).
+    DeclineAnonymousPost,
+    #[serde(other)]
+    Unknown,
+}
+
 /// Something addressed to the caller. It carries ids, never the content:
 /// the post or comment is read through the same checks as any other.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -90,7 +114,7 @@ pub struct Notification {
     pub post_id: Option<String>,
     pub comment_id: Option<String>,
     /// For `Moderated`, the moderator's action.
-    pub action: Option<ModerationAction>,
+    pub action: Option<NotificationAction>,
     /// For `Reaction`, the emoji (0100); none on a notification made before.
     pub emoji: Option<String>,
     /// Unix milliseconds.
@@ -151,7 +175,11 @@ impl SentNotification {
             community_id: self.community_id,
             post_id: self.post_id,
             comment_id: self.comment_id,
-            action: self.action.and_then(|a| serde_json::from_value(a).ok()),
+            // A present value is always kept: one that is not even a string
+            // reads as `Unknown`, like an unheard-of name.
+            action: self
+                .action
+                .map(|a| serde_json::from_value(a).unwrap_or(NotificationAction::Unknown)),
             emoji: self.emoji,
             created_at: self.created_at,
             read: self.read,

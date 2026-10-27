@@ -2,11 +2,32 @@
 //! seen and read, and the levels.
 
 use spjall_client::api;
-pub use spjall_client::api::NotificationLevel;
+pub use spjall_client::api::{NotificationAction, NotificationLevel};
 
 use crate::CoreError;
 use crate::client::CoreClient;
-use crate::social::{Author, ModerationAction};
+use crate::social::Author;
+
+/// What a `Moderated` notification says was done; `Unknown` for a value a
+/// later server adds. Apart from `ModerationAction`, which is what a
+/// moderator may send.
+#[uniffi::remote(Enum)]
+pub enum NotificationAction {
+    HidePost,
+    RemovePost,
+    RestorePost,
+    HideComment,
+    RemoveComment,
+    RestoreComment,
+    MuteMember,
+    UnmuteMember,
+    RemoveMember,
+    BanMember,
+    UnbanMember,
+    /// A moderator declined the caller's anonymous post; there is no post id.
+    DeclineAnonymousPost,
+    Unknown,
+}
 
 /// What a notification tells. Named apart from the platforms' own
 /// `Notification` types, which an app imports beside this one.
@@ -49,8 +70,9 @@ pub struct SocialNotification {
     pub community_id: String,
     pub post_id: Option<String>,
     pub comment_id: Option<String>,
-    /// For `Moderated`, the moderator's action.
-    pub action: Option<ModerationAction>,
+    /// For `Moderated`, what was done; `Unknown` for an action a later server
+    /// adds, none when the row has none.
+    pub action: Option<NotificationAction>,
     /// For `Reaction`, the emoji (0100).
     pub emoji: Option<String>,
     /// Unix milliseconds: the `up_to` of `read_notifications`.

@@ -12,7 +12,7 @@ mod relay;
 
 use hosted::{Phone, author};
 use serde_json::{Value, json};
-use spjall_client::api::{Method, ModerationAction, NotificationKind, NotificationLevel};
+use spjall_client::api::{Method, NotificationAction, NotificationKind, NotificationLevel};
 
 #[test]
 fn notifications_are_paged_and_read_and_an_unknown_kind_is_left_out() {
@@ -81,10 +81,15 @@ fn notifications_are_paged_and_read_and_an_unknown_kind_is_left_out() {
             (
                 "n_1",
                 NotificationKind::Moderated,
-                Some(ModerationAction::HidePost),
+                Some(NotificationAction::HidePost),
                 None
             ),
-            ("n_0", NotificationKind::Moderated, None, None),
+            (
+                "n_0",
+                NotificationKind::Moderated,
+                Some(NotificationAction::Unknown),
+                None
+            ),
         ]
     );
     assert_eq!(page.notifications[1].actor, None);

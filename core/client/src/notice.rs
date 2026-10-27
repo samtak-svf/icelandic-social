@@ -7,7 +7,7 @@
 use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 
 use crate::api::{
-    Author, ModerationAction, Notification, NotificationKind, NotificationPage, Transport,
+    Author, Notification, NotificationAction, NotificationKind, NotificationPage, Transport,
     conversation_id,
 };
 use crate::members::{Person, person};
@@ -75,7 +75,7 @@ pub struct SocialNotice {
     pub post_id: Option<String>,
     pub comment_id: Option<String>,
     /// For `Moderated`, the moderator's action.
-    pub action: Option<ModerationAction>,
+    pub action: Option<NotificationAction>,
     /// For `Reaction`, the emoji.
     pub emoji: Option<String>,
     /// Unix milliseconds.
