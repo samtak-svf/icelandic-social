@@ -197,6 +197,14 @@ minutes, and macOS bills ten times Linux. So the PR checks run on Samtak's own M
   reads a runner variable.
 - Steps that download a binary pick the build from `RUNNER_OS` and `RUNNER_ARCH`, so a job runs
   on either lane.
+- **A job hook reaps what a cancelled job leaves.** Cancelling kills the step's shell, not its
+  process group, so `workerd` and its `pnpm`/`node` parents survived (#318).
+  `tooling/mac-runner-hook.sh` runs as both `ACTIONS_RUNNER_HOOK_JOB_STARTED` and
+  `ACTIONS_RUNNER_HOOK_JOB_COMPLETED`, so no process whose command line lies under this
+  runner's `_work/` survives from one job into the next; the other runner's `_work` and
+  everything outside any `_work` are left alone. There is one copy, sent to
+  `~/.local/libexec/spjall/` over ssh; `tooling/mac-bootstrap.sh` (header) has the command and
+  wires it into each samtak-svf runner's `.env`, restarting a runner that is idle.
 - **The two runners share one user and home directory.** Anything a step installs under `~`
   races the other runner, so `pnpm/action-setup` installs into `$RUNNER_TEMP`, and
   `.github/actions/rust-toolchain` gives each runner its own `CARGO_HOME`
