@@ -586,7 +586,7 @@ class ConversationViewModelTest {
             runCurrent()
             assertNull(model.state.value.locating)
             assertEquals(Problem.LocationNotFound, model.state.value.problem)
-            model.locationDenied()
+            model.denied(Problem.LocationDenied)
             assertEquals(Problem.LocationDenied, model.state.value.problem)
             assertEquals(emptyList<String>(), sends())
         }

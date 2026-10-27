@@ -335,9 +335,9 @@ class ConversationViewModel(
             }
     }
 
-    /** The person refused the app their location. */
-    fun locationDenied() {
-        _state.update { it.copy(problem = Problem.LocationDenied) }
+    /** The person refused the app their location or the camera (#323). */
+    fun denied(problem: Problem) {
+        _state.update { it.copy(problem = problem) }
     }
 
     /** Sends the place the person was shown. */

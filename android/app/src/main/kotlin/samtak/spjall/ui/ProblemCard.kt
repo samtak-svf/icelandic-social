@@ -63,6 +63,7 @@ private val FINAL =
         Problem.TooLarge,
         Problem.LocationNotFound,
         Problem.LocationDenied,
+        Problem.CameraDenied,
         Problem.NotPermitted,
         Problem.NotFound,
         Problem.JoinDeclined,
@@ -83,6 +84,7 @@ internal fun Problem.message(): Int =
         Problem.TooLarge -> R.string.media_too_large
         Problem.LocationNotFound -> R.string.location_not_found
         Problem.LocationDenied -> R.string.location_denied
+        Problem.CameraDenied -> R.string.camera_denied
         Problem.NotPermitted -> R.string.problem_not_permitted
         Problem.NotFound -> R.string.problem_not_found
         Problem.JoinDeclined -> R.string.problem_join_declined
