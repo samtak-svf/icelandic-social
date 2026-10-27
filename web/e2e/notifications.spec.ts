@@ -24,14 +24,12 @@ test("two reactions are one row; seen clears the badge, a click reads the row; a
   await join(c, community);
 
   await write(a, strings.post_compose, strings.post_publish, "Fundur á morgun kl. 20.");
-  for (const one of [b, c]) {
+  for (const [index, one] of [b, c].entries()) {
     await one.goto(community);
-    const like = post(one, "Fundur á morgun").getByRole("button", {
-      name: strings.post_like,
-      exact: true,
-    });
-    await like.click();
-    await expect(like).toHaveAttribute("aria-pressed", "true");
+    const card = post(one, "Fundur á morgun");
+    await card.getByRole("button", { name: strings.post_like, exact: true }).click();
+    // Liked, the button takes the reaction's name, so the count is what shows it landed.
+    await expect(card.getByText(strings.reaction_count({ count: index + 1 }))).toBeVisible();
   }
   await runJobs();
 
