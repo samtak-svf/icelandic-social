@@ -109,14 +109,14 @@ class MainActivity : ComponentActivity() {
 
     /** A tapped notification, an invite link, or a provider's redirect back to the app's scheme. */
     private fun handle(intent: Intent) {
-        if (intent.action == ACTION_OPEN_CONVERSATION) {
-            intent.getStringExtra(EXTRA_CONVERSATION)?.let { opens.trySend(it) }
-            return
+        when (intent.action) {
+            ACTION_OPEN_CONVERSATION -> intent.getStringExtra(EXTRA_CONVERSATION)?.let { opens.trySend(it) }
+            ACTION_OPEN_SOCIAL -> intent.getStringExtra(EXTRA_ROUTE)?.let { socialOpens.trySend(it) }
+            else -> openLink(intent)
         }
-        if (intent.action == ACTION_OPEN_SOCIAL) {
-            intent.getStringExtra(EXTRA_ROUTE)?.let { socialOpens.trySend(it) }
-            return
-        }
+    }
+
+    private fun openLink(intent: Intent) {
         val uri = intent.data?.takeIf { intent.action == Intent.ACTION_VIEW } ?: return
         val token = inviteToken(uri.toString())
         when {
@@ -187,6 +187,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** A tapped notification opens its conversation, or its post, over the tab it belongs to. */
+    @Composable
+    private fun OpenedFromNotifications(nav: NavController) {
+        LaunchedEffect(Unit) {
+            opens.receiveAsFlow().collect {
+                nav.navigate(AppRoutes.LIST) { tab() }
+                nav.navigate(conversationRoute(it))
+            }
+        }
+        LaunchedEffect(Unit) {
+            socialOpens.receiveAsFlow().collect {
+                nav.navigate(SocialRoutes.NOTIFICATIONS) { tab() }
+                nav.navigate(it)
+            }
+        }
+    }
+
     /**
      * The four tabs, the conversation list, the communities, the notifications and Ég (decisions 0044, 0063), and
      * the screens they lead to.
@@ -200,18 +217,7 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(list) { list.opened.collect { nav.navigate(conversationRoute(it)) } }
         // Kenni is offered once after a sign-in, and "Seinna" goes on to the list (decision 0035).
         LaunchedEffect(Unit) { signIn.offers.collect { nav.navigate(AppRoutes.VERIFY) } }
-        LaunchedEffect(Unit) {
-            opens.receiveAsFlow().collect {
-                nav.navigate(AppRoutes.LIST) { tab() }
-                nav.navigate(conversationRoute(it))
-            }
-        }
-        LaunchedEffect(Unit) {
-            socialOpens.receiveAsFlow().collect {
-                nav.navigate(SocialRoutes.NOTIFICATIONS) { tab() }
-                nav.navigate(it)
-            }
-        }
+        OpenedFromNotifications(nav)
         val route =
             nav
                 .currentBackStackEntryAsState()

@@ -61,7 +61,7 @@ class NotificationsViewModel(
             try {
                 val page = withContext(io) { social.notifications(null, PAGE) }
                 failed = null
-                val communities = withContext(io) { communities() }
+                val communities = withContext(io) { social.communitiesById() }
                 _state.update {
                     it.copy(
                         notifications = page.notifications,
@@ -150,7 +150,9 @@ class NotificationsViewModel(
         change(null) {
             val current = social.notificationSettings().kinds.firstOrNull { it.kind == notification.kind }
             if (current?.level != NotificationLevel.OFF) {
-                social.setNotificationSettings(listOf(NotificationKindLevel(notification.kind, NotificationLevel.IN_APP)))
+                social.setNotificationSettings(
+                    listOf(NotificationKindLevel(notification.kind, NotificationLevel.IN_APP)),
+                )
             }
         }
     }
@@ -177,14 +179,15 @@ class NotificationsViewModel(
             }
         }
     }
-
-    private fun communities(): Map<String, Community>? =
-        try {
-            social.myCommunities().associateBy { it.communityId }
-        } catch (_: CoreException) {
-            null
-        }
 }
+
+/** The communities this account is in by id; none when the core cannot say, which only costs the names. */
+private fun Social.communitiesById(): Map<String, Community>? =
+    try {
+        myCommunities().associateBy { it.communityId }
+    } catch (_: CoreException) {
+        null
+    }
 
 /** Where a tap on [this] goes: the post, or its community when the post is not there to open. */
 sealed interface Opens {

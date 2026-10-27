@@ -47,8 +47,15 @@ class NotificationsViewModelTest {
         runTest(dispatcher) {
             social.notifications = two
             val model = model()
-            assertEquals(listOf("n2", "n1"), model.state.value.notifications.map { it.notificationId })
-            assertTrue(model.state.value.notifications.none { it.read })
+            assertEquals(
+                listOf("n2", "n1"),
+                model.state.value.notifications
+                    .map { it.notificationId },
+            )
+            assertTrue(
+                model.state.value.notifications
+                    .none { it.read },
+            )
             assertTrue("seenNotifications 20" in social.calls)
             assertFalse(social.calls.any { it.startsWith("readNotification") })
             assertEquals(1, reads)
@@ -101,10 +108,17 @@ class NotificationsViewModelTest {
             val model = NotificationsViewModel(social, { reads++ }, dispatcher) { dismissed += it }
             model.load()
             advanceUntilIdle()
-            model.opened(model.state.value.notifications.first())
+            model.opened(
+                model.state.value.notifications
+                    .first(),
+            )
             advanceUntilIdle()
             assertTrue("readNotification n2 true" in social.calls)
-            assertEquals(listOf(true, false), model.state.value.notifications.map { it.read })
+            assertEquals(
+                listOf(true, false),
+                model.state.value.notifications
+                    .map { it.read },
+            )
             assertEquals(listOf("n2"), dismissed)
         }
 
@@ -116,7 +130,10 @@ class NotificationsViewModelTest {
             model.markAllRead()
             advanceUntilIdle()
             assertTrue("readNotifications 20" in social.calls)
-            assertTrue(model.state.value.notifications.all { it.read })
+            assertTrue(
+                model.state.value.notifications
+                    .all { it.read },
+            )
         }
 
     @Test
@@ -130,7 +147,10 @@ class NotificationsViewModelTest {
             advanceUntilIdle()
             assertTrue("readNotification n1 true" in social.calls)
             assertTrue("readNotification n1 false" in social.calls)
-            assertFalse(model.state.value.notifications[1].read)
+            assertFalse(
+                model.state.value.notifications[1]
+                    .read,
+            )
         }
 
     @Test
@@ -138,10 +158,17 @@ class NotificationsViewModelTest {
         runTest(dispatcher) {
             social.notifications = two
             val model = model()
-            model.remove(model.state.value.notifications.first())
+            model.remove(
+                model.state.value.notifications
+                    .first(),
+            )
             advanceUntilIdle()
             assertTrue("deleteNotification n2" in social.calls)
-            assertEquals(listOf("n1"), model.state.value.notifications.map { it.notificationId })
+            assertEquals(
+                listOf("n1"),
+                model.state.value.notifications
+                    .map { it.notificationId },
+            )
         }
 
     @Test
@@ -150,7 +177,10 @@ class NotificationsViewModelTest {
             social.notifications = two
             val model = model()
             social.failNext = unreachable()
-            model.remove(model.state.value.notifications.first())
+            model.remove(
+                model.state.value.notifications
+                    .first(),
+            )
             advanceUntilIdle()
             assertEquals(2, model.state.value.notifications.size)
             assertEquals(Problem.Unreachable, model.state.value.problem)
@@ -161,7 +191,10 @@ class NotificationsViewModelTest {
         runTest(dispatcher) {
             social.notifications = two
             val model = model()
-            model.kindInApp(model.state.value.notifications.first())
+            model.kindInApp(
+                model.state.value.notifications
+                    .first(),
+            )
             advanceUntilIdle()
             assertEquals(NotificationLevel.IN_APP, social.kindLevels[SocialNotificationKind.REACTION])
         }
@@ -172,7 +205,10 @@ class NotificationsViewModelTest {
             social.notifications = two
             social.kindLevels[SocialNotificationKind.REACTION] = NotificationLevel.OFF
             val model = model()
-            model.kindInApp(model.state.value.notifications.first())
+            model.kindInApp(
+                model.state.value.notifications
+                    .first(),
+            )
             advanceUntilIdle()
             assertEquals(NotificationLevel.OFF, social.kindLevels[SocialNotificationKind.REACTION])
             assertFalse(social.calls.any { it.startsWith("setNotificationSettings") })
@@ -183,7 +219,10 @@ class NotificationsViewModelTest {
         runTest(dispatcher) {
             social.notifications = two
             val model = model()
-            model.communityOff(model.state.value.notifications.first())
+            model.communityOff(
+                model.state.value.notifications
+                    .first(),
+            )
             advanceUntilIdle()
             assertEquals(NotificationLevel.OFF, social.communityLevels["k1"])
         }
@@ -193,8 +232,14 @@ class NotificationsViewModelTest {
         runTest(dispatcher) {
             social.notifications = listOf(notification("m", SocialNotificationKind.MODERATED, 5uL))
             val model = model()
-            model.kindInApp(model.state.value.notifications.first())
-            model.communityOff(model.state.value.notifications.first())
+            model.kindInApp(
+                model.state.value.notifications
+                    .first(),
+            )
+            model.communityOff(
+                model.state.value.notifications
+                    .first(),
+            )
             advanceUntilIdle()
             assertFalse(social.calls.any { it.startsWith("setNotificationSettings") || it.startsWith("setCommunity") })
         }

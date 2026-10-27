@@ -13,9 +13,9 @@ import kotlinx.coroutines.withContext
 import samtak.spjall.core.CoreException
 
 /**
- * The count of notifications not yet seen on the notifications tab (decisions 0067, 0104): asked for when the tabs show and each time the
- * screen changes, as the web asks on every navigation. A failure keeps the count it had: the tab is no place
- * for an error.
+ * The count of notifications not yet seen on the notifications tab (decisions 0067, 0104): asked for when the tabs
+ * show and each time the screen changes, as the web asks on every navigation. A failure keeps the count it had: the
+ * tab is no place for an error.
  */
 class UnreadViewModel(
     private val social: Social,

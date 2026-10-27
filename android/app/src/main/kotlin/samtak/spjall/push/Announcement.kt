@@ -78,4 +78,7 @@ data class SocialAnnouncement(
 fun socialAnnouncements(
     shown: List<SocialNotice>,
     sentence: (SocialNotice) -> String,
-): List<SocialAnnouncement> = shown.map { SocialAnnouncement(it.notificationId, sentence(it), it.communityId, it.postId) }
+): List<SocialAnnouncement> =
+    shown.map {
+        SocialAnnouncement(it.notificationId, sentence(it), it.communityId, it.postId)
+    }

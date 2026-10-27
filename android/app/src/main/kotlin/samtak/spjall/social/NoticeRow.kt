@@ -20,8 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -73,7 +73,7 @@ fun NoticeRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(text = line.text(LocalContext.current.resources), style = MaterialTheme.typography.bodyLarge)
+            Text(text = line.text(LocalResources.current), style = MaterialTheme.typography.bodyLarge)
             notification.snippet?.let {
                 Text(
                     text = stringResource(R.string.notice_snippet, it),
@@ -155,8 +155,9 @@ private fun Badge(
         contentAlignment = Alignment.Center,
     ) {
         when {
-            badge == NoticeBadge.EMOJI && emoji != null -> // In dp, not sp: the badge keeps its size when the text is scaled.
-            Text(text = emoji, fontSize = with(LocalDensity.current) { EMOJI_SIZE.dp.toSp() })
+            // In dp, not sp: the badge keeps its size when the text is scaled.
+            badge == NoticeBadge.EMOJI && emoji != null ->
+                Text(text = emoji, fontSize = with(LocalDensity.current) { EMOJI_SIZE.dp.toSp() })
             else -> {
                 val icon =
                     when (badge) {
@@ -170,7 +171,9 @@ private fun Badge(
     }
 }
 
-private val ROW_SHAPE = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+private val ROW_SHAPE =
+    androidx.compose.foundation.shape
+        .RoundedCornerShape(12.dp)
 private const val PICTURE = 44
 private const val PICTURE_TWO = 60
 private const val OVERLAP = 16

@@ -14,7 +14,7 @@
   "android/app/src/test/kotlin/samtak/spjall/conversation/ConversationScreenshotTest.kt": 466,
   "android/app/src/test/kotlin/samtak/spjall/conversation/ConversationViewModelTest.kt": 593,
   "android/app/src/test/kotlin/samtak/spjall/social/CommunityViewModelTest.kt": 546,
-  "android/app/src/test/kotlin/samtak/spjall/social/FakeSocial.kt": 792,
+  "android/app/src/test/kotlin/samtak/spjall/social/FakeSocial.kt": 785,
   "android/app/src/test/kotlin/samtak/spjall/social/PostViewModelTest.kt": 402,
   "core/client/src/account.rs": 826,
   "core/client/src/api.rs": 2917,

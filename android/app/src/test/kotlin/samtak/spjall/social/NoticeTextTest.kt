@@ -71,7 +71,16 @@ class NoticeTextTest {
         val row = notification("n1", SocialNotificationKind.REACTION, 10uL).copy(actors = actors, actorCount = 2uL)
         val notice =
             SocialNotice(
-                row.notificationId, row.kind, actors, 2uL, row.communityId, row.postId, null, null, null, row.createdAt,
+                row.notificationId,
+                row.kind,
+                actors,
+                2uL,
+                row.communityId,
+                row.postId,
+                null,
+                null,
+                null,
+                row.createdAt,
             )
         assertEquals(row.line().text(resources), notice.line().text(resources))
     }

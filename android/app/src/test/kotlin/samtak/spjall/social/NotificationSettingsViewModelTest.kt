@@ -79,7 +79,13 @@ class NotificationSettingsViewModelTest {
             advanceUntilIdle()
             assertEquals(NotificationLevel.OFF, model.state.value.community("c1"))
             assertTrue("setCommunityNotificationLevel c1 OFF" in social.calls)
-            assertEquals("Kórinn", model.state.value.rows().single().name)
+            assertEquals(
+                "Kórinn",
+                model.state.value
+                    .rows()
+                    .single()
+                    .name,
+            )
         }
 
     @Test

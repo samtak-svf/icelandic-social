@@ -14,7 +14,6 @@ import samtak.spjall.BuildConfig
 import samtak.spjall.MainActivity
 import samtak.spjall.brand.R
 import samtak.spjall.core.SocialNotice
-import samtak.spjall.social.SocialRoutes
 import samtak.spjall.social.line
 import samtak.spjall.social.text
 import samtak.spjall.R as AppR
@@ -29,6 +28,7 @@ class SystemNotifier(
     private val context: Context,
 ) : Notifier {
     private val manager = NotificationManagerCompat.from(context)
+    private val social = SocialPoster(context, manager)
 
     fun labels() =
         Labels(
@@ -52,13 +52,9 @@ class SystemNotifier(
 
     override fun cancel(conversations: List<String>) = conversations.forEach { manager.cancel(it, ID) }
 
-    @SuppressLint("MissingPermission")
-    override fun showSocial(announcements: List<SocialAnnouncement>) {
-        if (!manager.areNotificationsEnabled()) return
-        announcements.forEach { manager.notify(it.notificationId, SOCIAL_ID, buildSocial(it)) }
-    }
+    override fun showSocial(announcements: List<SocialAnnouncement>) = social.show(announcements)
 
-    override fun cancelSocial(notificationIds: List<String>) = notificationIds.forEach { manager.cancel(it, SOCIAL_ID) }
+    override fun cancelSocial(notificationIds: List<String>) = social.cancel(notificationIds)
 
     @SuppressLint("MissingPermission")
     override fun fallback(shown: Boolean) {
@@ -85,35 +81,6 @@ class SystemNotifier(
             .setStyle(style)
             .setWhen(announcement.lines.last().ts)
             .build()
-    }
-
-    /** The title is the app's, the text the row's sentence; never a snippet, since the screen may be locked. */
-    private fun buildSocial(announcement: SocialAnnouncement): android.app.Notification =
-        NotificationCompat
-            .Builder(context, BuildConfig.CHANNEL_ALERTS)
-            .setSmallIcon(AppR.drawable.ic_notification)
-            .setCategory(NotificationCompat.CATEGORY_SOCIAL)
-            .setAutoCancel(true)
-            .setContentTitle(context.getString(R.string.app_name))
-            .setContentText(announcement.text)
-            .setContentIntent(openSocial(announcement))
-            .build()
-
-    /** Opens the post, or its community when there is none. The data keeps one intent per notification. */
-    private fun openSocial(announcement: SocialAnnouncement): PendingIntent {
-        val route =
-            announcement.postId?.let { SocialRoutes.post(it) } ?: SocialRoutes.community(announcement.communityId)
-        val intent =
-            Intent(context, MainActivity::class.java)
-                .setAction(MainActivity.ACTION_OPEN_SOCIAL)
-                .setData(Uri.fromParts(SOCIAL_SCHEME, announcement.notificationId, null))
-                .putExtra(MainActivity.EXTRA_ROUTE, route)
-        return PendingIntent.getActivity(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
     }
 
     private fun builder(tap: PendingIntent) =
@@ -149,8 +116,6 @@ class SystemNotifier(
 
     private companion object {
         const val ID = 1
-        const val SOCIAL_ID = 2
-        const val SOCIAL_SCHEME = "notification"
         const val FALLBACK = "fallback"
         const val SCHEME = "conversation"
     }

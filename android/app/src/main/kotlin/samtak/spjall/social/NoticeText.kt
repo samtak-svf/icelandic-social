@@ -47,17 +47,21 @@ fun noticeLine(
     kind: SocialNotificationKind,
     names: List<String?>,
     actorCount: Long,
+): NoticeLine =
+    when (kind) {
+        SocialNotificationKind.JOIN_APPROVED -> fixed(R.string.notice_join_approved, NoticeBadge.APPROVED)
+        SocialNotificationKind.MODERATED -> fixed(R.string.notice_moderated, NoticeBadge.MODERATOR)
+        SocialNotificationKind.COMMENT -> actors(COMMENT, NoticeBadge.COMMENT, names, actorCount)
+        SocialNotificationKind.REPLY -> actors(REPLY, NoticeBadge.COMMENT, names, actorCount)
+        SocialNotificationKind.REACTION -> actors(REACTION, NoticeBadge.EMOJI, names, actorCount)
+    }
+
+private fun actors(
+    stem: Stem,
+    badge: NoticeBadge,
+    names: List<String?>,
+    actorCount: Long,
 ): NoticeLine {
-    val stem =
-        when (kind) {
-            SocialNotificationKind.JOIN_APPROVED ->
-                return fixed(R.string.notice_join_approved, NoticeBadge.APPROVED)
-            SocialNotificationKind.MODERATED -> return fixed(R.string.notice_moderated, NoticeBadge.MODERATOR)
-            SocialNotificationKind.COMMENT -> COMMENT
-            SocialNotificationKind.REPLY -> REPLY
-            SocialNotificationKind.REACTION -> REACTION
-        }
-    val badge = if (kind == SocialNotificationKind.REACTION) NoticeBadge.EMOJI else NoticeBadge.COMMENT
     val name = names.firstOrNull()
     return when {
         actorCount >= MANY -> NoticeLine(stem.many, true, name, null, (actorCount - 1).toInt(), badge)

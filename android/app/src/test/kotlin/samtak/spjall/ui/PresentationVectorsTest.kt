@@ -15,11 +15,11 @@ import org.junit.Test
 import samtak.spjall.account.problem
 import samtak.spjall.brand.R
 import samtak.spjall.core.CoreException
-import samtak.spjall.social.ago
+import samtak.spjall.core.SocialNotificationKind
 import samtak.spjall.social.NoticeBadge
+import samtak.spjall.social.ago
 import samtak.spjall.social.label
 import samtak.spjall.social.noticeLine
-import samtak.spjall.core.SocialNotificationKind
 import java.time.Instant
 
 /**
@@ -126,7 +126,15 @@ class PresentationVectorsTest {
                 continue
             }
             val kind = SocialNotificationKind.valueOf(case.text("kind").uppercase())
-            val line = noticeLine(kind, names, case.getValue("actorCount").jsonPrimitive.int.toLong())
+            val line =
+                noticeLine(
+                    kind,
+                    names,
+                    case
+                        .getValue("actorCount")
+                        .jsonPrimitive.int
+                        .toLong(),
+                )
             val id = if (key.endsWith("_many")) R.plurals::class.java.getField(key).getInt(null) else stringId(key)
             assertEquals(where, id, line.key)
             assertEquals(where, key.endsWith("_many"), line.plural)

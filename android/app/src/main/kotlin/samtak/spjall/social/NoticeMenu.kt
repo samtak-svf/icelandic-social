@@ -32,18 +32,18 @@ fun NoticeMenu(
             Icon(AppIcons.More, contentDescription = stringResource(R.string.notice_menu))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            val readKey = if (notification.read) R.string.notice_menu_unread else R.string.notice_menu_read
+            val readLabel = stringResource(readKey)
+            val removeLabel = stringResource(R.string.notice_menu_remove)
+            val inAppLabel = stringResource(R.string.notice_menu_kind_in_app)
+            val offLabel = stringResource(R.string.notice_menu_community_off)
+            val silenceable = notification.kind != SocialNotificationKind.MODERATED
             val items =
                 buildList {
-                    add(
-                        stringResource(if (notification.read) R.string.notice_menu_unread else R.string.notice_menu_read) to {
-                            actions.setRead(notification, !notification.read)
-                        },
-                    )
-                    add(stringResource(R.string.notice_menu_remove) to { actions.remove(notification) })
-                    if (notification.kind != SocialNotificationKind.MODERATED) {
-                        add(stringResource(R.string.notice_menu_kind_in_app) to { actions.kindInApp(notification) })
-                        add(stringResource(R.string.notice_menu_community_off) to { actions.communityOff(notification) })
-                    }
+                    add(readLabel to { actions.setRead(notification, !notification.read) })
+                    add(removeLabel to { actions.remove(notification) })
+                    if (silenceable) add(inAppLabel to { actions.kindInApp(notification) })
+                    if (silenceable) add(offLabel to { actions.communityOff(notification) })
                 }
             items.forEach { (label, act) ->
                 DropdownMenuItem(

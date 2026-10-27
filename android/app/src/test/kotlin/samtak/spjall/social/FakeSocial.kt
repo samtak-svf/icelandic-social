@@ -1,6 +1,5 @@
 package samtak.spjall.social
 
-import samtak.spjall.account.unreachable
 import samtak.spjall.core.Author
 import samtak.spjall.core.Card
 import samtak.spjall.core.CardCommunity
@@ -37,12 +36,6 @@ import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportState
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.core.ReportTargetKind
-import samtak.spjall.core.NotificationKindLevel
-import samtak.spjall.core.NotificationLevel
-import samtak.spjall.core.NotificationSettings
-import samtak.spjall.core.SocialNotification
-import samtak.spjall.core.SocialNotificationKind
-import samtak.spjall.core.SocialNotificationPage
 import samtak.spjall.core.TargetStanding
 import samtak.spjall.core.TargetState
 
