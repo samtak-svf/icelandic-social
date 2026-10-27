@@ -31,6 +31,7 @@ const NOT_THIS_DEVICE = errorResponse(
 );
 const NOT_FOUND = errorResponse("not_found: no approved link, or no transfer on it");
 const EXPIRED = errorResponse("expired: the transfer is past its 24 hours");
+const APPROVAL_EXPIRED = errorResponse("expired: the approval is more than 24 hours old");
 
 export const createHistoryTransferRoute = createRoute({
   method: "post",
@@ -58,6 +59,7 @@ export const createHistoryTransferRoute = createRoute({
     403: NOT_THIS_DEVICE,
     404: NOT_FOUND,
     409: errorResponse("conflict: this link has a transfer already"),
+    410: APPROVAL_EXPIRED,
     413: errorResponse("too_large: more than 1 GiB of history"),
   },
 });

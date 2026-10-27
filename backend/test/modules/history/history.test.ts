@@ -341,7 +341,20 @@ describe("a history transfer (decision 0064, #300)", () => {
     await env.DB.prepare("UPDATE devices SET created_at = ? WHERE device_id = ?")
       .bind(Date.now() - TRANSFER_MS - 1, linked!.deviceId)
       .run();
-    expect((await start(linkId, phone.auth, 1000)).status).toBe(404);
+    const late = await start(linkId, phone.auth, 1000);
+    expect(late.status).toBe(410);
+    expect(await errorOf(late)).toBe("expired");
+  });
+
+  it("answers a device that did not approve the link 403, however old the approval", async () => {
+    const { linkId, linked } = await approvedLink();
+    await env.DB.prepare("UPDATE devices SET created_at = ? WHERE device_id = ?")
+      .bind(Date.now() - TRANSFER_MS - 1, linked!.deviceId)
+      .run();
+    const other = await approvedLink();
+    const refused = await start(linkId, other.phone.auth, 1000);
+    expect(refused.status).toBe(403);
+    expect(await errorOf(refused)).toBe("not_this_device");
   });
 
   it("goes with its account, bytes and all", async () => {

@@ -80,14 +80,15 @@ export async function createTransfer(
   now = Date.now(),
 ): Promise<
   | { ok: { partSize: number; parts: number; expiresAt: number } }
-  | { error: Refused | "conflict" | "too_large" }
+  | { error: Refused | "expired" | "conflict" | "too_large" }
 > {
   if (size > MAX_HISTORY_CIPHERTEXT) return { error: "too_large" };
   const link = await approvedLink(env, linkId, now);
-  if (!link || link.approvedAt + TRANSFER_MS <= now) return { error: "not_found" };
+  if (!link) return { error: "not_found" };
   if (link.approvedBy !== device.deviceId || link.accountId !== device.accountId) {
     return { error: "not_this_device" };
   }
+  if (link.approvedAt + TRANSFER_MS <= now) return { error: "expired" };
   const expiresAt = now + TRANSFER_MS;
   const taken = await db(env)
     .prepare(
