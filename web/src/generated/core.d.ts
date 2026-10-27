@@ -44,7 +44,8 @@ export type CoreEvent =
 | { kind: "typing"; conversation: string; active: boolean }
 | { kind: "timeline"; conversation: string; changed: number[] }
 | { kind: "profiles"; accounts: string[] }
-| { kind: "expired"; conversation: string; removed: number[] };
+| { kind: "expired"; conversation: string; removed: number[] }
+| { kind: "caughtUp" };
 export interface Outcome { events: CoreEvent[]; frames: string[] }
 export interface Me {
     accountId: string; name: string | null; verified: boolean; photo: string | null;
@@ -164,8 +165,8 @@ export interface InitOutput {
     readonly rust_sqlite_wasm_realloc: (a: number, b: number) => number;
     readonly sqlite3_os_end: () => number;
     readonly sqlite3_os_init: () => number;
-    readonly __wasm_bindgen_func_elem_6742: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_6757: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6762: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6777: (a: number, b: number, c: number, d: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;
