@@ -128,6 +128,14 @@ fi
 # _work (#318). One copy of it, sent over ssh (see the header); wired here into
 # each samtak-svf runner's .env, which a runner reads only when it starts.
 hook="$HOME/.local/libexec/spjall/mac-runner-hook.sh"
+# ps etime ([[dd-]hh:]mm:ss) in seconds.
+etime_seconds() {
+  local t=${1// /} d=0 h=0 m s a b c
+  case $t in *-*) d=${t%%-*} t=${t#*-} ;; esac
+  IFS=: read -r a b c <<<"$t"
+  if [ -n "${c:-}" ]; then h=$a m=$b s=$c; else m=$a s=$b; fi
+  echo $((10#$d * 86400 + 10#$h * 3600 + 10#$m * 60 + 10#$s))
+}
 if [ ! -x "$hook" ]; then
   say "runner job hook missing: $hook (the header of this script says how to send it), then run this again"
   exit 1
@@ -160,13 +168,20 @@ for dir in "$HOME/actions-runner" "$HOME/actions-runner-2"; do
       printf '%s\n' "$line" >>"$dir/.env"
     fi
   done
-  if [ "$changed" -eq 0 ]; then
-    say "runner $name: job hook already wired"
-  elif pgrep -f "$dir/.*Runner.Worker" >/dev/null; then
-    say "runner $name: job hook wired; a job is running, so it takes effect at the next restart"
+  # The hook is loaded only by a listener that started after .env last changed,
+  # so a wired hook still needs a restart when the listener is older than .env.
+  [ "$changed" -eq 1 ] && wired="job hook wired" || wired="job hook already wired"
+  listener=$(pgrep -f "$dir/bin/[R]unner.Listener" | head -1 || true)
+  if [ -n "$listener" ] &&
+    [ $(($(date +%s) - $(etime_seconds "$(ps -o etime= -p "$listener")"))) -ge "$(stat -f %m "$dir/.env")" ]; then
+    say "runner $name: $wired and loaded"
+  elif pgrep -f "$dir/bin/[R]unner.Worker" >/dev/null; then
+    say "runner $name: $wired; a job is running, so it takes effect at the next restart"
   else
-    say "runner $name: job hook wired, restarting the runner"
-    launchctl kickstart -k "gui/$(id -u)/actions.runner.samtak-svf.$name"
+    say "runner $name: $wired, restarting the runner"
+    # The runners are LaunchDaemons (svc.sh install as root): the system domain,
+    # not the build user's gui domain.
+    sudo -n launchctl kickstart -k "system/actions.runner.samtak-svf.$name"
   fi
 done
 
