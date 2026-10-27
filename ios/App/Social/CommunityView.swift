@@ -287,6 +287,9 @@ struct CommunityView: View {
             .buttonStyle(.plain)
             .disabled(model.busy)
         }
+        if community.role != nil {
+            CommunityLevelPicker(communityId: community.communityId, social: social)
+        }
         if model.muted {
             SocialNote(text: "community_muted")
         }

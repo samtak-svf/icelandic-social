@@ -8,6 +8,9 @@ import SwiftUI
 struct MeView: View {
     let model: MeModel
     let push: PushModel
+    let levels: NotificationLevelsModel
+    /// Community names by id, for the notification levels set per community.
+    let communityNames: [String: String]
     let onVerify: () -> Void
     let onLink: () -> Void
 
@@ -41,7 +44,9 @@ struct MeView: View {
                     if !me.verified { VerifyLink(onVerify: onVerify) }
                     CardLabel(key: "invite_link_title")
                     InviteCard(model: model)
-                    SettingsSection(model: model, me: me, notificationsOff: push.off, onLink: onLink)
+                    SettingsSection(
+                        model: model, me: me, notificationsOff: push.off, levels: levels,
+                        communityNames: communityNames, onLink: onLink)
                 }
                 VersionLine()
             }

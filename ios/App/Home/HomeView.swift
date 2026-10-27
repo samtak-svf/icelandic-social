@@ -37,6 +37,7 @@ struct HomeView: View {
     @State private var mePath: [MeRoute] = []
     @State private var communities: CommunitiesModel
     @State private var notices: NotificationsModel
+    @State private var levels: NotificationLevelsModel
     @State private var communitiesPath: [SocialRoute] = []
     @State private var noticesPath: [SocialRoute] = []
     /// Kenni's offer after a sign-in, over the tabs (decision 0035).
@@ -70,6 +71,7 @@ struct HomeView: View {
         _list = State(initialValue: ConversationsModel(account: signIn.account, live: socket))
         _me = State(initialValue: MeModel(account: signIn.account))
         _communities = State(initialValue: CommunitiesModel(social: social))
+        _levels = State(initialValue: NotificationLevelsModel(social: social))
         _notices = State(initialValue: NotificationsModel(social: social, cancel: push.notifier.cancel))
         _onboarding = State(initialValue: OnboardingModel(notifier: push.notifier))
         _photos = State(initialValue: PhotoCache(account: signIn.account, social: social, decode: displayPhoto))
@@ -261,7 +263,9 @@ struct HomeView: View {
     private var meStack: some View {
         NavigationStack(path: $mePath) {
             MeView(
-                model: me, push: push, onVerify: { mePath.append(.verify) }, onLink: { mePath.append(.link) }
+                model: me, push: push, levels: levels,
+                communityNames: Dictionary(communities.mine.map { ($0.communityId, $0.name) }) { first, _ in first },
+                onVerify: { mePath.append(.verify) }, onLink: { mePath.append(.link) }
             )
             .navigationDestination(for: MeRoute.self) { route in
                 switch route {
