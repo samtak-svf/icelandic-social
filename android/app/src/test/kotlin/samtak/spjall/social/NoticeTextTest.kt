@@ -8,6 +8,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import samtak.spjall.core.Author
+import samtak.spjall.core.SocialNotice
 import samtak.spjall.core.SocialNotificationKind
 
 /** The finished sentence of a notice: the arguments reach the brand's string, a deleted account has its word. */
@@ -62,5 +63,16 @@ class NoticeTextTest {
         val withActors =
             notification("n", SocialNotificationKind.COMMENT, 1uL).copy(actors = listOf(Author("a9", "Eva", true)))
         assertEquals("Eva skrifaði athugasemd við póstinn þinn.", withActors.line().text(resources))
+    }
+
+    @Test
+    fun aNoticeTheDeviceAnnouncesSaysWhatItsRowSays() {
+        val actors = listOf(Author("a2", "Anna", false), Author("a3", "Garðar", false))
+        val row = notification("n1", SocialNotificationKind.REACTION, 10uL).copy(actors = actors, actorCount = 2uL)
+        val notice =
+            SocialNotice(
+                row.notificationId, row.kind, actors, 2uL, row.communityId, row.postId, null, null, null, row.createdAt,
+            )
+        assertEquals(row.line().text(resources), notice.line().text(resources))
     }
 }

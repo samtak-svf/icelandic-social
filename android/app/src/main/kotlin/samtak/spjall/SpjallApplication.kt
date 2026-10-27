@@ -60,6 +60,13 @@ class SpjallApplication : Application() {
                 getString(R.string.notification_channel_messages_name),
                 NotificationManager.IMPORTANCE_HIGH,
             ).apply { description = getString(R.string.notification_channel_messages_description) }
-        getSystemService(NotificationManager::class.java).createNotificationChannel(messages)
+        // Social notifications (decision 0107) keep a channel of their own, so they can be silenced apart.
+        val alerts =
+            NotificationChannel(
+                BuildConfig.CHANNEL_ALERTS,
+                getString(R.string.notification_channel_social_name),
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply { description = getString(R.string.notification_channel_social_description) }
+        getSystemService(NotificationManager::class.java).createNotificationChannels(listOf(messages, alerts))
     }
 }

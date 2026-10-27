@@ -86,6 +86,9 @@ class MainActivity : ComponentActivity() {
     /** A conversation a notification asked to open, held until the signed-in screens can. */
     private val opens = Channel<String>(Channel.CONFLATED)
 
+    /** A route a social notification asked to open (decision 0107), held the same way. */
+    private val socialOpens = Channel<String>(Channel.CONFLATED)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // The bars' icons follow the system's mode, as the theme does (decision 0052).
@@ -108,6 +111,10 @@ class MainActivity : ComponentActivity() {
     private fun handle(intent: Intent) {
         if (intent.action == ACTION_OPEN_CONVERSATION) {
             intent.getStringExtra(EXTRA_CONVERSATION)?.let { opens.trySend(it) }
+            return
+        }
+        if (intent.action == ACTION_OPEN_SOCIAL) {
+            intent.getStringExtra(EXTRA_ROUTE)?.let { socialOpens.trySend(it) }
             return
         }
         val uri = intent.data?.takeIf { intent.action == Intent.ACTION_VIEW } ?: return
@@ -199,6 +206,12 @@ class MainActivity : ComponentActivity() {
                 nav.navigate(conversationRoute(it))
             }
         }
+        LaunchedEffect(Unit) {
+            socialOpens.receiveAsFlow().collect {
+                nav.navigate(SocialRoutes.NOTIFICATIONS) { tab() }
+                nav.navigate(it)
+            }
+        }
         val route =
             nav
                 .currentBackStackEntryAsState()
@@ -228,7 +241,9 @@ class MainActivity : ComponentActivity() {
                     graph.files,
                     nav,
                     unread::refresh,
-                ) { post -> nav.navigate("${AppRoutes.SHARE}/$post") }
+                    sharePost = { post -> nav.navigate("${AppRoutes.SHARE}/$post") },
+                    dismissNotice = graph.push::dismissNotice,
+                )
                 composable(AppRoutes.VERIFY) { VerifyRoute(nav, signIn) }
                 composable(AppRoutes.LINK) { LinkRoute(nav, graph) }
                 composable(AppRoutes.PEOPLE) { PeopleRoute(nav, graph) }
@@ -298,6 +313,10 @@ class MainActivity : ComponentActivity() {
         /** A notification's tap (push/SystemNotifier.kt), with [EXTRA_CONVERSATION] unless it is the fallback. */
         const val ACTION_OPEN_CONVERSATION = "samtak.spjall.OPEN_CONVERSATION"
         const val EXTRA_CONVERSATION = "conversation"
+
+        /** A social notification's tap (push/SystemNotifier.kt), with the route to open in [EXTRA_ROUTE]. */
+        const val ACTION_OPEN_SOCIAL = "samtak.spjall.OPEN_SOCIAL"
+        const val EXTRA_ROUTE = "route"
 
         private val TABS =
             setOf(AppRoutes.LIST, SocialRoutes.COMMUNITIES, SocialRoutes.NOTIFICATIONS, AppRoutes.ME)
