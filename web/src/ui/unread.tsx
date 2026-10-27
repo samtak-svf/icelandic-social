@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { notifications } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 
-// The unread count on the notifications tab: asked for on every navigation,
+// The unseen count on the notifications tab (decision 0104): asked for on every navigation,
 // and when the notifications page has marked some read.
 
 const listeners = new Set<() => void>();
@@ -26,7 +26,7 @@ export function UnreadBadge({ className = "ml-1 px-2 text-sm" }: Readonly<{ clas
     let live = true;
     notifications({ query: { limit: 1 } })
       .then((answer) => {
-        if (live && answer.status === 200) setUnread(answer.data.unread);
+        if (live && answer.status === 200) setUnread(answer.data.unseen);
       })
       .catch(() => undefined);
     return () => {
