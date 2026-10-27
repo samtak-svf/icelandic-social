@@ -71,6 +71,7 @@ internal fun AboutFacts(
     )
     Muted(stringResource(R.string.community_not_encrypted_notice))
     Muted(stringResource(R.string.residency_claim))
+    CommunityLevelPicker(community.communityId)
 }
 
 /**

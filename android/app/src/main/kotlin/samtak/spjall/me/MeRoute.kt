@@ -19,6 +19,7 @@ import samtak.spjall.BuildConfig
 import samtak.spjall.brand.R
 import samtak.spjall.core.coreVersion
 import samtak.spjall.frames.LocalFrameSession
+import samtak.spjall.social.WithNotificationLevels
 import samtak.spjall.ui.AppRoutes
 import samtak.spjall.ui.notificationsOff
 import samtak.spjall.ui.openNotificationSettings
@@ -94,5 +95,7 @@ internal fun MeRoute(
             "${BuildConfig.VERSION_CODE}",
             coreVersion(),
         )
-    MeScreen(state, actions, notificationsOff = notificationsOff, version = version)
+    WithNotificationLevels(graph.social) {
+        MeScreen(state, actions, notificationsOff = notificationsOff, version = version)
+    }
 }

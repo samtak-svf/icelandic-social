@@ -70,6 +70,7 @@ internal fun ColumnScope.Settings(
         modifier = Modifier.align(Alignment.CenterHorizontally),
     )
     if (notificationsOff) NotificationsOff(actions::notificationSettings)
+    NotificationLevelsSection()
     // The design leaves these out; decision 0009 keeps them, in the same cards.
     state.settings?.let { Panel { PrivacySection(it, !state.busy, actions) } }
     Label(R.string.blocked_title)

@@ -44,7 +44,7 @@ fun NavGraphBuilder.socialScreens(
     fun screen(
         route: String,
         content: @Composable (NavBackStackEntry) -> Unit,
-    ) = composable(route) { entry -> WithPostImages(social) { content(entry) } }
+    ) = composable(route) { entry -> WithNotificationLevels(social) { WithPostImages(social) { content(entry) } } }
 
     screen(SocialRoutes.COMMUNITIES) { Communities(social, account, nav, sharePost) }
     screen(SocialRoutes.NOTIFICATIONS) { NotificationsRoute(social, nav, read, dismissNotice) }
