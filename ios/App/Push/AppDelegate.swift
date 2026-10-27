@@ -66,27 +66,41 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     /// No token, as in a build without the push entitlement: the app works without push.
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {}
 
+    // The completion-handler forms, not the async ones: the async form's bridge calls the
+    // system's handler from the task's thread, and UIKit aborts the app when a tapped
+    // notification's handler runs off the main thread.
+
     /// While the app is open its screens show what arrived; the notification would repeat it.
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification
-    ) async -> UNNotificationPresentationOptions {
-        []
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping @Sendable (UNNotificationPresentationOptions) -> Void
+    ) {
+        onMainThread { completionHandler([]) }
     }
 
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse
-    ) async {
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping @Sendable () -> Void
+    ) {
         let content = response.notification.request.content
-        // A social notification carries where it leads; a conversation's thread is its id.
-        if let community = content.userInfo[SocialTapKey.community] as? String {
-            let post = content.userInfo[SocialTapKey.post] as? String
-            await MainActor.run { push.tappedSocial(post: post, community: community) }
-        } else {
-            let conversation = content.threadIdentifier
-            await MainActor.run { push.tapped(conversation) }
+        let thread = content.threadIdentifier
+        let community = content.userInfo[SocialTapKey.community] as? String
+        let post = content.userInfo[SocialTapKey.post] as? String
+        onMainThread {
+            self.push.tapped(thread: thread, community: community, post: post)
+            completionHandler()
         }
+    }
+}
+
+/// Runs `work` on the main thread: at once when already there, else as soon as it is free.
+func onMainThread(_ work: @escaping @MainActor @Sendable () -> Void) {
+    if Thread.isMainThread {
+        MainActor.assumeIsolated(work)
+    } else {
+        DispatchQueue.main.async { MainActor.assumeIsolated(work) }
     }
 }
 
