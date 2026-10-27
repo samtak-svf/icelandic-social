@@ -2,7 +2,8 @@
 // The shared presentation vectors are well formed (#275).
 //
 // `api/presentation.vectors.json` is what the web, Android and iOS tests read
-// to prove that relative time, initials, row stamps and problem text agree.
+// to prove that relative time, initials, row stamps, problem text and the
+// sentence and badge of a notification row agree.
 // A vector that names a strings key the contract does not have, a count for a
 // key with no {count}, or an instant that does not parse would let all three
 // suites pass on nothing, so the file is held to the contract here.
@@ -17,7 +18,20 @@ const SECTIONS = /** @type {const} */ ([
   "stamp",
   "listStamp",
   "problem",
+  "notice",
 ]);
+
+/** The badge each notification kind draws on its row's picture (decision 0103). */
+const BADGES = /** @type {Record<string, string>} */ ({
+  comment: "comment",
+  reply: "comment",
+  reaction: "emoji",
+  join_approved: "approved",
+  moderated: "moderator",
+});
+
+/** The kinds that name their actors; the others name nobody. */
+const SOCIAL = new Set(["comment", "reply", "reaction"]);
 
 /** A UTC instant written the one way every platform parses. */
 const INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
@@ -74,6 +88,67 @@ function relativeProblems(c, keys, where) {
 }
 
 /**
+ * The strings key a notification row reads (decisions 0103, 0104).
+ * @param {any} c one notice case
+ * @returns {string}
+ */
+function noticeKey(c) {
+  if (c.kind === "moderated")
+    return c.action === "decline_anonymous_post" ? "notice_anonymous_declined" : "notice_moderated";
+  if (!SOCIAL.has(c.kind)) return `notice_${c.kind}`;
+  if (c.actorCount >= 3) return `notice_${c.kind}_many`;
+  return c.actorCount === 2 ? `notice_${c.kind}_two` : `notice_${c.kind}`;
+}
+
+/**
+ * @param {any} c one notice case
+ * @param {Record<string, any>} keys the contract's keys
+ * @param {string} where
+ * @returns {string[]}
+ */
+function noticeProblems(c, keys, where) {
+  const shape = noticeShape(c, where);
+  if (shape.length > 0) return shape;
+  const unknown = fields(c, where).key(keys);
+  if (unknown.length > 0) return unknown;
+  const problems = [];
+  const expected = noticeKey(c);
+  if (c.key !== expected)
+    problems.push(
+      `${where}: ${c.kind} with ${c.actorCount} actors reads ${expected}, not ${c.key}`,
+    );
+  const args = Object.keys(c.args ?? {}).sort();
+  const placeholders = Object.keys(keys[c.key].placeholders ?? {}).sort();
+  if (args.join() !== placeholders.join())
+    problems.push(
+      `${where}: args ${args.join(", ")} differ from ${c.key}'s placeholders ${placeholders.join(", ")}`,
+    );
+  if (c.badge !== BADGES[c.kind])
+    problems.push(`${where}: ${c.kind}'s badge is ${BADGES[c.kind]}, not ${c.badge}`);
+  if ("count" in (c.args ?? {}) && c.args.count !== c.actorCount - 1)
+    problems.push(
+      `${where}: count is actorCount minus one, ${c.actorCount - 1}, not ${c.args.count}`,
+    );
+  return problems;
+}
+
+/**
+ * The fields a notice case must have before its rules can be read.
+ * @param {any} c one notice case
+ * @param {string} where
+ * @returns {string[]}
+ */
+function noticeShape(c, where) {
+  if (!(c?.kind in BADGES)) return [`${where}: kind ${c?.kind} is not a notification kind`];
+  const actors = Array.isArray(c.actors) ? c.actors : null;
+  if (!actors || !actors.every((/** @type {unknown} */ a) => a === null || typeof a === "string"))
+    return [`${where}: actors is not a list of names and nulls`];
+  if (!Number.isInteger(c.actorCount) || c.actorCount < actors.length)
+    return [`${where}: actorCount is not a whole number of at least the actors given`];
+  return [];
+}
+
+/**
  * @param {string} section
  * @param {any} c one case
  * @param {Record<string, any>} keys the contract's keys
@@ -90,6 +165,7 @@ function caseProblems(section, c, keys, where) {
       ...f.text("initials"),
     ];
   }
+  if (section === "notice") return noticeProblems(c, keys, where);
   if (section === "problem") {
     const outcome = c?.outcome === "unreachable" || c?.outcome === "refused";
     return [

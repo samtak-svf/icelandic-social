@@ -8,7 +8,8 @@
   [0015](0015-delivery-protocol.md) (when a push is sent),
   [0017](0017-conversations-on-the-server.md) (the push outbox)
 - Amended by: [0042](0042-mute-a-conversation.md) (muting a conversation, checked before a
-  push is owed)
+  push is owed), [0107](0107-device-announces-social-notices.md) (the device announces social
+  notifications too)
 
 ## Decision
 

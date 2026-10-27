@@ -42,4 +42,28 @@ describe("presentation-check", () => {
   it("fails rather than pass on a contract with no keys", () => {
     expect(check(vectors(), {})).toEqual(["brand/strings.contract.json has no keys"]);
   });
+
+  it("fails a notice whose key does not follow its kind and actors", () => {
+    const edited = vectors();
+    const two = edited.notice.findIndex((/** @type {any} */ c) => c.key === "notice_comment_two");
+    edited.notice[two].key = "notice_comment";
+    expect(check(edited, contract())).toEqual([
+      `presentation.vectors.json notice[${two}]: comment with 2 actors reads notice_comment_two, not notice_comment`,
+      `presentation.vectors.json notice[${two}]: args name, other differ from notice_comment's placeholders name`,
+    ]);
+  });
+
+  it("fails notice args that differ from the key's placeholders, a wrong count and a wrong badge", () => {
+    const edited = vectors();
+    const many = edited.notice.findIndex((/** @type {any} */ c) => c.key === "notice_reply_many");
+    edited.notice[many].args.count = 3;
+    const one = edited.notice.findIndex((/** @type {any} */ c) => c.key === "notice_reaction");
+    edited.notice[one].args.other = "Jón";
+    edited.notice[one].badge = "comment";
+    expect(check(edited, contract())).toEqual([
+      `presentation.vectors.json notice[${many}]: count is actorCount minus one, 2, not 3`,
+      `presentation.vectors.json notice[${one}]: args name, other differ from notice_reaction's placeholders name`,
+      `presentation.vectors.json notice[${one}]: reaction's badge is emoji, not comment`,
+    ]);
+  });
 });

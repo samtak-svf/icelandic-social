@@ -165,6 +165,14 @@
       "surfaces": ["android"],
       "description": "Android channel description: messages."
     },
+    "notification_channel_social_name": {
+      "surfaces": ["android"],
+      "description": "Android notification channel for community notifications: comments, replies and reactions (decision 0107)."
+    },
+    "notification_channel_social_description": {
+      "surfaces": ["android"],
+      "description": "Description of the community notifications channel in Android settings (decision 0107)."
+    },
     "notification_you": {
       "surfaces": ["android"],
       "description": "The reader in a message notification's conversation style; Android requires a name for them, though it rarely shows it (docs/decisions/0025)."
@@ -1045,6 +1053,155 @@
     "notice_moderated": {
       "surfaces": ["android", "ios", "web"],
       "description": "A notification: a moderator hid or removed the reader's post or comment (decision 0063)."
+    },
+    "notice_reply": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A notification: someone replied to the reader's comment on a post (decision 0103). {name} is that person's name.",
+      "placeholders": {
+        "name": "string"
+      }
+    },
+    "notice_comment_two": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A notification: two people commented on the reader's post (0103). {name} is the newest, {other} the other.",
+      "placeholders": {
+        "name": "string",
+        "other": "string"
+      }
+    },
+    "notice_comment_many": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A notification: three or more people commented on the reader's post (0103). {name} is the newest; count is how many others.",
+      "plural": true,
+      "placeholders": {
+        "name": "string",
+        "count": "int"
+      }
+    },
+    "notice_reply_two": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A notification: two people replied to the reader's comment (0103). {name} is the newest, {other} the other.",
+      "placeholders": {
+        "name": "string",
+        "other": "string"
+      }
+    },
+    "notice_reply_many": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A notification: three or more people replied to the reader's comment (0103). {name} is the newest; count is how many others.",
+      "plural": true,
+      "placeholders": {
+        "name": "string",
+        "count": "int"
+      }
+    },
+    "notice_reaction_two": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A notification: two people reacted to the reader's post (0103). {name} is the newest, {other} the other.",
+      "placeholders": {
+        "name": "string",
+        "other": "string"
+      }
+    },
+    "notice_reaction_many": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A notification: three or more people reacted to the reader's post (0103). {name} is the newest; count is how many others.",
+      "plural": true,
+      "placeholders": {
+        "name": "string",
+        "count": "int"
+      }
+    },
+    "notice_snippet": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The quoted start of the comment or post a notification is about, under its sentence (decision 0105). {text} is that text, already shortened.",
+      "placeholders": {
+        "text": "string"
+      }
+    },
+    "notice_section_new": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Heading over the notifications that came since the list was last opened (decision 0104)."
+    },
+    "notice_section_earlier": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Heading over the notifications the reader had already seen (decision 0104)."
+    },
+    "notifications_mark_all_read": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Action in the notifications header: marks every notification read (decision 0104)."
+    },
+    "notice_menu": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Accessible label of a notification's menu button (decision 0104)."
+    },
+    "notice_menu_read": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Notification menu item: mark it read (decision 0104)."
+    },
+    "notice_menu_unread": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Notification menu item: mark it unread again (decision 0104)."
+    },
+    "notice_menu_remove": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Notification menu item: remove it from the list (decision 0104)."
+    },
+    "notice_menu_kind_in_app": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Notification menu item: notifications of this kind stop reaching the phone and stay in the app (decision 0106)."
+    },
+    "notice_menu_community_off": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Notification menu item: no more notifications from this community (decision 0106)."
+    },
+    "notification_settings_title": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Heading of the notifications section in Settings, and the community menu item that opens its level (decision 0106)."
+    },
+    "notification_settings_body": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Under the notifications heading in Settings: what the levels mean (decision 0106)."
+    },
+    "notification_settings_communities": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Heading over the communities whose level the reader has changed (decision 0106)."
+    },
+    "notification_kind_comment": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Notification settings row: comments on the reader's posts (decision 0106)."
+    },
+    "notification_kind_reply": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Notification settings row: replies to the reader's comments (decision 0106)."
+    },
+    "notification_kind_reaction": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Notification settings row: reactions to the reader's posts (decision 0106)."
+    },
+    "notification_kind_join_approved": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Notification settings row: approved requests to join a community (decision 0106)."
+    },
+    "notification_kind_moderated": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Notification settings row: a moderator's action on the reader's post or comment (decision 0106)."
+    },
+    "notification_moderated_floor": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Under the moderators' row in notification settings: it can be quieted, never turned off (decisions 0067, 0106)."
+    },
+    "notification_level_push": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Notification level: in the app and on the phone (decision 0106)."
+    },
+    "notification_level_in_app": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Notification level: in the app only, no push (decision 0106)."
+    },
+    "notification_level_off": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Notification level: none (decision 0106)."
     },
     "person_deleted": {
       "surfaces": ["android", "ios", "web"],
