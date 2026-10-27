@@ -1,8 +1,10 @@
 package samtak.spjall.push
 
+import kotlinx.coroutines.runBlocking
 import samtak.spjall.account.Account
 import samtak.spjall.core.CoreException
 import samtak.spjall.core.SocialNotice
+import samtak.spjall.socket.Live
 
 /** Posts and takes away notifications: the system's in the app, a list in tests. */
 interface Notifier {
@@ -24,9 +26,14 @@ interface Notifier {
  * something to fetch: [wake] syncs, then asks the core what to announce and
  * what to take away. In the foreground the screens show what arrives, so
  * [quiet] has the core count it as shown and announces nothing.
+ *
+ * Each sync runs through [live], in turn with the socket's calls, and its events reach the screens like
+ * the socket's own: a sync stores what it fetches only once, so one whose events went nowhere left an open
+ * conversation without a message it would never hear of again (#324).
  */
 class Push(
     private val account: Account,
+    private val live: Live,
     private val notifier: Notifier,
     private val labels: () -> Labels,
     /** The words of a social notice: the list row's sentence, from the same rule (decision 0107). */
@@ -40,7 +47,7 @@ class Push(
         synchronized(lock) {
             val show = !foreground()
             try {
-                account.sync()
+                sync()
             } catch (_: CoreException) {
                 if (show) notifier.fallback(true)
                 return@synchronized
@@ -58,7 +65,7 @@ class Push(
      */
     fun token(token: String) {
         try {
-            if (account.setPushToken(token, sandbox = false)) account.sync()
+            if (account.setPushToken(token, sandbox = false)) sync()
         } catch (_: CoreException) {
             // Kept or not, the next sync tries again.
         }
@@ -69,6 +76,9 @@ class Push(
 
     /** A notification in the list was opened, read or removed: its system notification has been seen. */
     fun dismissNotice(notificationId: String) = notifier.cancelSocial(listOf(notificationId))
+
+    /** Syncs on the caller's thread, a push's or the token's own, and waits for it; throws what it threw. */
+    private fun sync() = runBlocking { live.performAndWait { it.sync() } }
 
     private fun settle(show: Boolean) {
         val notices =

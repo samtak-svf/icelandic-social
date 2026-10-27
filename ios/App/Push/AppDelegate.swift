@@ -76,7 +76,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping @Sendable (UNNotificationPresentationOptions) -> Void
     ) {
-        onMainThread { completionHandler([]) }
+        let thread = notification.request.content.threadIdentifier
+        onMainThread {
+            self.push.arrived(thread: thread)
+            completionHandler([])
+        }
     }
 
     nonisolated func userNotificationCenter(

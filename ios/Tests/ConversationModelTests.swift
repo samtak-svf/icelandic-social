@@ -8,6 +8,7 @@ final class ConversationModelTests: XCTestCase {
     private let account = FakeAccount(signedIn: true)
     private let sleeps = FakeSleep()
     private lazy var live = FakeLive(account: account)
+    private let drafts = Drafts()
     private var following: [Task<Void, Never>] = []
 
     override func tearDown() async throws {
@@ -19,7 +20,7 @@ final class ConversationModelTests: XCTestCase {
     {
         account.list = [c1]
         let model = ConversationModel(
-            id: "c1", account: account, live: live, sleep: sleeps.sleep, now: { FakeAccount.now })
+            id: "c1", account: account, live: live, drafts: drafts, sleep: sleeps.sleep, now: { FakeAccount.now })
         following.append(Task { await model.follow() })
         await eventually { model.loaded }
         return model
@@ -144,6 +145,36 @@ final class ConversationModelTests: XCTestCase {
         model.cancelMode()
         XCTAssertEqual(model.draft, "svar")
         XCTAssertEqual(model.mode, .new)
+    }
+
+    /// Leaving a conversation drops its model; the unsent text waits for the next one (#324).
+    func testAnUnsentDraftIsThereAgainWhenTheConversationIsOpenedAgain() async {
+        let first = await model()
+        first.type("Hálfskrifað")
+
+        let again = await model()
+        XCTAssertEqual(again.draft, "Hálfskrifað")
+        again.type("Hálfskrifað svar")
+        await again.send()
+
+        let after = await model()
+        XCTAssertEqual(after.draft, "", "a sent draft is gone")
+    }
+
+    func testAnEditLeavesTheUnsentDraftAsItWas() async {
+        let target = item(4, own: true)
+        let model = await model()
+        model.type("Drög")
+        model.edit(target)
+        model.type("m4 lagað")
+        let meanwhile = await self.model()
+        XCTAssertEqual(meanwhile.draft, "Drög", "an edit's text is no draft")
+
+        model.cancelMode()
+        XCTAssertEqual(model.draft, "Drög")
+        model.edit(target)
+        await model.send()
+        XCTAssertEqual(model.draft, "Drög", "sending an edit gives the draft back")
     }
 
     func testDeletesAndTogglesReactions() async {

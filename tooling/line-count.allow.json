@@ -43,7 +43,7 @@
   "core/wasm/src/dto.rs": 622,
   "ios/App/Conversation/Bubble.swift": 483,
   "ios/App/Conversation/ConversationInfoView.swift": 429,
-  "ios/App/Conversation/ConversationModel.swift": 670,
+  "ios/App/Conversation/ConversationModel.swift": 669,
   "ios/App/Conversation/ConversationView.swift": 532,
   "ios/App/Social/CommunitiesView.swift": 534,
   "ios/App/Social/CommunityModel.swift": 882,

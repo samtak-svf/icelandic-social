@@ -32,7 +32,7 @@ internal fun ConversationInfoRoute(
     val owner = remember { nav.previousBackStackEntry } ?: return
     val model: ConversationViewModel =
         viewModel(viewModelStoreOwner = owner, key = "conversation-$id") {
-            ConversationViewModel(id, graph.account, graph.socket)
+            ConversationViewModel(id, graph.account, graph.socket, graph.drafts)
         }
     val state by model.state.collectAsStateWithLifecycle()
     LaunchedEffect(model) { model.loadShared() }

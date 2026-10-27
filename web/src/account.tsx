@@ -1,4 +1,5 @@
 import { createContext, use, useCallback, useEffect, useState, type ReactNode } from "react";
+import { clearDrafts } from "./chat/drafts.ts";
 import { getMe, type Me } from "./generated/api.ts";
 import { refused, type Problem } from "./problem.ts";
 
@@ -42,7 +43,10 @@ async function ask(): Promise<AccountState> {
 export function AccountProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [state, setState] = useState<AccountState>({ status: "loading" });
   const refresh = useCallback(async () => setState(await ask()), []);
-  const signedOut = useCallback(() => setState({ status: "signed-out" }), []);
+  const signedOut = useCallback(() => {
+    clearDrafts();
+    setState({ status: "signed-out" });
+  }, []);
   useEffect(() => {
     void refresh();
   }, [refresh]);

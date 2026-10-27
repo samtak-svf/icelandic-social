@@ -29,6 +29,8 @@ struct HomeView: View {
     let browser: (URL) async throws -> URL?
 
     @State private var socket: Socket
+    /// Each conversation's unsent text, kept while its screen is closed (#324).
+    @State private var drafts = Drafts()
     @State private var list: ConversationsModel
     @State private var me: MeModel
     @State private var onboarding: OnboardingModel
@@ -254,7 +256,7 @@ struct HomeView: View {
                     }
                 case .conversation(let id):
                     let model = routeModels.model(for: route) {
-                        ConversationModel(id: id, account: signIn.account, live: socket)
+                        ConversationModel(id: id, account: signIn.account, live: socket, drafts: drafts)
                     }
                     ConversationRoute(model: model)
                         .task(id: id) { await push.dismiss(id) }

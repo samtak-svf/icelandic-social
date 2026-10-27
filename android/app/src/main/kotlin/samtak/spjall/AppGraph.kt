@@ -9,6 +9,7 @@ import samtak.spjall.account.Account
 import samtak.spjall.account.CoreAccount
 import samtak.spjall.account.OkHttpTransport
 import samtak.spjall.account.Update
+import samtak.spjall.conversation.Drafts
 import samtak.spjall.core.CoreClient
 import samtak.spjall.core.Platform
 import samtak.spjall.crypto.StoreKey
@@ -71,10 +72,14 @@ class AppGraph(
             MainScope(),
         )
 
+    /** Each conversation's unsent text, kept while the process lives (#324). */
+    val drafts = Drafts()
+
     private val notifier = SystemNotifier(context)
 
+    // Its syncs go through the socket, so what they store reaches the screens (#324).
     val push =
-        Push(account, notifier, notifier::labels, notifier::sentence) {
+        Push(account, socket, notifier, notifier::labels, notifier::sentence) {
             ProcessLifecycleOwner
                 .get()
                 .lifecycle.currentState
