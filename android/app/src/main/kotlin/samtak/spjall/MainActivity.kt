@@ -108,6 +108,12 @@ class MainActivity : ComponentActivity() {
         handle(intent)
     }
 
+    /** Every sign-out ends here: the graph forgets the account first, then the sign-in screen returns (#337). */
+    private fun signedOut() {
+        graph.signedOut()
+        signIn.signedOut()
+    }
+
     /** A tapped notification, an invite link, or a provider's redirect back to the app's scheme. */
     private fun handle(intent: Intent) {
         when (intent.action) {
@@ -179,7 +185,7 @@ class MainActivity : ComponentActivity() {
             // start cleared what an earlier session left.
             graph.socket.signedOut.first { it }
             graph.socket.stop()
-            signIn.signedOut()
+            signedOut()
         }
         if (step == OnboardingViewModel.Step.Done) {
             TabScreens(signIns)
@@ -243,7 +249,7 @@ class MainActivity : ComponentActivity() {
                 startDestination = AppRoutes.LIST,
             ) {
                 composable(AppRoutes.LIST) { ConversationsRoute(list, nav) }
-                composable(AppRoutes.ME) { MeRoute(signIns, nav, graph, this@MainActivity, signIn::signedOut) }
+                composable(AppRoutes.ME) { MeRoute(signIns, nav, graph, this@MainActivity, ::signedOut) }
                 socialScreens(
                     graph.social,
                     graph.account,
