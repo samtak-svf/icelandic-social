@@ -4,6 +4,7 @@ import { strings } from "../generated/brand/strings.ts";
 import { describe as describeProblem, refused } from "../problem.ts";
 import { initials } from "../social/avatar.tsx";
 import { listStamp } from "./is-format.ts";
+import { noticeText } from "./notice-text.ts";
 import { relativeTime } from "./relative-time.ts";
 
 // The shared presentation vectors (#275): Android and iOS read the same file,
@@ -63,6 +64,29 @@ describe("the shared problem text", () => {
           ? ({ kind: "unreachable" } as const)
           : refused(v.code === null ? "Bad Gateway" : { error: v.code, requestId: "r1" });
       expect(describeProblem(problem).message).toBe(say(v.key));
+    });
+  }
+});
+
+describe("the shared notification sentences", () => {
+  for (const v of vectors.notice) {
+    it(`${v.kind} ${v.action ?? ""} ${v.actorCount} -> ${v.key}`, () => {
+      const got = noticeText({
+        kind: v.kind as "comment",
+        action: v.action ?? null,
+        actors: v.actors.map((name) => (name === null ? null : { name })),
+        actorCount: v.actorCount,
+      });
+      expect(got.key).toBe(v.key);
+      expect(got.args).toEqual(v.args);
+      expect(got.badge).toBe(v.badge);
+      const name = (arg: unknown) => (arg === null ? strings.person_deleted : String(arg));
+      const text: unknown = Reflect.get(strings, v.key);
+      const args = { ...v.args, name: name(v.args.name) } as Record<string, unknown>;
+      if ("other" in args) args.other = name(args.other);
+      expect(got.text).toBe(
+        typeof text === "function" ? String(Reflect.apply(text, undefined, [args])) : text,
+      );
     });
   }
 });
