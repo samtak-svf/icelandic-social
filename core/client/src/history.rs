@@ -21,7 +21,7 @@ use std::io::{self, Cursor, Read, Write};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
-use spjall_envelope::Body;
+use spjall_envelope::{Body, PhotoRef};
 use spjall_mls::hpke;
 use spjall_store::rusqlite::{self, Transaction, params};
 
@@ -107,6 +107,13 @@ enum Record {
         removed: bool,
         created_at: i64,
         timer: Option<i64>,
+        /// The group's name and photo (0078, 0094): folded state a linked
+        /// device cannot rebuild from the cards, which only say they
+        /// changed. Absent in a history from before #327.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        name: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        photo: Option<PhotoRef>,
     },
     Item {
         group: String,
@@ -185,7 +192,7 @@ fn records(tx: &Transaction, since: Option<u64>) -> rusqlite::Result<(Vec<u8>, O
     let since = since.unwrap_or(0) as i64;
     // A conversation the server does not have yet cannot be joined.
     let mut statement = tx.prepare(
-        "SELECT group_id, state, created_at, timer FROM conversations
+        "SELECT group_id, state, created_at, timer, name, photo FROM conversations
          WHERE state != 'new' ORDER BY created_at",
     )?;
     let mut groups = Vec::new();
@@ -195,14 +202,18 @@ fn records(tx: &Transaction, since: Option<u64>) -> rusqlite::Result<(Vec<u8>, O
             r.get::<_, String>(1)?,
             r.get(2)?,
             r.get(3)?,
+            r.get::<_, Option<String>>(4)?,
+            r.get::<_, Option<String>>(5)?,
         ))
     })? {
-        let (group, state, created_at, timer) = row?;
+        let (group, state, created_at, timer, name, photo) = row?;
         add(Record::Conversation {
             group: base64(&group),
             removed: state == "removed",
             created_at,
             timer,
+            name,
+            photo: photo.and_then(|p| serde_json::from_str(&p).ok()),
         });
         groups.push(group);
     }
@@ -471,17 +482,36 @@ fn write(tx: &Transaction, records: &[Record]) -> Result<Imported, ClientError> 
                 removed,
                 created_at,
                 timer,
+                name,
+                photo,
             } => {
                 let cursor = newest.get(id.as_str()).copied().unwrap_or(0);
+                // Kept as a member's message would be: a name or a photo
+                // that one would not take is left out.
+                let name = name
+                    .as_deref()
+                    .and_then(crate::timeline::group_name)
+                    .flatten();
+                let photo = photo
+                    .as_ref()
+                    .filter(|p| crate::timeline::usable_photo(p))
+                    .map(|p| serde_json::to_string(p).expect("a photo ref serializes"));
+                // A photo is fetched by the next sync, as a folded one is.
+                let photo_ready = if photo.is_some() { 2 } else { 0 };
                 let inserted = tx.execute(
-                    "INSERT INTO conversations (group_id, state, cursor, created_at, timer, noticed)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?3) ON CONFLICT (group_id) DO NOTHING",
+                    "INSERT INTO conversations (group_id, state, cursor, created_at, timer, noticed,
+                                                name, photo, photo_ready)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?3, ?6, ?7, ?8)
+                     ON CONFLICT (group_id) DO NOTHING",
                     params![
                         group(id)?,
                         if *removed { "removed" } else { "stale" },
                         cursor,
                         created_at,
                         timer,
+                        name,
+                        photo,
+                        photo_ready,
                     ],
                 )?;
                 if inserted == 1 {
@@ -829,133 +859,4 @@ impl Read for Chain<'_> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::blobs::MemBlobs;
-
-    const A: &str = "AAAAAAAAAAAAAAAAAAAAAA";
-    const B: &str = "BBBBBBBBBBBBBBBBBBBBBB";
-
-    fn media(object: &str) -> Record {
-        Record::Item {
-            group: "Zw".into(),
-            seq: 1,
-            kind: "media".into(),
-            sender_account: "a".into(),
-            sender_device: "a1".into(),
-            envelope_id: Some(object.into()),
-            ts: 1,
-            stored_at: 1,
-            text: None,
-            reply_to: None,
-            detail: Some(
-                serde_json::json!({
-                    "kind": "media", "object": object, "mime": "image/png", "size": 3,
-                    "key": "", "sha256": "",
-                })
-                .to_string(),
-            ),
-            edited: false,
-            deleted: false,
-            expires_at: None,
-            received_at: None,
-        }
-    }
-
-    fn record(out: &mut Vec<u8>, record: &Record) {
-        push(out, RECORD, &serde_json::to_vec(record).unwrap());
-    }
-
-    fn file(out: &mut Vec<u8>, object: &str, bytes: &[u8]) {
-        push(out, OBJECT, object.as_bytes());
-        push(out, FILE, bytes);
-    }
-
-    fn read(plain: &[u8]) -> Result<Stream, HistoryError> {
-        read_stream(&MemBlobs::new(), &mut Cursor::new(plain), Path::new("s"))
-    }
-
-    #[test]
-    fn a_file_comes_in_only_when_a_row_names_it_once() {
-        let mut plain = Vec::new();
-        record(&mut plain, &media(A));
-        file(&mut plain, A, b"abc");
-        let mut whole = plain.clone();
-        whole.extend_from_slice(&frame(END, 0));
-        let stream = read(&whole).unwrap();
-        assert_eq!(stream.records.len(), 1);
-        assert_eq!(stream.files.keys().collect::<Vec<_>>(), [A]);
-
-        // A file no row names, the same file twice, a row after a file.
-        for extra in [
-            {
-                let mut p = plain.clone();
-                file(&mut p, B, b"abc");
-                p
-            },
-            {
-                let mut p = plain.clone();
-                file(&mut p, A, b"abc");
-                p
-            },
-            {
-                let mut p = plain.clone();
-                record(&mut p, &media(B));
-                p
-            },
-        ] {
-            let mut extra = extra;
-            extra.extend_from_slice(&frame(END, 0));
-            assert!(matches!(read(&extra), Err(HistoryError::Tampered)));
-        }
-        // Cut before the end, or with something after it.
-        assert!(matches!(read(&plain), Err(HistoryError::Tampered)));
-        whole.push(0);
-        assert!(matches!(read(&whole), Err(HistoryError::Tampered)));
-    }
-
-    #[test]
-    fn files_go_newest_first_while_they_fit_and_the_rows_must() {
-        let blobs = MemBlobs::new();
-        let dir = Path::new("media");
-        blobs.put(dir.join(file_name(A, "image/png")), vec![1; 100]);
-        blobs.put(dir.join(file_name(B, "image/png")), vec![2; 50]);
-        let listed = || {
-            vec![
-                (A.to_owned(), "image/png".to_owned()),
-                ("CCCCCCCCCCCCCCCCCCCCCC".to_owned(), "image/png".to_owned()),
-                (B.to_owned(), "image/png".to_owned()),
-            ]
-        };
-        let files = |parts: VecDeque<Part>| -> Vec<u64> {
-            parts
-                .into_iter()
-                .filter_map(|p| match p {
-                    Part::File { len, .. } => Some(len),
-                    Part::Bytes(_) => None,
-                })
-                .collect()
-        };
-        let cost = |len: u64| 2 * FRAME + 22 + len;
-        let rows = vec![0; 10];
-        let base = 10 + FRAME;
-
-        let all = parts(
-            &blobs,
-            dir,
-            rows.clone(),
-            listed(),
-            base + cost(100) + cost(50),
-        );
-        assert_eq!(files(all.unwrap()), [100, 50]);
-        // A gone file is skipped; a smaller one behind a large one still fits.
-        let some = parts(&blobs, dir, rows.clone(), listed(), base + cost(50));
-        assert_eq!(files(some.unwrap()), [50]);
-        let none = parts(&blobs, dir, rows.clone(), listed(), base);
-        assert_eq!(files(none.unwrap()), Vec::<u64>::new());
-        assert!(matches!(
-            parts(&blobs, dir, rows, listed(), base - 1),
-            Err(HistoryError::TooLarge)
-        ));
-    }
-}
+mod tests;
