@@ -22,4 +22,7 @@ class Drafts {
     ) {
         if (text.isBlank()) texts.remove(conversation) else texts[conversation] = text
     }
+
+    /** Forgets every draft: they are one account's, and the next one signed in must not see them (#337). */
+    fun clear() = texts.clear()
 }

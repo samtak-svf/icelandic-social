@@ -85,4 +85,14 @@ class AppGraph(
                 .lifecycle.currentState
                 .isAtLeast(Lifecycle.State.STARTED)
         }
+
+    /**
+     * Forgets everything per-account the graph holds in memory, so the next per-account cache has one place
+     * to be cleared. Called on every sign-out, before the sign-in screen returns (#337).
+     */
+    fun signedOut() {
+        drafts.clear()
+        photos.clear()
+        notifier.cancelAll()
+    }
 }

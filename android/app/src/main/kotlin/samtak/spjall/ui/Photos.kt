@@ -128,6 +128,9 @@ class PhotoCache<T : Any>(
 
     fun kept(photo: PhotoOf): T? = synchronized(images) { images[photo] }
 
+    /** Forgets every photo kept; the next draw asks the core again (#337). */
+    fun clear() = synchronized(images) { images.clear() }
+
     suspend fun load(photo: PhotoOf): T? =
         kept(photo) ?: withContext(io) { fetch(photo) }?.also { synchronized(images) { images[photo] = it } }
 
@@ -168,6 +171,12 @@ class CorePhotos(
     override fun kept(photo: PhotoOf) = of(photo).kept(photo)
 
     override suspend fun load(photo: PhotoOf) = of(photo).load(photo)
+
+    /** Forgets every photo in memory: they are one account's (#337). */
+    fun clear() {
+        pictures.clear()
+        covers.clear()
+    }
 
     private companion object {
         // The server's 512 px photo, halved: about the largest avatar (88 dp) on most screens,

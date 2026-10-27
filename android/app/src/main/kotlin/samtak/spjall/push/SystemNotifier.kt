@@ -24,6 +24,7 @@ import samtak.spjall.R as AppR
  * already showing. A tap opens the conversation. A social notification (0107) is one per notification id on the
  * alerts channel, and a tap opens its post.
  */
+@Suppress("TooManyFunctions")
 class SystemNotifier(
     private val context: Context,
 ) : Notifier {
@@ -51,6 +52,9 @@ class SystemNotifier(
     }
 
     override fun cancel(conversations: List<String>) = conversations.forEach { manager.cancel(it, ID) }
+
+    /** Takes down every notification this app shows: they are one account's (#337). */
+    fun cancelAll() = manager.cancelAll()
 
     override fun showSocial(announcements: List<SocialAnnouncement>) = social.show(announcements)
 

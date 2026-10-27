@@ -48,6 +48,19 @@ class PhotosTest {
         }
 
     @Test
+    fun clearForgetsEveryKeptPhotoAndTheNextLoadFetchesAgain() =
+        runTest(dispatcher) {
+            account.photoFiles = mapOf("a2/v1" to "a2/v1.webp")
+            val cache = cache()
+            cache.load(anna)
+            assertEquals("image of a2/v1.webp", cache.kept(anna))
+            cache.clear()
+            assertNull(cache.kept(anna))
+            assertEquals("image of a2/v1.webp", cache.load(anna))
+            assertEquals(2, decoded.size)
+        }
+
+    @Test
     fun aNewVersionIsFetchedAgain() =
         runTest(dispatcher) {
             account.photoFiles = mapOf("a2/v1" to "a2/v1.webp", "a2/v2" to "a2/v2.webp")
