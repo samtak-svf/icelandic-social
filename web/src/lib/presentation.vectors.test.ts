@@ -68,11 +68,18 @@ describe("the shared problem text", () => {
   }
 });
 
+const KINDS = ["comment", "reply", "reaction", "join_approved", "moderated"] as const;
+function kindOf(kind: string): (typeof KINDS)[number] {
+  const found = KINDS.find((k) => k === kind);
+  if (found === undefined) throw new Error(`no notification kind ${kind}`);
+  return found;
+}
+
 describe("the shared notification sentences", () => {
   for (const v of vectors.notice) {
     it(`${v.kind} ${v.action ?? ""} ${v.actorCount} -> ${v.key}`, () => {
       const got = noticeText({
-        kind: v.kind as "comment",
+        kind: kindOf(v.kind),
         action: v.action ?? null,
         actors: v.actors.map((name) => (name === null ? null : { name })),
         actorCount: v.actorCount,
@@ -80,10 +87,11 @@ describe("the shared notification sentences", () => {
       expect(got.key).toBe(v.key);
       expect(got.args).toEqual(v.args);
       expect(got.badge).toBe(v.badge);
-      const name = (arg: unknown) => (arg === null ? strings.person_deleted : String(arg));
+      const name = (arg: string | null | undefined) => arg ?? strings.person_deleted;
+      const args: Record<string, string | number> = { name: name(v.args.name) };
+      if (v.args.other !== undefined) args.other = name(v.args.other);
+      if (v.args.count !== undefined) args.count = v.args.count;
       const text: unknown = Reflect.get(strings, v.key);
-      const args = { ...v.args, name: name(v.args.name) } as Record<string, unknown>;
-      if ("other" in args) args.other = name(args.other);
       expect(got.text).toBe(
         typeof text === "function" ? String(Reflect.apply(text, undefined, [args])) : text,
       );

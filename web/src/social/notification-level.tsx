@@ -25,6 +25,8 @@ export const KINDS: readonly Kind[] = [
   "moderated",
 ];
 
+const ALL_LEVELS: readonly NotificationLevel[] = ["push", "in_app", "off"];
+
 const LEVEL_TEXT: Record<NotificationLevel, string> = {
   push: strings.notification_level_push,
   in_app: strings.notification_level_in_app,
@@ -42,6 +44,11 @@ export const KIND_TEXT: Record<Kind, string> = {
 /** The levels a kind may be set to, loudest first. */
 export function levelsFor(kind: Kind): NotificationLevel[] {
   return kind === "moderated" ? ["push", "in_app"] : ["push", "in_app", "off"];
+}
+
+/** The level a select's value names; `fallback` for anything else. */
+function levelOf(value: string, fallback: NotificationLevel): NotificationLevel {
+  return ALL_LEVELS.find((level) => level === value) ?? fallback;
 }
 
 export function LevelSelect({
@@ -65,7 +72,7 @@ export function LevelSelect({
         id={id}
         value={value}
         disabled={disabled}
-        onChange={(event) => onChange(event.target.value as NotificationLevel)}
+        onChange={(event) => onChange(levelOf(event.target.value, value))}
         className="min-h-11 rounded-md border border-border-strong bg-surface px-2"
       >
         {levels.map((level) => (

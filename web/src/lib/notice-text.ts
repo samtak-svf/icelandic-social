@@ -5,7 +5,7 @@ import { strings } from "../generated/brand/strings.ts";
 // one actor reads plain, two read `_two`, three or more `_many` with the
 // others counted. A null name is a deleted account.
 
-export type NoticeKind = "comment" | "reply" | "reaction" | "join_approved" | "moderated";
+type NoticeKind = "comment" | "reply" | "reaction" | "join_approved" | "moderated";
 export type NoticeBadge = "emoji" | "comment" | "approved" | "moderator";
 
 export interface NoticeSource {

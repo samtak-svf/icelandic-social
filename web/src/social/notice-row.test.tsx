@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { Notification } from "../generated/api.ts";
@@ -5,7 +6,7 @@ import { strings } from "../generated/brand/strings.ts";
 import { NoticeRow } from "./notice-row.tsx";
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children }: { children: unknown }) => <a>{children as never}</a>,
+  Link: ({ children }: { children?: ReactNode }) => <a>{children}</a>,
 }));
 
 const person = (accountId: string, name: string) => ({
