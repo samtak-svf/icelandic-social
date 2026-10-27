@@ -1,116 +1,64 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect } from "react";
-import {
-  myCommunities,
-  notifications,
-  readNotifications,
-  type Community,
-  type Notification,
-} from "../generated/api.ts";
+import { createFileRoute } from "@tanstack/react-router";
+import { useCallback } from "react";
+import { myCommunities, notifications } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { Avatar } from "../social/avatar.tsx";
-import { outcome, useLoad, when } from "../social/outcome.ts";
-import { authorName } from "../social/post.tsx";
-import { ProblemText, Status } from "../ui/kit.tsx";
-import { unreadChanged } from "../ui/unread.tsx";
+import { noticeSections } from "../lib/notice-sections.ts";
+import { useNotices } from "../social/notice-actions.ts";
+import { NoticeRow } from "../social/notice-row.tsx";
+import { outcome, useLoad } from "../social/outcome.ts";
+import { Button, ProblemText, Status } from "../ui/kit.tsx";
 
-// What was addressed to this account (decision 0067), newest first. Opening
-// the list marks what it shows read.
+// What was addressed to this account (decisions 0067, 0103, 0104), newest
+// first. Opening the list marks it seen, which clears the badge; a row is
+// read when it is opened or marked from its menu.
 export const Route = createFileRoute("/notifications")({ component: Notifications });
 
 function Notifications() {
   const [page] = useLoad(useCallback(() => outcome(notifications(), 200), []));
-  // The picture of the community a notice has no person for.
+  // The picture and name of the community a notice belongs to.
   const [mine] = useLoad(useCallback(() => outcome(myCommunities(), 200), []));
   const byId = new Map((mine?.ok ? mine.data.communities : []).map((c) => [c.communityId, c]));
-  const newest = page?.ok ? page.data.notifications[0]?.createdAt : undefined;
-  useEffect(() => {
-    if (newest === undefined) return;
-    void outcome(readNotifications({ body: { upTo: newest } }), 204).then(unreadChanged);
-  }, [newest]);
-
+  const { rows, actions, markAll } = useNotices(page?.ok ? page.data : null);
+  const sections = noticeSections(rows ?? [], page?.ok ? page.data.seenAt : null);
   return (
     <>
-      <h1 className="font-headline text-3xl">{strings.tab_notifications}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="font-headline text-3xl">{strings.tab_notifications}</h1>
+        {rows !== null && rows.some((n) => !n.read) && (
+          <Button onClick={markAll}>{strings.notifications_mark_all_read}</Button>
+        )}
+      </div>
       {page === null && <Status>{strings.loading}</Status>}
       {page?.ok === false && (
         <Status>
           <ProblemText problem={page.problem} />
         </Status>
       )}
-      {page?.ok && page.data.notifications.length === 0 && (
-        <p className="mt-4 text-muted-fg">{strings.notifications_empty}</p>
-      )}
-      {page?.ok && (
-        <ul className="mt-4 flex flex-col gap-2">
-          {page.data.notifications.map((n) => (
-            <li key={n.notificationId}>
-              <Item notification={n} community={byId.get(n.communityId)} />
-            </li>
-          ))}
-        </ul>
+      {rows?.length === 0 && <p className="mt-4 text-muted-fg">{strings.notifications_empty}</p>}
+      {(
+        [
+          [strings.notice_section_new, sections.fresh],
+          [strings.notice_section_earlier, sections.earlier],
+        ] as const
+      ).map(
+        ([title, list]) =>
+          list.length > 0 && (
+            <section key={title} aria-label={title} className="mt-4">
+              <h2 className="text-lg font-semibold">{title}</h2>
+              <ul className="mt-2 flex flex-col gap-2">
+                {list.map((n) => (
+                  <li key={n.notificationId}>
+                    <NoticeRow
+                      notification={n}
+                      community={byId.get(n.communityId)}
+                      actions={actions}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ),
       )}
     </>
-  );
-}
-
-function text(n: Notification): string {
-  const name = authorName(n.actor);
-  return {
-    comment: () => strings.notice_comment({ name }),
-    reply: () => strings.notice_reply({ name }),
-    reaction: () => strings.notice_reaction({ name }),
-    join_approved: () => strings.notice_join_approved,
-    moderated: () =>
-      n.action === "decline_anonymous_post"
-        ? strings.notice_anonymous_declined
-        : strings.notice_moderated,
-  }[n.kind]();
-}
-
-function Item({
-  notification: n,
-  community,
-}: Readonly<{ notification: Notification; community: Community | undefined }>) {
-  const body = (
-    <>
-      {n.actor !== null ? (
-        <Avatar
-          kind="person"
-          id={n.actor.accountId}
-          name={n.actor.name}
-          photo={n.actor.photo}
-          className="size-10 rounded-md"
-        />
-      ) : (
-        <Avatar
-          kind="community"
-          id={n.communityId}
-          name={community?.name ?? null}
-          photo={community?.photo ?? null}
-          className="size-10 rounded-lg"
-        />
-      )}
-      <span className="flex min-w-0 flex-col">
-        <span className={n.read ? "" : "font-semibold"}>{text(n)}</span>
-        <time dateTime={new Date(n.createdAt).toISOString()} className="text-sm text-muted-fg">
-          {when(n.createdAt)}
-        </time>
-      </span>
-    </>
-  );
-  const box = "flex min-h-11 items-center gap-3 rounded-md border border-border px-4 py-2";
-  // A removed post is not there to open; its community is.
-  if (n.postId !== null && n.kind !== "moderated") {
-    return (
-      <Link to="/posts/$postId" params={{ postId: n.postId }} className={box}>
-        {body}
-      </Link>
-    );
-  }
-  return (
-    <Link to="/communities/$communityId" params={{ communityId: n.communityId }} className={box}>
-      {body}
-    </Link>
   );
 }
