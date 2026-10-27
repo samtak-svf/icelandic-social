@@ -18,9 +18,9 @@ use serde_json::{Value, json};
 use spjall_client::api::{
     ApiError, Audience, Author, AuthorRole, Card, CardCommunity, EmojiCount, JoinState,
     LogTargetKind, Method, Moderation, ModerationAction, ModerationLogAction, ModerationState,
-    NewReport, NotificationKind, Platform, Provider, Ref, RefKind, ReportDecision, ReportReason,
-    ReportState, Request, Response, Role, SocialMedia, Target, TargetKind, TargetStanding,
-    TargetState, Transport, Unreachable,
+    NewReport, NotificationKind, NotificationLevel, Platform, Provider, Ref, RefKind,
+    ReportDecision, ReportReason, ReportState, Request, Response, Role, SocialMedia, Target,
+    TargetKind, TargetStanding, TargetState, Transport, Unreachable,
 };
 use spjall_client::frames::{Focus, Frame, FrameRect, Framing};
 use spjall_client::{Client, ClientError};
@@ -28,7 +28,7 @@ use tempfile::TempDir;
 
 const KEY: [u8; 32] = [7; 32];
 
-const SOCIAL: [&str; 8] = [
+const SOCIAL: [&str; 9] = [
     "/v1/communities",
     "/v1/me/communities",
     "/v1/feed",
@@ -37,6 +37,7 @@ const SOCIAL: [&str; 8] = [
     "/v1/reports",
     "/v1/cards",
     "/v1/notifications",
+    "/v1/notification-settings",
 ];
 
 #[derive(Default)]
@@ -641,6 +642,10 @@ fn notifications_are_paged_and_read_and_an_unknown_kind_is_left_out() {
             "emoji": if kind == "reaction" { json!("🙏") } else { Value::Null },
             "createdAt": 1_760_000_400_000u64,
             "read": false,
+            "actors": if kind == "moderated" { json!([]) } else { json!([author("acc_b"), author("acc_c")]) },
+            "actorCount": if kind == "moderated" { 0 } else { 5 },
+            "snippet": if kind == "comment" || kind == "reply" { json!("Sæl öll") } else { Value::Null },
+            "announce": kind == "reaction",
         })
     };
     phone.answer(
@@ -653,11 +658,20 @@ fn notifications_are_paged_and_read_and_an_unknown_kind_is_left_out() {
                 notification("n_0", "moderated", json!("pin_post")),
             ],
             "unread": 4,
+            "unseen": 2,
+            "seenAt": 1_760_000_100_000u64,
             "next": "1760000400000",
         }),
     );
     let page = c.notifications(Some("1760000500000"), 20).unwrap();
     assert_eq!(page.unread, 4);
+    assert_eq!(page.unseen, 2);
+    assert_eq!(page.seen_at, Some(1_760_000_100_000));
+    assert_eq!(page.notifications[0].actors.len(), 2);
+    assert_eq!(page.notifications[0].actor_count, 5);
+    assert!(page.notifications[0].announce);
+    assert!(!page.notifications[1].announce);
+    assert_eq!(page.notifications[1].actor_count, 0);
     assert_eq!(page.next.as_deref(), Some("1760000400000"));
     let kinds: Vec<_> = page
         .notifications
@@ -703,6 +717,127 @@ fn notifications_are_paged_and_read_and_an_unknown_kind_is_left_out() {
                 json!({ "upTo": 1_760_000_400_000u64 })
             ),
         ]
+    );
+}
+
+/// 0103 to 0106: the reply kind, the actors, snippet and announce of a row,
+/// and the seen time and unseen count of a page. A body from a server before
+/// them still decodes, with the old defaults.
+#[test]
+fn a_notification_decodes_with_or_without_the_grouping_fields() {
+    let phone = Phone::signed_in();
+    let row = |id: &str, kind: &str| {
+        json!({
+            "notificationId": id, "kind": kind, "actor": author("acc_b"),
+            "communityId": "cm_1", "postId": "p_1", "commentId": "co_1",
+            "action": null, "createdAt": 1_760_000_400_000u64, "read": false,
+        })
+    };
+    phone.answer(
+        200,
+        json!({
+            "notifications": [row("n_1", "reply"), row("n_0", "comment")],
+            "unread": 2, "next": null,
+        }),
+    );
+    let page = phone.client.notifications(None, 20).unwrap();
+    assert_eq!(page.seen_at, None);
+    assert_eq!(page.unseen, 0);
+    assert_eq!(page.notifications[0].kind, NotificationKind::Reply);
+    for n in &page.notifications {
+        assert_eq!(n.actors, Vec::new());
+        assert_eq!(n.actor_count, 0);
+        assert_eq!(n.snippet, None);
+        assert!(!n.announce);
+    }
+    assert_eq!(
+        phone.sent(),
+        [(
+            Method::Get,
+            "/v1/notifications?limit=20".into(),
+            Value::Null
+        )]
+    );
+}
+
+/// 0104 and 0106: the calls that mark seen, read one row, delete one, and
+/// set the levels.
+#[test]
+fn seen_one_read_delete_and_the_levels_are_sent_as_the_server_reads_them() {
+    let phone = Phone::signed_in();
+    let c = &phone.client;
+    phone.ok();
+    c.seen_notifications(1_760_000_400_000).unwrap();
+    phone.ok();
+    c.read_notification("n_1", false).unwrap();
+    phone.ok();
+    c.delete_notification("n_1").unwrap();
+    phone.answer(
+        200,
+        json!({
+            "kinds": {
+                "comment": "push", "reply": "in_app", "reaction": "off",
+                "join_approved": "push", "moderated": "in_app"
+            },
+            "communities": [{ "communityId": "cm_1", "level": "off" }],
+        }),
+    );
+    let settings = c.notification_settings().unwrap();
+    assert_eq!(
+        settings.kinds,
+        [
+            (NotificationKind::Comment, NotificationLevel::Push),
+            (NotificationKind::Reply, NotificationLevel::InApp),
+            (NotificationKind::Reaction, NotificationLevel::Off),
+            (NotificationKind::JoinApproved, NotificationLevel::Push),
+            (NotificationKind::Moderated, NotificationLevel::InApp),
+        ]
+    );
+    assert_eq!(
+        settings.communities,
+        [("cm_1".to_owned(), NotificationLevel::Off)]
+    );
+    phone.ok();
+    c.set_notification_settings(&[(NotificationKind::Reaction, NotificationLevel::InApp)])
+        .unwrap();
+    phone.ok();
+    c.set_community_notification_level("cm_1", NotificationLevel::Push)
+        .unwrap();
+    assert_eq!(
+        phone.sent(),
+        [
+            (
+                Method::Post,
+                "/v1/notifications/seen".into(),
+                json!({ "upTo": 1_760_000_400_000u64 })
+            ),
+            (
+                Method::Post,
+                "/v1/notifications/read".into(),
+                json!({ "notificationId": "n_1", "read": false })
+            ),
+            (Method::Delete, "/v1/notifications/n_1".into(), Value::Null),
+            (Method::Get, "/v1/notification-settings".into(), Value::Null),
+            (
+                Method::Put,
+                "/v1/notification-settings".into(),
+                json!({ "kinds": { "reaction": "in_app" } })
+            ),
+            (
+                Method::Put,
+                "/v1/communities/cm_1/notification-level".into(),
+                json!({ "level": "push" })
+            ),
+        ]
+    );
+    // An id the server would refuse is refused before it is sent, and one
+    // with a slash cannot change the path.
+    assert!(c.delete_notification("").is_err());
+    assert!(c.delete_notification(&"n".repeat(201)).is_err());
+    assert!(c.read_notification("", true).is_err());
+    assert!(
+        c.set_community_notification_level("cm 1", NotificationLevel::Off)
+            .is_err()
     );
 }
 

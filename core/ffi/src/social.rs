@@ -19,6 +19,7 @@ pub use spjall_client::api::CommunityImage;
 pub use spjall_client::api::ModerationAction;
 pub use spjall_client::api::ModerationLogAction;
 pub use spjall_client::api::ModerationState;
+pub use spjall_client::api::NotificationLevel;
 pub use spjall_client::api::ReportDecision;
 pub use spjall_client::api::ReportReason;
 pub use spjall_client::api::ReportState;
@@ -1054,6 +1055,8 @@ impl From<api::Card> for Card {
 pub enum SocialNotificationKind {
     /// A comment on this account's post.
     Comment,
+    /// A reply to this account's comment (0103).
+    Reply,
     /// A reaction on this account's post.
     Reaction,
     /// A moderator approved this account's join request.
@@ -1071,6 +1074,19 @@ pub struct SocialNotification {
     pub kind: SocialNotificationKind,
     /// Who did it; none for a moderator's action or a deleted account.
     pub actor: Option<Author>,
+    /// The newest three distinct accounts behind it, newest first (0103);
+    /// empty from a server before that.
+    pub actors: Vec<Author>,
+    /// How many distinct accounts caused it, `actors` among them; 0 from a
+    /// server before 0103.
+    pub actor_count: u64,
+    /// The newest comment's text, or the post's for a reaction, at most 100
+    /// characters (0105); none when this account may no longer read it. The
+    /// list shows it; a lock-screen notice never does.
+    pub snippet: Option<String>,
+    /// Whether the row is unread and its effective level is `Push` now
+    /// (0106).
+    pub announce: bool,
     pub community_id: String,
     pub post_id: Option<String>,
     pub comment_id: Option<String>,
@@ -1089,6 +1105,10 @@ impl From<api::Notification> for SocialNotification {
             notification_id,
             kind,
             actor,
+            actors,
+            actor_count,
+            snippet,
+            announce,
             community_id,
             post_id,
             comment_id,
@@ -1103,11 +1123,16 @@ impl From<api::Notification> for SocialNotification {
             notification_id,
             kind: match kind {
                 K::Comment => SocialNotificationKind::Comment,
+                K::Reply => SocialNotificationKind::Reply,
                 K::Reaction => SocialNotificationKind::Reaction,
                 K::JoinApproved => SocialNotificationKind::JoinApproved,
                 K::Moderated => SocialNotificationKind::Moderated,
             },
             actor,
+            actors,
+            actor_count,
+            snippet,
+            announce,
             community_id,
             post_id,
             comment_id,
@@ -1119,6 +1144,67 @@ impl From<api::Notification> for SocialNotification {
     }
 }
 
+impl From<SocialNotificationKind> for api::NotificationKind {
+    fn from(kind: SocialNotificationKind) -> Self {
+        use SocialNotificationKind as K;
+        match kind {
+            K::Comment => Self::Comment,
+            K::Reply => Self::Reply,
+            K::Reaction => Self::Reaction,
+            K::JoinApproved => Self::JoinApproved,
+            K::Moderated => Self::Moderated,
+        }
+    }
+}
+
+impl From<api::NotificationKind> for SocialNotificationKind {
+    fn from(kind: api::NotificationKind) -> Self {
+        use api::NotificationKind as K;
+        match kind {
+            K::Comment => Self::Comment,
+            K::Reply => Self::Reply,
+            K::Reaction => Self::Reaction,
+            K::JoinApproved => Self::JoinApproved,
+            K::Moderated => Self::Moderated,
+        }
+    }
+}
+
+/// How loudly this account is told (0106). The effective level of a
+/// notification is the lower of its kind's and its community's.
+#[uniffi::remote(Enum)]
+pub enum NotificationLevel {
+    /// Nothing is written.
+    Off,
+    /// A row in the list, no push.
+    InApp,
+    /// A row and a push; the default.
+    Push,
+}
+
+/// The level of one kind of notification.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct NotificationKindLevel {
+    pub kind: SocialNotificationKind,
+    pub level: NotificationLevel,
+}
+
+/// The level of one community.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct CommunityNotificationLevel {
+    pub community_id: String,
+    pub level: NotificationLevel,
+}
+
+/// This account's levels (0106).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct NotificationSettings {
+    /// Every kind, in the order of `SocialNotificationKind`.
+    pub kinds: Vec<NotificationKindLevel>,
+    /// The communities with a level set; the others are `Push`.
+    pub communities: Vec<CommunityNotificationLevel>,
+}
+
 /// A page of notifications, newest first. A kind this build does not know
 /// is left out.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -1126,6 +1212,12 @@ pub struct SocialNotificationPage {
     pub notifications: Vec<SocialNotification>,
     /// How many of this account's notifications are unread, on every page.
     pub unread: u64,
+    /// How many unread notifications are newer than `seen_at` (0104): the
+    /// badge. 0 from a server before it.
+    pub unseen: u64,
+    /// When this account last saw its list, before this call, in Unix
+    /// milliseconds; none if never.
+    pub seen_at: Option<u64>,
     /// The `before` of the next, older page; none on the last.
     pub next: Option<String>,
 }
@@ -1799,6 +1891,8 @@ impl CoreClient {
         Ok(SocialNotificationPage {
             notifications: page.notifications.into_iter().map(Into::into).collect(),
             unread: page.unread,
+            unseen: page.unseen,
+            seen_at: page.seen_at,
             next: page.next,
         })
     }
@@ -1807,5 +1901,68 @@ impl CoreClient {
     /// `created_at` of the newest one shown.
     pub fn read_notifications(&self, up_to: u64) -> Result<(), CoreError> {
         Ok(self.client()?.read_notifications(up_to)?)
+    }
+
+    /// Records that the list was looked at up to `up_to`, the `created_at`
+    /// of the newest row shown; it clears the badge and reads no row (0104).
+    pub fn seen_notifications(&self, up_to: u64) -> Result<(), CoreError> {
+        Ok(self.client()?.seen_notifications(up_to)?)
+    }
+
+    /// Marks one notification read, or unread again.
+    pub fn read_notification(&self, notification_id: String, read: bool) -> Result<(), CoreError> {
+        Ok(self.client()?.read_notification(&notification_id, read)?)
+    }
+
+    /// Removes one notification from the list.
+    pub fn delete_notification(&self, notification_id: String) -> Result<(), CoreError> {
+        Ok(self.client()?.delete_notification(&notification_id)?)
+    }
+
+    /// The level for each kind and each community that has one (0106).
+    pub fn notification_settings(&self) -> Result<NotificationSettings, CoreError> {
+        let settings = self.client()?.notification_settings()?;
+        Ok(NotificationSettings {
+            kinds: settings
+                .kinds
+                .into_iter()
+                .map(|(kind, level)| NotificationKindLevel {
+                    kind: kind.into(),
+                    level,
+                })
+                .collect(),
+            communities: settings
+                .communities
+                .into_iter()
+                .map(|(community_id, level)| CommunityNotificationLevel {
+                    community_id,
+                    level,
+                })
+                .collect(),
+        })
+    }
+
+    /// Sets the level of the given kinds and leaves the others. `Moderated`
+    /// cannot be `Off`: the server refuses it.
+    pub fn set_notification_settings(
+        &self,
+        kinds: Vec<NotificationKindLevel>,
+    ) -> Result<(), CoreError> {
+        let kinds: Vec<_> = kinds
+            .into_iter()
+            .map(|k| (k.kind.into(), k.level))
+            .collect();
+        Ok(self.client()?.set_notification_settings(&kinds)?)
+    }
+
+    /// Sets how loudly this account is told of one community.
+    pub fn set_community_notification_level(
+        &self,
+        community_id: String,
+        level: NotificationLevel,
+    ) -> Result<(), CoreError> {
+        Ok(self
+            .client()?
+            .set_community_notification_level(&community_id, level)?)
     }
 }

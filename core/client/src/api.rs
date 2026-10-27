@@ -1281,17 +1281,64 @@ struct Cards {
 }
 
 /// What a notification is about (0063).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum NotificationKind {
     /// A comment on the caller's post.
     Comment,
+    /// A reply to the caller's comment (0103).
+    Reply,
     /// A reaction on the caller's post.
     Reaction,
     /// A moderator approved the caller's join request.
     JoinApproved,
     /// A moderator acted on the caller's content; `action` says how.
     Moderated,
+}
+
+/// How loudly the caller is told (0106): nothing, a row in the list, or a
+/// row and a push.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NotificationLevel {
+    Off,
+    InApp,
+    Push,
+}
+
+/// The caller's levels (0106): one for each kind, and one for each
+/// community that has one set (the others are `Push`). A notification's
+/// effective level is the lower of its kind's and its community's.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NotificationSettings {
+    /// Every kind, in the order of `NotificationKind`.
+    pub kinds: Vec<(NotificationKind, NotificationLevel)>,
+    /// `(community id, level)`.
+    pub communities: Vec<(String, NotificationLevel)>,
+}
+
+/// The kinds, in the order `NotificationSettings::kinds` lists them, with
+/// the name the server keys them by.
+const NOTIFICATION_KINDS: [(NotificationKind, &str); 5] = [
+    (NotificationKind::Comment, "comment"),
+    (NotificationKind::Reply, "reply"),
+    (NotificationKind::Reaction, "reaction"),
+    (NotificationKind::JoinApproved, "join_approved"),
+    (NotificationKind::Moderated, "moderated"),
+];
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SentSettings {
+    kinds: std::collections::HashMap<String, serde_json::Value>,
+    communities: Vec<SentCommunityLevel>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SentCommunityLevel {
+    community_id: String,
+    level: serde_json::Value,
 }
 
 /// Something addressed to the caller. It carries ids, never the content:
@@ -1302,6 +1349,18 @@ pub struct Notification {
     pub kind: NotificationKind,
     /// Who did it; none once that account is deleted.
     pub actor: Option<Author>,
+    /// The newest three distinct accounts behind it, newest first (0103);
+    /// empty from a server before that.
+    pub actors: Vec<Author>,
+    /// How many distinct accounts caused it; 0 from a server before 0103.
+    pub actor_count: u64,
+    /// The newest comment's text, or the post's for a reaction, cut at 100
+    /// characters (0105); none when the caller may no longer read it. Never
+    /// shown on a lock screen.
+    pub snippet: Option<String>,
+    /// Whether the row is unread and its effective level is `Push` now
+    /// (0106): only such a row may be announced (0107).
+    pub announce: bool,
     pub community_id: String,
     pub post_id: Option<String>,
     pub comment_id: Option<String>,
@@ -1320,6 +1379,10 @@ pub struct Notification {
 pub struct NotificationPage {
     pub notifications: Vec<Notification>,
     pub unread: u64,
+    /// Unread rows newer than `seen_at` (0104); 0 from a server before it.
+    pub unseen: u64,
+    /// When the caller last saw its list, before this call; none if never.
+    pub seen_at: Option<u64>,
     pub next: Option<String>,
 }
 
@@ -1332,6 +1395,14 @@ struct SentNotification {
     notification_id: String,
     kind: serde_json::Value,
     actor: Option<Author>,
+    #[serde(default)]
+    actors: Vec<Author>,
+    #[serde(default)]
+    actor_count: u64,
+    #[serde(default)]
+    snippet: Option<String>,
+    #[serde(default)]
+    announce: bool,
     community_id: String,
     post_id: Option<String>,
     comment_id: Option<String>,
@@ -1348,6 +1419,10 @@ impl SentNotification {
             notification_id: self.notification_id,
             kind: serde_json::from_value(self.kind).ok()?,
             actor: self.actor,
+            actors: self.actors,
+            actor_count: self.actor_count,
+            snippet: self.snippet,
+            announce: self.announce,
             community_id: self.community_id,
             post_id: self.post_id,
             comment_id: self.comment_id,
@@ -1360,9 +1435,14 @@ impl SentNotification {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct SentNotifications {
     notifications: Vec<SentNotification>,
     unread: u64,
+    #[serde(default)]
+    unseen: u64,
+    #[serde(default)]
+    seen_at: Option<u64>,
     next: Option<String>,
 }
 
@@ -2693,6 +2773,8 @@ impl<T: Transport + ?Sized> Api<'_, T> {
                 .filter_map(SentNotification::known)
                 .collect(),
             unread: page.unread,
+            unseen: page.unseen,
+            seen_at: page.seen_at,
             next: page.next,
         })
     }
@@ -2704,6 +2786,98 @@ impl<T: Transport + ?Sized> Api<'_, T> {
         self.done(
             Method::Post,
             "/v1/notifications/read".into(),
+            Self::json(&body),
+        )
+    }
+
+    /// `seenNotifications` (0104): the list was looked at up to `up_to`, in
+    /// Unix milliseconds. It never reads a row.
+    pub fn seen_notifications(&self, up_to: u64) -> Result<(), ApiError> {
+        let body = serde_json::json!({ "upTo": up_to });
+        self.done(
+            Method::Post,
+            "/v1/notifications/seen".into(),
+            Self::json(&body),
+        )
+    }
+
+    /// `readNotifications` for one row: read, or unread again.
+    pub fn read_notification(&self, id: &str, read: bool) -> Result<(), ApiError> {
+        let body = serde_json::json!({ "notificationId": id, "read": read });
+        self.done(
+            Method::Post,
+            "/v1/notifications/read".into(),
+            Self::json(&body),
+        )
+    }
+
+    /// `deleteNotification`.
+    pub fn delete_notification(&self, id: &str) -> Result<(), ApiError> {
+        let path = format!("/v1/notifications/{}", crate::account::encode(id));
+        self.done(Method::Delete, path, None)
+    }
+
+    /// `notificationSettings`: a kind or a community level this build does
+    /// not know reads as `Push`, the server's default, so the screen never
+    /// shows a quieter state than the server holds.
+    pub fn notification_settings(&self) -> Result<NotificationSettings, ApiError> {
+        let sent: SentSettings = self.call(
+            Method::Get,
+            "/v1/notification-settings".into(),
+            None,
+            "notificationSettings",
+        )?;
+        let level = |value: Option<&serde_json::Value>| {
+            value
+                .and_then(|v| serde_json::from_value(v.clone()).ok())
+                .unwrap_or(NotificationLevel::Push)
+        };
+        Ok(NotificationSettings {
+            kinds: NOTIFICATION_KINDS
+                .iter()
+                .map(|(kind, name)| (*kind, level(sent.kinds.get(*name))))
+                .collect(),
+            communities: sent
+                .communities
+                .into_iter()
+                .map(|c| (c.community_id, level(Some(&c.level))))
+                .collect(),
+        })
+    }
+
+    /// `putNotificationSettings`: sets the given kinds and leaves the rest.
+    pub fn set_notification_settings(
+        &self,
+        kinds: &[(NotificationKind, NotificationLevel)],
+    ) -> Result<(), ApiError> {
+        let mut map = serde_json::Map::new();
+        for (kind, level) in kinds {
+            map.insert(
+                serde_json::to_value(kind)
+                    .ok()
+                    .and_then(|v| v.as_str().map(str::to_owned))
+                    .unwrap_or_default(),
+                serde_json::to_value(level).unwrap_or_default(),
+            );
+        }
+        let body = serde_json::json!({ "kinds": map });
+        self.done(
+            Method::Put,
+            "/v1/notification-settings".into(),
+            Self::json(&body),
+        )
+    }
+
+    /// `setCommunityNotificationLevel`.
+    pub fn set_community_notification_level(
+        &self,
+        community: &str,
+        level: NotificationLevel,
+    ) -> Result<(), ApiError> {
+        let body = serde_json::json!({ "level": level });
+        self.done(
+            Method::Put,
+            format!("/v1/communities/{community}/notification-level"),
             Self::json(&body),
         )
     }
@@ -2845,8 +3019,15 @@ mod tests {
         let notification = |text: &serde_json::Value| {
             serde_json::from_value::<NotificationKind>(text.clone()).is_ok()
         };
-        assert_eq!(notifications.len(), 4);
+        assert_eq!(notifications.len(), 5);
         assert!(notifications.iter().all(notification));
+        let levels: Vec<_> = listed("/NotificationLevel/enum");
+        assert_eq!(levels.len(), 3);
+        assert!(
+            levels
+                .iter()
+                .all(|l| { serde_json::from_value::<NotificationLevel>(l.clone()).is_ok() })
+        );
         assert_eq!(
             listed("/Community/properties/audience/enum"),
             names(&[Audience::Open, Audience::Private])
