@@ -263,6 +263,78 @@ export const strings = {
   notice_join_approved: "Inngöngubeiðni þín var samþykkt.",
   /** A notification: a moderator hid or removed the reader's post or comment (decision 0063). */
   notice_moderated: "Stjórnandi faldi eða fjarlægði efni frá þér.",
+  /** A notification: someone replied to the reader's comment on a post (decision 0103). {name} is that person's name. */
+  notice_reply: (args: { name: string }): string =>
+    args.name + " svaraði athugasemdinni þinni.",
+  /** A notification: two people commented on the reader's post (0103). {name} is the newest, {other} the other. */
+  notice_comment_two: (args: { name: string; other: string }): string =>
+    args.name + " og " + args.other + " skrifuðu athugasemdir við póstinn þinn.",
+  /** A notification: three or more people commented on the reader's post (0103). {name} is the newest; count is how many others. */
+  notice_comment_many: (args: { name: string; count: number }): string =>
+    plural.select(args.count) === "one"
+      ? args.name + " og " + String(args.count) + " annar skrifuðu athugasemdir við póstinn þinn."
+      : args.name + " og " + String(args.count) + " aðrir skrifuðu athugasemdir við póstinn þinn.",
+  /** A notification: two people replied to the reader's comment (0103). {name} is the newest, {other} the other. */
+  notice_reply_two: (args: { name: string; other: string }): string =>
+    args.name + " og " + args.other + " svöruðu athugasemdinni þinni.",
+  /** A notification: three or more people replied to the reader's comment (0103). {name} is the newest; count is how many others. */
+  notice_reply_many: (args: { name: string; count: number }): string =>
+    plural.select(args.count) === "one"
+      ? args.name + " og " + String(args.count) + " annar svöruðu athugasemdinni þinni."
+      : args.name + " og " + String(args.count) + " aðrir svöruðu athugasemdinni þinni.",
+  /** A notification: two people reacted to the reader's post (0103). {name} is the newest, {other} the other. */
+  notice_reaction_two: (args: { name: string; other: string }): string =>
+    args.name + " og " + args.other + " brugðust við póstinum þínum.",
+  /** A notification: three or more people reacted to the reader's post (0103). {name} is the newest; count is how many others. */
+  notice_reaction_many: (args: { name: string; count: number }): string =>
+    plural.select(args.count) === "one"
+      ? args.name + " og " + String(args.count) + " annar brugðust við póstinum þínum."
+      : args.name + " og " + String(args.count) + " aðrir brugðust við póstinum þínum.",
+  /** The quoted start of the comment or post a notification is about, under its sentence (decision 0105). {text} is that text, already shortened. */
+  notice_snippet: (args: { text: string }): string =>
+    "„" + args.text + "“",
+  /** Heading over the notifications that came since the list was last opened (decision 0104). */
+  notice_section_new: "Nýjar",
+  /** Heading over the notifications the reader had already seen (decision 0104). */
+  notice_section_earlier: "Eldri",
+  /** Action in the notifications header: marks every notification read (decision 0104). */
+  notifications_mark_all_read: "Merkja allt lesið",
+  /** Accessible label of a notification's menu button (decision 0104). */
+  notice_menu: "Valkostir tilkynningar",
+  /** Notification menu item: mark it read (decision 0104). */
+  notice_menu_read: "Merkja sem lesið",
+  /** Notification menu item: mark it unread again (decision 0104). */
+  notice_menu_unread: "Merkja sem ólesið",
+  /** Notification menu item: remove it from the list (decision 0104). */
+  notice_menu_remove: "Fjarlægja tilkynningu",
+  /** Notification menu item: notifications of this kind stop reaching the phone and stay in the app (decision 0106). */
+  notice_menu_kind_in_app: "Aðeins í appinu fyrir þessa tegund",
+  /** Notification menu item: no more notifications from this community (decision 0106). */
+  notice_menu_community_off: "Slökkva á tilkynningum frá þessu samfélagi",
+  /** Heading of the notifications section in Settings, and the community menu item that opens its level (decision 0106). */
+  notification_settings_title: "Tilkynningar",
+  /** Under the notifications heading in Settings: what the levels mean (decision 0106). */
+  notification_settings_body: "Veldu hvað birtist í símanum og hvað aðeins í appinu.",
+  /** Heading over the communities whose level the reader has changed (decision 0106). */
+  notification_settings_communities: "Samfélög",
+  /** Notification settings row: comments on the reader's posts (decision 0106). */
+  notification_kind_comment: "Athugasemdir við póstana þína",
+  /** Notification settings row: replies to the reader's comments (decision 0106). */
+  notification_kind_reply: "Svör við athugasemdum þínum",
+  /** Notification settings row: reactions to the reader's posts (decision 0106). */
+  notification_kind_reaction: "Viðbrögð við póstunum þínum",
+  /** Notification settings row: approved requests to join a community (decision 0106). */
+  notification_kind_join_approved: "Samþykktar inngöngubeiðnir",
+  /** Notification settings row: a moderator's action on the reader's post or comment (decision 0106). */
+  notification_kind_moderated: "Aðgerðir stjórnenda",
+  /** Under the moderators' row in notification settings: it can be quieted, never turned off (decisions 0067, 0106). */
+  notification_moderated_floor: "Aðgerðir stjórnenda birtast alltaf í appinu.",
+  /** Notification level: in the app and on the phone (decision 0106). */
+  notification_level_push: "Í appinu og símanum",
+  /** Notification level: in the app only, no push (decision 0106). */
+  notification_level_in_app: "Aðeins í appinu",
+  /** Notification level: none (decision 0106). */
+  notification_level_off: "Slökkt",
   /** Shown in place of the name of an account that was deleted. */
   person_deleted: "Eyddur reikningur",
   /** Heading of the communities the person is a member of. */

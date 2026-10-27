@@ -76,6 +76,10 @@
     <string name="notification_channel_messages_name">Skilaboð</string>
     <!-- Android channel description: messages. -->
     <string name="notification_channel_messages_description">Ný skilaboð í samtölunum þínum.</string>
+    <!-- Android notification channel for community notifications: comments, replies and reactions (decision 0107). -->
+    <string name="notification_channel_social_name">Samfélög</string>
+    <!-- Description of the community notifications channel in Android settings (decision 0107). -->
+    <string name="notification_channel_social_description">Athugasemdir, svör og viðbrögð í samfélögunum þínum.</string>
     <!-- The reader in a message notification's conversation style; Android requires a name for them, though it rarely shows it (docs/decisions/0025). -->
     <string name="notification_you">Þú</string>
     <!-- Row on Ég when the system blocks the app's notifications: new messages are not announced until it is opened (docs/decisions/0025). -->
@@ -430,6 +434,73 @@
     <string name="notice_join_approved">Inngöngubeiðni þín var samþykkt.</string>
     <!-- A notification: a moderator hid or removed the reader's post or comment (decision 0063). -->
     <string name="notice_moderated">Stjórnandi faldi eða fjarlægði efni frá þér.</string>
+    <!-- A notification: someone replied to the reader's comment on a post (decision 0103). {name} is that person's name. -->
+    <string name="notice_reply">%1$s svaraði athugasemdinni þinni.</string>
+    <!-- A notification: two people commented on the reader's post (0103). {name} is the newest, {other} the other. -->
+    <string name="notice_comment_two">%1$s og %2$s skrifuðu athugasemdir við póstinn þinn.</string>
+    <!-- A notification: three or more people commented on the reader's post (0103). {name} is the newest; count is how many others. -->
+    <plurals name="notice_comment_many">
+        <item quantity="one">%1$s og %2$d annar skrifuðu athugasemdir við póstinn þinn.</item>
+        <item quantity="other">%1$s og %2$d aðrir skrifuðu athugasemdir við póstinn þinn.</item>
+    </plurals>
+    <!-- A notification: two people replied to the reader's comment (0103). {name} is the newest, {other} the other. -->
+    <string name="notice_reply_two">%1$s og %2$s svöruðu athugasemdinni þinni.</string>
+    <!-- A notification: three or more people replied to the reader's comment (0103). {name} is the newest; count is how many others. -->
+    <plurals name="notice_reply_many">
+        <item quantity="one">%1$s og %2$d annar svöruðu athugasemdinni þinni.</item>
+        <item quantity="other">%1$s og %2$d aðrir svöruðu athugasemdinni þinni.</item>
+    </plurals>
+    <!-- A notification: two people reacted to the reader's post (0103). {name} is the newest, {other} the other. -->
+    <string name="notice_reaction_two">%1$s og %2$s brugðust við póstinum þínum.</string>
+    <!-- A notification: three or more people reacted to the reader's post (0103). {name} is the newest; count is how many others. -->
+    <plurals name="notice_reaction_many">
+        <item quantity="one">%1$s og %2$d annar brugðust við póstinum þínum.</item>
+        <item quantity="other">%1$s og %2$d aðrir brugðust við póstinum þínum.</item>
+    </plurals>
+    <!-- The quoted start of the comment or post a notification is about, under its sentence (decision 0105). {text} is that text, already shortened. -->
+    <string name="notice_snippet">„%1$s“</string>
+    <!-- Heading over the notifications that came since the list was last opened (decision 0104). -->
+    <string name="notice_section_new">Nýjar</string>
+    <!-- Heading over the notifications the reader had already seen (decision 0104). -->
+    <string name="notice_section_earlier">Eldri</string>
+    <!-- Action in the notifications header: marks every notification read (decision 0104). -->
+    <string name="notifications_mark_all_read">Merkja allt lesið</string>
+    <!-- Accessible label of a notification's menu button (decision 0104). -->
+    <string name="notice_menu">Valkostir tilkynningar</string>
+    <!-- Notification menu item: mark it read (decision 0104). -->
+    <string name="notice_menu_read">Merkja sem lesið</string>
+    <!-- Notification menu item: mark it unread again (decision 0104). -->
+    <string name="notice_menu_unread">Merkja sem ólesið</string>
+    <!-- Notification menu item: remove it from the list (decision 0104). -->
+    <string name="notice_menu_remove">Fjarlægja tilkynningu</string>
+    <!-- Notification menu item: notifications of this kind stop reaching the phone and stay in the app (decision 0106). -->
+    <string name="notice_menu_kind_in_app">Aðeins í appinu fyrir þessa tegund</string>
+    <!-- Notification menu item: no more notifications from this community (decision 0106). -->
+    <string name="notice_menu_community_off">Slökkva á tilkynningum frá þessu samfélagi</string>
+    <!-- Heading of the notifications section in Settings, and the community menu item that opens its level (decision 0106). -->
+    <string name="notification_settings_title">Tilkynningar</string>
+    <!-- Under the notifications heading in Settings: what the levels mean (decision 0106). -->
+    <string name="notification_settings_body">Veldu hvað birtist í símanum og hvað aðeins í appinu.</string>
+    <!-- Heading over the communities whose level the reader has changed (decision 0106). -->
+    <string name="notification_settings_communities">Samfélög</string>
+    <!-- Notification settings row: comments on the reader's posts (decision 0106). -->
+    <string name="notification_kind_comment">Athugasemdir við póstana þína</string>
+    <!-- Notification settings row: replies to the reader's comments (decision 0106). -->
+    <string name="notification_kind_reply">Svör við athugasemdum þínum</string>
+    <!-- Notification settings row: reactions to the reader's posts (decision 0106). -->
+    <string name="notification_kind_reaction">Viðbrögð við póstunum þínum</string>
+    <!-- Notification settings row: approved requests to join a community (decision 0106). -->
+    <string name="notification_kind_join_approved">Samþykktar inngöngubeiðnir</string>
+    <!-- Notification settings row: a moderator's action on the reader's post or comment (decision 0106). -->
+    <string name="notification_kind_moderated">Aðgerðir stjórnenda</string>
+    <!-- Under the moderators' row in notification settings: it can be quieted, never turned off (decisions 0067, 0106). -->
+    <string name="notification_moderated_floor">Aðgerðir stjórnenda birtast alltaf í appinu.</string>
+    <!-- Notification level: in the app and on the phone (decision 0106). -->
+    <string name="notification_level_push">Í appinu og símanum</string>
+    <!-- Notification level: in the app only, no push (decision 0106). -->
+    <string name="notification_level_in_app">Aðeins í appinu</string>
+    <!-- Notification level: none (decision 0106). -->
+    <string name="notification_level_off">Slökkt</string>
     <!-- Shown in place of the name of an account that was deleted. -->
     <string name="person_deleted">Eyddur reikningur</string>
     <!-- Heading of the communities the person is a member of. -->

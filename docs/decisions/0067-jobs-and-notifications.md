@@ -1,12 +1,17 @@
 # 0067. Jobs are D1 rows written with their cause; notifications are rows for one account
 
-- Status: accepted; implemented in the backend (#32)
+- Status: accepted; implemented in the backend (#32); amended by 0103, 0104, 0105, 0106 and 0107
 - Date: 2026-10-18
 - Decided by: Guðröður Atli Jónsson (phase 4, #306)
 - Builds on: [0025](0025-push-without-ids.md) (a push names nothing),
   [0060](0060-a-social-platform-with-an-encrypted-messenger.md) (no Cloudflare Queues, the `jobs/` module),
   [0063](0063-communities-audiences-and-moderation.md) (who is told what),
   [0066](0066-moderation-in-d1.md) (the moderation log)
+- Amended by: [0103](0103-one-notification-per-thing.md) (one row per thing acted on, the
+  `reply` kind), [0104](0104-seen-is-not-read.md) (seen and read),
+  [0105](0105-snippet-read-not-stored.md) (the snippet), [0106](0106-notification-levels.md)
+  (levels per kind and community), [0107](0107-device-announces-social-notices.md) (the device
+  announces social notices)
 
 ## Decision
 
@@ -58,6 +63,7 @@
 
 ## Not built yet
 
-Mentions, follows, a notification for a reply to one's comment, per-kind push settings,
-grouping several reactions into one notification, and the tombstone and single review of a
-moderated item (0066).
+Mentions, follows, and the tombstone and single review of a moderated item (0066). The
+notification for a reply to one's comment was built by
+[0071](0071-comment-replies-and-reactions.md) and given its own kind by 0103; grouping is 0103
+and per-kind settings are 0106.
