@@ -61,19 +61,24 @@ export function Shell({ children }: Readonly<{ children: ReactNode }>) {
     case "signed-in":
       break;
   }
-  // A compact window has the five places in a bar at the bottom of the
+  // A compact window has the four places in a bar at the bottom of the
   // screen and the name above the page; from medium up both give way to a
-  // rail down the left edge (decisions 0080, 0087). The size classes are the
-  // contract's (`medium:`, generated). `--tabbar-height` is what a
-  // bottom-pinned box (the comment box) keeps clear of. A route that lays out
-  // more than one column on an expanded window says so (`staticData.width`).
+  // rail down the left edge (decisions 0080, 0087). The notifications are no
+  // place: they are the bell at the right of the top bar, with the unseen
+  // count, at every width (decision 0109), its edge in line with the page's.
+  // The size classes are the contract's (`medium:`, generated).
+  // `--tabbar-height` is what a bottom-pinned box (the comment box) keeps
+  // clear of. A route that lays out more than one column on an expanded window
+  // says so (`staticData.width`).
+  const column = `mx-auto max-w-2xl px-4 ${wide ? "expanded:max-w-6xl" : ""}`;
   return (
     <div className="[--tabbar-height:3.5rem] medium:pl-24 medium:[--tabbar-height:0px]">
-      <header className="medium:hidden">
-        <div className="mx-auto max-w-2xl px-4 py-3">
-          <span data-app-name className="font-headline text-2xl">
+      <header>
+        <div className={`${column} flex items-center gap-2 py-2`}>
+          <span data-app-name className="font-headline text-2xl medium:hidden">
             {strings.app_name}
           </span>
+          <Bell />
         </div>
       </header>
       <nav
@@ -96,32 +101,39 @@ export function Shell({ children }: Readonly<{ children: ReactNode }>) {
           <NavLink to="/conversations" icon={<ChatIcon />}>
             {strings.tab_conversations}
           </NavLink>
-          <NavLink
-            to="/notifications"
-            icon={
-              <span className="relative">
-                <BellIcon />
-                <UnreadBadge className="absolute -right-2 -top-1 min-w-4 px-1 text-center text-xs" />
-              </span>
-            }
-          >
-            {strings.tab_notifications}
-          </NavLink>
           <NavLink to="/settings" icon={<GearIcon />}>
             {strings.settings_title}
           </NavLink>
         </ul>
       </nav>
-      <main
-        className={`mx-auto max-w-2xl px-4 py-6 pb-[calc(var(--tabbar-height)+1.5rem)] medium:pb-6 ${wide ? "expanded:max-w-6xl" : ""}`}
-      >
+      <main className={`${column} py-6 pb-[calc(var(--tabbar-height)+1.5rem)] medium:pb-6`}>
         {children}
       </main>
     </div>
   );
 }
 
-type Tab = "/" | "/communities" | "/conversations" | "/notifications" | "/settings";
+type Tab = "/" | "/communities" | "/conversations" | "/settings";
+
+/**
+ * The bell at the right of the top bar (decision 0109): named, with the unseen
+ * count drawn on it and read out with the name, and `aria-current` on the
+ * notifications page as on a place in the navigation.
+ */
+function Bell() {
+  return (
+    <Link
+      to="/notifications"
+      className="relative ml-auto inline-flex size-11 items-center justify-center rounded-full"
+      activeProps={{ className: "bg-muted text-primary" }}
+      inactiveProps={{ className: "text-fg" }}
+    >
+      <BellIcon />
+      <span className="sr-only">{strings.notifications_title}</span>
+      <UnreadBadge className="absolute right-0.5 top-0.5 min-w-4 px-1 text-center text-xs" />
+    </Link>
+  );
+}
 
 function NavLink({
   to,
@@ -133,7 +145,7 @@ function NavLink({
       <Link
         to={to}
         // aria-current="page" is set by the link itself on the place shown. The current place is
-        // marked by colour, not weight: bold "Tilkynningar" is wider than the slot at 360 px.
+        // marked by colour, not weight: a bold name can be wider than its slot at 360 px.
         className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-md px-0.5 text-center text-xs [overflow-wrap:anywhere] medium:min-h-16 medium:px-1"
         activeProps={{ className: "bg-muted text-fg" }}
         inactiveProps={{ className: "text-muted-fg" }}

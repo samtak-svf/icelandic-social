@@ -1,13 +1,14 @@
 import SpjallCore
 import SwiftUI
 
-/// The tabs, the conversations, the communities, the notifications and "Ég" (decisions 0044, 0063), and the
-/// screens they lead to. The communities and notifications are hosted content, kept apart from the
+/// The tabs, the conversations, the communities and "Ég" (decisions 0044, 0063), the notifications behind the
+/// bell in each tab's header (0109), and the screens they lead to. The communities and notifications are hosted content, kept apart from the
 /// conversations (decision 0060): their screens have stacks of their own and never touch the conversation
 /// store. Once per install the first launch's steps come before them (decision 0043), and the Kenni offer
 /// waits for those. The socket is open while the scene is active (decision 0022). While it is, what arrives
 /// is on screen, so push announces none of it (decision 0025).
 struct HomeView: View {
+    /// Where the reader is: a tab, or the notifications the bell opens, which are no tab (decision 0109).
     enum Tab { case conversations, communities, notifications, me }
 
     enum Route: Hashable {
@@ -119,7 +120,7 @@ struct HomeView: View {
             openTappedSocial()
             await push.start()
         }
-        // The count on the notifications tab, as the server has it.
+        // The count on the bell, as the server has it.
         .task { await notices.refresh() }
         .task {
             for await _ in socket.events() { await push.quiet() }
@@ -197,10 +198,17 @@ struct HomeView: View {
         [
             .init(tab: .conversations, label: localized("tab_conversations"), systemImage: "bubble.left"),
             .init(tab: .communities, label: localized("tab_communities"), systemImage: "person.3"),
-            .init(
-                tab: .notifications, label: localized("tab_notifications"), systemImage: "bell", badge: notices.unseen),
             .init(tab: .me, label: localized("tab_me"), systemImage: "person"),
         ]
+    }
+
+    /// The bell each tab's root draws in its header (decision 0109): the unseen count, and a tap that opens the
+    /// notifications.
+    private var bell: Bell {
+        Bell(count: notices.unseen, selected: tab == .notifications) {
+            noticesPath = []
+            tab = .notifications
+        }
     }
 
     /// The selected tab's screen and the stack it leads into.
@@ -248,6 +256,8 @@ struct HomeView: View {
                 onNew: { path.append(.people) },
                 onInvite: { tab = .me }
             )
+            // Before the destinations, so the screens they push draw no bell.
+            .environment(\.bell, bell)
             .navigationDestination(for: Route.self) { route in
                 switch route {
                 case .people:
@@ -273,6 +283,7 @@ struct HomeView: View {
                 communityNames: Dictionary(communities.mine.map { ($0.communityId, $0.name) }) { first, _ in first },
                 onVerify: { mePath.append(.verify) }, onLink: { mePath.append(.link) }
             )
+            .environment(\.bell, bell)
             .navigationDestination(for: MeRoute.self) { route in
                 switch route {
                 case .link:
@@ -295,6 +306,7 @@ struct HomeView: View {
     {
         NavigationStack(path: path) {
             root()
+                .environment(\.bell, bell)
                 .navigationDestination(for: SocialRoute.self) { route in
                     SocialDestination(route: route, social: social, models: routeModels)
                 }
@@ -337,7 +349,7 @@ struct HomeView: View {
         path = [.conversation(id)]
     }
 
-    /// A tapped social notification: into its post, or its community, on the notifications tab (decision 0107).
+    /// A tapped social notification: into its post, or its community, over the notifications (decisions 0107, 0109).
     private func openTappedSocial() {
         guard let tap = push.takeOpenedSocial() else { return }
         tab = .notifications

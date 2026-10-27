@@ -31,7 +31,7 @@ async function overflow(page: Page) {
 }
 
 for (const width of WIDTHS) {
-  test(`at ${width} px the places are a ${sizeClassOf(width) === "compact" ? "bottom bar" : "left rail"}, Bjóða ends the header and the post bars match the post`, async ({
+  test(`at ${width} px the places are a ${sizeClassOf(width) === "compact" ? "bottom bar" : "left rail"}, the bell ends the top bar, Bjóða ends the header and the post bars match the post`, async ({
     browser,
   }) => {
     const member = await person(browser, "Breiðskjár Mælisdóttir");
@@ -58,6 +58,13 @@ for (const width of WIDTHS) {
       await expect(nav.getByRole("link", { name: place })).toBeInViewport();
     }
     expect(await overflow(member)).toBeLessThanOrEqual(0);
+
+    // The notifications are no place but the bell at the right of the top bar,
+    // above the page and in line with its edge (decision 0109).
+    await expect(nav.getByRole("link", { name: strings.notifications_title })).toHaveCount(0);
+    const bell = await box(member.getByRole("link", { name: strings.notifications_title }));
+    expect(bell.y + bell.height).toBeLessThanOrEqual(content.y + 1);
+    expect(bell.x + bell.width).toBeCloseTo(content.x + content.width - 16, 0);
 
     // Bjóða sits at the end of the row under the description.
     const header = main.locator("header").first();
@@ -113,8 +120,8 @@ for (const width of [360, ...WIDTHS]) {
         ),
       );
     const before = await widths();
-    await nav.getByRole("link", { name: strings.tab_notifications }).click();
-    await expect(nav.getByRole("link", { name: strings.tab_notifications })).toHaveAttribute(
+    await nav.getByRole("link", { name: strings.tab_communities }).click();
+    await expect(nav.getByRole("link", { name: strings.tab_communities })).toHaveAttribute(
       "aria-current",
       "page",
     );

@@ -82,10 +82,12 @@ test("the header's pictures and the aside follow the layout at every width", asy
     expect(beside.y).toBeLessThan(feed.y + feed.height);
     expect(await owner.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
 
-    // It stays where it is while the feed scrolls under it.
+    // It stays where it is while the feed scrolls under it, once the top bar
+    // with the bell (decision 0109) has scrolled away above it.
     await expect(post(owner, "Færsla 1 í breiðu.")).toBeVisible();
-    const before = beside.y;
-    await owner.evaluate(() => window.scrollBy(0, 400));
+    await owner.evaluate(() => window.scrollBy(0, 100));
+    const before = (await aside.boundingBox())!.y;
+    await owner.evaluate(() => window.scrollBy(0, 300));
     expect(await owner.evaluate(() => window.scrollY)).toBeGreaterThan(0);
     expect((await aside.boundingBox())!.y).toBeCloseTo(before, 0);
   }

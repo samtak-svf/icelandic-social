@@ -1,5 +1,8 @@
 package samtak.spjall.ui
 
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasText
@@ -20,8 +23,8 @@ import samtak.spjall.conversations.SCREENSHOT_DEVICE
 import samtak.spjall.conversations.SCREENSHOT_SDK
 
 /**
- * The bottom bar with its four tabs, the third with a count. At twice the text size each name stays on one
- * line, smaller, instead of breaking inside the word (seen on a phone with 0.9.0).
+ * The bottom bar with its three tabs (the notifications are the bell in the header, decision 0109). At twice the
+ * text size each name stays on one line, smaller, instead of breaking inside the word (seen on a phone with 0.9.0).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -29,40 +32,64 @@ import samtak.spjall.conversations.SCREENSHOT_SDK
 class TabBarScreenshotTest {
     @get:Rule val compose = createComposeRule()
 
-    private fun four(): List<Tab> {
+    private fun three(): List<Tab> {
         val context = RuntimeEnvironment.getApplication()
         return listOf(
             Tab(AppIcons.Chat, context.getString(R.string.tab_conversations), selected = false) {},
             Tab(AppIcons.Communities, context.getString(R.string.tab_communities), selected = true) {},
-            Tab(AppIcons.Bell, context.getString(R.string.tab_notifications), selected = false, badge = 3) {},
             Tab(AppIcons.Person, context.getString(R.string.tab_me), selected = false) {},
         )
     }
 
     @Test
     fun tabs() {
-        compose.setContent { SpjallTheme { TabBar(four()) } }
+        compose.setContent { SpjallTheme { TabBar(three()) } }
         compose.onRoot().captureRoboImage()
     }
 
     @Test
     @Config(qualifiers = "+night")
     fun night() {
-        compose.setContent { SpjallTheme { TabBar(four()) } }
+        compose.setContent { SpjallTheme { TabBar(three()) } }
         compose.onRoot().captureRoboImage()
     }
 
     @Test
     @Config(fontScale = 2f)
     fun largeText() {
-        compose.setContent { SpjallTheme { TabBar(four()) } }
+        compose.setContent { SpjallTheme { TabBar(three()) } }
+        compose.onRoot().captureRoboImage()
+    }
+
+    // The bell at the end of a tab's header, with its count, beside the tab's own action (decision 0109).
+    @Composable
+    private fun HeaderWithTheBell() {
+        val context = RuntimeEnvironment.getApplication()
+        val bell = Bell(context.getString(R.string.notifications_title), 3, null, selected = false) {}
+        CompositionLocalProvider(LocalBell provides bell) {
+            ScreenHeader(context.getString(R.string.tab_communities)) {
+                Icon(AppIcons.Plus, contentDescription = null)
+            }
+        }
+    }
+
+    @Test
+    fun theHeaderWithTheBell() {
+        compose.setContent { SpjallTheme { HeaderWithTheBell() } }
+        compose.onRoot().captureRoboImage()
+    }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun theHeaderWithTheBellAtNight() {
+        compose.setContent { SpjallTheme { HeaderWithTheBell() } }
         compose.onRoot().captureRoboImage()
     }
 
     @Test
     @Config(fontScale = 2f)
     fun noNameIsCutAtTwiceTheTextSize() {
-        compose.setContent { SpjallTheme { TabBar(four()) } }
+        compose.setContent { SpjallTheme { TabBar(three()) } }
         assertEquals(emptyList<String>(), compose.wordsCut())
     }
 
@@ -84,18 +111,18 @@ class TabBarScreenshotTest {
     @Test
     @Config(fontScale = 2f)
     fun everyNameIsTheSameSizeAtTwiceTheTextSize() {
-        compose.setContent { SpjallTheme { TabBar(four()) } }
+        compose.setContent { SpjallTheme { TabBar(three()) } }
         val sizes = nameSizes()
-        assertEquals(4, sizes.size)
+        assertEquals(3, sizes.size)
         assertEquals(1, sizes.toSet().size)
     }
 
     @Test
     @Config(fontScale = 1.5f)
     fun everyNameIsTheSameSizeAtOneAndAHalfTheTextSize() {
-        compose.setContent { SpjallTheme { TabBar(four()) } }
+        compose.setContent { SpjallTheme { TabBar(three()) } }
         val sizes = nameSizes()
-        assertEquals(4, sizes.size)
+        assertEquals(3, sizes.size)
         assertEquals(1, sizes.toSet().size)
     }
 }

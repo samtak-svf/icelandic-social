@@ -12,16 +12,18 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * The five places and the screen under them (decision 0087): the [tabs] as a bar along the bottom of a compact
- * window and as a rail down the left of a wider one, drawn by the navigation suite. With [shown] false (a screen
- * opened from a tab) neither is drawn. Each screen pads for the status bar itself, so the bar and the rail pad only
- * for the edge they sit on, and the content is told that edge is spoken for.
+ * The places and the screen under them (decision 0087): the [tabs] as a bar along the bottom of a compact window
+ * and as a rail down the left of a wider one, drawn by the navigation suite, and the [bell] every tab's header draws
+ * at its end (decision 0109). With [shown] false (a screen opened from a tab) neither bar nor rail is drawn. Each
+ * screen pads for the status bar itself, so the bar and the rail pad only for the edge they sit on, and the content
+ * is told that edge is spoken for.
  *
  * The content is one centred column no wider than [CONTENT_WIDTH], as on the web; a [wide] screen (the community,
  * the hub, Stjórna, creating a community) lays out its own columns on an expanded window and gets the whole width.
@@ -30,6 +32,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun AdaptiveNavigation(
     tabs: List<Tab>,
+    bell: Bell?,
     shown: Boolean,
     wide: Boolean,
     content: @Composable () -> Unit,
@@ -60,7 +63,9 @@ fun AdaptiveNavigation(
                 else -> WindowInsets(0)
             }
         Box(Modifier.fillMaxSize().consumeWindowInsets(taken), contentAlignment = Alignment.TopCenter) {
-            Box(Modifier.widthIn(max = width)) { content() }
+            Box(Modifier.widthIn(max = width)) {
+                CompositionLocalProvider(LocalBell provides bell) { content() }
+            }
         }
     }
 }

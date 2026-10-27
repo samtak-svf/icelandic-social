@@ -2377,8 +2377,8 @@
         }
       }
     },
-    "tab_notifications": {
-      "comment": "Navigation: what was addressed to this account in communities (decision 0067).",
+    "notifications_title": {
+      "comment": "The notifications screen's title, and the name the bell in the top bar is read out by: what was addressed to this account in communities (decisions 0067, 0109).",
       "extractionState": "manual",
       "localizations": {
         "is": {
@@ -2390,7 +2390,7 @@
       }
     },
     "notifications_unread": {
-      "comment": "Badge text on the notifications tab: how many are unread.",
+      "comment": "The count on the bell in the top bar, read out with it: how many notifications are unread (decision 0109).",
       "extractionState": "manual",
       "localizations": {
         "is": {

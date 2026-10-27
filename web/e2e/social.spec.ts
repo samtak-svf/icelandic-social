@@ -107,15 +107,15 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
   // The member is told, opens the post from the notification and replies.
   await runJobs();
   await member.reload();
-  const tab = member.getByRole("link", { name: new RegExp(strings.tab_notifications) });
-  await expect(tab).toContainText(strings.notifications_unread({ count: 1 }));
-  await tab.click();
+  const bell = member.getByRole("link", { name: new RegExp(strings.notifications_title) });
+  await expect(bell).toContainText(strings.notifications_unread({ count: 1 }));
+  await bell.click();
   const notice = strings.notice_comment({ name: "Eigandi Prófsdóttir" });
   await member.getByRole("link", { name: new RegExp(notice) }).click();
   await expect(member.getByText("Glæsilegt!")).toBeVisible();
   await write(member, strings.comment_compose, strings.comment_publish, "Takk fyrir!");
   await expect(member.getByText("Takk fyrir!")).toBeVisible();
-  await expect(tab).not.toContainText(strings.notifications_unread({ count: 1 }));
+  await expect(bell).not.toContainText(strings.notifications_unread({ count: 1 }));
 
   // Someone else posts spam, and the member reports it.
   await spammer.reload();
@@ -142,7 +142,7 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
   await expect(post(member, "Tómatarnir")).toBeVisible();
   await expect(post(member, "Ódýr úr")).toHaveCount(0);
   await runJobs();
-  await spammer.getByRole("link", { name: new RegExp(strings.tab_notifications) }).click();
+  await spammer.getByRole("link", { name: new RegExp(strings.notifications_title) }).click();
   await expect(spammer.getByText(strings.notice_moderated)).toBeVisible();
 });
 

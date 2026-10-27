@@ -1,9 +1,9 @@
 import SpjallCore
 import SwiftUI
 
-/// The notifications tab (decisions 0063, 0103, 0104): the rows made since the last look under "new", the rest
-/// under "earlier", newest first. A tap reads a row and opens its post, or its community when there is no post to
-/// open. Opening the tab marks the list seen; "mark all read" reads it.
+/// The notifications the bell opens (decisions 0063, 0103, 0104, 0109): the rows made since the last look under
+/// "new", the rest under "earlier", newest first. A tap reads a row and opens its post, or its community when there
+/// is no post to open. Opening the list marks it seen; "mark all read" reads it.
 struct NotificationsView: View {
     let model: NotificationsModel
     let communities: CommunitiesModel
@@ -12,7 +12,7 @@ struct NotificationsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ScreenHeader(title: localized("tab_notifications")) {
+            ScreenHeader(title: localized("notifications_title")) {
                 if model.unread > 0 {
                     Button(localized("notifications_mark_all_read")) { Task { await model.markAllRead() } }
                         .font(.sans(13, black: true, relativeTo: .subheadline))
@@ -45,7 +45,7 @@ struct NotificationsView: View {
             .refreshable { await model.load() }
         }
         .background(BrandTokens.Colors.bg)
-        .navigationTitle(Text("tab_notifications"))
+        .navigationTitle(Text("notifications_title"))
         .toolbar(.hidden, for: .navigationBar)
         .task {
             await model.appear()

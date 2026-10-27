@@ -1024,13 +1024,13 @@
       "surfaces": ["android", "ios", "web"],
       "description": "Tab of the community hub: the search and the list of communities to join."
     },
-    "tab_notifications": {
+    "notifications_title": {
       "surfaces": ["android", "ios", "web"],
-      "description": "Navigation: what was addressed to this account in communities (decision 0067)."
+      "description": "The notifications screen's title, and the name the bell in the top bar is read out by: what was addressed to this account in communities (decisions 0067, 0109)."
     },
     "notifications_unread": {
       "surfaces": ["android", "ios", "web"],
-      "description": "Badge text on the notifications tab: how many are unread.",
+      "description": "The count on the bell in the top bar, read out with it: how many notifications are unread (decision 0109).",
       "plural": true,
       "placeholders": {
         "count": "int"

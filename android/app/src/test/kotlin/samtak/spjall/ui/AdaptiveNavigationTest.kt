@@ -1,16 +1,24 @@
 package samtak.spjall.ui
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -27,14 +35,17 @@ import samtak.spjall.frames.FakeFrameRules
 import samtak.spjall.frames.LocalFrameRules
 
 /**
- * The five places by window width (decision 0087): a bar along the bottom at the compact size class, a rail down the
- * left at medium and expanded, the count kept on the notifications tab, and neither on a screen opened from a tab.
+ * The places by window width (decision 0087): a bar along the bottom at the compact size class, a rail down the left
+ * at medium and expanded, and neither on a screen opened from a tab. The notifications are no tab: they are the bell
+ * at the end of every tab's header, with its count, at every width (decision 0109).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [SCREENSHOT_SDK])
 class AdaptiveNavigationTest {
     @get:Rule val compose = createComposeRule()
+
+    private var rang = 0
 
     private fun show(
         shown: Boolean = true,
@@ -45,14 +56,17 @@ class AdaptiveNavigationTest {
             listOf(
                 Tab(AppIcons.Chat, context.getString(R.string.tab_conversations), selected = true) {},
                 Tab(AppIcons.Communities, context.getString(R.string.tab_communities), selected = false) {},
-                Tab(AppIcons.Bell, context.getString(R.string.tab_notifications), selected = false, badge = 3) {},
                 Tab(AppIcons.Person, context.getString(R.string.tab_me), selected = false) {},
             )
+        val bell = Bell(context.getString(R.string.notifications_title), 3, UNREAD, selected = false) { rang++ }
         compose.setContent {
             CompositionLocalProvider(LocalFrameRules provides FakeFrameRules) {
                 SpjallTheme {
-                    AdaptiveNavigation(tabs, shown, wide) {
-                        Text("content", Modifier.fillMaxWidth().testTag(CONTENT))
+                    AdaptiveNavigation(tabs, bell, shown, wide) {
+                        Column {
+                            ScreenHeader(context.getString(R.string.tab_conversations))
+                            Text("content", Modifier.fillMaxWidth().testTag(CONTENT))
+                        }
                     }
                 }
             }
@@ -88,6 +102,29 @@ class AdaptiveNavigationTest {
     fun aRailAtExpanded() {
         show()
         assertForm(NAVIGATION_RAIL, NAVIGATION_BAR)
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h900dp")
+    fun theBellIsInTheHeaderWithItsCountAtCompact() = assertBell()
+
+    @Test
+    @Config(qualifiers = "w1000dp-h900dp")
+    fun theBellIsInTheHeaderWithItsCountAtExpanded() = assertBell()
+
+    // The bell is named, its count read out with it, and a tap opens the notifications.
+    private fun assertBell() {
+        show()
+        val context = RuntimeEnvironment.getApplication()
+        compose
+            .onNodeWithTag(BELL)
+            .assertIsDisplayed()
+            .assert(hasContentDescription(context.getString(R.string.notifications_title)))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, UNREAD))
+            .performClick()
+        assertEquals(1, rang)
+        // The count is drawn once, on the bell: no tab carries one.
+        compose.onAllNodesWithText("3", useUnmergedTree = true).assertCountEquals(1)
     }
 
     @Test
@@ -171,5 +208,6 @@ class AdaptiveNavigationTest {
 
     private companion object {
         const val CONTENT = "content"
+        const val UNREAD = "3 unread"
     }
 }

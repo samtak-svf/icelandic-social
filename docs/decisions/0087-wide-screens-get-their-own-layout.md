@@ -1,6 +1,7 @@
 # 0087. Wide screens get their own layout, keyed to the size classes of 0086
 
-- Status: accepted; implemented (web #175, #176, #177, #182, #185; Android #195; iOS #196)
+- Status: accepted; implemented (web #175, #176, #177, #182, #185; Android #195; iOS #196); amended by 0109
+- Amended by: [0109](0109-notifications-bell-in-top-bar.md) (the rail has four places; the notifications are a bell in the top bar)
 - Date: 2026-10-24
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0080](0080-communities-follow-the-familiar-group-layout.md) (navigation on the web,

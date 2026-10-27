@@ -3,12 +3,12 @@ import { useEffect, useState } from "react";
 import { notifications } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 
-// The unseen count on the notifications tab (decision 0104): asked for on every navigation,
-// and when the notifications page has marked some read.
+// The unseen count on the bell in the top bar (decisions 0104, 0109): asked for on every
+// navigation, and when the notifications page has marked some read.
 
 const listeners = new Set<() => void>();
 
-/** Tells the tab to ask again. */
+/** Tells the bell to ask again. */
 export function unreadChanged(): void {
   for (const listener of listeners) listener();
 }
