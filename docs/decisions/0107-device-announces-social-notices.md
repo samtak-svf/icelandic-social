@@ -1,6 +1,6 @@
 # 0107. The device announces social notifications
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the Worker, the core, the web and both apps (#308)
 - Date: 2026-10-27
 - Decided by: Guðröður Atli Jónsson, approving the notifications v2 plan (#308)
 - Amends: [0025](0025-push-without-ids.md) (the device announces only chat),

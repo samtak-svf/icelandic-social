@@ -1,6 +1,6 @@
 # 0103. One notification per thing acted on, with its actors
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the Worker, the core, the web and both apps (#308)
 - Date: 2026-10-27
 - Decided by: Guðröður Atli Jónsson, approving the notifications v2 plan (#308)
 - Amends: [0067](0067-jobs-and-notifications.md) (one notification per job key)

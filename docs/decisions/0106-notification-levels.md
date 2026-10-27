@@ -1,6 +1,6 @@
 # 0106. Notification levels per kind and per community
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; implemented in the Worker, the core, the web and both apps (#308)
 - Date: 2026-10-27
 - Decided by: Guðröður Atli Jónsson, approving the notifications v2 plan (#308)
 - Amends: [0067](0067-jobs-and-notifications.md) (per-kind settings, listed as not built)
