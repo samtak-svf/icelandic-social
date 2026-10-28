@@ -143,30 +143,6 @@ fun ConversationInfoScreen(
     }
 }
 
-/** Back and the screen's title, on the band the conversation's own bar uses. */
-@Composable
-private fun InfoBar(actions: ConversationInfoActions) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-                .padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(onClick = actions::back) {
-            Icon(AppIcons.Back, contentDescription = stringResource(R.string.back), tint = Palette.fg)
-        }
-        Text(
-            text = stringResource(R.string.conversation_info),
-            style = MaterialTheme.typography.titleMedium,
-            color = Palette.fg,
-            modifier = Modifier.padding(start = 4.dp).semantics { heading() },
-        )
-    }
-    HorizontalDivider(color = Palette.border)
-}
-
 /** The other person, large, with their mark; or a group's name, what may be done with it, and everyone in it. */
 @Composable
 private fun Who(

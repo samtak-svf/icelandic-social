@@ -54,6 +54,7 @@ import samtak.spjall.ui.EmptyState
 import samtak.spjall.ui.LocalReduceMotion
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
+import samtak.spjall.ui.TrailingBell
 import samtak.spjall.ui.VerifiedMark
 import samtak.spjall.ui.rowMotion
 import samtak.spjall.ui.shownName
@@ -84,8 +85,9 @@ fun PeopleScreen(
                 Text(
                     text = stringResource(title(state)),
                     style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.semantics { heading() },
+                    modifier = Modifier.weight(1f).semantics { heading() },
                 )
+                TrailingBell()
             }
             SearchField(state.query, actions::search)
             if (state.busy || state.searching) {

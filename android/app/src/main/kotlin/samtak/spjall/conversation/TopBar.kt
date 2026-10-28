@@ -40,6 +40,7 @@ import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.SansFamily
+import samtak.spjall.ui.TrailingBell
 import samtak.spjall.ui.VerifiedMark
 import samtak.spjall.ui.avatarKind
 import samtak.spjall.ui.photoOf
@@ -70,6 +71,7 @@ internal fun TopBar(
             state.conversation?.let {
                 Title(it, Modifier.weight(1f), actions::info)
             }
+            TrailingBell()
         }
         HorizontalDivider(color = Palette.border)
     }

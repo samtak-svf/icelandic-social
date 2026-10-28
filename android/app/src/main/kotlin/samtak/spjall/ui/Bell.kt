@@ -31,12 +31,18 @@ class Bell(
 )
 
 /**
- * The bell every tab's header draws at its end, provided once by the navigation shell; none (a preview, a test of a
- * single screen) draws no bell.
+ * The bell every full screen's header draws at its end (decisions 0109, 0111), provided once by the navigation shell;
+ * none (a preview, a test of a single screen, a modal sheet's toolbar) draws no bell.
  */
 val LocalBell = compositionLocalOf<Bell?> { null }
 
-/** The bell at the end of a tab's header, with its count, red while its screen is the one showing. */
+/** The shell's bell, if it provides one: what every full screen's header ends with (decision 0111). */
+@Composable
+fun TrailingBell() {
+    LocalBell.current?.let { BellButton(it) }
+}
+
+/** The bell at the end of a header, with its count, red while its screen is the one showing. */
 @Composable
 fun BellButton(bell: Bell) {
     IconButton(
