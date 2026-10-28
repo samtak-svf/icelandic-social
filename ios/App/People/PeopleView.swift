@@ -86,6 +86,7 @@ struct PeopleView: View {
                 .accessibilityLabel(Text("back"))
             }
         }
+        .bellInNavigationBar()
         .background {
             SwipeBack(instead: (model.group && !model.adding) ? { _ = model.back() } : nil).frame(width: 0, height: 0)
         }

@@ -24,6 +24,7 @@ struct JoinRequestsView: View {
         .navigationTitle(Text("join_requests_title"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
+        .bellInNavigationBar()
         .safeAreaInset(edge: .top) {
             if let problem = model.problem {
                 ProblemCard(problem: problem) { Task { await model.retry() } }.padding(16)
