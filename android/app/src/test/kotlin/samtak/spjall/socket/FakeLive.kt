@@ -26,6 +26,7 @@ class FakeLive(
     override val connection = MutableStateFlow(Connection.Connecting)
     override val events = MutableSharedFlow<Event>(extraBufferCapacity = 16)
     override val signedOut = MutableStateFlow(false)
+    override val caughtUp = MutableStateFlow(false)
     var syncs = 0
     val sent = mutableListOf<String>()
 

@@ -60,12 +60,20 @@ class ConversationsViewModel(
         val searching: Boolean = false,
         /** The conversations someone is typing in; a row shows no name, only that (0043, 0022). */
         val typing: Set<String> = emptySet(),
+        /** The server has sent this sign-in everything it owed; until then an empty list is not final (0110). */
+        val caughtUp: Boolean = false,
     ) {
         /** A search shows its results in place of the list. */
         val searched: Boolean get() = query.isNotBlank()
 
         /** Grey rows stand where the list will be until its first read returns (0043). */
         val placeholders: Boolean get() = !loaded && !searched
+
+        /** The list is read and empty, and what the server owed may still be on its way (decision 0110). */
+        val catchingUp: Boolean get() = !searched && loaded && conversations.isEmpty() && !caughtUp
+
+        /** The list is read and empty for good: it is caught up. */
+        val empty: Boolean get() = !searched && loaded && conversations.isEmpty() && caughtUp
 
         /** The search is done and found neither a conversation nor a person. */
         val nothingFound: Boolean
@@ -97,6 +105,7 @@ class ConversationsViewModel(
     init {
         viewModelScope.launch { for (read in reads) read() }
         viewModelScope.launch { live.connection.collect { c -> _state.update { it.copy(connection = c) } } }
+        viewModelScope.launch { live.caughtUp.collect { c -> _state.update { it.copy(caughtUp = c) } } }
         viewModelScope.launch {
             live.events.collect { event ->
                 if (event is Event.Typing) typing(event.conversation, event.active) else load()

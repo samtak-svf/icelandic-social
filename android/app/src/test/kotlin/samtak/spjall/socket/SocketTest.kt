@@ -166,6 +166,30 @@ class SocketTest {
         }
 
     @Test
+    fun caughtUpLatchesOnTheEventSurvivesAReconnectAndTheNextStartClearsIt() =
+        runTest(dispatcher) {
+            val socket = socket()
+            socket.start()
+            runCurrent()
+            wire.signal(Signal.Opened)
+            runCurrent()
+            assertFalse(socket.caughtUp.value)
+
+            account.outcomes += Outcome(listOf(Event.CaughtUp), emptyList())
+            wire.signal(Signal.Frame("""{"type":"caught-up"}"""))
+            runCurrent()
+            assertTrue(socket.caughtUp.value)
+
+            wire.signal(Signal.Closed)
+            runCurrent()
+            assertTrue(socket.caughtUp.value)
+
+            socket.stop()
+            socket.start()
+            assertFalse(socket.caughtUp.value)
+        }
+
+    @Test
     fun noTokenIsSignedOutAndTheNextStartClearsIt() =
         runTest(dispatcher) {
             val socket = socket()

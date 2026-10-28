@@ -33,6 +33,10 @@ enum Connection: Sendable {
 @MainActor
 protocol Live: AnyObject {
     var connection: Connection { get }
+    /// True once the server said this sign-in has been sent everything it owed (decision 0108). Latched: it
+    /// stays true across reconnects, so a list opened after the marker passed does not wait for another.
+    /// Each start clears it (decision 0110).
+    var caughtUp: Bool { get }
     /// Every event the core returns from here on, from the socket's frames and from each sync.
     func events() -> AsyncStream<Event>
     /// Runs a core call that returns an `Outcome`, in turn with the socket's own, and delivers it.
@@ -62,6 +66,9 @@ final class Socket: Live {
     /// the core does when the server no longer answers the token (decision 0057), or there was no token
     /// to open with. Each start clears it.
     private(set) var signedOut = false
+    /// True once the server said this sign-in has been sent everything it owed (decision 0108). Latched:
+    /// reconnects keep it, each start clears it (decision 0110).
+    private(set) var caughtUp = false
 
     @ObservationIgnored private let account: Account
     @ObservationIgnored private let wire: Wire
@@ -86,6 +93,7 @@ final class Socket: Live {
     func start() {
         guard running == nil else { return }
         signedOut = false
+        caughtUp = false
         running = Task { await run() }
     }
 
@@ -214,6 +222,7 @@ final class Socket: Live {
     private func emit(_ outcome: Outcome) {
         for frame in outcome.frames { link?.send(frame) }
         for event in outcome.events {
+            if case .caughtUp = event { caughtUp = true }
             for listener in listeners.values { listener.yield(event) }
         }
     }

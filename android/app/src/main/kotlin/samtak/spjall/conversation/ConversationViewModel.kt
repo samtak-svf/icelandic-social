@@ -684,7 +684,7 @@ private fun Event.concerns(conversation: String): Boolean =
     when (this) {
         is Event.Message -> message.conversation == conversation
         is Event.Profiles -> true
-        is Event.Typing -> false
+        is Event.Typing, is Event.CaughtUp -> false
         is Event.Membership -> this.conversation == conversation
         is Event.Joined -> this.conversation == conversation
         is Event.Devices -> this.conversation == conversation

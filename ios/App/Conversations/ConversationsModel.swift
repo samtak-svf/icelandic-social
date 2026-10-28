@@ -43,6 +43,11 @@ final class ConversationsModel {
 
     var connection: Connection { live.connection }
 
+    /// The list is read and empty, and what the server owed may still be on its way (decision 0110).
+    var catchingUp: Bool { !searched && loaded && conversations.isEmpty && !live.caughtUp }
+    /// The list is read and empty for good: it is caught up.
+    var empty: Bool { !searched && loaded && conversations.isEmpty && live.caughtUp }
+
     private let account: Account
     private let live: Live
     private var reading = false

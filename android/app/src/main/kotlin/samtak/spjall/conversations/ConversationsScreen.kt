@@ -91,7 +91,10 @@ private fun Rows(
 ) {
     if (state.nothingFound) {
         NoneFound()
-    } else if (!state.searched && state.loaded && state.conversations.isEmpty()) {
+    } else if (state.catchingUp) {
+        // The server has not yet sent what it owed this sign-in (decision 0110): not yet "no conversations".
+        EmptyState(AppIcons.Chat, stringResource(R.string.conversations_catching_up))
+    } else if (state.empty) {
         // Everyone signed in is in the picker (decisions 0036, 0043): people can be found, not only invited.
         EmptyState(
             AppIcons.Chat,

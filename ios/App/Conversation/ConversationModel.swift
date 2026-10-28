@@ -660,7 +660,7 @@ extension Event {
         switch self {
         case .message(let message): message.conversation == conversation
         case .profiles: true
-        case .typing: false
+        case .typing, .caughtUp: false
         case .membership(let id, _, _), .joined(let id), .devices(let id, _), .removed(let id), .stale(let id),
             .timeline(let id, _), .expired(let id, _):
             id == conversation
