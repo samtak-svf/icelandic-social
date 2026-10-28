@@ -50,6 +50,7 @@ import samtak.spjall.ui.EmptyState
 import samtak.spjall.ui.LocalReduceMotion
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
+import samtak.spjall.ui.TrailingBell
 import samtak.spjall.ui.Type
 import samtak.spjall.ui.VerifiedMark
 import samtak.spjall.ui.avatarKind
@@ -83,8 +84,9 @@ fun PickScreen(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
                     color = Palette.fg,
-                    modifier = Modifier.semantics { heading() },
+                    modifier = Modifier.weight(1f).semantics { heading() },
                 )
+                TrailingBell()
             }
             if (state.sending) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             state.problem?.let {

@@ -47,7 +47,7 @@ fun ScreenHeader(
             modifier = Modifier.weight(1f).semantics { heading() },
         )
         action?.invoke(this)
-        LocalBell.current?.let { BellButton(it) }
+        TrailingBell()
     }
 }
 

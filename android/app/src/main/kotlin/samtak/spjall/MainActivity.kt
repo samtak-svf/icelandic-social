@@ -213,7 +213,7 @@ class MainActivity : ComponentActivity() {
 
     /**
      * The three tabs, the conversation list, the communities and Ég (decisions 0044, 0063), the notifications behind
-     * the bell in every tab's band (0109), and the screens they lead to.
+     * the bell in the header of every screen (0109, 0111), and the screens they lead to.
      */
     @Composable
     private fun TabScreens(signIns: Int) {
@@ -322,7 +322,7 @@ private fun tabs(
     )
 }
 
-/** The bell at the end of every tab's band, with the unread count, red on the notifications screen. */
+/** The bell at the end of every full screen's header, with the unread count, red on the notifications screen. */
 @Composable
 private fun bell(
     route: String?,

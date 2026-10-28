@@ -122,7 +122,7 @@ struct ConversationInfoView: View {
         .sheet(isPresented: Binding(get: { adding != nil }, set: { if !$0 { adding = nil } })) {
             if let picker = adding {
                 NavigationStack {
-                    PeopleView(model: picker, onInvite: {})
+                    PeopleView(model: picker, onInvite: {}).withoutBell()
                 }
                 .onChange(of: picker.opened) { _, opened in
                     guard opened != nil else { return }

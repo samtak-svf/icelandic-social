@@ -12,6 +12,8 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -54,6 +56,7 @@ import samtak.spjall.me.Pill
 import samtak.spjall.ui.AppIcons
 import samtak.spjall.ui.Palette
 import samtak.spjall.ui.ProblemCard
+import samtak.spjall.ui.TrailingBell
 import samtak.spjall.ui.Type
 import java.util.concurrent.Executors
 
@@ -88,8 +91,15 @@ internal fun LinkFrame(
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         Column(modifier = Modifier.safeDrawingPadding()) {
-            IconButton(onClick = onBack, modifier = Modifier.padding(start = 4.dp)) {
-                Icon(AppIcons.Back, contentDescription = stringResource(R.string.back), tint = Palette.fg)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(AppIcons.Back, contentDescription = stringResource(R.string.back), tint = Palette.fg)
+                }
+                Spacer(Modifier.weight(1f))
+                TrailingBell()
             }
             Column(
                 modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),

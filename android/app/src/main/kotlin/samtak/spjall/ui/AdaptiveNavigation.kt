@@ -20,10 +20,10 @@ import androidx.compose.ui.unit.dp
 
 /**
  * The places and the screen under them (decision 0087): the [tabs] as a bar along the bottom of a compact window
- * and as a rail down the left of a wider one, drawn by the navigation suite, and the [bell] every tab's header draws
- * at its end (decision 0109). With [shown] false (a screen opened from a tab) neither bar nor rail is drawn. Each
- * screen pads for the status bar itself, so the bar and the rail pad only for the edge they sit on, and the content
- * is told that edge is spoken for.
+ * and as a rail down the left of a wider one, drawn by the navigation suite, and the [bell] every full screen's
+ * header draws at its end (decisions 0109, 0111). With [shown] false (a screen opened from a tab) neither bar nor
+ * rail is drawn. Each screen pads for the status bar itself, so the bar and the rail pad only for the edge they sit
+ * on, and the content is told that edge is spoken for.
  *
  * The content is one centred column no wider than [CONTENT_WIDTH], as on the web; a [wide] screen (the community,
  * the hub, Stjórna, creating a community) lays out its own columns on an expanded window and gets the whole width.

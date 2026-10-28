@@ -48,6 +48,7 @@ import samtak.spjall.ui.Avatar
 import samtak.spjall.ui.AvatarKind
 import samtak.spjall.ui.NameWithMark
 import samtak.spjall.ui.Palette
+import samtak.spjall.ui.TrailingBell
 import samtak.spjall.ui.listStamp
 
 // What the community screens share. Their content is hosted, not end-to-end encrypted (decision 0060), so
@@ -93,6 +94,7 @@ fun SubHeader(
             modifier = Modifier.weight(1f).semantics { heading() },
         )
         trailing()
+        TrailingBell()
     }
 }
 

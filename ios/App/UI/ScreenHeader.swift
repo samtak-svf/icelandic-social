@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// A tab's cream band (0053): its name in capitals under the status bar, an optional action, and at the
-/// trailing end the notifications bell (0109) on a tab's root. Every tab shares it, so every tab starts the
-/// same way and the bell sits in the same place on each.
+/// trailing end the notifications bell (0109, 0111) when the stack has one. Every tab shares it, so every tab starts
+/// the same way and the bell sits in the same place on each.
 struct ScreenHeader<Action: View>: View {
     let title: String
     @ViewBuilder let action: () -> Action

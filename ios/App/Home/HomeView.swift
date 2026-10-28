@@ -2,11 +2,11 @@ import SpjallCore
 import SwiftUI
 
 /// The tabs, the conversations, the communities and "Ég" (decisions 0044, 0063), the notifications behind the
-/// bell in each tab's header (0109), and the screens they lead to. The communities and notifications are hosted content, kept apart from the
-/// conversations (decision 0060): their screens have stacks of their own and never touch the conversation
-/// store. Once per install the first launch's steps come before them (decision 0043), and the Kenni offer
-/// waits for those. The socket is open while the scene is active (decision 0022). While it is, what arrives
-/// is on screen, so push announces none of it (decision 0025).
+/// bell in the header of every screen (0109, 0111), and the screens they lead to. The communities and notifications
+/// are hosted content, kept apart from the conversations (decision 0060): their screens have stacks of their own
+/// and never touch the conversation store. Once per install the first launch's steps come before them (decision
+/// 0043), and the Kenni offer waits for those. The socket is open while the scene is active (decision 0022). While it
+/// is, what arrives is on screen, so push announces none of it (decision 0025).
 struct HomeView: View {
     /// Where the reader is: a tab, or the notifications the bell opens, which are no tab (decision 0109).
     enum Tab { case conversations, communities, notifications, me }
@@ -202,7 +202,7 @@ struct HomeView: View {
         ]
     }
 
-    /// The bell each tab's root draws in its header (decision 0109): the unseen count, and a tap that opens the
+    /// The bell every full screen draws in its header (decisions 0109, 0111): the unseen count, and a tap that opens the
     /// notifications.
     private var bell: Bell {
         Bell(count: notices.unseen, selected: tab == .notifications) {
@@ -256,8 +256,6 @@ struct HomeView: View {
                 onNew: { path.append(.people) },
                 onInvite: { tab = .me }
             )
-            // Before the destinations, so the screens they push draw no bell.
-            .environment(\.bell, bell)
             .navigationDestination(for: Route.self) { route in
                 switch route {
                 case .people:
@@ -273,6 +271,8 @@ struct HomeView: View {
                 }
             }
         }
+        // On the stack, not its root, so the screens pushed onto it draw the bell too (decision 0111).
+        .environment(\.bell, bell)
         .environment(\.sharedPosts, sharedPosts)
     }
 
@@ -283,7 +283,6 @@ struct HomeView: View {
                 communityNames: Dictionary(communities.mine.map { ($0.communityId, $0.name) }) { first, _ in first },
                 onVerify: { mePath.append(.verify) }, onLink: { mePath.append(.link) }
             )
-            .environment(\.bell, bell)
             .navigationDestination(for: MeRoute.self) { route in
                 switch route {
                 case .link:
@@ -298,6 +297,7 @@ struct HomeView: View {
                 }
             }
         }
+        .environment(\.bell, bell)
     }
 
     /// A hosted tab's stack: its root, then communities, posts and report queues, each with a model of its own.
@@ -306,11 +306,11 @@ struct HomeView: View {
     {
         NavigationStack(path: path) {
             root()
-                .environment(\.bell, bell)
                 .navigationDestination(for: SocialRoute.self) { route in
                     SocialDestination(route: route, social: social, models: routeModels)
                 }
         }
+        .environment(\.bell, bell)
         // Any screen in the stack can draw a post card, the hub's feed included.
         .environment(\.postImages, PostImages(social: social))
         .environment(\.postSharing, postSharing)
@@ -385,7 +385,7 @@ private struct SocialDestination: View {
         case .community(let id):
             CommunityView(
                 model: models.model(for: route) { CommunityModel(social: social, communityId: id) }, social: social
-            ).id(route)
+            ).bellInNavigationBar().id(route)
         case .post(let id):
             PostView(model: models.model(for: route) { PostModel(social: social, postId: id) }, social: social)
                 .id(route)
