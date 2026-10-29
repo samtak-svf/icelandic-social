@@ -320,7 +320,7 @@ impl<T: Transport> Client<T> {
             }
             Ok::<_, ClientError>(())
         })?;
-        self.token = Some(linked.token);
+        self.set_token(Some(linked.token));
         Ok(Enrolled {
             signed_in: device,
             history_expected: linked.history_expected,

@@ -1300,15 +1300,15 @@ fn with_query(path: &str, params: &[(&str, Option<&str>)]) -> String {
 /// `bearer` names, or as no device for the calls made before sign-in.
 pub struct Api<'a, T: ?Sized> {
     transport: &'a T,
-    bearer: Option<&'a str>,
+    bearer: Option<String>,
     client: Option<&'a str>,
 }
 
 impl<'a, T: Transport + ?Sized> Api<'a, T> {
-    pub fn new(transport: &'a T, bearer: Option<&'a str>) -> Self {
+    pub fn new(transport: &'a T, bearer: Option<&str>) -> Self {
         Self {
             transport,
-            bearer,
+            bearer: bearer.map(str::to_owned),
             client: None,
         }
     }
@@ -1335,7 +1335,7 @@ impl<'a, T: Transport + ?Sized> Api<'a, T> {
             method,
             path,
             body,
-            bearer: self.bearer.map(str::to_owned),
+            bearer: self.bearer.clone(),
             client: self.client.map(str::to_owned),
             range: None,
         }

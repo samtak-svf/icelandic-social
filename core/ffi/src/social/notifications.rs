@@ -213,7 +213,7 @@ impl CoreClient {
         before: Option<String>,
         limit: u32,
     ) -> Result<SocialNotificationPage, CoreError> {
-        let page = self.client()?.notifications(before.as_deref(), limit)?;
+        let page = self.hosted.notifications(before.as_deref(), limit)?;
         Ok(SocialNotificationPage {
             notifications: page.notifications.into_iter().map(Into::into).collect(),
             unread: page.unread,
@@ -226,28 +226,28 @@ impl CoreClient {
     /// Marks read every notification made at or before `up_to`: the
     /// `created_at` of the newest one shown.
     pub fn read_notifications(&self, up_to: u64) -> Result<(), CoreError> {
-        Ok(self.client()?.read_notifications(up_to)?)
+        Ok(self.hosted.read_notifications(up_to)?)
     }
 
     /// Records that the list was looked at up to `up_to`, the `created_at`
     /// of the newest row shown; it clears the badge and reads no row (0104).
     pub fn seen_notifications(&self, up_to: u64) -> Result<(), CoreError> {
-        Ok(self.client()?.seen_notifications(up_to)?)
+        Ok(self.hosted.seen_notifications(up_to)?)
     }
 
     /// Marks one notification read, or unread again.
     pub fn read_notification(&self, notification_id: String, read: bool) -> Result<(), CoreError> {
-        Ok(self.client()?.read_notification(&notification_id, read)?)
+        Ok(self.hosted.read_notification(&notification_id, read)?)
     }
 
     /// Removes one notification from the list.
     pub fn delete_notification(&self, notification_id: String) -> Result<(), CoreError> {
-        Ok(self.client()?.delete_notification(&notification_id)?)
+        Ok(self.hosted.delete_notification(&notification_id)?)
     }
 
     /// The level for each kind and each community that has one (0106).
     pub fn notification_settings(&self) -> Result<NotificationSettings, CoreError> {
-        let settings = self.client()?.notification_settings()?;
+        let settings = self.hosted.notification_settings()?;
         Ok(NotificationSettings {
             kinds: settings
                 .kinds
@@ -278,7 +278,7 @@ impl CoreClient {
             .into_iter()
             .map(|k| (k.kind.into(), k.level))
             .collect();
-        Ok(self.client()?.set_notification_settings(&kinds)?)
+        Ok(self.hosted.set_notification_settings(&kinds)?)
     }
 
     /// Sets how loudly this account is told of one community.
@@ -288,7 +288,7 @@ impl CoreClient {
         level: NotificationLevel,
     ) -> Result<(), CoreError> {
         Ok(self
-            .client()?
+            .hosted
             .set_community_notification_level(&community_id, level)?)
     }
 }

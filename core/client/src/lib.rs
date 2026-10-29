@@ -27,6 +27,7 @@ mod forward;
 pub mod frames;
 pub mod group_photo;
 mod history;
+mod hosted;
 mod incoming;
 mod link;
 mod media;
@@ -42,13 +43,16 @@ mod view;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 pub use account::{Linked, SignedIn, invite_token};
-use api::{Api, ApiError, Outgoing, Platform, Profile, Transport, conversation_id, group_id};
+use api::{ApiError, Outgoing, Platform, Profile, Transport, conversation_id, group_id};
 pub use blobs::{BlobStore, BlobWrite, FsBlobs, MemBlobs};
 pub use directory::{Directory, ListSearch, MAX_QUERY, blank, fold_name};
 pub use history::{HistoryError, HistoryKey, Imported, MAX_HISTORY, history_key};
+pub use hosted::Hosted;
+use hosted::{SharedToken, authed, read_token};
 use incoming::Incoming;
 pub use link::{DeviceLink, Enrolled, LinkCode, LinkError, LinkRequest, LinkState};
 pub use media::{MAX_SIZE, MediaError};
@@ -760,16 +764,6 @@ fn store_message(
     .map(drop)
 }
 
-/// The API as this device, which needs its token.
-fn authed<'a, T: Transport>(
-    transport: &'a T,
-    token: &'a Option<String>,
-    client: &'a Option<String>,
-) -> Result<Api<'a, T>, ClientError> {
-    let token = token.as_deref().ok_or(ClientError::NotRegistered)?;
-    Ok(Api::new(transport, Some(token)).client(client.as_deref()))
-}
-
 /// `major.minor.patch`, each at most six digits, as the server reads it.
 fn is_version(text: &str) -> bool {
     let parts: Vec<&str> = text.split('.').collect();
@@ -787,7 +781,7 @@ pub struct Client<T> {
     store: Store,
     transport: T,
     /// The device token, from the store; `None` until sign-in.
-    token: Option<String>,
+    token: SharedToken,
     /// What happened since the last call returned; kept when a call fails
     /// half way, so the next one still reports it.
     outcome: Outcome,
@@ -834,7 +828,7 @@ impl<T: Transport> Client<T> {
         Ok(Self {
             store,
             transport,
-            token,
+            token: Arc::new(RwLock::new(token)),
             outcome: Outcome::default(),
             typed: HashMap::new(),
             media,

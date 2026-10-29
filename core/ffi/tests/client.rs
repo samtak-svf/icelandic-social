@@ -2,20 +2,21 @@
 //! device's `Transport` is a foreign-trait object over the in-memory relay
 //! the client's own tests use.
 
+#[path = "support/app.rs"]
+#[allow(dead_code)]
+mod app;
 #[path = "../../client/tests/support/relay.rs"]
 #[allow(dead_code)]
 mod relay;
 
-use std::path::Path;
-use std::sync::{Arc, Condvar, Mutex, mpsc};
+use std::sync::Arc;
 use std::time::Duration;
 
-use relay::{Link, Relay};
-use spjall_client::api::{self, Transport as _};
+use app::{App, Phone, deliver, phone, promptly};
+use relay::Relay;
 use spjall_core::client::{
-    Content, ConversationState, CoreClient, Event, HttpMethod, HttpRequest, HttpResponse,
-    ItemStatus, Notice, NoticeKind, Platform, Settings, SignInProvider, SignedIn, Transport,
-    TransportError, invite_token,
+    Content, ConversationState, CoreClient, Event, HttpMethod, HttpResponse, ItemStatus, Notice,
+    NoticeKind, Platform, Settings, SignInProvider, SignedIn, invite_token,
 };
 use spjall_core::social::{
     Author, Card, CardCommunity, CardKind, CardRef, CommunityAudience, CommunityRole, EmojiCount,
@@ -23,160 +24,6 @@ use spjall_core::social::{
     ReportTarget, ReportTargetKind, SocialNotificationKind,
 };
 use spjall_core::{Body, CoreError};
-
-/// What an app's transport is, here backed by the relay, recording every
-/// request it was handed.
-struct App {
-    link: Link,
-    seen: Mutex<Vec<HttpRequest>>,
-    offline: Mutex<bool>,
-    /// The next request panics, as a bug in the app's transport would.
-    panics: Mutex<bool>,
-    /// While set, a request waits, as one on a slow network does, and says
-    /// so on the channel `hold` returned.
-    held: Mutex<Option<mpsc::Sender<()>>>,
-    released: Condvar,
-    /// While not empty, a request is answered with the first of these, as
-    /// the Worker answers the social calls the relay does not have.
-    canned: Mutex<std::collections::VecDeque<HttpResponse>>,
-}
-
-impl App {
-    fn api(request: HttpRequest) -> api::Request {
-        api::Request {
-            method: match request.method {
-                HttpMethod::Get => api::Method::Get,
-                HttpMethod::Post => api::Method::Post,
-                HttpMethod::Delete => api::Method::Delete,
-                HttpMethod::Put => api::Method::Put,
-                HttpMethod::Patch => api::Method::Patch,
-            },
-            path: request.path,
-            body: request.body,
-            bearer: request.bearer,
-            client: request.client,
-            range: None,
-        }
-    }
-
-    /// Holds every request from now on until `release`; the channel hears
-    /// each one that starts waiting.
-    fn hold(&self) -> mpsc::Receiver<()> {
-        let (waiting, heard) = mpsc::channel();
-        *self.held.lock().unwrap() = Some(waiting);
-        heard
-    }
-
-    fn release(&self) {
-        *self.held.lock().unwrap() = None;
-        self.released.notify_all();
-    }
-
-    fn through(
-        &self,
-        request: HttpRequest,
-        send: impl FnOnce(api::Request) -> Result<api::Response, api::Unreachable>,
-    ) -> Result<HttpResponse, TransportError> {
-        self.seen.lock().unwrap().push(request.clone());
-        let mut held = self.held.lock().unwrap();
-        if let Some(waiting) = held.as_ref() {
-            let _ = waiting.send(());
-        }
-        while held.is_some() {
-            held = self.released.wait(held).unwrap();
-        }
-        drop(held);
-        if let Some(answer) = self.canned.lock().unwrap().pop_front() {
-            return Ok(answer);
-        }
-        if std::mem::take(&mut *self.panics.lock().unwrap()) {
-            panic!("the transport panicked");
-        }
-        if *self.offline.lock().unwrap() {
-            return Err(TransportError::Unreachable {
-                detail: "offline".into(),
-            });
-        }
-        let response =
-            send(Self::api(request)).map_err(|e| TransportError::Unreachable { detail: e.0 })?;
-        Ok(HttpResponse {
-            status: response.status,
-            body: response.body,
-        })
-    }
-}
-
-impl Transport for App {
-    fn request(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
-        self.through(request, |request| self.link.request(request))
-    }
-
-    fn upload(&self, request: HttpRequest, path: String) -> Result<HttpResponse, TransportError> {
-        self.through(request, |request| {
-            self.link.upload(request, Path::new(&path))
-        })
-    }
-
-    fn download(&self, request: HttpRequest, to: String) -> Result<HttpResponse, TransportError> {
-        self.through(request, |request| {
-            self.link.download(request, Path::new(&to))
-        })
-    }
-}
-
-struct Phone {
-    app: Arc<App>,
-    client: Arc<CoreClient>,
-    dir: tempfile::TempDir,
-}
-
-fn phone(relay: &Arc<Relay>, account: &str, device: &str) -> Phone {
-    let dir = tempfile::tempdir().unwrap();
-    let app = Arc::new(App {
-        link: relay.link(account, device),
-        seen: Mutex::new(Vec::new()),
-        offline: Mutex::new(false),
-        panics: Mutex::new(false),
-        held: Mutex::new(None),
-        released: Condvar::new(),
-        canned: Mutex::default(),
-    });
-    let client = CoreClient::open(
-        dir.path().to_string_lossy().into_owned(),
-        vec![7; 32],
-        app.clone(),
-        Platform::Android,
-        "0.2.0".into(),
-    )
-    .unwrap();
-    assert_eq!(client.device_key().unwrap().len(), 32);
-    let url = client.begin_sign_in(SignInProvider::Kenni).unwrap();
-    let signed_in = client
-        .complete_sign_in(relay::kenni(&url), None, Platform::Android)
-        .unwrap();
-    assert_eq!(
-        signed_in,
-        SignedIn {
-            account_id: account.into(),
-            device_id: device.into()
-        }
-    );
-    assert_eq!(client.stock_key_packages(2).unwrap(), 2);
-    Phone { app, client, dir }
-}
-
-/// Hands every frame waiting on the device's socket to its client.
-fn deliver(relay: &Relay, phone: &Phone, account: &str, device: &str) -> Vec<Event> {
-    let mut events = Vec::new();
-    for frame in relay.frames(device) {
-        let outcome = phone.client.on_frame(frame).unwrap();
-        events.extend(outcome.events);
-        for frame in outcome.frames {
-            relay.socket(account, &frame);
-        }
-    }
-    events
-}
 
 #[test]
 fn two_clients_talk_through_the_exported_api() {
@@ -328,15 +175,7 @@ fn an_account_is_run_through_the_exported_api() {
     // A new device sees the inviter, then signs in with the token. A
     // request's debug form, as a log would show it, has no body or token.
     let dir = tempfile::tempdir().unwrap();
-    let app = Arc::new(App {
-        link: relay.link("b", "b1"),
-        seen: Mutex::new(Vec::new()),
-        offline: Mutex::new(false),
-        panics: Mutex::new(false),
-        held: Mutex::new(None),
-        released: Condvar::new(),
-        canned: Mutex::default(),
-    });
+    let app = App::new(relay.link("b", "b1"));
     let b1 = CoreClient::open(
         dir.path().to_string_lossy().into_owned(),
         vec![7; 32],
@@ -448,18 +287,6 @@ fn client_too_old_crosses_with_its_update_url() {
         Err(CoreError::ClientTooOld { min_version, update_url })
             if min_version == "9.0.0" && update_url.is_none()
     ));
-}
-
-/// Runs `read` on a thread of its own and gives what it returned; panics
-/// when it has not returned within two seconds.
-fn promptly<T: Send + 'static>(read: impl FnOnce() -> T + Send + 'static) -> T {
-    let (done, result) = mpsc::channel();
-    std::thread::spawn(move || {
-        let _ = done.send(read());
-    });
-    result
-        .recv_timeout(Duration::from_secs(2))
-        .expect("the read waited")
 }
 
 /// A conversation of a1's with b holding one text from a, delivered to b1.
@@ -737,15 +564,7 @@ fn google_links_and_one_to_ones_cross_the_exported_api() {
 
     // A Google sign-in on a fresh device.
     let dir = tempfile::tempdir().unwrap();
-    let app = Arc::new(App {
-        link: relay.link("c", "c1"),
-        seen: Mutex::new(Vec::new()),
-        offline: Mutex::new(false),
-        panics: Mutex::new(false),
-        held: Mutex::new(None),
-        released: Condvar::new(),
-        canned: Mutex::default(),
-    });
+    let app = App::new(relay.link("c", "c1"));
     let c1 = CoreClient::open(
         dir.path().to_string_lossy().into_owned(),
         vec![7; 32],

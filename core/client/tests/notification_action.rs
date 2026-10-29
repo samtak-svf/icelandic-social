@@ -40,7 +40,7 @@ fn a_notification_action_reads_decline_anonymous_post_and_keeps_an_unheard_of_on
             "unread": 4, "unseen": 0, "seenAt": null, "next": null,
         }),
     );
-    let page = phone.client.notifications(None, 20).unwrap();
+    let page = phone.client.hosted().notifications(None, 20).unwrap();
     let actions: Vec<_> = page
         .notifications
         .iter()

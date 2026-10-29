@@ -87,7 +87,7 @@ fn signing_in_registers_the_device_and_the_token_goes_on_each_request() {
         ("a", "a1")
     );
     assert_eq!(a1.client.signed_in().unwrap(), Some(device));
-    assert_eq!(a1.client.device_token(), Some("token-a1"));
+    assert_eq!(a1.client.device_token().as_deref(), Some("token-a1"));
     assert!(relay.registered("a1"));
 
     assert_eq!(a1.client.stock_key_packages(2).unwrap(), 2);
@@ -102,7 +102,7 @@ fn signing_in_registers_the_device_and_the_token_goes_on_each_request() {
 
     // Still signed in after a restart, and not signed in twice.
     a1.reopen();
-    assert_eq!(a1.client.device_token(), Some("token-a1"));
+    assert_eq!(a1.client.device_token().as_deref(), Some("token-a1"));
     assert!(matches!(
         a1.client.begin_sign_in(Provider::Kenni),
         Err(ClientError::Invalid(_))
@@ -116,7 +116,7 @@ fn the_verifier_is_sent_only_to_register_the_device() {
     let url = a1.client.begin_sign_in(Provider::Kenni).unwrap();
     a1.complete(&relay::kenni(&url)).unwrap();
     a1.client.stock_key_packages(1).unwrap();
-    a1.client.me().unwrap();
+    a1.client.hosted().me().unwrap();
 
     let requests = relay.requests("a1");
     let register = requests
@@ -178,7 +178,7 @@ fn a_sign_in_survives_the_process_ending_while_the_browser_is_open() {
     let url = a1.client.begin_sign_in(Provider::Kenni).unwrap();
     a1.reopen();
     a1.complete(&relay::kenni(&url)).unwrap();
-    assert_eq!(a1.client.device_token(), Some("token-a1"));
+    assert_eq!(a1.client.device_token().as_deref(), Some("token-a1"));
 }
 
 #[test]
@@ -286,10 +286,8 @@ fn revoking_another_device_leaves_this_one_signed_in() {
     let mut a2 = Phone::new(&relay, "a", "a2");
     a1.sign_in();
     a2.sign_in();
-    let devices: Vec<(String, bool)> = a1
-        .client
-        .me()
-        .unwrap()
+    let me = a1.client.hosted().me().unwrap();
+    let devices: Vec<(String, bool)> = me
         .devices
         .into_iter()
         .map(|d| (d.device_id, d.current))
@@ -331,7 +329,7 @@ fn signing_out_or_deleting_the_account_forgets_everything_here() {
     assert!(!relay.registered("a1"));
     a1.reopen();
     assert_eq!(a1.client.signed_in().unwrap(), None);
-    assert_eq!(a1.client.device_token(), None);
+    assert_eq!(a1.client.device_token().as_deref(), None);
     assert_eq!(a1.client.invite_link().unwrap(), None);
     assert!(a1.client.conversations().unwrap().is_empty());
     // The next sign-in is a new device, with a new key.
@@ -342,7 +340,8 @@ fn signing_out_or_deleting_the_account_forgets_everything_here() {
     a1.client.delete_account().unwrap();
     assert!(!relay.registered("a1"));
     assert_eq!(a1.client.signed_in().unwrap(), None);
-    assert!(matches!(a1.client.me(), Err(ClientError::NotRegistered)));
+    let me = a1.client.hosted().me();
+    assert!(matches!(me, Err(ClientError::NotRegistered)));
 }
 
 #[test]
@@ -375,7 +374,7 @@ fn google_signs_in_through_the_link_host_and_the_app_scheme() {
     assert_eq!(body["redirectUri"], GOOGLE_REDIRECT);
     assert!(body.get("kenniCode").is_none());
     // Google vouches for an email, not a name: no mark.
-    assert!(!a1.client.me().unwrap().verified);
+    assert!(!a1.client.hosted().me().unwrap().verified);
 }
 
 #[test]
@@ -430,7 +429,7 @@ fn kenni_is_linked_to_a_google_account_for_the_mark() {
     let body: serde_json::Value = serde_json::from_str(link.body.as_deref().unwrap()).unwrap();
     assert_eq!(body["provider"], "kenni");
     assert_eq!(body["redirectUri"], REDIRECT);
-    assert!(a1.client.me().unwrap().verified);
+    assert!(a1.client.hosted().me().unwrap().verified);
     // Done: the callback again finds nothing pending.
     assert!(sign_in_error(a1.client.complete_link(&relay::kenni(&url))).contains("no sign-in"));
 }
@@ -448,7 +447,7 @@ fn a_kennitala_on_another_account_ends_the_link() {
         Err(ClientError::Transport(ApiError::Refused { status: 409, ref code, .. })) if code == "identity_taken"
     ));
     assert!(sign_in_error(a1.client.complete_link(&relay::kenni(&url))).contains("no sign-in"));
-    assert!(!a1.client.me().unwrap().verified);
+    assert!(!a1.client.hosted().me().unwrap().verified);
     // Still signed in.
     assert!(a1.client.signed_in().unwrap().is_some());
 }
@@ -485,7 +484,7 @@ fn kenni_joins_a_google_sign_in_into_the_account_holding_the_kennitala() {
     let now = a1.client.signed_in().unwrap().unwrap();
     assert_eq!((now.account.as_str(), now.device.as_str()), ("k", "a1"));
     assert!(a1.client.conversations().unwrap().is_empty());
-    assert!(a1.client.me().unwrap().verified);
+    assert!(a1.client.hosted().me().unwrap().verified);
     // The next sync stocks KeyPackages for k, which the server dropped.
     assert_eq!(relay.packages("a1"), 0);
     a1.client.sync().unwrap();
@@ -518,7 +517,7 @@ fn enrolling_a_linked_device_stores_its_identity_and_token() {
         (device.account.as_str(), device.device.as_str()),
         ("a", "w1")
     );
-    assert_eq!(linked.client.device_token(), Some("tok_linked"));
+    assert_eq!(linked.client.device_token().as_deref(), Some("tok_linked"));
     linked.reopen();
-    assert_eq!(linked.client.device_token(), Some("tok_linked"));
+    assert_eq!(linked.client.device_token().as_deref(), Some("tok_linked"));
 }

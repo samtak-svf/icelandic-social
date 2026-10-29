@@ -68,6 +68,7 @@ fn answered(mut answer: ureq::http::Response<ureq::Body>) -> Result<Response, Un
 }
 
 /// What an app's transport does: the base URL, the core's token, JSON.
+#[derive(Clone)]
 struct Http {
     agent: ureq::Agent,
     base: String,
@@ -462,7 +463,7 @@ fn devices_talk_through_the_worker() {
     let mut a1 = Phone::new(&kennitala(run, 0), Some(&operator));
     let mut a2 = Phone::new(&kennitala(run, 0), None);
     assert_eq!(a2.account, a1.account);
-    assert_eq!(a1.client.me().unwrap().devices.len(), 2);
+    assert_eq!(a1.client.hosted().me().unwrap().devices.len(), 2);
 
     // The push token reaches the Worker on the next sync, once (0025).
     a2.client
@@ -754,12 +755,12 @@ fn devices_talk_through_the_worker() {
     // mark, and a kennitala on another account is refused.
     let mut g1 = Phone::signed_in(Person::Google(&format!("interop-{run}-g")), None);
     let mut h1 = Phone::signed_in(Person::Google(&format!("interop-{run}-h")), None);
-    assert!(!g1.client.me().unwrap().verified);
+    assert!(!g1.client.hosted().me().unwrap().verified);
     let url = g1.client.begin_link(Provider::Kenni).unwrap();
     // The registry name comes with it, as Kenni gives one.
     let named = format!("{}&x_name=Gestur%20{run}", kennitala(run, 5));
     g1.client.complete_link(&browse(&url, &named)).unwrap();
-    assert!(g1.client.me().unwrap().verified);
+    assert!(g1.client.hosted().me().unwrap().verified);
     let url = h1.client.begin_link(Provider::Kenni).unwrap();
     assert!(matches!(
         h1.client.complete_link(&browse(&url, &kennitala(run, 5))),
@@ -767,7 +768,7 @@ fn devices_talk_through_the_worker() {
     ));
 
     // g is in h's directory by name (0036).
-    let name = g1.client.me().unwrap().name.unwrap();
+    let name = g1.client.hosted().me().unwrap().name.unwrap();
     let found = h1.client.directory(Some(&name), None, 50).unwrap();
     assert!(
         found
@@ -782,7 +783,8 @@ fn devices_talk_through_the_worker() {
     let picked = gallery.path().join("picked.png");
     std::fs::write(&picked, PIXEL).unwrap();
     let version = g1.client.set_photo(&picked).unwrap();
-    assert_eq!(g1.client.me().unwrap().photo.as_ref(), Some(&version));
+    let me = g1.client.hosted().me().unwrap();
+    assert_eq!(me.photo.as_ref(), Some(&version));
     let shown = h1.client.profile(&g1.account).unwrap().photo.unwrap();
     assert_eq!(shown, version);
     let file = h1.client.photo(&g1.account, &shown).unwrap().unwrap();
@@ -816,7 +818,7 @@ fn devices_talk_through_the_worker() {
             .moved
     );
     assert_eq!(m1.client.signed_in().unwrap().unwrap().account, k1.account);
-    assert!(m1.client.me().unwrap().verified);
+    assert!(m1.client.hosted().me().unwrap().verified);
     // It stocks KeyPackages for k on its next sync.
     m1.client.sync().unwrap();
 }
@@ -857,15 +859,8 @@ fn a_browser_session_links_to_a_phone_through_the_worker() {
         web.complete_device_link(),
         Err(ClientError::Link(LinkError::Gone))
     ));
-    assert!(
-        phone
-            .client
-            .me()
-            .unwrap()
-            .devices
-            .iter()
-            .any(|d| d.kind == DeviceKind::Web)
-    );
+    let me = phone.client.hosted().me().unwrap();
+    assert!(me.devices.iter().any(|d| d.kind == DeviceKind::Web));
 }
 
 /// Waits for a file the browser's side writes, and reads it.
@@ -924,13 +919,6 @@ fn a_phone_links_a_real_browser() {
         texts(&other.deliver_until(count(1))),
         strings(&["svar úr vafra"])
     );
-    assert!(
-        phone
-            .client
-            .me()
-            .unwrap()
-            .devices
-            .iter()
-            .any(|d| d.kind == DeviceKind::Web)
-    );
+    let me = phone.client.hosted().me().unwrap();
+    assert!(me.devices.iter().any(|d| d.kind == DeviceKind::Web));
 }

@@ -12,7 +12,8 @@ pub use notifications::*;
 pub use spjall_client::api::{JoinRequest, JoinState};
 
 use crate::CoreError;
-use crate::client::{CoreClient, path_string};
+use crate::client::CoreClient;
+use crate::foreign::path_string;
 use crate::frames::{Frame, Framing};
 pub use spjall_client::api::Author;
 pub use spjall_client::api::AuthorRole;
@@ -1063,7 +1064,7 @@ impl CoreClient {
         limit: u32,
     ) -> Result<CommunityPage, CoreError> {
         let page = self
-            .client()?
+            .hosted
             .communities(query.as_deref(), after.as_deref(), limit)?;
         Ok(CommunityPage {
             communities: communities(page.communities),
@@ -1073,7 +1074,7 @@ impl CoreClient {
 
     /// Every community this account is a member of.
     pub fn my_communities(&self) -> Result<Vec<Community>, CoreError> {
-        Ok(communities(self.client()?.my_communities()?))
+        Ok(communities(self.hosted.my_communities()?))
     }
 
     /// A new community, owned by this account. `Invalid` for a blank name.
@@ -1084,14 +1085,14 @@ impl CoreClient {
         audience: CommunityAudience,
     ) -> Result<Community, CoreError> {
         Ok(self
-            .client()?
+            .hosted
             .create_community(&name, &description, audience.into())?
             .into())
     }
 
     /// One community; `Refused` with 404 for none this account may see.
     pub fn community(&self, community_id: String) -> Result<Community, CoreError> {
-        Ok(self.client()?.community(&community_id)?.into())
+        Ok(self.hosted.community(&community_id)?.into())
     }
 
     /// Renames a community, changes its description, or makes an open one
@@ -1106,7 +1107,7 @@ impl CoreClient {
         audience: Option<CommunityAudience>,
     ) -> Result<Community, CoreError> {
         Ok(self
-            .client()?
+            .hosted
             .update_community(
                 &community_id,
                 name.as_deref(),
@@ -1132,7 +1133,7 @@ impl CoreClient {
 
     /// Removes a community's picture; no error when there was none (0080).
     pub fn remove_community_avatar(&self, community_id: String) -> Result<(), CoreError> {
-        Ok(self.client()?.remove_community_avatar(&community_id)?)
+        Ok(self.hosted.remove_community_avatar(&community_id)?)
     }
 
     /// Sets a community's cover from the image at `path`, as
@@ -1149,7 +1150,7 @@ impl CoreClient {
 
     /// Removes a community's cover; no error when there was none (0080).
     pub fn remove_community_cover(&self, community_id: String) -> Result<(), CoreError> {
-        Ok(self.client()?.remove_community_cover(&community_id)?)
+        Ok(self.hosted.remove_community_cover(&community_id)?)
     }
 
     /// The path of a community's picture at `version`, the `photo` of its
@@ -1273,7 +1274,7 @@ impl CoreClient {
         &self,
         community_id: String,
     ) -> Result<Vec<CommunityMember>, CoreError> {
-        let members = self.client()?.community_members(&community_id)?;
+        let members = self.hosted.community_members(&community_id)?;
         Ok(members.into_iter().map(Into::into).collect())
     }
 
@@ -1286,23 +1287,23 @@ impl CoreClient {
         role: CommunityRole,
     ) -> Result<(), CoreError> {
         Ok(self
-            .client()?
+            .hosted
             .set_community_role(&community_id, &account_id, role.into())?)
     }
 
     /// Joins an open community at once, or asks a private one's moderators.
     pub fn join_community(&self, community_id: String) -> Result<JoinState, CoreError> {
-        Ok(self.client()?.join_community(&community_id)?)
+        Ok(self.hosted.join_community(&community_id)?)
     }
 
     /// Takes back a join request that waits; no error when none does.
     pub fn withdraw_join_request(&self, community_id: String) -> Result<(), CoreError> {
-        Ok(self.client()?.withdraw_join_request(&community_id)?)
+        Ok(self.hosted.withdraw_join_request(&community_id)?)
     }
 
     /// The join requests that wait; for a moderator of the community.
     pub fn join_requests(&self, community_id: String) -> Result<Vec<JoinRequest>, CoreError> {
-        let requests = self.client()?.join_requests(&community_id)?;
+        let requests = self.hosted.join_requests(&community_id)?;
         Ok(requests.into_iter().collect())
     }
 
@@ -1313,7 +1314,7 @@ impl CoreClient {
         account_id: String,
     ) -> Result<(), CoreError> {
         Ok(self
-            .client()?
+            .hosted
             .approve_join_request(&community_id, &account_id)?)
     }
 
@@ -1325,25 +1326,25 @@ impl CoreClient {
         account_id: String,
     ) -> Result<(), CoreError> {
         Ok(self
-            .client()?
+            .hosted
             .decline_join_request(&community_id, &account_id)?)
     }
 
     /// Deletes a community (its owner or a platform moderator); it can be
     /// restored for 30 days.
     pub fn delete_community(&self, community_id: String) -> Result<(), CoreError> {
-        Ok(self.client()?.delete_community(&community_id)?)
+        Ok(self.hosted.delete_community(&community_id)?)
     }
 
     /// Restores a deleted community. `Refused` with 409 `purged` after the
     /// 30 days.
     pub fn restore_community(&self, community_id: String) -> Result<Community, CoreError> {
-        Ok(self.client()?.restore_community(&community_id)?.into())
+        Ok(self.hosted.restore_community(&community_id)?.into())
     }
 
     /// Leaves a community. Its owner is `Refused` with 409.
     pub fn leave_community(&self, community_id: String) -> Result<(), CoreError> {
-        Ok(self.client()?.leave_community(&community_id)?)
+        Ok(self.hosted.leave_community(&community_id)?)
     }
 }
 
@@ -1361,7 +1362,7 @@ impl CoreClient {
         limit: u32,
         query: Option<String>,
     ) -> Result<PostPage, CoreError> {
-        let page = self.client()?.community_posts(
+        let page = self.hosted.community_posts(
             &community_id,
             query.as_deref(),
             before.as_deref(),
@@ -1382,7 +1383,7 @@ impl CoreClient {
         limit: u32,
     ) -> Result<CommunityImagePage, CoreError> {
         let page = self
-            .client()?
+            .hosted
             .community_images(&community_id, cursor.as_deref(), limit)?;
         Ok(CommunityImagePage {
             images: page.images.into_iter().collect(),
@@ -1394,7 +1395,7 @@ impl CoreClient {
     /// newest first; `before` is the `next` of the page before. At most 50 a
     /// page.
     pub fn feed(&self, before: Option<String>, limit: u32) -> Result<PostPage, CoreError> {
-        let page = self.client()?.feed(before.as_deref(), limit)?;
+        let page = self.hosted.feed(before.as_deref(), limit)?;
         Ok(PostPage {
             posts: page.posts.into_iter().map(Into::into).collect(),
             next: page.next,
@@ -1410,7 +1411,7 @@ impl CoreClient {
         media: Vec<String>,
     ) -> Result<Post, CoreError> {
         Ok(self
-            .client()?
+            .hosted
             .create_post(&community_id, &body, &media)?
             .into())
     }
@@ -1430,7 +1431,7 @@ impl CoreClient {
         poll: Option<Vec<String>>,
     ) -> Result<Post, CoreError> {
         Ok(self
-            .client()?
+            .hosted
             .create_post_with(&community_id, &body, &media, anonymous, poll.as_deref())?
             .into())
     }
@@ -1438,17 +1439,17 @@ impl CoreClient {
     /// Votes in a poll, or changes the vote; `Refused` with 409
     /// `poll_closed` once it is closed (0090). The post as it now reads.
     pub fn vote_poll(&self, post_id: String, option_id: String) -> Result<Post, CoreError> {
-        Ok(self.client()?.vote_poll(&post_id, &option_id)?.into())
+        Ok(self.hosted.vote_poll(&post_id, &option_id)?.into())
     }
 
     /// Takes this account's vote back; no error when it had none.
     pub fn withdraw_vote(&self, post_id: String) -> Result<Post, CoreError> {
-        Ok(self.client()?.withdraw_vote(&post_id)?.into())
+        Ok(self.hosted.withdraw_vote(&post_id)?.into())
     }
 
     /// Closes a poll; its author, the community's owner or a moderator may.
     pub fn close_poll(&self, post_id: String) -> Result<Post, CoreError> {
-        Ok(self.client()?.close_poll(&post_id)?.into())
+        Ok(self.hosted.close_poll(&post_id)?.into())
     }
 
     /// Lets members of a community post without their name (0091), or
@@ -1458,10 +1459,7 @@ impl CoreClient {
         community_id: String,
         on: bool,
     ) -> Result<Community, CoreError> {
-        Ok(self
-            .client()?
-            .set_anonymous_posts(&community_id, on)?
-            .into())
+        Ok(self.hosted.set_anonymous_posts(&community_id, on)?.into())
     }
 
     /// The anonymous posts waiting for approval, newest first (0091); a
@@ -1473,9 +1471,9 @@ impl CoreClient {
         before: Option<String>,
         limit: u32,
     ) -> Result<PostPage, CoreError> {
-        let page =
-            self.client()?
-                .pending_anonymous_posts(&community_id, before.as_deref(), limit)?;
+        let page = self
+            .hosted
+            .pending_anonymous_posts(&community_id, before.as_deref(), limit)?;
         Ok(PostPage {
             posts: page.posts.into_iter().map(Into::into).collect(),
             next: page.next,
@@ -1484,18 +1482,18 @@ impl CoreClient {
 
     /// Publishes an anonymous post, still without its author; a moderator's.
     pub fn approve_anonymous_post(&self, post_id: String) -> Result<(), CoreError> {
-        Ok(self.client()?.approve_anonymous_post(&post_id)?)
+        Ok(self.hosted.approve_anonymous_post(&post_id)?)
     }
 
     /// Deletes an anonymous post and tells its author; a moderator's.
     pub fn decline_anonymous_post(&self, post_id: String) -> Result<(), CoreError> {
-        Ok(self.client()?.decline_anonymous_post(&post_id)?)
+        Ok(self.hosted.decline_anonymous_post(&post_id)?)
     }
 
     /// Who wrote an anonymous post; a moderator's. The moderation log
     /// records who asked, never whom (0091).
     pub fn reveal_author(&self, post_id: String) -> Result<Author, CoreError> {
-        Ok(self.client()?.reveal_author(&post_id)?)
+        Ok(self.hosted.reveal_author(&post_id)?)
     }
 
     /// Uploads the image at `path` for a post in the community (0065): a
@@ -1520,53 +1518,53 @@ impl CoreClient {
     }
 
     pub fn post(&self, post_id: String) -> Result<Post, CoreError> {
-        Ok(self.client()?.post(&post_id)?.into())
+        Ok(self.hosted.post(&post_id)?.into())
     }
 
     /// Deletes this account's own post.
     pub fn delete_post(&self, post_id: String) -> Result<(), CoreError> {
-        Ok(self.client()?.delete_post(&post_id)?)
+        Ok(self.hosted.delete_post(&post_id)?)
     }
 
     /// Sets this account's one reaction on a post, in place of any other.
     pub fn react(&self, post_id: String, emoji: String) -> Result<(), CoreError> {
-        Ok(self.client()?.react(&post_id, &emoji)?)
+        Ok(self.hosted.react(&post_id, &emoji)?)
     }
 
     /// Takes this account's reaction off a post; no error when it had none.
     pub fn unreact(&self, post_id: String) -> Result<(), CoreError> {
-        Ok(self.client()?.unreact(&post_id)?)
+        Ok(self.hosted.unreact(&post_id)?)
     }
 
     /// Likes a comment; liking twice is one like (0080).
     pub fn like_comment(&self, comment_id: String) -> Result<(), CoreError> {
-        Ok(self.client()?.like_comment(&comment_id)?)
+        Ok(self.hosted.like_comment(&comment_id)?)
     }
 
     /// Takes this account's like off a comment; no error when it had none.
     pub fn unlike_comment(&self, comment_id: String) -> Result<(), CoreError> {
-        Ok(self.client()?.unlike_comment(&comment_id)?)
+        Ok(self.hosted.unlike_comment(&comment_id)?)
     }
 
     /// Features a post (0080, 0088); a moderator's. `Refused` with 409
     /// `pin_limit` when three are featured already: release one first.
     pub fn pin_post(&self, community_id: String, post_id: String) -> Result<(), CoreError> {
-        Ok(self.client()?.pin_post(&community_id, &post_id)?)
+        Ok(self.hosted.pin_post(&community_id, &post_id)?)
     }
 
     /// Unpins the community's pinned post; no error when it is not pinned.
     pub fn unpin_post(&self, community_id: String, post_id: String) -> Result<(), CoreError> {
-        Ok(self.client()?.unpin_post(&community_id, &post_id)?)
+        Ok(self.hosted.unpin_post(&community_id, &post_id)?)
     }
 
     /// Pins a community to the top of this account's own list (0080).
     pub fn pin_community(&self, community_id: String) -> Result<(), CoreError> {
-        Ok(self.client()?.pin_community(&community_id)?)
+        Ok(self.hosted.pin_community(&community_id)?)
     }
 
     /// Unpins a community; no error when it was not pinned.
     pub fn unpin_community(&self, community_id: String) -> Result<(), CoreError> {
-        Ok(self.client()?.unpin_community(&community_id)?)
+        Ok(self.hosted.unpin_community(&community_id)?)
     }
 
     /// A page of a post's comments, oldest first; `after` is the `next` of
@@ -1577,7 +1575,7 @@ impl CoreClient {
         after: Option<String>,
         limit: u32,
     ) -> Result<CommentPage, CoreError> {
-        let page = self.client()?.comments(&post_id, after.as_deref(), limit)?;
+        let page = self.hosted.comments(&post_id, after.as_deref(), limit)?;
         Ok(CommentPage {
             comments: page.comments.into_iter().map(Into::into).collect(),
             next: page.next,
@@ -1596,14 +1594,14 @@ impl CoreClient {
         media: Vec<String>,
     ) -> Result<Comment, CoreError> {
         Ok(self
-            .client()?
+            .hosted
             .create_comment(&post_id, &body, parent_comment_id.as_deref(), &media)?
             .into())
     }
 
     /// Deletes this account's own comment.
     pub fn delete_comment(&self, comment_id: String) -> Result<(), CoreError> {
-        Ok(self.client()?.delete_comment(&comment_id)?)
+        Ok(self.hosted.delete_comment(&comment_id)?)
     }
 }
 
@@ -1620,7 +1618,7 @@ impl CoreClient {
         note: String,
         to_platform: bool,
     ) -> Result<(), CoreError> {
-        Ok(self.client()?.report(&api::NewReport {
+        Ok(self.hosted.report(&api::NewReport {
             target: target.into(),
             reason,
             note,
@@ -1637,9 +1635,9 @@ impl CoreClient {
         after: Option<String>,
         limit: u32,
     ) -> Result<ReportPage, CoreError> {
-        let page =
-            self.client()?
-                .community_reports(&community_id, state, after.as_deref(), limit)?;
+        let page = self
+            .hosted
+            .community_reports(&community_id, state, after.as_deref(), limit)?;
         Ok(ReportPage {
             reports: page.reports.into_iter().map(Into::into).collect(),
             next: page.next,
@@ -1667,12 +1665,12 @@ impl CoreClient {
             report_id,
             until,
         };
-        Ok(self.client()?.moderate(&community_id, &moderation)?)
+        Ok(self.hosted.moderate(&community_id, &moderation)?)
     }
 
     /// Closes a report with what was done about it.
     pub fn close_report(&self, report_id: String, resolution: String) -> Result<(), CoreError> {
-        Ok(self.client()?.close_report(&report_id, &resolution)?)
+        Ok(self.hosted.close_report(&report_id, &resolution)?)
     }
 
     /// A page of a community's moderation log, newest first, for its
@@ -1684,9 +1682,9 @@ impl CoreClient {
         before: Option<String>,
         limit: u32,
     ) -> Result<ModerationLogPage, CoreError> {
-        let page =
-            self.client()?
-                .community_moderation_log(&community_id, before.as_deref(), limit)?;
+        let page = self
+            .hosted
+            .community_moderation_log(&community_id, before.as_deref(), limit)?;
         Ok(ModerationLogPage {
             entries: page.entries.into_iter().map(Into::into).collect(),
             next: page.next,
@@ -1697,7 +1695,7 @@ impl CoreClient {
     pub fn cards(&self, refs: Vec<CardRef>) -> Result<Vec<Card>, CoreError> {
         let refs: Vec<api::Ref> = refs.into_iter().map(Into::into).collect();
         Ok(self
-            .client()?
+            .hosted
             .cards(&refs)?
             .into_iter()
             .map(Into::into)
