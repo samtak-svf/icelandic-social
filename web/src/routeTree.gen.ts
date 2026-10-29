@@ -15,6 +15,7 @@ import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SupportRouteImport } from './routes/support'
+import { Route as TestersRouteImport } from './routes/testers'
 import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as CommunitiesIndexRouteImport } from './routes/communities.index'
 import { Route as CommunitiesNewRouteImport } from './routes/communities.new'
@@ -64,6 +65,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
   path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TestersRoute = TestersRouteImport.update({
+  id: '/testers',
+  path: '/testers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VerifyRoute = VerifyRouteImport.update({
@@ -188,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
+  '/testers': typeof TestersRoute
   '/verify': typeof VerifyRoute
   '/communities/new': typeof CommunitiesNewRoute
   '/conversations/$conversationId': typeof ConversationsConversationIdRoute
@@ -215,6 +222,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
+  '/testers': typeof TestersRoute
   '/verify': typeof VerifyRoute
   '/communities/new': typeof CommunitiesNewRoute
   '/conversations/$conversationId': typeof ConversationsConversationIdRoute
@@ -243,6 +251,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
+  '/testers': typeof TestersRoute
   '/verify': typeof VerifyRoute
   '/communities/new': typeof CommunitiesNewRoute
   '/conversations/$conversationId': typeof ConversationsConversationIdRoute
@@ -273,6 +282,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/settings'
     | '/support'
+    | '/testers'
     | '/verify'
     | '/communities/new'
     | '/conversations/$conversationId'
@@ -300,6 +310,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/settings'
     | '/support'
+    | '/testers'
     | '/verify'
     | '/communities/new'
     | '/conversations/$conversationId'
@@ -327,6 +338,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/settings'
     | '/support'
+    | '/testers'
     | '/verify'
     | '/communities/new'
     | '/conversations/$conversationId'
@@ -356,6 +368,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
   SupportRoute: typeof SupportRoute
+  TestersRoute: typeof TestersRoute
   VerifyRoute: typeof VerifyRoute
   CommunitiesNewRoute: typeof CommunitiesNewRoute
   PostsPostIdRoute: typeof PostsPostIdRoute
@@ -411,6 +424,13 @@ declare module '@tanstack/react-router' {
       path: '/support'
       fullPath: '/support'
       preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/testers': {
+      id: '/testers'
+      path: '/testers'
+      fullPath: '/testers'
+      preLoaderRoute: typeof TestersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/verify': {
@@ -606,6 +626,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,
   SupportRoute: SupportRoute,
+  TestersRoute: TestersRoute,
   VerifyRoute: VerifyRoute,
   CommunitiesNewRoute: CommunitiesNewRoute,
   PostsPostIdRoute: PostsPostIdRoute,
