@@ -1,5 +1,6 @@
 package samtak.spjall.ui
 
+import androidx.navigation.NavController
 import androidx.navigation.NavOptionsBuilder
 
 /** The signed-in graph's destinations, named once for the shell and the screens that lead to each other. */
@@ -22,4 +23,15 @@ internal fun NavOptionsBuilder.tab() {
     popUpTo(AppRoutes.LIST) { saveState = true }
     launchSingleTop = true
     restoreState = true
+}
+
+/**
+ * Opens the tab [root] from the tab [current] (null when none is known). [current] is the tab the screen on top
+ * belongs to, which the notifications keep when the bell opens them over it.
+ */
+internal fun NavController.openTab(
+    root: String,
+    current: String? = null,
+) {
+    navigate(root) { tab() }
 }
