@@ -64,11 +64,9 @@ class MeViewModel(
 
     fun load() {
         perform(::load) {
-            // Each answer is shown as it arrives (0113): what is local at once, then the
-            // profile and the blocked list, which ask the server and do not wait for each other.
-            val link = account.inviteLink()
-            val settings = account.settings()
-            _state.update { it.copy(link = link, settings = settings) }
+            // Each answer is shown as it arrives (0113): the profile and the blocked list ask
+            // the server and start first, without waiting for each other; what is local is
+            // shown meanwhile.
             coroutineScope {
                 val profile =
                     async {
@@ -80,6 +78,9 @@ class MeViewModel(
                         val people = account.blocked()
                         _state.update { it.copy(blocked = people) }
                     }
+                val link = account.inviteLink()
+                val settings = account.settings()
+                _state.update { it.copy(link = link, settings = settings) }
                 profile.await()
                 blocked.await()
             }
