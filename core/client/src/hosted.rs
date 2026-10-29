@@ -11,9 +11,6 @@ use std::sync::{Arc, RwLock};
 use crate::api::{Api, Me, Transport};
 use crate::{Client, ClientError};
 
-/// A handle for the server-only calls, from [`Client::hosted`](crate::Client::hosted).
-/// It sees the token the client holds now, so a sign-in or a sign-out
-/// reaches it at once.
 /// The API as this device, which needs its token.
 ///
 /// The token is cloned out of its lock, which is released before the request
@@ -34,6 +31,9 @@ pub(crate) fn read_token(token: &SharedToken) -> Option<String> {
     token.read().unwrap_or_else(|e| e.into_inner()).clone()
 }
 
+/// A handle for the server-only calls, from [`Client::hosted`](crate::Client::hosted).
+/// It sees the token the client holds now, so a sign-in or a sign-out
+/// reaches it at once.
 #[derive(Clone)]
 pub struct Hosted<T> {
     pub(crate) transport: T,
