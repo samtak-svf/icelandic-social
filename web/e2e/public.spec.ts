@@ -29,5 +29,20 @@ test("serves the public tester guide from the sign-in screen, with both platform
   const iphone = page.locator("section#iphone");
   await expect(iphone.getByRole("listitem")).toHaveCount(5);
   await expect(iphone.getByText(strings.testers_iphone_step_testflight)).toBeVisible();
-  await expect(page.locator("section#android").getByRole("listitem")).toHaveCount(5);
+  const android = page.locator("section#android");
+  await expect(android.getByRole("listitem")).toHaveCount(5);
+  const shots = [
+    strings.testers_image_play_invite_alt,
+    strings.testers_image_play_tester_alt,
+    strings.testers_image_play_listing_alt,
+  ];
+  await expect(android.getByRole("img")).toHaveCount(shots.length);
+  for (const alt of shots) {
+    const img = android.getByRole("img", { name: alt, exact: true });
+    await img.scrollIntoViewIfNeeded();
+    await expect(img).toBeVisible();
+    expect(await img.evaluate((e: HTMLImageElement) => e.complete && e.naturalWidth > 0)).toBe(
+      true,
+    );
+  }
 });
