@@ -1,7 +1,6 @@
 package samtak.spjall.social
 
 import androidx.navigation.NavController
-import samtak.spjall.ui.tab
 
 /** The routes of the community screens (decision 0063); the two tabs are [COMMUNITIES] and [NOTIFICATIONS]. */
 object SocialRoutes {
@@ -38,5 +37,12 @@ object SocialRoutes {
         setOf(COMMUNITIES, NEW_COMMUNITY, "$COMMUNITY/{id}", "$REPORTS/{id}", "$REQUESTS/{id}", "$ANONYMOUS/{id}")
 }
 
-/** The bell's tap (decisions 0109, 0111). */
-internal fun NavController.openNotifications() = navigate(SocialRoutes.NOTIFICATIONS) { tab() }
+/**
+ * The bell's tap (decisions 0109, 0111): the notifications open over the screen it was pressed on, so back returns
+ * there (#349). The notifications already on the stack are returned to rather than stacked a second time.
+ */
+internal fun NavController.openNotifications() {
+    if (!popBackStack(SocialRoutes.NOTIFICATIONS, inclusive = false)) {
+        navigate(SocialRoutes.NOTIFICATIONS) { launchSingleTop = true }
+    }
+}
