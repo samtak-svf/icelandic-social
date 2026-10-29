@@ -74,6 +74,23 @@ struct AtMost: Layout {
     }
 }
 
+/// The chevron that leaves a screen drawing its own top bar, read out as "back".
+struct BackButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "chevron.left")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(BrandTokens.Colors.fg)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text("back"))
+    }
+}
+
 /// The system's swipe back on a screen that draws its own top bar instead of
 /// the navigation bar, which hiding the bar would otherwise switch off. With
 /// `instead`, the swipe calls it rather than leaving the screen, as the

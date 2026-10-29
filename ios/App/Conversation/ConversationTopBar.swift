@@ -19,17 +19,7 @@ struct TopBar: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(BrandTokens.Colors.fg)
-                    .frame(minWidth: 44, minHeight: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text("back"))
+            BackButton { dismiss() }
             if let conversation {
                 // A tap on who this is opens the conversation's information (decisions 0043, 0055).
                 Button {

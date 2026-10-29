@@ -73,17 +73,7 @@ struct PeopleView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    if model.back() { dismiss() }
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(BrandTokens.Colors.fg)
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("back"))
+                BackButton { if model.back() { dismiss() } }
             }
         }
         .bellInNavigationBar()

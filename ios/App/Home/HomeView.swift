@@ -43,6 +43,7 @@ struct HomeView: View {
     @State private var levels: NotificationLevelsModel
     @State private var communitiesPath: [SocialRoute] = []
     @State private var noticesPath: [SocialRoute] = []
+    @State private var noticesOver = NoticesOver()
     /// Kenni's offer after a sign-in, over the tabs (decision 0035).
     @State private var offering = false
 
@@ -206,6 +207,7 @@ struct HomeView: View {
     /// notifications.
     private var bell: Bell {
         Bell(count: notices.unseen, selected: tab == .notifications) {
+            noticesOver.open(from: tab)
             noticesPath = []
             tab = .notifications
         }
@@ -219,7 +221,10 @@ struct HomeView: View {
             socialStack($communitiesPath) {
                 CommunitiesView(model: communities) { communitiesPath.append(.community($0)) }
             }
-        case .notifications: socialStack($noticesPath) { NotificationsView(model: notices, communities: communities) }
+        case .notifications:
+            socialStack($noticesPath) {
+                NotificationsView(model: notices, communities: communities) { tab = noticesOver.tab }
+            }
         case .me: meStack
         }
     }
@@ -352,6 +357,7 @@ struct HomeView: View {
     /// A tapped social notification: into its post, or its community, over the notifications (decisions 0107, 0109).
     private func openTappedSocial() {
         guard let tap = push.takeOpenedSocial() else { return }
+        noticesOver = NoticesOver()
         tab = .notifications
         noticesPath = [tap.post.map(SocialRoute.post) ?? .community(tap.community)]
     }
