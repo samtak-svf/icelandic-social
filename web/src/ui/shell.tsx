@@ -9,9 +9,10 @@ import { UnreadBadge } from "./unread.tsx";
 // Every page sits in this: the signed-in pages behind the navigation, and in
 // place of them the sign-in page, a reload request or a failure with a retry.
 // The privacy policy and support pages (/privacy, /support) are public so
-// anyone and any store listing can read them without signing in (#383).
+// anyone and any store listing can read them without signing in (#383), and
+// so is the tester guide (/testers, #350), read before the app is installed.
 
-const PUBLIC_PATHS = new Set(["/privacy", "/support"]);
+const PUBLIC_PATHS = new Set(["/privacy", "/support", "/testers"]);
 
 export function Shell({ children }: Readonly<{ children: ReactNode }>) {
   const { state, refresh } = useAccount();
@@ -234,6 +235,9 @@ function SignIn() {
         </Link>
         <Link to="/support" className="underline">
           {strings.support_title}
+        </Link>
+        <Link to="/testers" className="underline">
+          {strings.testers_title}
         </Link>
       </p>
     </Frame>
