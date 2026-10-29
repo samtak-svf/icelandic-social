@@ -5,12 +5,15 @@ import SwiftUI
 /// the same way and the bell sits in the same place on each.
 struct ScreenHeader<Action: View>: View {
     let title: String
+    /// A back control before the title, on a screen opened over another that is no stack's push (#349).
+    var back: (() -> Void)? = nil
     @ViewBuilder let action: () -> Action
 
     @Environment(\.bell) private var bell
 
     var body: some View {
         HStack {
+            if let back { BackButton(action: back) }
             Text(verbatim: title.capitals)
                 .font(TypeStyle.screenTitle)
                 .foregroundStyle(BrandTokens.Colors.fg)
@@ -22,7 +25,8 @@ struct ScreenHeader<Action: View>: View {
         }
         // As tall as the list's band with its round button, so the two tabs line up.
         .frame(minHeight: 34)
-        .padding(.leading, 20)
+        // The chevron's own 44 point frame carries most of the inset.
+        .padding(.leading, back == nil ? 20 : 8)
         .padding(.trailing, 8)
         .padding(.vertical, 4)
         .background(BrandTokens.Colors.bg.ignoresSafeArea(edges: .top))

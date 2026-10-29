@@ -7,12 +7,14 @@ import SwiftUI
 struct NotificationsView: View {
     let model: NotificationsModel
     let communities: CommunitiesModel
+    /// Back to the tab the notifications were opened over (#349).
+    let onBack: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 0) {
-            ScreenHeader(title: localized("notifications_title")) {
+            ScreenHeader(title: localized("notifications_title"), back: onBack) {
                 if model.unread > 0 {
                     Button(localized("notifications_mark_all_read")) { Task { await model.markAllRead() } }
                         .font(.sans(13, black: true, relativeTo: .subheadline))

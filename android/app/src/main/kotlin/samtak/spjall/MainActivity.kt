@@ -62,6 +62,7 @@ import samtak.spjall.signin.UpdateScreen
 import samtak.spjall.signin.VerifyRoute
 import samtak.spjall.social.SocialRoutes
 import samtak.spjall.social.UnreadViewModel
+import samtak.spjall.social.openNotifications
 import samtak.spjall.social.socialScreens
 import samtak.spjall.ui.AdaptiveNavigation
 import samtak.spjall.ui.AppIcons
@@ -240,7 +241,7 @@ class MainActivity : ComponentActivity() {
         // Each screen pads for the status bar itself, so its cream band can reach the top edge.
         AdaptiveNavigation(
             tabs = tabs(route, go),
-            bell = bell(route, count, go),
+            bell = bell(route, count) { nav.openNotifications() },
             shown = route in TABS,
             wide = route in SocialRoutes.WIDE,
         ) {
@@ -327,7 +328,7 @@ private fun tabs(
 private fun bell(
     route: String?,
     unread: Long,
-    go: (String) -> Unit,
+    open: () -> Unit,
 ): Bell =
     Bell(
         label = stringResource(R.string.notifications_title),
@@ -335,5 +336,5 @@ private fun bell(
         unreadDescription =
             if (unread > 0) pluralStringResource(R.plurals.notifications_unread, unread.toInt(), unread) else null,
         selected = route == SocialRoutes.NOTIFICATIONS,
-        onClick = { go(SocialRoutes.NOTIFICATIONS) },
+        onClick = open,
     )

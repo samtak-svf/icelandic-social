@@ -11,15 +11,7 @@ struct VerifyView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Button(action: onLater) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(BrandTokens.Colors.fg)
-                    .frame(minWidth: 44, minHeight: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text("back"))
+            BackButton(action: onLater)
             VerifiedMark(size: 64)
             Text("verify_title")
                 .font(TypeStyle.accountName)
