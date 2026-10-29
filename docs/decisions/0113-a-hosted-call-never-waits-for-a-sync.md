@@ -18,8 +18,9 @@
 - **What stays on the `Client`** is what touches the store, the blobs or the outcome: the calls
   that write a row, keep a file (`set_community_avatar`, `set_community_cover`,
   `upload_social_media`, `post_media`) or fold a result into the store (`blocked`).
-- **The apps show each answer as it arrives.** The profile screen publishes what is local at
-  once, then the profile and the blocked list each as it returns.
+- **The apps show each answer as it arrives.** The profile screen starts the profile and the
+  blocked list first and publishes each as it returns; what is local is read while they wait,
+  through the `View` (0056), so the invite link never takes the `Client` lock.
 
 ## Why
 
@@ -32,5 +33,8 @@ ended, because `me` and every notification call waited for the same lock.
 
 - A server-only call that takes the `Client` lock. A new method that needs only the transport and
   the token is added to `Hosted`, and the FFI method calls `self.hosted`, never `self.client()`.
+- A local read behind the `Client` lock on a screen's first load. The first measurement of 0.17.6
+  (2026-10-29 20:52 UTC) still had `/v1/me` arriving after the sync, because the profile screen
+  read its invite link through the `Client` before asking for the profile.
 - A disk cache of the profile to hide the wait. The wait was a lock, not the network, and a cache
   would show a stale name and device list to fix a delay that no longer exists.
