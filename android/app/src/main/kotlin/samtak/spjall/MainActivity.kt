@@ -15,6 +15,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
@@ -72,7 +75,7 @@ import samtak.spjall.ui.LocalPhotos
 import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.Tab
 import samtak.spjall.ui.conversationRoute
-import samtak.spjall.ui.tab
+import samtak.spjall.ui.openTab
 
 /**
  * The one activity: sign-in, the first launch, then the tabs. It holds the navigation shell; each
@@ -200,13 +203,13 @@ class MainActivity : ComponentActivity() {
     private fun OpenedFromNotifications(nav: NavController) {
         LaunchedEffect(Unit) {
             opens.receiveAsFlow().collect {
-                nav.navigate(AppRoutes.LIST) { tab() }
+                nav.openTab(AppRoutes.LIST)
                 nav.navigate(conversationRoute(it))
             }
         }
         LaunchedEffect(Unit) {
             socialOpens.receiveAsFlow().collect {
-                nav.navigate(SocialRoutes.NOTIFICATIONS) { tab() }
+                nav.openTab(SocialRoutes.NOTIFICATIONS)
                 nav.navigate(it)
             }
         }
@@ -237,10 +240,10 @@ class MainActivity : ComponentActivity() {
         val count by unread.count.collectAsStateWithLifecycle()
         LaunchedEffect(route) { unread.refresh() }
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { unread.refresh() }
-        val go: (String) -> Unit = { nav.navigate(it) { tab() } }
+        val (activeTab, go) = activeTab(nav, route)
         // Each screen pads for the status bar itself, so its cream band can reach the top edge.
         AdaptiveNavigation(
-            tabs = tabs(route, go),
+            tabs = tabs(activeTab, go),
             bell = bell(route, count) { nav.openNotifications() },
             shown = route in TABS,
             wide = route in SocialRoutes.WIDE,
@@ -305,21 +308,40 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private val TAB_ROOTS = setOf(AppRoutes.LIST, SocialRoutes.COMMUNITIES, AppRoutes.ME)
+
+/**
+ * The tab last opened and the tap that opens one. The notifications sit over the tab they were opened from, so it
+ * stays the active one there, and a tap on the active tab returns to its root (#356).
+ */
+@Composable
+private fun activeTab(
+    nav: NavController,
+    route: String?,
+): Pair<String, (String) -> Unit> {
+    var active by rememberSaveable { mutableStateOf(AppRoutes.LIST) }
+    LaunchedEffect(route) { route?.takeIf { it in TAB_ROOTS }?.let { active = it } }
+    return active to { root ->
+        nav.openTab(root, active)
+        active = root
+    }
+}
+
 /** The three tabs; notifications are behind the bell (decision 0109). */
 @Composable
 private fun tabs(
-    route: String?,
+    active: String,
     go: (String) -> Unit,
 ): List<Tab> {
     val communities = SocialRoutes.COMMUNITIES
     return listOf(
-        Tab(AppIcons.Chat, stringResource(R.string.tab_conversations), route == AppRoutes.LIST) {
+        Tab(AppIcons.Chat, stringResource(R.string.tab_conversations), active == AppRoutes.LIST) {
             go(AppRoutes.LIST)
         },
-        Tab(AppIcons.Communities, stringResource(R.string.tab_communities), route == communities) {
+        Tab(AppIcons.Communities, stringResource(R.string.tab_communities), active == communities) {
             go(communities)
         },
-        Tab(AppIcons.Person, stringResource(R.string.tab_me), route == AppRoutes.ME) { go(AppRoutes.ME) },
+        Tab(AppIcons.Person, stringResource(R.string.tab_me), active == AppRoutes.ME) { go(AppRoutes.ME) },
     )
 }
 

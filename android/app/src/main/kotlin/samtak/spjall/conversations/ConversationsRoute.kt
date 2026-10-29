@@ -10,7 +10,7 @@ import samtak.spjall.ui.AppRoutes
 import samtak.spjall.ui.conversationRoute
 import samtak.spjall.ui.notificationsOff
 import samtak.spjall.ui.openNotificationSettings
-import samtak.spjall.ui.tab
+import samtak.spjall.ui.openTab
 
 /** The list tab: the conversations screen tied to its view model and the navigation graph. */
 @Composable
@@ -32,7 +32,7 @@ internal fun ConversationsRoute(
 
             override fun openPerson(account: String) = list.openPerson(account)
 
-            override fun invite() = nav.navigate(AppRoutes.ME) { tab() }
+            override fun invite() = nav.openTab(AppRoutes.ME)
 
             override fun retry() = list.retry()
 

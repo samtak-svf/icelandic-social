@@ -9,8 +9,8 @@ import androidx.navigation.NavController
 import samtak.spjall.AppGraph
 import samtak.spjall.ui.AppRoutes
 import samtak.spjall.ui.conversationRoute
+import samtak.spjall.ui.openTab
 import samtak.spjall.ui.rememberBack
-import samtak.spjall.ui.tab
 
 /** Who to talk to: one person, or several for a group, or, with [targetConversation], who to add to a group. */
 @Composable
@@ -54,7 +54,7 @@ internal fun PeopleRoute(
 
             override fun more() = people.more()
 
-            override fun invite() = nav.navigate(AppRoutes.ME) { tab() }
+            override fun invite() = nav.openTab(AppRoutes.ME)
 
             override fun retry() = people.retry()
         },
