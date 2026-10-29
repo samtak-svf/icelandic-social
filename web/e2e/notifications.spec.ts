@@ -65,3 +65,14 @@ test("two reactions are one row; seen clears the badge, a click reads the row; a
   await a.reload();
   await expect(a.getByLabel(strings.notification_kind_reaction)).toHaveValue("in_app");
 });
+
+// #349: the notifications open over the page the bell was pressed on, and
+// back returns there, as the apps now do.
+test("back from the bell returns to the page it was pressed on", async ({ browser }) => {
+  const a = await person(browser, "Auður Prófsdóttir");
+  const community = await found(a, "open");
+  await a.getByRole("link", { name: new RegExp(strings.notifications_title) }).click();
+  await expect(a.getByRole("heading", { name: strings.notifications_title })).toBeVisible();
+  await a.goBack();
+  await expect(a).toHaveURL(community);
+});
