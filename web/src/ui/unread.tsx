@@ -2,9 +2,11 @@ import { useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { notifications } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
+import { settled } from "../social/notice-writes.ts";
 
 // The unseen count on the bell in the top bar (decisions 0104, 0109): asked for on every
-// navigation, and when the notifications page has marked some read.
+// navigation, and when the notifications page has marked some read; it waits for the
+// notification writes in flight, so the count shows them.
 
 const listeners = new Set<() => void>();
 
@@ -24,7 +26,8 @@ export function UnreadBadge({ className = "ml-1 px-2 text-sm" }: Readonly<{ clas
   }, []);
   useEffect(() => {
     let live = true;
-    notifications({ query: { limit: 1 } })
+    settled()
+      .then(() => notifications({ query: { limit: 1 } }))
       .then((answer) => {
         if (live && answer.status === 200) setUnread(answer.data.unseen);
       })

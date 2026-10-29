@@ -8,6 +8,7 @@ import {
 } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { ProblemText, Status } from "../ui/kit.tsx";
+import { track } from "./notice-writes.ts";
 import { outcome, useLoad } from "./outcome.ts";
 import type { Problem } from "../problem.ts";
 
@@ -99,10 +100,15 @@ export function useLevels() {
     else setProblem(done.problem ?? { kind: "unreachable" });
   };
   const setKind = (kind: Kind, level: NotificationLevel) =>
-    save(() => outcome(putNotificationSettings({ body: { kinds: { [kind]: level } } }), 204));
+    save(() =>
+      outcome(track(putNotificationSettings({ body: { kinds: { [kind]: level } } })), 204),
+    );
   const setCommunity = (communityId: string, level: NotificationLevel) =>
     save(() =>
-      outcome(setCommunityNotificationLevel({ path: { communityId }, body: { level } }), 204),
+      outcome(
+        track(setCommunityNotificationLevel({ path: { communityId }, body: { level } })),
+        204,
+      ),
     );
   return {
     settings: loaded?.ok ? loaded.data : null,

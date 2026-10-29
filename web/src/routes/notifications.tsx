@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback } from "react";
-import { myCommunities, notifications } from "../generated/api.ts";
+import { myCommunities } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { noticeSections } from "../lib/notice-sections.ts";
-import { useNotices } from "../social/notice-actions.ts";
+import { loadNotices, useNotices } from "../social/notice-actions.ts";
 import { NoticeRow } from "../social/notice-row.tsx";
 import { outcome, useLoad } from "../social/outcome.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
@@ -14,7 +14,7 @@ import { Button, ProblemText, Status } from "../ui/kit.tsx";
 export const Route = createFileRoute("/notifications")({ component: Notifications });
 
 function Notifications() {
-  const [page] = useLoad(useCallback(() => outcome(notifications(), 200), []));
+  const [page] = useLoad(loadNotices);
   // The picture and name of the community a notice belongs to.
   const [mine] = useLoad(useCallback(() => outcome(myCommunities(), 200), []));
   const byId = new Map((mine?.ok ? mine.data.communities : []).map((c) => [c.communityId, c]));
