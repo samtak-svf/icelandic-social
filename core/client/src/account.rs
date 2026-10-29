@@ -562,12 +562,7 @@ impl<T: Transport> Client<T> {
 
     /// This account's invite link as this device last made it.
     pub fn invite_link(&mut self) -> Result<Option<String>, ClientError> {
-        self.store.try_write(|tx| {
-            Ok(tx
-                .query_row("SELECT invite_link FROM account", [], |r| r.get(0))
-                .optional()?
-                .flatten())
-        })
+        self.store.try_write(|tx| Ok(crate::read::invite_link(tx)?))
     }
 
     /// A new invite link, which ends the one before.

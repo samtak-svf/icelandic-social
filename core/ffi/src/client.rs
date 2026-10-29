@@ -1059,7 +1059,7 @@ impl CoreClient {
 
     /// This account's invite link as this device last made it.
     pub fn invite_link(&self) -> Result<Option<String>, CoreError> {
-        Ok(self.client()?.invite_link()?)
+        Ok(self.view().invite_link()?)
     }
 
     /// A new invite link, which ends the one before.
