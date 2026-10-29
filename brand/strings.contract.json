@@ -1869,6 +1869,78 @@
       "surfaces": ["web"],
       "description": "Body on /support explaining where to manage sessions, unlink devices and delete an account."
     },
+    "testers_title": {
+      "surfaces": ["web"],
+      "description": "Title and link label of the public tester guide (/testers, #350): how to join the test on Android and iPhone."
+    },
+    "testers_intro": {
+      "surfaces": ["web"],
+      "description": "Introductory paragraph on /testers: the app is in testing and the store screens look unusual."
+    },
+    "testers_unreviewed_heading": {
+      "surfaces": ["web"],
+      "description": "Section heading on /testers: why the store marks the app unreviewed."
+    },
+    "testers_unreviewed_body": {
+      "surfaces": ["web"],
+      "description": "Body on /testers explaining internal testing, the Play 'unreviewed' label and TestFlight, and that it ends at the open beta."
+    },
+    "testers_join_heading": {
+      "surfaces": ["web"],
+      "description": "Section heading on /testers: the first step, asking to join."
+    },
+    "testers_join_body": {
+      "surfaces": ["web"],
+      "description": "Body on /testers: email the address and platform (decision 0084); which address each platform needs."
+    },
+    "testers_android_heading": {
+      "surfaces": ["web"],
+      "description": "Section heading on /testers for the Android steps; also the platform switch's label."
+    },
+    "testers_android_step_open": {
+      "surfaces": ["web"],
+      "description": "Android step on /testers: open the Play test link in Chrome, signed in with the same Gmail address."
+    },
+    "testers_android_step_accept": {
+      "surfaces": ["web"],
+      "description": "Android step on /testers: the Play opt-in page and accepting it."
+    },
+    "testers_android_step_install": {
+      "surfaces": ["web"],
+      "description": "Android step on /testers: download the test app from its unreviewed store listing."
+    },
+    "testers_android_step_wait": {
+      "surfaces": ["web"],
+      "description": "Android step on /testers: on an error, wait about 30 minutes and retry (decision 0084)."
+    },
+    "testers_iphone_heading": {
+      "surfaces": ["web"],
+      "description": "Section heading on /testers for the iPhone steps; also the platform switch's label."
+    },
+    "testers_iphone_step_invite": {
+      "surfaces": ["web"],
+      "description": "iPhone step on /testers: accept the App Store Connect invitation, which reaches only the beta app."
+    },
+    "testers_iphone_step_testflight": {
+      "surfaces": ["web"],
+      "description": "iPhone step on /testers: install TestFlight from the App Store."
+    },
+    "testers_iphone_step_group": {
+      "surfaces": ["web"],
+      "description": "iPhone step on /testers: the TestFlight invitation email once added to the group."
+    },
+    "testers_iphone_step_install": {
+      "surfaces": ["web"],
+      "description": "iPhone step on /testers: install the app from TestFlight, where updates also appear."
+    },
+    "testers_last_step": {
+      "surfaces": ["web"],
+      "description": "The last step on both platforms on /testers: open the app and sign in with Google."
+    },
+    "testers_help": {
+      "surfaces": ["web"],
+      "description": "Closing paragraph on /testers: where to write when a step does not work."
+    },
     "add_people": {
       "surfaces": ["android", "ios"],
       "description": "Action on a group's info screen: add people to the group (docs/decisions/0078)."

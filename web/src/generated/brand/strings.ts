@@ -663,6 +663,42 @@ export const strings = {
   support_account_heading: "Innskráningar, tæki og eyðing aðgangs",
   /** Body on /support explaining where to manage sessions, unlink devices and delete an account. */
   support_account_body: "Í Stillingum getur þú séð alla vafra og síma þar sem aðgangurinn þinn er skráður inn og skráð út úr þeim. Í símaappinu undir Ég getur þú einnig aftengt einstök tæki eða valið „Eyða aðgangi“ til að eyða aðganginum og öllum gögnum hans af þjóninum.",
+  /** Title and link label of the public tester guide (/testers, #350): how to join the test on Android and iPhone. */
+  testers_title: "Leiðbeiningar fyrir prófara",
+  /** Introductory paragraph on /testers: the app is in testing and the store screens look unusual. */
+  testers_intro: "Hjal er enn í prófun og fæst því ekki á venjulegan hátt í App Store eða Google Play. Prófarar sækja appið eftir prófunarleiðum verslananna og þar líta skjáirnir öðruvísi út en venjulega. Hér er farið yfir hvert skref svo ekkert komi á óvart.",
+  /** Section heading on /testers: why the store marks the app unreviewed. */
+  testers_unreviewed_heading: "Hvers vegna er appið merkt óyfirfarið?",
+  /** Body on /testers explaining internal testing, the Play 'unreviewed' label and TestFlight, and that it ends at the open beta. */
+  testers_unreviewed_body: "Nýjar útgáfur berast prófurum áður en Google eða Apple fer yfir þær. Þess vegna merkir Google Play appið óyfirfarið (á ensku „unreviewed“) og á iPhone kemur það í TestFlight, prófunarappi Apple. Þetta er venjan þegar app er í lokaðri prófun og segir ekkert um öryggi þess. Samtak svf. gefur appið út og undirritar það og kóði þess er öllum opinn. Merkingin hverfur þegar appið fer í opna prófun.",
+  /** Section heading on /testers: the first step, asking to join. */
+  testers_join_heading: "Fyrsta skrefið",
+  /** Body on /testers: email the address and platform (decision 0084); which address each platform needs. */
+  testers_join_body: "Sendu okkur tölvupóst á samtak@samtak.is með netfanginu þínu og segðu okkur hvort þú notar Android eða iPhone. Fyrir Android þurfum við Gmail-netfangið sem þú notar í Google Play og fyrir iPhone netfangið sem þú notar fyrir Apple ID.",
+  /** Section heading on /testers for the Android steps; also the platform switch's label. */
+  testers_android_heading: "Android",
+  /** Android step on /testers: open the Play test link in Chrome, signed in with the same Gmail address. */
+  testers_android_step_open: "Opnaðu hlekkinn sem við sendum þér í Chrome og skráðu þig inn með sama Gmail-netfangi og þú sendir okkur.",
+  /** Android step on /testers: the Play opt-in page and accepting it. */
+  testers_android_step_accept: "Google Play segir að þú sért prófari fyrir is.samtak.spjall og að appið sé óyfirfarið. Samþykktu að gerast prófari.",
+  /** Android step on /testers: download the test app from its unreviewed store listing. */
+  testers_android_step_install: "Veldu að sækja prófunarappið. Þá opnast síða appsins í Google Play, þar sem það er merkt óyfirfarið, og þaðan setur þú það upp.",
+  /** Android step on /testers: on an error, wait about 30 minutes and retry (decision 0084). */
+  testers_android_step_wait: "Ef villa kemur upp skaltu bíða í um hálftíma og reyna aftur. Það getur tekið Google smástund að skrá nýjan prófara.",
+  /** Section heading on /testers for the iPhone steps; also the platform switch's label. */
+  testers_iphone_heading: "iPhone",
+  /** iPhone step on /testers: accept the App Store Connect invitation, which reaches only the beta app. */
+  testers_iphone_step_invite: "Þú færð tölvupóst frá App Store Connect með boði í teymi Samtaks svf. Samþykktu boðið. Aðgangurinn sem þá verður til nær aðeins til prófunarútgáfu appsins.",
+  /** iPhone step on /testers: install TestFlight from the App Store. */
+  testers_iphone_step_testflight: "Sæktu TestFlight í App Store. Það er app frá Apple fyrir prófunarútgáfur.",
+  /** iPhone step on /testers: the TestFlight invitation email once added to the group. */
+  testers_iphone_step_group: "Þegar við höfum bætt þér í prófunarhópinn færðu annan tölvupóst, boð í TestFlight. Opnaðu hann í iPhone-símanum og veldu að skoða appið í TestFlight.",
+  /** iPhone step on /testers: install the app from TestFlight, where updates also appear. */
+  testers_iphone_step_install: "Settu appið upp úr TestFlight. Þar birtast líka nýjar útgáfur þegar þær koma.",
+  /** The last step on both platforms on /testers: open the app and sign in with Google. */
+  testers_last_step: "Opnaðu Hjal og skráðu þig inn með Google.",
+  /** Closing paragraph on /testers: where to write when a step does not work. */
+  testers_help: "Ef eitthvað stendur á sér skaltu skrifa okkur á samtak@samtak.is og segja frá því sem þú sérð á skjánum.",
   /** Confirm button that saves a change, such as a group's name (docs/decisions/0078). */
   save: "Vista",
   /** System card when a member names or renames the group (docs/decisions/0078). */
