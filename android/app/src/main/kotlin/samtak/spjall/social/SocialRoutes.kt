@@ -1,5 +1,8 @@
 package samtak.spjall.social
 
+import androidx.navigation.NavController
+import samtak.spjall.ui.tab
+
 /** The routes of the community screens (decision 0063); the two tabs are [COMMUNITIES] and [NOTIFICATIONS]. */
 object SocialRoutes {
     const val COMMUNITIES = "communities"
@@ -34,3 +37,6 @@ object SocialRoutes {
     val WIDE =
         setOf(COMMUNITIES, NEW_COMMUNITY, "$COMMUNITY/{id}", "$REPORTS/{id}", "$REQUESTS/{id}", "$ANONYMOUS/{id}")
 }
+
+/** The bell's tap (decisions 0109, 0111). */
+internal fun NavController.openNotifications() = navigate(SocialRoutes.NOTIFICATIONS) { tab() }
