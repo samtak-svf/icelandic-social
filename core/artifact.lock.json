@@ -1,19 +1,19 @@
 {
-  "version": "0.48.0",
+  "version": "0.48.1",
   "androidNdk": "30.0.16248370",
   "baseUrl": "https://github.com/samtak-svf/icelandic-social/releases/download/core-v{version}",
   "artifacts": {
     "android": {
       "file": "spjall-core-android.zip",
-      "sha256": "8a1f17f2fb4fe923e27e4ae1bd0ae9266809ff2ae18f804aa5fd2b62b5014e4c"
+      "sha256": "6cce227172efe029ef20b363a596d5d640fad3aca2efb734a6d50ce2aca9154e"
     },
     "ios": {
       "file": "spjall-core-ios.zip",
-      "sha256": "df280e67983e6e08329ff309950f243855054e813b1e4ad81fdbb145fca4a4c4"
+      "sha256": "4972959a365d2c50e96f05501df7487247bd56cfb94286b0c3f4f81220aceddd"
     },
     "web": {
       "file": "spjall-core-web.zip",
-      "sha256": "8bf0e8145826d7a3eed5f4f132d93f10b5741ad68f6dfeb7c1ed80d1d760186b"
+      "sha256": "4763a60e2c8fa2792a4d2af26c6f4742eeaedf3c5fb3aa58a576ad7c092f9f37"
     }
   }
 }
