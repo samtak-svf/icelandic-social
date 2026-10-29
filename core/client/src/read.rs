@@ -36,6 +36,14 @@ pub(crate) fn settings(tx: &Transaction) -> rusqlite::Result<Settings> {
         .unwrap_or_default())
 }
 
+/// This account's invite link as this device last made it.
+pub(crate) fn invite_link(tx: &Transaction) -> rusqlite::Result<Option<String>> {
+    Ok(tx
+        .query_row("SELECT invite_link FROM account", [], |r| r.get(0))
+        .optional()?
+        .flatten())
+}
+
 pub(crate) fn set_settings(tx: &Transaction, settings: Settings) -> rusqlite::Result<()> {
     tx.execute(
         "INSERT INTO settings (id, read_markers, typing) VALUES (1, ?1, ?2)

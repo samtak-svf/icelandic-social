@@ -40,6 +40,12 @@ fn a_hosted_call_during_a_request_does_not_wait() {
         move || client.me()
     });
     assert_eq!(me.unwrap().devices.len(), 1);
+    // The profile screen reads its invite link first; a local read waits for nothing.
+    let link = promptly({
+        let client = a1.client.clone();
+        move || client.invite_link()
+    });
+    assert_eq!(link.unwrap(), None);
 
     a1.app.release();
     slow.join().unwrap().unwrap();

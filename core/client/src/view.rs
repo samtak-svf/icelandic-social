@@ -161,6 +161,11 @@ impl View {
     pub fn settings(&mut self) -> Result<Settings, ClientError> {
         Ok(self.reader.read(read::settings)?)
     }
+
+    /// This account's invite link as this device last made it.
+    pub fn invite_link(&mut self) -> Result<Option<String>, ClientError> {
+        Ok(self.reader.read(read::invite_link)?)
+    }
 }
 
 fn conversations(tx: &Transaction, media: &Path) -> Result<Vec<Conversation>, ClientError> {
