@@ -237,7 +237,7 @@ impl Core {
 
     #[wasm_bindgen(unchecked_return_type = "Me")]
     pub fn me(&mut self) -> Result<JsValue, JsValue> {
-        answer(self.client.me().map(dto::Me::from))
+        answer(self.client.hosted().me().map(dto::Me::from))
     }
 }
 

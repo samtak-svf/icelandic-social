@@ -54,7 +54,7 @@ fn a_photo_is_fetched_once_per_version_and_goes_when_removed() {
     std::fs::write(&image, b"image:first").unwrap();
     let first = a1.client.set_photo(&image).unwrap();
     assert_eq!(
-        a1.client.me().unwrap().photo.as_deref(),
+        a1.client.hosted().me().unwrap().photo.as_deref(),
         Some(first.as_str())
     );
     assert_eq!(
@@ -85,7 +85,7 @@ fn a_photo_is_fetched_once_per_version_and_goes_when_removed() {
 
     // Removed: the profile shows none, and the kept file goes.
     a1.client.remove_photo().unwrap();
-    assert_eq!(a1.client.me().unwrap().photo, None);
+    assert_eq!(a1.client.hosted().me().unwrap().photo, None);
     assert_eq!(b1.client.profile("a").unwrap().photo, None);
     assert!(!newer.exists());
     assert_eq!(b1.client.photo("a", &second).unwrap(), None);
@@ -150,7 +150,7 @@ fn a_photo_is_framed_again_from_its_master_and_the_old_frames_go() {
     assert!(!square.exists() && !plain.exists());
     assert!(!a1.dir.path().join("photos/a/square").exists());
     assert_eq!(
-        a1.client.me().unwrap().photo.as_deref(),
+        a1.client.hosted().me().unwrap().photo.as_deref(),
         Some(second.as_str())
     );
     assert_eq!(a1.client.photo_framing().unwrap(), Some(framing));
@@ -194,7 +194,10 @@ fn a_photo_without_a_master_is_its_own_error() {
         Err(ClientError::NoMaster)
     ));
     // The photo is untouched, and there is no master to write.
-    assert_eq!(a1.client.me().unwrap().photo.as_deref(), Some(old.as_str()));
+    assert_eq!(
+        a1.client.hosted().me().unwrap().photo.as_deref(),
+        Some(old.as_str())
+    );
     let source = a1.dir.path().join("master.webp");
     assert!(!a1.client.photo_source(&source).unwrap());
     assert!(!source.exists() && !source.with_extension("part").exists());

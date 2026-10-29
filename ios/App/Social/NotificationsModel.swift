@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import SpjallCore
+import os
 
 /// The notifications (decisions 0063, 0103, 0104, 0109): comments, replies and reactions to this account's posts and
 /// comments, an approved request to join, and a moderator's action on what it wrote, one row per thing, newest
@@ -168,7 +169,11 @@ final class NotificationsModel {
 
     private func first() async throws {
         let social = social
+        let clock = ContinuousClock()
+        let start = clock.now
         let page = try await offMain { try social.notifications(before: nil, limit: Self.page) }
+        let ms = Int((clock.now - start) / .milliseconds(1))
+        Self.timing.info("notifications=\(ms, privacy: .public)ms")
         notifications = page.notifications
         unread = Int(page.unread)
         unseen = Int(page.unseen)
@@ -176,6 +181,8 @@ final class NotificationsModel {
         next = page.next
         loaded = true
     }
+
+    private static let timing = Logger(subsystem: Bundle.main.bundleIdentifier ?? "app", category: "load")
 
     /// A page of notifications.
     private nonisolated static let page: UInt32 = 30

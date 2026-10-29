@@ -74,7 +74,7 @@ fn comment(id: &str) -> Value {
 #[test]
 fn communities_are_listed_created_joined_and_left() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let c = &phone.client.hosted();
 
     phone.answer(
         200,
@@ -142,7 +142,7 @@ fn communities_are_listed_created_joined_and_left() {
 #[test]
 fn posts_comments_and_reactions_go_by_their_ids() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let c = &phone.client.hosted();
 
     phone.answer(200, json!({ "posts": [post("p_1")], "next": null }));
     let page = c
@@ -254,7 +254,7 @@ fn posts_comments_and_reactions_go_by_their_ids() {
 #[test]
 fn reports_moderation_and_cards() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let c = &phone.client.hosted();
 
     phone.ok();
     c.report(&NewReport {
@@ -460,7 +460,7 @@ fn reports_moderation_and_cards() {
 #[test]
 fn a_card_for_an_anonymous_post_has_no_author() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let c = &phone.client.hosted();
 
     // The author of an anonymous post is hidden on its card too (decision 0091), and
     // one such card must not fail the whole answer.
@@ -498,7 +498,7 @@ fn a_card_for_an_anonymous_post_has_no_author() {
 #[test]
 fn a_byline_and_a_latest_comment_decode_with_or_without_the_new_fields() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let c = &phone.client.hosted();
     let mut byline = author("acc_b");
     byline["photo"] = json!("ph_0123");
     byline["role"] = json!("owner");
@@ -539,7 +539,7 @@ fn a_byline_and_a_latest_comment_decode_with_or_without_the_new_fields() {
 #[test]
 fn a_refusal_keeps_its_code_and_a_bad_id_is_never_sent() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let c = &phone.client.hosted();
 
     phone.answer(
         409,
@@ -589,7 +589,7 @@ fn a_refusal_keeps_its_code_and_a_bad_id_is_never_sent() {
     };
     let signed_out = Client::open(dir.path(), &KEY, transport).unwrap();
     assert!(matches!(
-        signed_out.my_communities(),
+        signed_out.hosted().my_communities(),
         Err(ClientError::NotRegistered)
     ));
 }
@@ -597,7 +597,7 @@ fn a_refusal_keeps_its_code_and_a_bad_id_is_never_sent() {
 #[test]
 fn a_post_takes_images_uploaded_first() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let (c, k) = (&phone.client.hosted(), &phone.client);
     let dir = tempfile::tempdir().unwrap();
     let photo = dir.path().join("kor.jpg");
     std::fs::write(&photo, b"\xff\xd8\xff\xe0 a jpeg").unwrap();
@@ -606,7 +606,7 @@ fn a_post_takes_images_uploaded_first() {
         200,
         json!({ "mediaId": "sm_1", "width": 2048, "height": 1536 }),
     );
-    let image = c.upload_social_media("cm_1", &photo).unwrap();
+    let image = k.upload_social_media("cm_1", &photo).unwrap();
     assert_eq!(
         image,
         SocialMedia {
@@ -619,14 +619,14 @@ fn a_post_takes_images_uploaded_first() {
     c.create_post("cm_1", "", &["sm_1".into()]).unwrap();
 
     phone.answer(200, Value::Null);
-    let kept = c.post_media("p_1", "sm_1").unwrap();
+    let kept = k.post_media("p_1", "sm_1").unwrap();
     assert_eq!(std::fs::read(&kept).unwrap(), IMAGE);
     // Kept: the second call asks nothing.
-    assert_eq!(c.post_media("p_1", "sm_1").unwrap(), kept);
+    assert_eq!(k.post_media("p_1", "sm_1").unwrap(), kept);
 
     phone.answer(404, json!({ "error": "not_found" }));
     assert!(matches!(
-        c.post_media("p_1", "sm_2"),
+        k.post_media("p_1", "sm_2"),
         Err(ClientError::Transport(ApiError::Refused {
             status: 404,
             ..
@@ -660,7 +660,7 @@ fn a_post_takes_images_uploaded_first() {
 #[test]
 fn images_are_refused_before_they_are_sent() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let (c, k) = (&phone.client.hosted(), &phone.client);
     let dir = tempfile::tempdir().unwrap();
     let empty = dir.path().join("empty.png");
     std::fs::write(&empty, b"").unwrap();
@@ -671,15 +671,15 @@ fn images_are_refused_before_they_are_sent() {
         .unwrap();
 
     let refused = |r: Result<_, ClientError>| matches!(r, Err(ClientError::Invalid(_)));
-    assert!(refused(c.upload_social_media("cm_1", &empty).map(drop)));
-    assert!(refused(c.upload_social_media("cm_1", &big).map(drop)));
+    assert!(refused(k.upload_social_media("cm_1", &empty).map(drop)));
+    assert!(refused(k.upload_social_media("cm_1", &big).map(drop)));
     let five: Vec<String> = (1..=5).map(|i| format!("sm_{i}")).collect();
     assert!(refused(c.create_post("cm_1", "Myndir", &five).map(drop)));
     assert!(refused(c.create_post("cm_1", "  ", &[]).map(drop)));
     assert!(refused(
         c.create_post("cm_1", "", &["../x".into()]).map(drop)
     ));
-    assert!(refused(c.post_media("p_1", "../../x").map(drop)));
+    assert!(refused(k.post_media("p_1", "../../x").map(drop)));
     assert!(phone.sent().is_empty());
 }
 
@@ -696,7 +696,7 @@ fn mute(until: Option<u64>) -> Moderation {
 #[test]
 fn the_lifecycle_calls_go_to_their_paths_and_decode() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let c = &phone.client.hosted();
 
     phone.answer(
         200,
@@ -774,7 +774,7 @@ fn a_community_with_lifecycle_fields_decodes() {
     body["pendingJoinRequests"] = json!(4);
     body["openReports"] = json!(2);
     phone.answer(200, body);
-    let got = phone.client.community("cm_1").unwrap();
+    let got = phone.client.hosted().community("cm_1").unwrap();
     assert_eq!(got.deleted_at, Some(1_760_000_900_000));
     assert_eq!(got.join_declined_until, Some(1_760_100_000_000));
     assert_eq!(got.pending_join_requests, Some(4));
@@ -784,7 +784,7 @@ fn a_community_with_lifecycle_fields_decodes() {
 #[test]
 fn a_community_is_edited_and_its_members_and_log_read() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let c = &phone.client.hosted();
 
     phone.answer(200, community("cm_1", "private"));
     let edited = c
@@ -923,7 +923,7 @@ fn a_community_is_edited_and_its_members_and_log_read() {
 #[test]
 fn the_feed_gathers_the_communities_and_a_search_names_the_words() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let c = &phone.client.hosted();
 
     phone.answer(
         200,
@@ -959,7 +959,7 @@ fn the_feed_gathers_the_communities_and_a_search_names_the_words() {
 #[test]
 fn a_reply_names_the_comment_it_answers() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let c = &phone.client.hosted();
 
     let mut answered = comment("p_1-0a1d");
     answered["parentCommentId"] = json!("p_1-0a1b");
@@ -1012,8 +1012,8 @@ fn a_closed_report_decodes_and_unknown_values_fall_back() {
             closed("something_new", "exiled", "frozen"),
         ], "next": null }),
     );
-    let queue = phone
-        .client
+    let h = phone.client.hosted();
+    let queue = h
         .community_reports("cm_1", ReportState::Closed, None, 20)
         .unwrap();
     let known = &queue.reports[0];
@@ -1033,7 +1033,7 @@ fn a_declined_join_keeps_its_code() {
     let phone = Phone::signed_in();
     phone.answer(409, json!({ "error": "join_declined" }));
     assert!(matches!(
-        phone.client.join_community("cm_1"),
+        phone.client.hosted().join_community("cm_1"),
         Err(ClientError::Transport(ApiError::Refused { status: 409, code, .. }))
             if code == "join_declined"
     ));
@@ -1042,15 +1042,15 @@ fn a_declined_join_keeps_its_code() {
 #[test]
 fn a_community_picture_and_cover_are_uploaded_and_removed() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let (c, k) = (&phone.client.hosted(), &phone.client);
     let dir = tempfile::tempdir().unwrap();
     let image = dir.path().join("kor.jpg");
     std::fs::write(&image, b"image:first").unwrap();
 
     phone.answer(200, json!({ "version": "ph_one" }));
-    assert_eq!(c.set_community_avatar("cm_1", &image).unwrap(), "ph_one");
+    assert_eq!(k.set_community_avatar("cm_1", &image).unwrap(), "ph_one");
     phone.answer(200, json!({ "version": "ph_two" }));
-    assert_eq!(c.set_community_cover("cm_1", &image).unwrap(), "ph_two");
+    assert_eq!(k.set_community_cover("cm_1", &image).unwrap(), "ph_two");
     phone.ok();
     c.remove_community_avatar("cm_1").unwrap();
     phone.ok();
@@ -1087,7 +1087,7 @@ fn a_community_picture_and_cover_are_uploaded_and_removed() {
 #[test]
 fn the_hub_pins_likes_and_unread_are_sent_and_decoded() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let c = &phone.client.hosted();
     for _ in 0..6 {
         phone.ok();
     }
@@ -1163,7 +1163,7 @@ fn the_hub_pins_likes_and_unread_are_sent_and_decoded() {
 #[test]
 fn a_community_image_is_refused_before_a_request_when_empty_or_too_big() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let (c, k) = (&phone.client.hosted(), &phone.client);
     let dir = tempfile::tempdir().unwrap();
     let empty = dir.path().join("empty.png");
     std::fs::write(&empty, b"").unwrap();
@@ -1176,11 +1176,11 @@ fn a_community_image_is_refused_before_a_request_when_empty_or_too_big() {
     std::fs::write(&ok, b"image").unwrap();
 
     let refused = |r: Result<_, ClientError>| matches!(r, Err(ClientError::Invalid(_)));
-    assert!(refused(c.set_community_avatar("cm_1", &empty).map(drop)));
-    assert!(refused(c.set_community_avatar("cm_1", &big).map(drop)));
-    assert!(refused(c.set_community_cover("cm_1", &empty).map(drop)));
-    assert!(refused(c.set_community_cover("cm_1", &big).map(drop)));
-    assert!(refused(c.set_community_avatar("../x", &ok).map(drop)));
+    assert!(refused(k.set_community_avatar("cm_1", &empty).map(drop)));
+    assert!(refused(k.set_community_avatar("cm_1", &big).map(drop)));
+    assert!(refused(k.set_community_cover("cm_1", &empty).map(drop)));
+    assert!(refused(k.set_community_cover("cm_1", &big).map(drop)));
+    assert!(refused(k.set_community_avatar("../x", &ok).map(drop)));
     assert!(refused(c.remove_community_cover("a/b")));
     assert!(phone.sent().is_empty());
 }
@@ -1268,7 +1268,7 @@ fn a_bad_community_picture_id_is_refused_without_a_request() {
 #[test]
 fn a_comment_carries_one_image() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let c = &phone.client.hosted();
 
     let mut with_image = comment("p_1-0a1e");
     with_image["media"] = json!([{ "mediaId": "sm_1", "width": 30, "height": 20 }]);
@@ -1475,7 +1475,7 @@ fn a_community_carries_the_framing_it_was_stored_with() {
 #[test]
 fn a_community_decodes_its_featured_posts_and_anonymous_counts() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let c = &phone.client.hosted();
     // An older server names none of them.
     phone.answer(200, community("cm_1", "open"));
     let old = c.community("cm_1").unwrap();
@@ -1503,7 +1503,7 @@ fn a_community_decodes_its_featured_posts_and_anonymous_counts() {
 #[test]
 fn a_poll_post_decodes_and_is_voted_in_and_closed() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let c = &phone.client.hosted();
     let mut poll_post = post("p_1");
     poll_post["poll"] = json!({
         "options": [
@@ -1569,7 +1569,7 @@ fn a_poll_post_decodes_and_is_voted_in_and_closed() {
 #[test]
 fn a_poll_is_created_with_its_options_and_checked_first() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let c = &phone.client.hosted();
     let two = ["Já".to_string(), " Nei ".to_string()];
     phone.answer(200, post("p_1"));
     c.create_post_with("cm_1", "Mætir þú?", &[], false, Some(&two))
@@ -1609,7 +1609,7 @@ fn a_poll_is_created_with_its_options_and_checked_first() {
 #[test]
 fn an_anonymous_post_has_no_author_and_goes_through_approval() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let c = &phone.client.hosted();
     let mut anonymous = post("p_1");
     anonymous["author"] = Value::Null;
     anonymous["anonymous"] = json!(true);
@@ -1673,7 +1673,7 @@ fn an_anonymous_post_has_no_author_and_goes_through_approval() {
 #[test]
 fn featuring_a_fourth_post_is_refused_with_pin_limit() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let c = &phone.client.hosted();
     phone.answer(409, json!({ "error": "pin_limit" }));
     let err = c.pin_post("cm_1", "p_4").unwrap_err();
     assert!(matches!(
@@ -1701,7 +1701,7 @@ fn a_report_of_an_anonymous_post_names_no_account() {
 #[test]
 fn a_communitys_images_come_a_page_at_a_time() {
     let phone = Phone::signed_in();
-    let c = &phone.client;
+    let c = &phone.client.hosted();
     phone.answer(
         200,
         json!({

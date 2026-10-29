@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use spjall_client::{self as core, ClientError, HistoryError, LinkError, MediaError, api};
 
+use crate::foreign::{Foreign, path_string};
 use crate::frames::{Frame, Framing};
 use crate::{Body, CoreError, Envelope, store_code};
 pub mod event;
@@ -83,62 +84,6 @@ pub trait Transport: Send + Sync {
     /// A `GET` whose 200 body is streamed into the file at `to`; any other
     /// status comes back with its body as text, and `to` is left alone.
     fn download(&self, request: HttpRequest, to: String) -> Result<HttpResponse, TransportError>;
-}
-
-fn http_request(request: api::Request) -> HttpRequest {
-    HttpRequest {
-        method: match request.method {
-            api::Method::Get => HttpMethod::Get,
-            api::Method::Post => HttpMethod::Post,
-            api::Method::Delete => HttpMethod::Delete,
-            api::Method::Put => HttpMethod::Put,
-            api::Method::Patch => HttpMethod::Patch,
-        },
-        path: request.path,
-        body: request.body,
-        bearer: request.bearer,
-        client: request.client,
-    }
-}
-
-fn api_response(
-    response: Result<HttpResponse, TransportError>,
-) -> Result<api::Response, api::Unreachable> {
-    match response {
-        Ok(response) => Ok(api::Response {
-            status: response.status,
-            body: response.body,
-        }),
-        Err(TransportError::Unreachable { detail }) => Err(api::Unreachable(detail)),
-    }
-}
-
-pub(crate) fn path_string(path: &Path) -> String {
-    path.to_string_lossy().into_owned()
-}
-
-pub(crate) struct Foreign(Arc<dyn Transport>);
-
-impl api::Transport for Foreign {
-    fn request(&self, request: api::Request) -> Result<api::Response, api::Unreachable> {
-        api_response(self.0.request(http_request(request)))
-    }
-
-    fn upload(
-        &self,
-        request: api::Request,
-        file: &Path,
-    ) -> Result<api::Response, api::Unreachable> {
-        api_response(self.0.upload(http_request(request), path_string(file)))
-    }
-
-    fn download(
-        &self,
-        request: api::Request,
-        to: &Path,
-    ) -> Result<api::Response, api::Unreachable> {
-        api_response(self.0.download(http_request(request), path_string(to)))
-    }
 }
 
 /// The code of an MLS failure (0049): which refusal it is, and the step for
@@ -908,10 +853,17 @@ impl From<core::Outcome> for Outcome {
     }
 }
 
-/// This device's client: one per process, over the store in `dir`.
+/// This device's client: one per process, over the store in `dir`. A call
+/// that reads the store goes through `view` (0056), one that only asks the
+/// server through `hosted` (0113); `client` is for what writes.
 #[derive(uniffi::Object)]
 pub struct CoreClient {
     client: Mutex<core::Client<Foreign>>,
+    /// The server-only calls (0113): the transport and a share of the device
+    /// token, so a profile or a notification list is fetched while a sync
+    /// holds `client` through its requests. No method that moved here may
+    /// call `client()`.
+    pub(crate) hosted: core::Hosted<Foreign>,
     /// The reads (0056), on a connection and a lock of their own, so a
     /// sync holding `client` through its requests never delays them.
     view: Mutex<core::View>,
@@ -938,9 +890,11 @@ impl CoreClient {
         let mut client = core::Client::open(Path::new(&dir), &key, Foreign(transport))?;
         client.set_client_version(platform, &version)?;
         let view = client.view()?;
+        let hosted = client.hosted();
         let header = client.client_header().unwrap_or_default().to_owned();
         Ok(Arc::new(Self {
             client: Mutex::new(client),
+            hosted,
             view: Mutex::new(view),
             header,
         }))
@@ -1087,7 +1041,7 @@ impl CoreClient {
     }
 
     pub fn me(&self) -> Result<Me, CoreError> {
-        Ok(self.client()?.me()?.into())
+        Ok(self.hosted.me()?.into())
     }
 
     /// Who made an invite; none for the operator's. Needs no sign-in. A

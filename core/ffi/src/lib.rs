@@ -11,8 +11,8 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 pub use spjall_client::Unforwardable;
 use spjall_envelope as envelope;
-
 pub mod client;
+mod foreign;
 pub mod frames;
 pub mod social;
 

@@ -15,6 +15,7 @@ use crate::blobs::PoolBlobs;
 use crate::request::{method_name, request_headers, upload_headers};
 
 /// Reads upload bodies from, and writes download bodies to, the blob rows.
+#[derive(Clone)]
 pub struct XhrTransport {
     blobs: PoolBlobs,
 }

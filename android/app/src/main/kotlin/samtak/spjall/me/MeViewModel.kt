@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -62,11 +64,25 @@ class MeViewModel(
 
     fun load() {
         perform(::load) {
-            val me = account.me()
+            // Each answer is shown as it arrives (0113): what is local at once, then the
+            // profile and the blocked list, which ask the server and do not wait for each other.
             val link = account.inviteLink()
             val settings = account.settings()
-            val blocked = account.blocked()
-            _state.update { it.copy(me = me, link = link, settings = settings, blocked = blocked) }
+            _state.update { it.copy(link = link, settings = settings) }
+            coroutineScope {
+                val profile =
+                    async {
+                        val me = account.me()
+                        _state.update { it.copy(me = me) }
+                    }
+                val blocked =
+                    async {
+                        val people = account.blocked()
+                        _state.update { it.copy(blocked = people) }
+                    }
+                profile.await()
+                blocked.await()
+            }
         }
     }
 
@@ -167,7 +183,7 @@ class MeViewModel(
     /** Runs [action] off the main thread, one at a time; on failure, [again] is what [retry] repeats. */
     private fun perform(
         again: () -> Unit,
-        action: () -> Unit,
+        action: suspend () -> Unit,
     ) {
         if (_state.value.busy) return
         _state.update { it.copy(busy = true, problem = null) }

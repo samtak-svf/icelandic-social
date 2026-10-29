@@ -19,11 +19,11 @@ use spjall_store::rusqlite::{self, OptionalExtension, Transaction, params};
 
 use crate::api::conversation_id;
 use crate::api::{
-    Api, ApiError, Authorization, Inviter, Me, Platform, Provider, Registration, Transport,
+    Api, ApiError, Authorization, Inviter, Platform, Provider, Registration, Transport,
 };
 use crate::block::is_blocked;
 use crate::members::members;
-use crate::{Client, ClientError, authed, enqueue, is_id, now, this_device};
+use crate::{Client, ClientError, authed, enqueue, is_id, now, read_token, this_device};
 
 /// The link host and the app's scheme, as `hosts.link`,
 /// `hosts.linkPathPrefix` and `store.urlScheme` in `identifiers/ids.json`
@@ -408,7 +408,7 @@ impl<T: Transport> Client<T> {
             Ok::<_, ClientError>(())
         })?;
         let (device, token) = registered?;
-        self.token = Some(token);
+        self.set_token(Some(token));
         Ok(device)
     }
 
@@ -488,18 +488,13 @@ impl<T: Transport> Client<T> {
             )
             .map(drop)
         })?;
-        self.token = Some(token.to_owned());
+        self.set_token(Some(token.to_owned()));
         Ok(device)
     }
 
     /// The device token, for the WebSocket upgrade's `Authorization`.
-    pub fn device_token(&self) -> Option<&str> {
-        self.token.as_deref()
-    }
-
-    /// This account's name, mark and devices.
-    pub fn me(&mut self) -> Result<Me, ClientError> {
-        Ok(authed(&self.transport, &self.token, &self.client)?.me()?)
+    pub fn device_token(&self) -> Option<String> {
+        read_token(&self.token)
     }
 
     /// Who made an invite, before sign-in; `None` for the operator's. A
@@ -650,7 +645,7 @@ impl<T: Transport> Client<T> {
                  UPDATE push SET sent = 0;",
             )
         })?;
-        self.token = None;
+        self.set_token(None);
         match self.blobs.remove_dir_all(&self.media) {
             Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
                 Err(crate::MediaError::from(error).into())

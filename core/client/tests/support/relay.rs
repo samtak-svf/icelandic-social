@@ -173,7 +173,7 @@ struct History {
 }
 
 pub struct Relay(Mutex<State>);
-
+#[derive(Clone)]
 pub struct Link {
     relay: Arc<Relay>,
     account: String,

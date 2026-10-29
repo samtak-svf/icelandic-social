@@ -219,6 +219,7 @@ fn a_browser_is_linked_by_a_phone_and_starts_with_its_history() {
     // The phone sees a browser among the account's devices.
     let kinds: Vec<_> = a1
         .client
+        .hosted()
         .me()
         .unwrap()
         .devices

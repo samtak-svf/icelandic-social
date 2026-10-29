@@ -52,7 +52,7 @@ fn notifications_are_paged_and_read_and_an_unknown_kind_is_left_out() {
             "next": "1760000400000",
         }),
     );
-    let page = c.notifications(Some("1760000500000"), 20).unwrap();
+    let page = c.hosted().notifications(Some("1760000500000"), 20).unwrap();
     assert_eq!(page.unread, 4);
     assert_eq!(page.unseen, 2);
     assert_eq!(page.seen_at, Some(1_760_000_100_000));
@@ -95,7 +95,7 @@ fn notifications_are_paged_and_read_and_an_unknown_kind_is_left_out() {
     assert_eq!(page.notifications[1].actor, None);
 
     phone.ok();
-    c.read_notifications(1_760_000_400_000).unwrap();
+    c.hosted().read_notifications(1_760_000_400_000).unwrap();
 
     assert_eq!(
         phone.sent(),
@@ -134,7 +134,7 @@ fn a_notification_decodes_with_or_without_the_grouping_fields() {
             "unread": 2, "next": null,
         }),
     );
-    let page = phone.client.notifications(None, 20).unwrap();
+    let page = phone.client.hosted().notifications(None, 20).unwrap();
     assert_eq!(page.seen_at, None);
     assert_eq!(page.unseen, 0);
     assert_eq!(page.notifications[0].kind, NotificationKind::Reply);
@@ -161,11 +161,11 @@ fn seen_one_read_delete_and_the_levels_are_sent_as_the_server_reads_them() {
     let phone = Phone::signed_in();
     let c = &phone.client;
     phone.ok();
-    c.seen_notifications(1_760_000_400_000).unwrap();
+    c.hosted().seen_notifications(1_760_000_400_000).unwrap();
     phone.ok();
-    c.read_notification("n_1", false).unwrap();
+    c.hosted().read_notification("n_1", false).unwrap();
     phone.ok();
-    c.delete_notification("n_1").unwrap();
+    c.hosted().delete_notification("n_1").unwrap();
     phone.answer(
         200,
         json!({
@@ -176,7 +176,7 @@ fn seen_one_read_delete_and_the_levels_are_sent_as_the_server_reads_them() {
             "communities": [{ "communityId": "cm_1", "level": "off" }],
         }),
     );
-    let settings = c.notification_settings().unwrap();
+    let settings = c.hosted().notification_settings().unwrap();
     assert_eq!(
         settings.kinds,
         [
@@ -192,10 +192,12 @@ fn seen_one_read_delete_and_the_levels_are_sent_as_the_server_reads_them() {
         [("cm_1".to_owned(), NotificationLevel::Off)]
     );
     phone.ok();
-    c.set_notification_settings(&[(NotificationKind::Reaction, NotificationLevel::InApp)])
+    c.hosted()
+        .set_notification_settings(&[(NotificationKind::Reaction, NotificationLevel::InApp)])
         .unwrap();
     phone.ok();
-    c.set_community_notification_level("cm_1", NotificationLevel::Push)
+    c.hosted()
+        .set_community_notification_level("cm_1", NotificationLevel::Push)
         .unwrap();
     assert_eq!(
         phone.sent(),
@@ -226,11 +228,12 @@ fn seen_one_read_delete_and_the_levels_are_sent_as_the_server_reads_them() {
     );
     // An id the server would refuse is refused before it is sent, and one
     // with a slash cannot change the path.
-    assert!(c.delete_notification("").is_err());
-    assert!(c.delete_notification(&"n".repeat(201)).is_err());
-    assert!(c.read_notification("", true).is_err());
+    assert!(c.hosted().delete_notification("").is_err());
+    assert!(c.hosted().delete_notification(&"n".repeat(201)).is_err());
+    assert!(c.hosted().read_notification("", true).is_err());
     assert!(
-        c.set_community_notification_level("cm 1", NotificationLevel::Off)
+        c.hosted()
+            .set_community_notification_level("cm 1", NotificationLevel::Off)
             .is_err()
     );
 }

@@ -40,6 +40,7 @@ pub struct Canned {
 pub const IMAGE: &[u8] = b"RIFF\0\0\0\0WEBPVP8 ";
 
 /// The relay for sign-in, and the canned answers for the social calls.
+#[derive(Clone)]
 pub struct Hosted {
     pub link: Link,
     pub canned: Arc<Mutex<Canned>>,
