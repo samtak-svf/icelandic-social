@@ -1,4 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import playInvite from "../assets/testers/play-invite.webp?url";
+import playListing from "../assets/testers/play-listing.webp?url";
+import playTester from "../assets/testers/play-tester.webp?url";
 import { strings } from "../generated/brand/strings.ts";
 
 // Public tester guide (/testers, #350): the store screens a new tester passes
@@ -7,27 +10,45 @@ import { strings } from "../generated/brand/strings.ts";
 // sign-in screen links to it.
 export const Route = createFileRoute("/testers")({ component: TestersPage });
 
+// A step is its text plus the store screens it shows, when it has any. The
+// sizes are the intrinsic ones, so the page does not shift while they load.
 const PLATFORMS = [
   {
     id: "android",
     heading: strings.testers_android_heading,
     steps: [
-      strings.testers_android_step_open,
-      strings.testers_android_step_accept,
-      strings.testers_android_step_install,
-      strings.testers_android_step_wait,
-      strings.testers_last_step,
+      { text: strings.testers_android_step_open },
+      {
+        text: strings.testers_android_step_accept,
+        images: [
+          { src: playInvite, alt: strings.testers_image_play_invite_alt, width: 720, height: 936 },
+        ],
+      },
+      {
+        text: strings.testers_android_step_install,
+        images: [
+          { src: playTester, alt: strings.testers_image_play_tester_alt, width: 720, height: 1008 },
+          {
+            src: playListing,
+            alt: strings.testers_image_play_listing_alt,
+            width: 720,
+            height: 1324,
+          },
+        ],
+      },
+      { text: strings.testers_android_step_wait },
+      { text: strings.testers_last_step },
     ],
   },
   {
     id: "iphone",
     heading: strings.testers_iphone_heading,
     steps: [
-      strings.testers_iphone_step_invite,
-      strings.testers_iphone_step_testflight,
-      strings.testers_iphone_step_group,
-      strings.testers_iphone_step_install,
-      strings.testers_last_step,
+      { text: strings.testers_iphone_step_invite },
+      { text: strings.testers_iphone_step_testflight },
+      { text: strings.testers_iphone_step_group },
+      { text: strings.testers_iphone_step_install },
+      { text: strings.testers_last_step },
     ],
   },
 ] as const;
@@ -61,7 +82,24 @@ function TestersPage() {
           <h2 className="text-xl font-semibold">{p.heading}</h2>
           <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted-fg">
             {p.steps.map((step) => (
-              <li key={step}>{step}</li>
+              <li key={step.text}>
+                {step.text}
+                {"images" in step && (
+                  <div className="flex flex-wrap gap-3">
+                    {step.images.map((img) => (
+                      <img
+                        key={img.src}
+                        src={img.src}
+                        alt={img.alt}
+                        width={img.width}
+                        height={img.height}
+                        loading="lazy"
+                        className="mt-2 h-auto w-full max-w-xs rounded-md border border-border"
+                      />
+                    ))}
+                  </div>
+                )}
+              </li>
             ))}
           </ol>
         </section>

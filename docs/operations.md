@@ -170,7 +170,10 @@ cf d1 execute spjall-db --remote --command \
 
 Testers reach the maintainer directly and are added by hand
 ([decision 0084](decisions/0084-testers-reach-the-maintainer-directly.md)). Nothing in the
-Worker queues them, and no job runs on the maintainer's machine for them.
+Worker queues them, and no job runs on the maintainer's machine for them. The link the
+maintainer sends a would-be tester is the public guide at https://spjall.samtak.is/testers
+([decision 0112](decisions/0112-tester-guide-in-the-web-app.md)): it walks the Play opt-in and
+TestFlight screens, and the maintainer adds the tester's address afterwards.
 
 ## Monitoring
 

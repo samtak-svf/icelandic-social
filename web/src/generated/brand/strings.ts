@@ -680,9 +680,9 @@ export const strings = {
   /** Android step on /testers: open the Play test link in Chrome, signed in with the same Gmail address. */
   testers_android_step_open: "Opnaðu hlekkinn sem við sendum þér í Chrome og skráðu þig inn með sama Gmail-netfangi og þú sendir okkur.",
   /** Android step on /testers: the Play opt-in page and accepting it. */
-  testers_android_step_accept: "Google Play segir að þú sért prófari fyrir is.samtak.spjall og að appið sé óyfirfarið. Samþykktu að gerast prófari.",
+  testers_android_step_accept: "Google Play býður þér að prófa is.samtak.spjall og segir að appið sé óyfirfarið. Samþykktu boðið (á ensku „Accept invite“).",
   /** Android step on /testers: download the test app from its unreviewed store listing. */
-  testers_android_step_install: "Veldu að sækja prófunarappið. Þá opnast síða appsins í Google Play, þar sem það er merkt óyfirfarið, og þaðan setur þú það upp.",
+  testers_android_step_install: "Veldu að sækja prófunarappið (á ensku „Download test app“). Þá opnast síða appsins í Google Play, þar sem það er merkt óyfirfarið, og þaðan setur þú það upp.",
   /** Android step on /testers: on an error, wait about 30 minutes and retry (decision 0084). */
   testers_android_step_wait: "Ef villa kemur upp skaltu bíða í um hálftíma og reyna aftur. Það getur tekið Google smástund að skrá nýjan prófara.",
   /** Section heading on /testers for the iPhone steps; also the platform switch's label. */
@@ -699,6 +699,12 @@ export const strings = {
   testers_last_step: "Opnaðu Hjal og skráðu þig inn með Google.",
   /** Closing paragraph on /testers: where to write when a step does not work. */
   testers_help: "Ef eitthvað stendur á sér skaltu skrifa okkur á samtak@samtak.is og segja frá því sem þú sérð á skjánum.",
+  /** Alt text on /testers for the screenshot of the Play internal-test invitation page, before accepting. */
+  testers_image_play_invite_alt: "Boðssíða Google Play: þér er boðið að prófa is.samtak.spjall sem er merkt óyfirfarið.",
+  /** Alt text on /testers for the screenshot of the Play internal-test page after accepting, with the download button. */
+  testers_image_play_tester_alt: "Síða Google Play eftir að boðið er samþykkt, með hnappi til að sækja prófunarappið.",
+  /** Alt text on /testers for the screenshot of the app's Play store listing marked unreviewed. */
+  testers_image_play_listing_alt: "Síða appsins í Google Play, merkt óyfirfarið, með hnappinum „Setja upp“.",
   /** Confirm button that saves a change, such as a group's name (docs/decisions/0078). */
   save: "Vista",
   /** System card when a member names or renames the group (docs/decisions/0078). */
