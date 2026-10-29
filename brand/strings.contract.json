@@ -1941,6 +1941,18 @@
       "surfaces": ["web"],
       "description": "Closing paragraph on /testers: where to write when a step does not work."
     },
+    "testers_image_play_invite_alt": {
+      "surfaces": ["web"],
+      "description": "Alt text on /testers for the screenshot of the Play internal-test invitation page, before accepting."
+    },
+    "testers_image_play_tester_alt": {
+      "surfaces": ["web"],
+      "description": "Alt text on /testers for the screenshot of the Play internal-test page after accepting, with the download button."
+    },
+    "testers_image_play_listing_alt": {
+      "surfaces": ["web"],
+      "description": "Alt text on /testers for the screenshot of the app's Play store listing marked unreviewed."
+    },
     "add_people": {
       "surfaces": ["android", "ios"],
       "description": "Action on a group's info screen: add people to the group (docs/decisions/0078)."
