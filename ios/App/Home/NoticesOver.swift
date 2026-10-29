@@ -8,4 +8,10 @@ struct NoticesOver: Equatable {
     mutating func open(from current: HomeView.Tab) {
         if current != .notifications { tab = current }
     }
+
+    /// The tab that is open: the one the notifications show over while they are open, otherwise `current`.
+    func active(_ current: HomeView.Tab) -> HomeView.Tab { current == .notifications ? tab : current }
+
+    /// Whether a tap on `target` is on the open tab, which returns to its root; another tab keeps its stack (#356).
+    func reselects(_ target: HomeView.Tab, current: HomeView.Tab) -> Bool { target == active(current) }
 }

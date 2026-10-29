@@ -60,6 +60,11 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
   await expect(owner.getByRole("heading", { level: 1, name })).toBeVisible();
   const community = owner.url();
 
+  // The tab of the page the reader is on returns to the tab's root (#356).
+  await owner.getByRole("link", { name: strings.tab_communities }).click();
+  await expect(owner).toHaveURL(/\/communities$/);
+  await owner.goto(community);
+
   // The member finds it by name and joins.
   for (const one of [member, spammer]) {
     await one.getByRole("link", { name: strings.tab_communities }).click();

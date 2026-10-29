@@ -22,4 +22,24 @@ final class NoticesOverTests: XCTestCase {
     func testWithoutTheBellBackGoesToTheConversations() {
         XCTAssertEqual(NoticesOver().tab, .conversations, "a tapped push opens the notifications over the list")
     }
+
+    func testATapOnTheOpenTabReturnsItToItsRoot() {
+        let over = NoticesOver()
+        for tab in [HomeView.Tab.conversations, .communities, .me] {
+            XCTAssertTrue(over.reselects(tab, current: tab), "\(tab) is open")
+        }
+    }
+
+    func testATapOnAnotherTabKeepsItsStack() {
+        XCTAssertFalse(NoticesOver().reselects(.communities, current: .conversations))
+        XCTAssertFalse(NoticesOver().reselects(.me, current: .communities))
+    }
+
+    func testTheTabUnderTheNotificationsIsTheOpenOne() {
+        var over = NoticesOver()
+        over.open(from: .communities)
+        XCTAssertEqual(over.active(.notifications), .communities)
+        XCTAssertTrue(over.reselects(.communities, current: .notifications))
+        XCTAssertFalse(over.reselects(.conversations, current: .notifications))
+    }
 }
