@@ -17,7 +17,10 @@ import samtak.spjall.conversations.SCREENSHOT_SDK
 import samtak.spjall.social.SocialRoutes
 import samtak.spjall.social.openNotifications
 
-/** Tapping the active tab returns to its root, and tapping another restores that tab's saved stack (#356). */
+/**
+ * Tapping the active tab returns to its root, and tapping another restores that tab's saved stack (#356) without
+ * the notifications left on it (#363).
+ */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [SCREENSHOT_SDK])
 class TabReselectTest {
@@ -36,6 +39,7 @@ class TabReselectTest {
                 page("${AppRoutes.CONVERSATION}/{id}")
                 page(SocialRoutes.NOTIFICATIONS)
                 page(SocialRoutes.COMMUNITIES)
+                page(AppRoutes.ME)
             }
         }
         compose.waitForIdle()
@@ -69,9 +73,20 @@ class TabReselectTest {
         onUi { openNotifications() }
         tap(SocialRoutes.COMMUNITIES)
         tap(AppRoutes.LIST)
-        assertEquals(listOf("conversations", "conversation/c1", "notifications"), stack())
+        assertEquals(listOf("conversations", "conversation/c1"), stack())
         tap(AppRoutes.LIST)
         assertEquals(listOf("conversations"), stack())
+    }
+
+    @Test
+    fun aTabLeftFromTheNotificationsComesBackWithoutThem() {
+        host()
+        tap(AppRoutes.ME)
+        onUi { openNotifications() }
+        tap(AppRoutes.LIST)
+        assertEquals(listOf("conversations"), stack())
+        tap(AppRoutes.ME)
+        assertEquals(listOf("conversations", "me"), stack())
     }
 
     @Test
