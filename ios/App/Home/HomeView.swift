@@ -91,7 +91,7 @@ struct HomeView: View {
                 // under them becomes a rail beside them, so a stack keeps its scroll position (decision 0087).
                 HStack(spacing: 0) {
                     if layout.navigation == .rail {
-                        NavRail(selection: $tab, items: tabItems)
+                        NavRail(selection: noticesOver.active(tab), select: select, items: tabItems)
                     }
                     VStack(spacing: 0) {
                         tabContent
@@ -99,7 +99,7 @@ struct HomeView: View {
                             .frame(maxWidth: .infinity)
                         // Only on the roots: what they lead to has the screen to itself.
                         if layout.navigation == .bar && atRoot {
-                            TabBar(selection: $tab, items: tabItems)
+                            TabBar(selection: noticesOver.active(tab), select: select, items: tabItems)
                         }
                     }
                 }
@@ -201,6 +201,21 @@ struct HomeView: View {
             .init(tab: .communities, label: localized("tab_communities"), systemImage: "person.3"),
             .init(tab: .me, label: localized("tab_me"), systemImage: "person"),
         ]
+    }
+
+    /// A tap on a tab. The open tab returns to its root and closes the notifications over it; another tab shows
+    /// the stack it was left with (#356).
+    private func select(_ target: Tab) {
+        if noticesOver.reselects(target, current: tab) {
+            switch target {
+            case .conversations: path = []
+            case .communities: communitiesPath = []
+            case .me: mePath = []
+            case .notifications: break
+            }
+            noticesPath = []
+        }
+        tab = target
     }
 
     /// The bell every full screen draws in its header (decisions 0109, 0111): the unseen count, and a tap that opens the

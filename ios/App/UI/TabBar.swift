@@ -11,7 +11,9 @@ struct TabBar<Tab: Hashable>: View {
         let systemImage: String
     }
 
-    @Binding var selection: Tab
+    /// The open tab; a tap on it is a reselect, which the owner answers (#356).
+    let selection: Tab
+    let select: (Tab) -> Void
     let items: [Item]
 
     var body: some View {
@@ -19,7 +21,7 @@ struct TabBar<Tab: Hashable>: View {
             ForEach(items, id: \.tab) { item in
                 let selected = item.tab == selection
                 Button {
-                    selection = item.tab
+                    select(item.tab)
                 } label: {
                     VStack(spacing: 3) {
                         Image(systemName: item.systemImage)

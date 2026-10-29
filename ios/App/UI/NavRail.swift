@@ -5,7 +5,9 @@ import SwiftUI
 /// each tab's header (decision 0109). One view at both classes, so a window that grows from medium to expanded keeps
 /// its rail.
 struct NavRail<Tab: Hashable>: View {
-    @Binding var selection: Tab
+    /// The open tab; a tap on it is a reselect, which the owner answers (#356).
+    let selection: Tab
+    let select: (Tab) -> Void
     let items: [TabBar<Tab>.Item]
 
     /// The rail's width.
@@ -16,7 +18,7 @@ struct NavRail<Tab: Hashable>: View {
             ForEach(items, id: \.tab) { item in
                 let selected = item.tab == selection
                 Button {
-                    selection = item.tab
+                    select(item.tab)
                 } label: {
                     VStack(spacing: 3) {
                         Image(systemName: item.systemImage)
