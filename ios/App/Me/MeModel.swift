@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import os
 import SpjallCore
 
 /// "Ég" (decisions 0009, 0019, 0022, 0024): who the person is, their invite
@@ -20,6 +21,8 @@ final class MeModel {
     /// This device was revoked or the account deleted: back to sign-in.
     private(set) var signedOut = false
 
+    private static let timing = Logger(subsystem: Bundle.main.bundleIdentifier ?? "app", category: "load")
+
     private let account: Account
     private var failed: (() async -> Void)?
 
@@ -30,13 +33,19 @@ final class MeModel {
     func load() async {
         let account = account
         await perform(again: { await self.load() }) {
-            let (me, link, settings, blocked) = try await offMain {
-                (try account.me(), try account.inviteLink(), try account.settings(), try account.blocked())
-            }
-            self.me = me
+            // Each answer is shown as it arrives (decision 0113): what is local at once, then the profile
+            // and the blocked list, which ask the server and do not wait for each other.
+            let clock = ContinuousClock()
+            let start = clock.now
+            async let profile = offMain { try account.me() }
+            async let people = offMain { try account.blocked() }
+            let (link, settings) = try await offMain { (try account.inviteLink(), try account.settings()) }
             self.link = link
             self.settings = settings
-            self.blocked = blocked
+            self.me = try await profile
+            let meMs = Int((clock.now - start) / .milliseconds(1))
+            Self.timing.info("me=\(meMs, privacy: .public)ms")
+            self.blocked = try await people
         }
     }
 
