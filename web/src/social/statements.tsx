@@ -8,7 +8,7 @@ import {
 import { strings } from "../generated/brand/strings.ts";
 import type { Problem } from "../problem.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
-import { LOGGED } from "./moderation-log.tsx";
+import { decisionText } from "./moderation-log.tsx";
 import { outcome, when } from "./outcome.ts";
 import { usePaged, type Paged } from "./paged.ts";
 
@@ -100,11 +100,11 @@ export function StatementCard({
 
   return (
     <article
-      aria-label={LOGGED[statement.action]}
+      aria-label={decisionText(statement)}
       className="flex flex-col gap-2 rounded-md border border-border p-4"
     >
       <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="font-semibold">{LOGGED[statement.action]}</span>
+        <span className="font-semibold">{decisionText(statement)}</span>
         <time
           dateTime={new Date(statement.createdAt).toISOString()}
           className="text-sm text-muted-fg"

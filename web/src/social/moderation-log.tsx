@@ -1,12 +1,13 @@
 import type { ModerationLogEntry } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
+import { formatIsDateTime } from "../lib/is-format.ts";
 import { when } from "./outcome.ts";
 
 // The entries of a moderation log, as a community's Stjórna and Samtak's
 // platform screen both list them (decisions 0063, 0115).
 
 /** The actions on a community that are kept, told with the words the queue uses. */
-export const LOGGED: Record<ModerationLogEntry["action"], string> = {
+const LOGGED: Record<ModerationLogEntry["action"], string> = {
   hide_post: strings.moderation_decision_hide_post,
   remove_post: strings.moderation_decision_remove_post,
   restore_post: strings.moderation_decision_restore_post,
@@ -38,6 +39,20 @@ export const LOGGED: Record<ModerationLogEntry["action"], string> = {
   review_overturned: strings.moderation_log_review_overturned,
 };
 
+/**
+ * What was decided, in one sentence. A suspension says how long it was for, and
+ * having no end date is said as such: it stands until a moderator lifts it.
+ */
+export function decisionText({
+  action,
+  until,
+}: Readonly<{ action: ModerationLogEntry["action"]; until: number | null }>): string {
+  if (action !== "suspend_account") return LOGGED[action];
+  return until === null
+    ? strings.moderation_decision_suspend_account_open
+    : strings.moderation_decision_suspend_account_until({ date: formatIsDateTime(until) });
+}
+
 /** The entries as given, newest first; the account acted on is named with `target`. */
 export function LogEntries({
   entries,
@@ -48,7 +63,7 @@ export function LogEntries({
       {entries.map((entry) => (
         <li key={entry.entryId} className="flex flex-col gap-1 rounded-md bg-muted p-2">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <span className="font-semibold">{LOGGED[entry.action]}</span>
+            <span className="font-semibold">{decisionText(entry)}</span>
             <time
               dateTime={new Date(entry.createdAt).toISOString()}
               className="text-sm text-muted-fg"

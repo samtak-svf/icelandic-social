@@ -44,6 +44,7 @@ type Row = {
   target_account: string | null;
   reason: string;
   created_at: number;
+  suspended_until: number | null;
   account_id: string | null;
   state: "open" | "upheld" | "overturned" | null;
   asked_at: number | null;
@@ -55,7 +56,7 @@ type Row = {
 const LISTED = REVIEWABLE.map((a) => `'${a}'`).join(", ");
 
 const SELECTED = `l.entry_id, l.community_id, l.actor_id, l.action, l.target_kind, l.target_id,
-       l.target_account, l.reason, l.created_at, r.account_id, r.state, r.asked_at, r.decided_at,
+       l.target_account, l.reason, l.created_at, l.suspended_until, r.account_id, r.state, r.asked_at, r.decided_at,
        r.reason AS review_reason, r.restored`;
 
 /**
@@ -108,6 +109,7 @@ async function statementPage(
         communityId: r.community_id,
         reason: r.reason,
         createdAt: r.created_at,
+        until: r.suspended_until,
         body: await textOf(env, r),
         canAsk: r.state === null && (await targetState(env, r)) !== "visible",
         review:
@@ -185,6 +187,7 @@ async function openReviews(env: Env, accountId: string, before: string | undefin
         targetAccount: named(r.target_account),
         reason: r.reason,
         createdAt: r.created_at,
+        until: r.suspended_until,
         body: await textOf(env, r),
         askedAt: r.asked_at ?? r.created_at,
         canDecide: r.actor_id !== accountId && r.account_id !== accountId,

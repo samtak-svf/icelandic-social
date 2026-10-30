@@ -3,6 +3,7 @@ import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { notice, type Notice } from "../../../src/modules/jobs/index.ts";
 import { shownTo } from "../../../src/modules/notifications/list.ts";
+import type { NoticeReach } from "../../../src/shared/client-version.ts";
 import { CLIENT_HEADER, decodesEveryNotice } from "../../../src/shared/client-version.ts";
 import { worker } from "../../main.ts";
 import { community, ok, person, type Person } from "../../people.ts";
@@ -167,7 +168,7 @@ describe("a notification with no community", () => {
 describe("what an old client is shown", () => {
   /** Whether a row of this kind and community passes the filter, asked of D1 itself. */
   const passes = async (
-    knows: boolean,
+    knows: NoticeReach,
     kind: string,
     communityId: string | null,
     action: string | null = null,
@@ -186,21 +187,21 @@ describe("what an old client is shown", () => {
   it("leaves out a kind added after the release it knows", async () => {
     const owner = await person("Eigandi");
     const id = await community(owner, "open");
-    expect(await passes(false, "comment", id)).toBe(true);
-    expect(await passes(false, "friend_request", id)).toBe(false);
-    expect(await passes(false, "comment", null)).toBe(false);
-    expect(await passes(true, "friend_request", id)).toBe(true);
-    expect(await passes(true, "friend_request", null)).toBe(true);
+    expect(await passes("frozen", "comment", id)).toBe(true);
+    expect(await passes("frozen", "friend_request", id)).toBe(false);
+    expect(await passes("frozen", "comment", null)).toBe(false);
+    expect(await passes("all", "friend_request", id)).toBe(true);
+    expect(await passes("all", "friend_request", null)).toBe(true);
   });
 
   // An old app reads a new action as unknown and words it as a removal (0115).
   it("leaves out an action added after the release it knows", async () => {
     const owner = await person("Eigandi");
     const id = await community(owner, "open");
-    expect(await passes(false, "moderated", id, "remove_post")).toBe(true);
+    expect(await passes("frozen", "moderated", id, "remove_post")).toBe(true);
     for (const action of ["review_upheld", "review_overturned", "clear_account_photo"]) {
-      expect(await passes(false, "moderated", id, action)).toBe(false);
-      expect(await passes(true, "moderated", id, action)).toBe(true);
+      expect(await passes("frozen", "moderated", id, action)).toBe(false);
+      expect(await passes("all", "moderated", id, action)).toBe(true);
     }
   });
 });

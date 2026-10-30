@@ -6409,6 +6409,30 @@
         }
       }
     },
+    "moderation_decision_suspend_account_until": {
+      "comment": "What a statement, the log and a review card say of a suspension decided with an end date (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aðgangurinn var settur í bann til %1$@."
+          }
+        }
+      }
+    },
+    "moderation_decision_suspend_account_open": {
+      "comment": "What a statement, the log and a review card say of a suspension decided with no end date: it stands until a moderator lifts it (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aðgangurinn var settur í bann þar til stjórnandi aflétti því."
+          }
+        }
+      }
+    },
     "moderation_decision_unsuspend_account": {
       "comment": "The decision recorded when a platform moderator lifts a suspension (decision 0115).",
       "extractionState": "manual",
@@ -6488,7 +6512,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aðgangurinn þinn er í banni og getur ekki gert þetta. Þú getur enn lesið og sent skilaboð."
+            "value": "Aðgangurinn þinn er í banni svo að þú getur ekki gert þetta. Þú getur enn lesið og sent skilaboð."
           }
         }
       }
@@ -6500,7 +6524,7 @@
         "is": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aðgangurinn þinn er í banni til %1$@ og getur ekki gert þetta. Þú getur enn lesið og sent skilaboð."
+            "value": "Aðgangurinn þinn er í banni til %1$@ svo að þú getur ekki gert þetta. Þú getur enn lesið og sent skilaboð."
           }
         }
       }

@@ -1,6 +1,7 @@
 import { strings } from "../src/generated/brand/strings.ts";
 import { png } from "./images.ts";
 import {
+  accountOf,
   cardMenu,
   found,
   join,
@@ -40,14 +41,7 @@ test("a platform moderator clears an account's photo from the queue; others are 
 
   // The reporter reports the author's account (decision 0115): the web has no
   // button for it yet, so the report is filed through the API as the app would.
-  const accountId = await author.evaluate(async (headers) => {
-    const answer = await fetch("/v1/me", { headers });
-    const body: unknown = await answer.json();
-    return typeof body === "object" && body !== null && "accountId" in body
-      ? String(body.accountId)
-      : "";
-  }, CLIENT);
-  expect(accountId).not.toBe("");
+  const accountId = await accountOf(author);
   const filed = await reporter.evaluate(
     async ([id, client]) => {
       const answer = await fetch("/v1/reports", {

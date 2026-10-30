@@ -1106,6 +1106,10 @@
     <string name="notice_account_unsuspended">Stjórnandi aflétti banni af aðganginum þínum.</string>
     <!-- The decision recorded when a platform moderator suspends an account (decision 0115). -->
     <string name="moderation_decision_suspend_account">Aðgangurinn var settur í bann.</string>
+    <!-- What a statement, the log and a review card say of a suspension decided with an end date (decision 0115). -->
+    <string name="moderation_decision_suspend_account_until">Aðgangurinn var settur í bann til %1$s.</string>
+    <!-- What a statement, the log and a review card say of a suspension decided with no end date: it stands until a moderator lifts it (decision 0115). -->
+    <string name="moderation_decision_suspend_account_open">Aðgangurinn var settur í bann þar til stjórnandi aflétti því.</string>
     <!-- The decision recorded when a platform moderator lifts a suspension (decision 0115). -->
     <string name="moderation_decision_unsuspend_account">Banni var aflétt af aðganginum.</string>
     <!-- The platform moderator's action: suspend the reported account (decision 0115). -->
@@ -1119,9 +1123,9 @@
     <!-- The duration a suspension has when it has no end date; beside the mute durations. -->
     <string name="platform_suspend_open">Þar til banni er aflétt</string>
     <!-- The server refused a write because the account is suspended, with no end date (decision 0115). -->
-    <string name="problem_suspended">Aðgangurinn þinn er í banni og getur ekki gert þetta. Þú getur enn lesið og sent skilaboð.</string>
+    <string name="problem_suspended">Aðgangurinn þinn er í banni svo að þú getur ekki gert þetta. Þú getur enn lesið og sent skilaboð.</string>
     <!-- The server refused a write because the account is suspended until the date (decision 0115). -->
-    <string name="problem_suspended_until">Aðgangurinn þinn er í banni til %1$s og getur ekki gert þetta. Þú getur enn lesið og sent skilaboð.</string>
+    <string name="problem_suspended_until">Aðgangurinn þinn er í banni til %1$s svo að þú getur ekki gert þetta. Þú getur enn lesið og sent skilaboð.</string>
     <!-- The notice a suspended account sees on every signed-in screen, with no end date (decision 0115). -->
     <string name="suspended_notice">Aðgangurinn þinn er í banni. Þú getur lesið og sent skilaboð, en ekki skrifað færslur eða athugasemdir, brugðist við, stofnað eða gengið í hóp né boðið öðrum.</string>
     <!-- The notice a suspended account sees on every signed-in screen, with the end date (decision 0115). -->

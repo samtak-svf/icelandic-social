@@ -128,7 +128,11 @@ what the platform has today is too little to open walls on.
    friend requests and creating or joining a community. It does not touch conversations, which are end-to-end
    encrypted and which a person may need. The person is told and has one review. Built: poll votes and inviting are
    refused as well, and moderating in a community they already moderate continues
-   (`backend/src/identity/suspension.ts`); friend requests and editing take the same seam when they exist.
+   (`backend/src/identity/suspension.ts`); friend requests and editing take the same seam when they exist. The log
+   entry keeps the end date it was decided with (`moderation_log.suspended_until`), so a statement, the log and a
+   review card say how long it was for after the account's own columns have moved on; no date means until a moderator
+   lifts it. A notice about it goes only to a client that words it, `SUSPENSION_NOTICE_CLIENT_VERSION`: 0.19.0 decodes
+   the action but would call it a removal.
 5. **A grouped notice to platform moderators when reports wait**, because otherwise nobody looks at the queue.
 6. **At least one row in production's `platform_moderators`** (`0016_moderation.sql:6–9`: never by a route), verified
    by the maintainer. This record's author could not check production.

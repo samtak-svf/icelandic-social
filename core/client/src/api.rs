@@ -1121,28 +1121,6 @@ pub struct LogTarget {
     pub id: String,
 }
 
-/// One action in a community's moderation log, with the reason its
-/// moderator gave.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ModerationLogEntry {
-    pub entry_id: u64,
-    /// None for an action a platform moderator took on an account.
-    pub community_id: Option<String>,
-    /// Who did it; none once that account is deleted.
-    pub actor: Option<Author>,
-    /// Done as one of the platform's moderators rather than as this
-    /// community's.
-    pub as_platform: bool,
-    pub action: ModerationLogAction,
-    pub target: LogTarget,
-    /// Whose content it is, or the account acted on.
-    pub target_account: Option<Author>,
-    pub reason: String,
-    /// Unix milliseconds.
-    pub created_at: u64,
-}
-
 /// A page of a community's moderation log, newest first, and the cursor of
 /// the next, older page.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]

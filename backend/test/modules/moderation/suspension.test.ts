@@ -20,7 +20,8 @@ import { recorder, run, type Page } from "../notifications/support.ts";
 
 const BASE = "https://spjall.test";
 const DAY = 24 * 60 * 60 * 1000;
-const KNOWING = () => `android/${env.NOTICE_CLIENT_VERSION}`;
+const KNOWING = () => `android/${env.SUSPENSION_NOTICE_CLIENT_VERSION}`;
+const DECODING = () => `android/${env.NOTICE_CLIENT_VERSION}`;
 const OLD = "android/0.17.7";
 
 /** A community with a member's post, comment and poll, and a person to invite. */
@@ -221,6 +222,7 @@ type Statement = {
   entryId: number;
   action: string;
   reason: string;
+  until: number | null;
   canAsk: boolean;
   review: { state: string; restored: boolean } | null;
 };
@@ -531,6 +533,64 @@ describe("the notice of a suspension (decision 0115)", () => {
     const old = await inboxAs(one, OLD);
     expect(old.notifications).toEqual([]);
     expect([old.unread, old.unseen]).toEqual([0, 0]);
+  });
+
+  it("is withheld from a client that decodes it but would word it as a removal", async () => {
+    const platform = await platformModerator("Samtak");
+    const one = await person("Einn");
+    await suspend(platform, one);
+    const decoding = await inboxAs(one, DECODING());
+    expect(decoding.notifications).toEqual([]);
+    expect([decoding.unread, decoding.unseen]).toEqual([0, 0]);
+  });
+});
+
+describe("how long a suspension was for (decision 0115)", () => {
+  it("is on the statement, in the log and on the review card, and null with no end date", async () => {
+    const [platform, second] = [
+      await platformModerator("Samtak"),
+      await platformModerator("Önnur"),
+    ];
+    const [timed, open] = [await person("Tímabundið"), await person("Ótímabundið")];
+    const until = Date.now() + 7 * DAY;
+    await suspend(platform, timed, until);
+    await suspend(platform, open);
+
+    const [timedStatement] = await statements(timed);
+    const [openStatement] = await statements(open);
+    if (!timedStatement || !openStatement) throw new Error("no statement");
+    expect([timedStatement.until, openStatement.until]).toEqual([until, null]);
+
+    const { entries } = await ok<{ entries: { target: { id: string }; until: number | null }[] }>(
+      await platform.call("GET", "/v1/moderation/log"),
+    );
+    const inLog = (one: Person) => entries.find((e) => e.target.id === one.accountId)?.until;
+    expect([inLog(timed), inLog(open)]).toEqual([until, null]);
+
+    for (const [one, statement] of [
+      [timed, timedStatement],
+      [open, openStatement],
+    ] as const) {
+      expect((await ask(one, statement.entryId)).status).toBe(204);
+    }
+    const { reviews } = await ok<{ reviews: { entryId: number; until: number | null }[] }>(
+      await second.call("GET", "/v1/moderation/reviews"),
+    );
+    const onCard = (s: { entryId: number }) => reviews.find((r) => r.entryId === s.entryId)?.until;
+    expect([onCard(timedStatement), onCard(openStatement)]).toEqual([until, null]);
+  });
+
+  it("stays as decided after the account's own columns move on", async () => {
+    const platform = await platformModerator("Samtak");
+    const one = await person("Einn");
+    const [first, later] = [Date.now() + DAY, Date.now() + 9 * DAY];
+    await suspend(platform, one, first);
+    await suspend(platform, one, later);
+    await unsuspend(platform, one);
+    expect((await statements(one)).map((s) => [s.action, s.until])).toEqual([
+      ["suspend_account", later],
+      ["suspend_account", first],
+    ]);
   });
 });
 

@@ -147,8 +147,8 @@ export async function titleOf(page: Page): Promise<string> {
   return (await page.getByRole("heading", { level: 1 }).textContent()) ?? "";
 }
 
-/** Makes the person in `page` a platform moderator, through the dev Worker. */
-export async function platformModerator(page: Page) {
+/** The account of the person in `page`. */
+export async function accountOf(page: Page): Promise<string> {
   const accountId = await page.evaluate(async (headers) => {
     const answer = await fetch("/v1/me", { headers });
     const body: unknown = await answer.json();
@@ -157,6 +157,12 @@ export async function platformModerator(page: Page) {
       : "";
   }, CLIENT);
   expect(accountId).not.toBe("");
+  return accountId;
+}
+
+/** Makes the person in `page` a platform moderator, through the dev Worker. */
+export async function platformModerator(page: Page) {
+  const accountId = await accountOf(page);
   const url = `${DEV}/dev/platform-moderator?account=${encodeURIComponent(accountId)}`;
   expect((await fetch(url, { method: "POST" })).status).toBe(204);
 }

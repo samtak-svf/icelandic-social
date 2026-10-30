@@ -90,8 +90,8 @@ fn a_statement_reads_with_its_review_and_never_names_who_acted() {
                 {
                     "entryId": 7, "action": "remove_post",
                     "target": { "kind": "post", "id": "post_1" }, "communityId": "cm_1",
-                    "reason": "off topic", "createdAt": AT, "body": "the text", "canAsk": true,
-                    "review": null,
+                    "reason": "off topic", "createdAt": AT, "until": 1_800_000_000_000_u64,
+                    "body": "the text", "canAsk": true, "review": null,
                 },
                 {
                     "entryId": 6, "action": "clear_account_photo",
@@ -122,6 +122,8 @@ fn a_statement_reads_with_its_review_and_never_names_who_acted() {
     };
     assert_eq!(first.action, ModerationLogAction::RemovePost);
     assert_eq!(first.body.as_deref(), Some("the text"));
+    assert_eq!(first.until, Some(1_800_000_000_000));
+    assert_eq!(second.until, None, "a server before the field");
     assert!(first.can_ask && first.review.is_none());
     let review = second.review.as_ref().unwrap();
     assert_eq!(second.action, ModerationLogAction::ClearAccountPhoto);

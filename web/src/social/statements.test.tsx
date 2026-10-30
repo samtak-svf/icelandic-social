@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { ModerationReview, ModerationStatement } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
+import { formatIsDateTime } from "../lib/is-format.ts";
 import type { Paged } from "./paged.ts";
 import { reviewSentence, StatementCard, StatementsView } from "./statements.tsx";
 
@@ -17,6 +18,7 @@ const statement = (over: Partial<ModerationStatement> = {}): ModerationStatement
   communityId: "c1",
   reason: "Brot á reglum",
   createdAt: 1_700_000_000_000,
+  until: null,
   body: "Textinn minn",
   canAsk: true,
   review: null,
@@ -52,6 +54,17 @@ describe("a statement of reasons", () => {
     expect(html).toContain("Textinn minn");
     expect(html).toContain(strings.statement_ask_once);
     expect(html).toContain(strings.statement_ask);
+  });
+
+  it("says how long a suspension was for, and that one with no end date waits for a moderator", () => {
+    const suspended = { action: "suspend_account", target: { kind: "account", id: "a1" } } as const;
+    const until = 1_700_500_000_000;
+    expect(draw(statement({ ...suspended, until }))).toContain(
+      strings.moderation_decision_suspend_account_until({ date: formatIsDateTime(until) }),
+    );
+    expect(draw(statement({ ...suspended, until: null }))).toContain(
+      strings.moderation_decision_suspend_account_open,
+    );
   });
 
   it("says the text is gone after its 90 days", () => {

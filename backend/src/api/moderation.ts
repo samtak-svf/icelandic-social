@@ -173,6 +173,10 @@ const LogEntry = z
     targetAccount: z.union([Author, z.null()]),
     reason: z.string(),
     createdAt: CreatedAt,
+    until: z.int().nullable().openapi({
+      description:
+        "The end a suspension was given when it was decided, in Unix milliseconds; null on any other action and on a suspension until a moderator lifts it",
+    }),
   })
   .openapi("ModerationLogEntry");
 

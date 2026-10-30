@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ModerationLogEntry, OpenModerationReview, Report } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import type { Paged } from "./paged.ts";
+import { formatIsDateTime } from "../lib/is-format.ts";
 import { LogEntries } from "./moderation-log.tsx";
 import {
   act,
@@ -64,6 +65,7 @@ const entry: ModerationLogEntry = {
   targetAccount: person(null),
   reason: "Ástæða aðgerðar",
   createdAt: 1_700_000_100_000,
+  until: null,
 };
 
 const noCalls = (): Calls => ({
@@ -215,6 +217,17 @@ describe("the platform log", () => {
     expect(html).toContain("Ástæða aðgerðar");
     expect(html).toContain(`${strings.platform_account}: Reikningur Eitt`);
   });
+
+  it("says how long a suspension was for, and that one with no end date waits for a moderator", () => {
+    const until = 1_700_500_000_000;
+    const timed = { ...entry, action: "suspend_account", until } as const;
+    const open = { ...entry, action: "suspend_account" } as const;
+    const html = renderToStaticMarkup(<LogEntries entries={[timed, open]} />);
+    expect(html).toContain(
+      strings.moderation_decision_suspend_account_until({ date: formatIsDateTime(until) }),
+    );
+    expect(html).toContain(strings.moderation_decision_suspend_account_open);
+  });
 });
 
 describe("a person the server refuses", () => {
@@ -267,6 +280,7 @@ const review = (over: Partial<OpenModerationReview> = {}): OpenModerationReview 
   targetAccount: person("v1"),
   reason: "Brot á reglum",
   createdAt: 1_700_000_000_000,
+  until: null,
   body: "Textinn sem var fjarlægður",
   askedAt: 1_700_000_100_000,
   canDecide: true,
@@ -284,6 +298,26 @@ describe("a review", () => {
     expect(html).toContain(strings.platform_review_uphold);
     expect(html).toContain(strings.platform_review_overturn);
     expect(html).not.toContain(strings.platform_review_not_yours);
+  });
+
+  it("tells the moderator answering how long a suspension was for, or that it had no end date", () => {
+    const until = 1_700_500_000_000;
+    const drawn = (over: Partial<OpenModerationReview>) =>
+      renderToStaticMarkup(
+        <ReviewItem
+          review={review({
+            action: "suspend_account",
+            target: { kind: "account", id: "a1" },
+            ...over,
+          })}
+          calls={noCalls()}
+          decided={() => undefined}
+        />,
+      );
+    expect(drawn({ until })).toContain(
+      strings.moderation_decision_suspend_account_until({ date: formatIsDateTime(until) }),
+    );
+    expect(drawn({ until: null })).toContain(strings.moderation_decision_suspend_account_open);
   });
 
   it("offers no answer to the moderator who acted or asked", () => {

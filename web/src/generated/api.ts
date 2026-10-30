@@ -750,6 +750,8 @@ export interface ModerationStatement {
   reason: string;
   /** Unix milliseconds */
   createdAt: number;
+  /** The end a suspension was given when it was decided; null on any other action and on a suspension until a moderator lifts it */
+  until: number | null;
   /** The text the action was on, while it is kept (90 days after a removal, 0063) */
   body: string | null;
   /** No review was asked for yet and the content has not come back since */
@@ -793,6 +795,8 @@ export interface OpenModerationReview {
   reason: string;
   /** Unix milliseconds */
   createdAt: number;
+  /** The end a suspension was given when it was decided; null on any other action and on a suspension until a moderator lifts it */
+  until: number | null;
   /** The text, while it is kept; null means the decision is made without it */
   body: string | null;
   /** Unix milliseconds */
@@ -863,6 +867,8 @@ export interface ModerationLogEntry {
   reason: string;
   /** Unix milliseconds */
   createdAt: number;
+  /** The end a suspension was given when it was decided, in Unix milliseconds; null on any other action and on a suspension until a moderator lifts it */
+  until: number | null;
 }
 
 export interface NotificationPage {

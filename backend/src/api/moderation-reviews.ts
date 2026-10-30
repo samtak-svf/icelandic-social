@@ -46,6 +46,10 @@ const Statement = z
     communityId: OpaqueId.nullable(),
     reason: z.string().openapi({ description: "The moderator's reason, as written" }),
     createdAt: At,
+    until: At.nullable().openapi({
+      description:
+        "The end a suspension was given when it was decided; null on any other action and on a suspension until a moderator lifts it",
+    }),
     body: z.string().nullable().openapi({
       description: "The text the action was on, while it is kept (90 days after a removal, 0063)",
     }),
@@ -78,6 +82,10 @@ const OpenReview = z
     targetAccount: z.union([Author, z.null()]),
     reason: z.string(),
     createdAt: At,
+    until: At.nullable().openapi({
+      description:
+        "The end a suspension was given when it was decided; null on any other action and on a suspension until a moderator lifts it",
+    }),
     body: z.string().nullable().openapi({
       description: "The text, while it is kept; null means the decision is made without it",
     }),

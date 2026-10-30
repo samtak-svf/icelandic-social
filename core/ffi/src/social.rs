@@ -819,55 +819,6 @@ impl From<api::LogTarget> for LogTarget {
     }
 }
 
-/// One action in a community's moderation log, with the reason its
-/// moderator gave.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct ModerationLogEntry {
-    pub entry_id: u64,
-    /// None for an action a platform moderator took on an account.
-    pub community_id: Option<String>,
-    /// Who did it; none once that account is deleted.
-    pub actor: Option<Author>,
-    /// Done as one of the platform's moderators rather than as this
-    /// community's.
-    pub as_platform: bool,
-    pub action: ModerationLogAction,
-    pub target: LogTarget,
-    /// Whose content it is, or the account acted on.
-    pub target_account: Option<Author>,
-    pub reason: String,
-    /// Unix milliseconds.
-    pub created_at: u64,
-}
-
-impl From<api::ModerationLogEntry> for ModerationLogEntry {
-    fn from(entry: api::ModerationLogEntry) -> Self {
-        let api::ModerationLogEntry {
-            entry_id,
-            community_id,
-            actor,
-            as_platform,
-            action,
-            target,
-            target_account,
-            reason,
-            created_at,
-        } = entry;
-
-        Self {
-            entry_id,
-            community_id,
-            actor,
-            as_platform,
-            action,
-            target: target.into(),
-            target_account,
-            reason,
-            created_at,
-        }
-    }
-}
-
 /// A page of a community's moderation log, newest first.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct ModerationLogPage {

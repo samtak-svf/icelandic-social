@@ -68,6 +68,11 @@ export default defineConfig(({ mode }) => ({
       // withheld, and it is not a floor: an older app goes on working (decisions
       // 0114, 0115).
       NOTICE_CLIENT_VERSION: bindings.text("0.19.0"),
+      // The first app version that words a suspension's notice. Below it the
+      // action reads as "unknown", which an app words as a removal, so those
+      // notices are withheld (decision 0115). Raised to the version that takes the
+      // core with these actions, and not a floor either.
+      SUSPENSION_NOTICE_CLIENT_VERSION: bindings.text("0.20.0"),
       // Where a client below its floor gets a current build (decision 0030),
       // published by /health and the 426 body. Android's is the internal
       // track's opt-in link while the app is not on a public listing; iOS's is

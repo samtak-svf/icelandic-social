@@ -276,6 +276,7 @@ export async function actOnAccount(
       targetId: input.targetId,
       targetAccount: input.targetId,
       reason: input.reason,
+      suspendedUntil: until ?? null,
     }),
     ...(report ? [closing(env, report.reportId, accountId, input.action, input.reason)] : []),
     // There is no community, so this is a row older clients are not shown (0114).

@@ -2725,6 +2725,17 @@
       "surfaces": ["android", "ios", "web"],
       "description": "The decision recorded when a platform moderator suspends an account (decision 0115)."
     },
+    "moderation_decision_suspend_account_until": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "What a statement, the log and a review card say of a suspension decided with an end date (decision 0115).",
+      "placeholders": {
+        "date": "string"
+      }
+    },
+    "moderation_decision_suspend_account_open": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "What a statement, the log and a review card say of a suspension decided with no end date: it stands until a moderator lifts it (decision 0115)."
+    },
     "moderation_decision_unsuspend_account": {
       "surfaces": ["android", "ios", "web"],
       "description": "The decision recorded when a platform moderator lifts a suspension (decision 0115)."

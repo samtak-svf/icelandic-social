@@ -652,7 +652,7 @@ export const strings = {
   /** Section heading on /privacy: where data is stored and how long it is kept. */
   privacy_retention_heading: "Varðveisla og geymslutími",
   /** Body on /privacy describing retention periods (encrypted media 30 days, removed posts 90 days, moderation logs and closed reports 1 year, no PII in logs; decisions 0001, 0008, 0023, 0066, 0070). */
-  privacy_retention_body: "Dulkóðuð viðhengi í samtölum geymast á þjóninum í allt að 30 daga á meðan tæki sækja þau. Ef hópi er eytt má endurheimta hann í 30 daga áður en póstum, athugasemdum og myndum hans er eytt varanlega. Póstum og athugasemdum sem stjórnandi fjarlægir er eytt eftir 90 daga, og lokuðum tilkynningum og aðgerðaskrá stjórnenda, sem skráir líka bann á aðgöngum, er eytt eftir eitt ár. Atburðaskrár þjónsins geyma engin nöfn, kennitölur, símanúmer né innihald skilaboða.",
+  privacy_retention_body: "Dulkóðuð viðhengi í samtölum geymast á þjóninum í allt að 30 daga á meðan tæki sækja þau. Ef hópi er eytt má endurheimta hann í 30 daga áður en póstum, athugasemdum og myndum hans er eytt varanlega. Póstum og athugasemdum sem stjórnandi fjarlægir er eytt eftir 90 daga og lokuðum tilkynningum og aðgerðaskrá stjórnenda, sem skráir líka bann á aðgöngum, er eytt eftir eitt ár. Atburðaskrár þjónsins geyma hvorki nöfn, kennitölur, símanúmer né innihald skilaboða.",
   /** Section heading on /privacy: account deletion and user rights. */
   privacy_rights_heading: "Eyðing aðgangs og réttindi þín",
   /** Body on /privacy describing immediate account deletion in the app and how to contact the controller. */
@@ -1050,6 +1050,11 @@ export const strings = {
   notice_account_unsuspended: "Stjórnandi aflétti banni af aðganginum þínum.",
   /** The decision recorded when a platform moderator suspends an account (decision 0115). */
   moderation_decision_suspend_account: "Aðgangurinn var settur í bann.",
+  /** What a statement, the log and a review card say of a suspension decided with an end date (decision 0115). */
+  moderation_decision_suspend_account_until: (args: { date: string }): string =>
+    "Aðgangurinn var settur í bann til " + args.date + ".",
+  /** What a statement, the log and a review card say of a suspension decided with no end date: it stands until a moderator lifts it (decision 0115). */
+  moderation_decision_suspend_account_open: "Aðgangurinn var settur í bann þar til stjórnandi aflétti því.",
   /** The decision recorded when a platform moderator lifts a suspension (decision 0115). */
   moderation_decision_unsuspend_account: "Banni var aflétt af aðganginum.",
   /** The platform moderator's action: suspend the reported account (decision 0115). */
@@ -1063,10 +1068,10 @@ export const strings = {
   /** The duration a suspension has when it has no end date; beside the mute durations. */
   platform_suspend_open: "Þar til banni er aflétt",
   /** The server refused a write because the account is suspended, with no end date (decision 0115). */
-  problem_suspended: "Aðgangurinn þinn er í banni og getur ekki gert þetta. Þú getur enn lesið og sent skilaboð.",
+  problem_suspended: "Aðgangurinn þinn er í banni svo að þú getur ekki gert þetta. Þú getur enn lesið og sent skilaboð.",
   /** The server refused a write because the account is suspended until the date (decision 0115). */
   problem_suspended_until: (args: { date: string }): string =>
-    "Aðgangurinn þinn er í banni til " + args.date + " og getur ekki gert þetta. Þú getur enn lesið og sent skilaboð.",
+    "Aðgangurinn þinn er í banni til " + args.date + " svo að þú getur ekki gert þetta. Þú getur enn lesið og sent skilaboð.",
   /** The notice a suspended account sees on every signed-in screen, with no end date (decision 0115). */
   suspended_notice: "Aðgangurinn þinn er í banni. Þú getur lesið og sent skilaboð, en ekki skrifað færslur eða athugasemdir, brugðist við, stofnað eða gengið í hóp né boðið öðrum.",
   /** The notice a suspended account sees on every signed-in screen, with the end date (decision 0115). */

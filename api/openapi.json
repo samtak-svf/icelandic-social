@@ -2716,6 +2716,13 @@
             "type": "integer",
             "description": "Unix milliseconds"
           },
+          "until": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The end a suspension was given when it was decided; null on any other action and on a suspension until a moderator lifts it"
+          },
           "body": {
             "type": [
               "string",
@@ -2745,6 +2752,7 @@
           "communityId",
           "reason",
           "createdAt",
+          "until",
           "body",
           "canAsk",
           "review"
@@ -2903,6 +2911,13 @@
             "type": "integer",
             "description": "Unix milliseconds"
           },
+          "until": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The end a suspension was given when it was decided; null on any other action and on a suspension until a moderator lifts it"
+          },
           "body": {
             "type": [
               "string",
@@ -2929,6 +2944,7 @@
           "targetAccount",
           "reason",
           "createdAt",
+          "until",
           "body",
           "askedAt",
           "canDecide"
@@ -3274,6 +3290,13 @@
           "createdAt": {
             "type": "integer",
             "description": "Unix milliseconds"
+          },
+          "until": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The end a suspension was given when it was decided, in Unix milliseconds; null on any other action and on a suspension until a moderator lifts it"
           }
         },
         "required": [
@@ -3285,7 +3308,8 @@
           "target",
           "targetAccount",
           "reason",
-          "createdAt"
+          "createdAt",
+          "until"
         ]
       },
       "NotificationPage": {
