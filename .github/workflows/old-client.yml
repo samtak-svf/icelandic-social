@@ -1,0 +1,120 @@
+name: old-client
+
+# The core of the last store release against the Worker of this tree (#396): a
+# phone keeps that core until its owner updates, so a server change it cannot
+# decode, or a row it must not get, breaks people the rest of CI never meets.
+# tooling/old-client/release.json names the release, old_client/ is the test,
+# and it is compiled in a checkout of that tag, so it sees that release's API.
+# Nothing is deployed; the Worker is local, with fake issuers (interop.yml).
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "api/**"
+      - "pnpm-lock.yaml"
+      - "tooling/old-client/**"
+      - ".github/workflows/old-client.yml"
+      - ".github/actions/node-workspace/**"
+      - ".github/actions/core-artifact/**"
+      - ".github/actions/rust-toolchain/**"
+  # Daily on main: a cache a PR can read (the build of the tag is 10 minutes
+  # without it), and the job that says release.json has fallen behind.
+  schedule:
+    - cron: "30 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: old-client-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CF_SEND_TELEMETRY: "false"
+  # cf dev delegates to Wrangler, which has its own switch.
+  WRANGLER_SEND_METRICS: "false"
+
+jobs:
+  old-client:
+    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.RUNNER_LABELS || '["ubuntu-latest"]') }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/node-workspace
+
+      - name: The release
+        id: release
+        run: |
+          echo "tag=$(jq -er .coreTag tooling/old-client/release.json)" >> "$GITHUB_OUTPUT"
+          echo "SPJALL_OLD_APP=$(jq -er .appVersion tooling/old-client/release.json)" >> "$GITHUB_ENV"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+          path: .old-core
+
+      # The toolchain, and the browser's core that cf dev serves from web/core.
+      - uses: ./.github/actions/core-artifact
+        with:
+          target: web
+          token: ${{ github.token }}
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: .old-core/core
+
+      - name: Build the test while nothing else runs
+        working-directory: .old-core/core
+        run: |
+          cp -r "$GITHUB_WORKSPACE/tooling/old-client/old_client" client/tests/old_client
+          cargo test --locked -p spjall-client --test old_client --no-run
+
+      - name: Start the Worker
+        working-directory: backend
+        timeout-minutes: 5
+        run: |
+          # As in interop.yml: the assignment first, since eval of a substitution
+          # hides a failed start.
+          started=$(scripts/dev-worker.sh start)
+          eval "$started"
+          export SPJALL_DEV_URL SPJALL_DEV_PORT
+          if ! link=$(node scripts/invite-operator.ts --local); then
+            cat .cloudflare/worker.log
+            exit 1
+          fi
+          echo "SPJALL_INVITE=$link" >> "$GITHUB_ENV"
+
+      - name: The release reads this Worker
+        working-directory: .old-core/core
+        run: cargo test --locked -p spjall-client --test old_client -- --ignored
+
+      - name: Worker log
+        if: failure() || cancelled()
+        run: cat backend/.cloudflare/worker.log
+
+      - name: Stop the Worker
+        if: always()
+        run: backend/scripts/dev-worker.sh stop
+
+  # Never on a PR: a store release is no fault of the PR that runs next. A red
+  # daily run says the test above is proving the wrong release.
+  recorded-release:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: release.json names the core of the last store build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/android-play.yml/runs?status=success&per_page=1" --jq '.workflow_runs[0].head_sha')
+          version=$(gh api "repos/$GITHUB_REPOSITORY/contents/core/artifact.lock.json?ref=$sha" -H 'Accept: application/vnd.github.raw' | jq -er .version)
+          recorded=$(jq -er .coreTag tooling/old-client/release.json)
+          if [ "$recorded" != "core-v$version" ]; then
+            echo "::error::the last android-play build, $sha, has core $version; tooling/old-client/release.json says $recorded"
+            exit 1
+          fi
