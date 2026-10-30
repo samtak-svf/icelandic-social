@@ -241,7 +241,7 @@ instances), for its speed and its arm64 AVD, each chosen by a repository variabl
   rejected: the 5 s assertions give way under CPU load (#355). `proof` needs both shards, shown by
   a drill.
 - **`web` stays hosted although it is slower than its baseline.** The 5.5 is 1.7 of run plus 3.8 of
-  wait, from one day's runs. The same job on the Mac over 10-23 to 10-30 took 3.6 of run plus 5.6
+  wait, from that short sample. The same job on the Mac over 10-23 to 10-30 took 3.6 of run plus 5.6
   of wait, 9.8 in total with a p90 of 27.7 (n=61), and the latest Mac run of today's suite took
   4.7. So an idle Mac is about a minute faster and a busy one far slower. Going back returns that
   wait and takes the Mac from the iOS jobs, which took 9.0 to 12.6 once the Linux jobs had left it.
