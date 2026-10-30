@@ -65,6 +65,11 @@ export class Core {
     private constructor();
     free(): void;
     [Symbol.dispose](): void;
+    /**
+     * Adds every device of these accounts to a group (0078), on the next
+     * sync. People are picked from the directory, as a new group's are.
+     */
+    addAccounts(conversation_id: string, accounts: string[]): void;
     beginLink(): DeviceLink;
     /**
      * Takes a group's photo away (0094); the envelope id.
@@ -80,6 +85,11 @@ export class Core {
      * none (0094).
      */
     groupPhoto(conversation_id: string): Uint8Array | null;
+    /**
+     * Leaves a group (0078): the server stops listing this account and the
+     * conversation is `left`. Leaving again is done already.
+     */
+    leave(conversation_id: string): void;
     /**
      * `{ size, modules: Uint8Array }` for the page to draw.
      */
@@ -99,6 +109,17 @@ export class Core {
      * The number of messages imported from the approving phone's history.
      */
     receiveHistory(): number;
+    /**
+     * Takes these accounts out of a group (0078), on the next sync. This
+     * account is refused: leaving is `leave`.
+     */
+    removeAccounts(conversation_id: string, accounts: string[]): void;
+    /**
+     * Names a group, or clears its name with `null` or a blank one (0078);
+     * the envelope id. `not-a-group` for a conversation of two,
+     * `name-invalid` past 64 characters or with a control character.
+     */
+    rename(conversation_id: string, name?: string | null): string;
     /**
      * Queues a text message; the envelope id.
      */
@@ -137,17 +158,21 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_core_free: (a: number, b: number) => void;
+    readonly core_addAccounts: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly core_beginLink: (a: number, b: number) => void;
     readonly core_clearGroupPhoto: (a: number, b: number, c: number, d: number) => void;
     readonly core_completeLink: (a: number, b: number) => void;
     readonly core_conversations: (a: number, b: number) => void;
     readonly core_groupPhoto: (a: number, b: number, c: number, d: number) => void;
+    readonly core_leave: (a: number, b: number, c: number, d: number) => void;
     readonly core_linkQr: (a: number, b: number, c: number) => void;
     readonly core_linkState: (a: number, b: number) => void;
     readonly core_me: (a: number, b: number) => void;
     readonly core_onFrame: (a: number, b: number, c: number, d: number) => void;
     readonly core_open: (a: number, b: number) => number;
     readonly core_receiveHistory: (a: number, b: number) => void;
+    readonly core_removeAccounts: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+    readonly core_rename: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly core_send: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly core_setGroupPhoto: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly core_sync: (a: number, b: number) => void;
@@ -165,8 +190,8 @@ export interface InitOutput {
     readonly rust_sqlite_wasm_realloc: (a: number, b: number) => number;
     readonly sqlite3_os_end: () => number;
     readonly sqlite3_os_init: () => number;
-    readonly __wasm_bindgen_func_elem_6762: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_6777: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6781: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_6796: (a: number, b: number, c: number, d: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;
