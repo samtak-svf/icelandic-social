@@ -3,6 +3,10 @@ package samtak.spjall.social
 import samtak.spjall.account.unreachable
 import samtak.spjall.core.CommunityNotificationLevel
 import samtak.spjall.core.CoreException
+import samtak.spjall.core.ModerationReview
+import samtak.spjall.core.ModerationReviewState
+import samtak.spjall.core.ModerationStatement
+import samtak.spjall.core.ModerationStatementPage
 import samtak.spjall.core.NotificationKindLevel
 import samtak.spjall.core.NotificationLevel
 import samtak.spjall.core.NotificationSettings
@@ -36,9 +40,34 @@ open class FakeSocialNotifications : SocialNotifications {
     /** Up to which time the list was seen; none if never. */
     var seenUpTo: ULong? = null
 
+    /** This account's statements of reasons, newest first (0115). */
+    var statements = listOf<ModerationStatement>()
+
     /** The level of each kind, and of the communities that have one (0106). */
     val kindLevels = SocialNotificationKind.entries.associateWith { NotificationLevel.PUSH }.toMutableMap()
     val communityLevels = mutableMapOf<String, NotificationLevel>()
+
+    override fun moderationStatements(
+        before: String?,
+        limit: UInt,
+    ): ModerationStatementPage {
+        call("moderationStatements ${before.orEmpty()}".trim())
+        val (items, next) = page(statements, before, limit)
+        return ModerationStatementPage(items, next)
+    }
+
+    override fun askModerationReview(entryId: ULong) {
+        call("askModerationReview $entryId")
+        statements =
+            statements.map {
+                if (it.entryId == entryId) {
+                    val review = ModerationReview(ModerationReviewState.OPEN, 2uL, null, null, false)
+                    it.copy(canAsk = false, review = review)
+                } else {
+                    it
+                }
+            }
+    }
 
     protected fun call(name: String) {
         calls += name

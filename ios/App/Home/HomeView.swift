@@ -19,6 +19,7 @@ struct HomeView: View {
     enum MeRoute: Hashable {
         case verify
         case link
+        case statements
     }
 
     let signIn: SignInModel
@@ -301,16 +302,18 @@ struct HomeView: View {
             MeView(
                 model: me, push: push, levels: levels,
                 communityNames: Dictionary(communities.mine.map { ($0.communityId, $0.name) }) { first, _ in first },
-                onVerify: { mePath.append(.verify) }, onLink: { mePath.append(.link) }
+                onVerify: { mePath.append(.verify) }, onLink: { mePath.append(.link) },
+                onStatements: { mePath.append(.statements) }
             )
             .navigationDestination(for: MeRoute.self) { route in
                 switch route {
                 case .link:
                     LinkView(model: LinkModel(account: signIn.account))
+                case .statements:
+                    OwnStatementsView(social: social)
                 case .verify:
                     VerifyView(
-                        model: signIn,
-                        onVerify: { Task { await signIn.verify(browser: browser) } },
+                        model: signIn, onVerify: { Task { await signIn.verify(browser: browser) } },
                         onLater: { mePath.removeLast() },
                         onRetry: { Task { await signIn.retry(browser: browser) } }
                     )

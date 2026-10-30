@@ -22,8 +22,7 @@ final class FakeSocial: Social, @unchecked Sendable {
     private var _log: [String: [ModerationLogEntry]] = [:]
     private var _cards: [String: Card] = [:]
     private var _notifications: [SocialNotification] = []
-    var _seenAt: UInt64?
-    var _settings = NotificationSettings(kinds: [], communities: [])
+    var _server = NoticeServer()
     private var _joins: [String: JoinState] = [:]
     private var _requests: [String: [JoinRequest]] = [:]
     private var _refuseImage: Error?

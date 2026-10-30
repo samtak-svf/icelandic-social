@@ -19,6 +19,7 @@ import samtak.spjall.BuildConfig
 import samtak.spjall.brand.R
 import samtak.spjall.core.coreVersion
 import samtak.spjall.frames.LocalFrameSession
+import samtak.spjall.social.SocialRoutes
 import samtak.spjall.social.WithNotificationLevels
 import samtak.spjall.ui.AppRoutes
 import samtak.spjall.ui.notificationsOff
@@ -86,6 +87,8 @@ internal fun MeRoute(
             override fun verify() = nav.navigate(AppRoutes.VERIFY)
 
             override fun linkBrowser() = nav.navigate(AppRoutes.LINK)
+
+            override fun statements() = nav.navigate(SocialRoutes.STATEMENTS)
         }
     // Read here, not in the screen: the core's version needs the native library, which screenshot tests lack.
     val version =

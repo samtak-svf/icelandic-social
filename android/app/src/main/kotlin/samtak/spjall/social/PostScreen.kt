@@ -91,13 +91,13 @@ fun PostScreen(
                         )
                     }
                 }
-                if (state.loaded && post != null && state.comments.isEmpty()) {
+                if (state.loaded && post?.isTombstone() == false && state.comments.isEmpty()) {
                     item(key = "empty") { Muted(stringResource(R.string.comments_empty)) }
                 }
                 commentItems(state, actions, delete, onReport = { reporting = it })
             }
             // The box to write in stays at the foot of the screen, reachable without scrolling past every comment.
-            if (post != null) ReplyBox(state, actions, focus)
+            if (post?.isTombstone() == false) ReplyBox(state, actions, focus)
         }
     }
     Dialogs(target, deleting?.let(::target), actions, onReported = { reporting = null }) { deleting = null }

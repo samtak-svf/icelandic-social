@@ -7,6 +7,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import samtak.spjall.brand.R
 import samtak.spjall.core.Author
 import samtak.spjall.core.NotificationAction
 import samtak.spjall.core.SocialNotice
@@ -32,6 +33,19 @@ class NoticeTextTest {
         assertEquals(NoticeBadge.MODERATOR, declined.badge)
         val other = noticeLine(SocialNotificationKind.MODERATED, emptyList(), 0, NotificationAction.HIDE_POST)
         assertEquals(noticeLine(SocialNotificationKind.MODERATED, emptyList(), 0).key, other.key)
+    }
+
+    @Test
+    fun aReviewAndAClearedPhotoHaveTheirOwnSentences() {
+        fun line(action: NotificationAction?) =
+            noticeLine(SocialNotificationKind.MODERATED, emptyList(), 0, action).text(resources)
+        assertEquals(resources.getString(R.string.notice_review_upheld), line(NotificationAction.REVIEW_UPHELD))
+        assertEquals(resources.getString(R.string.notice_review_overturned), line(NotificationAction.REVIEW_OVERTURNED))
+        assertEquals(
+            resources.getString(R.string.notice_account_photo_cleared),
+            line(NotificationAction.CLEAR_ACCOUNT_PHOTO),
+        )
+        assertEquals(resources.getString(R.string.notice_moderated), line(NotificationAction.REMOVE_POST))
     }
 
     @Test

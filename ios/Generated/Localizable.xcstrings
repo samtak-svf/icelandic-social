@@ -4381,6 +4381,18 @@
         }
       }
     },
+    "moderation_decision_clear_account_photo": {
+      "comment": "A closed report's decision and a log entry: a platform moderator removed an account's photo (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Myndin var fjarlægð."
+          }
+        }
+      }
+    },
     "moderation_decision_community_deleted": {
       "comment": "A closed report's decision: the community's deletion closed it (decision 0070).",
       "extractionState": "manual",
@@ -6141,6 +6153,222 @@
           "stringUnit": {
             "state": "translated",
             "value": "Stjórnandi hafnaði nafnlausri færslu frá þér."
+          }
+        }
+      }
+    },
+    "notice_review_upheld": {
+      "comment": "A notification: the review the reader asked for upheld the action (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ákvörðun stjórnanda um efni frá þér stendur eftir endurskoðun."
+          }
+        }
+      }
+    },
+    "notice_review_overturned": {
+      "comment": "A notification: the review the reader asked for overturned the action (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ákvörðun stjórnanda um efni frá þér var felld úr gildi eftir endurskoðun."
+          }
+        }
+      }
+    },
+    "notice_account_photo_cleared": {
+      "comment": "A notification: a platform moderator cleared the reader's photo (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stjórnandi fjarlægði myndina af aðganginum þínum."
+          }
+        }
+      }
+    },
+    "statements_title": {
+      "comment": "Title of the screen listing what moderators did to the reader's content and why (decision 0115).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ákvarðanir um efnið þitt"
+          }
+        }
+      }
+    },
+    "statements_empty": {
+      "comment": "The statements screen with nothing on it.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engar ákvarðanir hafa verið teknar um efnið þitt."
+          }
+        }
+      }
+    },
+    "statement_open": {
+      "comment": "Link from a removed post of the reader's to its statement of reasons.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sjá ástæðuna"
+          }
+        }
+      }
+    },
+    "statement_text_gone": {
+      "comment": "A statement whose text was purged after its 90 days (decision 0063).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Textanum hefur verið eytt."
+          }
+        }
+      }
+    },
+    "statement_ask": {
+      "comment": "Button: asks for the single review of a moderator's action.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biðja um endurskoðun"
+          }
+        }
+      }
+    },
+    "statement_ask_once": {
+      "comment": "Under a statement: the review can be asked for once, and someone else decides.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þú getur beðið einu sinni um endurskoðun. Annar stjórnandi en sá sem tók ákvörðunina svarar."
+          }
+        }
+      }
+    },
+    "statement_ask_confirm": {
+      "comment": "Confirmation before asking for the single review.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biðja um endurskoðun? Það er aðeins hægt einu sinni."
+          }
+        }
+      }
+    },
+    "statement_review_open": {
+      "comment": "A statement whose review waits for a decision.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þú baðst um endurskoðun. Svar hefur ekki borist."
+          }
+        }
+      }
+    },
+    "statement_review_upheld": {
+      "comment": "A statement whose review upheld the action.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ákvörðunin stendur eftir endurskoðun."
+          }
+        }
+      }
+    },
+    "statement_review_overturned": {
+      "comment": "A statement whose review overturned the action, and the content came back.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ákvörðunin var felld úr gildi og efnið birt aftur."
+          }
+        }
+      }
+    },
+    "statement_review_overturned_not_restored": {
+      "comment": "A statement whose review overturned the action, and the content stays as it is: it no longer exists, as a cleared photo does not, or a later decision about it still stands.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ákvörðunin var felld úr gildi, en efnið kemur ekki aftur."
+          }
+        }
+      }
+    },
+    "statement_review_reason": {
+      "comment": "Label of the deciding moderator's reason on a statement.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Svar við endurskoðun"
+          }
+        }
+      }
+    },
+    "moderation_log_review_upheld": {
+      "comment": "A log entry: a review upheld an action.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ákvörðun var staðfest eftir endurskoðun."
+          }
+        }
+      }
+    },
+    "moderation_log_review_overturned": {
+      "comment": "A log entry: a review overturned an action.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ákvörðun var felld úr gildi eftir endurskoðun."
+          }
+        }
+      }
+    },
+    "post_tombstone_open": {
+      "comment": "Link from a removed post to reading it, for a moderator of its community.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opna færsluna"
           }
         }
       }

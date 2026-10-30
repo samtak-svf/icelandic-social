@@ -12,6 +12,7 @@ object SocialRoutes {
     const val REPORTS = "reports"
     const val REQUESTS = "requests"
     const val ANONYMOUS = "anonymous"
+    const val STATEMENTS = "statements"
 
     fun community(id: String) = "$COMMUNITY/$id"
 

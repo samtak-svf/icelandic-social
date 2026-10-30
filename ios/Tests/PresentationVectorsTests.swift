@@ -113,6 +113,9 @@ final class PresentationVectorsTests: XCTestCase {
                 switch vector["action"] as? String {
                 case "decline_anonymous_post": .declineAnonymousPost
                 case "hide_post": .hidePost
+                case "review_upheld": .reviewUpheld
+                case "review_overturned": .reviewOverturned
+                case "clear_account_photo": .clearAccountPhoto
                 default: nil
                 }
             let wording = noticeWording(

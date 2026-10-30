@@ -1,5 +1,6 @@
 package samtak.spjall.social
 
+import samtak.spjall.core.NotificationAction
 import samtak.spjall.core.SocialNotification
 import samtak.spjall.core.SocialNotificationKind
 
@@ -9,6 +10,7 @@ fun notification(
     createdAt: ULong,
     postId: String? = "p1",
     communityId: String? = "k1",
+    action: NotificationAction? = null,
 ) = SocialNotification(
     notificationId = id,
     kind = kind,
@@ -20,7 +22,7 @@ fun notification(
     communityId = communityId,
     postId = postId,
     commentId = null,
-    action = null,
+    action = action,
     emoji = null,
     createdAt = createdAt,
     read = false,

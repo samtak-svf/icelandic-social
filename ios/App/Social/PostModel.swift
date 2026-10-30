@@ -104,8 +104,10 @@ final class PostModel {
         let social = social
         let id = postId
         await perform(again: { await self.load() }) {
-            let (post, community, page) = try await offMain {
+            let (post, community, page) = try await offMain { () -> (Post, Community?, CommentPage?) in
                 let post = try social.post(id)
+                // A removed post is all its reader gets: it has no comments to ask for, and they are refused.
+                if isPostTombstone(post) { return (post, nil, nil) }
                 return (
                     post, try social.community(post.communityId),
                     try social.comments(id, after: nil, limit: Self.page)
@@ -113,8 +115,8 @@ final class PostModel {
             }
             self.post = post
             self.community = community
-            self.comments = page.comments
-            self.next = page.next
+            self.comments = page?.comments ?? []
+            self.next = page?.next
             self.loaded = true
             if self.me == nil, let own = try? await offMain({ try social.me() }) {
                 self.me = own.accountId

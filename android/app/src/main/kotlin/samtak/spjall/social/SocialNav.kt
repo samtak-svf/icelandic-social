@@ -7,7 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -19,7 +18,6 @@ import androidx.navigation.compose.composable
 import samtak.spjall.account.Account
 import samtak.spjall.core.CommunityAudience
 import samtak.spjall.core.CommunityRole
-import samtak.spjall.core.CoreException
 import samtak.spjall.core.ReportReason
 import samtak.spjall.core.ReportTarget
 import samtak.spjall.frames.LocalFrameSession
@@ -44,7 +42,15 @@ fun NavGraphBuilder.socialScreens(
     fun screen(
         route: String,
         content: @Composable (NavBackStackEntry) -> Unit,
-    ) = composable(route) { entry -> WithNotificationLevels(social) { WithPostImages(social) { content(entry) } } }
+    ) = composable(route) { entry ->
+        WithNotificationLevels(social) {
+            WithPostImages(social) {
+                CompositionLocalProvider(LocalOpenStatements provides { nav.navigate(SocialRoutes.STATEMENTS) }) {
+                    content(entry)
+                }
+            }
+        }
+    }
 
     screen(SocialRoutes.COMMUNITIES) { Communities(social, account, nav, sharePost) }
     screen(SocialRoutes.NOTIFICATIONS) { NotificationsRoute(social, nav, read, dismissNotice) }
@@ -66,6 +72,7 @@ fun NavGraphBuilder.socialScreens(
     screen("${SocialRoutes.ANONYMOUS}/{id}") { entry ->
         entry.arguments?.getString("id")?.let { AnonymousQueue(it, social, nav) }
     }
+    screen(SocialRoutes.STATEMENTS) { Statements(social, nav) }
 }
 
 @Composable
@@ -346,25 +353,6 @@ private fun CommunityEntry(
                 override fun retry() = model.retry()
             },
     )
-}
-
-/** Provides where a post's images come from to [content]; one the core cannot fetch now shows as a plain box. */
-@Composable
-internal fun WithPostImages(
-    social: Social,
-    content: @Composable () -> Unit,
-) {
-    val images =
-        remember(social) {
-            PostImages { postId, mediaId ->
-                try {
-                    social.postImage(postId, mediaId)
-                } catch (_: CoreException) {
-                    null
-                }
-            }
-        }
-    CompositionLocalProvider(LocalPostImages provides images, content = content)
 }
 
 /**

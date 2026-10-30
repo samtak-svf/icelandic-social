@@ -26,8 +26,7 @@ struct NoticeWording: Equatable, Sendable {
 }
 
 /// `names` are the newest actors' names, newest first (nil for a deleted account), `actorCount` every distinct one.
-/// A moderated row reads `notice_anonymous_declined` when the `action` declined an anonymous post and
-/// `notice_moderated` for every other.
+/// A moderated row reads by its `action` (0115), and `notice_moderated` for every action without a sentence of its own.
 func noticeWording(
     kind: SocialNotificationKind, names: [String?], actorCount: UInt64, action: NotificationAction? = nil
 ) -> NoticeWording {
@@ -39,8 +38,7 @@ func noticeWording(
     case .reaction: (base, badge) = ("notice_reaction", .emoji)
     case .joinApproved: return NoticeWording(key: "notice_join_approved", args: .none, badge: .approved)
     case .moderated:
-        let key = action == .declineAnonymousPost ? "notice_anonymous_declined" : "notice_moderated"
-        return NoticeWording(key: key, args: .none, badge: .moderator)
+        return NoticeWording(key: moderatedKey(action), args: .none, badge: .moderator)
     }
     let name = names.first ?? nil
     switch actorCount {
@@ -51,6 +49,16 @@ func noticeWording(
         return NoticeWording(key: base + "_two", args: .two(name: name, other: other), badge: badge)
     default:
         return NoticeWording(key: base + "_many", args: .many(name: name, count: Int(actorCount) - 1), badge: badge)
+    }
+}
+
+private func moderatedKey(_ action: NotificationAction?) -> String {
+    switch action {
+    case .declineAnonymousPost: "notice_anonymous_declined"
+    case .reviewUpheld: "notice_review_upheld"
+    case .reviewOverturned: "notice_review_overturned"
+    case .clearAccountPhoto: "notice_account_photo_cleared"
+    default: "notice_moderated"
     }
 }
 

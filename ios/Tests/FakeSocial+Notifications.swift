@@ -2,7 +2,14 @@ import SpjallCore
 
 @testable import Spjall
 
-/// The notification calls of `FakeSocial`: the list, what was seen and read, and the levels.
+/// What the fake server holds besides the list, in the one stored property the class keeps for it.
+struct NoticeServer {
+    var seenAt: UInt64?
+    var settings = NotificationSettings(kinds: [], communities: [])
+    var statements: [ModerationStatement] = []
+}
+
+/// The notification calls of `FakeSocial`: the list, what was seen and read, the levels and the statements.
 extension FakeSocial {
     func notifications(before: String?, limit: UInt32) throws -> SocialNotificationPage {
         try call("notifications \(before ?? "-")")
@@ -15,14 +22,39 @@ extension FakeSocial {
 
     /// When the list was last looked at, as the server holds it.
     var seenAt: UInt64? {
-        get { lock.withLock { _seenAt } }
-        set { lock.withLock { _seenAt = newValue } }
+        get { lock.withLock { _server.seenAt } }
+        set { lock.withLock { _server.seenAt = newValue } }
     }
 
     /// The levels as the server holds them.
     var settings: NotificationSettings {
-        get { lock.withLock { _settings } }
-        set { lock.withLock { _settings = newValue } }
+        get { lock.withLock { _server.settings } }
+        set { lock.withLock { _server.settings = newValue } }
+    }
+
+    /// This account's statements of reasons, newest first.
+    var statements: [ModerationStatement] {
+        get { lock.withLock { _server.statements } }
+        set { lock.withLock { _server.statements = newValue } }
+    }
+
+    func moderationStatements(before: String?, limit: UInt32) throws -> ModerationStatementPage {
+        try call("moderationStatements \(before ?? "-")")
+        let (found, next) = page(statements, after: before)
+        return ModerationStatementPage(statements: found, next: next)
+    }
+
+    func askModerationReview(entryId: UInt64) throws {
+        try call("askModerationReview \(entryId)")
+        statements = statements.map { statement in
+            var statement = statement
+            if statement.entryId == entryId {
+                statement.canAsk = false
+                statement.review = ModerationReview(
+                    state: .open, askedAt: 2, decidedAt: nil, reason: nil, restored: false)
+            }
+            return statement
+        }
     }
 
     func seenNotifications(upTo: UInt64) throws {

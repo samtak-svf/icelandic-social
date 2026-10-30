@@ -90,18 +90,20 @@ class PostViewModel(
         viewModelScope.launch {
             try {
                 val post = withContext(io) { social.post(id) }
-                val page = withContext(io) { social.comments(id, null, PAGE) }
+                // A removed post is all its reader gets: it has no comments to ask for, and they are refused.
+                val tombstone = post.isTombstone()
+                val page = if (tombstone) null else withContext(io) { social.comments(id, null, PAGE) }
                 val me = _state.value.me ?: withContext(io) { social.me() }
-                val community = withContext(io) { social.community(post.communityId) }
+                val community = if (tombstone) null else withContext(io) { social.community(post.communityId) }
                 failed = null
                 _state.update {
                     it.copy(
                         post = post,
-                        comments = page.comments,
-                        next = page.next,
+                        comments = page?.comments.orEmpty(),
+                        next = page?.next,
                         me = me,
-                        writes = community.writes(now()),
-                        moderates = community.moderates,
+                        writes = community?.writes(now()) == true,
+                        moderates = community?.moderates == true,
                         loaded = true,
                         busy = false,
                     )

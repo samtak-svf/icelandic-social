@@ -351,26 +351,6 @@ extension Byline where Menu == EmptyView {
     }
 }
 
-/// The mark on what a moderator hid or removed, which only moderators still see; nothing on what is shown.
-struct StateMark: View {
-    let state: ModerationState
-
-    var body: some View {
-        switch state {
-        case .visible: EmptyView()
-        case .hidden: mark("content_hidden")
-        case .removed: mark("content_removed")
-        case .pending: mark("post_pending")
-        }
-    }
-
-    private func mark(_ key: LocalizedStringKey) -> some View {
-        Text(key)
-            .font(.sans(12.5, black: true))
-            .foregroundStyle(BrandTokens.Colors.danger)
-    }
-}
-
 /// A post as a community's list, the hub's feed and its own screen show it, top to bottom as the groups readers know
 /// lay it out (decision 0080): who wrote it with a badge and the age, a pin marker, the text cut at five lines with
 /// `Sjá meira`, the images, a summary of the reactions, one row of `Líkar`, `Athugasemd` and `Deila`, the newest
@@ -399,6 +379,14 @@ struct PostCard: View {
     @State private var allEmoji = false
 
     var body: some View {
+        if isPostTombstone(post) {
+            PostTombstone(post: post, moderates: onPin != nil)
+        } else {
+            card
+        }
+    }
+
+    private var card: some View {
         Panel {
             VStack(alignment: .leading, spacing: 10) {
                 StateMark(state: post.state)

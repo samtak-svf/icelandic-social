@@ -1,6 +1,7 @@
 package samtak.spjall.social
 
 import samtak.spjall.core.CoreClient
+import samtak.spjall.core.ModerationStatementPage
 import samtak.spjall.core.NotificationKindLevel
 import samtak.spjall.core.NotificationLevel
 import samtak.spjall.core.NotificationSettings
@@ -31,6 +32,15 @@ interface SocialNotifications {
 
     /** The level of each kind and of each community that has one (0106). */
     fun notificationSettings(): NotificationSettings
+
+    /** A page of what moderators did to this account's content and why, newest first (0115). */
+    fun moderationStatements(
+        before: String?,
+        limit: UInt,
+    ): ModerationStatementPage
+
+    /** Asks for the one review of a decision about this account's content. */
+    fun askModerationReview(entryId: ULong)
 
     /** Sets the level of the given kinds and leaves the others. */
     fun setNotificationSettings(kinds: List<NotificationKindLevel>)
@@ -63,6 +73,13 @@ class CoreNotifications(
     ) = client.readNotification(notificationId, read)
 
     override fun deleteNotification(notificationId: String) = client.deleteNotification(notificationId)
+
+    override fun moderationStatements(
+        before: String?,
+        limit: UInt,
+    ) = client.moderationStatements(before, limit)
+
+    override fun askModerationReview(entryId: ULong) = client.askModerationReview(entryId)
 
     override fun notificationSettings() = client.notificationSettings()
 
