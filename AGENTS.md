@@ -51,8 +51,8 @@ Consequences, all enforced by `tooling/brand-leak-guard.mjs`:
   `android/core/crypto/libs/` and `ios/Packages/SpjallCore/` are gitignored and filled by
   `cargo xtask core <android|ios>` (a local build) or `cargo xtask fetch <android|ios>` (the
   published version pinned with SHA-256 in `core/artifact.lock.json`). App CI only fetches, so
-  the lock always pins a release. No Gradle or Xcode file calls cargo (`check:core`). A new core is published by tagging `core-vX.Y.Z`; the lock
-  moves only by PR, with the checksums `core.yml` prints.
+  the lock always pins a release. No Gradle or Xcode file calls cargo (`check:core`). A new core is published by `node tooling/core-release.mjs <version>`
+  (`docs/operations.md`), which tags the merged commit and writes the lock on a branch; the lock moves only by PR.
   A change to the wasm exports commits the regenerated `web/src/generated/core.d.ts` (the
   `web/core/spjall_wasm.d.ts` that `cargo xtask core web` builds) in the same PR; `core.yml` fails otherwise.
 

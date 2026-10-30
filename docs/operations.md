@@ -25,6 +25,27 @@ is approved (`backend/README.md`). In order, it:
 Open the run's summary before anything else when a deploy has gone wrong: the ids there are
 the ones the rest of this page needs.
 
+## Releasing a core
+
+Once the PR that sets the version in `core/Cargo.toml` has merged, from a clean checkout:
+
+```bash
+node tooling/core-release.mjs <version> [--app <X.Y.Z>]
+```
+
+It refuses unless `main` says that version and any tag already there is a commit on `main`
+with that version. It tags the commit and pushes the tag through the usual hooks, waits for
+`core.yml` to publish the release, then on a new branch `feat/apps-core-<version>` writes the
+release's digests into `core/artifact.lock.json` and sets `versionName` and `MARKETING_VERSION`
+(`--app`, or the next patch after `main`'s), and commits. The branch stays local: add the
+apps' changes and open the apps PR.
+
+When it stops (a failed `core.yml`, a lost connection), fix the cause and run the same command:
+each step reads what is already there, so there is no second tag. It never uploads to a store;
+that stays the two `workflow_dispatch` workflows. A wrong digest in a lock fails the apps' build
+in `cargo xtask fetch`, before anything is written (`core/xtask/src/lock.rs`,
+`a_wrong_checksum_fails_and_writes_nothing`).
+
 ## Migrations expand, and contract later
 
 A rollback runs the version before on the schema the new one migrated, because D1 does not go
