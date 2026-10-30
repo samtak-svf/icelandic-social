@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -18,6 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import samtak.spjall.brand.R
 import samtak.spjall.ui.LocalSuspension
+import samtak.spjall.ui.LocalSuspensionRefresh
 import samtak.spjall.ui.dateTime
 
 /** Provides the suspension in force to [content]; the screens read it to disable writing and show the notice. */
@@ -29,7 +31,11 @@ fun WithSuspension(
     val model: SuspensionViewModel = viewModel(key = "suspension") { SuspensionViewModel(social) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { model.load() }
     val suspension by model.state.collectAsStateWithLifecycle()
-    CompositionLocalProvider(LocalSuspension provides suspension, content = content)
+    CompositionLocalProvider(
+        LocalSuspension provides suspension,
+        LocalSuspensionRefresh provides model::load,
+        content = content,
+    )
 }
 
 /**
@@ -54,6 +60,13 @@ internal fun WithSocialHost(
 /** True while this account may not write: the controls that post, comment, react, vote, join or invite read it. */
 @Composable
 internal fun suspended(): Boolean = LocalSuspension.current != null
+
+/** How much of a control remains while a suspension has turned it off: it reads as off, not as a dead tap. */
+private const val SUSPENDED_ALPHA = 0.4f
+
+/** Dims a control that writes while the account is suspended; the control itself is disabled where it is built. */
+@Composable
+internal fun Modifier.dimmedWhenSuspended(): Modifier = if (suspended()) alpha(SUSPENDED_ALPHA) else this
 
 /**
  * The notice under a social screen's header while the account is suspended, with the way to the statement that says

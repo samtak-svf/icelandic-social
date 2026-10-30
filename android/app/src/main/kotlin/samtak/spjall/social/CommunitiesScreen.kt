@@ -247,7 +247,12 @@ private fun HubColumn(
 /** `community_create` at the top of the list (0080): only a verified account is offered it. */
 @Composable
 private fun CreateRow(onCreate: () -> Unit) {
-    SocialCard(modifier = Modifier.clickable(enabled = !suspended(), role = Role.Button, onClick = onCreate)) {
+    SocialCard(
+        modifier =
+            Modifier
+                .dimmedWhenSuspended()
+                .clickable(enabled = !suspended(), role = Role.Button, onClick = onCreate),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(
                 modifier = Modifier.size(40.dp).background(Palette.primary, CircleShape),

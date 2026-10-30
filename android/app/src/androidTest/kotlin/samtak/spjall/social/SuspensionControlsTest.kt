@@ -7,10 +7,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -21,6 +23,7 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,6 +31,7 @@ import samtak.spjall.brand.R
 import samtak.spjall.conversation.ConversationActions
 import samtak.spjall.conversation.ConversationScreen
 import samtak.spjall.conversation.ConversationViewModel
+import samtak.spjall.account.Problem
 import samtak.spjall.core.Author
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
@@ -40,6 +44,8 @@ import samtak.spjall.core.Poll
 import samtak.spjall.core.PollOption
 import samtak.spjall.core.Post
 import samtak.spjall.ui.LocalSuspension
+import samtak.spjall.ui.LocalSuspensionRefresh
+import samtak.spjall.ui.ProblemCard
 import samtak.spjall.ui.SpjallTheme
 import samtak.spjall.ui.Suspension
 import java.lang.reflect.Proxy
@@ -144,6 +150,51 @@ class SuspensionControlsTest {
             if (suspension == null) like.assertIsEnabled().performClick() else like.assertIsNotEnabled()
         }
         assertEquals(1, reacted.size)
+    }
+
+    /** Total brightness of what a node draws: a dimmed control sends less of it. */
+    private fun brightness(tag: String): Float {
+        val pixels = compose.onNodeWithTag(tag).captureToImage().toPixelMap()
+        var sum = 0f
+        for (x in 0 until pixels.width) {
+            for (y in 0 until pixels.height) {
+                val c = pixels[x, y]
+                sum += c.alpha * (c.red + c.green + c.blue)
+            }
+        }
+        return sum
+    }
+
+    @Test
+    fun theControlsThatAreOffLookOffWhileSuspended() {
+        val poll = Poll(listOf(PollOption("o0", "First", 1uL), PollOption("o1", "Second", 2uL)), 3uL, null, false)
+        under {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                PollCard(poll, busy = false, callbacks = PollCallbacks({}, {}, null))
+            }
+        }
+        current.value = null
+        compose.waitForIdle()
+        val lit = brightness("$POLL_OPTION-1")
+        current.value = ended
+        compose.waitForIdle()
+        assertTrue("a vote option stays as bright as when it works", brightness("$POLL_OPTION-1") < lit)
+    }
+
+    @Test
+    fun aRefusalForASuspensionReadsTheSuspensionAgainAndOtherRefusalsDoNot() {
+        var reads = 0
+        val problem = mutableStateOf<Problem>(Problem.NotFound)
+        compose.setContent {
+            SpjallTheme {
+                CompositionLocalProvider(LocalSuspensionRefresh provides { reads++ }) { ProblemCard(problem.value) {} }
+            }
+        }
+        compose.waitForIdle()
+        assertEquals(0, reads)
+        problem.value = Problem.Suspended
+        compose.waitForIdle()
+        assertEquals(1, reads)
     }
 
     @Test

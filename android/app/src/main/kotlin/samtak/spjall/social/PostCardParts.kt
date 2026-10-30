@@ -214,6 +214,7 @@ private fun LikeAction(
             active = mine != null,
             modifier =
                 Modifier
+                    .dimmedWhenSuspended()
                     .combinedClickable(
                         enabled = !busy && !suspended(),
                         role = Role.Button,

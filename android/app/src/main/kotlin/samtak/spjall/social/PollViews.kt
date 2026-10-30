@@ -97,6 +97,7 @@ private fun PollOptionRow(
                 .fillMaxWidth()
                 .heightIn(min = 44.dp)
                 .testTag("$POLL_OPTION-$index")
+                .dimmedWhenSuspended()
                 .border(
                     BorderStroke(if (mine) 2.dp else 1.dp, if (mine) Palette.primary else Palette.border),
                     RoundedCornerShape(8.dp),
