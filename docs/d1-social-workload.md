@@ -270,6 +270,164 @@ by time, and the one-scan feed is the one not to use.
   Private communities cost nothing extra to read. Community posts should reach members by
   reading, not by fan-out.
 
+## The feed at the size of 0116 (#373)
+
+Decision [0116](decisions/0116-the-feed.md) estimated about 1,500 rows per page for a viewer with 500 friends
+and 50 communities, by arithmetic. This section measures it. The figures come from
+`spikes/d1-workload/feed.ts`, on **a local D1 in workerd (`getPlatformProxy`)**: rows read is D1's own
+`rows_read`, milliseconds are D1's `sql_duration_ms` (SQLite, no network), the mean of 20 runs of the same
+statement. **No figure here is from production D1**, which adds a network hop per statement and was not
+created for a spike. The seed is the full 100,000 accounts, so the table of 5 million `friendships` rows is
+the size 0114 projects, not a scaled-down copy.
+**The result: the heavy viewer reads 2,346 to 2,401 rows a page (four complete runs; 2,378 in the table), under the 3,000 that
+would call for a change, so 0116 stands.** The estimate of 1,500 was about 900 rows too low. The difference fits how
+`rows_read` counts, not a different plan: a row found through an index costs the index entry and the table row, so
+the roughly 380 posts in the first day count about 760, the 500 friendships 500 and the 500 walls about 1,000 (the
+`walls` primary key is on `account_id`, so the wall's table row is read too), which with the memberships comes to the
+measured figure. That split is arithmetic checked against the total, not a per-table count. The plan is the one 0116
+describes.
+
+### What differs from the document
+
+- **Schema.** `friendships(account_id, friend_id, since)` is `WITHOUT ROWID` with the primary key
+  `(account_id, friend_id)`, written in both directions (0114). `walls(account_id PRIMARY KEY, community_id)`
+  (0115). `person_snoozes(account_id, target_id, until)` (0114). `post_index` gains `audience`; the feed does
+  not read it (friends read both audiences, 0116). A wall is a row of `communities` with `kind = 'wall'`.
+  `walls` and the wall rows of `communities` are not in a migration yet, so they exist only in the spike.
+- **`posts_by_author` is `ON post_index (author_id)`**, as `backend/migrations/0015_social.sql:15` has it,
+  where the earlier model above assumes `(author_account_id, created_at)`. The feed does not use it either way:
+  it reaches posts through `posts_by_community (community_id, created_at)`, with a wall's id as the community.
+  `posts_by_author` serves the person screen and account deletion, and a wall page read by author would
+  filter on `created_at` after the index. This is a difference to know about, not one to fix here.
+- **The seed holds 30 days** of posts (600,000 `post_index` rows: 7 a day per community, 0.06 a day per wall),
+  the longest window the feed reads. Friendships are random pairs, 4,999,540 rows after the primary key removes
+  repeats. Community memberships are 8 per account.
+- **The three viewers are set exactly**, not drawn: heavy has 500 friends, 50 communities, 5 snoozed and 5
+  blocked accounts; median 50 friends, 8 communities, 1 snoozed and 1 blocked; light 3 friends and no community
+  (0.18 posts a day among them, so no window under 30 days fills a page). "Median" is the assumed 50 friends and
+  8 communities, not the median of the seeded degrees.
+- **The statement** is the one of 0116: communities (joined to `communities` for `kind` and `deleted_at`),
+  friends' walls, the own wall, joined to `posts_by_community` in a window, with `state = 'visible'`, the block
+  check of `UNBLOCKED` in both directions and the snooze check (`until > now`) in the same statement,
+  `ORDER BY created_at DESC, post_id DESC LIMIT 31`.
+- **The adaptive window** tries 1, 4, 16 and 30 days, each a fresh read of the whole window, stopping when 31
+  rows come back. The Worker spends at most three statements a request, so a page that needs the 30-day window
+  takes a second request, and the table counts both.
+
+<!-- feed:start -->
+
+Seed: 100,000 accounts, 2,000 communities, 30 days of posts. Engine: local D1 in workerd (`getPlatformProxy`), rows read is D1's `rows_read`, milliseconds are D1's `sql_duration_ms` (SQLite, no network), the mean of 20 runs.
+
+| Table             |      Rows |
+| ----------------- | --------: |
+| accounts          |   100,000 |
+| communities       |   102,000 |
+| community_members |   798,686 |
+| friendships       | 4,999,638 |
+| walls             |   100,000 |
+| person_snoozes    |         6 |
+| blocks            |         6 |
+| post_index        |   600,000 |
+
+| Viewer | Friends | Communities | Snoozed | Blocked |
+| ------ | ------: | ----------: | ------: | ------: |
+| heavy  |     500 |          50 |       5 |       5 |
+| median |      50 |           8 |       1 |       1 |
+| light  |       3 |           0 |       0 |       0 |
+
+Every window, alone (a statement reading the whole window, 31 rows at most returned):
+
+| Viewer | Window | Rows read |    ms | Rows returned |
+| ------ | -----: | --------: | ----: | ------------: |
+| heavy  |    1 d |     2,378 |  1.30 |            31 |
+| heavy  |    4 d |     4,627 |  3.55 |            31 |
+| heavy  |   16 d |    13,703 | 10.75 |            31 |
+| heavy  |   30 d |    24,232 | 16.45 |            31 |
+| median |    1 d |       310 |  0.35 |            31 |
+| median |    4 d |       633 |  0.90 |            31 |
+| median |   16 d |     2,072 |  1.95 |            31 |
+| median |   30 d |     3,806 |  3.60 |            31 |
+| light  |    1 d |        15 |  0.15 |             0 |
+| light  |    4 d |        16 |  0.10 |             1 |
+| light  |   16 d |        17 |  0.00 |             2 |
+| light  |   30 d |        31 |  0.05 |             9 |
+
+A page, widening from 1 day until it fills (30 posts and one more), 3 statements to a request:
+
+| Viewer | Window reached | Statements | Requests | Rows read per page | ms per page | Rows returned |
+| ------ | -------------: | ---------: | -------: | -----------------: | ----------: | ------------: |
+| heavy  |            1 d |          1 |        1 |              2,378 |        1.35 |            31 |
+| median |            1 d |          1 |        1 |                310 |        0.60 |            31 |
+| light  |           30 d |          4 |        2 |                 79 |        0.20 |             9 |
+
+Query plan, heavy viewer, one window:
+
+```text
+MERGE (UNION ALL)
+LEFT
+MERGE (UNION ALL)
+LEFT
+SEARCH m USING INDEX community_members_by_account (account_id=?)
+SEARCH c USING INDEX sqlite_autoindex_communities_1 (community_id=?)
+SEARCH p USING INDEX posts_by_community (community_id=? AND created_at>? AND created_at<?)
+CORRELATED SCALAR SUBQUERY 4
+MULTI-INDEX OR
+INDEX 1
+SEARCH blocks USING COVERING INDEX sqlite_autoindex_blocks_1 (blocker_account_id=? AND blocked_account_id=?)
+INDEX 2
+SEARCH blocks USING COVERING INDEX sqlite_autoindex_blocks_1 (blocker_account_id=? AND blocked_account_id=?)
+CORRELATED SCALAR SUBQUERY 5
+SEARCH z USING INDEX sqlite_autoindex_person_snoozes_1 (account_id=? AND target_id=?)
+USE TEMP B-TREE FOR ORDER BY
+RIGHT
+SEARCH f USING PRIMARY KEY (account_id=?)
+SEARCH w USING INDEX sqlite_autoindex_walls_1 (account_id=?)
+SEARCH p USING INDEX posts_by_community (community_id=? AND created_at>? AND created_at<?)
+CORRELATED SCALAR SUBQUERY 4
+MULTI-INDEX OR
+INDEX 1
+SEARCH blocks USING COVERING INDEX sqlite_autoindex_blocks_1 (blocker_account_id=? AND blocked_account_id=?)
+INDEX 2
+SEARCH blocks USING COVERING INDEX sqlite_autoindex_blocks_1 (blocker_account_id=? AND blocked_account_id=?)
+CORRELATED SCALAR SUBQUERY 5
+SEARCH z USING INDEX sqlite_autoindex_person_snoozes_1 (account_id=? AND target_id=?)
+USE TEMP B-TREE FOR ORDER BY
+RIGHT
+SEARCH w USING INDEX sqlite_autoindex_walls_1 (account_id=?)
+SEARCH p USING INDEX posts_by_community (community_id=? AND created_at>? AND created_at<?)
+CORRELATED SCALAR SUBQUERY 4
+MULTI-INDEX OR
+INDEX 1
+SEARCH blocks USING COVERING INDEX sqlite_autoindex_blocks_1 (blocker_account_id=? AND blocked_account_id=?)
+INDEX 2
+SEARCH blocks USING COVERING INDEX sqlite_autoindex_blocks_1 (blocker_account_id=? AND blocked_account_id=?)
+CORRELATED SCALAR SUBQUERY 5
+SEARCH z USING INDEX sqlite_autoindex_person_snoozes_1 (account_id=? AND target_id=?)
+USE TEMP B-TREE FOR LAST TERM OF ORDER BY
+```
+
+<!-- feed:end -->
+
+### What the figures say
+
+- **The heavy viewer never widens.** One day holds 380 posts in its sources, so the first statement fills the
+  page: about 2,400 rows and 1.2 to 1.5 ms. That is the figure for every page that starts at the top of the feed.
+- **Under the ceiling by about 600 rows.** A viewer who passes 3,000 rows needs the first window cut to 12 hours or
+  the page shortened, not a different query; neither is needed at this size.
+- **A wider window is the thing to avoid for the heavy viewer.** If a day ever came back short, the 4 and 16 day
+  windows would read about 4,600 and 13,800 rows and the 30 day window about 24,300, at 3 to 16 ms. The adaptive
+  window exists so that this never happens to the viewer who has the most to read.
+- **The median viewer** reads about 300 rows and 0.2 to 0.6 ms for a page, and would need the 30-day window (about 3,800
+  rows, 3 ms) only if its sources went quiet.
+- **The light viewer** reads 65 to 80 rows and under 0.4 ms across four statements and two requests, and ends with
+  three to nine posts: the window reached 30 days and still did not fill a page. Four statements and two requests is
+  the cost of a quiet account, and it is small because the sources are few.
+- **The plan** reads each source through an index and sorts the merged rows in a temporary B-tree
+  (`USE TEMP B-TREE FOR ORDER BY`), once for each of the three sources. The sort is of the rows in the window,
+  not of the table.
+- **Not measured:** production D1's network and queueing, the 30 Space calls per page (those need staging, as
+  0116 says), and a viewer with far more than 500 friends.
+
 ## Reproducing
 
 ```bash
@@ -282,3 +440,13 @@ pnpm --filter spjall-spike-d1-workload measure --write && pnpm format   # refres
 Change an assumption in the constants at the top of `spikes/d1-workload/measure.ts`, then run
 it again. The seed draws from SQLite's `random()`, so the counts move by a few percent from run
 to run. Times also vary from one machine to another. The sizes per row hardly move.
+
+The feed section above is a separate script, with its own seed (one to four minutes at 100,000
+accounts, and it starts again by itself, up to twice, if workerd drops its connection mid-seed, in `$HOME/.cache/spjall-spike`, deleted when it ends; it needs about 3 GiB of disk and does not
+read the first script's database):
+
+```bash
+pnpm --filter spjall-spike-d1-workload measure:feed                      # print the results
+pnpm --filter spjall-spike-d1-workload measure:feed --write && pnpm format   # refresh the table in that section
+pnpm --filter spjall-spike-d1-workload measure:feed --accounts 10000     # a quick, smaller seed (the minimum)
+```

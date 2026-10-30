@@ -55,9 +55,10 @@ measured.** The first step of the plan extends the spike.
   of the measured "one scan" (19,326 rows, `docs/d1-social-workload.md:93`) that the window exists to avoid; the spike's own
   7 days (`spikes/d1-workload/model.ts:268`) would read 2,660.
 - **So the window adapts**: it starts at 24 hours and widens to 4, 16 and 30 days, in at most three statements per
-  request, with the cursor carrying the width. The heavy viewer reads about 380 post rows plus about 1,100 rows of joins
-  (500 friendships, 500 walls, 50 memberships, 50 communities), so about 1,500 per page against the measured 362–409
-  (`docs/d1-social-workload.md:94`, at 1 ms). A light viewer's wider window reads few rows, and the existing step-back
+  request, with the cursor carrying the width. The heavy viewer reads about 2,400 rows per page, measured on a local D1 in
+  [The feed at the size of 0116](../d1-social-workload.md#the-feed-at-the-size-of-0116-373) (an index entry and a table row
+  for each post and wall, which the first estimate here of 1,500 left out), under the 3,000 that would call for a change.
+  A light viewer's wider window reads few rows, and the existing step-back
   (`posts.ts:234–243`) is kept, now also looking at the oldest friendship.
 - **Storage:** `friendships` at 100,000 accounts with 50 friends each is 5 million directed rows, 0.72 GiB
   (`docs/d1-social-workload.md:79`), which is what 0060's 0.9 GiB for the graph already counted as follows.

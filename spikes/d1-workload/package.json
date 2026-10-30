@@ -5,7 +5,8 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
-    "measure": "node measure.ts"
+    "measure": "node measure.ts",
+    "measure:feed": "node feed.ts"
   },
   "devDependencies": {
     "wrangler": "4.152.0"
