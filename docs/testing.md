@@ -183,14 +183,14 @@ out: their critical logic is in the core (0022), and UI coverage measures layout
 ## Where CI runs
 
 The repository is public, so hosted Linux and macOS runners cost nothing. The build, test and guard
-jobs run hosted. Only two lanes stay on Samtak's own Mac mini (`samtak-mac`, two organisation runner
-instances), for its speed and its one AVD, each chosen by a repository variable:
+jobs run hosted. Two lanes use Samtak's own Mac mini (`samtak-mac`, two organisation runner
+instances), for its speed and its arm64 AVD, each chosen by a repository variable:
 
 | Variable                  | Jobs                                                | Value                                                                                 |
 | ------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | `RUNNER_LABELS`           | the build and test jobs                             | unset (hosted)                                                                        |
 | `GUARD_RUNNER_LABELS`     | the short guards (authorship, peer names, gitleaks) | unset (hosted)                                                                        |
-| `EXCLUSIVE_RUNNER_LABELS` | the Android device job only                         | `["self-hosted","macOS","ARM64","samtak-mac","spjall-exclusive"]`, held by one runner |
+| `EXCLUSIVE_RUNNER_LABELS` | the Android device job on main, never on a PR       | `["self-hosted","macOS","ARM64","samtak-mac","spjall-exclusive"]`, held by one runner |
 | `MAC_RUNNER_LABELS`       | the iOS tests and the core's iOS build              | `["self-hosted","macOS","ARM64","samtak-mac"]`                                        |
 
 - **Unset means hosted.** Every lane falls back to `ubuntu-latest`, so deleting a variable moves its
@@ -201,6 +201,13 @@ instances), for its speed and its one AVD, each chosen by a repository variable:
   belong to the organisation, so the label is set on its endpoint
   (`gh api orgs/samtak-svf/actions/runners/<id>/labels`); the repository's endpoint answers 404.
   `tooling/mac-remote.mjs android` uses the same AVD and is not serialised against CI.
+- **A PR's device job is hosted, every other one takes the Mac.** Over 10-23 to 10-30 the job on a
+  PR took a median of 11.8 min (p90 29.9) on the exclusive lane, 8.2 of them waiting, and 4.5
+  (p90 5.7) hosted, with the same failure rate (12 and 13%). It set the pace of a PR: 14.7 min
+  (p90 43.3) against 4.8 (p90 5.7). The hosted emulator is x86_64 and a phone is arm64, so a merge
+  that runs, the daily run and a manual run stay on the AVD: CI still loads the arm64 core, at most
+  a day after the commit that broke it. Both lanes run the same tests, and both fail on none
+  (`android/scripts/connected-count.sh`).
 - **web and interop do not queue on it.** `backend/scripts/dev-worker.sh` starts the Worker on a
   free port per run (`SPJALL_DEV_PORT`, read by `backend/dev-origin.ts`, exported to the tests as
   `SPJALL_DEV_URL`), so two Workers share one machine. `tooling/workflow-guard.mjs` keeps a fixed
