@@ -16,7 +16,7 @@
 //
 //   node tooling/mac-remote.mjs [--host <ssh host>] [--dir <dir>] [ios | android | -- <command…>]
 //     ios (the default) runs ios/scripts/test.sh --prepare there
-//     android runs android/scripts/test.sh --connected (checks and emulator tests)
+//     android runs android/scripts/test.sh, then again with --connected (checks and emulator tests)
 //     web runs web/scripts/e2e.sh --prepare (the Worker under cf dev, then Playwright)
 //
 // web and interop runs get a free Worker port (CI=1 makes backend/scripts/dev-worker.sh
@@ -39,7 +39,7 @@ import { ROOT } from "./lib/repo.mjs";
 
 const TASKS = {
   ios: "ios/scripts/test.sh --prepare",
-  android: "android/scripts/test.sh --connected",
+  android: "android/scripts/test.sh && android/scripts/test.sh --connected",
   web: "CI=1 web/scripts/e2e.sh --prepare",
 };
 

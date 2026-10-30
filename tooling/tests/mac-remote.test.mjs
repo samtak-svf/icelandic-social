@@ -9,7 +9,9 @@ describe("parseArgs", () => {
   });
 
   it("names the Android checks and emulator tests as a task", () => {
-    expect(parseArgs(["android"]).command).toBe("android/scripts/test.sh --connected");
+    expect(parseArgs(["android"]).command).toBe(
+      "android/scripts/test.sh && android/scripts/test.sh --connected",
+    );
   });
 
   it("names the web e2e as a task", () => {
@@ -41,7 +43,7 @@ describe("sharedArgs", () => {
       "--host",
       "samtak-mac",
       "--",
-      "android/scripts/test.sh --connected",
+      "android/scripts/test.sh && android/scripts/test.sh --connected",
     ]);
   });
 
