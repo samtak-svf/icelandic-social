@@ -1,12 +1,21 @@
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { ModerationLogEntry, Report } from "../generated/api.ts";
+import type { ModerationLogEntry, OpenModerationReview, Report } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import type { Paged } from "./paged.ts";
 import { LogEntries } from "./moderation-log.tsx";
-import { act, actionsFor, dismiss, without, type Calls } from "./platform-moderation.ts";
+import {
+  act,
+  actionsFor,
+  dismiss,
+  reviewActionsFor,
+  undecided,
+  without,
+  type Calls,
+} from "./platform-moderation.ts";
 import { PlatformView, QueueList } from "./platform-moderation.tsx";
+import { ReviewItem } from "./platform-reviews.tsx";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, className }: { children: ReactNode; className?: string }) => (
@@ -60,6 +69,7 @@ const noCalls = (): Calls => ({
   moderate: vi.fn(() => Promise.resolve({ status: 204 as const, data: undefined })),
   moderatePlatform: vi.fn(() => Promise.resolve({ status: 204 as const, data: undefined })),
   closeReport: vi.fn(() => Promise.resolve({ status: 204 as const, data: undefined })),
+  decideModerationReview: vi.fn(() => Promise.resolve({ status: 204 as const, data: undefined })),
 });
 
 const paged = <T,>(over: Partial<Paged<T>>): Paged<T> => ({
@@ -188,6 +198,9 @@ describe("a person the server refuses", () => {
         queue={paged<Report>({
           problem: { kind: "refused", code: "not_permitted", requestId: null },
         })}
+        reviews={paged<OpenModerationReview>({
+          problem: { kind: "refused", code: "not_permitted", requestId: null },
+        })}
         log={paged<ModerationLogEntry>({
           problem: { kind: "refused", code: "not_permitted", requestId: null },
         })}
@@ -204,13 +217,101 @@ describe("a person the server refuses", () => {
     const html = renderToStaticMarkup(
       <PlatformView
         queue={paged<Report>({ items: [report()] })}
+        reviews={paged<OpenModerationReview>({ items: [] })}
         log={paged<ModerationLogEntry>({ items: [entry] })}
         calls={noCalls()}
         done={() => undefined}
       />,
     );
     expect(html).toContain(strings.moderation_queue);
+    expect(html).toContain(strings.platform_reviews);
+    expect(html).toContain(strings.platform_reviews_empty);
     expect(html).toContain(strings.moderation_log_title);
     expect(html).not.toContain(strings.problem_not_permitted);
+  });
+});
+
+const review = (over: Partial<OpenModerationReview> = {}): OpenModerationReview => ({
+  entryId: 9,
+  action: "remove_post",
+  target: { kind: "post", id: "p1" },
+  communityId: "c1",
+  postId: "p1",
+  actor: person(null),
+  targetAccount: person("v1"),
+  reason: "Brot á reglum",
+  createdAt: 1_700_000_000_000,
+  body: "Textinn sem var fjarlægður",
+  askedAt: 1_700_000_100_000,
+  canDecide: true,
+  ...over,
+});
+
+describe("a review", () => {
+  it("shows what was done and why, with both answers", () => {
+    const html = renderToStaticMarkup(
+      <ReviewItem review={review()} calls={noCalls()} decided={() => undefined} />,
+    );
+    expect(html).toContain(strings.moderation_decision_remove_post);
+    expect(html).toContain("Brot á reglum");
+    expect(html).toContain("Textinn sem var fjarlægður");
+    expect(html).toContain(strings.platform_review_uphold);
+    expect(html).toContain(strings.platform_review_overturn);
+    expect(html).not.toContain(strings.platform_review_not_yours);
+  });
+
+  it("offers no answer to the moderator who acted or asked", () => {
+    const html = renderToStaticMarkup(
+      <ReviewItem
+        review={review({ canDecide: false })}
+        calls={noCalls()}
+        decided={() => undefined}
+      />,
+    );
+    expect(reviewActionsFor(review({ canDecide: false }))).toEqual([]);
+    expect(html).toContain(strings.platform_review_not_yours);
+    expect(html).not.toContain(strings.platform_review_uphold);
+  });
+
+  it("says the text is gone and can still be answered after the purge", () => {
+    const html = renderToStaticMarkup(
+      <ReviewItem review={review({ body: null })} calls={noCalls()} decided={() => undefined} />,
+    );
+    expect(html).toContain(strings.platform_review_text_gone);
+    expect(html).toContain(strings.platform_review_uphold);
+  });
+
+  it("does not claim purged text for a photo, which has none", () => {
+    const html = renderToStaticMarkup(
+      <ReviewItem
+        review={review({
+          action: "clear_account_photo",
+          target: { kind: "account", id: "a1" },
+          communityId: null,
+          postId: null,
+          body: null,
+        })}
+        calls={noCalls()}
+        decided={() => undefined}
+      />,
+    );
+    expect(html).not.toContain(strings.platform_review_text_gone);
+  });
+
+  it("decides through its row, with the reason trimmed", async () => {
+    const calls = noCalls();
+    const [uphold, overturn] = reviewActionsFor(review());
+    if (uphold === undefined || overturn === undefined) throw new Error("two rows");
+    expect((await act(calls, review(), overturn, "  Rangt mat ")).ok).toBe(true);
+    expect(calls.decideModerationReview).toHaveBeenCalledWith({
+      path: { entryId: "9" },
+      body: { outcome: "overturned", reason: "Rangt mat" },
+    });
+    expect(uphold.id).toBe("upheld");
+  });
+
+  it("leaves the list once answered", () => {
+    expect(undecided([review()], new Set([9]))).toEqual([]);
+    expect(undecided([review()], new Set())).toHaveLength(1);
   });
 });

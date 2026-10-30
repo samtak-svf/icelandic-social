@@ -2626,6 +2626,98 @@
           "next"
         ]
       },
+      "ModerationStatementPage": {
+        "type": "object",
+        "properties": {
+          "statements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModerationStatement"
+            }
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The cursor of the next, older page"
+          }
+        },
+        "required": [
+          "statements",
+          "next"
+        ]
+      },
+      "ModerationStatement": {
+        "type": "object",
+        "properties": {
+          "entryId": {
+            "type": "integer"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "hide_post",
+              "remove_post",
+              "hide_comment",
+              "remove_comment",
+              "clear_account_photo"
+            ]
+          },
+          "target": {
+            "$ref": "#/components/schemas/ReportTarget"
+          },
+          "communityId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "reason": {
+            "type": "string",
+            "description": "The moderator's reason, as written"
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "Unix milliseconds"
+          },
+          "body": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The text the action was on, while it is kept (90 days after a removal, 0063)"
+          },
+          "canAsk": {
+            "type": "boolean",
+            "description": "No review was asked for yet and the content has not come back since"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModerationReview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "entryId",
+          "action",
+          "target",
+          "communityId",
+          "reason",
+          "createdAt",
+          "body",
+          "canAsk",
+          "review"
+        ],
+        "description": "Why a moderator acted. Never names who did"
+      },
       "ReportTarget": {
         "type": "object",
         "properties": {
@@ -2649,6 +2741,185 @@
           "id"
         ],
         "description": "What a report or an action is about"
+      },
+      "ModerationReview": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "upheld",
+              "overturned"
+            ]
+          },
+          "askedAt": {
+            "type": "integer",
+            "description": "Unix milliseconds"
+          },
+          "decidedAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Unix milliseconds"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The decider's reason, once decided"
+          },
+          "restored": {
+            "type": "boolean",
+            "description": "The content is back. False on an overturned review when it no longer exists, as a cleared photo does not, or when a later hide or remove of it still stands"
+          }
+        },
+        "required": [
+          "state",
+          "askedAt",
+          "decidedAt",
+          "reason",
+          "restored"
+        ]
+      },
+      "OpenModerationReviewPage": {
+        "type": "object",
+        "properties": {
+          "reviews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenModerationReview"
+            }
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The cursor of the next, older page"
+          }
+        },
+        "required": [
+          "reviews",
+          "next"
+        ]
+      },
+      "OpenModerationReview": {
+        "type": "object",
+        "properties": {
+          "entryId": {
+            "type": "integer"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "hide_post",
+              "remove_post",
+              "hide_comment",
+              "remove_comment",
+              "clear_account_photo"
+            ]
+          },
+          "target": {
+            "$ref": "#/components/schemas/ReportTarget"
+          },
+          "communityId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "postId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b",
+            "description": "The post to open, when the target is a post or a comment on one"
+          },
+          "actor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Author"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "targetAccount": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Author"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "Unix milliseconds"
+          },
+          "body": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The text, while it is kept; null means the decision is made without it"
+          },
+          "askedAt": {
+            "type": "integer",
+            "description": "Unix milliseconds"
+          },
+          "canDecide": {
+            "type": "boolean",
+            "description": "False for the moderator who acted and for the person who asked"
+          }
+        },
+        "required": [
+          "entryId",
+          "action",
+          "target",
+          "communityId",
+          "postId",
+          "actor",
+          "targetAccount",
+          "reason",
+          "createdAt",
+          "body",
+          "askedAt",
+          "canDecide"
+        ]
+      },
+      "ModerationReviewDecision": {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "upheld",
+              "overturned"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "outcome",
+          "reason"
+        ]
       },
       "ReportPage": {
         "type": "object",
@@ -2915,7 +3186,9 @@
               "close_poll",
               "anonymous_posts_on",
               "anonymous_posts_off",
-              "reveal_author"
+              "reveal_author",
+              "review_upheld",
+              "review_overturned"
             ]
           },
           "target": {
@@ -12406,6 +12679,372 @@
           },
           "404": {
             "description": "not_found: no such post the caller can see",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/moderation/statements": {
+      "get": {
+        "operationId": "moderationStatements",
+        "tags": [
+          "moderation"
+        ],
+        "summary": "What moderators did to the caller's content and why, newest first",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,16}$",
+              "description": "The `next` of the page before"
+            },
+            "required": false,
+            "description": "The `next` of the page before",
+            "name": "before",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The statements",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationStatementPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/moderation/statements/{entryId}/review": {
+      "post": {
+        "operationId": "askModerationReview",
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Asks once for a review of an action on the caller's content",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,16}$",
+              "description": "The log entry of the action"
+            },
+            "required": true,
+            "description": "The log entry of the action",
+            "name": "entryId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Asked"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such action on the caller's content that can be reviewed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "already_asked: this action had its one review; restored: the content is back already",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/moderation/reviews": {
+      "get": {
+        "operationId": "openModerationReviews",
+        "tags": [
+          "moderation"
+        ],
+        "summary": "The reviews waiting for a platform moderator, newest first",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,16}$",
+              "description": "The `next` of the page before"
+            },
+            "required": false,
+            "description": "The `next` of the page before",
+            "name": "before",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The reviews",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenModerationReviewPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: only Samtak's platform moderators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/moderation/reviews/{entryId}": {
+      "post": {
+        "operationId": "decideModerationReview",
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Upholds or overturns an action; both are logged and the person is told",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,16}$",
+              "description": "The log entry of the action"
+            },
+            "required": true,
+            "description": "The log entry of the action",
+            "name": "entryId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModerationReviewDecision"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Decided"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: not a platform moderator, or the one who acted or asked: nobody decides their own",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such review",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "already_decided: this review has its answer",
             "content": {
               "application/json": {
                 "schema": {

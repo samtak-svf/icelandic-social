@@ -32,10 +32,14 @@ export async function postContent(env: Env, postId: string): Promise<Content | n
     .first<Content>();
 }
 
+/** The post a comment is on: a comment id is its post's id, a dash and its own part (posts.ts). */
+export function postOfComment(commentId: string): string {
+  return commentId.slice(0, Math.max(0, commentId.lastIndexOf("-")));
+}
+
 /** A comment's place and author, whatever its state; null when there is none. */
 export async function commentContent(env: Env, commentId: string): Promise<Content | null> {
-  // A comment id is its post's id, a dash and its own part (posts.ts).
-  const postId = commentId.slice(0, Math.max(0, commentId.lastIndexOf("-")));
+  const postId = postOfComment(commentId);
   const post = postId ? await postContent(env, postId) : null;
   const comment = post && (await space(env, post.communityId).comment(commentId));
   return comment && post
@@ -47,6 +51,23 @@ export async function commentContent(env: Env, commentId: string): Promise<Conte
         anonymous: 0,
       }
     : null;
+}
+
+/**
+ * The text of a post or comment while it is kept, whatever its state, for the
+ * person who wrote it and the moderator who answers them (decision 0115); null
+ * once it is gone, or when there never was any.
+ */
+export async function keptText(
+  env: Env,
+  communityId: string,
+  kind: "post" | "comment",
+  id: string,
+): Promise<string | null> {
+  const stub = space(env, communityId);
+  if (kind === "comment") return (await stub.comment(id))?.body || null;
+  const [post] = await stub.posts([id], { account: "", hidden: [], moderator: true });
+  return post?.body || null;
 }
 
 /** Sets a post's state, with `entries` in the same batch. */

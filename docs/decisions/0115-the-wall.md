@@ -1,6 +1,6 @@
 # 0115. The wall: an account's posts, for friends by default, moderated by the platform
 
-- Status: accepted; designed, not yet implemented
+- Status: accepted; designed, not yet implemented; the platform moderation screen and action route (#374), the statement of reasons, the single review and the tombstone (#374) implemented, the rest still to come
 - Date: 2026-10-30
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0044](0044-no-fljotid-in-v1.md) ("There is no wall"; settles the report and moderation it asked for),
@@ -116,8 +116,14 @@ what the platform has today is too little to open walls on.
 2. **A platform action route that needs no community.** `act` starts from a community
    (`backend/src/modules/moderation/actions.ts:160–172`), and an account report has none. Built as
    `POST /v1/moderation/actions`, for an account's photo so far; a bio, a cover and suspension add to it when they
-   exist. It tells the person nothing yet: that comes with step 3, and must land before a wall write.
+   exist. Clearing a photo tells the person, through the notice of step 3.
 3. **The statement of reasons, the single review and the tombstone** 0063 promised and 0066 listed as not built.
+   One review per log entry, asked for by the person whose content it was; a platform moderator decides, never the
+   one who acted or asked. A cleared photo cannot come back, and the person is told so. Overturning restores only when
+   no later hide or remove of the same content stands: the older decision falls, the newer one is not undone by it, and
+   the person is told the content does not come back. An overturn that does restore writes two entries in one batch,
+   `review_overturned` and `restore_post` or `restore_comment`, so the replay of a restored space (0068) reads only
+   what it always read; one that restores nothing writes only `review_overturned`.
 4. **Suspension**, which does not exist: a column on `accounts`, timed or open. It stops posts, comments, reactions,
    friend requests and creating or joining a community. It does not touch conversations, which are end-to-end
    encrypted and which a person may need. The person is told and has one review.

@@ -81,6 +81,11 @@ function Settings() {
       <div className="mt-6">
         <VerifyCta />
       </div>
+      <p className="mt-6">
+        <Link to="/statements" className="underline">
+          {strings.statements_title}
+        </Link>
+      </p>
       <section aria-labelledby="sessions" className="mt-6">
         <h2 id="sessions" className="text-xl font-semibold">
           {strings.sessions_title}

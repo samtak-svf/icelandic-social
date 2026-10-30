@@ -84,8 +84,14 @@ pub enum NotificationAction {
     RemoveMember,
     BanMember,
     UnbanMember,
+    /// A platform moderator cleared the caller's photo (no community).
+    ClearAccountPhoto,
     /// A moderator declined the caller's anonymous post (no post id).
     DeclineAnonymousPost,
+    /// The caller's review came back: the action stands (0115).
+    ReviewUpheld,
+    /// The caller's review came back: the action was undone (0115).
+    ReviewOverturned,
     #[serde(other)]
     Unknown,
 }

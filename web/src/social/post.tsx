@@ -22,6 +22,7 @@ import { outcome, when } from "./outcome.ts";
 import { ReportForm } from "./report.tsx";
 import { ActionRow, Summary, useReactions } from "./post-actions.tsx";
 import { PollCard } from "./poll.tsx";
+import { isPostTombstone, PostTombstone } from "./post-tombstone.tsx";
 import { RoleBadge } from "./roles.tsx";
 import { CommentImage } from "./comment-image.tsx";
 import { useMediaSrc, useViewer, type ViewerItem } from "./viewer.tsx";
@@ -112,14 +113,7 @@ function PostName({ post }: Readonly<{ post: Post }>) {
   );
 }
 
-export function PostView({
-  post,
-  linked,
-  deleted,
-  changed,
-  moderates,
-  community,
-}: Readonly<{
+type PostViewProps = Readonly<{
   post: Post;
   linked: boolean;
   deleted: () => void;
@@ -128,7 +122,17 @@ export function PostView({
   /** Whether the caller is the owner or a moderator of the post's community. */
   moderates: boolean;
   community?: { communityId: string; name: string; photo: string | null } | null;
-}>) {
+}>;
+
+export function PostView(props: PostViewProps) {
+  return isPostTombstone(props.post) ? (
+    <PostTombstone post={props.post} moderates={props.moderates} />
+  ) : (
+    <LivePost {...props} />
+  );
+}
+
+function LivePost({ post, linked, deleted, changed, moderates, community }: PostViewProps) {
   const reactions = useReactions(post);
   return (
     <article

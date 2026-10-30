@@ -57,6 +57,17 @@ function Pictures({
   );
 }
 
+/** The moderated rows a statement of reasons explains (decision 0115). */
+const STATED: ReadonlySet<string | null> = new Set([
+  "hide_post",
+  "remove_post",
+  "hide_comment",
+  "remove_comment",
+  "clear_account_photo",
+  "review_upheld",
+  "review_overturned",
+]);
+
 export function NoticeRow({
   notification: n,
   community,
@@ -93,14 +104,19 @@ export function NoticeRow({
       )}
     </>
   );
-  // A removed post is not there to open; its community is, when it has one.
+  // What a moderator did is read with its reasons; a removed post is not there to open.
+  const toStatements = n.kind === "moderated" && STATED.has(n.action);
   const toPost = n.postId !== null && n.kind !== "moderated";
   const onClick = () => actions.open(n);
   return (
     <div
       className={`flex items-center rounded-md border border-border ${n.read ? "" : "bg-muted"}`}
     >
-      {toPost ? (
+      {toStatements ? (
+        <Link to="/statements" className={link} onClick={onClick}>
+          {body}
+        </Link>
+      ) : toPost ? (
         <Link to="/posts/$postId" params={{ postId: n.postId! }} className={link} onClick={onClick}>
           {body}
         </Link>

@@ -17,7 +17,7 @@ use tempfile::TempDir;
 
 pub const KEY: [u8; 32] = [7; 32];
 
-pub const SOCIAL: [&str; 9] = [
+pub const SOCIAL: [&str; 10] = [
     "/v1/communities",
     "/v1/me/communities",
     "/v1/feed",
@@ -27,6 +27,7 @@ pub const SOCIAL: [&str; 9] = [
     "/v1/cards",
     "/v1/notifications",
     "/v1/notification-settings",
+    "/v1/moderation",
 ];
 
 #[derive(Default)]

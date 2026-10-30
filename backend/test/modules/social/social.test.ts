@@ -612,7 +612,7 @@ describe("the feed (#275)", () => {
     let pages = 0;
     let most = 0;
     for (;;) {
-      const page = await feed(env, reader.accountId, before, 30, now + 1);
+      const page = await feed(env, reader.accountId, before, 30, false, now + 1);
       most = Math.max(most, page.rowsRead);
       for (const row of page.rows) {
         expect(seen.has(row.postId)).toBe(false);

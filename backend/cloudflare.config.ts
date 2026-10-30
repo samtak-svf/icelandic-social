@@ -60,13 +60,14 @@ export default defineConfig(({ mode }) => ({
       MIN_CLIENT_VERSION_IOS: bindings.text("0.5.0"),
       // The web's floor is the version of the web build this Worker serves,
       // raised by the deploy that ships a new one, so every older tab is
-      // refused with 426 and reloads. 0.1.0 until the web app exists.
-      MIN_CLIENT_VERSION_WEB: bindings.text("0.1.0"),
-      // The first app version whose core decodes a notification with no
-      // community and any kind. Below it, such rows are withheld from the list
-      // and the counts, and it is not a floor: an older app goes on working
-      // (decision 0114).
-      NOTICE_CLIENT_VERSION: bindings.text("0.18.0"),
+      // refused with 426 and reloads. 0.2.0 is the first to read a notice with
+      // no community and a tombstone (decisions 0114, 0115).
+      MIN_CLIENT_VERSION_WEB: bindings.text("0.2.0"),
+      // The first app version that decodes a notification with no community and
+      // any kind, and draws a tombstone and a review's notice. Below it, those are
+      // withheld, and it is not a floor: an older app goes on working (decisions
+      // 0114, 0115).
+      NOTICE_CLIENT_VERSION: bindings.text("0.19.0"),
       // Where a client below its floor gets a current build (decision 0030),
       // published by /health and the 426 body. Android's is the internal
       // track's opt-in link while the app is not on a public listing; iOS's is

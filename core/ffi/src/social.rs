@@ -7,7 +7,9 @@
 use std::path::Path;
 
 use spjall_client::api;
+pub mod moderation_reviews;
 pub mod notifications;
+pub use moderation_reviews::*;
 pub use notifications::*;
 pub use spjall_client::api::{JoinRequest, JoinState};
 
@@ -20,7 +22,6 @@ pub use spjall_client::api::AuthorRole;
 pub use spjall_client::api::CardCommunity;
 pub use spjall_client::api::CommunityImage;
 pub use spjall_client::api::ModerationAction;
-pub use spjall_client::api::ModerationLogAction;
 pub use spjall_client::api::ModerationState;
 pub use spjall_client::api::ReportDecision;
 pub use spjall_client::api::ReportReason;
@@ -772,38 +773,6 @@ pub enum ModerationAction {
     RemoveMember,
     BanMember,
     UnbanMember,
-}
-
-/// What a moderation log entry records; `Unknown` for a later server's value.
-#[uniffi::remote(Enum)]
-pub enum ModerationLogAction {
-    HidePost,
-    RemovePost,
-    RestorePost,
-    HideComment,
-    RemoveComment,
-    RestoreComment,
-    MuteMember,
-    UnmuteMember,
-    RemoveMember,
-    BanMember,
-    UnbanMember,
-    ClearAccountPhoto,
-    /// A moderator closed a report about the content.
-    CloseReport,
-    DeleteCommunity,
-    RestoreCommunity,
-    SetCommunityPicture,
-    RemoveCommunityPicture,
-    SetCommunityCover,
-    RemoveCommunityCover,
-    PinPost,
-    UnpinPost,
-    ClosePoll,
-    AnonymousPostsOn,
-    AnonymousPostsOff,
-    RevealAuthor,
-    Unknown,
 }
 
 /// What a moderation log entry acted on; `Unknown` for a value a later

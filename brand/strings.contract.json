@@ -2604,6 +2604,114 @@
     "notice_anonymous_declined": {
       "surfaces": ["android", "ios", "web"],
       "description": "A notification: a moderator declined the reader's anonymous post (decision 0091)."
+    },
+    "notice_review_upheld": {
+      "surfaces": ["web"],
+      "description": "A notification: the review the reader asked for upheld the action (decision 0115)."
+    },
+    "notice_review_overturned": {
+      "surfaces": ["web"],
+      "description": "A notification: the review the reader asked for overturned the action (decision 0115)."
+    },
+    "notice_account_photo_cleared": {
+      "surfaces": ["web"],
+      "description": "A notification: a platform moderator cleared the reader's photo (decision 0115)."
+    },
+    "statements_title": {
+      "surfaces": ["web"],
+      "description": "Title of the screen listing what moderators did to the reader's content and why (decision 0115)."
+    },
+    "statements_empty": {
+      "surfaces": ["web"],
+      "description": "The statements screen with nothing on it."
+    },
+    "statement_open": {
+      "surfaces": ["web"],
+      "description": "Link from a removed post of the reader's to its statement of reasons."
+    },
+    "statement_text_gone": {
+      "surfaces": ["web"],
+      "description": "A statement whose text was purged after its 90 days (decision 0063)."
+    },
+    "statement_ask": {
+      "surfaces": ["web"],
+      "description": "Button: asks for the single review of a moderator's action."
+    },
+    "statement_ask_once": {
+      "surfaces": ["web"],
+      "description": "Under a statement: the review can be asked for once, and someone else decides."
+    },
+    "statement_ask_confirm": {
+      "surfaces": ["web"],
+      "description": "Confirmation before asking for the single review."
+    },
+    "statement_review_open": {
+      "surfaces": ["web"],
+      "description": "A statement whose review waits for a decision."
+    },
+    "statement_review_upheld": {
+      "surfaces": ["web"],
+      "description": "A statement whose review upheld the action."
+    },
+    "statement_review_overturned": {
+      "surfaces": ["web"],
+      "description": "A statement whose review overturned the action, and the content came back."
+    },
+    "statement_review_overturned_not_restored": {
+      "surfaces": ["web"],
+      "description": "A statement whose review overturned the action, and the content stays as it is: it no longer exists, as a cleared photo does not, or a later decision about it still stands."
+    },
+    "statement_review_reason": {
+      "surfaces": ["web"],
+      "description": "Label of the deciding moderator's reason on a statement."
+    },
+    "platform_reviews": {
+      "surfaces": ["web"],
+      "description": "Heading of the reviews waiting on the platform moderation page."
+    },
+    "platform_reviews_empty": {
+      "surfaces": ["web"],
+      "description": "The reviews section with nothing waiting."
+    },
+    "platform_review_uphold": {
+      "surfaces": ["web"],
+      "description": "Button: a platform moderator upholds the action under review."
+    },
+    "platform_review_overturn": {
+      "surfaces": ["web"],
+      "description": "Button: a platform moderator overturns the action under review."
+    },
+    "platform_review_uphold_confirm": {
+      "surfaces": ["web"],
+      "description": "Confirmation before upholding."
+    },
+    "platform_review_overturn_confirm": {
+      "surfaces": ["web"],
+      "description": "Confirmation before overturning; says that a cleared photo does not return."
+    },
+    "platform_review_not_yours": {
+      "surfaces": ["web"],
+      "description": "Why the buttons are off on a review the viewer acted on or asked for."
+    },
+    "platform_review_text_gone": {
+      "surfaces": ["web"],
+      "description": "A review whose text was purged after its 90 days: it is decided without it (decision 0115)."
+    },
+    "platform_review_decider": {
+      "surfaces": ["web"],
+      "description": "Label of who acted, shown only to the deciding platform moderator."
+    },
+    "moderation_log_review_upheld": {
+      "surfaces": ["web"],
+      "description": "A log entry: a review upheld an action."
+    },
+    "moderation_log_review_overturned": {
+      "surfaces": ["web"],
+      "description": "A log entry: a review overturned an action."
+    },
+    "post_tombstone_open": {
+      "surfaces": ["web"],
+      "description": "Link from a removed post to reading it, for a moderator of its community."
     }
   }
 }

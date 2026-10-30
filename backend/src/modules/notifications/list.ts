@@ -18,15 +18,27 @@ const LIVE = `(n.community_id IS NULL OR EXISTS
 /** The kinds an app below `NOTICE_CLIENT_VERSION` knows. Frozen: a new kind stays out of it. */
 const OLD_KINDS = ["comment", "reply", "reaction", "join_approved", "moderated"];
 
+/** The actions on a notice such an app words correctly. Frozen, as the kinds are. */
+const OLD_ACTIONS = [
+  "hide_post",
+  "remove_post",
+  "hide_comment",
+  "remove_comment",
+  "decline_anonymous_post",
+];
+
 /**
  * What a client is shown (0114). An app below `NOTICE_CLIENT_VERSION` fails its
  * whole page on a null community and does not know a new kind, so neither
- * reaches its list or its counts.
+ * reaches its list or its counts. It reads a new action as "unknown" and words
+ * it as a removal, so that stays out as well (0115).
  */
 export function shownTo(knowing: boolean): string {
   if (knowing) return LIVE;
   const kinds = OLD_KINDS.map((k) => `'${k}'`).join(", ");
-  return `${LIVE} AND n.community_id IS NOT NULL AND n.kind IN (${kinds})`;
+  const actions = OLD_ACTIONS.map((a) => `'${a}'`).join(", ");
+  return `${LIVE} AND n.community_id IS NOT NULL AND n.kind IN (${kinds})
+    AND (n.action IS NULL OR n.action IN (${actions}))`;
 }
 
 /** How many actors a row names. */
@@ -131,9 +143,16 @@ export async function notificationPage(
     notifications: shown.map((r, i) => ({
       notificationId: r.notification_id,
       kind: r.kind,
-      actor: (r.actor_id && names.get(r.actor_id)) || null,
-      actors: (actors.named.get(r.notification_id) ?? []).flatMap((id) => names.get(id) ?? []),
-      actorCount: actors.counts.get(r.notification_id) ?? 0,
+      ...(r.kind === "moderated"
+        ? // A moderator acts in the community's or the platform's name, never their own (0115).
+          { actor: null, actors: [], actorCount: 0 }
+        : {
+            actor: (r.actor_id && names.get(r.actor_id)) || null,
+            actors: (actors.named.get(r.notification_id) ?? []).flatMap(
+              (id) => names.get(id) ?? [],
+            ),
+            actorCount: actors.counts.get(r.notification_id) ?? 0,
+          }),
       communityId: r.community_id,
       postId: r.post_id,
       commentId: r.comment_id,

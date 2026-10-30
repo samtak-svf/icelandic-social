@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { strings } from "../src/generated/brand/strings.ts";
 import { layoutOf } from "../src/ui/layout.ts";
 import { signIn } from "./accounts.ts";
-import { expect, serveOrigin, test, WEB } from "./origin.ts";
+import { CLIENT, expect, serveOrigin, test, WEB } from "./origin.ts";
 import { newGoogleSubject } from "./people.ts";
 import { awaited, phone, serveSocket } from "./phone.ts";
 
@@ -89,16 +89,15 @@ test("a phone links this browser, which shows the phone's message and replies", 
   const elsewhere = await other.newPage();
   await serveOrigin(elsewhere);
   await signIn(elsewhere, "Vafri Prófsson", subject);
-  const headers = { "spjall-client": "web/0.1.0" };
   const mine: unknown = await elsewhere.evaluate(async (h) => {
     const body: unknown = await (await fetch("/v1/me", { headers: h })).json();
     return body;
-  }, headers);
+  }, CLIENT);
   const deviceId = browserDevice(mine);
   expect(deviceId).toBeDefined();
   const revoked = await elsewhere.evaluate(
     async ([id, h]) => (await fetch(`/v1/devices/${id}`, { method: "DELETE", headers: h })).status,
-    [encodeURIComponent(deviceId!), headers] as const,
+    [encodeURIComponent(deviceId!), CLIENT] as const,
   );
   expect(revoked).toBe(204);
   await expect(page.getByRole("alert").filter({ hasText: strings.chat_device_lost })).toBeVisible({

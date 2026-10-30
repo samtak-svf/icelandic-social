@@ -6,7 +6,7 @@ import { strings } from "../generated/brand/strings.ts";
 import { NoticeRow } from "./notice-row.tsx";
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children }: { children?: ReactNode }) => <a>{children}</a>,
+  Link: ({ children, to }: { children?: ReactNode; to: string }) => <a href={to}>{children}</a>,
 }));
 
 const person = (accountId: string, name: string) => ({
@@ -70,9 +70,35 @@ describe("NoticeRow", () => {
     };
     const none = html(row({ ...moderated, communityId: null }));
     expect(none).toContain(strings.notice_moderated);
-    expect(none).not.toContain("<a>");
+    expect(none).not.toContain("<a ");
     expect(none).toContain('<button type="button" class="flex min-h-11');
-    expect(html(row({ ...moderated, communityId: "c1" }))).toContain("<a>");
+    expect(html(row({ ...moderated, communityId: "c1" }))).toContain(
+      'href="/communities/$communityId"',
+    );
+  });
+
+  it.each(["remove_post", "clear_account_photo", "review_upheld", "review_overturned"])(
+    "leads a %s row to its statement, with or without a community",
+    (action) => {
+      const moderated: Partial<Notification> = {
+        kind: "moderated",
+        actors: [],
+        actorCount: 0,
+        actor: null,
+        emoji: undefined,
+        action,
+        snippet: null,
+      };
+      expect(html(row({ ...moderated, communityId: null }))).toContain('href="/statements"');
+      expect(html(row({ ...moderated, communityId: "c1" }))).toContain('href="/statements"');
+    },
+  );
+
+  it("leaves a member's sanction where it was", () => {
+    const out = html(
+      row({ kind: "moderated", actors: [], actorCount: 0, actor: null, action: "mute_member" }),
+    );
+    expect(out).not.toContain('href="/statements"');
   });
 
   it("names the two newest actors of a group", () => {

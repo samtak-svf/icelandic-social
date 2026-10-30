@@ -20,6 +20,7 @@ import { CommentComposer } from "../social/composer.tsx";
 import { DeleteButton } from "../social/delete-button.tsx";
 import { outcome, useLoad, when } from "../social/outcome.ts";
 import { AuthorName, authorName, PostView, StateMark, useMine } from "../social/post.tsx";
+import { isPostTombstone } from "../social/post-tombstone.tsx";
 import { moderatesAs, RoleBadge } from "../social/roles.tsx";
 import { ReportButton } from "../social/report.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
@@ -37,6 +38,7 @@ function PostPage() {
   const [post, reloadPost] = useLoad(
     useCallback(() => outcome(getPost({ path: { postId } }), 200), [postId]),
   );
+  if (post?.ok && isPostTombstone(post.data)) return <RemovedPost post={post.data} />;
   if (post?.ok) return <PostScreen post={post.data} reloadPost={reloadPost} />;
   return (
     <>
@@ -50,6 +52,19 @@ function PostPage() {
           <ProblemText problem={post.problem} />
         </Status>
       )}
+    </>
+  );
+}
+
+/** A removed post has no comments and nothing to write under; its author reads why elsewhere. */
+function RemovedPost({ post }: Readonly<{ post: Post }>) {
+  const navigate = useNavigate();
+  const gone = () =>
+    void navigate({ to: "/communities/$communityId", params: { communityId: post.communityId } });
+  return (
+    <>
+      <h1 className="sr-only">{strings.post_title}</h1>
+      <PostView post={post} linked={false} changed={gone} deleted={gone} moderates={false} />
     </>
   );
 }

@@ -1,5 +1,5 @@
 import { strings } from "../src/generated/brand/strings.ts";
-import { expect, test, WEB } from "./origin.ts";
+import { CLIENT, expect, test, WEB } from "./origin.ts";
 import { newGoogleSubject } from "./people.ts";
 
 // Signing in on the web (decisions 0061, 0062, 0069): the start route,
@@ -20,10 +20,13 @@ test("signs in with Google and the API knows the session", async ({ page }) => {
   expect(session?.secure).toBe(true);
 
   const api = (path: string) =>
-    page.evaluate(async (to) => {
-      const answer = await fetch(to, { headers: { "spjall-client": "web/0.1.0" } });
-      return { status: answer.status, body: (await answer.json()) as unknown };
-    }, path);
+    page.evaluate(
+      async ([to, headers]) => {
+        const answer = await fetch(to, { headers });
+        return { status: answer.status, body: (await answer.json()) as unknown };
+      },
+      [path, CLIENT] as const,
+    );
   const me = await api("/v1/me");
   expect(me).toMatchObject({ status: 200, body: { name: "Prófa Prófsdóttir", devices: [] } });
 
@@ -55,7 +58,8 @@ test("starts no Kenni flow without a session", async ({ page }) => {
 test("without a session the API refuses", async ({ page }) => {
   await page.goto(`${WEB}/`);
   const status = await page.evaluate(
-    async () => (await fetch("/v1/me", { headers: { "spjall-client": "web/0.1.0" } })).status,
+    async (headers) => (await fetch("/v1/me", { headers })).status,
+    CLIENT,
   );
   expect(status).toBe(401);
 });

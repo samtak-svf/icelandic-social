@@ -250,6 +250,14 @@ export async function actOnAccount(
       reason: input.reason,
     }),
     ...(report ? [closing(env, report.reportId, accountId, input.action, input.reason)] : []),
+    // There is no community, so this is a row older clients are not shown (0114).
+    notice(env, `${input.targetId}:${input.action}:${Date.now()}`, {
+      kind: "moderated",
+      accountId: input.targetId,
+      actorId: accountId,
+      communityId: null,
+      action: input.action,
+    }),
   ]);
   return null;
 }

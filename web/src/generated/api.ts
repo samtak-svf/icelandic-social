@@ -723,10 +723,76 @@ export interface CommentPage {
   next: string | null;
 }
 
+export interface ModerationStatementPage {
+  statements: Array<ModerationStatement>;
+  /** The cursor of the next, older page */
+  next: string | null;
+}
+
+/** Why a moderator acted. Never names who did */
+export interface ModerationStatement {
+  entryId: number;
+  action: "hide_post" | "remove_post" | "hide_comment" | "remove_comment" | "clear_account_photo";
+  target: ReportTarget;
+  communityId: string | null;
+  /** The moderator's reason, as written */
+  reason: string;
+  /** Unix milliseconds */
+  createdAt: number;
+  /** The text the action was on, while it is kept (90 days after a removal, 0063) */
+  body: string | null;
+  /** No review was asked for yet and the content has not come back since */
+  canAsk: boolean;
+  review: ModerationReview | null;
+}
+
 /** What a report or an action is about */
 export interface ReportTarget {
   kind: "post" | "comment" | "community" | "account";
   id: string;
+}
+
+export interface ModerationReview {
+  state: "open" | "upheld" | "overturned";
+  /** Unix milliseconds */
+  askedAt: number;
+  /** Unix milliseconds */
+  decidedAt: number | null;
+  /** The decider's reason, once decided */
+  reason: string | null;
+  /** The content is back. False on an overturned review when it no longer exists, as a cleared photo does not, or when a later hide or remove of it still stands */
+  restored: boolean;
+}
+
+export interface OpenModerationReviewPage {
+  reviews: Array<OpenModerationReview>;
+  /** The cursor of the next, older page */
+  next: string | null;
+}
+
+export interface OpenModerationReview {
+  entryId: number;
+  action: "hide_post" | "remove_post" | "hide_comment" | "remove_comment" | "clear_account_photo";
+  target: ReportTarget;
+  communityId: string | null;
+  /** The post to open, when the target is a post or a comment on one */
+  postId: string | null;
+  actor: Author | null;
+  targetAccount: Author | null;
+  reason: string;
+  /** Unix milliseconds */
+  createdAt: number;
+  /** The text, while it is kept; null means the decision is made without it */
+  body: string | null;
+  /** Unix milliseconds */
+  askedAt: number;
+  /** False for the moderator who acted and for the person who asked */
+  canDecide: boolean;
+}
+
+export interface ModerationReviewDecision {
+  outcome: "upheld" | "overturned";
+  reason: string;
 }
 
 export interface ReportPage {
@@ -775,7 +841,7 @@ export interface ModerationLogEntry {
   actor: Author | null;
   /** Done as one of Samtak's platform moderators */
   asPlatform: boolean;
-  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "clear_account_photo" | "close_report" | "delete_community" | "restore_community" | "set_community_picture" | "remove_community_picture" | "set_community_cover" | "remove_community_cover" | "pin_post" | "unpin_post" | "close_poll" | "anonymous_posts_on" | "anonymous_posts_off" | "reveal_author";
+  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "clear_account_photo" | "close_report" | "delete_community" | "restore_community" | "set_community_picture" | "remove_community_picture" | "set_community_cover" | "remove_community_cover" | "pin_post" | "unpin_post" | "close_poll" | "anonymous_posts_on" | "anonymous_posts_off" | "reveal_author" | "review_upheld" | "review_overturned";
   target: {
     kind: "post" | "comment" | "community" | "account" | "report";
     id: string;
@@ -2250,6 +2316,75 @@ export function revealAuthor(args: {
   | { status: 426; data: ApiError }
 > {
   return call("POST", "/v1/posts/{postId}/reveal", args, init);
+}
+
+/** What moderators did to the caller's content and why, newest first */
+export function moderationStatements(args?: {
+  query?: {
+    /** The `next` of the page before */
+    before?: string;
+    limit?: number;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: ModerationStatementPage }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/moderation/statements", args, init);
+}
+
+/** Asks once for a review of an action on the caller's content */
+export function askModerationReview(args: {
+  path: {
+    /** The log entry of the action */
+    entryId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/moderation/statements/{entryId}/review", args, init);
+}
+
+/** The reviews waiting for a platform moderator, newest first */
+export function openModerationReviews(args?: {
+  query?: {
+    /** The `next` of the page before */
+    before?: string;
+    limit?: number;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: OpenModerationReviewPage }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/moderation/reviews", args, init);
+}
+
+/** Upholds or overturns an action; both are logged and the person is told */
+export function decideModerationReview(args: {
+  path: {
+    /** The log entry of the action */
+    entryId: string;
+  };
+  body: ModerationReviewDecision;
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/moderation/reviews/{entryId}", args, init);
 }
 
 /**

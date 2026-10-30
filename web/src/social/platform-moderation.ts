@@ -1,9 +1,16 @@
-import { closeReport, moderate, moderatePlatform, type Report } from "../generated/api.ts";
+import {
+  closeReport,
+  decideModerationReview,
+  moderate,
+  moderatePlatform,
+  type OpenModerationReview,
+  type Report,
+} from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import type { Outcome } from "./outcome.ts";
 import { outcome } from "./outcome.ts";
 
-// What a platform moderator does with a report (decision 0115),
+// What a platform moderator does with a report or a review (decision 0115),
 // apart from how it is drawn, so it is tested without a browser.
 
 /** The calls this module makes, as an argument so a test supplies its own. */
@@ -11,18 +18,19 @@ export interface Calls {
   moderate: typeof moderate;
   moderatePlatform: typeof moderatePlatform;
   closeReport: typeof closeReport;
+  decideModerationReview: typeof decideModerationReview;
 }
 
-export const live: Calls = { moderate, moderatePlatform, closeReport };
+export const live: Calls = { moderate, moderatePlatform, closeReport, decideModerationReview };
 
-export interface Row {
+export interface Row<T = Report> {
   /** Names the row, and keys its button. */
   id: string;
   label: string;
   confirm: string;
-  applies: (report: Report) => boolean;
+  applies: (item: T) => boolean;
   /** The call the row makes: the platform route for an account, the community's for content. */
-  call: (calls: Calls, report: Report, reason: string) => Promise<Outcome<undefined>>;
+  call: (calls: Calls, item: T, reason: string) => Promise<Outcome<undefined>>;
 }
 
 /** The post or comment a report in a community is about, when it is one. */
@@ -103,14 +111,39 @@ export function actionsFor(report: Report): Row[] {
   return ACTIONS.filter((row) => row.applies(report));
 }
 
-/** Does `row` for `report`, with the moderator's reason. */
-export function act(
-  calls: Calls,
-  report: Report,
-  row: Row,
-  reason: string,
-): Promise<Outcome<undefined>> {
-  return row.call(calls, report, reason);
+/** Answers a review through the one route that decides it. */
+const decide = (outcome_: "upheld" | "overturned", label: string, confirm: string) => {
+  const row: Row<OpenModerationReview> = {
+    id: outcome_,
+    label,
+    confirm,
+    applies: (review) => review.canDecide,
+    call: (calls, review, reason) =>
+      outcome(
+        calls.decideModerationReview({
+          path: { entryId: String(review.entryId) },
+          body: { outcome: outcome_, reason: reason.trim() },
+        }),
+        204,
+      ),
+  };
+  return row;
+};
+
+/** What a platform moderator may answer a review with: the same table, the same order every time. */
+const REVIEW_ACTIONS: readonly Row<OpenModerationReview>[] = [
+  decide("upheld", strings.platform_review_uphold, strings.platform_review_uphold_confirm),
+  decide("overturned", strings.platform_review_overturn, strings.platform_review_overturn_confirm),
+];
+
+/** The rows that apply to `review`: none for the one who acted or asked. */
+export function reviewActionsFor(review: OpenModerationReview): Row<OpenModerationReview>[] {
+  return REVIEW_ACTIONS.filter((row) => row.applies(review));
+}
+
+/** Does `row` for `item`, with the moderator's reason. */
+export function act<T>(calls: Calls, item: T, row: Row<T>, reason: string) {
+  return row.call(calls, item, reason);
 }
 
 /** Closes `report` with no action taken. */
@@ -119,6 +152,14 @@ export function dismiss(calls: Calls, report: Report, reason: string): Promise<O
     calls.closeReport({ path: { reportId: report.reportId }, body: { resolution: reason.trim() } }),
     204,
   );
+}
+
+/** The reviews without the ones already answered. */
+export function undecided(
+  reviews: OpenModerationReview[],
+  gone: ReadonlySet<number>,
+): OpenModerationReview[] {
+  return reviews.filter((review) => !gone.has(review.entryId));
 }
 
 /** The queue without the reports already dealt with. */

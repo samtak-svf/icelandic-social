@@ -37,6 +37,10 @@ export type Action = keyof typeof ACTIONS;
 export const PLATFORM_ACTIONS = { clear_account_photo: "account" } as const;
 export type PlatformAction = keyof typeof PLATFORM_ACTIONS;
 
+/** How a review of an action ends, and what the log records of each (decision 0115). */
+export const REVIEW_OUTCOMES = ["upheld", "overturned"] as const;
+export const REVIEW_ACTIONS = ["review_upheld", "review_overturned"] as const;
+
 /** What the log records of a community's picture and cover (decision 0080). */
 export const COMMUNITY_IMAGE_ACTIONS = [
   "set_community_picture",
@@ -85,7 +89,7 @@ export const TARGET_STANDINGS = [
 export const TARGET_STATES = ["visible", "pending", "hidden", "removed", "gone"] as const;
 
 const CreatedAt = z.int().openapi({ description: "Unix milliseconds" });
-const Target = z
+export const Target = z
   .object({ kind: z.enum(REPORT_KINDS), id: OpaqueId })
   .openapi("ReportTarget", { description: "What a report or an action is about" });
 
@@ -155,6 +159,7 @@ const LogEntry = z
       ...COMMUNITY_PIN_ACTIONS,
       ...COMMUNITY_POLL_ACTIONS,
       ...COMMUNITY_ANONYMOUS_ACTIONS,
+      ...REVIEW_ACTIONS,
     ]),
     target: z.object({ kind: z.enum([...REPORT_KINDS, "report"]), id: OpaqueId }),
     targetAccount: z.union([Author, z.null()]),
@@ -170,11 +175,11 @@ const LogPage = z
   })
   .openapi("ModerationLogPage");
 
-const json = <T extends z.ZodType>(description: string, schema: T) => ({
+export const json = <T extends z.ZodType>(description: string, schema: T) => ({
   description,
   content: { "application/json": { schema } },
 });
-const body = <T extends z.ZodType>(schema: T) => ({
+export const body = <T extends z.ZodType>(schema: T) => ({
   required: true,
   content: { "application/json": { schema } },
 });
@@ -189,7 +194,7 @@ const queue = z.object({
     .openapi({ description: "The `next` of the page before" }),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
-const log = z.object({
+export const log = z.object({
   before: z
     .string()
     .regex(/^\d{1,16}$/)
@@ -199,10 +204,10 @@ const log = z.object({
 });
 
 const MODERATORS = { 403: errorResponse("not_permitted: only the community's moderators") };
-const PLATFORM = { 403: errorResponse("not_permitted: only Samtak's platform moderators") };
+export const PLATFORM = { 403: errorResponse("not_permitted: only Samtak's platform moderators") };
 const NO_COMMUNITY = { 404: errorResponse("not_found: no such community the caller can see") };
-const tags = ["moderation"];
-const reason = z.string().trim().min(1).max(MAX_NOTE);
+export const tags = ["moderation"];
+export const reason = z.string().trim().min(1).max(MAX_NOTE);
 
 export const reportRoute = createRoute({
   method: "post",

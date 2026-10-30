@@ -6,7 +6,7 @@ import { when } from "./outcome.ts";
 // platform screen both list them (decisions 0063, 0115).
 
 /** The actions on a community that are kept, told with the words the queue uses. */
-const LOGGED: Record<ModerationLogEntry["action"], string> = {
+export const LOGGED: Record<ModerationLogEntry["action"], string> = {
   hide_post: strings.moderation_decision_hide_post,
   remove_post: strings.moderation_decision_remove_post,
   restore_post: strings.moderation_decision_restore_post,
@@ -32,6 +32,8 @@ const LOGGED: Record<ModerationLogEntry["action"], string> = {
   anonymous_posts_on: strings.moderation_log_anonymous_on,
   anonymous_posts_off: strings.moderation_log_anonymous_off,
   reveal_author: strings.moderation_log_author_revealed,
+  review_upheld: strings.moderation_log_review_upheld,
+  review_overturned: strings.moderation_log_review_overturned,
 };
 
 /** The entries as given, newest first; the account acted on is named with `target`. */

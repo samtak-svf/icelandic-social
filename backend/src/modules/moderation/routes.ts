@@ -21,6 +21,7 @@ import { anonymousRoutes } from "./anonymous.ts";
 import { entry, logPage } from "./log.ts";
 import { closePoll } from "./polls.ts";
 import { setPostPin } from "./pins.ts";
+import { reviewRoutes } from "./reviews.ts";
 import { closing, fileReport, isPlatformModerator, openReport, reportPage } from "./reports.ts";
 
 // The routes of moderation (decisions 0063, 0066). A log line carries ids and
@@ -30,6 +31,7 @@ const REFUSED = { invalid_request: 400, not_permitted: 403, not_found: 404 } as 
 
 export function moderationRoutes(app: OpenAPIHono<AppEnv>): void {
   anonymousRoutes(app);
+  reviewRoutes(app);
 
   for (const [route, on] of [
     [pinPostRoute, true],

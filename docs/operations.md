@@ -151,7 +151,14 @@ clear an account's photo with `POST /v1/moderation/actions`, which also closes a
 account ([decision 0063](decisions/0063-communities-audiences-and-moderation.md),
 [decision 0066](decisions/0066-moderation-in-d1.md),
 [decision 0070](decisions/0070-community-deletion-and-declined-requests.md),
-[decision 0115](decisions/0115-the-wall.md)). The role is never granted by a route:
+[decision 0115](decisions/0115-the-wall.md)).
+
+A person may ask once for a review of a hidden or removed post or comment or a cleared photo, and a
+platform moderator answers at `/moderation`, never the one who acted or the one who asked. With one
+platform moderator, a review of that moderator's own action waits until there is a second: that is
+correct, not a stuck queue.
+
+The role is never granted by a route:
 
 ```bash
 # Grant the role to an account:

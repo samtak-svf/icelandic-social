@@ -8,7 +8,9 @@ use std::path::Path;
 
 use crate::frames::{Frame, Framing};
 
+mod moderation_reviews;
 mod notifications;
+pub use moderation_reviews::*;
 pub use notifications::*;
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
@@ -1123,40 +1125,6 @@ pub struct Moderation {
     /// With `MuteMember` only: when the mute ends, in Unix milliseconds.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub until: Option<u64>,
-}
-
-/// What a moderation log entry records. A value a later server adds reads as
-/// `Unknown`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ModerationLogAction {
-    HidePost,
-    RemovePost,
-    RestorePost,
-    HideComment,
-    RemoveComment,
-    RestoreComment,
-    MuteMember,
-    UnmuteMember,
-    RemoveMember,
-    BanMember,
-    UnbanMember,
-    ClearAccountPhoto,
-    CloseReport,
-    DeleteCommunity,
-    RestoreCommunity,
-    SetCommunityPicture,
-    RemoveCommunityPicture,
-    SetCommunityCover,
-    RemoveCommunityCover,
-    PinPost,
-    UnpinPost,
-    ClosePoll,
-    AnonymousPostsOn,
-    AnonymousPostsOff,
-    RevealAuthor,
-    #[serde(other)]
-    Unknown,
 }
 
 /// What a moderation log entry acted on. A value a later server adds reads
@@ -2784,7 +2752,7 @@ mod tests {
         // A log entry holds every action a moderator or a platform moderator
         // takes; each contract value reads as itself rather than as `Unknown`.
         let logged = listed("/ModerationLogEntry/properties/action/enum");
-        assert_eq!(logged.len(), 25);
+        assert_eq!(logged.len(), 27);
         assert!(logged.iter().all(|value| {
             serde_json::from_value::<ModerationLogAction>(value.clone())
                 .is_ok_and(|action| action != ModerationLogAction::Unknown)
