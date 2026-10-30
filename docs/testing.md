@@ -172,7 +172,7 @@ A phone keeps its core until its owner updates. `old-client.yml` compiles
 `tooling/old-client/old_client/` in a checkout of the core tag
 `tooling/old-client/release.json` names, starts the Worker of the PR's tree, and reads through that
 core's own decoding with that release's `Spjall-Client`, on an Android and an iOS device of one
-account. It runs on a PR that touches `backend/` or `api/`, with no emulator and no secret.
+account. It runs on every PR so that it can be a required check; a `changes` job skips the real job (a skipped job reports success) unless the PR touches `backend/`, `api/` or what the test reads, and a failed `changes` runs it. No emulator, no secret.
 
 **What it proves**, for notifications, the feed, a community's posts and a single post: every
 answer decodes (one field the release cannot read fails the job, as it fails the page on a phone);
