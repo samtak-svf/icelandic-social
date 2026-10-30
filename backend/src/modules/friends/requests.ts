@@ -248,14 +248,29 @@ export async function endFriendship(
   ]);
 }
 
-/** Requests between two accounts, both ways and cooldown included: a block clears them. */
-export function clearingRequests(env: Env, one: string, other: string): D1PreparedStatement {
-  return db(env)
-    .prepare(
-      `DELETE FROM friend_requests
-        WHERE (from_account = ?1 AND to_account = ?2) OR (from_account = ?2 AND to_account = ?1)`,
-    )
-    .bind(one, other);
+/**
+ * What a block does to the requests between two accounts. What `target` asked
+ * goes, with its clock. What `blocker` asked is closed with its `created_at`
+ * kept, so a block frees it from neither the 90 days nor the day's count, and the
+ * sweep removes the row as any closed one.
+ */
+export function clearingRequests(
+  env: Env,
+  blocker: string,
+  target: string,
+  now = Date.now(),
+): D1PreparedStatement[] {
+  return [
+    db(env)
+      .prepare("DELETE FROM friend_requests WHERE from_account = ? AND to_account = ?")
+      .bind(target, blocker),
+    db(env)
+      .prepare(
+        `UPDATE friend_requests SET state = 'cancelled', closed_at = ?
+          WHERE from_account = ? AND to_account = ?`,
+      )
+      .bind(now, blocker, target),
+  ];
 }
 
 export type RequestRow = SummaryRow & { created_at: number };

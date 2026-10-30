@@ -18,16 +18,17 @@ import {
 // still written by their own module (decision 0114).
 
 /**
- * Blocks `target` for `blocker`: the block, the end of any friendship and every
- * request both ways, cooldown included, and what they were told of each other,
- * in one batch. Unblocking restores none of it. False when there is no such account.
+ * Blocks `target` for `blocker`: the block, the end of any friendship, what
+ * `target` asked and any clock on it, the close of what `blocker` asked, and what
+ * they were told of each other, in one batch. Unblocking restores none of it.
+ * False when there is no such account.
  */
 export async function blockAccount(env: Env, blocker: string, target: string): Promise<boolean> {
   if (!(await accountExists(env, target))) return false;
   await db(env).batch([
     blocking(env, blocker, target),
     ...endingFriendship(env, blocker, target),
-    clearingRequests(env, blocker, target),
+    ...clearingRequests(env, blocker, target),
     withdrawingFriendNotices(env, blocker, target),
   ]);
   return true;
