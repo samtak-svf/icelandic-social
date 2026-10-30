@@ -17,7 +17,7 @@
   "android/app/src/test/kotlin/samtak/spjall/social/FakeSocial.kt": 785,
   "android/app/src/test/kotlin/samtak/spjall/social/PostViewModelTest.kt": 402,
   "core/client/src/account.rs": 816,
-  "core/client/src/api.rs": 2835,
+  "core/client/src/api.rs": 2829,
   "core/client/src/group_photo.rs": 421,
   "core/client/src/history.rs": 862,
   "core/client/src/lib.rs": 2323,

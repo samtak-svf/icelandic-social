@@ -337,3 +337,33 @@ impl<T: Transport + ?Sized> Api<'_, T> {
         )
     }
 }
+
+#[cfg(test)]
+mod contract_tests {
+    use super::NotificationKind;
+
+    /// The Worker keeps these from an app below its version floor (`shownTo`), so
+    /// this core never decodes them: a friend's notice until the app has friends,
+    /// the moderators' notice until it has a queue.
+    const WITHHELD: [&str; 3] = ["friend_request", "friend_accepted", "reports_waiting"];
+
+    #[test]
+    fn core_decodes_every_kind_the_worker_lets_it_see() {
+        let contract: serde_json::Value =
+            serde_json::from_str(include_str!("../../../../api/openapi.json")).unwrap();
+        let kinds = contract
+            .pointer("/components/schemas/Notification/properties/kind/enum")
+            .and_then(serde_json::Value::as_array)
+            .unwrap();
+        let decodes = |kind: &serde_json::Value| {
+            serde_json::from_value::<NotificationKind>(kind.clone()).is_ok()
+        };
+        let (held, shown): (Vec<_>, Vec<_>) = kinds
+            .iter()
+            .partition(|kind| WITHHELD.contains(&kind.as_str().unwrap()));
+        assert_eq!(held.len(), WITHHELD.len());
+        assert_eq!(shown.len(), 5);
+        assert!(shown.iter().copied().all(decodes));
+        assert!(!held.iter().copied().any(decodes));
+    }
+}
