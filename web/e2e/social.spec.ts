@@ -1,4 +1,3 @@
-import type { Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
 import { png } from "./images.ts";
 import {
@@ -10,6 +9,7 @@ import {
   openComposer,
   openHubFeed,
   person,
+  platformModerator,
   post,
   write,
 } from "./social-helpers.ts";
@@ -23,20 +23,6 @@ import { DEV, expect, test, WEB } from "./origin.ts";
 /** Runs the jobs that are due, as the minute cron would (backend/dev/worker.ts). */
 async function runJobs() {
   expect((await fetch(`${DEV}/dev/jobs`, { method: "POST" })).status).toBe(204);
-}
-
-/** Makes the person in `page` a platform moderator, through the dev Worker. */
-async function platformModerator(page: Page) {
-  const accountId = await page.evaluate(async () => {
-    const answer = await fetch("/v1/me", { headers: { "spjall-client": "web/0.1.0" } });
-    const body: unknown = await answer.json();
-    return typeof body === "object" && body !== null && "accountId" in body
-      ? String(body.accountId)
-      : "";
-  });
-  expect(accountId).not.toBe("");
-  const url = `${DEV}/dev/platform-moderator?account=${encodeURIComponent(accountId)}`;
-  expect((await fetch(url, { method: "POST" })).status).toBe(204);
 }
 
 /** Goes to Stjórna through the `⋯` menu. */

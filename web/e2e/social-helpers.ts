@@ -1,7 +1,7 @@
 import type { Browser, Locator, Page } from "@playwright/test";
 import { strings } from "../src/generated/brand/strings.ts";
 import { layoutOf } from "../src/ui/layout.ts";
-import { expect, serveOrigin } from "./origin.ts";
+import { DEV, expect, serveOrigin } from "./origin.ts";
 import { signInVerified } from "./accounts.ts";
 
 // What the social specs share: people in browsers of their own, the composer,
@@ -127,4 +127,18 @@ export async function join(page: Page, address: string) {
 /** The name of the community `owner` just created, read off its page. */
 export async function titleOf(page: Page): Promise<string> {
   return (await page.getByRole("heading", { level: 1 }).textContent()) ?? "";
+}
+
+/** Makes the person in `page` a platform moderator, through the dev Worker. */
+export async function platformModerator(page: Page) {
+  const accountId = await page.evaluate(async () => {
+    const answer = await fetch("/v1/me", { headers: { "spjall-client": "web/0.1.0" } });
+    const body: unknown = await answer.json();
+    return typeof body === "object" && body !== null && "accountId" in body
+      ? String(body.accountId)
+      : "";
+  });
+  expect(accountId).not.toBe("");
+  const url = `${DEV}/dev/platform-moderator?account=${encodeURIComponent(accountId)}`;
+  expect((await fetch(url, { method: "POST" })).status).toBe(204);
 }
