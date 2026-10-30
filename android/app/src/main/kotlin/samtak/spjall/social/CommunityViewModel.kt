@@ -150,6 +150,7 @@ class CommunityViewModel(
         perform(::join) {
             social.joinCommunity(id)
             reload()
+            reloadMembers()
         }
     }
 
@@ -157,6 +158,7 @@ class CommunityViewModel(
         perform(::leave) {
             social.leaveCommunity(id)
             reload()
+            reloadMembers()
         }
     }
 
@@ -662,6 +664,13 @@ class CommunityViewModel(
         }
     }
 
+    /** The member list as the community now allows it; a refused read leaves it empty, never an error. */
+    private fun reloadMembers() {
+        val readable = _state.value.community?.reads == true
+        val members = if (readable) runCatching { social.communityMembers(id) }.getOrNull() else null
+        _state.update { it.copy(members = members.orEmpty()) }
+    }
+
     private fun perform(
         again: () -> Unit,
         action: () -> Unit,
@@ -680,22 +689,6 @@ class CommunityViewModel(
         }
     }
 }
-
-/** What the server's refusal of an image says, or null when it is not about an image. */
-internal fun CoreException.imageNotice(): CommunityViewModel.ImageNotice? =
-    when ((this as? CoreException.Refused)?.code) {
-        "too_large" -> CommunityViewModel.ImageNotice.TooLarge
-        "invalid_image" -> CommunityViewModel.ImageNotice.Invalid
-        else -> null
-    }
-
-/** The post as the server now has it, in the feed and among the featured. */
-private fun CommunityViewModel.State.replacing(changed: Post): CommunityViewModel.State =
-    copy(
-        posts = posts.map { if (it.postId == changed.postId) changed else it },
-        community =
-            community?.copy(featured = community.featured.map { if (it.postId == changed.postId) changed else it }),
-    )
 
 /** A page of the community's pictures. */
 private const val GALLERY_PAGE = 30u

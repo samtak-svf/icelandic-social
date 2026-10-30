@@ -311,42 +311,34 @@ final class CommunityModel {
 
     /// Joins an open community at once, or asks a private one's moderators to let this account in.
     func join() async {
-        let social = social
-        let id = communityId
-        await perform(again: { await self.join() }) {
-            let community = try await offMain { () -> Community in
-                _ = try social.joinCommunity(id)
-                return try social.community(id)
-            }
-            self.community = community
-            try await self.first()
-        }
+        await change(again: { await self.join() }) { try $0.joinCommunity($1) }
     }
 
     func leave() async {
-        let social = social
-        let id = communityId
-        await perform(again: { await self.leave() }) {
-            let community = try await offMain { () -> Community in
-                try social.leaveCommunity(id)
-                return try social.community(id)
-            }
-            self.community = community
-            try await self.first()
-        }
+        await change(again: { await self.leave() }) { try $0.leaveCommunity($1) }
     }
 
     /// Takes back the request to join that waits; then the community as it is now.
     func withdraw() async {
+        await change(again: { await self.withdraw() }) { try $0.withdrawJoinRequest($1) }
+    }
+
+    /// Joins, leaves or withdraws; then the community, its posts and its member list as they now are. A member
+    /// list the server refuses this account (a private community it is not in) is left empty, not shown as a failure.
+    private func change(again: @escaping () async -> Void, _ act: @escaping @Sendable (Social, String) throws -> Void)
+        async
+    {
         let social = social
         let id = communityId
-        await perform(again: { await self.withdraw() }) {
+        await perform(again: again) {
             let community = try await offMain { () -> Community in
-                try social.withdrawJoinRequest(id)
+                try act(social, id)
                 return try social.community(id)
             }
             self.community = community
             try await self.first()
+            self.members = self.reads ? ((try? await offMain { try social.communityMembers(id) }) ?? []) : []
+            self.membersLoaded = !self.members.isEmpty
         }
     }
 
