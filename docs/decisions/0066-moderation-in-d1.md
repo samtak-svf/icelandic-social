@@ -1,12 +1,13 @@
 # 0066. Reports and the moderation log are in D1; an action and its entry are one write
 
-- Status: accepted; implemented in the backend (#31); amended by [0067](0067-jobs-and-notifications.md)
+- Status: accepted; implemented in the backend (#31); amended by [0067](0067-jobs-and-notifications.md) and [0115](0115-the-wall.md)
 - Date: 2026-10-18
 - Decided by: Guðröður Atli Jónsson (phase 4, #306)
 - Builds on: [0063](0063-communities-audiences-and-moderation.md) (roles, reports, the log,
   retention), [0065](0065-the-space-object-and-social-media.md) (the `Space` object, `post_index`)
 - Amends: 0063 (where reports and the log are kept, who reads a removed item, what is not
   built yet)
+- Amended by: [0115](0115-the-wall.md) (what is not built yet is the gate before any wall write, and a platform moderator reads a wall post only on a report)
 
 ## Decision
 

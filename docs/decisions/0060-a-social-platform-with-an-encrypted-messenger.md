@@ -1,7 +1,7 @@
 # 0060. The product is a social platform with an encrypted messenger, in one Worker
 
 - Status: accepted; implemented in the backend, the core, the apps and the web (phases 1–4 and 7: #45, #47, #48, #49, #58);
-  news (#50) and linked-device browser chat (#51) in progress
+  news (#50) and linked-device browser chat (#51) in progress; amended by 0114, 0115 and 0116
 - Date: 2026-10-17
 - Decided by: Guðröður Atli Jónsson
 - Builds on: [0001](0001-eu-storage-and-residency-wording.md) (EU storage),
@@ -9,6 +9,9 @@
   (the contract), [0008](0008-no-pii-in-logs.md) (no PII in logs)
 - Amends: 0009 (what the product is, and the web as a client), 0044 (a feed and posts may
   return, under this record and the community record)
+- Amended by: [0114](0114-friends-and-the-person-screen.md) (friendships, not follows),
+  [0115](0115-the-wall.md) (an account's Space is its wall, friends by default),
+  [0116](0116-the-feed.md) (the feed reaches the apps in the closed beta)
 
 ## Decision
 

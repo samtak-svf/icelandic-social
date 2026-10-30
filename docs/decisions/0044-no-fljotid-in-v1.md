@@ -1,13 +1,16 @@
 # 0044. Fljótið and the wall leave v1: two tabs, and the posts are deleted
 
 - Status: accepted; implemented in the core (0fd556e), the apps (6f58f15) and the backend (b3765d2);
-  amended by 0060 and 0080
+  amended by 0060, 0080, 0114, 0115 and 0116
 - Date: 2026-10-11
 - Decided by: the maintainer, after asking what Fljótið is for once 0036 had shipped
 - Amended by: [0060](0060-a-social-platform-with-an-encrypted-messenger.md) (a feed and
   posts may return under a new design; the deleted posts stay deleted),
   [0080](0080-communities-follow-the-familiar-group-layout.md) (a post is shared into a
-  conversation again, by id, resolved as a card)
+  conversation again, by id, resolved as a card),
+  [0114](0114-friends-and-the-person-screen.md) (a name opens a person),
+  [0115](0115-the-wall.md) (there is a wall again; report and moderation settled),
+  [0116](0116-the-feed.md) (a feed is the first tab)
 - Builds on: [0009](0009-v1-scope.md), [0030](0030-client-version-floor.md),
   [0036](0036-everyone-signed-in-is-in-the-picker.md)
 - Amends: 0009 (the surfaces: back to "no other tab"), 0034 (the feed, the wall and posts),
