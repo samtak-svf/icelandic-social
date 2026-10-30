@@ -62,6 +62,11 @@ export default defineConfig(({ mode }) => ({
       // raised by the deploy that ships a new one, so every older tab is
       // refused with 426 and reloads. 0.1.0 until the web app exists.
       MIN_CLIENT_VERSION_WEB: bindings.text("0.1.0"),
+      // The first app version whose core decodes a notification with no
+      // community and any kind. Below it, such rows are withheld from the list
+      // and the counts, and it is not a floor: an older app goes on working
+      // (decision 0114).
+      NOTICE_CLIENT_VERSION: bindings.text("0.18.0"),
       // Where a client below its floor gets a current build (decision 0030),
       // published by /health and the 426 body. Android's is the internal
       // track's opt-in link while the app is not on a public listing; iOS's is

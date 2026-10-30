@@ -73,6 +73,7 @@ export function useNotices(page: NotificationPage | null): {
       });
     },
     communityOff: (n) => {
+      if (n.communityId === null) return;
       void outcome(
         track(
           setCommunityNotificationLevel({

@@ -29,18 +29,21 @@ async function stillSo(env: Env, n: Notice): Promise<boolean> {
     case "reaction":
       return !!(n.postId && (await postAccess(env, n.accountId, n.postId)));
     case "join_approved":
+      if (n.communityId === null) return false;
       return (await standing(env, n.accountId, n.communityId))?.role === "member";
   }
 }
 
 /** The id of the row that `n`, the event `key`, belongs to: a group, or the event itself. */
 function groupId(key: string, n: Notice): string {
+  // A row with no community never takes in one that has one (decision 0114).
+  const scope = n.communityId === null ? "none:" : "";
   switch (n.kind) {
     case "comment":
     case "reaction":
-      return n.postId ? `${n.kind}:${n.postId}:${n.accountId}` : key;
+      return n.postId ? `${n.kind}:${scope}${n.postId}:${n.accountId}` : key;
     case "reply":
-      return n.parentCommentId ? `reply:${n.parentCommentId}:${n.accountId}` : key;
+      return n.parentCommentId ? `reply:${scope}${n.parentCommentId}:${n.accountId}` : key;
     default:
       return key;
   }
@@ -69,7 +72,7 @@ async function write(env: Env, key: string, group: string, n: Notice, now: numbe
                                     post_id, comment_id, action, emoji, created_at)
          SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
           WHERE EXISTS (SELECT 1 FROM accounts WHERE account_id = ?2)
-            AND EXISTS (SELECT 1 FROM live_communities WHERE community_id = ?5)
+            AND (?5 IS NULL OR EXISTS (SELECT 1 FROM live_communities WHERE community_id = ?5))
          ON CONFLICT (notification_id) DO ${
            grouped
              ? `UPDATE SET created_at = excluded.created_at, read_at = NULL,

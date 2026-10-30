@@ -57,6 +57,24 @@ describe("NoticeRow", () => {
     expect(out).toContain(`aria-label="${strings.notice_menu}"`);
   });
 
+  it("is a plain button, not a link to a community, for a row with no community", () => {
+    const moderated: Partial<Notification> = {
+      postId: null,
+      kind: "moderated",
+      actors: [],
+      actorCount: 0,
+      actor: null,
+      emoji: undefined,
+      action: "clear_photo",
+      snippet: null,
+    };
+    const none = html(row({ ...moderated, communityId: null }));
+    expect(none).toContain(strings.notice_moderated);
+    expect(none).not.toContain("<a>");
+    expect(none).toContain('<button type="button" class="flex min-h-11');
+    expect(html(row({ ...moderated, communityId: "c1" }))).toContain("<a>");
+  });
+
   it("names the two newest actors of a group", () => {
     const n = row({
       actors: [person("a1", "Garðar Pálsson"), person("a2", "Anna Jónsdóttir")],

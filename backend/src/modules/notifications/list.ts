@@ -8,8 +8,26 @@ import { snippetOf } from "./snippet.ts";
 /** A notification is kept this long. */
 const KEPT_MS = 90 * 24 * 60 * 60 * 1000;
 
-/** A deleted community's notifications are not shown, and go when it is purged (0070). */
-const LIVE = "EXISTS (SELECT 1 FROM live_communities c WHERE c.community_id = n.community_id)";
+/**
+ * A deleted community's notifications are not shown, and go when it is purged
+ * (0070). A row with no community has none to be deleted (0114).
+ */
+const LIVE = `(n.community_id IS NULL OR EXISTS
+  (SELECT 1 FROM live_communities c WHERE c.community_id = n.community_id))`;
+
+/** The kinds an app below `NOTICE_CLIENT_VERSION` knows. Frozen: a new kind stays out of it. */
+const OLD_KINDS = ["comment", "reply", "reaction", "join_approved", "moderated"];
+
+/**
+ * What a client is shown (0114). An app below `NOTICE_CLIENT_VERSION` fails its
+ * whole page on a null community and does not know a new kind, so neither
+ * reaches its list or its counts.
+ */
+export function shownTo(knowing: boolean): string {
+  if (knowing) return LIVE;
+  const kinds = OLD_KINDS.map((k) => `'${k}'`).join(", ");
+  return `${LIVE} AND n.community_id IS NOT NULL AND n.kind IN (${kinds})`;
+}
 
 /** How many actors a row names. */
 const SHOWN = 3;
@@ -18,7 +36,7 @@ type Row = {
   notification_id: string;
   kind: "comment" | "reply" | "reaction" | "join_approved" | "moderated";
   actor_id: string | null;
-  community_id: string;
+  community_id: string | null;
   post_id: string | null;
   comment_id: string | null;
   action: string | null;
@@ -44,12 +62,12 @@ const ACTORS = `
   SELECT notification_id, actor_id, n FROM ranked WHERE rank <= ${SHOWN} ORDER BY notification_id, rank`;
 
 /** The caller's counts: unread, unseen (unread and newer than `seenAt`), and `seenAt` itself. */
-async function counters(env: Env, accountId: string) {
+async function counters(env: Env, accountId: string, knowing: boolean) {
   const row = await db(env)
     .prepare(
       `WITH seen AS (SELECT seen_at FROM notification_seen WHERE account_id = ?1),
             unread AS (SELECT created_at FROM notifications n
-                        WHERE account_id = ?1 AND read_at IS NULL AND ${LIVE})
+                        WHERE account_id = ?1 AND read_at IS NULL AND ${shownTo(knowing)})
        SELECT (SELECT COUNT(*) FROM unread) AS unread,
               (SELECT COUNT(*) FROM unread
                 WHERE created_at > COALESCE((SELECT seen_at FROM seen), 0)) AS unseen,
@@ -78,6 +96,7 @@ export async function notificationPage(
   accountId: string,
   before: number | null,
   limit: number,
+  knowing: boolean,
 ) {
   const [{ results }, count, announces] = await Promise.all([
     db(env)
@@ -85,12 +104,12 @@ export async function notificationPage(
         `SELECT notification_id, kind, actor_id, community_id, post_id, comment_id, action,
                 emoji, created_at, read_at
            FROM notifications n WHERE account_id = ?1 AND (?2 IS NULL OR created_at < ?2)
-            AND ${LIVE}
+            AND ${shownTo(knowing)}
           ORDER BY created_at DESC LIMIT ?3`,
       )
       .bind(accountId, before, limit + 1)
       .all<Row>(),
-    counters(env, accountId),
+    counters(env, accountId, knowing),
     announcer(env, accountId),
   ]);
   const shown = results.slice(0, limit);
@@ -130,12 +149,17 @@ export async function notificationPage(
   };
 }
 
-/** Marks `accountId`'s notifications created at or before `upTo` read. */
-export async function markRead(env: Env, accountId: string, upTo: number): Promise<void> {
+/** Marks the notifications `accountId` is shown, created at or before `upTo`, read. */
+export async function markRead(
+  env: Env,
+  accountId: string,
+  upTo: number,
+  knowing: boolean,
+): Promise<void> {
   await db(env)
     .prepare(
-      `UPDATE notifications SET read_at = ?3
-        WHERE account_id = ?1 AND created_at <= ?2 AND read_at IS NULL`,
+      `UPDATE notifications AS n SET read_at = ?3
+        WHERE account_id = ?1 AND created_at <= ?2 AND read_at IS NULL AND ${shownTo(knowing)}`,
     )
     .bind(accountId, upTo, Date.now())
     .run();

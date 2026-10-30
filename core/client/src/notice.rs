@@ -71,7 +71,8 @@ pub struct SocialNotice {
     /// The newest three accounts behind it, newest first.
     pub actors: Vec<Author>,
     pub actor_count: u64,
-    pub community_id: String,
+    /// None for a row about the account itself (0114).
+    pub community_id: Option<String>,
     pub post_id: Option<String>,
     pub comment_id: Option<String>,
     /// For `Moderated`, the moderator's action.

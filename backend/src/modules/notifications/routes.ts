@@ -9,6 +9,7 @@ import {
   seenNotificationsRoute,
 } from "../../api/notifications.ts";
 import type { AppEnv } from "../../http.ts";
+import { decodesEveryNotice, CLIENT_HEADER } from "../../shared/client-version.ts";
 import { fail } from "../../shared/errors.ts";
 import { canRead, standing } from "../communities/index.ts";
 import { markRead, markSeen, notificationPage, removeNotification, setRead } from "./list.ts";
@@ -22,6 +23,7 @@ export function notificationRoutes(app: OpenAPIHono<AppEnv>): void {
       c.var.session.accountId,
       before === undefined ? null : Number(before),
       limit,
+      decodesEveryNotice(c.env, c.req.header(CLIENT_HEADER)),
     );
     return c.json(page, 200);
   });
@@ -30,7 +32,12 @@ export function notificationRoutes(app: OpenAPIHono<AppEnv>): void {
     const { accountId } = c.var.session;
     const body = c.req.valid("json");
     if (body.upTo !== undefined) {
-      await markRead(c.env, accountId, body.upTo);
+      await markRead(
+        c.env,
+        accountId,
+        body.upTo,
+        decodesEveryNotice(c.env, c.req.header(CLIENT_HEADER)),
+      );
     } else if (!(await setRead(c.env, accountId, body.notificationId!, body.read!))) {
       return fail(c, 404, "not_found");
     }

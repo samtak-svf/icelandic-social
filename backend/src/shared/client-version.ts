@@ -1,7 +1,7 @@
 import type { HonoRequest } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { AppEnv } from "../http.ts";
-import { minClientVersions, updateUrls } from "../env/index.ts";
+import { minClientVersions, noticeClientVersions, updateUrls } from "../env/index.ts";
 import { fail } from "./errors.ts";
 
 // The client version floor (decision 0030): every request names its build in
@@ -35,6 +35,15 @@ export type UpdateUrls = { android: string; ios: string };
 /** Why a request with this Spjall-Client may not go on, or null. */
 export function belowFloor(env: Env, header: string | undefined): FloorRefusal | null {
   return belowFloorOf(minClientVersions(env), header, updateUrls(env));
+}
+
+/**
+ * Whether the build with this Spjall-Client decodes a notification with no
+ * community and any kind (decision 0114). No header, or one this cannot read,
+ * counts as a build that does not.
+ */
+export function decodesEveryNotice(env: Env, header: string | undefined): boolean {
+  return belowFloorOf(noticeClientVersions(env), header) === null;
 }
 
 /**

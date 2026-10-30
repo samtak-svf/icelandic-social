@@ -26,7 +26,7 @@ type Row = {
   actor: Author | null;
   actors: Author[];
   actorCount: number;
-  communityId: string;
+  communityId: string | null;
   postId: string | null;
   commentId: string | null;
   action: string | null;

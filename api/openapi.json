@@ -3050,9 +3050,13 @@
             "description": "How many distinct accounts caused it; `actor` and `actors` are among them"
           },
           "communityId": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "pattern": "^[A-Za-z0-9_-]{1,128}$",
-            "example": "c_9f3a1b"
+            "example": "c_9f3a1b",
+            "description": "None for a notification about the account itself (decision 0114)"
           },
           "postId": {
             "type": [
