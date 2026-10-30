@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { strings } from "../generated/brand/strings.ts";
 import type { Post } from "../generated/api.ts";
-import { FeaturedList, FeaturedStrip, feedItemClass } from "./featured.tsx";
+import { emptyFeedClass, FeaturedList, FeaturedStrip, feedItemClass } from "./featured.tsx";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, className }: { children: ReactNode; className?: string }) => (
@@ -73,5 +73,28 @@ describe("featured posts", () => {
     expect(feedItemClass("p1", featured)).toBeUndefined();
     // Released: the list no longer has it, so the post is back in its place.
     expect(feedItemClass("p2", [])).toBeUndefined();
+  });
+});
+
+describe("the sentence of a feed with nothing to show (#368)", () => {
+  it("always shows when the community has no posts", () => {
+    expect(emptyFeedClass([], [])).toBe("text-muted-fg");
+    expect(emptyFeedClass([], [post(1)])).toBe("text-muted-fg");
+  });
+
+  it("shows on an expanded window alone when every post is in the aside", () => {
+    const cls = emptyFeedClass([post(1), post(2)], [post(2), post(1)]);
+    expect(cls).toContain("hidden");
+    expect(cls).toContain("expanded:block");
+  });
+
+  it("is not drawn while any post is left in the feed", () => {
+    expect(emptyFeedClass([post(1), post(2)], [post(1)])).toBeNull();
+    expect(emptyFeedClass([post(1)], [])).toBeNull();
+  });
+
+  it("is not drawn for search results, which are never thinned", () => {
+    // The route passes no featured posts when a name is searched for.
+    expect(emptyFeedClass([post(1)], [])).toBeNull();
   });
 });

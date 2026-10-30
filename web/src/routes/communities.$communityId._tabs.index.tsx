@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { listCommunityPosts, type Community, type Post } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
 import { useCommunityTab } from "../social/community-frame.tsx";
-import { FeaturedStrip, feedItemClass } from "../social/featured.tsx";
+import { emptyFeedClass, FeaturedStrip, feedItemClass } from "../social/featured.tsx";
 import { moderatesAs } from "../social/roles.tsx";
 import { PostComposer } from "../social/composer.tsx";
 import { outcome, useLoad, type Outcome } from "../social/outcome.ts";
@@ -115,6 +115,7 @@ function Results({
   // On an expanded window the featured posts are in the aside, so the feed
   // leaves them out; a search shows every match (decision 0092).
   const aside = searched === "" ? community.featured : [];
+  const emptyClass = posts?.ok ? emptyFeedClass(posts.data.posts, aside) : null;
   return (
     <>
       {posts === null && <Status>{strings.loading}</Status>}
@@ -123,8 +124,8 @@ function Results({
           <ProblemText problem={posts.problem} />
         </Status>
       )}
-      {posts?.ok && posts.data.posts.length === 0 && (
-        <p className="text-muted-fg">
+      {emptyClass !== null && (
+        <p className={emptyClass}>
           {searched === "" ? strings.posts_empty : strings.community_search_empty}
         </p>
       )}
