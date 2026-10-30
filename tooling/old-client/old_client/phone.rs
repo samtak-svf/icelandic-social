@@ -194,6 +194,18 @@ impl Phone {
         let body = answer.body_mut().read_to_string().unwrap();
         (status, serde_json::from_str(&body).unwrap_or(Value::Null))
     }
+
+    /// A POST as a build that decodes everything, which must succeed.
+    pub fn knowing_post(&self, path: &str, body: &Value) {
+        let answer = agent()
+            .post(format!("{}{path}", base()))
+            .header("authorization", self.token())
+            .header("spjall-client", KNOWING)
+            .header("content-type", "application/json")
+            .send(body.to_string())
+            .unwrap();
+        assert!(answer.status().is_success(), "{path}: {}", answer.status());
+    }
 }
 
 /// A POST of the dev Worker's that must answer 204.

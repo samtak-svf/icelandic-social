@@ -62,7 +62,7 @@ fn reads_as_the_release(phone: &Phone, community: &str, shown: &[&str], removed:
         "a notice the release knows is still shown: {actions:?}"
     );
     assert!(
-        !actions.contains(&Some(NotificationAction::MuteMember)),
+        !actions.contains(&Some(NotificationAction::Unknown)),
         "an action the release words as a removal is withheld: {actions:?}"
     );
     assert_eq!(
@@ -132,35 +132,19 @@ fn the_last_store_release_reads_this_worker() {
         .unwrap();
     from_member.react(&plain.post_id, "👍").unwrap();
 
-    let moderation = |action, target: &str, until| Moderation {
+    let moderation = |action, target: &str| Moderation {
         action,
         target_id: target.to_owned(),
         reason: "Prufa".to_owned(),
         report_id: None,
-        until,
+        until: None,
     };
     from_owner
         .moderate(
             &community,
-            &moderation(ModerationAction::RemovePost, &removed.post_id, None),
+            &moderation(ModerationAction::RemovePost, &removed.post_id),
         )
         .unwrap();
-    let in_an_hour = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_millis() as u64
-        + 3_600_000;
-    from_owner
-        .moderate(
-            &community,
-            &moderation(
-                ModerationAction::MuteMember,
-                &member.account,
-                Some(in_an_hour),
-            ),
-        )
-        .unwrap();
-
     // A notice with no community: the release fails its whole page on one (0114).
     let gallery = tempfile::tempdir().unwrap();
     let picked = gallery.path().join("picked.png");
@@ -170,29 +154,56 @@ fn the_last_store_release_reads_this_worker() {
         "/dev/platform-moderator?account={}",
         owner.account
     ));
-    let answer = agent()
-        .post(format!("{}/v1/moderation/actions", base()))
-        .header("authorization", owner.token())
-        .header("spjall-client", KNOWING)
-        .header("content-type", "application/json")
-        .send(
-            json!({
-                "action": "clear_account_photo",
-                "targetId": member.account,
-                "reason": "Prufa",
-            })
-            .to_string(),
-        )
+    owner.knowing_post(
+        "/v1/moderation/actions",
+        &json!({
+            "action": "clear_account_photo",
+            "targetId": member.account,
+            "reason": "Prufa",
+        }),
+    );
+
+    // An action added since, on a notice with a community: the release decodes
+    // it as unknown and words it as a removal (0115). The removal's own review,
+    // decided by someone other than the moderator who removed it.
+    let decider = Phone::new(&kennitala(run, 2), Some(&invite), Platform::Android);
+    dev(&format!(
+        "/dev/platform-moderator?account={}",
+        decider.account
+    ));
+    let (status, statements) = member.knowing("/v1/moderation/statements");
+    assert_eq!(status, 200);
+    let entry = statements["statements"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|statement| statement["action"] == "remove_post")
+        .expect("the removal's statement")["entryId"]
+        .as_u64()
         .unwrap();
-    assert!(answer.status().is_success(), "{}", answer.status());
+    member.knowing_post(
+        &format!("/v1/moderation/statements/{entry}/review"),
+        &json!({}),
+    );
+    decider.knowing_post(
+        &format!("/v1/moderation/reviews/{entry}"),
+        &json!({ "outcome": "upheld", "reason": "Prufa" }),
+    );
 
     // The seed took, read as a build that may see it all: what the release does
     // not get below is withheld, not missing.
     let rows = await_rows(&member, |rows| {
         let has = |action: &str| rows.iter().any(|row| row["action"] == action);
-        has("remove_post") && has("mute_member") && has("clear_account_photo")
+        has("remove_post") && has("review_upheld") && has("clear_account_photo")
     });
-    assert!(rows.iter().any(|row| row["communityId"].is_null()));
+    assert!(
+        rows.iter()
+            .any(|row| row["action"] == "clear_account_photo" && row["communityId"].is_null())
+    );
+    assert!(
+        rows.iter()
+            .any(|row| row["action"] == "review_upheld" && !row["communityId"].is_null())
+    );
     let (status, feed) = member.knowing("/v1/feed?limit=50");
     assert_eq!(status, 200);
     let listed = feed["posts"].as_array().unwrap();
