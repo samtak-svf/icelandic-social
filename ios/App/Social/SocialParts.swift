@@ -767,7 +767,8 @@ struct SocialComposer<Above: View, Leading: View>: View {
                     }
                 RoundButton(
                     systemImage: "arrow.up", label: send, fill: BrandTokens.Colors.primary,
-                    tint: BrandTokens.Colors.primaryFg, size: 36, enabled: mayWrite(suspension, enabled), action: onSend)
+                    tint: BrandTokens.Colors.primaryFg, size: 36, enabled: mayWrite(suspension, enabled),
+                    action: onSend)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
