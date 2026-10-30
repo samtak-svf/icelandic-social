@@ -94,6 +94,43 @@ fn reads_as_the_release(phone: &Phone, community: &str, shown: &[&str], removed:
     }
 }
 
+/// A suspended account on the release: both notices reach a knowing client and
+/// neither the release's list nor its counts, it still reads, and its refused
+/// write is an answer the release decodes. Lifted, it writes again.
+fn suspended_on_the_release(moderator: &Phone, phone: &Phone, community: &str, shown: &str) {
+    let hosted = phone.client.hosted();
+    let act = |action: &str| {
+        moderator.knowing_post(
+            "/v1/moderation/actions",
+            &json!({ "action": action, "targetId": phone.account, "reason": "Prufa" }),
+        );
+        // The seed took: what the release does not get below is withheld, not missing.
+        await_rows(phone, |rows| {
+            rows.iter()
+                .any(|row| row["action"] == action && row["communityId"].is_null())
+        });
+        let page = hosted.notifications(None, 50).unwrap();
+        assert!(
+            page.notifications.is_empty(),
+            "{action} reached the release: {:?}",
+            page.notifications
+        );
+        assert_eq!(page.unread, 0, "{action} is in the release's counts");
+    };
+
+    act("suspend_account");
+    assert_eq!(hosted.post(shown).unwrap().post_id, shown);
+    let feed = hosted.feed(None, 50).unwrap();
+    assert!(ids(&feed.posts).contains(&shown), "the feed lost {shown}");
+    match hosted.create_post(community, "Bönnuð", &[]) {
+        Err(ClientError::Transport(ApiError::Refused { status: 403, .. })) => {}
+        other => panic!("a suspended write is a 403 to the release: {other:?}"),
+    }
+
+    act("unsuspend_account");
+    hosted.create_post(community, "Aftur", &[]).unwrap();
+}
+
 #[test]
 #[ignore = "needs `cf dev --mode interop` of the tree under test; run by old-client.yml"]
 fn the_last_store_release_reads_this_worker() {
@@ -223,6 +260,15 @@ fn the_last_store_release_reads_this_worker() {
     ];
     reads_as_the_release(&member, &community, &shown, &removed.post_id);
     reads_as_the_release(&member_ios, &community, &shown, &removed.post_id);
+
+    // A suspension, of someone who has nothing else in their notices (0115).
+    let suspended = Phone::new(&kennitala(run, 3), Some(&invite), Platform::Android);
+    suspended
+        .client
+        .hosted()
+        .join_community(&community)
+        .unwrap();
+    suspended_on_the_release(&owner, &suspended, &community, &plain.post_id);
 
     // The owner's page, with the notices of content: a comment and a reaction.
     await_rows(&owner, |rows| {
