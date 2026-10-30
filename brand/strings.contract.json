@@ -2593,6 +2593,10 @@
       "surfaces": ["web"],
       "description": "Platform moderator's action: clear the profile photo of the reported account."
     },
+    "platform_remove_confirm": {
+      "surfaces": ["web"],
+      "description": "Confirmation before the platform moderator removes a reported post or comment from its community."
+    },
     "platform_clear_photo_confirm": {
       "surfaces": ["web"],
       "description": "Confirmation before the platform moderator clears an account's photo."

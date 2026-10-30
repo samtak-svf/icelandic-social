@@ -57,6 +57,7 @@ const entry: ModerationLogEntry = {
 };
 
 const noCalls = (): Calls => ({
+  moderate: vi.fn(() => Promise.resolve({ status: 204 as const, data: undefined })),
   moderatePlatform: vi.fn(() => Promise.resolve({ status: 204 as const, data: undefined })),
   closeReport: vi.fn(() => Promise.resolve({ status: 204 as const, data: undefined })),
 });
@@ -90,19 +91,50 @@ describe("the platform queue", () => {
   });
 
   it("offers the photo only while the account has one", () => {
-    expect(actionsFor(report()).map((row) => row.verb)).toEqual(["clear_account_photo"]);
+    expect(actionsFor(report()).map((row) => row.id)).toEqual(["clear_account_photo"]);
     expect(actionsFor(report({ targetAccount: person(null) }))).toEqual([]);
     expect(actionsFor(report({ targetAccount: null }))).toEqual([]);
   });
 
-  it("offers no action on the account for a report filed in a community", () => {
+  it("offers no account action for a report filed in a community", () => {
     expect(actionsFor({ ...report(), communityId: "cm_1" })).toEqual([]);
+  });
+
+  const onPost = (over: Partial<Report> = {}) =>
+    report({
+      reportId: "rep9",
+      communityId: "cm_1",
+      target: { kind: "post", id: "p1" },
+      reason: "unlawful",
+      ...over,
+    });
+
+  it("offers removal of a reported post or comment in a community", () => {
+    expect(actionsFor(onPost()).map((row) => row.id)).toEqual(["remove_post"]);
+    expect(
+      actionsFor(onPost({ target: { kind: "comment", id: "c1" } })).map((row) => row.id),
+    ).toEqual(["remove_comment"]);
+    expect(actionsFor(onPost({ communityId: null, targetAccount: null }))).toEqual([]);
+  });
+
+  it("removes the post through its community's route with the report's id, and the report leaves", async () => {
+    const calls = noCalls();
+    const reports = [onPost(), report({ reportId: "rep2" })];
+    const row = actionsFor(reports[0]!)[0]!;
+    const done = await act(calls, reports[0]!, row, " Ólöglegt ");
+    expect(done.ok).toBe(true);
+    expect(calls.moderate).toHaveBeenCalledWith({
+      path: { communityId: "cm_1" },
+      body: { action: "remove_post", targetId: "p1", reason: "Ólöglegt", reportId: "rep9" },
+    });
+    expect(calls.moderatePlatform).not.toHaveBeenCalled();
+    expect(without(reports, new Set(["rep9"])).map((r) => r.reportId)).toEqual(["rep2"]);
   });
 
   it("clears the photo with the report's id, and the report leaves the queue", async () => {
     const calls = noCalls();
     const reports = [report(), report({ reportId: "rep2" })];
-    const done = await act(calls, reports[0]!, "clear_account_photo", "  Ástæða  ");
+    const done = await act(calls, reports[0]!, actionsFor(reports[0]!)[0]!, "  Ástæða  ");
     expect(done.ok).toBe(true);
     expect(calls.moderatePlatform).toHaveBeenCalledWith({
       body: {
@@ -135,7 +167,7 @@ describe("the platform queue", () => {
         }),
       ),
     };
-    const done = await act(calls, report(), "clear_account_photo", "Ástæða");
+    const done = await act(calls, report(), actionsFor(report())[0]!, "Ástæða");
     expect(done.ok).toBe(false);
   });
 });

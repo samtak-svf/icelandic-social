@@ -1,6 +1,6 @@
 import { strings } from "../src/generated/brand/strings.ts";
 import { png } from "./images.ts";
-import { person, platformModerator } from "./social-helpers.ts";
+import { cardMenu, found, join, person, platformModerator, post, write } from "./social-helpers.ts";
 import { expect, test, WEB } from "./origin.ts";
 
 // Samtak's own moderation screen (#374, decision 0115): an account reported
@@ -70,4 +70,42 @@ test("a platform moderator clears an account's photo from the queue; others are 
   await outsider.goto(`${WEB}/moderation`);
   await expect(outsider.getByText(strings.problem_not_permitted)).toBeVisible();
   await expect(outsider.getByRole("article")).toHaveCount(0);
+});
+
+test("a platform moderator removes an unlawful post reported in a community", async ({
+  browser,
+}) => {
+  test.slow();
+  const owner = await person(browser, "Eigandi Fjarlægingardóttir");
+  const member = await person(browser, "Meðlimur Fjarlægingarson");
+  const platform = await person(browser, "Umsjón Fjarlægingarson");
+  await platformModerator(platform);
+  const community = await found(owner, "open");
+  await write(owner, strings.post_compose, strings.post_publish, "Ólöglegt efni í færslu.");
+  await join(member, community);
+
+  // The member reports it as unlawful, which goes to Samtak and not the community.
+  const reported = post(member, "Ólöglegt efni í færslu.");
+  await cardMenu(reported, strings.report);
+  await reported.getByLabel(strings.report_reason_unlawful).check();
+  await reported.getByRole("button", { name: strings.report_send }).click();
+  await expect(reported.getByText(strings.report_sent)).toBeVisible();
+
+  // The platform moderator sees it with its content and removes it.
+  await platform.goto(`${WEB}/moderation`);
+  const report = platform.getByRole("article", { name: strings.report_reason_unlawful });
+  await expect(report).toContainText("Ólöglegt efni í færslu.");
+  await report.getByLabel(strings.report_reason).fill("Ólöglegt");
+  platform.once("dialog", (dialog) => {
+    expect(dialog.message()).toBe(strings.platform_remove_confirm);
+    void dialog.accept();
+  });
+  await report.getByRole("button", { name: strings.moderation_remove }).click();
+  await expect(report).toHaveCount(0);
+  await expect(platform.getByText(strings.moderation_decision_remove_post)).toBeVisible();
+
+  // An ordinary member no longer reads it.
+  await member.goto(community);
+  await expect(member.getByRole("button", { name: strings.more_options }).first()).toBeVisible();
+  await expect(post(member, "Ólöglegt efni í færslu.")).toHaveCount(0);
 });

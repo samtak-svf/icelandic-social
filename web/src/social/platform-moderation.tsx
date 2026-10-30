@@ -171,7 +171,7 @@ function Item({
   }
   const perform = (row: Row) => {
     if (!confirm(row.confirm)) return;
-    void run(act(calls, report, row.verb, reason));
+    void run(act(calls, report, row, reason));
   };
 
   return (
@@ -206,7 +206,7 @@ function Item({
       </p>
       <div className="flex flex-wrap gap-2">
         {actionsFor(report).map((row) => (
-          <Button key={row.verb} tone="danger" disabled={blocked} onClick={() => perform(row)}>
+          <Button key={row.id} tone="danger" disabled={blocked} onClick={() => perform(row)}>
             {row.label}
           </Button>
         ))}
