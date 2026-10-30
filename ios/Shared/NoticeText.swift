@@ -58,7 +58,11 @@ private func moderatedKey(_ action: NotificationAction?) -> String {
     case .reviewUpheld: "notice_review_upheld"
     case .reviewOverturned: "notice_review_overturned"
     case .clearAccountPhoto: "notice_account_photo_cleared"
-    default: "notice_moderated"
+    case .suspendAccount: "notice_account_suspended"
+    case .unsuspendAccount: "notice_account_unsuspended"
+    case .hidePost, .removePost, .restorePost, .hideComment, .removeComment, .restoreComment, .muteMember,
+        .unmuteMember, .removeMember, .banMember, .unbanMember, .unknown, nil:
+        "notice_moderated"
     }
 }
 

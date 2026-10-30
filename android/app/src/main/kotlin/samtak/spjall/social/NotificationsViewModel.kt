@@ -217,6 +217,7 @@ private val STATED =
         NotificationAction.HIDE_COMMENT,
         NotificationAction.REMOVE_COMMENT,
         NotificationAction.CLEAR_ACCOUNT_PHOTO,
+        NotificationAction.SUSPEND_ACCOUNT,
         NotificationAction.REVIEW_UPHELD,
         NotificationAction.REVIEW_OVERTURNED,
     )

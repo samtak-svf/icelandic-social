@@ -72,6 +72,7 @@ fun PostScreen(
             SubHeader(stringResource(R.string.post_title), onBack = {
                 post?.let { actions.community(it.communityId) }
             })
+            SuspendedNotice()
             if (state.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             LazyColumn(
                 modifier = Modifier.weight(1f),

@@ -68,12 +68,15 @@ final class SocialTests: XCTestCase {
 
     func testAStatedDecisionOpensItsReasonsAndNothingElseDoes() {
         let stated: [NotificationAction] = [
-            .hidePost, .removePost, .hideComment, .removeComment, .clearAccountPhoto, .reviewUpheld, .reviewOverturned,
+            .hidePost, .removePost, .hideComment, .removeComment, .clearAccountPhoto, .suspendAccount, .reviewUpheld,
+            .reviewOverturned,
         ]
         for action in stated {
             XCTAssertEqual(noticeRoute(makeNotice("n", .moderated, community: nil, action: action)), .statements)
         }
         XCTAssertEqual(noticeRoute(makeNotice("n", .moderated, action: .muteMember)), .community("k1"))
+        // A lifted suspension has no statement of its own.
+        XCTAssertNil(noticeRoute(makeNotice("n", .moderated, community: nil, action: .unsuspendAccount)))
         XCTAssertEqual(noticeRoute(makeNotice("n", .comment, post: "p1", action: .hidePost)), .post("p1"))
     }
 
@@ -151,9 +154,9 @@ final class SocialTests: XCTestCase {
         let actions: [ModerationLogAction] = [
             .hidePost, .removePost, .restorePost, .hideComment, .removeComment, .restoreComment,
             .muteMember, .unmuteMember, .removeMember, .banMember, .unbanMember, .closeReport,
-            .deleteCommunity, .restoreCommunity,
+            .deleteCommunity, .restoreCommunity, .suspendAccount, .unsuspendAccount,
         ]
-        XCTAssertEqual(actions.compactMap(logActionLabel).count, actions.count)
+        XCTAssertEqual(actions.compactMap { logActionLabel($0) }.count, actions.count)
         XCTAssertNil(logActionLabel(.unknown))
         XCTAssertEqual(logActionLabel(.closeReport), localized("moderation_decision_dismissed"))
         XCTAssertEqual(logActionLabel(.restoreCommunity), localized("moderation_restore"))

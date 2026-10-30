@@ -47,6 +47,7 @@ fun CreateCommunityScreen(
     Surface(modifier = Modifier.fillMaxSize(), color = Palette.bg, contentColor = Palette.fg) {
         Column(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(SUB_SCREEN_SIDES))) {
             SubHeader(stringResource(R.string.community_create), actions::back)
+            SuspendedNotice()
             if (currentLayout().create == CreateLayout.FORM_AND_PREVIEW) {
                 // The form beside a live preview of the header the community will have (decision 0087).
                 Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -136,7 +137,7 @@ private fun CreateForm(
         }
         Button(
             onClick = actions::create,
-            enabled = state.ready,
+            enabled = state.ready && !suspended(),
             modifier = Modifier.align(Alignment.End).heightIn(min = 44.dp),
         ) { Text(stringResource(R.string.community_create)) }
     }

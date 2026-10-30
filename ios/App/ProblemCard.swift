@@ -5,9 +5,12 @@ struct ProblemCard: View {
     let problem: Problem
     let onRetry: () -> Void
 
+    /// The standing suspension, for the date a `suspended` refusal names.
+    @Environment(\.suspension) private var suspension
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(message)
+            Text(verbatim: message)
                 .foregroundStyle(BrandTokens.Colors.fg)
             // A refusal names the server's request id (decision 0037), selectable so a tester can quote it.
             if let line = Self.requestIdLine(problem) {
@@ -42,8 +45,9 @@ struct ProblemCard: View {
         problem.code.map { localized("problem_local_code", $0) }
     }
 
-    private var message: LocalizedStringKey {
-        LocalizedStringKey(Self.messageKey(problem))
+    private var message: String {
+        if case .suspended = problem { return suspendedProblemText(suspension) }
+        return localized(Self.messageKey(problem))
     }
 
     /// The brand strings key that words `problem`.
@@ -59,6 +63,7 @@ struct ProblemCard: View {
         case .pinFull: "post_pin_full"
         case .anonymousOff: "problem_anonymous_off"
         case .pollClosed: "poll_closed_problem"
+        case .suspended: "problem_suspended"
         case .groupPhotoUnsupported: "group_photo_unsupported"
         case .groupPhotoFailed: "group_photo_failed"
         case .generic: "error_generic"

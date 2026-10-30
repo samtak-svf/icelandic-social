@@ -31,6 +31,7 @@ struct NotificationsView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
             }
+            SuspendedNotice()
             ScrollView {
                 LazyVStack(spacing: 0) {
                     if model.loaded && model.notifications.isEmpty && model.problem == nil {

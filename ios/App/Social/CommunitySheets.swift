@@ -433,7 +433,7 @@ private struct LogCard: View {
         Panel {
             VStack(alignment: .leading, spacing: 6) {
                 // An action a later server adds has no words yet: the entry still names who did it and when.
-                if let action = logActionLabel(entry.action) {
+                if let action = logActionLabel(entry.action, until: entry.until) {
                     Text(verbatim: action)
                         .font(.sans(14, black: true))
                         .foregroundStyle(BrandTokens.Colors.fg)

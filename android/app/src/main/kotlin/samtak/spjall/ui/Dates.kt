@@ -25,7 +25,11 @@ object Dates {
     private val dayMonth = DateTimeFormatter.ofPattern("d. MMM", ICELANDIC)
     private val dayMonthLong = DateTimeFormatter.ofPattern("d. MMMM", ICELANDIC)
     private val dayMonthYear = DateTimeFormatter.ofPattern("d. MMM yyyy", ICELANDIC)
+    private val dayMonthYearTime = DateTimeFormatter.ofPattern("d. MMM yyyy, HH:mm", ICELANDIC)
     private val dayMonthYearLong = DateTimeFormatter.ofPattern("d. MMMM yyyy", ICELANDIC)
+
+    /** "30. okt. 2026, 14:05": the moment a suspension ends. */
+    fun dateTime(at: ZonedDateTime): String = dayMonthYearTime.format(at)
 
     /** "09:38". */
     fun time(at: ZonedDateTime): String = clock.format(at)
@@ -120,6 +124,9 @@ fun listStamp(
 
 /** The clock time of [millis]. */
 fun clockTime(millis: ULong): String = Dates.time(Dates.at(millis))
+
+/** The date and clock time of [millis], with its year. */
+fun dateTime(millis: ULong): String = Dates.dateTime(Dates.at(millis))
 
 /** The date of [millis], with its year. */
 fun calendarDate(millis: ULong): String = Dates.date(Dates.at(millis))

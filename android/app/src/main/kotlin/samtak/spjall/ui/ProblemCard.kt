@@ -29,7 +29,7 @@ fun ProblemCard(
         colors = CardDefaults.cardColors(containerColor = Palette.secondarySubtle, contentColor = Palette.fg),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = stringResource(problem.message()))
+            Text(text = problem.text(LocalSuspension.current))
             // A refusal names the server's request id (decision 0037), selectable so a tester can quote it.
             problem.requestId?.let { id ->
                 SelectionContainer(modifier = Modifier.padding(top = 4.dp)) {
@@ -70,11 +70,26 @@ private val FINAL =
         Problem.PollClosed,
         Problem.AnonymousOff,
         Problem.PinFull,
+        Problem.Suspended,
         Problem.GroupPhotoUnsupported,
     )
 
 /** Whether the same call may work if asked again: not a refusal the server will repeat. */
 private fun Problem.canRetry() = this !is Problem.IdentityTaken && this !in FINAL
+
+/**
+ * The sentence for [this]. A suspension refusal carries no date, so the end comes from the account's own suspension
+ * ([own], read from `me`); without one the sentence says nothing of an end (0115).
+ */
+@Composable
+internal fun Problem.text(own: Suspension?): String {
+    val until = own?.until
+    return if (this == Problem.Suspended && until != null) {
+        stringResource(R.string.problem_suspended_until, dateTime(until))
+    } else {
+        stringResource(message())
+    }
+}
 
 @Suppress("CyclomaticComplexMethod") // One branch per problem, each a sentence of its own.
 internal fun Problem.message(): Int =
@@ -91,6 +106,7 @@ internal fun Problem.message(): Int =
         Problem.PollClosed -> R.string.poll_closed_problem
         Problem.AnonymousOff -> R.string.problem_anonymous_off
         Problem.PinFull -> R.string.post_pin_full
+        Problem.Suspended -> R.string.problem_suspended
         Problem.GroupPhotoUnsupported -> R.string.group_photo_unsupported
         Problem.GroupPhotoFailed -> R.string.group_photo_failed
         is Problem.Generic -> R.string.error_generic

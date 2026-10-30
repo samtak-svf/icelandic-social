@@ -207,12 +207,13 @@ fun Composer(
             onValueChange = onText,
             label = { Text(label) },
             minLines = 2,
+            enabled = !suspended(),
             modifier = modifier.fillMaxWidth(),
         )
         extra()
         Button(
             onClick = onSend,
-            enabled = !sending && ready,
+            enabled = !sending && ready && !suspended(),
             modifier = Modifier.align(Alignment.End).heightIn(min = TOUCH.dp),
         ) { Text(action) }
     }

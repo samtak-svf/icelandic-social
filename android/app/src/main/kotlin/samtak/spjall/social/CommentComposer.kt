@@ -38,7 +38,7 @@ fun CommentComposer(
     onAddImage: () -> Unit = {},
     onRemoveImage: () -> Unit = {},
 ) {
-    val ready = (draft.isNotBlank() || image != null) && !sending
+    val ready = (draft.isNotBlank() || image != null) && !sending && !suspended()
     // At a large text size the field would be left too narrow for its own hint, so the photo button goes above it.
     val roomy = LocalDensity.current.fontScale <= ROOMY_SCALE
     val photo = @Composable { PhotoButton(sending, onAddImage) }
@@ -79,7 +79,7 @@ private fun PhotoButton(
     icon = AppIcons.Photo,
     description = stringResource(R.string.comment_add_image),
     onClick = onClick,
-    enabled = !sending,
+    enabled = !sending && !suspended(),
     fill = Palette.muted,
     tint = if (sending) Palette.mutedFg else Palette.fg,
     size = 40.dp,

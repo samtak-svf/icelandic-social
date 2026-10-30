@@ -8,6 +8,8 @@ struct ComposePrompt: View {
     let photo: PhotoOf?
     let action: () -> Void
 
+    @Environment(\.suspension) private var suspension
+
     var body: some View {
         VStack(spacing: 0) {
             Divider()
@@ -32,6 +34,7 @@ struct ComposePrompt: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
+            .disabled(suspension != nil)
         }
         .background(BrandTokens.Colors.surface)
     }

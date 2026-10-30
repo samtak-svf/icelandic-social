@@ -35,7 +35,8 @@ extension CoreAccount {
 
 /// The moderated rows a statement of reasons explains (0115).
 private let statedActions: [NotificationAction] = [
-    .hidePost, .removePost, .hideComment, .removeComment, .clearAccountPhoto, .reviewUpheld, .reviewOverturned,
+    .hidePost, .removePost, .hideComment, .removeComment, .clearAccountPhoto, .suspendAccount, .reviewUpheld,
+    .reviewOverturned,
 ]
 
 /// Where a notification opens: the statements for what a moderator did with its reasons, its post, or its community

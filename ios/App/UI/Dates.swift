@@ -42,6 +42,11 @@ enum Dates {
         format("d. MMM yyyy", at, calendar)
     }
 
+    /// A moment to the minute with its year: "15. jan. 2027, 00:00".
+    static func dateTime(_ at: Date, calendar: Calendar = .current) -> String {
+        format("d. MMM yyyy, HH:mm", at, calendar)
+    }
+
     /// How long before `now` a moment was, in whole units rounded down: `date` once it is over four weeks old. A
     /// clock a little ahead of the server's never reads as the future (decision 0080).
     enum Age: Equatable, Sendable {

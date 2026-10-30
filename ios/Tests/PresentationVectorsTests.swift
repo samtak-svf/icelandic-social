@@ -116,6 +116,8 @@ final class PresentationVectorsTests: XCTestCase {
                 case "review_upheld": .reviewUpheld
                 case "review_overturned": .reviewOverturned
                 case "clear_account_photo": .clearAccountPhoto
+                case "suspend_account": .suspendAccount
+                case "unsuspend_account": .unsuspendAccount
                 default: nil
                 }
             let wording = noticeWording(

@@ -18,6 +18,7 @@ class ProblemTest {
         assertEquals(Problem.NotPermitted, CoreException.Refused(403u, "not_permitted", "req-3").problem())
         assertEquals(Problem.NotFound, CoreException.Refused(404u, "not_found", "req-4").problem())
         assertEquals(Problem.JoinDeclined, CoreException.Refused(403u, "join_declined", "req-5").problem())
+        assertEquals(Problem.Suspended, CoreException.Refused(403u, "suspended", "req-6").problem())
         assertNull(Problem.NotPermitted.requestId)
     }
 
