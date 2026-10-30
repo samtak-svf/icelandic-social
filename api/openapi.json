@@ -2747,6 +2747,7 @@
               "remove_member",
               "ban_member",
               "unban_member",
+              "clear_account_photo",
               "dismissed",
               "community_deleted",
               null
@@ -2901,6 +2902,7 @@
               "remove_member",
               "ban_member",
               "unban_member",
+              "clear_account_photo",
               "close_report",
               "delete_community",
               "restore_community",
@@ -13254,6 +13256,118 @@
           },
           "404": {
             "description": "not_found: no such community, target or open report there",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/moderation/actions": {
+      "post": {
+        "operationId": "moderatePlatform",
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Act as a platform moderator on an account, with no community",
+        "description": "Samtak's platform moderators act on an account itself, never on another platform moderator; content in a community is acted on through that community's route. The action is logged with its reason and no community. With `reportId`, an open report on that account is closed by the same action; closing one with no action taken is `closeReport`.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "clear_account_photo"
+                    ]
+                  },
+                  "targetId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                    "example": "c_9f3a1b",
+                    "description": "The account's id"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "reportId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                    "example": "c_9f3a1b"
+                  }
+                },
+                "required": [
+                  "action",
+                  "targetId",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Done"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "not_permitted: the caller is not one of Samtak's platform moderators, or the target is",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such account, nothing of its to act on, or no such open report on it",
             "content": {
               "application/json": {
                 "schema": {

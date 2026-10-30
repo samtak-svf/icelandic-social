@@ -602,6 +602,8 @@ export const strings = {
   moderation_decision_unban_member: "Meðlimnum var hleypt aftur inn.",
   /** A closed report's decision: closed without acting. */
   moderation_decision_dismissed: "Lokað án aðgerðar.",
+  /** A closed report's decision and a log entry: a platform moderator removed an account's photo (decision 0115). */
+  moderation_decision_clear_account_photo: "Myndin var fjarlægð.",
   /** A closed report's decision: the community's deletion closed it (decision 0070). */
   moderation_decision_community_deleted: "Lokað þegar samfélaginu var eytt.",
   /** A log entry: a moderator set the community's picture (decision 0080). */

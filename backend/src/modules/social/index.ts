@@ -16,6 +16,6 @@ export {
   purgeRemoved,
   type Content,
 } from "./moderation.ts";
-export { authors } from "./bylines.ts";
+export { authors, type Author } from "./bylines.ts";
 export { reconcileSpace, restoreSpace, type Moderated } from "./restore.ts";
 export { socialRoutes } from "./routes.ts";

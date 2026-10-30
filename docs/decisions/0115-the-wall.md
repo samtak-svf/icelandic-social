@@ -102,8 +102,10 @@ what the platform has today is too little to open walls on.
   platform moderator reads every space (`backend/src/modules/social/access.ts:46`). That is fine for a community
   and wrong for friends-only posts, so the wall branch does not have it.
 - **The log** is the same `moderation_log`, kept a year after a purge (`lifecycle.ts:16`). A deleted account appears as
-  a deleted account (`0016_moderation.sql:51`). Entries with no community are not protected by `moderation_log_kept`
-  today (`0016_moderation.sql:80–84`, which needs an existing community), so a new trigger covers them.
+  a deleted account (`0016_moderation.sql:51`). An entry with no community has no purge to wait for, so it is kept
+  one year from when it was written, as `/privacy` says of the log: `moderation_log_kept` needs an existing community
+  (`0016_moderation.sql:80–84`), so a new trigger (`0037_moderation_log_no_community.sql`) refuses its deletion until
+  then, and the daily job (`expireLog`) deletes it after.
 
 **What must exist before any wall write ships.** `/usr/bin/grep -rn suspend backend/src` finds nothing, and
 `web/src/routes/` holds only a community's reports and log. So, in this order:
@@ -112,7 +114,9 @@ what the platform has today is too little to open walls on.
    for the queue, closing and the log exist (`backend/src/modules/moderation/routes.ts:72–106`, `:128–134`); no
    client reads them.
 2. **A platform action route that needs no community.** `act` starts from a community
-   (`backend/src/modules/moderation/actions.ts:160–172`), and an account report has none.
+   (`backend/src/modules/moderation/actions.ts:160–172`), and an account report has none. Built as
+   `POST /v1/moderation/actions`, for an account's photo so far; a bio, a cover and suspension add to it when they
+   exist. It tells the person nothing yet: that comes with step 3, and must land before a wall write.
 3. **The statement of reasons, the single review and the tombstone** 0063 promised and 0066 listed as not built.
 4. **Suspension**, which does not exist: a column on `accounts`, timed or open. It stops posts, comments, reactions,
    friend requests and creating or joining a community. It does not touch conversations, which are end-to-end

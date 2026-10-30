@@ -146,11 +146,12 @@ which means the cron has not run: look at the Worker's Cron Triggers in the dash
 ## Platform moderators
 
 A platform moderator reads the platform report queue, reads the moderation log and reports of a
-deleted community for a year, and can restore a deleted community within its first 30 days
-([decision 0063](decisions/0063-communities-audiences-and-moderation.md),
+deleted community for a year, can restore a deleted community within its first 30 days, and can
+clear an account's photo with `POST /v1/moderation/actions`, which also closes a report on that
+account ([decision 0063](decisions/0063-communities-audiences-and-moderation.md),
 [decision 0066](decisions/0066-moderation-in-d1.md),
-[decision 0070](decisions/0070-community-deletion-and-declined-requests.md)). The role is never
-granted by a route:
+[decision 0070](decisions/0070-community-deletion-and-declined-requests.md),
+[decision 0115](decisions/0115-the-wall.md)). The role is never granted by a route:
 
 ```bash
 # Grant the role to an account:

@@ -3,7 +3,7 @@
 // to a member is written by the module that owns it, with the log's entry in
 // the same batch; the tables this module owns are written only here.
 
-export { commentModeration } from "./log.ts";
+export { commentModeration, expireLog } from "./log.ts";
 export { expireReports } from "./reports.ts";
 export { moderationRoutes } from "./routes.ts";
 export { anonymousRecord, imageRecord, lifecycleRecord } from "./community.ts";

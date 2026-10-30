@@ -4,17 +4,22 @@ import type {
   COMMUNITY_IMAGE_ACTIONS,
   COMMUNITY_PIN_ACTIONS,
   COMMUNITY_POLL_ACTIONS,
+  PlatformAction,
   REPORT_KINDS,
 } from "../../api/moderation.ts";
 import { db } from "../../env/index.ts";
 import { authors, type Moderated } from "../social/index.ts";
+import { CLOSED_KEPT_MS } from "./reports.ts";
 
 // The moderation log (decision 0066): one entry per action, appended and
 // never edited. Migration 0016's triggers refuse an edit or a deletion; an
 // entry goes only with its community, and a deleted account's id becomes null.
+// An entry with no community has none to go with: migration 0037 refuses its
+// deletion for a year, and then the daily job deletes it (decision 0115).
 
 type Logged =
   | Action
+  | PlatformAction
   | "close_report"
   | "delete_community"
   | "restore_community"
@@ -110,6 +115,22 @@ export async function logPage(
     })),
     next: results.length > limit ? String(page.at(-1)?.entry_id) : null,
   };
+}
+
+/**
+ * Deletes the entries with no community older than a year; their count. The
+ * database's clock decides, the one migration 0037's trigger reads, so that
+ * no difference between it and the Worker's can abort the delete.
+ */
+export async function expireLog(env: Env): Promise<number> {
+  const { meta } = await db(env)
+    .prepare(
+      `DELETE FROM moderation_log
+        WHERE community_id IS NULL AND created_at <= unixepoch() * 1000 - ?`,
+    )
+    .bind(CLOSED_KEPT_MS)
+    .run();
+  return meta.changes;
 }
 
 const COMMENT_STATES = {

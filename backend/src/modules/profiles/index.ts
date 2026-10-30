@@ -3,5 +3,5 @@
 // 0036, 0039). It owns no table: it reads identity's and messaging's.
 
 export { accountRoutes } from "./people.ts";
-export { deleteAccountPhoto, photoRoutes } from "./photos.ts";
+export { deleteAccountPhoto, photoRoutes, removePhoto } from "./photos.ts";
 export { likeLiteral, nameKey } from "./profiles.ts";

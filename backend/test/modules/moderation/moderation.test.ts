@@ -5,20 +5,12 @@ import { CLOSED_KEPT_MS, expireReports } from "../../../src/modules/moderation/r
 import { purgeRemoved } from "../../../src/modules/social/index.ts";
 import { REMOVED_KEPT_MS } from "../../../src/modules/social/do/space-schema.ts";
 import { euEnv } from "../../support.ts";
-import { community, errorOf, ok, person, type Person } from "../../people.ts";
+import { community, errorOf, ok, person, platformModerator, type Person } from "../../people.ts";
 
 // Moderation (decisions 0063, 0066, #289): who may act on whom, the log entry
 // every action leaves, mutes and bans, and reports in their two queues.
 
 const DAY = 24 * 60 * 60 * 1000;
-
-async function platformModerator(name: string): Promise<Person> {
-  const one = await person(name);
-  await env.DB.prepare("INSERT INTO platform_moderators (account_id, added_at) VALUES (?, ?)")
-    .bind(one.accountId, Date.now())
-    .run();
-  return one;
-}
 
 const act = (by: Person, communityId: string, body: Record<string, unknown>) =>
   by.call("POST", `/v1/communities/${communityId}/actions`, { reason: "Prófun", ...body });

@@ -35,6 +35,15 @@ export async function person(name: string) {
   return { ...seeded, call, send };
 }
 
+/** A new account on Samtak's list of platform moderators, which no route grants (decision 0063). */
+export async function platformModerator(name: string): Promise<Person> {
+  const one = await person(name);
+  await env.DB.prepare("INSERT INTO platform_moderators (account_id, added_at) VALUES (?, ?)")
+    .bind(one.accountId, Date.now())
+    .run();
+  return one;
+}
+
 export const errorOf = async (response: Response) => ApiError.parse(await response.json()).error;
 
 /** The body of a 200 answer. */

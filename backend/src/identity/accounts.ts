@@ -103,20 +103,23 @@ export async function dropDeadPushToken(
 }
 
 /**
- * Sets or clears the account's photo version and framing (decisions 0039, 0086). False when the
- * account no longer exists.
+ * Sets or clears the account's photo version and framing (decisions 0039, 0086), with `entries` in
+ * the same write. False when the account no longer exists.
  */
 export async function setPhotoVersion(
   env: Env,
   accountId: string,
   version: string | null,
   framing: Framing | null,
+  entries: D1PreparedStatement[] = [],
 ): Promise<boolean> {
-  const updated = await db(env)
-    .prepare("UPDATE accounts SET photo_version = ?, photo_frames = ? WHERE account_id = ?")
-    .bind(version, framing && JSON.stringify(framing), accountId)
-    .run();
-  return updated.meta.changes > 0;
+  const [updated] = await db(env).batch([
+    db(env)
+      .prepare("UPDATE accounts SET photo_version = ?, photo_frames = ? WHERE account_id = ?")
+      .bind(version, framing && JSON.stringify(framing), accountId),
+    ...entries,
+  ]);
+  return (updated?.meta.changes ?? 0) > 0;
 }
 
 /** A fresh random id or token: `prefix` and 32 random bytes, base64url. */

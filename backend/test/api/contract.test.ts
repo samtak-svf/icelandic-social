@@ -129,6 +129,7 @@ describe("the delivery contract", () => {
       "post /v1/me/identities linkIdentity",
       "post /v1/me/invite rotateInvite",
       "post /v1/me/sessions/end-others endOtherSessions",
+      "post /v1/moderation/actions moderatePlatform",
       "post /v1/notifications/read readNotifications",
       "post /v1/notifications/seen seenNotifications",
       "post /v1/posts/{postId}/approve approveAnonymousPost",
