@@ -196,7 +196,7 @@ export async function act(
       targetAccount: target.targetAccount,
       reason: input.reason,
     }),
-    ...(report ? [closing(env, report.reportId, accountId, input.action, input.reason)] : []),
+    ...(report ? closing(env, report.reportId, accountId, input.action, input.reason) : []),
     ...told(env, accountId, communityId, input, target),
   ];
   await apply(env, communityId, input, target, entries);
@@ -278,7 +278,7 @@ export async function actOnAccount(
       reason: input.reason,
       suspendedUntil: until ?? null,
     }),
-    ...(report ? [closing(env, report.reportId, accountId, input.action, input.reason)] : []),
+    ...(report ? closing(env, report.reportId, accountId, input.action, input.reason) : []),
     // There is no community, so this is a row older clients are not shown (0114).
     notice(env, `${input.targetId}:${input.action}:${Date.now()}`, {
       kind: "moderated",

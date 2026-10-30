@@ -79,6 +79,7 @@ function NoticeLink({
   children,
 }: Readonly<{ n: Notification; onClick: () => void; children: ReactNode }>) {
   const common = { className: LINK, onClick, children };
+  if (n.kind === "reports_waiting") return <Link to="/moderation" {...common} />;
   // What a moderator did is read with its reasons; a removed post is not there to open.
   if (n.kind === "moderated" && STATED.has(n.action)) return <Link to="/statements" {...common} />;
   if ((n.kind === "friend_request" || n.kind === "friend_accepted") && n.actor) {
@@ -152,7 +153,7 @@ export function NoticeRow({
               <MenuItem onSelect={run(() => actions.remove(n))}>
                 {strings.notice_menu_remove}
               </MenuItem>
-              {n.kind !== "moderated" && (
+              {n.kind !== "moderated" && n.kind !== "reports_waiting" && (
                 <>
                   <MenuItem onSelect={run(() => actions.kindInApp(n))}>
                     {strings.notice_menu_kind_in_app}

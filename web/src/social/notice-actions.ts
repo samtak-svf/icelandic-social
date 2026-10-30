@@ -62,7 +62,7 @@ export function useNotices(page: NotificationPage | null): {
     },
     // Only ever lowers a level: a kind already off stays off.
     kindInApp: (n) => {
-      if (n.kind === "moderated") return;
+      if (n.kind === "moderated" || n.kind === "reports_waiting") return;
       const kind = n.kind;
       void outcome(notificationSettings(), 200).then((got) => {
         if (got.ok && got.data.kinds[kind] === "off") return;

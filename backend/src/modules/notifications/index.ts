@@ -10,6 +10,7 @@ export { expireNotifications, forgetCommunity } from "./list.ts";
 export {
   forgettingFriendNotices,
   withdrawingFriendNotices,
+  withdrawingReportsWaiting,
   withdrawingRequestNotice,
 } from "./withdraw.ts";
 export { notificationRoutes } from "./routes.ts";

@@ -710,6 +710,7 @@
   "friends_sort_name": "Eftir nafni",
   "notice_friend_request": "{name} sendi þér vinabeiðni.",
   "notice_friend_accepted": "{name} samþykkti vinabeiðni þína.",
+  "notice_reports_waiting": "Tilkynnt efni bíður yfirferðar.",
   "notification_kind_friend_request": "Vinabeiðnir",
   "notification_kind_friend_accepted": "Samþykktar vinabeiðnir",
   "problem_request_refused": "Ekki er hægt að senda þessa beiðni núna.",

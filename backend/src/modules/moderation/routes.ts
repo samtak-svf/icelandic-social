@@ -94,7 +94,7 @@ export function moderationRoutes(app: OpenAPIHono<AppEnv>): void {
     }
     const { resolution } = c.req.valid("json");
     await db(c.env).batch([
-      closing(c.env, report.reportId, accountId, "dismissed", resolution),
+      ...closing(c.env, report.reportId, accountId, "dismissed", resolution),
       entry(c.env, {
         communityId: report.communityId,
         actorId: accountId,

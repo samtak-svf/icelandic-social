@@ -3,7 +3,9 @@ import { db } from "../../env/index.ts";
 // How loudly an account wants to be told (decision 0106): a level for each
 // kind and for each community, the lower applies, and a missing row is `push`.
 // Moderation is never below `in_app`, whatever is stored: an account cannot
-// switch off being told that a moderator acted on its content.
+// switch off being told that a moderator acted on its content. Reports waiting
+// are no setting at all: a platform moderator is always told, in the app and
+// never by push, since no app can word it yet (decision 0115).
 
 const KINDS = [
   "comment",
@@ -16,6 +18,7 @@ const KINDS = [
 ] as const;
 export type Kind = (typeof KINDS)[number];
 export type Level = "off" | "in_app" | "push";
+type NoticeKind = Kind | "reports_waiting";
 
 const RANK: Record<Level, number> = { off: 0, in_app: 1, push: 2 };
 
@@ -25,10 +28,11 @@ const lower = (a: Level | null | undefined, b: Level | null | undefined): Level 
 
 /** The level at which `kind` in a community is told, given what is stored for each. */
 function effective(
-  kind: Kind,
+  kind: NoticeKind,
   kindLevel: Level | null | undefined,
   communityLevel: Level | null | undefined,
 ): Level {
+  if (kind === "reports_waiting") return "in_app";
   const level = lower(kindLevel, communityLevel);
   return kind === "moderated" && level === "off" ? "in_app" : level;
 }
@@ -37,7 +41,7 @@ function effective(
 export async function levelFor(
   env: Env,
   accountId: string,
-  kind: Kind,
+  kind: NoticeKind,
   communityId: string | null,
 ): Promise<Level> {
   const row = await db(env)
@@ -125,11 +129,12 @@ export async function setCommunityLevel(
 export async function announcer(
   env: Env,
   accountId: string,
-): Promise<(row: { kind: Kind; community_id: string | null }) => boolean> {
+): Promise<(row: { kind: NoticeKind; community_id: string | null }) => boolean> {
   const stored = await settingsOf(env, accountId);
+  const kinds: Partial<Record<NoticeKind, Level>> = stored.kinds;
   const community = new Map(stored.communities.map((c) => [c.communityId, c.level]));
   return (row) => {
     const level = row.community_id === null ? null : community.get(row.community_id);
-    return effective(row.kind, stored.kinds[row.kind], level) === "push";
+    return effective(row.kind, kinds[row.kind], level) === "push";
   };
 }

@@ -176,7 +176,7 @@ account. It runs on every PR so that it can be a required check; a `changes` job
 
 **What it proves**, for notifications, the feed, a community's posts and a single post: every
 answer decodes (one field the release cannot read fails the job, as it fails the page on a phone);
-a notice with no community (a friend notice among them), a notice of a newer action and a removed post's tombstone are withheld from that build, and
+a notice with no community (a friend notice among them, and a notice of reports waiting, which only the web reads), a notice of a newer action and a removed post's tombstone are withheld from that build, and
 the same reads as a current build show them, so the seed was real; what the release should see is
 still there, a removal notice included; the unread count leaves out what the list leaves out. A
 suspended account on that build gets neither notice of its suspension, still reads, and has its

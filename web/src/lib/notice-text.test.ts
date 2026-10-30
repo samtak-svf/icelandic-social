@@ -9,6 +9,16 @@ const moderated = (action: string | null) => ({
   actorCount: 0,
 });
 
+describe("what a row of reports waiting reads", () => {
+  it("says they wait, and names no count, reporter or target", () => {
+    const said = noticeText({ kind: "reports_waiting", action: null, actors: [], actorCount: 0 });
+    expect(said.key).toBe("notice_reports_waiting");
+    expect(said.text).toBe(strings.notice_reports_waiting);
+    expect(said.args).toEqual({});
+    expect(said.badge).toBe("moderator");
+  });
+});
+
 describe("what a moderated row reads", () => {
   it.each([
     ["decline_anonymous_post", "notice_anonymous_declined"],

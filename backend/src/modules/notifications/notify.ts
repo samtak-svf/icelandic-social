@@ -6,6 +6,7 @@ import { standing } from "../communities/index.ts";
 import { areFriends, requestOpen } from "../friends/index.ts";
 import { commentContent, postAccess } from "../social/index.ts";
 import { levelFor } from "./settings.ts";
+import { reportsWaitFor } from "./withdraw.ts";
 
 // The notice job's handler (decisions 0063, 0067, 0103): a notification row for
 // the account told, and a push to its devices that names nothing, as for chat
@@ -19,8 +20,17 @@ async function stillSo(env: Env, n: Notice): Promise<boolean> {
   if (n.accountId === n.actorId) return false;
   // A moderator's notice goes across a block: nothing is hidden untold.
   if (n.kind === "moderated") return true;
+  // Reports waiting have no actor to be blocked: a moderator's duty outranks it (0115).
+  if (n.kind === "reports_waiting") return eventStands(env, n);
   if ((await blockedEither(env, n.accountId)).includes(n.actorId)) return false;
   return eventStands(env, n);
+}
+
+/** Whether the comment `n` tells of is still visible, on a post the account told can read. */
+async function commentStands(env: Env, n: Notice): Promise<boolean> {
+  const comment = n.commentId ? await commentContent(env, n.commentId) : null;
+  if (comment?.state !== "visible") return false;
+  return !!(n.postId && (await postAccess(env, n.accountId, n.postId)));
 }
 
 /** Whether what `n` tells of is still there for the account told. */
@@ -29,11 +39,8 @@ async function eventStands(env: Env, n: Notice): Promise<boolean> {
     case "moderated":
       return true;
     case "comment":
-    case "reply": {
-      const comment = n.commentId ? await commentContent(env, n.commentId) : null;
-      if (comment?.state !== "visible") return false;
-      return !!(n.postId && (await postAccess(env, n.accountId, n.postId)));
-    }
+    case "reply":
+      return commentStands(env, n);
     case "reaction":
       return !!(n.postId && (await postAccess(env, n.accountId, n.postId)));
     case "join_approved":
@@ -43,6 +50,8 @@ async function eventStands(env: Env, n: Notice): Promise<boolean> {
       return requestOpen(env, n.actorId, n.accountId);
     case "friend_accepted":
       return areFriends(env, n.accountId, n.actorId);
+    case "reports_waiting":
+      return reportsWaitFor(env, n.accountId);
   }
 }
 
@@ -56,6 +65,8 @@ function groupId(key: string, n: Notice): string {
       return n.postId ? `${n.kind}:${scope}${n.postId}:${n.accountId}` : key;
     case "reply":
       return n.parentCommentId ? `reply:${scope}${n.parentCommentId}:${n.accountId}` : key;
+    case "reports_waiting":
+      return `reports_waiting:${n.accountId}`;
     default:
       return key;
   }
@@ -111,7 +122,7 @@ async function write(env: Env, key: string, group: string, n: Notice, now: numbe
                                           created_at)
          SELECT ?, ?, ?, ?, ?, ?
           WHERE EXISTS (SELECT 1 FROM notifications WHERE notification_id = ?2)
-            AND EXISTS (SELECT 1 FROM accounts WHERE account_id = ?3)
+            AND (?3 IS NULL OR EXISTS (SELECT 1 FROM accounts WHERE account_id = ?3))
          ON CONFLICT (event_id) DO NOTHING`,
       )
       .bind(key, group, n.actorId, n.emoji ?? null, n.commentId ?? null, now),

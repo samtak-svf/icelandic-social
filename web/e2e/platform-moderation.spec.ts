@@ -19,6 +19,41 @@ import { CLIENT, expect, test, WEB } from "./origin.ts";
 // reaches the log. Nobody else is shown the queue. The person is told why and
 // may ask once for a review, which a moderator who did not act decides.
 
+test("a platform moderator is told reports wait, by nobody, and opens the queue", async ({
+  browser,
+}) => {
+  const reported = await person(browser, "Tilkynnt Biðardóttir");
+  const reporter = await person(browser, "Tilkynnir Biðarson");
+  const platform = await person(browser, "Umsjón Biðardóttir");
+  await platformModerator(platform);
+
+  await reporter.goto(`${WEB}/people/${await accountOf(reported)}`);
+  await reporter.getByRole("button", { name: strings.notice_menu }).click();
+  await reporter.getByRole("menuitem", { name: strings.report }).click();
+  await reporter.getByRole("radio", { name: strings.report_reason_spam }).check();
+  await reporter.getByRole("button", { name: strings.report_send }).click();
+  await expect(reporter.getByText(strings.report_sent, { exact: true })).toBeVisible();
+
+  await runJobs();
+  await platform.goto(`${WEB}/notifications`);
+  const row = platform.getByRole("link", { name: new RegExp(strings.notice_reports_waiting) });
+  await expect(row).toBeVisible();
+  // Nobody's picture: the "?" of a notice with no community.
+  await expect(row.getByText("?", { exact: true })).toBeVisible();
+  await expect(row).not.toContainText("Biðarson");
+  await expect(row).not.toContainText("Biðardóttir");
+  await row.click();
+  await expect(platform).toHaveURL(/\/moderation$/);
+
+  // Closing the last report takes the row with it: no notice opens an empty queue.
+  const report = platform.getByRole("article", { name: strings.report_reason_spam });
+  await report.getByLabel(strings.report_reason).fill("Ekkert að");
+  await report.getByRole("button", { name: strings.moderation_dismiss }).click();
+  await expect(platform.getByText(strings.moderation_queue_empty)).toBeVisible();
+  await platform.goto(`${WEB}/notifications`);
+  await expect(platform.getByText(strings.notice_reports_waiting)).toHaveCount(0);
+});
+
 test("a platform moderator clears an account's photo from the queue; others are refused", async ({
   browser,
 }) => {

@@ -3563,7 +3563,8 @@
               "join_approved",
               "moderated",
               "friend_request",
-              "friend_accepted"
+              "friend_accepted",
+              "reports_waiting"
             ]
           },
           "actor": {

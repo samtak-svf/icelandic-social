@@ -34,11 +34,14 @@ const OLD_ACTIONS = [
  * reaches its list or its counts. It reads a new action as "unknown" and words
  * it as a removal, so that stays out as well (0115). An app that decodes every
  * row may still word a suspension that way, until its core knows the action, and
- * has no words for a friend's notice until it knows that kind (0114).
+ * has no words for a friend's notice until it knows that kind (0114), nor for
+ * reports waiting, which only the web words for now (0115).
  */
 export function shownTo(reach: NoticeReach): string {
   if (reach === "all") return LIVE;
-  const noFriends = `${LIVE} AND n.kind NOT IN ('friend_request', 'friend_accepted')`;
+  const noQueue = `${LIVE} AND n.kind <> 'reports_waiting'`;
+  if (reach === "friends") return noQueue;
+  const noFriends = `${noQueue} AND n.kind NOT IN ('friend_request', 'friend_accepted')`;
   if (reach === "suspension") return noFriends;
   if (reach === "decoding") {
     return `${noFriends} AND (n.action IS NULL OR n.action NOT IN ('suspend_account', 'unsuspend_account'))`;
@@ -61,7 +64,8 @@ type Row = {
     | "join_approved"
     | "moderated"
     | "friend_request"
-    | "friend_accepted";
+    | "friend_accepted"
+    | "reports_waiting";
   actor_id: string | null;
   community_id: string | null;
   post_id: string | null;
@@ -79,6 +83,7 @@ const ACTORS = `
   WITH latest AS (
     SELECT notification_id, actor_id, MAX(created_at) AS at
       FROM notification_actors WHERE notification_id IN (SELECT value FROM json_each(?1))
+       AND actor_id IS NOT NULL
      GROUP BY notification_id, actor_id
   ), ranked AS (
     SELECT notification_id, actor_id,

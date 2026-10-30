@@ -1,6 +1,6 @@
 # 0115. The wall: an account's posts, for friends by default, moderated by the platform
 
-- Status: accepted; designed, not yet implemented; the platform moderation screen and action route (#374), the statement of reasons, the single review, the tombstone and suspension (#374) implemented, the rest still to come
+- Status: accepted; designed, not yet implemented; the platform moderation screen and action route (#374), the statement of reasons, the single review, the tombstone, suspension and the notice of reports waiting (#374) implemented, the rest still to come
 - Date: 2026-10-30
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0044](0044-no-fljotid-in-v1.md) ("There is no wall"; settles the report and moderation it asked for),
@@ -9,6 +9,7 @@
   [0063](0063-communities-audiences-and-moderation.md) (who reads and who moderates an account's posts),
   [0065](0065-the-space-object-and-social-media.md) (a Space is named by a community or a wall),
   [0066](0066-moderation-in-d1.md) (what was "not built yet" is the gate here),
+  [0106](0106-notification-levels.md) (a kind with no level: reports waiting),
   [0009](0009-v1-scope.md) (the wall is in scope)
 - Builds on: [0114](0114-friends-and-the-person-screen.md), [0007](0007-postcode-groups-are-public-channels.md),
   [0024](0024-block.md), [0039](0039-profile-photo.md), [0080](0080-communities-follow-the-familiar-group-layout.md),
@@ -134,6 +135,30 @@ what the platform has today is too little to open walls on.
    lifts it. A notice about it goes only to a client that words it, `SUSPENSION_NOTICE_CLIENT_VERSION`: 0.19.0 decodes
    the action but would call it a removal.
 5. **A grouped notice to platform moderators when reports wait**, because otherwise nobody looks at the queue.
+   Built as a new kind, `reports_waiting` (`0042_reports_waiting.sql`), on these decisions, taken 2026-10-30 by the
+   overseeing session, which Guðröður may overrule:
+   - **One row per moderator, never one per report**, on 0103's rule: a report that newly waits moves it to now and
+     makes it unread. A report already open that is sent again writes nothing and tells nobody.
+   - **It names nobody and nothing.** No actor, no community, no post, no count; a report's author is not an actor, so
+     `actor_id` is NULL on the row and on its events in `notification_actors`. The web shows the "?" of a notice with
+     no community, and the row opens the queue at `/moderation`.
+   - **Who is told:** every account on `platform_moderators` when a report arrives with `to_platform = 1`, except the
+     moderator who made it, and across a block, since a moderator's duty outranks it. Nothing moves a community's
+     report to the platform today, so filing is the one way in. A job run twice has one effect.
+   - **It stops being true:** closing the platform's last open report removes every moderator's row in the batch that
+     closes it, and a job that runs later finds the queue empty and writes nothing. A community's report does neither.
+   - **The web only, and no device push.** No app has the queue, so `REPORTS_NOTICE_CLIENT_VERSION` is above every app,
+     withheld by the seam of 0114; no web push exists either. The limit is stated: a moderator is told only by opening
+     the web. Apps word it in Step 7 (#379), if at all.
+   - **It is not a setting**, as `moderated` is not: `effective()` answers `in_app` for the kind whatever is stored, and
+     the settings API has no key for it. `notification_settings`' check is not widened, so no row can exist for it.
+
+   What this leaves open: a moderator added later is not told of a report already waiting, until the next one; a
+   moderator removed by hand keeps the row until the queue empties; the 90-day expiry of `notifications` removes a row
+   whose report is still open, until the next report; a moderator may remove their own row, and the next report writes
+   it again; and a report closed between a job's check and its write leaves a row on an empty queue until the next
+   report closes or arrives.
+
 6. **At least one row in production's `platform_moderators`** (`0016_moderation.sql:6–9`: never by a route), verified
    by the maintainer. This record's author could not check production.
 

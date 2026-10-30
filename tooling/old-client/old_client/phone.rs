@@ -15,6 +15,9 @@ const KEY: [u8; 32] = [7; 32];
 /// the release does not is what was withheld.
 pub const KNOWING: &str = "android/99.0.0";
 
+/// A current web build.
+const WEB: &str = "web/99.0.0";
+
 /// One orange pixel, a PNG: an image the Worker's Images binding takes.
 pub const PIXEL: [u8; 69] = [
     0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
@@ -184,10 +187,19 @@ impl Phone {
 
     /// A GET as a build that decodes everything: its status and raw JSON.
     pub fn knowing(&self, path: &str) -> (u16, Value) {
+        self.read_as(KNOWING, path)
+    }
+
+    /// A GET as the web, which alone words a notice of reports waiting (0115).
+    pub fn on_the_web(&self, path: &str) -> (u16, Value) {
+        self.read_as(WEB, path)
+    }
+
+    fn read_as(&self, client: &str, path: &str) -> (u16, Value) {
         let mut answer = agent()
             .get(format!("{}{path}", base()))
             .header("authorization", self.token())
-            .header("spjall-client", KNOWING)
+            .header("spjall-client", client)
             .call()
             .unwrap();
         let status = answer.status().as_u16();

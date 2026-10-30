@@ -4,7 +4,8 @@
 - Date: 2026-10-27
 - Decided by: Guðröður Atli Jónsson, approving the notifications v2 plan (#308)
 - Amends: [0067](0067-jobs-and-notifications.md) (per-kind settings, listed as not built)
-- Amended by: [0114](0114-friends-and-the-person-screen.md) (two more kinds, a friend request and its acceptance)
+- Amended by: [0114](0114-friends-and-the-person-screen.md) (two more kinds, a friend request and its acceptance),
+  [0115](0115-the-wall.md) (a kind with no level: reports waiting, in the list and never pushed)
 
 ## Decision
 
