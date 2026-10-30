@@ -86,7 +86,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/rust-toolchain
 
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: core
 
@@ -96,7 +96,7 @@ jobs:
       - name: Clippy
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
 
-      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+      - uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
         with:
           tool: cargo-llvm-cov
 
@@ -132,7 +132,7 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: core
           key: wasm32
@@ -162,7 +162,7 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: core
           key: wasm32-opfs
@@ -239,7 +239,7 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: core
           key: wasm32-web
@@ -337,7 +337,7 @@ jobs:
           fi
           cargo install cargo-ndk --version 4.1.2 --locked
 
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         if: steps.reuse.outputs.run == ''
         with:
           workspaces: core
@@ -402,7 +402,7 @@ jobs:
       - uses: ./.github/actions/rust-toolchain
         if: steps.reuse.outputs.run == ''
 
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         if: steps.reuse.outputs.run == ''
         with:
           workspaces: core
