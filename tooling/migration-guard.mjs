@@ -11,12 +11,19 @@
 //
 // A migration with a dropping or renaming statement and without that line
 // fails here. Comments and string literals are not read as SQL.
+//
+// With --base <ref> it also holds the order (#397): a migration the base does not
+// have takes a number above all of the base's, so two branches that each took the
+// next number find out at the PR, and `node tooling/contract-rebase.mjs` settles it.
+// Only what is new is read. A duplicate that a stale green PR has already landed on
+// main is harmless, since cf records a migration by its file name, and a rule over
+// the whole tree would then fail every PR for something none of them can rename.
 
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ROOT } from "./lib/repo.mjs";
+import { git, ROOT } from "./lib/repo.mjs";
 
-const MIGRATIONS = "backend/migrations";
+export const MIGRATIONS = "backend/migrations";
 
 /** The statements a version before the migration may depend on. */
 const CONTRACTING = [
@@ -72,22 +79,77 @@ export function auditMigrations(root = ROOT) {
   return { problems, checked: names.length };
 }
 
+/**
+ * @param {string} name a migration's file name
+ * @returns {number}
+ */
+export function numberOf(name) {
+  return Number(name.slice(0, 4));
+}
+
+/**
+ * The migrations a commit holds, by file name.
+ * @param {string} ref
+ * @param {string} [root]
+ * @returns {string[]}
+ */
+export function migrationsAt(ref, root = ROOT) {
+  return git(["ls-tree", "--name-only", ref, `${MIGRATIONS}/`], root)
+    .split("\n")
+    .filter((path) => path.endsWith(".sql"))
+    .map((path) => path.slice(MIGRATIONS.length + 1));
+}
+
+/**
+ * @param {string[]} onBase file names on the base
+ * @param {string[]} onHead file names on the branch
+ * @returns {string[]} problems, for the files the base does not have
+ */
+export function numberProblems(onBase, onHead) {
+  const top = Math.max(0, ...onBase.map(numberOf));
+  const own = onHead.filter((name) => !onBase.includes(name));
+  return own.flatMap((name) => {
+    if (!/^\d{4}_.+\.sql$/.test(name)) return [`${name}: not named NNNN_what.sql`];
+    if (numberOf(name) <= top) return [`${name}: the base is already at ${top}`];
+    if (own.some((other) => other < name && numberOf(other) === numberOf(name))) {
+      return [`${name}: another migration on this branch has that number`];
+    }
+    return [];
+  });
+}
+
 function main() {
+  const baseAt = process.argv.indexOf("--base");
+  const base = baseAt === -1 ? null : process.argv[baseAt + 1];
+  if (baseAt !== -1 && !base) {
+    console.error("✗ --base needs a ref");
+    process.exit(1);
+  }
+
   const { problems, checked } = auditMigrations();
   if (checked === 0) {
     console.error(`✗ no migrations in ${MIGRATIONS}: nothing was checked`);
     process.exit(1);
   }
-  if (problems.length === 0) {
-    console.log(`✓ ${checked} D1 migrations expand, or say why they contract`);
-    return;
-  }
   for (const p of problems) console.error(`::error::${p}`);
-  console.error(`
+  if (problems.length > 0) {
+    console.error(`
 A Worker rollback runs the version before on this schema (docs/operations.md).
 Add what the new code needs now, and drop or rename in a later migration, once
 no live version reads it; that one starts with "-- contract: <reason>".`);
-  process.exit(1);
+  }
+
+  const order = base ? numberProblems(migrationsAt(base), migrationsAt("HEAD")) : [];
+  for (const p of order) console.error(`::error::${p}`);
+  if (order.length > 0) {
+    console.error(`
+Another branch took the number first. \`node tooling/contract-rebase.mjs\` puts this
+branch on main and moves its own migrations above main's.`);
+  }
+
+  if (problems.length > 0 || order.length > 0) process.exit(1);
+  console.log(`✓ ${checked} D1 migrations expand, or say why they contract`);
+  if (base) console.log(`✓ the ones ${base} does not have are numbered above it`);
 }
 
 if (import.meta.main) main();

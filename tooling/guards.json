@@ -150,6 +150,10 @@
   ],
   "tools": [
     {
+      "script": "contract-rebase",
+      "reason": "A person runs it to put a contract branch on main; it rewrites the branch and checks nothing. migration-guard --base and the two --check commands are the gate."
+    },
+    {
       "script": "ci-measure",
       "reason": "Reports the wait, run and wall of CI from the GitHub API, before and after a change to the runner flow; it checks nothing."
     },

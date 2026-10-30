@@ -65,6 +65,14 @@ something:
 `DROP INDEX`, `DROP TRIGGER`, `DROP VIEW` or `RENAME` without that line. cf records a migration
 by its file name only, so the line may be added to an applied migration.
 
+For the same reason a migration on main is never renamed: under a new name it applies again. A
+number settles when the branch lands. `node tooling/contract-rebase.mjs` moves the branch's own
+migrations above main's, and `node tooling/migration-guard.mjs --base origin/main` (pre-push, and
+CI on a PR) refuses one at or below main's top. It reads only what the branch adds: since required
+checks need not be up to date with main, a green PR can still land a number another just took, which
+does no harm by file name and which no later PR could correct. A test that finds its migration by
+the number alone (`startsWith("0034_")`) follows by hand; one that names the whole file moves with it.
+
 ## The way back
 
 Try them in this order. Each step undoes less of what people did since.

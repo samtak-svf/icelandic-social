@@ -116,6 +116,12 @@ and the web client `web/src/generated/api.ts` are generated and committed; the a
 generated client, they reach the server through the Rust core. `contract.yml` fails when either is stale, and `oasdiff breaking` against the base fails unless the PR has the label
 `api: breaking`.
 
+**Contract changes may run side by side when they are in different domains** (#397). The generated files
+and the migration number are the only things two such branches share, and the branch that lands second runs
+`node tooling/contract-rebase.mjs`: it rebases on `origin/main`, moves the branch's own migrations above
+main's, regenerates the contract and commits that, with nothing to edit by hand. Two branches changing the
+same source file still stop at the rebase, for a person. `migration-guard --base` refuses a number main has passed.
+
 Tooling is plain `.mjs` with `// @ts-check` and JSDoc, type-checked by `tsc --noEmit`
 (`checkJs`). Node ≥ 24.2 (`import.meta.main`). pnpm, one workspace (the root and `backend/`)
 with one lockfile; build scripts are allowed only for the root `pnpm.onlyBuiltDependencies`.
