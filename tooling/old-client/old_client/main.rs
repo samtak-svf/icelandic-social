@@ -94,6 +94,33 @@ fn reads_as_the_release(phone: &Phone, community: &str, shown: &[&str], removed:
     }
 }
 
+/// A friend notice is there for a knowing build, and the release's list and
+/// count leave it out: it has no community, and the release fails its whole page
+/// on one (0114).
+fn friend_notice_withheld(phone: &Phone, kind: &str) {
+    let rows = await_rows(phone, |rows| rows.iter().any(|row| row["kind"] == kind));
+    let row = rows.iter().find(|row| row["kind"] == kind).unwrap();
+    assert!(row["communityId"].is_null(), "{row:?}");
+    let told = row["notificationId"].as_str().unwrap();
+
+    let (status, knowing) = phone.knowing("/v1/notifications?limit=50");
+    assert_eq!(status, 200);
+    let page = phone.client.hosted().notifications(None, 50).unwrap();
+    assert!(
+        page.notifications.iter().all(|n| n.notification_id != told),
+        "{kind} reached the release"
+    );
+    assert_eq!(
+        page.unread,
+        page.notifications.len() as u64,
+        "the counts leave out what the list leaves out"
+    );
+    assert!(
+        knowing["unread"].as_u64().unwrap() > page.unread,
+        "a knowing build counts {kind}: {knowing:?}"
+    );
+}
+
 #[test]
 #[ignore = "needs `cf dev --mode interop` of the tree under test; run by old-client.yml"]
 fn the_last_store_release_reads_this_worker() {
@@ -190,11 +217,26 @@ fn the_last_store_release_reads_this_worker() {
         &json!({ "outcome": "upheld", "reason": "Prufa" }),
     );
 
+    // Friend notices, on the account with every other notice and on accounts
+    // with nothing else, where the counts have nowhere to hide one.
+    let request_to = |account: &str| format!("/v1/friend-requests/{account}");
+    owner.knowing_put(&request_to(&member.account));
+    let asked = Phone::new(&kennitala(run, 3), Some(&invite), Platform::Android);
+    owner.knowing_put(&request_to(&asked.account));
+    decider.knowing_put(&request_to(&asked.account));
+    asked.knowing_post(
+        &format!("{}/accept", request_to(&decider.account)),
+        &json!({}),
+    );
+
     // The seed took, read as a build that may see it all: what the release does
     // not get below is withheld, not missing.
     let rows = await_rows(&member, |rows| {
         let has = |action: &str| rows.iter().any(|row| row["action"] == action);
-        has("remove_post") && has("review_upheld") && has("clear_account_photo")
+        has("remove_post")
+            && has("review_upheld")
+            && has("clear_account_photo")
+            && rows.iter().any(|row| row["kind"] == "friend_request")
     });
     assert!(
         rows.iter()
@@ -223,6 +265,17 @@ fn the_last_store_release_reads_this_worker() {
     ];
     reads_as_the_release(&member, &community, &shown, &removed.post_id);
     reads_as_the_release(&member_ios, &community, &shown, &removed.post_id);
+
+    friend_notice_withheld(&member, "friend_request");
+    friend_notice_withheld(&member_ios, "friend_request");
+    friend_notice_withheld(&decider, "friend_accepted");
+    friend_notice_withheld(&asked, "friend_request");
+    let page = asked.client.hosted().notifications(None, 50).unwrap();
+    assert!(page.notifications.is_empty(), "{:?}", page.notifications);
+    assert_eq!((page.unread, page.unseen), (0, 0));
+    let (status, knowing) = asked.knowing("/v1/notifications?limit=50");
+    assert_eq!(status, 200);
+    assert_eq!(knowing["unread"], 1, "{knowing:?}");
 
     // The owner's page, with the notices of content: a comment and a reaction.
     await_rows(&owner, |rows| {

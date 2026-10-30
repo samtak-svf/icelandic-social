@@ -182,8 +182,7 @@ describe("what an old client is shown", () => {
     return row !== null;
   };
 
-  // The kind check is closed until a later feature widens it, so no row with a
-  // new kind can exist yet: this asks the filter about one directly.
+  // This asks the filter about a kind directly, whatever rows exist.
   it("leaves out a kind added after the release it knows", async () => {
     const owner = await person("Eigandi");
     const id = await community(owner, "open");

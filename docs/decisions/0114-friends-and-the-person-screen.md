@@ -1,11 +1,11 @@
 # 0114. Friendship is mutual, and a name opens a person
 
-- Status: accepted; designed, not yet implemented; a notification with no community and its withholding from older clients implemented (#376), the kinds and everything else still to come
+- Status: accepted; implemented on the server and the web (#375): requests, friendships, the person screen, the own lists, snooze and the two notification kinds, withheld from older clients since #376. Still to come: the kinds in the apps, the cover and bio with the wall (0115), snooze taking effect in the feed (0116), and suggestions
 - Date: 2026-10-30
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0060](0060-a-social-platform-with-an-encrypted-messenger.md) (the graph holds friendships, not follows; feeds read friends),
   [0044](0044-no-fljotid-in-v1.md) ("a name never opens one"),
-  [0024](0024-block.md) (a block ends a friendship and clears requests),
+  [0024](0024-block.md) (a block ends a friendship and clears what the other person asked),
   [0080](0080-communities-follow-the-familiar-group-layout.md) (report reaches an account from its screen),
   [0106](0106-notification-levels.md) (two more kinds),
   [0009](0009-v1-scope.md) (friends and the person screen are in scope)
@@ -31,15 +31,16 @@
     of the follows that were measured (155 bytes a row, `docs/d1-social-workload.md:79`).
 - **The states of a request:**
 
-  | From       | Event               | To          | Who is told                     |
-  | ---------- | ------------------- | ----------- | ------------------------------- |
-  | (none)     | request             | `pending`   | the recipient                   |
-  | `pending`  | accept              | `accepted`  | the sender                      |
-  | `pending`  | decline             | `declined`  | nobody                          |
-  | `pending`  | sender cancels      | `cancelled` | nobody; the notice is withdrawn |
-  | `pending`  | 30 days pass        | `expired`   | nobody; the notice is withdrawn |
-  | `accepted` | either side ends it | `ended`     | nobody                          |
-  | `accepted` | either side blocks  | row deleted | nobody                          |
+  | From       | Event                | To                             | Who is told                     |
+  | ---------- | -------------------- | ------------------------------ | ------------------------------- |
+  | (none)     | request              | `pending`                      | the recipient                   |
+  | `pending`  | accept               | `accepted`                     | the sender                      |
+  | `pending`  | decline              | `declined`                     | nobody                          |
+  | `pending`  | sender cancels       | `cancelled`                    | nobody; the notice is withdrawn |
+  | `pending`  | 30 days pass         | `expired`                      | nobody; the notice is withdrawn |
+  | `accepted` | either side ends it  | `ended`                        | nobody                          |
+  | any        | the recipient blocks | row deleted                    | nobody; the notice is withdrawn |
+  | any        | the sender blocks    | `cancelled`, `created_at` kept | nobody; the notice is withdrawn |
 
 - **A pending request expires after 30 days**, in a daily job of the shape of `expireReports`
   (`backend/src/modules/moderation/reports.ts:291`). Thirty days is long enough for someone away, leaves
@@ -84,8 +85,14 @@
 
 ### Block, report, snooze
 
-- **A block ends the friendship and clears the requests, both ways**, cooldown included, in one batch with the
-  block row. Today's route calls `identity.block` directly (`backend/src/modules/profiles/people.ts:41–48`,
+- **A block ends the friendship and clears what the other person asked and any clock on them, but it does not
+  free the blocker from its own limits**, in one batch with the block row. The blocked person's request to the
+  blocker is deleted. The blocker's own request is closed instead, whatever its state, with `created_at` untouched:
+  `cancelled`, removed by the daily sweep at day 90 as any closed row, and read as "none" on every route. An
+  `accepted` row follows the same rule by direction, and the friendship goes either way. Deleting an account still
+  removes everything both ways. Amended 2026-10-30, found in review (Guðröður may overrule): clearing the blocker's
+  own row let a sender block and unblock to ask again after a decline, and lose its rows from the day's count.
+  Today's route calls `identity.block` directly (`backend/src/modules/profiles/people.ts:41–48`,
   the call at `:45`), and identity may not write another module's table, so the route moves to a function in
   `backend/src/compose/`, beside `deleteAccount` (`backend/src/compose/account-deletion.ts:17–28`). Unblocking
   restores nothing.

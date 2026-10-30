@@ -1,4 +1,5 @@
 import { deleteOrphans } from "./compose/account-deletion.ts";
+import { expireFriendRequests, expireSnoozes } from "./compose/friends.ts";
 import { createApp } from "./app.ts";
 import { communityLifecycle } from "./compose/community-lifecycle.ts";
 import { jobHandlers } from "./compose/job-handlers.ts";
@@ -28,7 +29,8 @@ export default {
   // and the rows of those deleted a year ago (0063, 0070), images no post took
   // within a day (0065), posts removed by a moderator 90 days ago and reports
   // closed a year ago (0066), and finished jobs and notifications past their
-  // time (0067). It also counts, by kind, the jobs that failed for good that
+  // time (0067), and friend requests past their 30 days and snoozes past theirs
+  // (0114). It also counts, by kind, the jobs that failed for good that
   // day and the ones the minute cron has stopped taking (0068).
   async scheduled(controller, env) {
     if (controller.cron === JOBS_SCHEDULE) {
@@ -47,6 +49,8 @@ export default {
     log("social_media.expired", { count: await deleteUnattached(env, {}) });
     log("posts.purged", { count: await purgeRemoved(env) });
     log("reports.expired", { count: await expireReports(env) });
+    log("friend_requests.expired", { count: await expireFriendRequests(env) });
+    log("person_snoozes.expired", { count: await expireSnoozes(env) });
     log("moderation_log.expired", { count: await expireLog(env) });
     log("jobs.expired", { count: await expireJobs(env) });
     log("notifications.expired", { count: await expireNotifications(env) });

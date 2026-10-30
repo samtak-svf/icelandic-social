@@ -72,12 +72,69 @@
         "it.dat": "því",
         "new.nom": "nýtt"
       }
+    },
+    "friend": {
+      "bin": {
+        "headword": "vinur",
+        "guid": "6bcc9256c2afbf24ef90bda95980436e"
+      },
+      "gender": "kk",
+      "forms": {
+        "nom": "vinur",
+        "nom.def": "vinurinn",
+        "acc": "vin",
+        "acc.def": "vininn",
+        "dat": "vini",
+        "dat.def": "vininum",
+        "gen": "vinar",
+        "gen.def": "vinarins",
+        "nom.pl": "vinir",
+        "nom.pl.def": "vinirnir",
+        "acc.pl": "vini",
+        "acc.pl.def": "vinina",
+        "dat.pl": "vinum",
+        "dat.pl.def": "vinunum",
+        "gen.pl": "vina",
+        "gen.pl.def": "vinanna"
+      },
+      "variants": {
+        "dat": "vin"
+      },
+      "agreement": {
+        "no.nom.pl": "engir",
+        "shared.nom": "sameiginlegur",
+        "shared.nom.pl": "sameiginlegir"
+      }
     }
   },
   "compounds": [
     {
       "word": "prófunarhópinn",
       "reason": "the testers on a store's test track, not a community"
+    },
+    {
+      "word": "vinnslu",
+      "reason": "processing, nothing to do with the noun"
+    },
+    {
+      "word": "vináttu",
+      "reason": "the friendship itself, a word of its own in BÍN"
+    },
+    {
+      "word": "vinabeiðni",
+      "reason": "a friend request, a headword of BÍN; a rename of the noun rewords it by hand"
+    },
+    {
+      "word": "Vinabeiðni",
+      "reason": "the same, opening a sentence"
+    },
+    {
+      "word": "vinabeiðnir",
+      "reason": "the same, plural"
+    },
+    {
+      "word": "Vinabeiðnir",
+      "reason": "the same, plural, as a heading"
     }
   ],
   "retired": [

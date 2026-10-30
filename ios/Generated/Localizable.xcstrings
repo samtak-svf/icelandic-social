@@ -6576,6 +6576,414 @@
           }
         }
       }
+    },
+    "person_add_friend": {
+      "comment": "Button on a person screen: ask this person to be friends (decision 0114).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bæta við vini"
+          }
+        }
+      }
+    },
+    "person_request_sent": {
+      "comment": "Button state on a person screen: a friend request stands. It reads the same whatever the other person did with it (decision 0114).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beiðni send"
+          }
+        }
+      }
+    },
+    "person_answer_request": {
+      "comment": "Button on a person screen: this person asked to be friends; opens accept and decline (decision 0114).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Svara beiðni"
+          }
+        }
+      }
+    },
+    "person_friends": {
+      "comment": "Button state on a person screen, and the title of the own list of friends (decision 0114).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vinir"
+          }
+        }
+      }
+    },
+    "person_accept": {
+      "comment": "Accept a friend request.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Samþykkja"
+          }
+        }
+      }
+    },
+    "person_decline": {
+      "comment": "Decline a friend request. The sender is not told.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hafna"
+          }
+        }
+      }
+    },
+    "person_cancel_request": {
+      "comment": "Take back a friend request the reader sent.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afturkalla beiðni"
+          }
+        }
+      }
+    },
+    "friend_end": {
+      "comment": "End a friendship, from a person screen.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slíta vináttu"
+          }
+        }
+      }
+    },
+    "friend_end_confirm": {
+      "comment": "Confirmation before ending a friendship. {name} is the other person.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ fær ekki að vita af því. Slíta vináttu?"
+          }
+        }
+      }
+    },
+    "person_friends_since": {
+      "comment": "How long two people have been friends. {date} is a formatted date.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vinir síðan %1$@"
+          }
+        }
+      }
+    },
+    "person_mutual_heading": {
+      "comment": "Heading of the friends the reader and this person have in common.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sameiginlegir vinir"
+          }
+        }
+      }
+    },
+    "person_shared_communities": {
+      "comment": "Heading of the communities the reader and this person are both in.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saman í hópum"
+          }
+        }
+      }
+    },
+    "person_snooze": {
+      "comment": "Hide this person's posts from the reader's feed for 30 days. Nobody is told.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fela pósta í 30 daga"
+          }
+        }
+      }
+    },
+    "person_unsnooze": {
+      "comment": "Lift that early.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sýna pósta aftur"
+          }
+        }
+      }
+    },
+    "person_snoozed_until": {
+      "comment": "How long a person stays hidden. {date} is a formatted date.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Póstar faldir til %1$@"
+          }
+        }
+      }
+    },
+    "friends_incoming": {
+      "comment": "Heading of the friend requests to the reader.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beiðnir til þín"
+          }
+        }
+      }
+    },
+    "friends_sent": {
+      "comment": "Heading of the friend requests from the reader that still stand.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sendar beiðnir"
+          }
+        }
+      }
+    },
+    "friends_snoozed": {
+      "comment": "Heading of the people whose posts the reader has hidden for now.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faldir póstar"
+          }
+        }
+      }
+    },
+    "friends_empty": {
+      "comment": "The own list of friends is empty.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engir vinir enn."
+          }
+        }
+      }
+    },
+    "friends_search_empty": {
+      "comment": "A name search of the own friends found nobody.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enginn fannst með þessu nafni."
+          }
+        }
+      }
+    },
+    "friends_sort_label": {
+      "comment": "Label of the sort control of the own friends.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Röðun"
+          }
+        }
+      }
+    },
+    "friends_sort_newest": {
+      "comment": "Sort friends by the newest friendship.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nýjustu fyrst"
+          }
+        }
+      }
+    },
+    "friends_sort_name": {
+      "comment": "Sort friends by name.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eftir nafni"
+          }
+        }
+      }
+    },
+    "notice_friend_request": {
+      "comment": "A notification: someone asked the reader to be friends. {name} is that person.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ sendi þér vinabeiðni."
+          }
+        }
+      }
+    },
+    "notice_friend_accepted": {
+      "comment": "A notification: someone accepted the reader's friend request. {name} is that person.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ samþykkti vinabeiðni þína."
+          }
+        }
+      }
+    },
+    "notification_kind_friend_request": {
+      "comment": "Notification settings row: friend requests to the reader (decision 0114).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vinabeiðnir"
+          }
+        }
+      }
+    },
+    "notification_kind_friend_accepted": {
+      "comment": "Notification settings row: the reader's friend requests accepted (decision 0114).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Samþykktar vinabeiðnir"
+          }
+        }
+      }
+    },
+    "problem_request_refused": {
+      "comment": "The server refused a friend request. It never says why: a decline is not disclosed (decision 0114).",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekki er hægt að senda þessa beiðni núna."
+          }
+        }
+      }
+    },
+    "problem_request_limit": {
+      "comment": "The server refused a friend request: too many in 24 hours.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Þú hefur sent margar beiðnir í dag. Reyndu aftur á morgun."
+          }
+        }
+      }
+    },
+    "problem_friend_limit": {
+      "comment": "The server refused a friendship: one of the two has the most friends one may have.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annað ykkar er komið með 1.000 vini, sem er hámarkið."
+          }
+        }
+      }
+    },
+    "person_friend_count": {
+      "comment": "How many friends a person has.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld vinur"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld vinir"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "person_mutual_count": {
+      "comment": "How many friends the reader and this person have in common.",
+      "extractionState": "manual",
+      "localizations": {
+        "is": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld sameiginlegur vinur"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$lld sameiginlegir vinir"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ConversationsRouteImport } from './routes/conversations'
+import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as ModerationRouteImport } from './routes/moderation'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -24,6 +25,7 @@ import { Route as CommunitiesNewRouteImport } from './routes/communities.new'
 import { Route as ConversationsIndexRouteImport } from './routes/conversations.index'
 import { Route as ConversationsConversationIdRouteImport } from './routes/conversations.$conversationId'
 import { Route as ConversationsLinkRouteImport } from './routes/conversations.link'
+import { Route as PeopleAccountIdRouteImport } from './routes/people.$accountId'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as CommunitiesCommunityIdTabsRouteImport } from './routes/communities.$communityId._tabs'
 import { Route as CommunitiesCommunityIdAnonymousRouteImport } from './routes/communities.$communityId.anonymous'
@@ -47,6 +49,11 @@ const IndexRoute = IndexRouteImport.update({
 const ConversationsRoute = ConversationsRouteImport.update({
   id: '/conversations',
   path: '/conversations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FriendsRoute = FriendsRouteImport.update({
+  id: '/friends',
+  path: '/friends',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModerationRoute = ModerationRouteImport.update({
@@ -114,6 +121,11 @@ const ConversationsLinkRoute = ConversationsLinkRouteImport.update({
   id: '/link',
   path: '/link',
   getParentRoute: () => ConversationsRoute,
+} as any)
+const PeopleAccountIdRoute = PeopleAccountIdRouteImport.update({
+  id: '/people/$accountId',
+  path: '/people/$accountId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/posts/$postId',
@@ -202,6 +214,7 @@ const CommunitiesCommunityIdTabsPeopleRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/conversations': typeof ConversationsRouteWithChildren
+  '/friends': typeof FriendsRoute
   '/moderation': typeof ModerationRoute
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
@@ -213,6 +226,7 @@ export interface FileRoutesByFullPath {
   '/communities/new': typeof CommunitiesNewRoute
   '/conversations/$conversationId': typeof ConversationsConversationIdRoute
   '/conversations/link': typeof ConversationsLinkRoute
+  '/people/$accountId': typeof PeopleAccountIdRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities/': typeof CommunitiesIndexRoute
   '/conversations/': typeof ConversationsIndexRoute
@@ -232,6 +246,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/friends': typeof FriendsRoute
   '/moderation': typeof ModerationRoute
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
@@ -243,6 +258,7 @@ export interface FileRoutesByTo {
   '/communities/new': typeof CommunitiesNewRoute
   '/conversations/$conversationId': typeof ConversationsConversationIdRoute
   '/conversations/link': typeof ConversationsLinkRoute
+  '/people/$accountId': typeof PeopleAccountIdRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities': typeof CommunitiesIndexRoute
   '/conversations': typeof ConversationsIndexRoute
@@ -263,6 +279,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/conversations': typeof ConversationsRouteWithChildren
+  '/friends': typeof FriendsRoute
   '/moderation': typeof ModerationRoute
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
@@ -274,6 +291,7 @@ export interface FileRoutesById {
   '/communities/new': typeof CommunitiesNewRoute
   '/conversations/$conversationId': typeof ConversationsConversationIdRoute
   '/conversations/link': typeof ConversationsLinkRoute
+  '/people/$accountId': typeof PeopleAccountIdRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/communities/': typeof CommunitiesIndexRoute
   '/conversations/': typeof ConversationsIndexRoute
@@ -296,6 +314,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/conversations'
+    | '/friends'
     | '/moderation'
     | '/notifications'
     | '/privacy'
@@ -307,6 +326,7 @@ export interface FileRouteTypes {
     | '/communities/new'
     | '/conversations/$conversationId'
     | '/conversations/link'
+    | '/people/$accountId'
     | '/posts/$postId'
     | '/communities/'
     | '/conversations/'
@@ -326,6 +346,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/friends'
     | '/moderation'
     | '/notifications'
     | '/privacy'
@@ -337,6 +358,7 @@ export interface FileRouteTypes {
     | '/communities/new'
     | '/conversations/$conversationId'
     | '/conversations/link'
+    | '/people/$accountId'
     | '/posts/$postId'
     | '/communities'
     | '/conversations'
@@ -356,6 +378,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/conversations'
+    | '/friends'
     | '/moderation'
     | '/notifications'
     | '/privacy'
@@ -367,6 +390,7 @@ export interface FileRouteTypes {
     | '/communities/new'
     | '/conversations/$conversationId'
     | '/conversations/link'
+    | '/people/$accountId'
     | '/posts/$postId'
     | '/communities/'
     | '/conversations/'
@@ -388,6 +412,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ConversationsRoute: typeof ConversationsRouteWithChildren
+  FriendsRoute: typeof FriendsRoute
   ModerationRoute: typeof ModerationRoute
   NotificationsRoute: typeof NotificationsRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -397,6 +422,7 @@ export interface RootRouteChildren {
   TestersRoute: typeof TestersRoute
   VerifyRoute: typeof VerifyRoute
   CommunitiesNewRoute: typeof CommunitiesNewRoute
+  PeopleAccountIdRoute: typeof PeopleAccountIdRoute
   PostsPostIdRoute: typeof PostsPostIdRoute
   CommunitiesIndexRoute: typeof CommunitiesIndexRoute
   CommunitiesCommunityIdTabsRoute: typeof CommunitiesCommunityIdTabsRouteWithChildren
@@ -422,6 +448,13 @@ declare module '@tanstack/react-router' {
       path: '/conversations'
       fullPath: '/conversations'
       preLoaderRoute: typeof ConversationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/friends': {
+      id: '/friends'
+      path: '/friends'
+      fullPath: '/friends'
+      preLoaderRoute: typeof FriendsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/moderation': {
@@ -514,6 +547,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/conversations/link'
       preLoaderRoute: typeof ConversationsLinkRouteImport
       parentRoute: typeof ConversationsRoute
+    }
+    '/people/$accountId': {
+      id: '/people/$accountId'
+      path: '/people/$accountId'
+      fullPath: '/people/$accountId'
+      preLoaderRoute: typeof PeopleAccountIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/posts/$postId': {
       id: '/posts/$postId'
@@ -662,6 +702,7 @@ const CommunitiesCommunityIdTabsRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConversationsRoute: ConversationsRouteWithChildren,
+  FriendsRoute: FriendsRoute,
   ModerationRoute: ModerationRoute,
   NotificationsRoute: NotificationsRoute,
   PrivacyRoute: PrivacyRoute,
@@ -671,6 +712,7 @@ const rootRouteChildren: RootRouteChildren = {
   TestersRoute: TestersRoute,
   VerifyRoute: VerifyRoute,
   CommunitiesNewRoute: CommunitiesNewRoute,
+  PeopleAccountIdRoute: PeopleAccountIdRoute,
   PostsPostIdRoute: PostsPostIdRoute,
   CommunitiesIndexRoute: CommunitiesIndexRoute,
   CommunitiesCommunityIdTabsRoute: CommunitiesCommunityIdTabsRouteWithChildren,

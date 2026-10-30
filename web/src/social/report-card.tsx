@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { resolveCards, type Card, type Report, type ReportTarget } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { authorName, AuthorName } from "./post.tsx";
+import { authorName, AuthorName } from "./author-name.tsx";
 import { outcome, when } from "./outcome.ts";
 
 // What a report queue shows of a report, shared by a community's queue and

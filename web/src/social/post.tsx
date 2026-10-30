@@ -16,8 +16,9 @@ import { strings } from "../generated/brand/strings.ts";
 import { relativeTime } from "../lib/relative-time.ts";
 import { Dialog } from "../ui/dialog.tsx";
 import { DotsIcon, Menu, MenuItem } from "../ui/menu.tsx";
+import { authorName, PersonName } from "./author-name.tsx";
 import { Avatar } from "./avatar.tsx";
-import { ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
+import { ProblemText, Status } from "../ui/kit.tsx";
 import { outcome, when } from "./outcome.ts";
 import { ReportForm } from "./report.tsx";
 import { ActionRow, Summary, useReactions } from "./post-actions.tsx";
@@ -31,38 +32,6 @@ import { useMediaSrc, useViewer, type ViewerItem } from "./viewer.tsx";
 // when, its text and images, its reactions and its comment count. A
 // moderator also sees what a moderator hid or removed, marked as such. Its
 // author deletes it; everyone else reports it.
-
-export function authorName(author: Author | null): string {
-  if (author === null) return strings.person_deleted;
-  return author.name ?? strings.person_unnamed;
-}
-
-/** The name split before its last word, which the mark is held to. */
-export function lastWord(name: string): readonly [string, string] {
-  const cut = name.trimEnd().lastIndexOf(" ") + 1;
-  return [name.slice(0, cut), name.slice(cut)];
-}
-
-/** The author's name, with the verified mark when Kenni vouches for them (#358). */
-export function AuthorName({ author }: Readonly<{ author: Author | null }>) {
-  const name = authorName(author);
-  if (author?.verified !== true) {
-    return <span className="min-w-0 break-words font-semibold">{name}</span>;
-  }
-  const [head, last] = lastWord(name);
-  return (
-    // The mark is part of the name's own line: its last word and the mark never break apart,
-    // so a name that wraps keeps the mark after it instead of at the far edge of the row. A
-    // word joiner does not do this: Chrome breaks before an inline-flex box regardless.
-    <span className="min-w-0 break-words font-semibold">
-      {head}
-      <span className="whitespace-nowrap">
-        {last}
-        <VerifiedMark className="ml-2 text-sm" />
-      </span>
-    </span>
-  );
-}
 
 /** Whether the person signed in wrote what `author` wrote. */
 export function useMine(author: Author | null): boolean {
@@ -107,7 +76,7 @@ function PostName({ post }: Readonly<{ post: Post }>) {
   if (post.anonymous) return <span className="font-semibold">{postByline(post)}</span>;
   return (
     <>
-      <AuthorName author={post.author} />
+      <PersonName author={post.author} />
       <RoleBadge role={post.author?.role ?? null} />
     </>
   );

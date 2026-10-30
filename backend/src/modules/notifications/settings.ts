@@ -5,7 +5,15 @@ import { db } from "../../env/index.ts";
 // Moderation is never below `in_app`, whatever is stored: an account cannot
 // switch off being told that a moderator acted on its content.
 
-const KINDS = ["comment", "reply", "reaction", "join_approved", "moderated"] as const;
+const KINDS = [
+  "comment",
+  "reply",
+  "reaction",
+  "join_approved",
+  "moderated",
+  "friend_request",
+  "friend_accepted",
+] as const;
 export type Kind = (typeof KINDS)[number];
 export type Level = "off" | "in_app" | "push";
 

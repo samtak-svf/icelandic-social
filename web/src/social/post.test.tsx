@@ -3,7 +3,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { Post } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
-import { AuthorName, lastWord, PostView } from "./post.tsx";
+import { AuthorName, lastWord } from "./author-name.tsx";
+import { PostView } from "./post.tsx";
 import { isPostTombstone } from "./post-tombstone.tsx";
 
 vi.mock("@tanstack/react-router", () => ({

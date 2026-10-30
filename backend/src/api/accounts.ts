@@ -13,7 +13,7 @@ import { Framing, FRAME_NAMES } from "./image-frames.ts";
 // Other accounts' names (decisions 0022, 0034), the directory of people
 // (decision 0036), block (decision 0024) and the profile photo (decision 0039).
 
-const Profile = z
+export const Profile = z
   .object({
     accountId: OpaqueId,
     name: z.string().nullable().openapi({

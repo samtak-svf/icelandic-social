@@ -33,12 +33,15 @@ const OLD_ACTIONS = [
  * whole page on a null community and does not know a new kind, so neither
  * reaches its list or its counts. It reads a new action as "unknown" and words
  * it as a removal, so that stays out as well (0115). An app that decodes every
- * row may still word a suspension that way, until its core knows the action.
+ * row may still word a suspension that way, until its core knows the action, and
+ * has no words for a friend's notice until it knows that kind (0114).
  */
 export function shownTo(reach: NoticeReach): string {
   if (reach === "all") return LIVE;
+  const noFriends = `${LIVE} AND n.kind NOT IN ('friend_request', 'friend_accepted')`;
+  if (reach === "suspension") return noFriends;
   if (reach === "decoding") {
-    return `${LIVE} AND (n.action IS NULL OR n.action NOT IN ('suspend_account', 'unsuspend_account'))`;
+    return `${noFriends} AND (n.action IS NULL OR n.action NOT IN ('suspend_account', 'unsuspend_account'))`;
   }
   const kinds = OLD_KINDS.map((k) => `'${k}'`).join(", ");
   const actions = OLD_ACTIONS.map((a) => `'${a}'`).join(", ");
@@ -51,7 +54,14 @@ const SHOWN = 3;
 
 type Row = {
   notification_id: string;
-  kind: "comment" | "reply" | "reaction" | "join_approved" | "moderated";
+  kind:
+    | "comment"
+    | "reply"
+    | "reaction"
+    | "join_approved"
+    | "moderated"
+    | "friend_request"
+    | "friend_accepted";
   actor_id: string | null;
   community_id: string | null;
   post_id: string | null;

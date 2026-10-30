@@ -206,6 +206,17 @@ impl Phone {
             .unwrap();
         assert!(answer.status().is_success(), "{path}: {}", answer.status());
     }
+
+    /// A PUT with no body as a build that decodes everything, which must succeed.
+    pub fn knowing_put(&self, path: &str) {
+        let answer = agent()
+            .put(format!("{}{path}", base()))
+            .header("authorization", self.token())
+            .header("spjall-client", KNOWING)
+            .send_empty()
+            .unwrap();
+        assert!(answer.status().is_success(), "{path}: {}", answer.status());
+    }
 }
 
 /// A POST of the dev Worker's that must answer 204.

@@ -90,6 +90,9 @@ export const OWNERS = {
   community_notification_settings: "notifications",
   history_transfers: "history",
   history_transfer_parts: "history",
+  friend_requests: "friends",
+  friendships: "friends",
+  person_snoozes: "friends",
 };
 
 /** The reads of another module's table, each with its reason. */
@@ -168,6 +171,21 @@ export const READS = [
     module: "notifications",
     table: "live_communities",
     why: "a notification is written and shown only for a community that is not deleted",
+  },
+  {
+    module: "friends",
+    table: "accounts",
+    why: "a list and a person's screen show a name, a mark and a photo (decision 0114)",
+  },
+  {
+    module: "friends",
+    table: "community_members",
+    why: "a person's screen shows the communities two people share, in one query (decision 0114)",
+  },
+  {
+    module: "friends",
+    table: "live_communities",
+    why: "a person's screen shows only shared communities that are not deleted",
   },
 ];
 

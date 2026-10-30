@@ -10,7 +10,7 @@ import { strings } from "../generated/brand/strings.ts";
 import type { Problem } from "../problem.ts";
 import { ManageFrame } from "../social/manage-frame.tsx";
 import { outcome, useLoad, when, type Outcome } from "../social/outcome.ts";
-import { AuthorName } from "../social/post.tsx";
+import { AuthorName } from "../social/author-name.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 
 // The join requests that wait in a private community (#354), oldest first. A

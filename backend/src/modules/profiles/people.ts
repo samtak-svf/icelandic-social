@@ -7,7 +7,7 @@ import {
   unblockRoute,
 } from "../../api/accounts.ts";
 import type { AppEnv } from "../../http.ts";
-import { block, blockList, unblock } from "../../identity/index.ts";
+import { blockList, unblock } from "../../identity/index.ts";
 import { fail } from "../../shared/errors.ts";
 import { log } from "../../shared/log.ts";
 import { decodeDirectoryCursor, directory, profile } from "./profiles.ts";
@@ -15,7 +15,10 @@ import { decodeDirectoryCursor, directory, profile } from "./profiles.ts";
 // The routes about other accounts: a name (decisions 0022, 0034), the
 // directory of people (0036) and block (0024). Log lines carry ids only (0008).
 
-export function accountRoutes(app: OpenAPIHono<AppEnv>): void {
+/** The block itself is composed above this module: it ends a friendship too (decision 0114). */
+type Block = (env: Env, blocker: string, target: string) => Promise<boolean>;
+
+export function accountRoutes(app: OpenAPIHono<AppEnv>, { block }: { block: Block }): void {
   app.openapi(getAccountRoute, async (c) => {
     const found = await profile(c.env, c.var.session.accountId, c.req.valid("param").accountId);
     return found ? c.json(found, 200) : fail(c, 404, "not_found");

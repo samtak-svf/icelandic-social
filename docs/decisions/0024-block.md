@@ -11,7 +11,7 @@
 - Amended by: [0063](0063-communities-audiences-and-moderation.md) (block hides social content both ways; a moderator's duty outranks it),
   [0034](0034-fljotid-and-the-wall.md) (block extends to posts in Fljótið),
   [0039](0039-profile-photo.md) (block withholds the profile photo, both ways),
-  [0114](0114-friends-and-the-person-screen.md) (a block ends a friendship and clears requests, both ways)
+  [0114](0114-friends-and-the-person-screen.md) (a block ends a friendship and clears what the other person asked, not the blocker's own limits)
 
 ## Decision
 

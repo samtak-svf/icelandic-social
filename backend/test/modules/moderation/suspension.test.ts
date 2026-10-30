@@ -62,6 +62,10 @@ type Setting = Awaited<ReturnType<typeof setting>>;
  * no route has a predicate of its own, so this table is the whole list.
  */
 const REFUSED: Record<string, { allowed: number; call: (s: Setting) => Promise<Response> }> = {
+  sendFriendRequest: {
+    allowed: 200,
+    call: (s) => s.one.call("PUT", `/v1/friend-requests/${s.outsider.accountId}`),
+  },
   createPost: {
     allowed: 200,
     call: (s) => s.one.call("POST", `/v1/communities/${s.id}/posts`, { body: "Nýtt" }),
@@ -110,6 +114,16 @@ const REFUSED: Record<string, { allowed: number; call: (s: Setting) => Promise<R
  * group with why. The behaviour of the ones the decision names is tested below.
  */
 const NOT_REFUSED: Record<string, readonly string[]> = {
+  // Saying no, ending and keeping away are a person's own safety, and an accept
+  // only answers someone who asked (decision 0114).
+  friends: [
+    "acceptFriendRequest",
+    "declineFriendRequest",
+    "cancelFriendRequest",
+    "endFriendship",
+    "snoozePerson",
+    "unsnoozePerson",
+  ],
   // Signing in, and all that keeps an account's devices and sessions its own.
   account: [
     "registerDevice",

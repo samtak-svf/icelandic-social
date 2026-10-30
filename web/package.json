@@ -1,6 +1,6 @@
 {
   "name": "spjall-web",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "The web client: a TanStack Start app the Worker spjall-api serves beside the API (decision 0062). Built by backend/vite.config.ts.",
   "type": "module",
