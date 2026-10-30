@@ -748,7 +748,7 @@ export interface Report {
   createdAt: number;
   closedAt: number | null;
   /** How it was closed: the action taken, `dismissed`, or `community_deleted`; null while open */
-  decision: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "dismissed" | "community_deleted" | null;
+  decision: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "clear_account_photo" | "dismissed" | "community_deleted" | null;
   /** The reason the action gave, or the closing resolution; null while open */
   resolution: string | null;
   /** Who closed it; null while open, when the community's deletion did, or once deleted */
@@ -775,7 +775,7 @@ export interface ModerationLogEntry {
   actor: Author | null;
   /** Done as one of Samtak's platform moderators */
   asPlatform: boolean;
-  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "close_report" | "delete_community" | "restore_community" | "set_community_picture" | "remove_community_picture" | "set_community_cover" | "remove_community_cover" | "pin_post" | "unpin_post" | "close_poll" | "anonymous_posts_on" | "anonymous_posts_off" | "reveal_author";
+  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "clear_account_photo" | "close_report" | "delete_community" | "restore_community" | "set_community_picture" | "remove_community_picture" | "set_community_cover" | "remove_community_cover" | "pin_post" | "unpin_post" | "close_poll" | "anonymous_posts_on" | "anonymous_posts_off" | "reveal_author";
   target: {
     kind: "post" | "comment" | "community" | "account" | "report";
     id: string;
@@ -2421,6 +2421,30 @@ export function moderate(args: {
   | { status: 426; data: ApiError }
 > {
   return call("POST", "/v1/communities/{communityId}/actions", args, init);
+}
+
+/**
+ * Act as a platform moderator on an account, with no community
+ *
+ * Samtak's platform moderators act on an account itself, never on another platform moderator; content in a community is acted on through that community's route. The action is logged with its reason and no community. With `reportId`, an open report on that account is closed by the same action; closing one with no action taken is `closeReport`.
+ */
+export function moderatePlatform(args: {
+  body: {
+    action: "clear_account_photo";
+    /** The account's id */
+    targetId: string;
+    reason: string;
+    reportId?: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/moderation/actions", args, init);
 }
 
 /** The community's moderation log, newest first */

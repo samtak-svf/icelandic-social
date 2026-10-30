@@ -5,6 +5,7 @@ import {
   communityReportsRoute,
   moderateRoute,
   platformLogRoute,
+  platformModerateRoute,
   platformReportsRoute,
   reportRoute,
 } from "../../api/moderation.ts";
@@ -15,7 +16,7 @@ import { db } from "../../env/index.ts";
 import { fail } from "../../shared/errors.ts";
 import { log } from "../../shared/log.ts";
 import { moderates, standing } from "../communities/index.ts";
-import { act, actor } from "./actions.ts";
+import { act, actOnAccount, actor } from "./actions.ts";
 import { anonymousRoutes } from "./anonymous.ts";
 import { entry, logPage } from "./log.ts";
 import { closePoll } from "./polls.ts";
@@ -24,6 +25,8 @@ import { closing, fileReport, isPlatformModerator, openReport, reportPage } from
 
 // The routes of moderation (decisions 0063, 0066). A log line carries ids and
 // counts, never a report's note or a reason (0008).
+
+const REFUSED = { invalid_request: 400, not_permitted: 403, not_found: 404 } as const;
 
 export function moderationRoutes(app: OpenAPIHono<AppEnv>): void {
   anonymousRoutes(app);
@@ -109,10 +112,16 @@ export function moderationRoutes(app: OpenAPIHono<AppEnv>): void {
     const { accountId } = c.var.session;
     const { communityId } = c.req.valid("param");
     const done = await act(c.env, accountId, communityId, c.req.valid("json"));
-    if (done === "invalid_request") return fail(c, 400, "invalid_request");
-    if (done === "not_permitted") return fail(c, 403, "not_permitted");
-    if (done === "not_found") return fail(c, 404, "not_found");
+    if (done) return fail(c, REFUSED[done], done);
     log("moderation.acted", { accountId, communityId, code: c.req.valid("json").action });
+    return c.body(null, 204);
+  });
+
+  app.openapi(platformModerateRoute, async (c) => {
+    const { accountId } = c.var.session;
+    const done = await actOnAccount(c.env, accountId, c.req.valid("json"));
+    if (done) return fail(c, REFUSED[done], done);
+    log("moderation.acted", { accountId, code: c.req.valid("json").action });
     return c.body(null, 204);
   });
 

@@ -50,6 +50,7 @@ const DECISIONS: Record<NonNullable<Report["decision"]>, string> = {
   remove_member: strings.moderation_decision_remove_member,
   ban_member: strings.moderation_decision_ban_member,
   unban_member: strings.moderation_decision_unban_member,
+  clear_account_photo: strings.moderation_decision_clear_account_photo,
   dismissed: strings.moderation_decision_dismissed,
   community_deleted: strings.moderation_decision_community_deleted,
 };

@@ -5,7 +5,7 @@ import { expireCommunities } from "../../../src/modules/communities/index.ts";
 import { jobHandlers } from "../../../src/modules/notifications/index.ts";
 import { runJobs } from "../../../src/modules/jobs/index.ts";
 import { png } from "../../images.ts";
-import { community, ok, person, type Person } from "../../people.ts";
+import { community, ok, person, platformModerator, type Person } from "../../people.ts";
 import { euEnv } from "../../support.ts";
 
 // A community's deletion (decision 0070): gone for everyone at once,
@@ -13,14 +13,6 @@ import { euEnv } from "../../support.ts";
 // reports stay a year after the deletion, for platform moderators only.
 
 const DAY = 24 * 60 * 60 * 1000;
-
-async function platformModerator(name: string): Promise<Person> {
-  const one = await person(name);
-  await env.DB.prepare("INSERT INTO platform_moderators (account_id, added_at) VALUES (?, ?)")
-    .bind(one.accountId, Date.now())
-    .run();
-  return one;
-}
 
 const expire = (at: number) => expireCommunities(euEnv(env), communityLifecycle, at);
 

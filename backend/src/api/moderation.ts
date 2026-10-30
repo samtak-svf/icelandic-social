@@ -30,6 +30,13 @@ export const ACTIONS = {
 } as const;
 export type Action = keyof typeof ACTIONS;
 
+/**
+ * What a platform moderator does to an account itself, with no community, by
+ * the kind of thing it does it to (decision 0115).
+ */
+export const PLATFORM_ACTIONS = { clear_account_photo: "account" } as const;
+export type PlatformAction = keyof typeof PLATFORM_ACTIONS;
+
 /** What the log records of a community's picture and cover (decision 0080). */
 export const COMMUNITY_IMAGE_ACTIONS = [
   "set_community_picture",
@@ -58,6 +65,7 @@ export const COMMUNITY_ANONYMOUS_ACTIONS = [
 /** How a report was closed: the action taken on its target, none, or its community deleted. */
 const DECISIONS = [
   ...(Object.keys(ACTIONS) as [Action, ...Action[]]),
+  ...(Object.keys(PLATFORM_ACTIONS) as [PlatformAction, ...PlatformAction[]]),
   "dismissed",
   "community_deleted",
 ] as const;
@@ -139,6 +147,7 @@ const LogEntry = z
     asPlatform: z.boolean().openapi({ description: "Done as one of Samtak's platform moderators" }),
     action: z.enum([
       ...(Object.keys(ACTIONS) as [Action, ...Action[]]),
+      ...(Object.keys(PLATFORM_ACTIONS) as [PlatformAction, ...PlatformAction[]]),
       "close_report",
       "delete_community",
       "restore_community",
@@ -193,6 +202,7 @@ const MODERATORS = { 403: errorResponse("not_permitted: only the community's mod
 const PLATFORM = { 403: errorResponse("not_permitted: only Samtak's platform moderators") };
 const NO_COMMUNITY = { 404: errorResponse("not_found: no such community the caller can see") };
 const tags = ["moderation"];
+const reason = z.string().trim().min(1).max(MAX_NOTE);
 
 export const reportRoute = createRoute({
   method: "post",
@@ -288,7 +298,7 @@ export const moderateRoute = createRoute({
         targetId: OpaqueId.openapi({
           description: "The post's, the comment's or the account's id",
         }),
-        reason: z.string().trim().min(1).max(MAX_NOTE),
+        reason,
         until: z.int().optional().openapi({
           description:
             "With mute_member, and only with it: when the mute ends, in Unix milliseconds",
@@ -305,6 +315,38 @@ export const moderateRoute = createRoute({
       "not_permitted: the caller does not moderate the community, or the target's rank is not lower",
     ),
     404: errorResponse("not_found: no such community, target or open report there"),
+  },
+});
+
+export const platformModerateRoute = createRoute({
+  method: "post",
+  path: "/v1/moderation/actions",
+  operationId: "moderatePlatform",
+  tags,
+  summary: "Act as a platform moderator on an account, with no community",
+  description:
+    "Samtak's platform moderators act on an account itself, never on another platform moderator; content in a community is acted on through that community's route. The action is logged with its reason and no community. With `reportId`, an open report on that account is closed by the same action; closing one with no action taken is `closeReport`.",
+  security: ACCOUNT,
+  request: {
+    body: body(
+      z.object({
+        action: z.enum(Object.keys(PLATFORM_ACTIONS) as [PlatformAction, ...PlatformAction[]]),
+        targetId: OpaqueId.openapi({ description: "The account's id" }),
+        reason,
+        reportId: OpaqueId.optional(),
+      }),
+    ),
+  },
+  responses: {
+    204: { description: "Done" },
+    ...INVALID,
+    ...AUTHED,
+    403: errorResponse(
+      "not_permitted: the caller is not one of Samtak's platform moderators, or the target is",
+    ),
+    404: errorResponse(
+      "not_found: no such account, nothing of its to act on, or no such open report on it",
+    ),
   },
 });
 

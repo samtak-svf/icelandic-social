@@ -50,9 +50,16 @@ async function setPhoto(
   return stored;
 }
 
-/** Removes `accountId`'s photo: the version first, so none names a missing photo. */
-async function removePhoto(env: Env, accountId: string): Promise<void> {
-  await setPhotoVersion(env, accountId, null, null);
+/**
+ * Removes `accountId`'s photo, with `entries` in the same write: the version
+ * first, so none names a missing photo.
+ */
+export async function removePhoto(
+  env: Env,
+  accountId: string,
+  entries: D1PreparedStatement[] = [],
+): Promise<void> {
+  await setPhotoVersion(env, accountId, null, null, entries);
   await deleteAccountPhoto(env, accountId);
 }
 

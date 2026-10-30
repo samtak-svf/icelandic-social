@@ -42,6 +42,7 @@ const LOGGED: Record<ModerationLogEntry["action"], string> = {
   remove_member: strings.moderation_decision_remove_member,
   ban_member: strings.moderation_decision_ban_member,
   unban_member: strings.moderation_decision_unban_member,
+  clear_account_photo: strings.moderation_decision_clear_account_photo,
   close_report: strings.moderation_decision_dismissed,
   delete_community: strings.moderation_decision_community_deleted,
   restore_community: strings.community_restore,

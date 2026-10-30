@@ -774,8 +774,7 @@ pub enum ModerationAction {
     UnbanMember,
 }
 
-/// What a moderation log entry records; `Unknown` for a value a later
-/// server adds.
+/// What a moderation log entry records; `Unknown` for a later server's value.
 #[uniffi::remote(Enum)]
 pub enum ModerationLogAction {
     HidePost,
@@ -789,6 +788,7 @@ pub enum ModerationLogAction {
     RemoveMember,
     BanMember,
     UnbanMember,
+    ClearAccountPhoto,
     /// A moderator closed a report about the content.
     CloseReport,
     DeleteCommunity,

@@ -1,4 +1,9 @@
-import { ACTIONS, type Action } from "../../api/moderation.ts";
+import {
+  ACTIONS,
+  PLATFORM_ACTIONS,
+  type Action,
+  type PlatformAction,
+} from "../../api/moderation.ts";
 import {
   canRead,
   moderates,
@@ -7,18 +12,20 @@ import {
   type Sanction,
   type Standing,
 } from "../communities/index.ts";
+import { removePhoto } from "../profiles/index.ts";
 import {
   authors,
   commentContent,
   moderateComment,
   moderatePost,
   postContent,
+  type Author,
   type Content,
 } from "../social/index.ts";
 import { space } from "../../env/index.ts";
 import { notice } from "../jobs/index.ts";
 import { entry } from "./log.ts";
-import { closing, openReport } from "./reports.ts";
+import { closing, isPlatformModerator, openReport, type OpenReport } from "./reports.ts";
 
 // What a moderator does (decision 0063): who may, to whom, and the log's entry
 // that goes with every action (decision 0066).
@@ -79,10 +86,10 @@ async function targetOf(
 /** The open report `input` closes, null when none, or why it may not. */
 async function reportOf(
   env: Env,
-  me: Standing,
-  communityId: string,
-  input: Input,
-): Promise<{ reportId: string } | null | Refusal> {
+  me: Pick<Standing, "platformModerator">,
+  communityId: string | null,
+  input: { reportId?: string },
+): Promise<OpenReport | null | Refusal> {
   if (!input.reportId) return null;
   const report = await openReport(env, input.reportId);
   if (report?.communityId !== communityId) return "not_found";
@@ -192,5 +199,57 @@ export async function act(
     ...told(env, accountId, communityId, input, target),
   ];
   await apply(env, communityId, input, target, entries);
+  return null;
+}
+
+/**
+ * What each platform action needs of the account, and how it is written with
+ * the entries that go with it. A bio, a cover and a suspension each take one
+ * row here and one value in `PLATFORM_ACTIONS` (decision 0115).
+ */
+const ON_ACCOUNT: Record<
+  PlatformAction,
+  {
+    applies: (target: Author) => boolean;
+    write: (env: Env, accountId: string, entries: D1PreparedStatement[]) => Promise<void>;
+  }
+> = {
+  clear_account_photo: { applies: (target) => target.photo !== null, write: removePhoto },
+};
+
+/**
+ * Does `input` as the platform moderator `accountId`, on an account and in no
+ * community (decision 0115); what refused it, or null when done. The caller
+ * is asked first, so that nobody else learns which accounts exist. A report it
+ * closes is on the same account: one in a community closes by `act`.
+ */
+export async function actOnAccount(
+  env: Env,
+  accountId: string,
+  input: { action: PlatformAction; targetId: string; reason: string; reportId?: string },
+): Promise<Refusal | null> {
+  if (!(await isPlatformModerator(env, accountId))) return "not_permitted";
+  // No rank reaches its own (decision 0066), and a moderator is not its own exception.
+  if (await isPlatformModerator(env, input.targetId)) return "not_permitted";
+  const target = (await authors(env, [input.targetId])).get(input.targetId);
+  const does = ON_ACCOUNT[input.action];
+  if (!target || !does.applies(target)) return "not_found";
+  const report = await reportOf(env, { platformModerator: true }, null, input);
+  if (typeof report === "string") return report;
+  if (report && report.targetAccount !== input.targetId) return "not_found";
+
+  await does.write(env, input.targetId, [
+    entry(env, {
+      communityId: null,
+      actorId: accountId,
+      asPlatform: true,
+      action: input.action,
+      targetKind: PLATFORM_ACTIONS[input.action],
+      targetId: input.targetId,
+      targetAccount: input.targetId,
+      reason: input.reason,
+    }),
+    ...(report ? [closing(env, report.reportId, accountId, input.action, input.reason)] : []),
+  ]);
   return null;
 }

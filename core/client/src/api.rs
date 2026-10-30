@@ -1141,6 +1141,7 @@ pub enum ModerationLogAction {
     RemoveMember,
     BanMember,
     UnbanMember,
+    ClearAccountPhoto,
     CloseReport,
     DeleteCommunity,
     RestoreCommunity,
@@ -2780,11 +2781,10 @@ mod tests {
             body["properties"]["action"]["enum"],
             serde_json::json!(names(&actions))
         );
-        // A log entry holds every action a moderator takes, and one more for
-        // a platform moderator's closing of a report; each contract value
-        // reads as itself rather than as `Unknown`.
+        // A log entry holds every action a moderator or a platform moderator
+        // takes; each contract value reads as itself rather than as `Unknown`.
         let logged = listed("/ModerationLogEntry/properties/action/enum");
-        assert_eq!(logged.len(), 24);
+        assert_eq!(logged.len(), 25);
         assert!(logged.iter().all(|value| {
             serde_json::from_value::<ModerationLogAction>(value.clone())
                 .is_ok_and(|action| action != ModerationLogAction::Unknown)

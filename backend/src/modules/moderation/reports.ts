@@ -1,6 +1,7 @@
 import { db } from "../../env/index.ts";
 import type {
   Action,
+  PlatformAction,
   REPORT_KINDS,
   REPORT_REASONS,
   TARGET_STANDINGS,
@@ -227,18 +228,24 @@ export async function reportPage(
   };
 }
 
-export type OpenReport = { reportId: string; communityId: string | null; toPlatform: boolean };
+export type OpenReport = {
+  reportId: string;
+  communityId: string | null;
+  toPlatform: boolean;
+  targetAccount: string | null;
+};
 
 /** An open report's queue, or null when there is no such open report. */
 export async function openReport(env: Env, reportId: string): Promise<OpenReport | null> {
   const row = await db(env)
     .prepare(
-      `SELECT community_id AS communityId, to_platform AS toPlatform
+      `SELECT community_id AS communityId, to_platform AS toPlatform,
+              target_account AS targetAccount
          FROM reports WHERE report_id = ? AND state = 'open'`,
     )
     .bind(reportId)
-    .first<{ communityId: string | null; toPlatform: number }>();
-  return row && { reportId, communityId: row.communityId, toPlatform: row.toPlatform === 1 };
+    .first<{ communityId: string | null; toPlatform: number; targetAccount: string | null }>();
+  return row && { ...row, reportId, toPlatform: row.toPlatform === 1 };
 }
 
 /** Whether `accountId` is on Samtak's list of platform moderators (decision 0063). */
@@ -254,7 +261,7 @@ export async function isPlatformModerator(env: Env, accountId: string): Promise<
  * How a report was closed (decision 0070): the action a moderator took on its
  * target, `dismissed` when it took none, or `community_deleted`.
  */
-export type Decision = Action | "dismissed" | "community_deleted";
+export type Decision = Action | PlatformAction | "dismissed" | "community_deleted";
 
 /** The statement that closes a report, for the batch of the action or entry with it. */
 export function closing(

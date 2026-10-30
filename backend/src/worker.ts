@@ -8,7 +8,7 @@ import { expireCommunities } from "./modules/communities/index.ts";
 import { expireHistory } from "./modules/history/index.ts";
 import { expireJobs, jobHealth, runJobs } from "./modules/jobs/index.ts";
 import { expireMedia } from "./modules/messaging/index.ts";
-import { expireReports } from "./modules/moderation/index.ts";
+import { expireLog, expireReports } from "./modules/moderation/index.ts";
 import { expireNotifications } from "./modules/notifications/index.ts";
 import { deleteUnattached, purgeRemoved } from "./modules/social/index.ts";
 
@@ -47,6 +47,7 @@ export default {
     log("social_media.expired", { count: await deleteUnattached(env, {}) });
     log("posts.purged", { count: await purgeRemoved(env) });
     log("reports.expired", { count: await expireReports(env) });
+    log("moderation_log.expired", { count: await expireLog(env) });
     log("jobs.expired", { count: await expireJobs(env) });
     log("notifications.expired", { count: await expireNotifications(env) });
     const health = await jobHealth(env);

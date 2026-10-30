@@ -1742,6 +1742,10 @@
       "surfaces": ["android", "ios", "web"],
       "description": "A closed report's decision: closed without acting."
     },
+    "moderation_decision_clear_account_photo": {
+      "surfaces": ["web"],
+      "description": "A closed report's decision and a log entry: a platform moderator removed an account's photo (decision 0115)."
+    },
     "moderation_decision_community_deleted": {
       "surfaces": ["android", "ios", "web"],
       "description": "A closed report's decision: the community's deletion closed it (decision 0070)."
