@@ -15,7 +15,7 @@ mod phone;
 
 use std::time::{Duration, Instant, SystemTime};
 
-use phone::{KNOWING, PIXEL, Phone, agent, base, dev, kennitala};
+use phone::{PIXEL, Phone, dev, kennitala};
 use serde_json::{Value, json};
 use spjall_client::api::{
     ApiError, Audience, Moderation, ModerationAction, ModerationState, NotificationAction,
