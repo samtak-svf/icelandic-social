@@ -78,9 +78,8 @@ timestamp comes from a past year so the row stamp never moves.
 - **Verify**: every unit test run compares (`roborazzi.test.verify=true` in
   `android/gradle.properties`), so `android/scripts/test.sh` (on the Mac) and CI fail on any changed pixel. A
   failure's actual and diff images are in `app/build/outputs/roborazzi/` (uploaded by CI).
-- **Record** on the Mac (`node tooling/mac-remote.mjs -- 'cd android && ./gradlew
-  :app:recordRoborazziDebug'`), copy the changed images in `android/app/src/test/screenshots/`
-  back with `scp`, and look at every one before committing it. A brand switch, a new Robolectric SDK or a renamed term (decision 0117) is a re-record.
+- **Record** on the Mac with `node tooling/mac-remote.mjs record`: it copies the changed images into
+  `android/app/src/test/screenshots/` and names them. Look at every one before committing it. A brand switch, a new Robolectric SDK or a renamed term (decision 0117) is a re-record.
 - **Every new visual state in the UI pass gets an image**: a new screen, row kind, banner or
   empty state adds a test method in that screen's `ScreenshotTest`, with fake data built the
   way its instrumented test builds it.

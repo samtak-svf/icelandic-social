@@ -14,10 +14,12 @@
 // fetched core, the generated project) between runs. This file only names the
 // tasks and this repo's defaults.
 //
-//   node tooling/mac-remote.mjs [--host <ssh host>] [--dir <dir>] [ios | android | -- <command…>]
+//   node tooling/mac-remote.mjs [--host <ssh host>] [--dir <dir>] [ios | android | web | record | -- <command…>]
 //     ios (the default) runs ios/scripts/test.sh --prepare there
 //     android runs android/scripts/test.sh, then again with --connected (checks and emulator tests)
 //     web runs web/scripts/e2e.sh --prepare (the Worker under cf dev, then Playwright)
+//     record records the Roborazzi images there, copies the ones that changed into
+//     this checkout and names them, for you to look at before committing
 //
 // web and interop runs get a free Worker port (CI=1 makes backend/scripts/dev-worker.sh
 // pick one), so they do not collide with CI or each other; android keeps 8787,
@@ -32,26 +34,31 @@
 // script is MAC_REMOTE_SCRIPT, by default ~/agent-config/scripts/mac-remote.mjs.
 
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { homedir } from "node:os";
+import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { ROOT } from "./lib/repo.mjs";
+
+const SCREENSHOTS = "android/app/src/test/screenshots";
 
 const TASKS = {
   ios: "ios/scripts/test.sh --prepare",
   android: "android/scripts/test.sh && android/scripts/test.sh --connected",
   web: "CI=1 web/scripts/e2e.sh --prepare",
+  record: "android/scripts/test.sh --record",
 };
 
 /**
  * @param {string[]} argv
- * @returns {{ host: string, dir?: string, command: string }}
+ * @returns {{ host: string, dir?: string, command: string, pull?: string }}
  */
 export function parseArgs(argv) {
   let host = process.env.SPJALL_MAC_HOST || "samtak-mac";
   /** @type {string | undefined} */
   let dir;
   let command = TASKS.ios;
+  /** @type {string | undefined} */
+  let pull;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--host" || arg === "--dir") {
@@ -66,21 +73,52 @@ export function parseArgs(argv) {
       break;
     } else if (arg !== undefined && Object.hasOwn(TASKS, arg)) {
       command = TASKS[/** @type {keyof typeof TASKS} */ (arg)];
+      if (arg === "record") pull = SCREENSHOTS;
     } else {
       throw new Error(`unknown argument ${arg}; tasks: ${Object.keys(TASKS).join(", ")}`);
     }
   }
-  return { host, dir, command };
+  return { host, dir, command, ...(pull ? { pull } : {}) };
 }
 
 /**
  * The arguments for the shared script: this checkout, the host, the
- * directory only when the user gave one, then the command after `--`.
- * @param {{ host: string, dir?: string, command: string }} options
+ * directory only when the user gave one, what to pull back into `into`, then
+ * the command after `--`.
+ * @param {{ host: string, dir?: string, command: string, pull?: string }} options
  * @param {string} [root]
+ * @param {string} [into]
  */
-export function sharedArgs({ host, dir, command }, root = ROOT) {
-  return ["--repo", root, "--host", host, ...(dir ? ["--dir", dir] : []), "--", command];
+export function sharedArgs({ host, dir, command, pull }, root = ROOT, into = "") {
+  return [
+    "--repo",
+    root,
+    "--host",
+    host,
+    ...(dir ? ["--dir", dir] : []),
+    ...(pull ? ["--pull", `${pull}:${into}`] : []),
+    "--",
+    command,
+  ];
+}
+
+/**
+ * Copy the files of `from` whose bytes differ from `to`. A file only `to` has
+ * stays: a record run never removes an image, and a test that is gone is a
+ * deletion the PR makes on purpose.
+ * @param {string} from
+ * @param {string} to
+ * @returns {string[]} the names copied, sorted
+ */
+export function copyChanged(from, to) {
+  const changed = readdirSync(from)
+    .filter((name) => {
+      const target = join(to, name);
+      return !existsSync(target) || !readFileSync(join(from, name)).equals(readFileSync(target));
+    })
+    .sort();
+  for (const name of changed) copyFileSync(join(from, name), join(to, name));
+  return changed;
 }
 
 /** @param {NodeJS.ProcessEnv} [env] */
@@ -94,7 +132,18 @@ if (import.meta.main) {
     console.error(`mac-remote: the shared script is not at ${script}; set MAC_REMOTE_SCRIPT`);
     process.exit(2);
   }
-  const args = sharedArgs(parseArgs(process.argv.slice(2)));
+  const options = parseArgs(process.argv.slice(2));
+  const into = options.pull ? mkdtempSync(join(tmpdir(), "mac-remote-pull-")) : "";
+  const args = sharedArgs(options, ROOT, into);
   const run = spawnSync(process.execPath, [script, ...args], { stdio: "inherit" });
   process.exitCode = run.status ?? 1;
+  if (options.pull) {
+    // A failed record leaves this checkout as it was: its images may be half a run.
+    if (run.status === 0) {
+      const changed = copyChanged(join(into, options.pull), join(ROOT, options.pull));
+      console.log(`mac-remote: ${changed.length} changed image(s) in ${options.pull}`);
+      for (const name of changed) console.log(`  ${name}`);
+    }
+    rmSync(into, { recursive: true, force: true });
+  }
 }
