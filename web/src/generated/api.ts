@@ -89,7 +89,7 @@ export interface SignInConfig {
 }
 
 export interface ApiError {
-  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, pin_limit, poll_closed, anonymous_off, invalid_media, muted, suspended, expired, incomplete, internal_error */
+  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, pin_limit, poll_closed, anonymous_off, invalid_media, muted, suspended, request_refused, request_limit, friend_limit, expired, incomplete, internal_error */
   error: string;
   /** The request's id, also in the x-request-id header: opaque, for support to find the request by (decision 0037) */
   requestId: string;
@@ -463,6 +463,63 @@ export interface BlockedAccount {
   verified: boolean;
   /** Unix milliseconds */
   blockedAt: number;
+}
+
+export type Person = Profile & {
+  relation: Relation;
+  /** Unix milliseconds; null unless friends */
+  friendsSince: number | null;
+  /** How many friends the person has */
+  friendCount: number;
+  /** How many of them are the caller's too */
+  mutualCount: number;
+  /** The first of them, by name */
+  mutualFriends: Array<Profile>;
+  /** The first of those both are members of, by name */
+  sharedCommunities: Array<SharedCommunity>;
+  /** Unix milliseconds; null unless the caller snoozed this person */
+  snoozedUntil: number | null;
+};
+
+/** Between the caller and this person. `sent` stands for 30 days from the request whatever the other did; `incoming` means the other asked */
+export type Relation = "self" | "none" | "sent" | "incoming" | "friends";
+
+export interface SharedCommunity {
+  communityId: string;
+  name: string;
+  /** The profile photo's version, changed by each upload; null when there is none to show (decision 0039) */
+  photo: string | null;
+}
+
+export interface FriendPage {
+  /** All the caller's friends, whatever `q` kept */
+  count: number;
+  friends: Array<{
+    person: Profile;
+    /** Unix milliseconds */
+    since: number;
+  }>;
+}
+
+export interface FriendRequests {
+  /** To the caller, newest first */
+  incoming: Array<FriendRequest>;
+  /** From the caller and still standing, newest first */
+  sent: Array<FriendRequest>;
+}
+
+export interface FriendRequest {
+  person: Profile;
+  /** Unix milliseconds */
+  sentAt: number;
+}
+
+export interface SnoozeList {
+  snoozed: Array<{
+    person: Profile;
+    /** Unix milliseconds */
+    until: number;
+  }>;
 }
 
 export interface PhotoSet {
@@ -885,7 +942,7 @@ export interface NotificationPage {
 
 export interface Notification {
   notificationId: string;
-  kind: "comment" | "reply" | "reaction" | "join_approved" | "moderated";
+  kind: "comment" | "reply" | "reaction" | "join_approved" | "moderated" | "friend_request" | "friend_accepted";
   actor: Author | null;
   /** The newest three distinct accounts that caused the notification, newest first (decision 0103) */
   actors: Array<Author>;
@@ -916,6 +973,8 @@ export interface NotificationSettings {
     reaction: NotificationLevel;
     join_approved: NotificationLevel;
     moderated: NotificationLevel;
+    friend_request: NotificationLevel;
+    friend_accepted: NotificationLevel;
   };
   /** The communities with a level set; the others are `push` */
   communities: Array<{
@@ -1215,6 +1274,175 @@ export function unblockAccount(args: {
   | { status: 426; data: ApiError }
 > {
   return call("DELETE", "/v1/blocks/{accountId}", args, init);
+}
+
+/**
+ * A person's screen: mark, shared communities, friend count and mutual friends (0114)
+ *
+ * Answers 404 across a block in either direction, where `getAccount` goes on answering, so a blocked person sees what anyone sees of a missing page.
+ */
+export function getPerson(args: {
+  path: {
+    accountId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: Person }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/people/{accountId}", args, init);
+}
+
+/** The caller's own friends; nobody else's are ever listed */
+export function listFriends(args?: {
+  query?: {
+    /** The start of a name or of a word in it */
+    q?: string;
+    sort?: "newest" | "name";
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: FriendPage }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/friends", args, init);
+}
+
+/** End a friendship; nobody is told, and ending one that is not there is no error */
+export function endFriendship(args: {
+  path: {
+    accountId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/friends/{accountId}", args, init);
+}
+
+/** The requests standing for the caller, to it and from it */
+export function listFriendRequests(init?: CallInit): Promise<
+  | { status: 200; data: FriendRequests }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/friend-requests", undefined, init);
+}
+
+/**
+ * Ask to be friends; asking the one who asked is accepting them
+ *
+ * One request per direction per 90 days from the last one's creation, whatever became of it, with one refusal for all of them. Asking again while a request stands changes nothing.
+ */
+export function sendFriendRequest(args: {
+  path: {
+    accountId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: {
+    relation: "sent" | "friends";
+  } }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 403; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+  | { status: 429; data: ApiError }
+> {
+  return call("PUT", "/v1/friend-requests/{accountId}", args, init);
+}
+
+/** Take back a request the caller sent; its 90 days go on */
+export function cancelFriendRequest(args: {
+  path: {
+    accountId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/friend-requests/{accountId}", args, init);
+}
+
+/** Accept the request this person sent; they are told */
+export function acceptFriendRequest(args: {
+  path: {
+    accountId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 409; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/friend-requests/{accountId}/accept", args, init);
+}
+
+/** Decline the request this person sent; nobody is told */
+export function declineFriendRequest(args: {
+  path: {
+    accountId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("POST", "/v1/friend-requests/{accountId}/decline", args, init);
+}
+
+/** The people the caller has snoozed, the soonest back first */
+export function listSnoozes(init?: CallInit): Promise<
+  | { status: 200; data: SnoozeList }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("GET", "/v1/snoozes", undefined, init);
+}
+
+/** Hide a person's posts from the caller's feed for 30 days; nobody is told */
+export function snoozePerson(args: {
+  path: {
+    accountId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 200; data: {
+    /** Unix milliseconds */
+    until: number;
+  } }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 404; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("PUT", "/v1/snoozes/{accountId}", args, init);
+}
+
+/** Lift a snooze early; lifting one that is not there is no error */
+export function unsnoozePerson(args: {
+  path: {
+    accountId: string;
+  };
+}, init?: CallInit): Promise<
+  | { status: 204; data: undefined }
+  | { status: 400; data: ApiError }
+  | { status: 401; data: ApiError }
+  | { status: 426; data: ApiError }
+> {
+  return call("DELETE", "/v1/snoozes/{accountId}", args, init);
 }
 
 /**
@@ -2730,6 +2958,8 @@ export function putNotificationSettings(args: {
       reaction?: NotificationLevel;
       join_approved?: NotificationLevel;
       moderated?: NotificationLevel;
+      friend_request?: NotificationLevel;
+      friend_accepted?: NotificationLevel;
     };
   };
 }, init?: CallInit): Promise<

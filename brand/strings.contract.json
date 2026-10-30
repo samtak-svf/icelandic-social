@@ -635,11 +635,11 @@
       "description": "Shown while a member of a group is typing; a group's typing frame does not prove who sent it, so it names no one (docs/decisions/0022)."
     },
     "block": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Block a person."
     },
     "block_confirm": {
-      "surfaces": ["android", "ios"],
+      "surfaces": ["android", "ios", "web"],
       "description": "Confirmation before blocking.",
       "placeholders": {
         "name": "string"
@@ -2789,6 +2789,157 @@
     "statement_review_overturned_later_stands": {
       "surfaces": ["android", "ios", "web"],
       "description": "A statement's review of a suspension: overturned, but a later suspension stands (decision 0115)."
+    },
+    "person_add_friend": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Button on a person screen: ask this person to be friends (decision 0114)."
+    },
+    "person_request_sent": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Button state on a person screen: a friend request stands. It reads the same whatever the other person did with it (decision 0114)."
+    },
+    "person_answer_request": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Button on a person screen: this person asked to be friends; opens accept and decline (decision 0114)."
+    },
+    "person_friends": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Button state on a person screen, and the title of the own list of friends (decision 0114)."
+    },
+    "person_accept": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Accept a friend request."
+    },
+    "person_decline": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Decline a friend request. The sender is not told."
+    },
+    "person_cancel_request": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Take back a friend request the reader sent."
+    },
+    "friend_end": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "End a friendship, from a person screen."
+    },
+    "friend_end_confirm": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Confirmation before ending a friendship. {name} is the other person.",
+      "placeholders": {
+        "name": "string"
+      }
+    },
+    "person_friends_since": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "How long two people have been friends. {date} is a formatted date.",
+      "placeholders": {
+        "date": "string"
+      }
+    },
+    "person_mutual_heading": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Heading of the friends the reader and this person have in common."
+    },
+    "person_shared_communities": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Heading of the communities the reader and this person are both in."
+    },
+    "person_snooze": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Hide this person's posts from the reader's feed for 30 days. Nobody is told."
+    },
+    "person_unsnooze": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Lift that early."
+    },
+    "person_snoozed_until": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "How long a person stays hidden. {date} is a formatted date.",
+      "placeholders": {
+        "date": "string"
+      }
+    },
+    "friends_incoming": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Heading of the friend requests to the reader."
+    },
+    "friends_sent": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Heading of the friend requests from the reader that still stand."
+    },
+    "friends_snoozed": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Heading of the people whose posts the reader has hidden for now."
+    },
+    "friends_empty": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The own list of friends is empty."
+    },
+    "friends_search_empty": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A name search of the own friends found nobody."
+    },
+    "friends_sort_label": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Label of the sort control of the own friends."
+    },
+    "friends_sort_newest": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Sort friends by the newest friendship."
+    },
+    "friends_sort_name": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Sort friends by name."
+    },
+    "notice_friend_request": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A notification: someone asked the reader to be friends. {name} is that person.",
+      "placeholders": {
+        "name": "string"
+      }
+    },
+    "notice_friend_accepted": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "A notification: someone accepted the reader's friend request. {name} is that person.",
+      "placeholders": {
+        "name": "string"
+      }
+    },
+    "notification_kind_friend_request": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Notification settings row: friend requests to the reader (decision 0114)."
+    },
+    "notification_kind_friend_accepted": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "Notification settings row: the reader's friend requests accepted (decision 0114)."
+    },
+    "problem_request_refused": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The server refused a friend request. It never says why: a decline is not disclosed (decision 0114)."
+    },
+    "problem_request_limit": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The server refused a friend request: too many in 24 hours."
+    },
+    "problem_friend_limit": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "The server refused a friendship: one of the two has the most friends one may have."
+    },
+    "person_friend_count": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "How many friends a person has.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
+    },
+    "person_mutual_count": {
+      "surfaces": ["android", "ios", "web"],
+      "description": "How many friends the reader and this person have in common.",
+      "plural": true,
+      "placeholders": {
+        "count": "int"
+      }
     }
   }
 }

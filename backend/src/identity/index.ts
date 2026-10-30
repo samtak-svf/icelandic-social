@@ -21,7 +21,15 @@ export {
   suspension,
   type Suspension,
 } from "./suspension.ts";
-export { block, blockedEither, blockersAmong, blockList, UNBLOCKED, unblock } from "./blocks.ts";
+export {
+  accountExists,
+  blockedEither,
+  blocking,
+  blockersAmong,
+  blockList,
+  UNBLOCKED,
+  unblock,
+} from "./blocks.ts";
 export { inviteRoutes } from "./invites.ts";
 export { identityRoutes } from "./routes.ts";
 export { type ApprovedLink, approvedLink, linkedDeviceRoutes } from "./linked-devices.ts";

@@ -4,7 +4,14 @@ import { job } from "./queue.ts";
 // 0063, 0067). The module that makes the change writes it; the notifications
 // module runs it.
 
-type NoticeKind = "comment" | "reply" | "reaction" | "join_approved" | "moderated";
+type NoticeKind =
+  | "comment"
+  | "reply"
+  | "reaction"
+  | "join_approved"
+  | "moderated"
+  | "friend_request"
+  | "friend_accepted";
 
 /** Who is told what, by whom, about which thing. Ids only, never content. */
 export type Notice = {

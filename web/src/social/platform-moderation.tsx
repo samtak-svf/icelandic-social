@@ -24,7 +24,7 @@ import {
   type Calls,
   type Row,
 } from "./platform-moderation.ts";
-import { AuthorName } from "./post.tsx";
+import { AuthorName } from "./author-name.tsx";
 import { Quoted, REASONS, useCards } from "./report-card.tsx";
 import { ReviewList } from "./platform-reviews.tsx";
 

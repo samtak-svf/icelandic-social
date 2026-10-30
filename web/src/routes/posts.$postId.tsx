@@ -19,7 +19,8 @@ import { CommentImage } from "../social/comment-image.tsx";
 import { CommentComposer } from "../social/composer.tsx";
 import { DeleteButton } from "../social/delete-button.tsx";
 import { outcome, useLoad, when } from "../social/outcome.ts";
-import { AuthorName, authorName, PostView, StateMark, useMine } from "../social/post.tsx";
+import { authorName, PersonName } from "../social/author-name.tsx";
+import { PostView, StateMark, useMine } from "../social/post.tsx";
 import { isPostTombstone } from "../social/post-tombstone.tsx";
 import { moderatesAs, RoleBadge } from "../social/roles.tsx";
 import { ReportButton } from "../social/report.tsx";
@@ -227,7 +228,7 @@ function CommentView({
         <StateMark state={comment.state} />
         <div className="flex w-fit max-w-full flex-col gap-1 rounded-2xl bg-muted px-3 py-2">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold">
-            <AuthorName author={comment.author} />
+            <PersonName author={comment.author} />
             <RoleBadge role={comment.author.role} />
           </span>
           {comment.body !== "" && <p className="whitespace-pre-wrap">{comment.body}</p>}

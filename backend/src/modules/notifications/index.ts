@@ -7,6 +7,11 @@ import type { PushSender } from "../messaging/index.ts";
 import { noticeHandler } from "./notify.ts";
 
 export { expireNotifications, forgetCommunity } from "./list.ts";
+export {
+  forgettingFriendNotices,
+  withdrawingFriendNotices,
+  withdrawingRequestNotice,
+} from "./withdraw.ts";
 export { notificationRoutes } from "./routes.ts";
 
 /** The handlers of the jobs this module runs, pushing with `sender`. */

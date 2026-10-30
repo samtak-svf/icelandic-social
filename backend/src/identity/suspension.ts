@@ -5,8 +5,8 @@ import { fail } from "../shared/errors.ts";
 
 // A suspended account (decision 0115). This file alone says what a suspension
 // is and who is refused by it: a route that takes a new post, comment, reaction,
-// vote, community, membership or invitation wraps its contract in `notSuspended`
-// and has no predicate of its own. A conversation is never touched.
+// vote, community, membership, invitation or friend request wraps its contract in
+// `notSuspended` and has no predicate of its own. A conversation is never touched.
 
 /** A suspension that stands now; `until` null means until a moderator lifts it. */
 export type Suspension = { until: number | null };

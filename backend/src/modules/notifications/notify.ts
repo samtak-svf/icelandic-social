@@ -3,6 +3,7 @@ import { activeDevices, blockedEither } from "../../identity/index.ts";
 import type { Notice } from "../jobs/index.ts";
 import type { PushSender } from "../messaging/index.ts";
 import { standing } from "../communities/index.ts";
+import { areFriends, requestOpen } from "../friends/index.ts";
 import { commentContent, postAccess } from "../social/index.ts";
 import { levelFor } from "./settings.ts";
 
@@ -19,7 +20,14 @@ async function stillSo(env: Env, n: Notice): Promise<boolean> {
   // A moderator's notice goes across a block: nothing is hidden untold.
   if (n.kind === "moderated") return true;
   if ((await blockedEither(env, n.accountId)).includes(n.actorId)) return false;
+  return eventStands(env, n);
+}
+
+/** Whether what `n` tells of is still there for the account told. */
+async function eventStands(env: Env, n: Notice): Promise<boolean> {
   switch (n.kind) {
+    case "moderated":
+      return true;
     case "comment":
     case "reply": {
       const comment = n.commentId ? await commentContent(env, n.commentId) : null;
@@ -31,6 +39,10 @@ async function stillSo(env: Env, n: Notice): Promise<boolean> {
     case "join_approved":
       if (n.communityId === null) return false;
       return (await standing(env, n.accountId, n.communityId))?.role === "member";
+    case "friend_request":
+      return requestOpen(env, n.actorId, n.accountId);
+    case "friend_accepted":
+      return areFriends(env, n.accountId, n.actorId);
   }
 }
 

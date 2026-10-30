@@ -27,3 +27,29 @@ describe("what a moderated row reads", () => {
     expect(said.badge).toBe("moderator");
   });
 });
+
+describe("what a friend's row reads", () => {
+  const friend = (kind: "friend_request" | "friend_accepted", name: string | null) => ({
+    kind,
+    action: null,
+    actors: name === null ? [null] : [{ accountId: "a1", name, photo: null, verified: false }],
+    actorCount: 1,
+  });
+
+  it.each([
+    ["friend_request", "notice_friend_request"],
+    ["friend_accepted", "notice_friend_accepted"],
+  ] as const)("%s names the one person, with the friend badge", (kind, key) => {
+    const said = noticeText(friend(kind, "Anna"));
+    expect(said.key).toBe(key);
+    expect(said.text).toBe(strings[key]({ name: "Anna" }));
+    expect(said.args).toEqual({ name: "Anna" });
+    expect(said.badge).toBe("friend");
+  });
+
+  it("says the account is gone when its owner deleted it", () => {
+    const said = noticeText(friend("friend_request", null));
+    expect(said.args).toEqual({ name: null });
+    expect(said.text).toBe(strings.notice_friend_request({ name: strings.person_deleted }));
+  });
+});

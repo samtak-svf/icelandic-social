@@ -1,6 +1,6 @@
 # 0114. Friendship is mutual, and a name opens a person
 
-- Status: accepted; designed, not yet implemented; a notification with no community and its withholding from older clients implemented (#376), the kinds and everything else still to come
+- Status: accepted; implemented on the server and the web (#375): requests, friendships, the person screen, the own lists, snooze and the two notification kinds, withheld from older clients since #376. Still to come: the kinds in the apps, the cover and bio with the wall (0115), snooze taking effect in the feed (0116), and suggestions
 - Date: 2026-10-30
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0060](0060-a-social-platform-with-an-encrypted-messenger.md) (the graph holds friendships, not follows; feeds read friends),

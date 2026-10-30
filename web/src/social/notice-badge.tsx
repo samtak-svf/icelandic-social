@@ -27,6 +27,12 @@ const GLYPH: Record<Exclude<NoticeBadge, "emoji">, ReactNode> = {
       <path d="M5 13l4 4L19 7" />
     </svg>
   ),
+  friend: (
+    <svg {...SVG}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" />
+    </svg>
+  ),
   moderator: (
     <svg {...SVG}>
       <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" />

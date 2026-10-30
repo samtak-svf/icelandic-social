@@ -13,7 +13,7 @@ import { strings } from "../generated/brand/strings.ts";
 import { ManageFrame } from "../social/manage-frame.tsx";
 import { outcome, useLoad, when } from "../social/outcome.ts";
 import { DAY, MUTES } from "../social/mute-lengths.ts";
-import { authorName } from "../social/post.tsx";
+import { authorName } from "../social/author-name.tsx";
 import {
   Decision,
   isContent,

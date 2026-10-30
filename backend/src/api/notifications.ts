@@ -11,7 +11,15 @@ import { Author } from "./social.ts";
 const Notification = z
   .object({
     notificationId: z.string(),
-    kind: z.enum(["comment", "reply", "reaction", "join_approved", "moderated"]),
+    kind: z.enum([
+      "comment",
+      "reply",
+      "reaction",
+      "join_approved",
+      "moderated",
+      "friend_request",
+      "friend_accepted",
+    ]),
     // Who did it, the newest if several; null once deleted.
     actor: z.union([Author, z.null()]),
     actors: z.array(Author).openapi({
@@ -168,6 +176,8 @@ const KIND_LEVELS = {
   reaction: Level,
   join_approved: Level,
   moderated: Level,
+  friend_request: Level,
+  friend_accepted: Level,
 };
 
 const NotificationSettings = z

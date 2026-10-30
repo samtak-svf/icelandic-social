@@ -1134,4 +1134,74 @@
     <string name="statement_review_overturned_lifted">Ákvörðunin var felld úr gildi og banninu aflétt.</string>
     <!-- A statement's review of a suspension: overturned, but a later suspension stands (decision 0115). -->
     <string name="statement_review_overturned_later_stands">Ákvörðunin var felld úr gildi, en nýrra bann stendur.</string>
+    <!-- Button on a person screen: ask this person to be friends (decision 0114). -->
+    <string name="person_add_friend">Bæta við vini</string>
+    <!-- Button state on a person screen: a friend request stands. It reads the same whatever the other person did with it (decision 0114). -->
+    <string name="person_request_sent">Beiðni send</string>
+    <!-- Button on a person screen: this person asked to be friends; opens accept and decline (decision 0114). -->
+    <string name="person_answer_request">Svara beiðni</string>
+    <!-- Button state on a person screen, and the title of the own list of friends (decision 0114). -->
+    <string name="person_friends">Vinir</string>
+    <!-- Accept a friend request. -->
+    <string name="person_accept">Samþykkja</string>
+    <!-- Decline a friend request. The sender is not told. -->
+    <string name="person_decline">Hafna</string>
+    <!-- Take back a friend request the reader sent. -->
+    <string name="person_cancel_request">Afturkalla beiðni</string>
+    <!-- End a friendship, from a person screen. -->
+    <string name="friend_end">Slíta vináttu</string>
+    <!-- Confirmation before ending a friendship. {name} is the other person. -->
+    <string name="friend_end_confirm">%1$s fær ekki að vita af því. Slíta vináttu?</string>
+    <!-- How long two people have been friends. {date} is a formatted date. -->
+    <string name="person_friends_since">Vinir síðan %1$s</string>
+    <!-- Heading of the friends the reader and this person have in common. -->
+    <string name="person_mutual_heading">Sameiginlegir vinir</string>
+    <!-- Heading of the communities the reader and this person are both in. -->
+    <string name="person_shared_communities">Saman í hópum</string>
+    <!-- Hide this person's posts from the reader's feed for 30 days. Nobody is told. -->
+    <string name="person_snooze">Fela pósta í 30 daga</string>
+    <!-- Lift that early. -->
+    <string name="person_unsnooze">Sýna pósta aftur</string>
+    <!-- How long a person stays hidden. {date} is a formatted date. -->
+    <string name="person_snoozed_until">Póstar faldir til %1$s</string>
+    <!-- Heading of the friend requests to the reader. -->
+    <string name="friends_incoming">Beiðnir til þín</string>
+    <!-- Heading of the friend requests from the reader that still stand. -->
+    <string name="friends_sent">Sendar beiðnir</string>
+    <!-- Heading of the people whose posts the reader has hidden for now. -->
+    <string name="friends_snoozed">Faldir póstar</string>
+    <!-- The own list of friends is empty. -->
+    <string name="friends_empty">Engir vinir enn.</string>
+    <!-- A name search of the own friends found nobody. -->
+    <string name="friends_search_empty">Enginn fannst með þessu nafni.</string>
+    <!-- Label of the sort control of the own friends. -->
+    <string name="friends_sort_label">Röðun</string>
+    <!-- Sort friends by the newest friendship. -->
+    <string name="friends_sort_newest">Nýjustu fyrst</string>
+    <!-- Sort friends by name. -->
+    <string name="friends_sort_name">Eftir nafni</string>
+    <!-- A notification: someone asked the reader to be friends. {name} is that person. -->
+    <string name="notice_friend_request">%1$s sendi þér vinabeiðni.</string>
+    <!-- A notification: someone accepted the reader's friend request. {name} is that person. -->
+    <string name="notice_friend_accepted">%1$s samþykkti vinabeiðni þína.</string>
+    <!-- Notification settings row: friend requests to the reader (decision 0114). -->
+    <string name="notification_kind_friend_request">Vinabeiðnir</string>
+    <!-- Notification settings row: the reader's friend requests accepted (decision 0114). -->
+    <string name="notification_kind_friend_accepted">Samþykktar vinabeiðnir</string>
+    <!-- The server refused a friend request. It never says why: a decline is not disclosed (decision 0114). -->
+    <string name="problem_request_refused">Ekki er hægt að senda þessa beiðni núna.</string>
+    <!-- The server refused a friend request: too many in 24 hours. -->
+    <string name="problem_request_limit">Þú hefur sent margar beiðnir í dag. Reyndu aftur á morgun.</string>
+    <!-- The server refused a friendship: one of the two has the most friends one may have. -->
+    <string name="problem_friend_limit">Annað ykkar er komið með 1.000 vini, sem er hámarkið.</string>
+    <!-- How many friends a person has. -->
+    <plurals name="person_friend_count">
+        <item quantity="one">%1$d vinur</item>
+        <item quantity="other">%1$d vinir</item>
+    </plurals>
+    <!-- How many friends the reader and this person have in common. -->
+    <plurals name="person_mutual_count">
+        <item quantity="one">%1$d sameiginlegur vinur</item>
+        <item quantity="other">%1$d sameiginlegir vinir</item>
+    </plurals>
 </resources>

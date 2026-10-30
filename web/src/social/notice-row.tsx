@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import type { Community, Notification } from "../generated/api.ts";
 import { strings } from "../generated/brand/strings.ts";
@@ -69,6 +70,31 @@ const STATED: ReadonlySet<string | null> = new Set([
   "review_overturned",
 ]);
 
+const LINK = "flex min-h-11 min-w-0 flex-1 items-center gap-3 px-4 py-2";
+
+/** Where a row leads: what it tells of, or nowhere when that is not there to open. */
+function NoticeLink({
+  n,
+  onClick,
+  children,
+}: Readonly<{ n: Notification; onClick: () => void; children: ReactNode }>) {
+  const common = { className: LINK, onClick, children };
+  // What a moderator did is read with its reasons; a removed post is not there to open.
+  if (n.kind === "moderated" && STATED.has(n.action)) return <Link to="/statements" {...common} />;
+  if ((n.kind === "friend_request" || n.kind === "friend_accepted") && n.actor) {
+    return <Link to="/people/$accountId" params={{ accountId: n.actor.accountId }} {...common} />;
+  }
+  if (n.postId !== null && n.kind !== "moderated") {
+    return <Link to="/posts/$postId" params={{ postId: n.postId }} {...common} />;
+  }
+  if (n.communityId !== null) {
+    return (
+      <Link to="/communities/$communityId" params={{ communityId: n.communityId }} {...common} />
+    );
+  }
+  return <button type="button" {...common} className={`${LINK} text-left`} />;
+}
+
 export function NoticeRow({
   notification: n,
   community,
@@ -79,7 +105,6 @@ export function NoticeRow({
   actions: NoticeActions;
 }>) {
   const said = noticeText(n);
-  const link = "flex min-h-11 min-w-0 flex-1 items-center gap-3 px-4 py-2";
   const body = (
     <>
       <span className="relative shrink-0">
@@ -105,36 +130,14 @@ export function NoticeRow({
       )}
     </>
   );
-  // What a moderator did is read with its reasons; a removed post is not there to open.
-  const toStatements = n.kind === "moderated" && STATED.has(n.action);
-  const toPost = n.postId !== null && n.kind !== "moderated";
   const onClick = () => actions.open(n);
   return (
     <div
       className={`flex items-center rounded-md border border-border ${n.read ? "" : "bg-muted"}`}
     >
-      {toStatements ? (
-        <Link to="/statements" className={link} onClick={onClick}>
-          {body}
-        </Link>
-      ) : toPost ? (
-        <Link to="/posts/$postId" params={{ postId: n.postId! }} className={link} onClick={onClick}>
-          {body}
-        </Link>
-      ) : n.communityId !== null ? (
-        <Link
-          to="/communities/$communityId"
-          params={{ communityId: n.communityId }}
-          className={link}
-          onClick={onClick}
-        >
-          {body}
-        </Link>
-      ) : (
-        <button type="button" className={`${link} text-left`} onClick={onClick}>
-          {body}
-        </button>
-      )}
+      <NoticeLink n={n} onClick={onClick}>
+        {body}
+      </NoticeLink>
       <Menu label={strings.notice_menu} icon={<DotsIcon />}>
         {(close) => {
           const run = (act: () => void) => () => {

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useId, useState, type ChangeEvent } from "react";
 import { useAccount } from "../account.tsx";
 import { initials } from "../social/avatar.tsx";
@@ -7,7 +7,7 @@ import { getAccount, getPhoto, removePhoto, type Me } from "../generated/api.ts"
 import { strings } from "../generated/brand/strings.ts";
 import { useFrameSession } from "../social/frame-session.tsx";
 import { putFramed, type SendProblem } from "../social/frame-send.ts";
-import { Button, ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
+import { Button, buttonClass, ProblemText, Status, VerifiedMark } from "../ui/kit.tsx";
 import { VerifyCta } from "../ui/verify.tsx";
 
 // Ég (decisions 0034, 0039): the name, its mark or the way to it (0069), and
@@ -38,6 +38,9 @@ function MePage() {
           </p>
         )}
         <VerifyCta />
+        <Link to="/friends" className={buttonClass("quiet")}>
+          {strings.person_friends}
+        </Link>
       </section>
       <PhotoControls me={me} />
     </>

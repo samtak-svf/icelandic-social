@@ -366,7 +366,7 @@
         "properties": {
           "error": {
             "type": "string",
-            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, pin_limit, poll_closed, anonymous_off, invalid_media, muted, suspended, expired, incomplete, internal_error",
+            "description": "A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, pin_limit, poll_closed, anonymous_off, invalid_media, muted, suspended, request_refused, request_limit, friend_limit, expired, incomplete, internal_error",
             "example": "unauthorized"
           },
           "requestId": {
@@ -1597,6 +1597,202 @@
           "name",
           "verified",
           "blockedAt"
+        ]
+      },
+      "Person": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Profile"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "relation": {
+                "$ref": "#/components/schemas/Relation"
+              },
+              "friendsSince": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "Unix milliseconds; null unless friends"
+              },
+              "friendCount": {
+                "type": "integer",
+                "description": "How many friends the person has"
+              },
+              "mutualCount": {
+                "type": "integer",
+                "description": "How many of them are the caller's too"
+              },
+              "mutualFriends": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Profile"
+                },
+                "description": "The first of them, by name"
+              },
+              "sharedCommunities": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SharedCommunity"
+                },
+                "description": "The first of those both are members of, by name"
+              },
+              "snoozedUntil": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "Unix milliseconds; null unless the caller snoozed this person"
+              }
+            },
+            "required": [
+              "relation",
+              "friendsSince",
+              "friendCount",
+              "mutualCount",
+              "mutualFriends",
+              "sharedCommunities",
+              "snoozedUntil"
+            ]
+          }
+        ]
+      },
+      "Relation": {
+        "type": "string",
+        "enum": [
+          "self",
+          "none",
+          "sent",
+          "incoming",
+          "friends"
+        ],
+        "description": "Between the caller and this person. `sent` stands for 30 days from the request whatever the other did; `incoming` means the other asked"
+      },
+      "SharedCommunity": {
+        "type": "object",
+        "properties": {
+          "communityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b"
+          },
+          "name": {
+            "type": "string"
+          },
+          "photo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "example": "c_9f3a1b",
+            "description": "The profile photo's version, changed by each upload; null when there is none to show (decision 0039)"
+          }
+        },
+        "required": [
+          "communityId",
+          "name",
+          "photo"
+        ]
+      },
+      "FriendPage": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "description": "All the caller's friends, whatever `q` kept"
+          },
+          "friends": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "person": {
+                  "$ref": "#/components/schemas/Profile"
+                },
+                "since": {
+                  "type": "integer",
+                  "description": "Unix milliseconds"
+                }
+              },
+              "required": [
+                "person",
+                "since"
+              ]
+            }
+          }
+        },
+        "required": [
+          "count",
+          "friends"
+        ]
+      },
+      "FriendRequests": {
+        "type": "object",
+        "properties": {
+          "incoming": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FriendRequest"
+            },
+            "description": "To the caller, newest first"
+          },
+          "sent": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FriendRequest"
+            },
+            "description": "From the caller and still standing, newest first"
+          }
+        },
+        "required": [
+          "incoming",
+          "sent"
+        ]
+      },
+      "FriendRequest": {
+        "type": "object",
+        "properties": {
+          "person": {
+            "$ref": "#/components/schemas/Profile"
+          },
+          "sentAt": {
+            "type": "integer",
+            "description": "Unix milliseconds"
+          }
+        },
+        "required": [
+          "person",
+          "sentAt"
+        ]
+      },
+      "SnoozeList": {
+        "type": "object",
+        "properties": {
+          "snoozed": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "person": {
+                  "$ref": "#/components/schemas/Profile"
+                },
+                "until": {
+                  "type": "integer",
+                  "description": "Unix milliseconds"
+                }
+              },
+              "required": [
+                "person",
+                "until"
+              ]
+            }
+          }
+        },
+        "required": [
+          "snoozed"
         ]
       },
       "PhotoSet": {
@@ -3365,7 +3561,9 @@
               "reply",
               "reaction",
               "join_approved",
-              "moderated"
+              "moderated",
+              "friend_request",
+              "friend_accepted"
             ]
           },
           "actor": {
@@ -3481,6 +3679,12 @@
               },
               "moderated": {
                 "$ref": "#/components/schemas/NotificationLevel"
+              },
+              "friend_request": {
+                "$ref": "#/components/schemas/NotificationLevel"
+              },
+              "friend_accepted": {
+                "$ref": "#/components/schemas/NotificationLevel"
               }
             },
             "required": [
@@ -3488,7 +3692,9 @@
               "reply",
               "reaction",
               "join_approved",
-              "moderated"
+              "moderated",
+              "friend_request",
+              "friend_accepted"
             ],
             "description": "A level for each kind; `push` if never set"
           },
@@ -7452,6 +7658,842 @@
         "responses": {
           "204": {
             "description": "Not blocked, whether it was or not"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/people/{accountId}": {
+      "get": {
+        "operationId": "getPerson",
+        "tags": [
+          "friends"
+        ],
+        "summary": "A person's screen: mark, shared communities, friend count and mutual friends (0114)",
+        "description": "Answers 404 across a block in either direction, where `getAccount` goes on answering, so a blocked person sees what anyone sees of a missing page.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "accountId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The person",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Person"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such account, or a block between the two",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/friends": {
+      "get": {
+        "operationId": "listFriends",
+        "tags": [
+          "friends"
+        ],
+        "summary": "The caller's own friends; nobody else's are ever listed",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "description": "The start of a name or of a word in it"
+            },
+            "required": false,
+            "description": "The start of a name or of a word in it",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "newest",
+                "name"
+              ],
+              "default": "newest"
+            },
+            "required": false,
+            "name": "sort",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The whole list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FriendPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/friends/{accountId}": {
+      "delete": {
+        "operationId": "endFriendship",
+        "tags": [
+          "friends"
+        ],
+        "summary": "End a friendship; nobody is told, and ending one that is not there is no error",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "accountId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Ended"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/friend-requests": {
+      "get": {
+        "operationId": "listFriendRequests",
+        "tags": [
+          "friends"
+        ],
+        "summary": "The requests standing for the caller, to it and from it",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Both lists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FriendRequests"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/friend-requests/{accountId}": {
+      "put": {
+        "operationId": "sendFriendRequest",
+        "tags": [
+          "friends"
+        ],
+        "summary": "Ask to be friends; asking the one who asked is accepting them",
+        "description": "One request per direction per 90 days from the last one's creation, whatever became of it, with one refusal for all of them. Asking again while a request stands changes nothing.",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "accountId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Where the two now stand",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "relation": {
+                      "type": "string",
+                      "enum": [
+                        "sent",
+                        "friends"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "relation"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: the account is the caller's own",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "suspended: this account is suspended (decision 0115)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such account, or a block between the two",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "request_refused: not again yet; friend_limit: one of the two already has 1,000 friends",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "request_limit: 20 new requests in the last 24 hours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "cancelFriendRequest",
+        "tags": [
+          "friends"
+        ],
+        "summary": "Take back a request the caller sent; its 90 days go on",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "accountId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Taken back"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such standing request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/friend-requests/{accountId}/accept": {
+      "post": {
+        "operationId": "acceptFriendRequest",
+        "tags": [
+          "friends"
+        ],
+        "summary": "Accept the request this person sent; they are told",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "accountId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Friends"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such standing request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "friend_limit: one of the two already has 1,000 friends",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/friend-requests/{accountId}/decline": {
+      "post": {
+        "operationId": "declineFriendRequest",
+        "tags": [
+          "friends"
+        ],
+        "summary": "Decline the request this person sent; nobody is told",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "accountId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Declined"
+          },
+          "400": {
+            "description": "The request does not match the schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such standing request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/snoozes": {
+      "get": {
+        "operationId": "listSnoozes",
+        "tags": [
+          "friends"
+        ],
+        "summary": "The people the caller has snoozed, the soonest back first",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnoozeList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/snoozes/{accountId}": {
+      "put": {
+        "operationId": "snoozePerson",
+        "tags": [
+          "friends"
+        ],
+        "summary": "Hide a person's posts from the caller's feed for 30 days; nobody is told",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "accountId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Snoozed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "until": {
+                      "type": "integer",
+                      "description": "Unix milliseconds"
+                    }
+                  },
+                  "required": [
+                    "until"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: the account is the caller's own",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No device token or session the route takes, or one that is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found: no such account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "client_too_old: Spjall-Client names a version below the floor; minVersion says which",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "unsnoozePerson",
+        "tags": [
+          "friends"
+        ],
+        "summary": "Lift a snooze early; lifting one that is not there is no error",
+        "security": [
+          {
+            "deviceToken": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "example": "c_9f3a1b"
+            },
+            "required": true,
+            "name": "accountId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Lifted"
           },
           "400": {
             "description": "The request does not match the schema",
@@ -14711,6 +15753,12 @@
                         "$ref": "#/components/schemas/NotificationLevel"
                       },
                       "moderated": {
+                        "$ref": "#/components/schemas/NotificationLevel"
+                      },
+                      "friend_request": {
+                        "$ref": "#/components/schemas/NotificationLevel"
+                      },
+                      "friend_accepted": {
                         "$ref": "#/components/schemas/NotificationLevel"
                       }
                     }

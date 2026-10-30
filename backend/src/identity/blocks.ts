@@ -12,21 +12,26 @@ export const UNBLOCKED = (one: string, other: string) =>
      WHERE (blocker_account_id = ${one} AND blocked_account_id = ${other})
         OR (blocker_account_id = ${other} AND blocked_account_id = ${one}))`;
 
-/** Blocks `target` for `blocker`; false when there is no such account. */
-export async function block(env: Env, blocker: string, target: string): Promise<boolean> {
-  const result = await db(env)
+export async function accountExists(env: Env, accountId: string): Promise<boolean> {
+  const found = await db(env)
+    .prepare("SELECT 1 FROM accounts WHERE account_id = ?")
+    .bind(accountId)
+    .first();
+  return found !== null;
+}
+
+/**
+ * The statement that blocks `target` for `blocker`; it writes nothing when there
+ * is no such account. It goes in one batch with what a block ends (decision 0114).
+ */
+export function blocking(env: Env, blocker: string, target: string): D1PreparedStatement {
+  return db(env)
     .prepare(
       `INSERT INTO blocks (blocker_account_id, blocked_account_id, created_at)
        SELECT ?, account_id, ? FROM accounts WHERE account_id = ?
        ON CONFLICT DO NOTHING`,
     )
-    .bind(blocker, Date.now(), target)
-    .run();
-  if (result.meta.changes > 0) return true;
-  return (
-    (await db(env).prepare("SELECT 1 FROM accounts WHERE account_id = ?").bind(target).first()) !==
-    null
-  );
+    .bind(blocker, Date.now(), target);
 }
 
 /** Lifts a block; lifting one that is not there is no error. */

@@ -130,6 +130,11 @@ export const strings = {
     plural.select(args.count) === "one"
       ? String(args.count) + " hefur lesið"
       : String(args.count) + " hafa lesið",
+  /** Block a person. */
+  block: "Loka á",
+  /** Confirmation before blocking. */
+  block_confirm: (args: { name: string }): string =>
+    args.name + " getur þá ekki sent þér skilaboð. Loka?",
   /** Under the sign-in button: what Google is asked for, and that Kenni can verify later. */
   sign_in_hint: "Við biðjum Google aðeins um nafn og netfang. Þú getur síðar staðfest auðkenni með rafrænum skilríkjum.",
   /** Primary sign-in button: signs in with Google (docs/decisions/0033). */
@@ -648,15 +653,15 @@ export const strings = {
   /** Section heading on /privacy: what personal data is processed. */
   privacy_data_heading: "Hvaða gögn eru unnin",
   /** Body on /privacy describing sign-in identities, Kenni HMAC, E2EE messages, profile photos and community content (decisions 0002, 0008, 0033, 0039, 0063, 0065). */
-  privacy_data_body: "Við innskráningu með Google tekur þjónninn við nafni og staðfestu auðkenni frá Google. Ef þú staðfestir auðkenni með rafrænum skilríkjum í gegnum Kenni fær þjónninn skráð nafn þitt úr Þjóðskrá, en kennitalan sjálf er aldrei geymd í gagnagrunni heldur aðeins óafturkræft dulritunarlegt fingrafar hennar (HMAC). Einkasamtöl og hópsamtöl í símaöppunum eru dulkóðuð enda á milli (MLS) þannig að þjónninn getur hvorki lesið skilaboð né viðhengi þeirra. Mynd sem þú setur á aðganginn þinn og efni í hópum (póstar, athugasemdir, myndir og viðbrögð) eru hýst á þjóninum án lýsigagna (EXIF) og eru ekki dulkóðuð enda á milli.",
+  privacy_data_body: "Við innskráningu með Google tekur þjónninn við nafni og staðfestu auðkenni frá Google. Ef þú staðfestir auðkenni með rafrænum skilríkjum í gegnum Kenni fær þjónninn skráð nafn þitt úr Þjóðskrá, en kennitalan sjálf er aldrei geymd í gagnagrunni heldur aðeins óafturkræft dulritunarlegt fingrafar hennar (HMAC). Einkasamtöl og hópsamtöl í símaöppunum eru dulkóðuð enda á milli (MLS) þannig að þjónninn getur hvorki lesið skilaboð né viðhengi þeirra. Mynd sem þú setur á aðganginn þinn og efni í hópum (póstar, athugasemdir, myndir og viðbrögð) eru hýst á þjóninum án lýsigagna (EXIF) og eru ekki dulkóðuð enda á milli. Þjónninn geymir líka hverjir eru vinir þínir og vinabeiðnir til þín og frá þér. Öðrum innskráðum notendum er sýndur fjöldi vina þinna og hverjir þeirra eru líka vinir þeirra en listinn sjálfur er ekki sýndur öðrum. Sá sem sendir vinabeiðni fær ekki að vita ef henni er hafnað.",
   /** Section heading on /privacy: where data is stored and how long it is kept. */
   privacy_retention_heading: "Varðveisla og geymslutími",
   /** Body on /privacy describing retention periods (encrypted media 30 days, removed posts 90 days, moderation logs and closed reports 1 year, no PII in logs; decisions 0001, 0008, 0023, 0066, 0070). */
-  privacy_retention_body: "Dulkóðuð viðhengi í samtölum geymast á þjóninum í allt að 30 daga á meðan tæki sækja þau. Ef hópi er eytt má endurheimta hann í 30 daga áður en póstum, athugasemdum og myndum hans er eytt varanlega. Póstum og athugasemdum sem stjórnandi fjarlægir er eytt eftir 90 daga og lokuðum tilkynningum og aðgerðaskrá stjórnenda, sem skráir líka bann á aðgöngum, er eytt eftir eitt ár. Atburðaskrár þjónsins geyma hvorki nöfn, kennitölur, símanúmer né innihald skilaboða.",
+  privacy_retention_body: "Dulkóðuð viðhengi í samtölum geymast á þjóninum í allt að 30 daga á meðan tæki sækja þau. Ef hópi er eytt má endurheimta hann í 30 daga áður en póstum, athugasemdum og myndum hans er eytt varanlega. Póstum og athugasemdum sem stjórnandi fjarlægir er eytt eftir 90 daga og lokuðum tilkynningum og aðgerðaskrá stjórnenda, sem skráir líka bann á aðgöngum, er eytt eftir eitt ár. Vinabeiðni sem er lokið, hvort sem henni var hafnað, hún afturkölluð eða hún rann út, er geymd í 90 daga frá því að hún var send. Atburðaskrár þjónsins geyma hvorki nöfn, kennitölur, símanúmer né innihald skilaboða.",
   /** Section heading on /privacy: account deletion and user rights. */
   privacy_rights_heading: "Eyðing aðgangs og réttindi þín",
   /** Body on /privacy describing immediate account deletion in the app and how to contact the controller. */
-  privacy_rights_body: "Þú getur hvenær sem er skráð út einstaka vafra og tæki í stillingum eða eytt aðganginum þínum í appinu. Þegar aðgangi er eytt lokast allar innskráningar og lyklar strax, mynd og upplýsingar aðgangsins eyðast af þjóninum og reikningurinn er tekinn úr öllum samtölum og hópum. Fyrirspurnir um persónuvernd má senda á samtak@samtak.is.",
+  privacy_rights_body: "Þú getur hvenær sem er skráð út einstaka vafra og tæki í stillingum eða eytt aðganginum þínum í appinu. Þegar aðgangi er eytt lokast allar innskráningar og lyklar strax, mynd og upplýsingar aðgangsins eyðast af þjóninum og reikningurinn er tekinn úr öllum samtölum og hópum. Listi yfir vini þína og vinabeiðnir eyðast með honum. Fyrirspurnir um persónuvernd má senda á samtak@samtak.is.",
   /** Title and link label of the public support page (/support, decision 0009, #383). */
   support_title: "Aðstoð",
   /** Introductory paragraph on /support explaining how to get help. */
@@ -1081,4 +1086,79 @@ export const strings = {
   statement_review_overturned_lifted: "Ákvörðunin var felld úr gildi og banninu aflétt.",
   /** A statement's review of a suspension: overturned, but a later suspension stands (decision 0115). */
   statement_review_overturned_later_stands: "Ákvörðunin var felld úr gildi, en nýrra bann stendur.",
+  /** Button on a person screen: ask this person to be friends (decision 0114). */
+  person_add_friend: "Bæta við vini",
+  /** Button state on a person screen: a friend request stands. It reads the same whatever the other person did with it (decision 0114). */
+  person_request_sent: "Beiðni send",
+  /** Button on a person screen: this person asked to be friends; opens accept and decline (decision 0114). */
+  person_answer_request: "Svara beiðni",
+  /** Button state on a person screen, and the title of the own list of friends (decision 0114). */
+  person_friends: "Vinir",
+  /** Accept a friend request. */
+  person_accept: "Samþykkja",
+  /** Decline a friend request. The sender is not told. */
+  person_decline: "Hafna",
+  /** Take back a friend request the reader sent. */
+  person_cancel_request: "Afturkalla beiðni",
+  /** End a friendship, from a person screen. */
+  friend_end: "Slíta vináttu",
+  /** Confirmation before ending a friendship. {name} is the other person. */
+  friend_end_confirm: (args: { name: string }): string =>
+    args.name + " fær ekki að vita af því. Slíta vináttu?",
+  /** How long two people have been friends. {date} is a formatted date. */
+  person_friends_since: (args: { date: string }): string =>
+    "Vinir síðan " + args.date,
+  /** Heading of the friends the reader and this person have in common. */
+  person_mutual_heading: "Sameiginlegir vinir",
+  /** Heading of the communities the reader and this person are both in. */
+  person_shared_communities: "Saman í hópum",
+  /** Hide this person's posts from the reader's feed for 30 days. Nobody is told. */
+  person_snooze: "Fela pósta í 30 daga",
+  /** Lift that early. */
+  person_unsnooze: "Sýna pósta aftur",
+  /** How long a person stays hidden. {date} is a formatted date. */
+  person_snoozed_until: (args: { date: string }): string =>
+    "Póstar faldir til " + args.date,
+  /** Heading of the friend requests to the reader. */
+  friends_incoming: "Beiðnir til þín",
+  /** Heading of the friend requests from the reader that still stand. */
+  friends_sent: "Sendar beiðnir",
+  /** Heading of the people whose posts the reader has hidden for now. */
+  friends_snoozed: "Faldir póstar",
+  /** The own list of friends is empty. */
+  friends_empty: "Engir vinir enn.",
+  /** A name search of the own friends found nobody. */
+  friends_search_empty: "Enginn fannst með þessu nafni.",
+  /** Label of the sort control of the own friends. */
+  friends_sort_label: "Röðun",
+  /** Sort friends by the newest friendship. */
+  friends_sort_newest: "Nýjustu fyrst",
+  /** Sort friends by name. */
+  friends_sort_name: "Eftir nafni",
+  /** A notification: someone asked the reader to be friends. {name} is that person. */
+  notice_friend_request: (args: { name: string }): string =>
+    args.name + " sendi þér vinabeiðni.",
+  /** A notification: someone accepted the reader's friend request. {name} is that person. */
+  notice_friend_accepted: (args: { name: string }): string =>
+    args.name + " samþykkti vinabeiðni þína.",
+  /** Notification settings row: friend requests to the reader (decision 0114). */
+  notification_kind_friend_request: "Vinabeiðnir",
+  /** Notification settings row: the reader's friend requests accepted (decision 0114). */
+  notification_kind_friend_accepted: "Samþykktar vinabeiðnir",
+  /** The server refused a friend request. It never says why: a decline is not disclosed (decision 0114). */
+  problem_request_refused: "Ekki er hægt að senda þessa beiðni núna.",
+  /** The server refused a friend request: too many in 24 hours. */
+  problem_request_limit: "Þú hefur sent margar beiðnir í dag. Reyndu aftur á morgun.",
+  /** The server refused a friendship: one of the two has the most friends one may have. */
+  problem_friend_limit: "Annað ykkar er komið með 1.000 vini, sem er hámarkið.",
+  /** How many friends a person has. */
+  person_friend_count: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " vinur"
+      : String(args.count) + " vinir",
+  /** How many friends the reader and this person have in common. */
+  person_mutual_count: (args: { count: number }): string =>
+    plural.select(args.count) === "one"
+      ? String(args.count) + " sameiginlegur vinur"
+      : String(args.count) + " sameiginlegir vinir",
 } as const;

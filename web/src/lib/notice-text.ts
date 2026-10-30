@@ -5,8 +5,15 @@ import { strings } from "../generated/brand/strings.ts";
 // one actor reads plain, two read `_two`, three or more `_many` with the
 // others counted. A null name is a deleted account.
 
-type NoticeKind = "comment" | "reply" | "reaction" | "join_approved" | "moderated";
-export type NoticeBadge = "emoji" | "comment" | "approved" | "moderator";
+type NoticeKind =
+  | "comment"
+  | "reply"
+  | "reaction"
+  | "join_approved"
+  | "moderated"
+  | "friend_request"
+  | "friend_accepted";
+export type NoticeBadge = "emoji" | "comment" | "approved" | "moderator" | "friend";
 
 export interface NoticeSource {
   kind: NoticeKind;
@@ -39,6 +46,8 @@ const BADGE: Record<NoticeKind, NoticeBadge> = {
   reaction: "emoji",
   join_approved: "approved",
   moderated: "moderator",
+  friend_request: "friend",
+  friend_accepted: "friend",
 };
 
 /** The moderated rows with a sentence of their own; any other action reads `notice_moderated`. */
@@ -74,6 +83,11 @@ export function noticeText(n: NoticeSource): NoticeText {
   const names = n.actors.map((actor) => actor?.name ?? null);
   const name = names[0] ?? null;
   const shown = (value: string | null) => value ?? strings.person_deleted;
+  // One person, so never grouped (decision 0114).
+  if (n.kind === "friend_request" || n.kind === "friend_accepted") {
+    const stem = `notice_${n.kind}` as const;
+    return { key: stem, args: { name }, badge, text: strings[stem]({ name: shown(name) }) };
+  }
   const [one, two, many] = GROUPED[n.kind] as readonly [
     (a: Who) => string,
     (a: Pair) => string,

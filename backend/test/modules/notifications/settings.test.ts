@@ -28,6 +28,8 @@ describe("notification settings", () => {
         reaction: "push",
         join_approved: "push",
         moderated: "push",
+        friend_request: "push",
+        friend_accepted: "push",
       },
       communities: [],
     });

@@ -2,6 +2,7 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import { deleteAccount } from "./compose/account-deletion.ts";
 import { linkOrJoin } from "./compose/account-linking.ts";
 import { communityLifecycle } from "./compose/community-lifecycle.ts";
+import { blockAccount } from "./compose/friends.ts";
 import { WsFrame } from "./api/frames.ts";
 import { FRAME_SPECS, SIZE_CLASSES } from "./api/image-frames.ts";
 import { healthRoute } from "./api/health.ts";
@@ -22,8 +23,9 @@ import { communityRoutes } from "./modules/communities/index.ts";
 import { historyRoutes } from "./modules/history/index.ts";
 import { messagingRoutes } from "./modules/messaging/index.ts";
 import { moderationRoutes } from "./modules/moderation/index.ts";
-import { notificationRoutes } from "./modules/notifications/index.ts";
+import { notificationRoutes, withdrawingRequestNotice } from "./modules/notifications/index.ts";
 import { accountRoutes, photoRoutes } from "./modules/profiles/index.ts";
+import { friendRoutes } from "./modules/friends/index.ts";
 import { socialRoutes } from "./modules/social/index.ts";
 import { opsRoutes } from "./ops/index.ts";
 
@@ -87,7 +89,8 @@ export function createApp() {
   messagingRoutes(app);
 
   // Other accounts, the directory and block (decisions 0022, 0024, 0036).
-  accountRoutes(app);
+  accountRoutes(app, { block: blockAccount });
+  friendRoutes(app, { withdraw: withdrawingRequestNotice });
 
   // The profile photo (decision 0039).
   photoRoutes(app);
