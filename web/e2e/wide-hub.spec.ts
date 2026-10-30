@@ -2,7 +2,7 @@ import { strings } from "../src/generated/brand/strings.ts";
 import { SIZE_CLASSES } from "../src/generated/frames.ts";
 import { layoutOf } from "../src/ui/layout.ts";
 import { expect, test } from "./origin.ts";
-import { found, join, person, write } from "./social-helpers.ts";
+import { found, join, pageOverflow, person, write } from "./social-helpers.ts";
 
 // The hub and Stofna samfélag at the contract's size classes (decision 0087):
 // on an expanded window the reader's communities sit in a column beside the
@@ -51,7 +51,7 @@ test("the hub's column and the create preview appear only on an expanded window"
       const columnBox = (await column.boundingBox())!;
       expect(columnBox.x).toBeGreaterThanOrEqual(feedBox.x + feedBox.width);
       expect(columnBox.y).toBeLessThan(feedBox.y + feedBox.height);
-      expect(await owner.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+      expect(await pageOverflow(owner)).toBe(0);
     }
 
     // The create page: the preview carries the typed name only beside the form.

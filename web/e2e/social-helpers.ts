@@ -7,6 +7,24 @@ import { signInVerified } from "./accounts.ts";
 // What the social specs share: people in browsers of their own, the composer,
 // a post card's menu and the founding of a community.
 
+/**
+ * The page's layout width: the `html` box, which leaves out the gutter `html`
+ * reserves. That gutter is 15 px with classic scrollbars, as on Linux, and nothing
+ * with overlay ones, as on macOS. `innerWidth` and `clientWidth` both include it
+ * while no scrollbar shows, so either would measure the platform.
+ */
+export function layoutWidth(page: Page) {
+  return page.evaluate(() => document.documentElement.getBoundingClientRect().width);
+}
+
+/** How far the page runs past its layout width. */
+export function pageOverflow(page: Page) {
+  return page.evaluate(
+    () =>
+      document.documentElement.scrollWidth - document.documentElement.getBoundingClientRect().width,
+  );
+}
+
 /** A person in a browser of their own, signed in with Google and marked by Kenni as `name`. */
 export async function person(
   browser: Browser,

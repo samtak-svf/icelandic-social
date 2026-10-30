@@ -2,7 +2,7 @@ import { strings } from "../src/generated/brand/strings.ts";
 import { SIZE_CLASSES } from "../src/generated/frames.ts";
 import { layoutOf } from "../src/ui/layout.ts";
 import { expect, test } from "./origin.ts";
-import { cardMenu, found, join, person, post, write } from "./social-helpers.ts";
+import { cardMenu, found, join, pageOverflow, person, post, write } from "./social-helpers.ts";
 
 // The community page at the contract's size classes (decision 0087): the
 // header shows as many members' pictures as the layout allows, and on an
@@ -80,7 +80,7 @@ test("the header's pictures and the aside follow the layout at every width", asy
     const beside = (await aside.boundingBox())!;
     expect(beside.x).toBeGreaterThanOrEqual(feed.x + feed.width);
     expect(beside.y).toBeLessThan(feed.y + feed.height);
-    expect(await owner.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+    expect(await pageOverflow(owner)).toBe(0);
 
     // It stays where it is while the feed scrolls under it, once the top bar
     // with the bell (decision 0109) has scrolled away above it.
