@@ -27,11 +27,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import samtak.spjall.account.Problem
 import samtak.spjall.brand.R
 import samtak.spjall.conversation.ConversationActions
 import samtak.spjall.conversation.ConversationScreen
 import samtak.spjall.conversation.ConversationViewModel
-import samtak.spjall.account.Problem
 import samtak.spjall.core.Author
 import samtak.spjall.core.Community
 import samtak.spjall.core.CommunityAudience
@@ -215,7 +215,16 @@ class SuspensionControlsTest {
 
     @Test
     fun theCommunityPostBoxAndItsSendAreDisabledWhileSuspended() {
-        under { Composer(label = "Skrifa", action = "Birta", text = "Halló", sending = false, onText = {}, onSend = {}) }
+        under {
+            Composer(
+                label = "Skrifa",
+                action = "Birta",
+                text = "Halló",
+                sending = false,
+                onText = {},
+                onSend = {},
+            )
+        }
         each { suspension ->
             val field = compose.onNode(hasSetText)
             val send = compose.onNode(hasText("Birta") and hasClickAction())
@@ -262,7 +271,12 @@ class SuspensionControlsTest {
 
     @Test
     fun creatingAGroupIsDisabledInTheFormWhileSuspended() {
-        under { CreateCommunityScreen(CreateCommunityViewModel.State(name = "Kórinn"), nothing<CreateCommunityActions>()) }
+        under {
+            CreateCommunityScreen(
+                CreateCommunityViewModel.State(name = "Kórinn"),
+                nothing<CreateCommunityActions>(),
+            )
+        }
         each { suspension ->
             val create = compose.onNode(hasText(text(R.string.community_create)) and hasClickAction())
             if (suspension == null) create.assertIsEnabled() else create.assertIsNotEnabled()
@@ -290,7 +304,17 @@ class SuspensionControlsTest {
             ConversationScreen(
                 ConversationViewModel.State(
                     conversation =
-                        Conversation("c1", ConversationState.ACTIVE, null, null, listOf(anna), null, 0u, null, Mute.Off),
+                        Conversation(
+                            "c1",
+                            ConversationState.ACTIVE,
+                            null,
+                            null,
+                            listOf(anna),
+                            null,
+                            0u,
+                            null,
+                            Mute.Off,
+                        ),
                     loaded = true,
                     draft = "Sæl",
                 ),
