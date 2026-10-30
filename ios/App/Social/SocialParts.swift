@@ -246,7 +246,7 @@ struct PostCard: View {
     @Environment(\.suspension) private var suspension
 
     /// A suspension refuses every write the card offers (0115), whatever the screen allows.
-    private var canWrite: Bool { writes && suspension == nil }
+    private var canWrite: Bool { mayWrite(suspension, writes) }
     /// Votes in the post's poll for the option, takes the vote back, or closes the poll (decision 0090). The close is
     /// set for the poll's author and for a moderator, while it is open.
     var onVote: ((String) -> Void)?
@@ -750,7 +750,7 @@ struct SocialComposer<Above: View, Leading: View>: View {
                     .font(.sans(14))
                     .lineLimit(1...6)
                     .focused($focused)
-                    .disabled(suspension != nil)
+                    .disabled(!mayWrite(suspension))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .frame(minHeight: 40)
@@ -767,7 +767,7 @@ struct SocialComposer<Above: View, Leading: View>: View {
                     }
                 RoundButton(
                     systemImage: "arrow.up", label: send, fill: BrandTokens.Colors.primary,
-                    tint: BrandTokens.Colors.primaryFg, size: 36, enabled: enabled && suspension == nil, action: onSend)
+                    tint: BrandTokens.Colors.primaryFg, size: 36, enabled: mayWrite(suspension, enabled), action: onSend)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)

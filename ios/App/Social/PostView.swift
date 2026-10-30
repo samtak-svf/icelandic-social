@@ -118,7 +118,7 @@ struct PostView: View {
             onReport: { reporting = Reporting(target: ReportTarget(kind: .comment, id: comment.commentId)) },
             onDelete: model.mine(comment.author) ? { deletingComment = comment.commentId } : nil,
             onReply: replyable ? { model.reply(to: comment) } : nil,
-            onLike: model.writes && suspension == nil
+            onLike: mayWrite(suspension, model.writes)
                 ? { Task<Void, Never> { await model.like(comment.commentId) } } : nil,
             replies: replies)
     }
@@ -194,13 +194,13 @@ private struct CommentComposer: View {
                     .padding(.bottom, 3)
                 RoundButton(
                     systemImage: "photo", label: "comment_add_image", fill: BrandTokens.Colors.muted,
-                    tint: BrandTokens.Colors.fg, size: 40, enabled: !busy && image == nil && suspension == nil
+                    tint: BrandTokens.Colors.fg, size: 40, enabled: mayWrite(suspension, !busy && image == nil)
                 ) { picking = true }
                 TextField("post_write_comment", text: $draft, axis: .vertical)
                     .font(.sans(14))
                     .lineLimit(1...5)
                     .focused($focused)
-                    .disabled(suspension != nil)
+                    .disabled(!mayWrite(suspension))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .frame(minHeight: 40)
@@ -223,7 +223,7 @@ private struct CommentComposer: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .disabled(!enabled || suspension != nil)
+                .disabled(!mayWrite(suspension, enabled))
                 .accessibilityLabel(Text("comment_publish"))
             }
             .padding(.horizontal, 12)

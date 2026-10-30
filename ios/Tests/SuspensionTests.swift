@@ -27,6 +27,21 @@ final class SuspensionTests: XCTestCase {
         XCTAssertEqual(standingSuspension(me(open), now: now), open)
     }
 
+    /// Like, comment, post, vote, join and create all ask `mayWrite`: allowed without a suspension, never with one,
+    /// whether or not it has an end, and still as their own condition says without one.
+    func testEveryControlThatWritesIsOffUnderASuspension() {
+        let ends = AccountSuspension(until: millis(now.addingTimeInterval(60)))
+        let open = AccountSuspension(until: nil)
+        XCTAssertTrue(mayWrite(nil))
+        XCTAssertTrue(mayWrite(nil, true))
+        XCTAssertFalse(mayWrite(nil, false))
+        for suspension in [ends, open] {
+            XCTAssertFalse(mayWrite(suspension))
+            XCTAssertFalse(mayWrite(suspension, true))
+            XCTAssertFalse(mayWrite(suspension, false))
+        }
+    }
+
     func testTheModelFollowsWhatTheServerReports() async {
         let social = FakeSocial()
         let model = SuspensionModel(social: social, now: { Self.fixed })

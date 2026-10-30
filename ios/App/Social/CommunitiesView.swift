@@ -269,7 +269,7 @@ private struct CreateRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(suspension != nil)
+        .disabled(!mayWrite(suspension))
         .accessibilityAddTraits(.isButton)
     }
 }
@@ -449,7 +449,7 @@ private struct CreateCommunitySheet: View {
                     } label: {
                         Text("community_create").frame(maxWidth: .infinity)
                     }
-                    .disabled(!ready || suspension != nil)
+                    .disabled(!mayWrite(suspension, ready))
                 }
             }
             .navigationTitle(Text("community_create"))

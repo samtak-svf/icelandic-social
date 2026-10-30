@@ -10,6 +10,12 @@ func standingSuspension(_ me: Me, now: Date = Date()) -> AccountSuspension? {
     return Dates.at(until) > now ? suspension : nil
 }
 
+/// Whether a control that writes (like, comment, post, vote, join, create) may be used: never while a suspension
+/// stands, and otherwise as `allowed` says. Every such control asks here, so one test holds them all.
+func mayWrite(_ suspension: AccountSuspension?, _ allowed: Bool = true) -> Bool {
+    allowed && suspension == nil
+}
+
 /// Reads whether this account is suspended, for the screens that write. A failed read keeps what was known, so a
 /// lost connection never lifts or sets a notice.
 @MainActor @Observable

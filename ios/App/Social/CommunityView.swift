@@ -281,7 +281,7 @@ struct CommunityView: View {
                 PillLabel(text: community.audience == .open ? "community_join" : "community_request_join", filled: true)
             }
             .buttonStyle(.plain)
-            .disabled(model.busy || suspension != nil)
+            .disabled(!mayWrite(suspension, !model.busy))
         } else if community.role != .owner {
             Button {
                 Task { await model.leave() }

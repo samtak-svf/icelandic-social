@@ -34,7 +34,7 @@ struct ComposePrompt: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .disabled(suspension != nil)
+            .disabled(!mayWrite(suspension))
         }
         .background(BrandTokens.Colors.surface)
     }
