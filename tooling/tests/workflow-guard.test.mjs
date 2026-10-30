@@ -112,12 +112,23 @@ describe("workflow-guard", () => {
   });
 
   it("keeps the exclusive runner lane to android.yml", () => {
-    const fork = "github.event.pull_request.head.repo.fork && '[\"ubuntu-latest\"]' || ";
-    const runsOn = `    runs-on: \${{ fromJSON(${fork}vars.EXCLUSIVE_RUNNER_LABELS || '["ubuntu-latest"]') }}\n`;
+    const runsOn = `    runs-on: ${RUNNER_EXPRESSIONS.EXCLUSIVE_RUNNER_LABELS}\n`;
     expect(findInWorkflow("w.yml", job(runsOn)).map((p) => [p.line, p.rule])).toEqual([
       [4, "exclusive-lane"],
     ]);
     expect(findInWorkflow(".github/workflows/android.yml", job(runsOn))).toEqual([]);
+  });
+
+  it("keeps a PR off the exclusive lane", () => {
+    const fork = "github.event.pull_request.head.repo.fork && '[\"ubuntu-latest\"]' || ";
+    const forkOnly = `    runs-on: \${{ fromJSON(${fork}vars.EXCLUSIVE_RUNNER_LABELS || '["ubuntu-latest"]') }}\n`;
+    expect(
+      findInWorkflow(".github/workflows/android.yml", job(forkOnly)).map((p) => p.rule),
+    ).toEqual(["runner-expr"]);
+    // The event test alone does not make another variable's lane canonical.
+    const event = "github.event_name == 'pull_request' && '[\"ubuntu-latest\"]' || ";
+    const other = `    runs-on: \${{ fromJSON(${event}vars.RUNNER_LABELS || '["ubuntu-latest"]') }}\n`;
+    expect(findInWorkflow("w.yml", job(other)).map((p) => p.rule)).toEqual(["runner-expr"]);
   });
 
   it("runs the toolchain action before anything that writes CARGO_HOME", () => {

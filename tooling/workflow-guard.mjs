@@ -59,7 +59,8 @@ const USES = /^\s*(?:-\s+)?uses:\s*(\S+)(.*)$/;
 const PINNED = /^[^@\s]+@[0-9a-f]{40}$/;
 const TAG_COMMENT = /^\s+#\s*v\d\S*\s*$/;
 const RUNS_ON = /^\s*runs-on:\s*(.+)$/;
-const FORK_FALLBACK = /github\.event\.pull_request\.head\.repo\.fork\s*&&/;
+const FORK_FALLBACK =
+  /github\.(?:event\.pull_request\.head\.repo\.fork|event_name == 'pull_request')\s*&&/;
 const TARGET = /^\s*pull_request_target\s*:|\bpull_request_target\b\s*[\],]/;
 const JOB = /^ {2}[\w-]+:\s*$/;
 const NOHUP = /(?:^|[\s;&|(])nohup\s/;
@@ -129,7 +130,8 @@ const runnerExpression = (variable, hosted) =>
 export const RUNNER_EXPRESSIONS = {
   RUNNER_LABELS: runnerExpression("RUNNER_LABELS", "ubuntu-latest"),
   GUARD_RUNNER_LABELS: runnerExpression("GUARD_RUNNER_LABELS", "ubuntu-latest"),
-  EXCLUSIVE_RUNNER_LABELS: runnerExpression("EXCLUSIVE_RUNNER_LABELS", "ubuntu-latest"),
+  // Every PR, a fork's among them, is hosted: only a run on main takes this lane.
+  EXCLUSIVE_RUNNER_LABELS: `\${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || vars.EXCLUSIVE_RUNNER_LABELS || '["ubuntu-latest"]') }}`,
   MAC_RUNNER_LABELS: runnerExpression("MAC_RUNNER_LABELS", "macos-26"),
 };
 

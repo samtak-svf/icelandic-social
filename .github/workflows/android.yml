@@ -42,6 +42,7 @@ on:
   # Daily, because a merge the gate skips writes no cache, and PRs restore main's.
   schedule:
     - cron: "23 4 * * *"
+  workflow_dispatch:
 
 concurrency:
   group: android-${{ github.head_ref || github.ref }}
@@ -109,13 +110,17 @@ jobs:
 
   device:
     # The AVD is one per machine (and the emulator reaches the dev Worker at
-    # 10.0.2.2:8787), so this job takes the lane of the single runner that
-    # holds them (EXCLUSIVE_RUNNER_LABELS, docs/testing.md).
+    # 10.0.2.2:8787), so outside a PR this job takes the lane of the single
+    # runner that holds them (EXCLUSIVE_RUNNER_LABELS, docs/testing.md).
     # On a hosted Linux runner the emulator needs KVM; on the Mac it is the
     # arm64 AVD android/scripts/test.sh boots, the script mac-remote.mjs runs.
     needs: gate
     if: ${{ !cancelled() && needs.gate.outputs.run != 'false' }}
-    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.EXCLUSIVE_RUNNER_LABELS || '["ubuntu-latest"]') }}
+    # A PR takes the hosted emulator (x86_64): it does not queue behind the one
+    # exclusive runner, whose wait set the pace of a PR (docs/testing.md § Where CI
+    # runs). A merge that runs, the daily run and a manual run take the Mac's arm64
+    # AVD, the ABI of a real phone, so CI still loads the arm64 core.
+    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || vars.EXCLUSIVE_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -150,7 +155,9 @@ jobs:
           target: default
           disable-animations: true
           working-directory: android
-          script: ./gradlew --console=plain connectedDebugAndroidTest
+          script: |
+            ./gradlew --console=plain connectedDebugAndroidTest
+            scripts/connected-count.sh
 
       # One AVD per Mac, shared with agent runs (scripts/mac-remote.mjs in agent-config takes the
       # same lock, docs/samtak-mac-workloads.md there). The owner is this job's Runner.Worker
