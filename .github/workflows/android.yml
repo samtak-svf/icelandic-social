@@ -97,7 +97,7 @@ jobs:
     # holds them (EXCLUSIVE_RUNNER_LABELS, docs/testing.md).
     # On a hosted Linux runner the emulator needs KVM; on the Mac it is the
     # arm64 AVD android/scripts/test.sh boots, the script mac-remote.mjs runs.
-    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["ubuntu-latest"]' || vars.EXCLUSIVE_RUNNER_LABELS || '["ubuntu-latest"]') }}
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

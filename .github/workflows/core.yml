@@ -343,7 +343,7 @@ jobs:
     if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/core-v')
     # MAC_RUNNER_LABELS names samtak-mac; unset, or for a fork's PR, the job
     # runs on GitHub's hosted macOS.
-    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.fork && '["macos-26"]' || vars.MAC_RUNNER_LABELS || '["macos-26"]') }}
+    runs-on: macos-26
     timeout-minutes: 45
     permissions:
       contents: read
