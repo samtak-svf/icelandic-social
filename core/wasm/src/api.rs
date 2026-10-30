@@ -235,6 +235,52 @@ impl Core {
             .map_err(|error| fail(Failure::from(&error)))
     }
 
+    /// Adds every device of these accounts to a group (0078), on the next
+    /// sync. People are picked from the directory, as a new group's are.
+    #[wasm_bindgen(js_name = addAccounts)]
+    pub fn add_accounts(
+        &mut self,
+        conversation_id: &str,
+        accounts: Vec<String>,
+    ) -> Result<(), JsValue> {
+        self.client
+            .add_accounts(conversation_id, &accounts)
+            .map_err(|error| fail(Failure::from(&error)))
+    }
+
+    /// Takes these accounts out of a group (0078), on the next sync. This
+    /// account is refused: leaving is `leave`.
+    #[wasm_bindgen(js_name = removeAccounts)]
+    pub fn remove_accounts(
+        &mut self,
+        conversation_id: &str,
+        accounts: Vec<String>,
+    ) -> Result<(), JsValue> {
+        self.client
+            .remove_accounts(conversation_id, &accounts)
+            .map_err(|error| fail(Failure::from(&error)))
+    }
+
+    /// Names a group, or clears its name with `null` or a blank one (0078);
+    /// the envelope id. `not-a-group` for a conversation of two,
+    /// `name-invalid` past 64 characters or with a control character.
+    #[wasm_bindgen(unchecked_return_type = "string")]
+    pub fn rename(
+        &mut self,
+        conversation_id: &str,
+        name: Option<String>,
+    ) -> Result<JsValue, JsValue> {
+        answer(self.client.rename(conversation_id, name))
+    }
+
+    /// Leaves a group (0078): the server stops listing this account and the
+    /// conversation is `left`. Leaving again is done already.
+    pub fn leave(&mut self, conversation_id: &str) -> Result<(), JsValue> {
+        self.client
+            .leave(conversation_id)
+            .map_err(|error| fail(Failure::from(&error)))
+    }
+
     #[wasm_bindgen(unchecked_return_type = "Me")]
     pub fn me(&mut self) -> Result<JsValue, JsValue> {
         answer(self.client.hosted().me().map(dto::Me::from))
