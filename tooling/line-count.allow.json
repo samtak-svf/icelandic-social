@@ -26,7 +26,7 @@
   "core/client/src/photo.rs": 442,
   "core/client/src/social.rs": 624,
   "core/client/src/timeline.rs": 1917,
-  "core/client/tests/backend.rs": 924,
+  "core/client/tests/backend.rs": 512,
   "core/client/tests/sign_in.rs": 523,
   "core/client/tests/social.rs": 1742,
   "core/client/tests/support/relay.rs": 1866,
