@@ -5,6 +5,7 @@
 #
 #   android/scripts/test.sh              ktlint, detekt, lint, unit tests, assembleDebug
 #   android/scripts/test.sh --connected  connectedDebugAndroidTest on the AVD spjall-test
+#   android/scripts/test.sh --record     rewrite the Roborazzi baselines (tooling/mac-remote.mjs record)
 #
 # --connected reuses a device adb already lists; otherwise it boots the AVD,
 # headless, and stops only an emulator it started itself.
@@ -35,6 +36,10 @@ if ! cmp -s "$ROOT/core/artifact.lock.json" "$stamp" 2>/dev/null; then
 fi
 
 cd "$ANDROID"
+if [ "${1:-}" = "--record" ]; then
+  ./gradlew --console=plain :app:recordRoborazziDebug
+  exit
+fi
 if [ "${1:-}" != "--connected" ]; then
   ./gradlew --console=plain check assembleDebug
   exit
