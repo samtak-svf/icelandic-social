@@ -2,7 +2,7 @@
 
 - Status: accepted; implemented in the backend (ccccd11) and the core (0094e67); the apps offer it
   since e062505 and afb3ba6; a roster claim without a Welcome refused since 1dc71fa;
-  amended by 0063
+  amended by 0063 and 0114
 - Date: 2026-10-07
 - Decided by: the maintainer, approving the plan for the conversation UI
 - Builds on: [0009](0009-v1-scope.md) (block is in v1),
@@ -10,7 +10,8 @@
   [0020](0020-membership-bound-to-commits.md)
 - Amended by: [0063](0063-communities-audiences-and-moderation.md) (block hides social content both ways; a moderator's duty outranks it),
   [0034](0034-fljotid-and-the-wall.md) (block extends to posts in Fljótið),
-  [0039](0039-profile-photo.md) (block withholds the profile photo, both ways)
+  [0039](0039-profile-photo.md) (block withholds the profile photo, both ways),
+  [0114](0114-friends-and-the-person-screen.md) (a block ends a friendship and clears requests, both ways)
 
 ## Decision
 

@@ -1,7 +1,7 @@
 # 0034. Fljótið: a public feed every account is in, and each account's wall
 
 - Status: accepted; implemented in the backend (3694684), the core (015fdbe, 0.11.0) and the apps (315f77e); the feed, the wall
-  and posts removed by 0044
+  and posts removed by 0044; the wall returns under 0115
 - Date: 2026-10-09
 - Decided by: the maintainer, approving the plan for Google sign-in, Kenni verification and
   the feed
@@ -13,7 +13,8 @@
   posts)
 - Amended by: [0044](0044-no-fljotid-in-v1.md) (the feed, the wall and posts leave v1; names
   and `open_direct` stay), [0036](0036-everyone-signed-in-is-in-the-picker.md) (the picker lists everyone
-  signed in, with name search)
+  signed in, with name search), [0115](0115-the-wall.md) (Ég is a wall again, under a new design:
+  friends by default, and moderated by the platform)
 
 ## Decision
 

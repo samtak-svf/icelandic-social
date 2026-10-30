@@ -1,6 +1,6 @@
 # 0009. The first release is chat only, for a closed test group
 
-- Status: accepted; amended by 0033, 0034, 0036, 0039, 0040, 0041, 0042, 0044, 0046, 0059, 0060, 0063, 0071, 0076, 0078, 0079, 0082, 0084, 0086, 0087, 0088, 0089, 0090, 0091 and 0094
+- Status: accepted; amended by 0033, 0034, 0036, 0039, 0040, 0041, 0042, 0044, 0046, 0059, 0060, 0063, 0071, 0076, 0078, 0079, 0082, 0084, 0086, 0087, 0088, 0089, 0090, 0091, 0094, 0114, 0115 and 0116
 - Date: 2026-10-05
 - Decided by: Guðröður (the scope questions); the implementation choices below follow from them
 - Amended by: [0033](0033-google-sign-in-and-kenni-verification.md) (the invite is no longer the beta gate),
@@ -28,7 +28,10 @@
   [0089](0089-a-community-has-tabs.md) (tabs in a community),
   [0090](0090-a-post-can-be-a-poll.md) (polls),
   [0091](0091-anonymous-posts-in-a-community.md) (anonymous posts, off by default),
-  [0094](0094-a-group-photo-end-to-end-encrypted.md) (a group photo, end-to-end encrypted)
+  [0094](0094-a-group-photo-end-to-end-encrypted.md) (a group photo, end-to-end encrypted),
+  [0114](0114-friends-and-the-person-screen.md) (friends and the person screen),
+  [0115](0115-the-wall.md) (the wall),
+  [0116](0116-the-feed.md) (the feed, the first tab)
 - Built on by: [0022](0022-the-conversation-surfaces.md) (the list, the conversation, the
   toggles), [0023](0023-media-as-encrypted-blobs.md) (photos and files),
   [0024](0024-block.md) (block)
