@@ -228,18 +228,18 @@ instances), for its speed and its arm64 AVD, each chosen by a repository variabl
   | `backend/test`  | 5.0    | 2.6 (3.0)   | hosted                                  |
   | `interop`       | 6.2    | 3.4 (5.1)   | hosted                                  |
   | `web`           | 5.5    | 6.2, shards | hosted, two shards                      |
-  | `core/android`  | 20.3   | 19.2 (20.6) | hosted                                  |
+  | core `android`  | 20.3   | 19.2 (20.6) | hosted                                  |
   | `device`        | 11.8   | 4.9 (5.1)   | hosted on a PR, the Mac's AVD otherwise |
   | `ios/build`     | 3.4    | 1.6 (3.5)   | the Mac                                 |
-  | `core/ios`      | 19.7   | 11.1 (35.9) | the Mac                                 |
+  | core `ios`      | 19.7   | 11.1 (35.9) | the Mac                                 |
 
 - **`web` runs as two Playwright shards.** One hosted job took 10.2 min, 8 of them Playwright on
   the runner's two workers, against 5.5 on the Mac. Two shards, each with its own Worker, take 6.2
   (first runs, n=2). More workers on one runner were rejected: the 5 s assertions give way under
   CPU load (#355). `proof` needs both shards, shown by a drill.
 - **iOS stays on the Mac.** `ios/build` took 12.0 min on `macos-26` against 1.6, its build step
-  505 s against 67 s, and `core/ios` 18 to 23 against 11.1. A Free organisation also gets 5
-  concurrent macOS jobs out of 20 (GitHub Actions limits). The 35.9 on `core/ios` is one run of
+  505 s against 67 s, and core `ios` 18 to 23 against 11.1. A Free organisation also gets 5
+  concurrent macOS jobs out of 20 (GitHub Actions limits). The 35.9 on core `ios` is one run of
   18:13, while Linux jobs were still on the Mac; the five runs from 19:58 took 9.0 to 12.6.
 - **The exclusive lane** exists because the Android emulator is one AVD, and it reaches the dev
   Worker at the fixed `10.0.2.2:8787`: only the Android device job uses it. Only one runner
