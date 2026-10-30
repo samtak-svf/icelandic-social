@@ -40,10 +40,11 @@ internal class SocialPoster(
             .setContentIntent(open(announcement))
             .build()
 
-    /** Opens the post, or its community when there is none. The data keeps one intent per notification. */
+    /** Opens the post, or its community when there is none, or just the app. The data keeps one intent per row. */
     private fun open(announcement: SocialAnnouncement): PendingIntent {
         val route =
-            announcement.postId?.let { SocialRoutes.post(it) } ?: SocialRoutes.community(announcement.communityId)
+            announcement.postId?.let { SocialRoutes.post(it) }
+                ?: announcement.communityId?.let { SocialRoutes.community(it) }
         val intent =
             Intent(context, MainActivity::class.java)
                 .setAction(MainActivity.ACTION_OPEN_SOCIAL)

@@ -13,6 +13,13 @@ final class NotificationTapTests: XCTestCase {
         XCTAssertNil(model.takeOpened())
     }
 
+    func testATapOnANoticeWithNoCommunityIsNeverAConversation() {
+        let model = PushModel(account: FakeAccount(signedIn: true), notifier: FakeNotifier())
+        model.tapped(thread: "n1", community: nil, post: nil, notice: "n1")
+        XCTAssertEqual(model.takeOpenedSocial(), SocialTap(post: nil, community: nil))
+        XCTAssertNil(model.takeOpened())
+    }
+
     func testATapWithoutACommunityOpensItsConversation() {
         let model = PushModel(account: FakeAccount(signedIn: true), notifier: FakeNotifier())
         model.tapped(thread: "c1", community: nil, post: nil)

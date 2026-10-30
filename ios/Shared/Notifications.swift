@@ -32,6 +32,8 @@ extension Announcement {
 enum SocialTapKey {
     static let post = "post"
     static let community = "community"
+    /// Marks a social notification with no community, whose thread is no conversation.
+    static let notice = "notice"
 }
 
 extension SocialAnnouncement {
@@ -41,8 +43,11 @@ extension SocialAnnouncement {
         content.body = sentence
         content.threadIdentifier = id
         content.sound = sound
-        var info: [String: String] = [SocialTapKey.community: community]
+        var info: [String: String] = [:]
+        if let community { info[SocialTapKey.community] = community }
         if let post { info[SocialTapKey.post] = post }
+        // With no community the thread alone would read as a conversation's id when tapped.
+        if community == nil { info[SocialTapKey.notice] = id }
         content.userInfo = info
         return content
     }

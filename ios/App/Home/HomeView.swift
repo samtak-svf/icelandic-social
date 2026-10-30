@@ -369,12 +369,13 @@ struct HomeView: View {
         path = [.conversation(id)]
     }
 
-    /// A tapped social notification: into its post, or its community, over the notifications (decisions 0107, 0109).
+    /// A tapped social notification: into its post or its community, over the notifications, or the notifications
+    /// themselves when it has neither (decisions 0107, 0109, 0114).
     private func openTappedSocial() {
         guard let tap = push.takeOpenedSocial() else { return }
         noticesOver = NoticesOver()
         tab = .notifications
-        noticesPath = [tap.post.map(SocialRoute.post) ?? .community(tap.community)]
+        noticesPath = [tap.post.map(SocialRoute.post) ?? tap.community.map(SocialRoute.community)].compactMap { $0 }
     }
 
     /// An invite link opened while signed in: into the 1:1 with whoever made it.

@@ -256,6 +256,18 @@ class NotificationsViewModelTest {
     }
 
     @Test
+    fun aTapOnARowWithNoCommunityGoesNowhere() {
+        assertEquals(
+            Opens.Nowhere,
+            notification("n", SocialNotificationKind.MODERATED, 1uL, postId = null, communityId = null).opens(),
+        )
+        assertEquals(
+            Opens.Post("p1"),
+            notification("n", SocialNotificationKind.COMMENT, 1uL, communityId = null).opens(),
+        )
+    }
+
+    @Test
     fun aFailedLoadCanBeTriedAgain() =
         runTest(dispatcher) {
             social.failNext = unreachable()

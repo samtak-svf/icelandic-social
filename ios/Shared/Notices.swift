@@ -68,7 +68,7 @@ struct SocialAnnouncement: Equatable, Sendable {
     let sentence: String
     /// What a tap opens: the post, or the community when there is no post.
     let post: String?
-    let community: String
+    let community: String?
 }
 
 /// The core's social notices as announcements, in their order.

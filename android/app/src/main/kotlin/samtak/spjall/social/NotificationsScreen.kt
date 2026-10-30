@@ -91,5 +91,5 @@ private fun LazyListScope.section(
             modifier = Modifier.semantics { heading() },
         )
     }
-    items(rows, key = { it.notificationId }) { NoticeRow(it, state.communities[it.communityId], actions) }
+    items(rows, key = { it.notificationId }) { NoticeRow(it, it.communityId?.let(state.communities::get), actions) }
 }

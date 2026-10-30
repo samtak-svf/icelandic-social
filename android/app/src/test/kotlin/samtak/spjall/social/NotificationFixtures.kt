@@ -8,6 +8,7 @@ fun notification(
     kind: SocialNotificationKind,
     createdAt: ULong,
     postId: String? = "p1",
+    communityId: String? = "k1",
 ) = SocialNotification(
     notificationId = id,
     kind = kind,
@@ -16,7 +17,7 @@ fun notification(
     actorCount = 1uL,
     snippet = null,
     announce = false,
-    communityId = "k1",
+    communityId = communityId,
     postId = postId,
     commentId = null,
     action = null,
