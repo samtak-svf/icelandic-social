@@ -88,3 +88,16 @@ export function FeaturedList({ featured }: Readonly<{ featured: Post[] }>) {
 export function feedItemClass(postId: string, featured: readonly Post[]): string | undefined {
   return featured.some((post) => post.postId === postId) ? "expanded:hidden" : undefined;
 }
+
+/**
+ * The class of the sentence a feed with nothing to show says (#368), or null
+ * when the feed has something to show. With no posts it always shows. When
+ * every listed post is in the aside the feed is blank only on an expanded
+ * window, so the sentence shows there alone: CSS again, with no width read, and
+ * below expanded the posts are in their places and the sentence stays hidden.
+ */
+export function emptyFeedClass(posts: readonly Post[], featured: readonly Post[]): string | null {
+  if (posts.length === 0) return "text-muted-fg";
+  const allAside = posts.every((post) => featured.some((f) => f.postId === post.postId));
+  return allAside ? "hidden text-muted-fg expanded:block" : null;
+}
