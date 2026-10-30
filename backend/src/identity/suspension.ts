@@ -62,7 +62,7 @@ const refuseWhileSuspended = createMiddleware<AppEnv>(async (c, next) => {
   if (!stands) return next();
   // A refusal cancels the body, so a client that is uploading stops sending it.
   await c.req.raw.body?.cancel();
-  return fail(c, 403, "suspended", stands.until === null ? {} : { until: stands.until });
+  return fail(c, 409, "suspended", stands.until === null ? {} : { until: stands.until });
 });
 
 /** `route`, refused to a suspended account before anything else about the request is read. */
