@@ -5,6 +5,7 @@ import {
   eventRows,
   jobRows,
   lane,
+  matrixRows,
   mergeRows,
   paceRows,
   shapeRows,
@@ -92,6 +93,48 @@ describe("toJob", () => {
       ],
     });
     expect(found.steps).toEqual([{ name: "Playwright", seconds: 120 }]);
+  });
+});
+
+describe("matrixRows", () => {
+  const leg = (
+    /** @type {string} */ name,
+    /** @type {number} */ end,
+    /** @type {string} */ conclusion = "success",
+    /** @type {number} */ runMinute = 0,
+  ) =>
+    job(
+      { created_at: at(runMinute) },
+      {
+        name,
+        conclusion,
+        created_at: at(runMinute),
+        started_at: at(runMinute + 1),
+        completed_at: at(runMinute + end),
+      },
+    );
+
+  it("reads a run's legs as one job, first created to last completed", () => {
+    const rows = matrixRows([leg("web (1)", 5), leg("web (2)", 6)]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ job: "web", legs: 2, failed: 0 });
+    expect(rows[0]?.total).toMatchObject({ n: 1, median: 6 });
+  });
+
+  it("keeps two runs apart and counts a run with a failed leg as failed", () => {
+    const rows = matrixRows([
+      leg("web (1)", 5),
+      leg("web (2)", 6),
+      leg("web (1)", 5, "success", 20),
+      leg("web (2)", 7, "failure", 20),
+    ]);
+    expect(rows[0]).toMatchObject({ failed: 1 });
+    expect(rows[0]?.total).toMatchObject({ n: 2, max: 7 });
+  });
+
+  it("leaves out a plain job and a run with a cancelled leg", () => {
+    expect(matrixRows([leg("web", 5)])).toEqual([]);
+    expect(matrixRows([leg("web (1)", 5), leg("web (2)", 6, "cancelled")])).toEqual([]);
   });
 });
 

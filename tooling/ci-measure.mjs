@@ -11,6 +11,9 @@
 // - wait: job started minus job created, so a job's queue time on its runner.
 // - run: job completed minus job started.
 // - total: wait plus run, what a lane costs the person waiting on it.
+// - whole matrix: one run's `web (1)` and `web (2)` read as `web`, first leg created
+//   to last leg completed, since that is what a person waits for. A sharded job
+//   compares with its unsharded self only on this figure.
 // - commit wall: for one PR head commit, the first run created to the last job
 //   completed, in its newest attempt. Cancelled commits do not count: a commit
 //   nobody waited for to the end says nothing about the wait.
@@ -22,15 +25,13 @@
 
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
+import { render } from "./lib/ci-measure-render.mjs";
 
 const REPO = "samtak-svf/icelandic-social";
 const API = "https://api.github.com";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CONCURRENCY = 8;
 const RETRIES = 5;
-
-/** Under this many samples a row is an anecdote (#393 asks for 10 PRs). */
-export const MIN_SAMPLE = 10;
 
 /**
  * @typedef {{ name: string, started_at: string | null, completed_at: string | null, conclusion: string | null }} ApiStep
@@ -116,6 +117,53 @@ export function toJob(run, job) {
 }
 
 const minutes = (/** @type {number} */ ms) => ms / 60000;
+
+/**
+ * The legs of a matrix job read as one job per run: first leg created to last
+ * leg completed. A run with a cancelled leg does not count, as in jobRows, and a
+ * failed leg fails the whole.
+ * @param {Job[]} jobs
+ */
+export function matrixRows(jobs) {
+  /** @type {Map<string, Job[]>} */
+  const runs = new Map();
+  for (const job of jobs) {
+    const base = /^(.+) \([^()]+\)$/.exec(job.job)?.[1];
+    if (!base) continue;
+    const key = [job.workflow, base, job.lane, job.event, job.runCreated, job.attempt].join("\t");
+    runs.set(key, [...(runs.get(key) ?? []), job]);
+  }
+  /** @type {Map<string, { total: number, legs: number, failed: boolean }[]>} */
+  const groups = new Map();
+  for (const [key, legs] of runs) {
+    if (legs.some((leg) => leg.conclusion !== "success" && leg.conclusion !== "failure")) continue;
+    const group = key.split("\t").slice(0, 4).join("\t");
+    const first = Math.min(...legs.map((leg) => leg.created));
+    const last = Math.max(...legs.map((leg) => leg.completed));
+    groups.set(group, [
+      ...(groups.get(group) ?? []),
+      {
+        total: minutes(last - first),
+        legs: legs.length,
+        failed: legs.some((leg) => leg.conclusion === "failure"),
+      },
+    ]);
+  }
+  return [...groups.entries()]
+    .map(([key, group]) => {
+      const [workflow = "", job = "", laneName = "", event = ""] = key.split("\t");
+      return {
+        workflow,
+        job,
+        lane: laneName,
+        event,
+        legs: Math.max(...group.map((row) => row.legs)),
+        total: spread(group.map((row) => row.total)),
+        failed: group.filter((row) => row.failed).length,
+      };
+    })
+    .sort((a, b) => b.total.median - a.total.median);
+}
 
 /**
  * Wait, run and total per workflow, job, lane and event. Only finished jobs
@@ -397,65 +445,6 @@ async function pool(items, work) {
   return results;
 }
 
-/** @param {number} value */
-const fixed = (value) => value.toFixed(1).padStart(6);
-
-/** @param {Spread} s */
-const cell = (s) => `${fixed(s.median)} ${fixed(s.p90)} ${fixed(s.max)}`;
-
-/** @param {number} n */
-const few = (n) => (n < MIN_SAMPLE ? " few" : "");
-
-/**
- * The tables, as text.
- * @param {ReturnType<typeof report>} data
- * @param {boolean} steps
- */
-function render(data, steps) {
-  const lines = [`window ${data.since} .. ${data.until}: ${data.runs} runs, ${data.jobs} jobs`, ""];
-  lines.push("runs and job minutes per event");
-  for (const row of data.events) {
-    lines.push(
-      `  ${row.event.padEnd(20)} ${String(row.runs).padStart(5)} runs ${((row.runs / data.runs) * 100).toFixed(0).padStart(3)}%  ran ${fixed(row.jobMinutes)} min  waited ${fixed(row.waitMinutes)} min`,
-    );
-  }
-  lines.push("", "per job, minutes (median p90 max): wait | run | total");
-  for (const row of data.jobRows) {
-    lines.push(
-      `  ${`${row.workflow}/${row.job}`.padEnd(30)} ${row.lane.padEnd(14)} ${row.event.padEnd(13)} n=${String(row.total.n).padStart(3)} failed=${String(row.failed).padStart(2)} ${cell(row.wait)} | ${cell(row.run)} | ${cell(row.total)}${few(row.total.n)}`,
-    );
-  }
-  lines.push("", "commit wall, PR head commits waited for to the end");
-  lines.push(
-    `  all: n=${data.wall.n} median ${data.wall.median.toFixed(1)} p90 ${data.wall.p90.toFixed(1)} max ${data.wall.max.toFixed(1)}, with a re-run: ${data.rerunCommits}${few(data.wall.n)}`,
-  );
-  lines.push("", "the job that finished last on a commit");
-  for (const row of data.pace) {
-    lines.push(
-      `  ${row.key.replace("\t", " ").padEnd(46)} n=${String(row.wall.n).padStart(3)} wall ${cell(row.wall)}${few(row.wall.n)}`,
-    );
-  }
-  lines.push("", "commit wall by what the path filters let run");
-  for (const row of data.shapes) {
-    lines.push(
-      `  n=${String(row.wall.n).padStart(3)} wall ${cell(row.wall)}  ${row.shape}${few(row.wall.n)}`,
-    );
-  }
-  lines.push("", "PR open to merge, minutes");
-  lines.push(
-    `  n=${data.merge.n} median ${data.merge.median.toFixed(1)} p90 ${data.merge.p90.toFixed(1)} max ${data.merge.max.toFixed(1)}${few(data.merge.n)}`,
-  );
-  if (steps) {
-    lines.push("", "slowest steps, seconds (median p90 max)");
-    for (const row of data.steps.slice(0, 40)) {
-      lines.push(
-        `  n=${String(row.seconds.n).padStart(3)} ${cell(row.seconds)}  ${row.key.replaceAll("\t", " / ")}`,
-      );
-    }
-  }
-  return lines.join("\n");
-}
-
 /**
  * Every figure, from the API's records.
  * @param {{ since: number, until: number, runs: ApiRun[], jobs: Job[], pulls: ApiPull[] }} input
@@ -469,6 +458,7 @@ export function report({ since, until, runs, jobs, pulls }) {
     jobs: jobs.length,
     events: eventRows(runs, jobs),
     jobRows: jobRows(jobs),
+    matrixRows: matrixRows(jobs),
     wall: spread(commits.map((row) => row.wall)),
     rerunCommits: commits.filter((row) => row.reruns > 0).length,
     pace: paceRows(commits),

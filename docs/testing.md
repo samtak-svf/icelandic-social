@@ -216,10 +216,11 @@ instances), for its speed and its arm64 AVD, each chosen by a repository variabl
 
 - **Unset means hosted.** Every lane falls back to `ubuntu-latest`, so deleting a variable moves its
   jobs back to GitHub with no workflow change. A PR from a fork always runs hosted.
-- **Each lane is where its total wait is shortest.** Medians in minutes of queue plus run, p90 in
-  brackets, on PRs. Before is the Macs (issue baseline of 10-29, and 10-23 to 10-30 for the core
-  and device jobs). After is 18:00 to 22:20 on 10-30, 18 merged PRs, core and contract among them,
-  so few samples on some rows, and read with `tooling/ci-measure.mjs`.
+- **Every job's total wait came down except `web`, which went up by half a minute at the median.**
+  Medians in minutes of queue plus run, p90 in brackets, on PRs. Before is the Macs: the newest 60
+  successful runs since 10-29 (the #393 baseline), and 10-23 to 10-30 for the core and device jobs.
+  After is 18:00 to 22:20 on 10-30, 18 merged PRs, core and contract among them, so few samples on
+  some rows, and read with `tooling/ci-measure.mjs`.
 
   | Job             | Before | After       | Lane now                                |
   | --------------- | ------ | ----------- | --------------------------------------- |
@@ -227,16 +228,23 @@ instances), for its speed and its arm64 AVD, each chosen by a repository variabl
   | `drill`         | 14.5   | 2.9 (6.2)   | hosted                                  |
   | `backend/test`  | 5.0    | 2.6 (3.0)   | hosted                                  |
   | `interop`       | 6.2    | 3.4 (5.1)   | hosted                                  |
-  | `web`           | 5.5    | 6.2, shards | hosted, two shards                      |
+  | `web`           | 5.5    | 6.0 (6.2)   | hosted, two shards                      |
   | core `android`  | 20.3   | 19.2 (20.6) | hosted                                  |
   | `device`        | 11.8   | 4.9 (5.1)   | hosted on a PR, the Mac's AVD otherwise |
   | `ios/build`     | 3.4    | 1.6 (3.5)   | the Mac                                 |
   | core `ios`      | 19.7   | 11.1 (35.9) | the Mac                                 |
 
 - **`web` runs as two Playwright shards.** One hosted job took 10.2 min, 8 of them Playwright on
-  the runner's two workers, against 5.5 on the Mac. Two shards, each with its own Worker, take 6.2
-  (first runs, n=2). More workers on one runner were rejected: the 5 s assertions give way under
-  CPU load (#355). `proof` needs both shards, shown by a drill.
+  the runner's two workers. Two shards, each with its own Worker, take 6.0 (6.2), first leg created
+  to last leg done. That is n=2 and one of the two is a drill with a deliberately failing shard;
+  the passing run took 6.2, and the one merge since took 5.8. More workers on one runner were
+  rejected: the 5 s assertions give way under CPU load (#355). `proof` needs both shards, shown by
+  a drill.
+- **`web` stays hosted although it is slower than its baseline.** The 5.5 is 1.7 of run plus 3.8 of
+  wait, from one day's runs. The same job on the Mac over 10-23 to 10-30 took 3.6 of run plus 5.6
+  of wait, 9.8 in total with a p90 of 27.7 (n=61), and the latest Mac run of today's suite took
+  4.7. So an idle Mac is about a minute faster and a busy one far slower. Going back returns that
+  wait and takes the Mac from the iOS jobs, which took 9.0 to 12.6 once the Linux jobs had left it.
 - **iOS stays on the Mac.** `ios/build` took 12.0 min on `macos-26` against 1.6, its build step
   505 s against 67 s, and core `ios` 18 to 23 against 11.1. A Free organisation also gets 5
   concurrent macOS jobs out of 20 (GitHub Actions limits). The 35.9 on core `ios` is one run of
