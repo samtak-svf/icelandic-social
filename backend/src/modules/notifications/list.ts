@@ -42,8 +42,8 @@ export function shownTo(reach: NoticeReach): string {
   }
   const kinds = OLD_KINDS.map((k) => `'${k}'`).join(", ");
   const actions = OLD_ACTIONS.map((a) => `'${a}'`).join(", ");
-  return `${LIVE} AND n.community_id IS NOT NULL AND n.kind IN (${kinds})
-    AND (n.action IS NULL OR n.action IN (${actions}))`;
+  return `${LIVE} AND ((n.community_id IS NOT NULL AND n.kind IN (${kinds})
+    AND (n.action IS NULL OR n.action IN (${actions}))) OR n.action = 'suspend_account')`;
 }
 
 /** How many actors a row names. */
