@@ -42,7 +42,9 @@
 //    merges untested.
 // 12. A job the tree-proof gate can skip runs unless the gate says "false", so a
 //    gate that failed runs everything, and the `proof` job waits on it by name,
-//    so a marker never says more than what passed (tooling/tree-proof.mjs).
+//    so a marker never says more than what passed (tooling/tree-proof.mjs). Both
+//    callers grant `actions: read`: GitHub checks the called file's every job
+//    against the caller, so a run without it fails to start at all.
 //
 // Line-based on purpose: the rules are about single lines, and the guard stays
 // dependency-free like the others (tooling/lib/repo.mjs).
@@ -318,19 +320,29 @@ export function actionPathProblems(file, text, actionUses) {
 /**
  * The jobs of a workflow, each with its first line, its `if` and its `needs`.
  * @param {string} text
- * @returns {{ name: string, line: number, condition: string, needs: string[] }[]}
+ * @returns {{ name: string, line: number, condition: string, needs: string[], canReadActions: boolean, callsProof: boolean }[]}
  */
 function jobHeads(text) {
-  /** @type {{ name: string, line: number, condition: string, needs: string[] }[]} */
+  /** @type {ReturnType<typeof jobHeads>} */
   const jobs = [];
   let inJobs = false;
   text.split("\n").forEach((raw, index) => {
     if (/^\S/.test(raw)) inJobs = /^jobs:\s*$/.test(raw);
     if (!inJobs) return;
     const name = /^ {2}([\w-]+):\s*$/.exec(raw)?.[1];
-    if (name) jobs.push({ name, line: index + 1, condition: "", needs: [] });
+    if (name)
+      jobs.push({
+        name,
+        line: index + 1,
+        condition: "",
+        needs: [],
+        canReadActions: false,
+        callsProof: false,
+      });
     const job = jobs.at(-1);
     if (!job) return;
+    if (/^ {6}actions: read\b/.test(raw)) job.canReadActions = true;
+    if (/^ {4}uses: \.\/\.github\/workflows\/tree-proof\.yml\s*$/.test(raw)) job.callsProof = true;
     const condition = /^ {4}if:\s*(.+)$/.exec(raw)?.[1];
     if (condition) job.condition = condition;
     const needs = /^ {4}needs:\s*(.+)$/.exec(raw)?.[1];
@@ -354,13 +366,12 @@ const GATE_OPEN = "!cancelled() && needs.gate.outputs.run != 'false'";
 export function treeProofProblems(file, text) {
   const jobs = jobHeads(text);
   const gated = jobs.filter((job) => job.needs.includes("gate"));
-  if (gated.length === 0) return [];
   /** @type {Problem[]} */
   const found = [];
   const problem = (/** @type {number} */ line, /** @type {string} */ message) =>
     found.push({ file, line, rule: "tree-proof", message });
   const proof = jobs.find((job) => job.name === "proof");
-  if (!proof) problem(gated[0]?.line ?? 1, "a workflow with a gate needs a proof job");
+  if (!proof && gated[0]) problem(gated[0].line, "a workflow with a gate needs a proof job");
   for (const job of gated) {
     if (!job.condition.includes(GATE_OPEN)) {
       problem(job.line, `${job.name} must run unless the gate says so: if: ${GATE_OPEN}`);
@@ -370,6 +381,11 @@ export function treeProofProblems(file, text) {
     }
     if (proof && !proof.condition.includes(`needs.${job.name}.result == 'success'`)) {
       problem(proof.line, `proof must require needs.${job.name}.result == 'success'`);
+    }
+  }
+  for (const job of jobs) {
+    if (job.callsProof && !job.canReadActions) {
+      problem(job.line, `${job.name} calls tree-proof.yml and must grant actions: read`);
     }
   }
   return found;

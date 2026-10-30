@@ -193,6 +193,8 @@ describe("rule 12", () => {
     const results = proofIf ?? "needs.a.result == 'success' && needs.b.result == 'success'";
     return `jobs:
   gate:
+    permissions:
+      actions: read
     uses: ./.github/workflows/tree-proof.yml
   a:
     needs: gate
@@ -224,6 +226,15 @@ ${proof ? `  proof:\n    needs: ${proofNeeds}\n    if: \${{ ${results} }}\n` : "
 
   it("refuses a gate with no proof, which could never skip anything", () => {
     expect(rules(workflow({ proof: false }))[0]).toMatch(/needs a proof job/);
+  });
+
+  it("refuses a call of the file that does not grant what its gate job asks", () => {
+    const call = (/** @type {string} */ grant) =>
+      `jobs:\n  proof:\n${grant}    uses: ./.github/workflows/tree-proof.yml\n`;
+    expect(treeProofProblems("w.yml", call("")).map((p) => p.message)).toEqual([
+      "proof calls tree-proof.yml and must grant actions: read",
+    ]);
+    expect(treeProofProblems("w.yml", call("    permissions:\n      actions: read\n"))).toEqual([]);
   });
 
   it("holds the filters of the real workflows: a PR runs on everything a push looks for", () => {

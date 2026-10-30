@@ -461,6 +461,9 @@ jobs:
   proof:
     needs: [test, wasm, store-opfs]
     if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.test.result == 'success' && needs.wasm.result == 'success' && needs.store-opfs.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read # asked of the whole called file, though only its gate job reads
     uses: ./.github/workflows/tree-proof.yml
     with:
       workflow: core

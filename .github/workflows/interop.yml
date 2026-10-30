@@ -136,6 +136,9 @@ jobs:
   proof:
     needs: [interop]
     if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.interop.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read # asked of the whole called file, though only its gate job reads
     uses: ./.github/workflows/tree-proof.yml
     with:
       workflow: interop

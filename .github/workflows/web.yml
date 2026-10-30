@@ -106,6 +106,9 @@ jobs:
   proof:
     needs: [web]
     if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.web.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read # asked of the whole called file, though only its gate job reads
     uses: ./.github/workflows/tree-proof.yml
     with:
       workflow: web
