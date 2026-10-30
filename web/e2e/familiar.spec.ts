@@ -16,6 +16,8 @@ import {
 // comment, and the link a post copies.
 
 test("a hub row counts what is new, and opening the community clears it", async ({ browser }) => {
+  // Long, with no single slow step: under load it ran out of the default 30 s (#355).
+  test.slow();
   const owner = await person(browser, "Eigandi Nýjungadóttir");
   const member = await person(browser, "Meðlimur Nýjungason");
   const community = await found(owner, "open");

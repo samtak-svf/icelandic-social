@@ -137,6 +137,8 @@ test("a member joins, posts, comments, reacts, is told and reports; a moderator 
 test("a member posts images, deletes a comment and the post, and withdraws a join request", async ({
   browser,
 }) => {
+  // Long, with no single slow step: on a busy runner it ran out of the default 30 s (#355).
+  test.slow();
   const owner = await person(browser, "Eigandi Myndadóttir");
   const member = await person(browser, "Meðlimur Myndason");
   const open = await found(owner, "open");
