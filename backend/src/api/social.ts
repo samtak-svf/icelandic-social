@@ -152,12 +152,12 @@ export const NO_COMMUNITY = {
 };
 const MEMBERS_POST = {
   403: errorResponse(
-    "not_a_member: only members post, comment and react; read_only: the community takes nothing new; muted: a moderator muted the caller here for now",
+    "suspended: the account is suspended now, with `until` when it ends (decision 0115); not_a_member: only members post, comment and react; read_only: the community takes nothing new; muted: a moderator muted the caller here for now",
   ),
 };
 export const MEMBERS_REPLY = {
   403: errorResponse(
-    "not_a_member: only members comment and react; read_only: the community takes nothing new; muted: a moderator muted the caller here for now; not_permitted: the post was hidden or removed; blocked: a block stands between the caller and the post's author",
+    "suspended: the account is suspended now, with `until` when it ends (decision 0115); not_a_member: only members comment and react; read_only: the community takes nothing new; muted: a moderator muted the caller here for now; not_permitted: the post was hidden or removed; blocked: a block stands between the caller and the post's author",
   ),
 };
 

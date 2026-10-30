@@ -7,6 +7,7 @@ import type {
   TARGET_STANDINGS,
   TARGET_STATES,
 } from "../../api/moderation.ts";
+import { suspendedAmong } from "../../identity/index.ts";
 import { standing } from "../communities/index.ts";
 import {
   authors,
@@ -198,6 +199,14 @@ export async function reportPage(
     env,
     page.filter((r) => r.target_kind === "post").map((r) => r.target_id),
   );
+  // Only the platform's own queue is told of a suspension (decision 0115).
+  const suspended =
+    communityId === null
+      ? await suspendedAmong(
+          env,
+          page.flatMap((r) => r.target_account ?? []),
+        )
+      : new Set<string>();
   const last = page.at(-1);
   return {
     reports: await Promise.all(
@@ -206,6 +215,7 @@ export async function reportPage(
         communityId: r.community_id,
         target: { kind: r.target_kind, id: r.target_id },
         targetAccount: named(r.target_account),
+        targetSuspended: r.target_account !== null && suspended.has(r.target_account),
         targetAnonymous: anonymous.has(r.target_id),
         reason: r.reason,
         note: r.note,

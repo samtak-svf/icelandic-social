@@ -24,7 +24,7 @@ import { ROOT } from "./lib/repo.mjs";
 
 /** The files scanned: every ffi source and the wasm DTO view. */
 const DIRS = ["core/ffi/src"];
-const FILES = ["core/wasm/src/dto.rs"];
+const FILES = ["core/wasm/src/dto.rs", "core/wasm/src/dto/me.rs"];
 
 /**
  * Conversions whose source is a foreign, non-exhaustive or open type, keyed

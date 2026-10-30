@@ -38,6 +38,7 @@ const report = (over: Partial<Report> = {}): Report => ({
   communityId: null,
   target: { kind: "account", id: "acc1" },
   targetAccount: person("v1"),
+  targetSuspended: false,
   reason: "harassment",
   note: "Óviðeigandi mynd",
   state: "open",
@@ -101,9 +102,34 @@ describe("the platform queue", () => {
   });
 
   it("offers the photo only while the account has one", () => {
-    expect(actionsFor(report()).map((row) => row.id)).toEqual(["clear_account_photo"]);
-    expect(actionsFor(report({ targetAccount: person(null) }))).toEqual([]);
-    expect(actionsFor(report({ targetAccount: null }))).toEqual([]);
+    const ids = (over: Partial<Report>) => actionsFor(report(over)).map((row) => row.id);
+    expect(ids({})).toContain("clear_account_photo");
+    expect(ids({ targetAccount: person(null) })).not.toContain("clear_account_photo");
+    expect(ids({ targetAccount: null })).not.toContain("clear_account_photo");
+  });
+
+  it("offers suspending until the account stands suspended, then lifting it", () => {
+    const ids = (over: Partial<Report>) => actionsFor(report(over)).map((row) => row.id);
+    expect(ids({})).toContain("suspend_account");
+    expect(ids({})).not.toContain("unsuspend_account");
+    expect(ids({ targetSuspended: true })).toContain("unsuspend_account");
+    expect(ids({ targetSuspended: true })).not.toContain("suspend_account");
+    expect(actionsFor(report()).find((row) => row.id === "suspend_account")?.ends).toBe(true);
+  });
+
+  it("sends the end date a suspension was given, and none for an open one", async () => {
+    const calls = noCalls();
+    const row = actionsFor(report()).find((r) => r.id === "suspend_account");
+    if (row === undefined) throw new Error("no row");
+    await act(calls, report(), row, " fyrir brot ", 5000);
+    await act(calls, report(), row, "fyrir brot");
+    const bodies = vi.mocked(calls.moderatePlatform).mock.calls.map(([options]) => options.body);
+    expect(bodies[0]).toMatchObject({
+      action: "suspend_account",
+      reason: "fyrir brot",
+      until: 5000,
+    });
+    expect(bodies[1]).not.toHaveProperty("until");
   });
 
   it("offers no account action for a report filed in a community", () => {

@@ -30,7 +30,9 @@ export interface Row<T = Report> {
   confirm: string;
   applies: (item: T) => boolean;
   /** The call the row makes: the platform route for an account, the community's for content. */
-  call: (calls: Calls, item: T, reason: string) => Promise<Outcome<undefined>>;
+  call: (calls: Calls, item: T, reason: string, until?: number) => Promise<Outcome<undefined>>;
+  /** The row takes an end date, chosen beside the reason. */
+  ends?: true;
 }
 
 /** The post or comment a report in a community is about, when it is one. */
@@ -74,37 +76,69 @@ const notFound = () =>
 const accountOf = (report: Report): string | null =>
   report.target.kind === "account" ? report.target.id : (report.targetAccount?.accountId ?? null);
 
-/** Clears the photo of the reported account through the platform route, which closes the report. */
-const clearPhoto: Row = {
-  id: "clear_account_photo",
-  label: strings.platform_clear_photo,
-  confirm: strings.platform_clear_photo_confirm,
-  // The platform route closes only a report with no community.
-  applies: (report) => report.communityId === null && report.targetAccount?.photo != null,
-  call: (calls, report, reason) => {
+/** Calls the platform route on the reported account, which closes the report. */
+const onAccount = (
+  action: "clear_account_photo" | "suspend_account" | "unsuspend_account",
+): Row["call"] => {
+  return (calls, report, reason, until) => {
     const targetId = accountOf(report);
     if (targetId === null) return notFound();
     return outcome(
       calls.moderatePlatform({
         body: {
-          action: "clear_account_photo",
+          action,
           targetId,
           reason: reason.trim(),
           reportId: report.reportId,
+          ...(until === undefined ? {} : { until }),
         },
       }),
       204,
     );
-  },
+  };
+};
+
+// The platform route closes only a report with no community, so each row on an
+// account asks for one.
+const clearPhoto: Row = {
+  id: "clear_account_photo",
+  label: strings.platform_clear_photo,
+  confirm: strings.platform_clear_photo_confirm,
+  applies: (report) => report.communityId === null && report.targetAccount?.photo != null,
+  call: onAccount("clear_account_photo"),
+};
+
+const suspend: Row = {
+  id: "suspend_account",
+  label: strings.platform_suspend,
+  confirm: strings.platform_suspend_confirm,
+  applies: (report) =>
+    report.communityId === null && accountOf(report) !== null && !report.targetSuspended,
+  call: onAccount("suspend_account"),
+  ends: true,
+};
+
+const unsuspend: Row = {
+  id: "unsuspend_account",
+  label: strings.platform_unsuspend,
+  confirm: strings.platform_unsuspend_confirm,
+  applies: (report) => report.communityId === null && report.targetSuspended,
+  call: onAccount("unsuspend_account"),
 };
 
 /**
  * What a platform moderator may do about a report, one row each, so a new
- * action (suspending an account, clearing its bio) takes one row here and one
- * value in the contract's action enum. `applies` mirrors what the server checks;
- * hiding and restoring content stay the community's own tools.
+ * action (clearing an account's bio) takes one row here and one value in the
+ * contract's action enum. `applies` mirrors what the server checks; hiding and
+ * restoring content stay the community's own tools.
  */
-const ACTIONS: readonly Row[] = [clearPhoto, removeContent("post"), removeContent("comment")];
+const ACTIONS: readonly Row[] = [
+  clearPhoto,
+  suspend,
+  unsuspend,
+  removeContent("post"),
+  removeContent("comment"),
+];
 
 /** The rows that apply to `report`, in table order. */
 export function actionsFor(report: Report): Row[] {
@@ -141,9 +175,9 @@ export function reviewActionsFor(review: OpenModerationReview): Row<OpenModerati
   return REVIEW_ACTIONS.filter((row) => row.applies(review));
 }
 
-/** Does `row` for `item`, with the moderator's reason. */
-export function act<T>(calls: Calls, item: T, row: Row<T>, reason: string) {
-  return row.call(calls, item, reason);
+/** Does `row` for `item`, with the moderator's reason and the end date it takes, if any. */
+export function act<T>(calls: Calls, item: T, row: Row<T>, reason: string, until?: number) {
+  return row.call(calls, item, reason, until);
 }
 
 /** Closes `report` with no action taken. */

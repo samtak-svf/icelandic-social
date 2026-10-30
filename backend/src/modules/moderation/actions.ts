@@ -12,6 +12,7 @@ import {
   type Sanction,
   type Standing,
 } from "../communities/index.ts";
+import { setSuspension, suspension, type Suspension } from "../../identity/index.ts";
 import { removePhoto } from "../profiles/index.ts";
 import {
   authors,
@@ -204,17 +205,34 @@ export async function act(
 
 /**
  * What each platform action needs of the account, and how it is written with
- * the entries that go with it. A bio, a cover and a suspension each take one
- * row here and one value in `PLATFORM_ACTIONS` (decision 0115).
+ * the entries that go with it. A bio and a cover each take one row here and one
+ * value in `PLATFORM_ACTIONS` (decision 0115). A suspension always applies, since
+ * a new one replaces what stands; there must be one to lift.
  */
 const ON_ACCOUNT: Record<
   PlatformAction,
   {
-    applies: (target: Author) => boolean;
-    write: (env: Env, accountId: string, entries: D1PreparedStatement[]) => Promise<void>;
+    applies: (target: Author, suspended: Suspension | null) => boolean;
+    write: (
+      env: Env,
+      accountId: string,
+      entries: D1PreparedStatement[],
+      until: number | null,
+    ) => Promise<void>;
   }
 > = {
-  clear_account_photo: { applies: (target) => target.photo !== null, write: removePhoto },
+  clear_account_photo: {
+    applies: (target) => target.photo !== null,
+    write: (env, accountId, entries) => removePhoto(env, accountId, entries),
+  },
+  suspend_account: {
+    applies: () => true,
+    write: (env, accountId, entries, until) => setSuspension(env, accountId, { until }, entries),
+  },
+  unsuspend_account: {
+    applies: (_, suspended) => suspended !== null,
+    write: (env, accountId, entries) => setSuspension(env, accountId, null, entries),
+  },
 };
 
 /**
@@ -226,19 +244,29 @@ const ON_ACCOUNT: Record<
 export async function actOnAccount(
   env: Env,
   accountId: string,
-  input: { action: PlatformAction; targetId: string; reason: string; reportId?: string },
+  input: {
+    action: PlatformAction;
+    targetId: string;
+    reason: string;
+    reportId?: string;
+    until?: number | undefined;
+  },
 ): Promise<Refusal | null> {
   if (!(await isPlatformModerator(env, accountId))) return "not_permitted";
   // No rank reaches its own (decision 0066), and a moderator is not its own exception.
   if (await isPlatformModerator(env, input.targetId)) return "not_permitted";
+  const { until } = input;
+  if (until !== undefined && (input.action !== "suspend_account" || until <= Date.now())) {
+    return "invalid_request";
+  }
   const target = (await authors(env, [input.targetId])).get(input.targetId);
   const does = ON_ACCOUNT[input.action];
-  if (!target || !does.applies(target)) return "not_found";
+  if (!target || !does.applies(target, await suspension(env, input.targetId))) return "not_found";
   const report = await reportOf(env, { platformModerator: true }, null, input);
   if (typeof report === "string") return report;
   if (report && report.targetAccount !== input.targetId) return "not_found";
 
-  await does.write(env, input.targetId, [
+  const entries = [
     entry(env, {
       communityId: null,
       actorId: accountId,
@@ -258,6 +286,7 @@ export async function actOnAccount(
       communityId: null,
       action: input.action,
     }),
-  ]);
+  ];
+  await does.write(env, input.targetId, entries, until ?? null);
   return null;
 }

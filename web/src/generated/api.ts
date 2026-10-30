@@ -89,12 +89,14 @@ export interface SignInConfig {
 }
 
 export interface ApiError {
-  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, pin_limit, poll_closed, anonymous_off, invalid_media, muted, expired, incomplete, internal_error */
+  /** A stable code: unauthorized, invalid_request, group_mismatch, not_a_member, not_found, conversation_exists, epoch_conflict, upgrade_required, sign_in_failed, device_key_taken, kenni_unavailable, google_unavailable, identity_taken, already_linked, rate_limited, blocked, conflict, too_large, invalid_image, no_master, not_this_device, no_key_packages, client_too_old, claim_names_departed, not_author, forbidden_origin, no_linked_device, not_verified, not_permitted, banned, read_only, owner_cannot_leave, audience_locked, pin_limit, poll_closed, anonymous_off, invalid_media, muted, suspended, expired, incomplete, internal_error */
   error: string;
   /** The request's id, also in the x-request-id header: opaque, for support to find the request by (decision 0037) */
   requestId: string;
   /** With client_too_old: the lowest version this platform accepts (decision 0030) */
   minVersion?: string;
+  /** With suspended: when the suspension ends, Unix milliseconds; absent while it is open-ended (decision 0115) */
+  until?: number;
   /** Where to get a current build when error === 'client_too_old' (decision 0030) */
   updateUrl?: string;
 }
@@ -160,6 +162,9 @@ export interface Me {
   verified: boolean;
   /** The profile photo's version, changed by each upload; null when there is none to show (decision 0039) */
   photo: string | null;
+  suspension: Suspension;
+  /** One of Samtak's platform moderators (decision 0115) */
+  platformModerator: boolean;
   devices: Array<{
     deviceId: string;
     platform: "android" | "ios";
@@ -171,6 +176,12 @@ export interface Me {
     current: boolean;
   }>;
 }
+
+/** A suspension that stands now, else null (decision 0115) */
+export type Suspension = {
+  /** When it ends, Unix milliseconds; null until a moderator lifts it */
+  until: number | null;
+} | null;
 
 export interface PushToken {
   /** The FCM registration token, or the APNs device token in hex */
@@ -732,7 +743,7 @@ export interface ModerationStatementPage {
 /** Why a moderator acted. Never names who did */
 export interface ModerationStatement {
   entryId: number;
-  action: "hide_post" | "remove_post" | "hide_comment" | "remove_comment" | "clear_account_photo";
+  action: "hide_post" | "remove_post" | "hide_comment" | "remove_comment" | "clear_account_photo" | "suspend_account";
   target: ReportTarget;
   communityId: string | null;
   /** The moderator's reason, as written */
@@ -760,7 +771,7 @@ export interface ModerationReview {
   decidedAt: number | null;
   /** The decider's reason, once decided */
   reason: string | null;
-  /** The content is back. False on an overturned review when it no longer exists, as a cleared photo does not, or when a later hide or remove of it still stands */
+  /** The content is back, or the suspension is lifted. False on an overturned review when it no longer exists, as a cleared photo does not, or when a later hide, remove or suspension still stands */
   restored: boolean;
 }
 
@@ -772,7 +783,7 @@ export interface OpenModerationReviewPage {
 
 export interface OpenModerationReview {
   entryId: number;
-  action: "hide_post" | "remove_post" | "hide_comment" | "remove_comment" | "clear_account_photo";
+  action: "hide_post" | "remove_post" | "hide_comment" | "remove_comment" | "clear_account_photo" | "suspend_account";
   target: ReportTarget;
   communityId: string | null;
   /** The post to open, when the target is a post or a comment on one */
@@ -807,6 +818,8 @@ export interface Report {
   communityId: string | null;
   target: ReportTarget;
   targetAccount: Author | null;
+  /** That account is suspended now, in the platform's queue; always false in a community's, which is not told (decision 0115) */
+  targetSuspended: boolean;
   reason: "unlawful" | "harassment" | "spam" | "other";
   note: string;
   state: "open" | "closed";
@@ -814,7 +827,7 @@ export interface Report {
   createdAt: number;
   closedAt: number | null;
   /** How it was closed: the action taken, `dismissed`, or `community_deleted`; null while open */
-  decision: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "clear_account_photo" | "dismissed" | "community_deleted" | null;
+  decision: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "clear_account_photo" | "suspend_account" | "unsuspend_account" | "dismissed" | "community_deleted" | null;
   /** The reason the action gave, or the closing resolution; null while open */
   resolution: string | null;
   /** Who closed it; null while open, when the community's deletion did, or once deleted */
@@ -841,7 +854,7 @@ export interface ModerationLogEntry {
   actor: Author | null;
   /** Done as one of Samtak's platform moderators */
   asPlatform: boolean;
-  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "clear_account_photo" | "close_report" | "delete_community" | "restore_community" | "set_community_picture" | "remove_community_picture" | "set_community_cover" | "remove_community_cover" | "pin_post" | "unpin_post" | "close_poll" | "anonymous_posts_on" | "anonymous_posts_off" | "reveal_author" | "review_upheld" | "review_overturned";
+  action: "hide_post" | "remove_post" | "restore_post" | "hide_comment" | "remove_comment" | "restore_comment" | "mute_member" | "unmute_member" | "remove_member" | "ban_member" | "unban_member" | "clear_account_photo" | "suspend_account" | "unsuspend_account" | "close_report" | "delete_community" | "restore_community" | "set_community_picture" | "remove_community_picture" | "set_community_cover" | "remove_community_cover" | "pin_post" | "unpin_post" | "close_poll" | "anonymous_posts_on" | "anonymous_posts_off" | "reveal_author" | "review_upheld" | "review_overturned";
   target: {
     kind: "post" | "comment" | "community" | "account" | "report";
     id: string;
@@ -2562,15 +2575,17 @@ export function moderate(args: {
 /**
  * Act as a platform moderator on an account, with no community
  *
- * Samtak's platform moderators act on an account itself, never on another platform moderator; content in a community is acted on through that community's route. The action is logged with its reason and no community. With `reportId`, an open report on that account is closed by the same action; closing one with no action taken is `closeReport`.
+ * Samtak's platform moderators act on an account itself, never on another platform moderator; content in a community is acted on through that community's route. The action is logged with its reason and no community. With `reportId`, an open report on that account is closed by the same action; closing one with no action taken is `closeReport`. `suspend_account` replaces any suspension that stands, and `until` is its end; with none it stands until lifted.
  */
 export function moderatePlatform(args: {
   body: {
-    action: "clear_account_photo";
+    action: "clear_account_photo" | "suspend_account" | "unsuspend_account";
     /** The account's id */
     targetId: string;
     reason: string;
     reportId?: string;
+    /** With suspend_account only: when it ends, Unix milliseconds and in the future */
+    until?: number;
   };
 }, init?: CallInit): Promise<
   | { status: 204; data: undefined }

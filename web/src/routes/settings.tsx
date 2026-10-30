@@ -18,7 +18,7 @@ export const Route = createFileRoute("/settings")({ component: Settings });
 type Sessions = { status: "loading" } | { status: "ready"; sessions: SessionInfo[] };
 
 function Settings() {
-  const { refresh, signedOut } = useAccount();
+  const { state, refresh, signedOut } = useAccount();
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<Sessions>({ status: "loading" });
   const [busy, setBusy] = useState(false);
@@ -86,6 +86,13 @@ function Settings() {
           {strings.statements_title}
         </Link>
       </p>
+      {state.status === "signed-in" && state.me.platformModerator && (
+        <p className="mt-2">
+          <Link to="/moderation" className="underline">
+            {strings.platform_title}
+          </Link>
+        </p>
+      )}
       <section aria-labelledby="sessions" className="mt-6">
         <h2 id="sessions" className="text-xl font-semibold">
           {strings.sessions_title}

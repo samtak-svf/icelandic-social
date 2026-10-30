@@ -8,8 +8,10 @@ use std::path::Path;
 
 use crate::frames::{Frame, Framing};
 
+mod me;
 mod moderation_reviews;
 mod notifications;
+pub use me::*;
 pub use moderation_reviews::*;
 pub use notifications::*;
 
@@ -385,34 +387,6 @@ pub struct Registered {
     pub account_id: String,
     pub device_id: String,
     pub token: String,
-}
-
-/// `getMe`: this account and its devices.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Me {
-    pub account_id: String,
-    /// The registry name, if Kenni gave one.
-    pub name: Option<String>,
-    pub verified: bool,
-    /// The version of this account's photo (0039), none when it has none.
-    #[serde(default)]
-    pub photo: Option<String>,
-    pub devices: Vec<AccountDevice>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AccountDevice {
-    pub device_id: String,
-    pub platform: Platform,
-    /// A server older than 0064 names none: a phone.
-    #[serde(default)]
-    pub kind: DeviceKind,
-    /// Milliseconds since the epoch.
-    pub created_at: u64,
-    /// The device that asked.
-    pub current: bool,
 }
 
 /// What kind of device an account holds (0064): a phone, or a browser
@@ -2752,7 +2726,7 @@ mod tests {
         // A log entry holds every action a moderator or a platform moderator
         // takes; each contract value reads as itself rather than as `Unknown`.
         let logged = listed("/ModerationLogEntry/properties/action/enum");
-        assert_eq!(logged.len(), 27);
+        assert_eq!(logged.len(), 29);
         assert!(logged.iter().all(|value| {
             serde_json::from_value::<ModerationLogAction>(value.clone())
                 .is_ok_and(|action| action != ModerationLogAction::Unknown)

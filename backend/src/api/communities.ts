@@ -145,7 +145,9 @@ export const createCommunityRoute = createRoute({
     200: json("The new community", Community),
     ...INVALID,
     ...AUTHED,
-    403: errorResponse("not_verified: the account is not verified"),
+    403: errorResponse(
+      "suspended: the account is suspended now, with `until` when it ends (decision 0115); not_verified: the account is not verified",
+    ),
   },
 });
 
@@ -317,7 +319,9 @@ export const joinCommunityRoute = createRoute({
     ),
     ...INVALID,
     ...AUTHED,
-    403: errorResponse("banned: the community banned the caller; read_only: it takes no one"),
+    403: errorResponse(
+      "suspended: the account is suspended now, with `until` when it ends (decision 0115); banned: the community banned the caller; read_only: it takes no one",
+    ),
     ...NOT_FOUND,
     409: errorResponse(
       "join_declined: a moderator declined the caller's request; it may ask again at `joinDeclinedUntil`",

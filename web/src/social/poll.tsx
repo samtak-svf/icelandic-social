@@ -4,6 +4,7 @@ import { votePoll, withdrawVote, type Poll, type Post } from "../generated/api.t
 import { strings } from "../generated/brand/strings.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 import { outcome } from "./outcome.ts";
+import { useSuspended } from "./suspended.tsx";
 
 // A poll on a post card (decision 0090). Before the reader votes the options
 // are plain choices and only the total shows; once they have voted, wrote the
@@ -22,6 +23,7 @@ export function share(part: number, total: number): number {
 }
 
 export function PollCard({ post }: Readonly<{ post: Post }>) {
+  const suspended = useSuspended();
   const [poll, setPoll] = useState<Poll | undefined>(post.poll);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -52,7 +54,7 @@ export function PollCard({ post }: Readonly<{ post: Post }>) {
               type="button"
               role="radio"
               aria-checked={mine}
-              disabled={busy || !open || mine}
+              disabled={busy || !open || mine || suspended}
               onClick={() =>
                 void send(
                   votePoll({ path: { postId: post.postId }, body: { optionId: option.optionId } }),

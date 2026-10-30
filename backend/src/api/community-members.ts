@@ -124,7 +124,7 @@ export const inviteMemberRoute = createRoute({
     ...INVALID,
     ...AUTHED,
     403: errorResponse(
-      "not_permitted: only moderators invite; blocked: a block stands between the two; banned: the account is banned",
+      "suspended: the account is suspended now, with `until` when it ends (decision 0115); not_permitted: only moderators invite; blocked: a block stands between the two; banned: the account is banned",
     ),
     404: errorResponse("not_found: no such community or account"),
   },

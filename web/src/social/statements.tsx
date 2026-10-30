@@ -61,9 +61,14 @@ export function StatementsView({ list }: Readonly<{ list: Paged<ModerationStatem
 }
 
 /** The sentence a review's state reads as. */
-export function reviewSentence(review: ModerationReview): string {
+export function reviewSentence(review: ModerationReview, action: string): string {
   if (review.state === "open") return strings.statement_review_open;
   if (review.state === "upheld") return strings.statement_review_upheld;
+  if (action === "suspend_account") {
+    return review.restored
+      ? strings.statement_review_overturned_lifted
+      : strings.statement_review_overturned_later_stands;
+  }
   return review.restored
     ? strings.statement_review_overturned
     : strings.statement_review_overturned_not_restored;
@@ -121,7 +126,7 @@ export function StatementCard({
       )}
       {review !== null && (
         <div className="flex flex-col gap-1">
-          <p className="font-medium">{reviewSentence(review)}</p>
+          <p className="font-medium">{reviewSentence(review, statement.action)}</p>
           {review.reason !== null && (
             <p className="whitespace-pre-wrap">
               <span className="font-semibold">{strings.statement_review_reason}:</span>{" "}

@@ -12,6 +12,7 @@ import { strings } from "../generated/brand/strings.ts";
 import type { Problem } from "../problem.ts";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 import { LogEntries } from "./moderation-log.tsx";
+import { DAY, MUTES } from "./mute-lengths.ts";
 import { outcome, when, type Outcome } from "./outcome.ts";
 import { usePaged, type Paged } from "./paged.ts";
 import {
@@ -176,9 +177,11 @@ function Item({
 }>) {
   const id = useId();
   const [reason, setReason] = useState("");
+  const [days, setDays] = useState(0);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
   const blocked = busy || reason.trim() === "";
+  const rows = actionsFor(report);
 
   async function run(pending: Promise<Outcome<undefined>>) {
     setBusy(true);
@@ -190,7 +193,8 @@ function Item({
   }
   const perform = (row: Row) => {
     if (!confirm(row.confirm)) return;
-    void run(act(calls, report, row, reason));
+    const until = row.ends && days > 0 ? Date.now() + days * DAY : undefined;
+    void run(act(calls, report, row, reason, until));
   };
 
   return (
@@ -223,8 +227,26 @@ function Item({
       <p id={`${id}-reason-help`} className="text-sm text-muted-fg">
         {strings.moderation_reason_required}
       </p>
+      {rows.some((row) => row.ends) && (
+        <>
+          <label htmlFor={`${id}-days`}>{strings.moderation_mute_for}</label>
+          <select
+            id={`${id}-days`}
+            value={days}
+            onChange={(event) => setDays(Number(event.target.value))}
+            className="min-h-11 rounded-md border border-border-strong bg-surface px-3"
+          >
+            <option value={0}>{strings.platform_suspend_open}</option>
+            {MUTES.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
       <div className="flex flex-wrap gap-2">
-        {actionsFor(report).map((row) => (
+        {rows.map((row) => (
           <Button key={row.id} tone="danger" disabled={blocked} onClick={() => perform(row)}>
             {row.label}
           </Button>

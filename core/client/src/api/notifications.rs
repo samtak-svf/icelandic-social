@@ -86,6 +86,10 @@ pub enum NotificationAction {
     UnbanMember,
     /// A platform moderator cleared the caller's photo (no community).
     ClearAccountPhoto,
+    /// A platform moderator suspended the caller's account (no community).
+    SuspendAccount,
+    /// A platform moderator lifted the suspension (no community).
+    UnsuspendAccount,
     /// A moderator declined the caller's anonymous post (no post id).
     DeclineAnonymousPost,
     /// The caller's review came back: the action stands (0115).

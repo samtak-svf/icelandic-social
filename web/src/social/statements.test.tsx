@@ -92,9 +92,18 @@ describe("a statement of reasons", () => {
     const upheld = review({ state: "upheld" });
     const back = review({ state: "overturned", restored: true });
     const notBack = review({ state: "overturned", restored: false });
-    expect(reviewSentence(upheld)).toBe(strings.statement_review_upheld);
-    expect(reviewSentence(back)).toBe(strings.statement_review_overturned);
-    expect(reviewSentence(notBack)).toBe(strings.statement_review_overturned_not_restored);
+    expect(reviewSentence(upheld, "remove_post")).toBe(strings.statement_review_upheld);
+    expect(reviewSentence(back, "remove_post")).toBe(strings.statement_review_overturned);
+    expect(reviewSentence(notBack, "remove_post")).toBe(
+      strings.statement_review_overturned_not_restored,
+    );
+    expect(reviewSentence(upheld, "suspend_account")).toBe(strings.statement_review_upheld);
+    expect(reviewSentence(back, "suspend_account")).toBe(
+      strings.statement_review_overturned_lifted,
+    );
+    expect(reviewSentence(notBack, "suspend_account")).toBe(
+      strings.statement_review_overturned_later_stands,
+    );
   });
 });
 

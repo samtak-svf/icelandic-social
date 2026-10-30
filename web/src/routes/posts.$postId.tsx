@@ -23,6 +23,7 @@ import { AuthorName, authorName, PostView, StateMark, useMine } from "../social/
 import { isPostTombstone } from "../social/post-tombstone.tsx";
 import { moderatesAs, RoleBadge } from "../social/roles.tsx";
 import { ReportButton } from "../social/report.tsx";
+import { useSuspended } from "../social/suspended.tsx";
 import { Button, ProblemText, Status } from "../ui/kit.tsx";
 import { CardPlaceholders, Loading } from "../ui/placeholder.tsx";
 
@@ -294,13 +295,14 @@ function useCommentLike(comment: Comment): CommentLike {
 
 /** Líkar þetta under a comment: bold while liked. */
 function LikeComment({ like }: Readonly<{ like: CommentLike }>) {
+  const suspended = useSuspended();
   return (
     <>
       <Button
         tone="link"
         className={`text-sm ${like.liked ? "font-bold text-fg" : ""}`}
         aria-pressed={like.liked}
-        disabled={like.busy}
+        disabled={like.busy || (suspended && !like.liked)}
         onClick={like.toggle}
       >
         {strings.comment_like}

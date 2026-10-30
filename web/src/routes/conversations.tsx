@@ -14,7 +14,7 @@ import { useSizeClass } from "../ui/size-class.ts";
 // an expanded window the list stays beside the open conversation (0093).
 export const Route = createFileRoute("/conversations")({
   component: Conversations,
-  staticData: { width: "wide" },
+  staticData: { width: "wide", noSuspendedNotice: true },
 });
 
 function Conversations() {

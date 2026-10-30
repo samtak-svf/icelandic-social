@@ -43,6 +43,8 @@ describe("GET /v1/me", () => {
       name: "Alísa Prófsdóttir",
       verified: true,
       photo: null,
+      suspension: null,
+      platformModerator: false,
       devices: [
         {
           deviceId: alice.deviceId,

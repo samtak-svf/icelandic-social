@@ -16,6 +16,7 @@ import { CommunityBar, CommunityHeader } from "./community-header.tsx";
 import { CommunityTabs, tabOf } from "./community-tabs.tsx";
 import { useMembers, type Members } from "./members.ts";
 import { outcome, useLoad, type Outcome } from "./outcome.ts";
+import { useSuspended } from "./suspended.tsx";
 
 // What every tab of a community shares (decisions 0063, 0080, 0089): the bar,
 // the header, joining and withdrawing a join request, the row of tabs and,
@@ -112,6 +113,7 @@ function Membership({
   community,
   changed,
 }: Readonly<{ community: Community; changed: () => void }>) {
+  const suspended = useSuspended();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
   const path = { communityId: community.communityId };
@@ -154,7 +156,7 @@ function Membership({
     control = (
       <Button
         tone="primary"
-        disabled={busy}
+        disabled={busy || suspended}
         onClick={() => void change(outcome(joinCommunity({ path }), 200))}
       >
         {label}

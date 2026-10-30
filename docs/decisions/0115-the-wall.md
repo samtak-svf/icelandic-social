@@ -1,6 +1,6 @@
 # 0115. The wall: an account's posts, for friends by default, moderated by the platform
 
-- Status: accepted; designed, not yet implemented; the platform moderation screen and action route (#374), the statement of reasons, the single review and the tombstone (#374) implemented, the rest still to come
+- Status: accepted; designed, not yet implemented; the platform moderation screen and action route (#374), the statement of reasons, the single review, the tombstone and suspension (#374) implemented, the rest still to come
 - Date: 2026-10-30
 - Decided by: Guðröður Atli Jónsson
 - Amends: [0044](0044-no-fljotid-in-v1.md) ("There is no wall"; settles the report and moderation it asked for),
@@ -107,16 +107,16 @@ what the platform has today is too little to open walls on.
   (`0016_moderation.sql:80–84`), so a new trigger (`0037_moderation_log_no_community.sql`) refuses its deletion until
   then, and the daily job (`expireLog`) deletes it after.
 
-**What must exist before any wall write ships.** `/usr/bin/grep -rn suspend backend/src` finds nothing, and
-`web/src/routes/` holds only a community's reports and log. So, in this order:
+**What must exist before any wall write ships.** When this was written the backend had no suspension and
+`web/src/routes/` held only a community's reports and log. So, in this order:
 
 1. **A platform moderation screen on the web**: the queue, the reported content, the log and the actions. The routes
    for the queue, closing and the log exist (`backend/src/modules/moderation/routes.ts:72–106`, `:128–134`); no
    client reads them.
 2. **A platform action route that needs no community.** `act` starts from a community
    (`backend/src/modules/moderation/actions.ts:160–172`), and an account report has none. Built as
-   `POST /v1/moderation/actions`, for an account's photo so far; a bio, a cover and suspension add to it when they
-   exist. Clearing a photo tells the person, through the notice of step 3.
+   `POST /v1/moderation/actions`, for an account's photo and its suspension so far; a bio and a cover add to it when
+   they exist. Clearing a photo tells the person, through the notice of step 3.
 3. **The statement of reasons, the single review and the tombstone** 0063 promised and 0066 listed as not built.
    One review per log entry, asked for by the person whose content it was; a platform moderator decides, never the
    one who acted or asked. A cleared photo cannot come back, and the person is told so. Overturning restores only when
@@ -126,7 +126,9 @@ what the platform has today is too little to open walls on.
    what it always read; one that restores nothing writes only `review_overturned`.
 4. **Suspension**, which does not exist: a column on `accounts`, timed or open. It stops posts, comments, reactions,
    friend requests and creating or joining a community. It does not touch conversations, which are end-to-end
-   encrypted and which a person may need. The person is told and has one review.
+   encrypted and which a person may need. The person is told and has one review. Built: poll votes and inviting are
+   refused as well, and moderating in a community they already moderate continues
+   (`backend/src/identity/suspension.ts`); friend requests and editing take the same seam when they exist.
 5. **A grouped notice to platform moderators when reports wait**, because otherwise nobody looks at the queue.
 6. **At least one row in production's `platform_moderators`** (`0016_moderation.sql:6–9`: never by a route), verified
    by the maintainer. This record's author could not check production.

@@ -24,6 +24,8 @@ pub enum ModerationLogAction {
     BanMember,
     UnbanMember,
     ClearAccountPhoto,
+    SuspendAccount,
+    UnsuspendAccount,
     CloseReport,
     DeleteCommunity,
     RestoreCommunity,
@@ -64,8 +66,9 @@ pub struct ModerationReview {
     pub decided_at: Option<u64>,
     /// The decider's reason, once decided.
     pub reason: Option<String>,
-    /// The content came back. False on an overturned review when it no longer
-    /// exists, as a cleared photo does not.
+    /// The content came back, or the suspension was lifted. False on an
+    /// overturned review when the content no longer exists, as a cleared photo
+    /// does not, or when a later suspension stands.
     pub restored: bool,
 }
 

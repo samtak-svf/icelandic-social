@@ -9,6 +9,7 @@ import {
 import type { REVIEW_OUTCOMES } from "../../api/moderation.ts";
 import { db } from "../../env/index.ts";
 import type { AppEnv } from "../../http.ts";
+import { setSuspension, suspension } from "../../identity/index.ts";
 import { fail } from "../../shared/errors.ts";
 import { log } from "../../shared/log.ts";
 import { notice } from "../jobs/index.ts";
@@ -209,6 +210,19 @@ async function overtaken(env: Env, r: Row): Promise<boolean> {
   return later !== null;
 }
 
+/** Whether a later suspension of `r`'s account decides now: the latest does. */
+async function laterSuspension(env: Env, r: Row): Promise<boolean> {
+  const later = await db(env)
+    .prepare(
+      `SELECT 1 AS yes FROM moderation_log
+        WHERE target_kind = 'account' AND target_id = ? AND entry_id > ? AND action = 'suspend_account'
+        LIMIT 1`,
+    )
+    .bind(r.target_id, r.entry_id)
+    .first();
+  return later !== null;
+}
+
 /**
  * Whether a review's answer brings its target back, the entry that says so when
  * this write is what does it, and the write. Only an overturn can. Read here and
@@ -222,11 +236,20 @@ async function restoring(
   outcome: Outcome,
 ): Promise<{
   restored: boolean;
-  action: "restore_post" | "restore_comment" | null;
+  action: "restore_post" | "restore_comment" | "unsuspend_account" | null;
   write: (s: D1PreparedStatement[]) => Promise<unknown>;
 }> {
   const batch = (s: D1PreparedStatement[]) => db(env).batch(s);
   const nothing = { action: null, write: batch };
+  if (outcome === "overturned" && r.action === "suspend_account") {
+    if (!(await suspension(env, r.target_id))) return { restored: true, ...nothing };
+    if (await laterSuspension(env, r)) return { restored: false, ...nothing };
+    return {
+      restored: true,
+      action: "unsuspend_account",
+      write: (s) => setSuspension(env, r.target_id, null, s),
+    };
+  }
   if (outcome !== "overturned" || r.community_id === null || r.target_kind === "account") {
     return { restored: false, ...nothing };
   }
@@ -273,7 +296,7 @@ async function decide(
 
   const { restored, action: restoration, write } = await restoring(env, r, input.outcome);
   const action = input.outcome === "overturned" ? "review_overturned" : "review_upheld";
-  const logged = (a: typeof action | "restore_post" | "restore_comment") =>
+  const logged = (a: typeof action | NonNullable<typeof restoration>) =>
     entry(env, {
       communityId: r.community_id,
       actorId: accountId,

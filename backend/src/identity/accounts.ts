@@ -4,6 +4,7 @@ import { db, kennitalaKeys, type ProviderName } from "../env/index.ts";
 import type { Person } from "./providers.ts";
 import type { Platform } from "../shared/platforms.ts";
 import { phoneSession } from "./sessions.ts";
+import { type Suspension, suspensionRead } from "./suspension.ts";
 
 // Accounts and devices in D1 (decision 0014).
 
@@ -332,9 +333,12 @@ export async function orphans(env: Env): Promise<string[]> {
   return results.map((r) => r.accountId);
 }
 
-/** The account as its owner sees it: name, mark, photo version and active devices. */
+/**
+ * The account as its owner sees it: name, mark, photo version, active devices, a
+ * suspension that stands now, and whether it is one of the platform's moderators.
+ */
 export async function me(env: Env, accountId: string) {
-  const [account, devices] = await db(env).batch<Record<string, unknown>>([
+  const [account, devices, suspended, moderator] = await db(env).batch<Record<string, unknown>>([
     db(env)
       .prepare(
         "SELECT display_name AS name, verified, photo_version AS photo FROM accounts WHERE account_id = ?",
@@ -346,6 +350,8 @@ export async function me(env: Env, accountId: string) {
           WHERE account_id = ? AND revoked_at IS NULL ORDER BY created_at, device_id`,
       )
       .bind(accountId),
+    suspensionRead(env, accountId),
+    db(env).prepare("SELECT 1 FROM platform_moderators WHERE account_id = ?").bind(accountId),
   ]);
   const row = account?.results[0] as
     | { name: string | null; verified: number; photo: string | null }
@@ -360,6 +366,8 @@ export async function me(env: Env, accountId: string) {
       kind: "phone" | "web";
       createdAt: number;
     }[],
+    suspension: (suspended?.results[0] as Suspension | undefined) ?? null,
+    platformModerator: (moderator?.results.length ?? 0) > 0,
   };
 }
 

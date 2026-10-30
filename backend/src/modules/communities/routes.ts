@@ -23,6 +23,7 @@ import {
   transferOwnershipRoute,
 } from "../../api/community-members.ts";
 import type { AppEnv } from "../../http.ts";
+import { notSuspended } from "../../identity/index.ts";
 import { fail } from "../../shared/errors.ts";
 import { log } from "../../shared/log.ts";
 import { canRead, moderates } from "./access.ts";
@@ -56,7 +57,7 @@ import { type LifecycleHooks, markDeleted, restore } from "./lifecycle.ts";
 // carries the account and the community's ids, never a name (0008).
 
 export function communityRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleHooks): void {
-  app.openapi(createCommunityRoute, async (c) => {
+  app.openapi(notSuspended(createCommunityRoute), async (c) => {
     const { accountId } = c.var.session;
     if (!(await isVerified(c.env, accountId))) return fail(c, 403, "not_verified");
     const created = await createCommunity(c.env, accountId, c.req.valid("json"));
@@ -162,7 +163,7 @@ export function communityRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleHooks)
     return restored ? c.json(view(restored), 200) : fail(c, 404, "not_found");
   });
 
-  app.openapi(joinCommunityRoute, async (c) => {
+  app.openapi(notSuspended(joinCommunityRoute), async (c) => {
     const { accountId } = c.var.session;
     const { communityId } = c.req.valid("param");
     const found = await standing(c.env, accountId, communityId);
@@ -237,7 +238,7 @@ export function communityRoutes(app: OpenAPIHono<AppEnv>, hooks: LifecycleHooks)
     return c.body(null, 204);
   });
 
-  app.openapi(inviteMemberRoute, async (c) => {
+  app.openapi(notSuspended(inviteMemberRoute), async (c) => {
     const { communityId, accountId: target } = c.req.valid("param");
     const { accountId } = c.var.session;
     const found = await standing(c.env, accountId, communityId);

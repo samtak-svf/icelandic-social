@@ -28,6 +28,8 @@ const DECISIONS: Record<NonNullable<Report["decision"]>, string> = {
   ban_member: strings.moderation_decision_ban_member,
   unban_member: strings.moderation_decision_unban_member,
   clear_account_photo: strings.moderation_decision_clear_account_photo,
+  suspend_account: strings.moderation_decision_suspend_account,
+  unsuspend_account: strings.moderation_decision_unsuspend_account,
   dismissed: strings.moderation_decision_dismissed,
   community_deleted: strings.moderation_decision_community_deleted,
 };

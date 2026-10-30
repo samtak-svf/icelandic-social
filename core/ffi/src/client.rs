@@ -11,8 +11,10 @@ use crate::foreign::{Foreign, path_string};
 use crate::frames::{Frame, Framing};
 use crate::{Body, CoreError, Envelope, store_code};
 pub mod event;
+mod me;
 pub mod notices;
 pub use event::Event;
+pub use me::{AccountDevice, AccountSuspension, Me};
 pub use notices::{Notice, NoticeKind, Notices, SocialNotice};
 pub use spjall_client::LinkRequest;
 pub use spjall_client::Person;
@@ -221,68 +223,6 @@ impl From<core::SignedIn> for SignedIn {
 pub enum DeviceKind {
     Phone,
     Web,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct AccountDevice {
-    pub device_id: String,
-    pub platform: Platform,
-    /// A phone unless it is a browser linked from a session (0064).
-    pub kind: DeviceKind,
-    /// Milliseconds since the epoch.
-    pub created_at: u64,
-    /// This device.
-    pub current: bool,
-}
-
-/// This account: the registry's name when Kenni gave one, and its devices.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct Me {
-    pub account_id: String,
-    pub name: Option<String>,
-    pub verified: bool,
-    pub devices: Vec<AccountDevice>,
-    /// The version of this account's photo (0039), for `photo`; none when
-    /// it has none.
-    #[uniffi(default = None)]
-    pub photo: Option<String>,
-}
-
-impl From<api::Me> for Me {
-    fn from(me: api::Me) -> Self {
-        let api::Me {
-            account_id,
-            name,
-            verified,
-            photo,
-            devices,
-        } = me;
-
-        Self {
-            account_id,
-            name,
-            verified,
-            photo,
-            devices: devices
-                .into_iter()
-                .map(
-                    |api::AccountDevice {
-                         device_id,
-                         platform,
-                         kind,
-                         created_at,
-                         current,
-                     }| AccountDevice {
-                        device_id,
-                        platform,
-                        kind,
-                        created_at,
-                        current,
-                    },
-                )
-                .collect(),
-        }
-    }
 }
 
 /// Who made an invite, as the person it was sent to sees them.

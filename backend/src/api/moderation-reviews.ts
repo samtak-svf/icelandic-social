@@ -14,6 +14,7 @@ export const REVIEWABLE = [
   "hide_comment",
   "remove_comment",
   "clear_account_photo",
+  "suspend_account",
 ] as const;
 
 const EntryId = z
@@ -32,7 +33,7 @@ const Review = z
     reason: z.string().nullable().openapi({ description: "The decider's reason, once decided" }),
     restored: z.boolean().openapi({
       description:
-        "The content is back. False on an overturned review when it no longer exists, as a cleared photo does not, or when a later hide or remove of it still stands",
+        "The content is back, or the suspension is lifted. False on an overturned review when it no longer exists, as a cleared photo does not, or when a later hide, remove or suspension still stands",
     }),
   })
   .openapi("ModerationReview");

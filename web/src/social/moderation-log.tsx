@@ -19,6 +19,8 @@ export const LOGGED: Record<ModerationLogEntry["action"], string> = {
   ban_member: strings.moderation_decision_ban_member,
   unban_member: strings.moderation_decision_unban_member,
   clear_account_photo: strings.moderation_decision_clear_account_photo,
+  suspend_account: strings.moderation_decision_suspend_account,
+  unsuspend_account: strings.moderation_decision_unsuspend_account,
   close_report: strings.moderation_decision_dismissed,
   delete_community: strings.moderation_decision_community_deleted,
   restore_community: strings.community_restore,

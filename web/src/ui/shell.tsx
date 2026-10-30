@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useAccount } from "../account.tsx";
 import { strings } from "../generated/brand/strings.ts";
 import { signInHref } from "../lib/sign-in-href.ts";
+import { SuspendedNotice } from "../social/suspended.tsx";
 import { Button, ProblemText } from "./kit.tsx";
 import { UnreadBadge } from "./unread.tsx";
 
@@ -18,6 +19,7 @@ export function Shell({ children }: Readonly<{ children: ReactNode }>) {
   const { state, refresh } = useAccount();
   const pathname = useLocation({ select: (l) => l.pathname });
   const wide = useMatches({ select: (ms) => ms.some((m) => m.staticData.width === "wide") });
+  const noNotice = useMatches({ select: (ms) => ms.some((m) => m.staticData.noSuspendedNotice) });
   switch (state.status) {
     case "signed-out":
       if (PUBLIC_PATHS.has(pathname)) {
@@ -108,6 +110,7 @@ export function Shell({ children }: Readonly<{ children: ReactNode }>) {
         </ul>
       </nav>
       <main className={`${column} py-6 pb-[calc(var(--tabbar-height)+1.5rem)] medium:pb-6`}>
+        {!noNotice && <SuspendedNotice />}
         {children}
       </main>
     </div>
